@@ -28,10 +28,14 @@ class LinkPasteScreen extends ConsumerStatefulWidget {
 
 class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     with TickerProviderStateMixin {
-  final TextEditingController _urlController = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
+  final List<TextEditingController> _urlControllers = [TextEditingController()];
+  final List<FocusNode> _focusNodes = [FocusNode()];
   bool _hasCheckedClipboard = false;
   String? _detectedClipboardUrl;
+
+  // Keep single-controller alias for backward compat in analysis
+  TextEditingController get _urlController => _urlControllers.first;
+  FocusNode get _focusNode => _focusNodes.first;
 
   late AnimationController _pulseController;
   late AnimationController _orbController;
@@ -73,10 +77,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   @override
   void dispose() {
-    // Reset link analysis state so old links don't persist
     ref.read(linkQuizProvider.notifier).reset();
-    _urlController.dispose();
-    _focusNode.dispose();
+    for (final c in _urlControllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     _pulseController.dispose();
     _orbController.dispose();
     _quizEntryController.dispose();
@@ -96,8 +103,39 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     }
   }
 
+  void _resetLinkFields() {
+    // Dispose extra controllers and reset to single empty field
+    for (int i = _urlControllers.length - 1; i > 0; i--) {
+      _urlControllers[i].dispose();
+      _urlControllers.removeAt(i);
+      _focusNodes[i].dispose();
+      _focusNodes.removeAt(i);
+    }
+    _urlControllers.first.clear();
+  }
+
+  void _showMultiCompareSheetWithLinks(
+      BuildContext context, WidgetRef ref,
+      EnhancedAnalysisResult firstResult, List<String> extraUrls) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MultiCompareSheet(
+        firstResult: firstResult,
+        prefillUrls: extraUrls,
+      ),
+    );
+  }
+
   Future<void> _startAnalysis(String url) async {
-    if (url.isEmpty || !_isValidUrl(url)) {
+    // Collect all valid URLs from multi-link fields
+    final validUrls = _urlControllers
+        .map((c) => c.text.trim())
+        .where((u) => u.isNotEmpty && _isValidUrl(u))
+        .toList();
+
+    if (validUrls.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n?.pleaseEnterValidUrl ?? 'Please enter a valid product URL',
@@ -125,9 +163,32 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       updatedAt: DateTime.now(),
     );
 
-    _focusNode.unfocus();
-    ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
-    await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(url, user);
+    for (final fn in _focusNodes) {
+      fn.unfocus();
+    }
+
+    // If multiple valid URLs → open multi-compare sheet with all links
+    if (validUrls.length > 1) {
+      // First analyze the first link to get a base result
+      ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls.first, null);
+      await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(validUrls.first, user);
+      // Skip quiz to get result fast
+      ref.read(linkQuizProvider.notifier).skipQuiz();
+      await Future.delayed(const Duration(milliseconds: 500));
+      final state = ref.read(linkQuizProvider);
+      if (state.enhancedResult != null) {
+        if (mounted) {
+          // Open multi-compare sheet with remaining URLs pre-filled
+          _showMultiCompareSheetWithLinks(
+            context, ref, state.enhancedResult!, validUrls.sublist(1));
+        }
+      }
+      return;
+    }
+
+    // Single link → normal analysis flow
+    ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls.first, null);
+    await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(validUrls.first, user);
     if (mounted) _quizEntryController.forward(from: 0.0);
   }
 
@@ -155,7 +216,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         onPressed: () {
                           HapticFeedback.mediumImpact();
                           ref.read(linkQuizProvider.notifier).reset();
-                          _urlController.clear();
+                          _resetLinkFields();
                           setState(() {});
                         },
                       )
@@ -209,7 +270,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       onPressed: () {
                         HapticFeedback.mediumImpact();
                         ref.read(linkQuizProvider.notifier).reset();
-                        _urlController.clear();
+                        _resetLinkFields();
                         setState(() {});
                       },
                       tooltip: context.l10n?.startOver ?? 'Start over',
@@ -706,96 +767,64 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildInputCard(bool isWorking) {
+    final validCount = _urlControllers
+        .where((c) => c.text.trim().isNotEmpty && _isValidUrl(c.text.trim()))
+        .length;
+
     return Column(
       children: [
-        // Minimal floating search bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: AnimatedBuilder(
-            animation: _orbController,
-            builder: (context, child) {
-              return Container(
-                padding: const EdgeInsets.all(2),
+        // All link input fields
+        for (int i = 0; i < _urlControllers.length; i++) ...[
+          _buildLinkField(i, isWorking),
+          if (i < _urlControllers.length - 1) const SizedBox(height: 8),
+        ],
+
+        // Add link button (show when < 4 links and the last field has valid URL)
+        if (_urlControllers.length < 4 &&
+            _urlControllers.last.text.trim().isNotEmpty &&
+            _isValidUrl(_urlControllers.last.text.trim()))
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _urlControllers.add(TextEditingController());
+                  _focusNodes.add(FocusNode());
+                });
+                // Focus the new field
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _focusNodes.last.requestFocus();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(26),
-                  gradient: SweepGradient(
-                    colors: [
-                      const Color(0xFF6366F1),
-                      const Color(0xFFEC4899),
-                      const Color(0xFF06B6D4),
-                      const Color(0xFF8B5CF6),
-                      const Color(0xFF6366F1),
-                    ],
-                    transform: GradientRotation(_orbController.value * 2 * pi),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                    style: BorderStyle.solid,
                   ),
                 ),
-                child: child,
-              );
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.surfaceElevatedColor,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-            child: TextField(
-              controller: _urlController,
-              focusNode: _focusNode,
-              style: GoogleFonts.inter(
-                  color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
-              decoration: InputDecoration(
-                hintText: context.l10n?.pasteProductUrl ?? 'Paste any product URL...',
-                hintStyle: GoogleFonts.inter(
-                    color: context.textTertiaryColor.withValues(alpha: 0.6),
-                    fontWeight: FontWeight.w400, fontSize: 13),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 8),
-                  child: Icon(Icons.link_rounded,
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.7), size: 18),
-                ),
-                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (_urlController.text.isNotEmpty)
-                      GestureDetector(
-                        onTap: () { _urlController.clear(); setState(() {}); },
-                        child: Icon(Icons.close_rounded, size: 15,
-                            color: context.textTertiaryColor.withValues(alpha: 0.5)),
-                      ),
-                    Container(
-                      margin: const EdgeInsets.only(left: 4, right: 6),
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: GestureDetector(
-                        onTap: () async {
-                          final clipData = await Clipboard.getData(Clipboard.kTextPlain);
-                          if (clipData?.text != null) {
-                            _urlController.text = clipData!.text!.trim();
-                            setState(() {});
-                          }
-                        },
-                        child: const Icon(Icons.content_paste_rounded,
-                            color: Color(0xFF6366F1), size: 14),
+                    const Icon(Icons.add_link_rounded,
+                        color: Color(0xFF6366F1), size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      '+ Add link (${_urlControllers.length}/4)',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: const Color(0xFF6366F1),
                       ),
                     ),
                   ],
                 ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
               ),
-              keyboardType: TextInputType.url,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (url) => _startAnalysis(url),
-            ),
+            ).animate().fadeIn(duration: 300.ms),
           ),
-        ),
-        ),  // ClipRRect
-        ),  // AnimatedBuilder
         const SizedBox(height: 12),
 
         // Clipboard detected banner (notification only, no duplicate analyze button)
@@ -868,9 +897,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
+                      Icon(validCount > 1
+                          ? Icons.compare_arrows_rounded
+                          : Icons.auto_awesome_rounded,
+                          color: Colors.white, size: 18),
                       const SizedBox(width: 8),
-                      Text(context.l10n?.analyzeWithAi ?? 'Analyze with AI',
+                      Text(validCount > 1
+                          ? '${context.l10n?.compare ?? 'Compare'} ($validCount)'
+                          : context.l10n?.analyzeWithAi ?? 'Analyze with AI',
                           style: GoogleFonts.inter(
                               fontWeight: FontWeight.w700, fontSize: 14,
                               color: Colors.white, letterSpacing: -0.3)),
@@ -902,6 +936,138 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         ),
       ],
     ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.03);
+  }
+
+  Widget _buildLinkField(int index, bool isWorking) {
+    final controller = _urlControllers[index];
+    final focusNode = _focusNodes[index];
+    final isFirst = index == 0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: AnimatedBuilder(
+        animation: _orbController,
+        builder: (context, child) {
+          return Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              gradient: isFirst
+                  ? SweepGradient(
+                      colors: const [
+                        Color(0xFF6366F1),
+                        Color(0xFFEC4899),
+                        Color(0xFF06B6D4),
+                        Color(0xFF8B5CF6),
+                        Color(0xFF6366F1),
+                      ],
+                      transform:
+                          GradientRotation(_orbController.value * 2 * pi),
+                    )
+                  : null,
+              color: isFirst ? null : context.dividerColor.withValues(alpha: 0.3),
+            ),
+            child: child,
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              style: GoogleFonts.inter(
+                  color: context.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: isFirst
+                    ? (context.l10n?.pasteProductUrl ?? 'Paste any product URL...')
+                    : 'Link ${index + 1} — paste URL...',
+                hintStyle: GoogleFonts.inter(
+                    color: context.textTertiaryColor.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w400,
+                    fontSize: 13),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 8),
+                  child: Icon(Icons.link_rounded,
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.7),
+                      size: 18),
+                ),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 0, minHeight: 0),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (controller.text.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          controller.clear();
+                          setState(() {});
+                        },
+                        child: Icon(Icons.close_rounded,
+                            size: 15,
+                            color: context.textTertiaryColor
+                                .withValues(alpha: 0.5)),
+                      ),
+                    if (!isFirst)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _urlControllers[index].dispose();
+                            _urlControllers.removeAt(index);
+                            _focusNodes[index].dispose();
+                            _focusNodes.removeAt(index);
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(Icons.remove_circle_outline_rounded,
+                              size: 16,
+                              color: AppTheme.error.withValues(alpha: 0.7)),
+                        ),
+                      ),
+                    if (isFirst)
+                      Container(
+                        margin: const EdgeInsets.only(left: 4, right: 6),
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: GestureDetector(
+                          onTap: () async {
+                            final clipData =
+                                await Clipboard.getData(Clipboard.kTextPlain);
+                            if (clipData?.text != null) {
+                              controller.text = clipData!.text!.trim();
+                              setState(() {});
+                            }
+                          },
+                          child: const Icon(Icons.content_paste_rounded,
+                              color: Color(0xFF6366F1), size: 14),
+                        ),
+                      ),
+                  ],
+                ),
+                border: InputBorder.none,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+              ),
+              keyboardType: TextInputType.url,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: isFirst
+                  ? (url) => _startAnalysis(url)
+                  : null,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _storeChip(String name, Color color) {
@@ -2295,7 +2461,8 @@ class _LinkAnalysisImageState extends State<_LinkAnalysisImage> {
 
 class _MultiCompareSheet extends ConsumerStatefulWidget {
   final EnhancedAnalysisResult firstResult;
-  const _MultiCompareSheet({required this.firstResult});
+  final List<String>? prefillUrls;
+  const _MultiCompareSheet({required this.firstResult, this.prefillUrls});
 
   @override
   ConsumerState<_MultiCompareSheet> createState() => _MultiCompareSheetState();
@@ -2316,7 +2483,16 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
   @override
   void initState() {
     super.initState();
-    _results.add(null); // placeholder for extra links
+    _results.add(null);
+    // Pre-fill extra URLs if provided
+    if (widget.prefillUrls != null) {
+      for (final url in widget.prefillUrls!) {
+        _linkControllers.add(TextEditingController(text: url));
+        _results.add(null);
+      }
+      // Auto-start analysis after frame renders
+      WidgetsBinding.instance.addPostFrameCallback((_) => _analyzeAll());
+    }
   }
 
   @override

@@ -6147,10 +6147,6 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                     ),
                     const SizedBox(height: 2),
                     Row(children: [
-                      if (review.rating > 0) ...[
-                        _buildStarRow(review.rating, size: 13),
-                        const SizedBox(width: 6),
-                      ],
                       Text(
                         timeAgo,
                         style: GoogleFonts.plusJakartaSans(
@@ -6199,7 +6195,6 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
 
   void _showWriteReviewSheet(BuildContext context, String userId) {
     final textController = TextEditingController();
-    double selectedRating = 0.0;
 
     showModalBottomSheet(
       context: context,
@@ -6275,63 +6270,6 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                 ),
               ),
 
-              // Star rating selector
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: selectedRating > 0 
-                    ? AppTheme.warning.withValues(alpha: 0.06)
-                    : context.surfaceVariantColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: selectedRating > 0 
-                      ? AppTheme.warning.withValues(alpha: 0.2) 
-                      : Colors.transparent),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      selectedRating == 0 ? 'Tap to rate' :
-                      selectedRating <= 1 ? '😞 Poor' :
-                      selectedRating <= 2 ? '😐 Fair' :
-                      selectedRating <= 3 ? '🙂 Good' :
-                      selectedRating <= 4 ? '😊 Very Good' : '🤩 Excellent!',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14, fontWeight: FontWeight.w600,
-                        color: selectedRating > 0 ? AppTheme.warning : context.textSecondary),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(5, (i) {
-                        final starValue = (i + 1).toDouble();
-                        return GestureDetector(
-                          onTap: () => setSheetState(() => selectedRating = starValue),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: AnimatedScale(
-                              scale: selectedRating >= starValue ? 1.2 : 1.0,
-                              duration: const Duration(milliseconds: 200),
-                              child: Icon(
-                                selectedRating >= starValue
-                                  ? Icons.star_rounded
-                                  : Icons.star_outline_rounded,
-                                color: selectedRating >= starValue
-                                  ? AppTheme.warning
-                                  : AppTheme.slate400,
-                                size: 40,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
-                ),
-              ),
-
               // Comment field with modern design
               TextField(
                 controller: textController,
@@ -6367,25 +6305,25 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                 height: 52,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: (selectedRating > 0 && textController.text.trim().isNotEmpty)
+                    gradient: textController.text.trim().isNotEmpty
                       ? const LinearGradient(
-                          colors: [AppTheme.warning, Color(0xFFF97316)])
+                          colors: [AppTheme.primaryBlue, AppTheme.neonPurple])
                       : null,
-                    color: (selectedRating > 0 && textController.text.trim().isNotEmpty)
+                    color: textController.text.trim().isNotEmpty
                       ? null : context.textTertiaryColor,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: (selectedRating > 0 && textController.text.trim().isNotEmpty)
+                    boxShadow: textController.text.trim().isNotEmpty
                       ? [BoxShadow(
-                          color: AppTheme.warning.withValues(alpha: 0.3),
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.3),
                           blurRadius: 12, offset: const Offset(0, 4))]
                       : null,
                   ),
                   child: ElevatedButton.icon(
-                    onPressed: (selectedRating > 0 && textController.text.trim().isNotEmpty)
+                    onPressed: textController.text.trim().isNotEmpty
                         ? () => _submitReview(
                               ctx,
                               userId,
-                              selectedRating,
+                              0.0,
                               textController.text.trim(),
                             )
                         : null,

@@ -1446,6 +1446,51 @@ class _SubResultView extends StatelessWidget {
     return AppTheme.error;
   }
 
+  /// Build readable text from structured data when analysisText is raw JSON.
+  String _readableAnalysis(
+    String raw,
+    Map<String, dynamic> subs,
+    Map<String, dynamic> winner,
+  ) {
+    if (!raw.trim().startsWith('{')) return raw;
+    // Structured data available – generate readable summary from it
+    if (subs.isNotEmpty) {
+      final buf = StringBuffer();
+      for (final entry in subs.entries) {
+        final d = entry.value as Map<String, dynamic>? ?? {};
+        buf.writeln('${entry.key} (${d['compatibility_score'] ?? '?'}%)');
+        if (d['compatibility_explanation'] != null) {
+          buf.writeln(d['compatibility_explanation']);
+        }
+        final pros = (d['pros'] as List?)?.cast<String>() ?? [];
+        if (pros.isNotEmpty) buf.writeln('\n✅ ${pros.join('\n✅ ')}');
+        final cons = (d['cons'] as List?)?.cast<String>() ?? [];
+        if (cons.isNotEmpty) buf.writeln('\n❌ ${cons.join('\n❌ ')}');
+        buf.writeln();
+      }
+      if (winner['recommendation'] != null) {
+        buf.writeln(winner['recommendation']);
+      }
+      return buf.toString().trim();
+    }
+    // No structured data – try one more parse attempt
+    try {
+      var clean = raw.trim();
+      if (clean.startsWith('```')) {
+        clean = clean.replaceFirst(RegExp(r'^```\w*\n?'), '')
+            .replaceFirst(RegExp(r'\n?```$'), '');
+      }
+      final parsed = jsonDecode(clean) as Map<String, dynamic>?;
+      if (parsed != null) {
+        return parsed['analysis'] as String? ??
+            parsed['summary'] as String? ??
+            parsed['recommendation'] as String? ??
+            raw;
+      }
+    } catch (_) {}
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     var subs = (structured?['subscriptions'] as Map<String, dynamic>?) ?? {};
@@ -1604,10 +1649,7 @@ class _SubResultView extends StatelessWidget {
                 ]),
                 const SizedBox(height: 16),
                 SelectableText(
-                  // Strip any JSON that leaked through
-                  analysisText.trim().startsWith('{') 
-                      ? 'Analysis completed. Please try again for structured results.'
-                      : analysisText,
+                  _readableAnalysis(analysisText, subs, winner),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14, color: context.textPrimary, height: 1.6,
                   ),
