@@ -1058,6 +1058,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
 
   /// Step 3: Submit quiz answers and compute enhanced analysis.
   Future<void> submitQuiz(UserEntity user) async {
+    if (state.baseResult == null) return;
     state = state.copyWith(phase: LinkFlowPhase.computing);
 
     try {
@@ -1068,34 +1069,44 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       );
 
       // Persist quiz answers for algorithm training
-      _behaviorTracking.trackQuizAnswers(
-        url: state.baseResult!.url,
-        category: state.baseResult!.category,
-        answeredQuestions: state.answeredQuestions
-            .map((q) => {
-                  'question': q.text,
-                  'selectedOption': q.selectedOption,
-                  'options': q.options,
-                })
-            .toList(),
-        matchScore: enhanced.enhancedScore,
-      );
+      if (state.baseResult != null) {
+        _behaviorTracking.trackQuizAnswers(
+          url: state.baseResult!.url,
+          category: state.baseResult!.category,
+          answeredQuestions: state.answeredQuestions
+              .map((q) => {
+                    'question': q.text,
+                    'selectedOption': q.selectedOption,
+                    'options': q.options,
+                  })
+              .toList(),
+          matchScore: enhanced.enhancedScore,
+        );
+      }
 
       state = state.copyWith(
         phase: LinkFlowPhase.result,
         enhancedResult: enhanced,
       );
     } catch (e) {
-      // Fallback to base result
-      state = state.copyWith(
-        phase: LinkFlowPhase.result,
-        enhancedResult: EnhancedAnalysisResult(
-          baseResult: state.baseResult!,
-          enhancedScore: state.baseResult!.aiScore,
-          factors: const [],
-          detailedVerdict: state.baseResult!.aiAnalysis,
-        ),
-      );
+      // Fallback to base result (guard against null)
+      final base = state.baseResult;
+      if (base != null) {
+        state = state.copyWith(
+          phase: LinkFlowPhase.result,
+          enhancedResult: EnhancedAnalysisResult(
+            baseResult: base,
+            enhancedScore: base.aiScore,
+            factors: const [],
+            detailedVerdict: base.aiAnalysis,
+          ),
+        );
+      } else {
+        state = state.copyWith(
+          phase: LinkFlowPhase.idle,
+          error: 'Analysis failed. Please try again.',
+        );
+      }
     }
   }
 
@@ -2082,9 +2093,10 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     debugPrint('=== COMPAIR: Hive cache read error: $e ===');
   }
 
-  // 2. No cache — FAST parallel fetch strategy
-  //    Fetch 8 priority categories in parallel for instant content
-  debugPrint('=== COMPAIR: homeFeed — fast parallel strategy ===');
+  // 2. No cache — FAST two-phase strategy
+  //    Phase 1: Single bulk query (no category filter) for instant content
+  //    Phase 2: Enrich with 4 priority categories in parallel
+  debugPrint('=== COMPAIR: homeFeed — fast two-phase strategy ===');
 
   final allProducts = <ProductEntity>[];
   final seenIds = <String>{};
@@ -2095,69 +2107,53 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     }
   }
 
-  // Priority categories for instant content (most popular)
-  const priorityCats = ['smartphones', 'laptops', 'tablets', 'headphones',
-                        'smartwatches', 'monitors', 'tvs', 'cameras'];
-
-  // Retry helper for transient failures
-  Future<Result<List<ProductEntity>>> fetchWithRetry(String cat, {int limit = 50}) async {
-    for (var attempt = 0; attempt <= 2; attempt++) {
-      try {
-        final result = await repo.getProducts(
-          category: cat, limit: limit, orderBy: 'trendScore', descending: true,
-        ).timeout(Duration(seconds: attempt == 0 ? 15 : 20));
-        if (result is Success<List<ProductEntity>>) return result;
-      } catch (_) {}
-      if (attempt < 2) await Future.delayed(Duration(seconds: attempt + 1));
-    }
-    return const Success<List<ProductEntity>>([]);
-  }
-
-  // Step 1: Parallel fetch of priority categories (fast, < 5s total)
   final sw = Stopwatch()..start();
-  try {
-    final priorityFutures = priorityCats.map((cat) => fetchWithRetry(cat));
 
-    final priorityResults = await Future.wait(priorityFutures);
-    for (final result in priorityResults) {
-      result.when(
-        success: (products) => addProducts(products),
-        failure: (_) {},
-      );
-    }
-    debugPrint('=== COMPAIR: priority cats got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+  // Phase 1: Single bulk query — fastest way to get diverse content (1 query instead of 38)
+  try {
+    final bulkResult = await repo.getProducts(
+      limit: 300,
+      orderBy: 'trendScore',
+      descending: true,
+    ).timeout(const Duration(seconds: 15));
+    bulkResult.when(
+      success: (products) => addProducts(products),
+      failure: (_) {},
+    );
+    debugPrint('=== COMPAIR: Phase 1 bulk got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
-    debugPrint('=== COMPAIR: priority fetch error: $e ===');
+    debugPrint('=== COMPAIR: Phase 1 bulk error: $e ===');
   }
 
-  // Step 2: If we got some products, fetch remaining categories in background
-  if (allProducts.isNotEmpty) {
-    // Remaining categories
-    final remainingCats = _feedCategories.where((c) => !priorityCats.contains(c)).toList();
+  // Phase 2: Enrich with 4 priority categories (only if bulk was sparse)
+  const priorityCats = ['smartphones', 'laptops', 'tablets', 'headphones'];
 
-    // Fetch in 2 parallel batches of ~15 categories each
-    for (var i = 0; i < remainingCats.length; i += 15) {
-      final batch = remainingCats.skip(i).take(15);
-      final futures = batch.map((cat) => repo.getProducts(
-        category: cat, limit: 30, orderBy: 'trendScore', descending: true,
-      ).timeout(const Duration(seconds: 20)).catchError((_) =>
+  if (allProducts.length < 200) {
+    try {
+      final priorityFutures = priorityCats.map((cat) => repo.getProducts(
+        category: cat, limit: 20, orderBy: 'trendScore', descending: true,
+      ).timeout(const Duration(seconds: 12)).catchError((_) =>
         const Success<List<ProductEntity>>([])));
-      try {
-        final results = await Future.wait(futures);
-        for (final result in results) {
-          result.when(
-            success: (products) => addProducts(products),
-            failure: (_) {},
-          );
-        }
-      } catch (_) {}
+
+      final priorityResults = await Future.wait(priorityFutures);
+      for (final result in priorityResults) {
+        result.when(
+          success: (products) => addProducts(products),
+          failure: (_) {},
+        );
+      }
+      debugPrint('=== COMPAIR: Phase 2 priority cats added, total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+    } catch (e) {
+      debugPrint('=== COMPAIR: Phase 2 error: $e ===');
     }
-  } else {
-    // Fallback: bulk query with retry if parallel failed
+  }
+
+  // Fallback: if both phases returned nothing, retry bulk with longer timeout
+  if (allProducts.isEmpty) {
     for (var attempt = 0; attempt <= 2; attempt++) {
       try {
         final bulkResult = await repo.getProducts(
-          limit: 800,
+          limit: 500,
           orderBy: 'trendScore',
           descending: true,
         ).timeout(const Duration(seconds: 30));
@@ -2167,9 +2163,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
         );
         if (allProducts.isNotEmpty) break;
       } catch (_) {}
-      if (attempt < 2 && allProducts.isEmpty) {
-        await Future.delayed(Duration(seconds: attempt + 1));
-      }
+      if (attempt < 2) await Future.delayed(Duration(seconds: attempt + 1));
     }
   }
 

@@ -46,9 +46,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   @override
   void initState() {
     super.initState();
-    // Reset any previous link analysis state on screen entry
+    // Only reset if the previous state was idle (don't interrupt ongoing analysis)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(linkQuizProvider.notifier).reset();
+      final current = ref.read(linkQuizProvider);
+      if (current.phase == LinkFlowPhase.idle) {
+        ref.read(linkQuizProvider.notifier).reset();
+      }
     });
     _pulseController = AnimationController(
       vsync: this,
@@ -77,7 +80,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   @override
   void dispose() {
-    ref.read(linkQuizProvider.notifier).reset();
+    // Don't reset linkQuizProvider here — analysis may be running in background.
+    // Provider state is managed by Riverpod lifecycle, not widget lifecycle.
     for (final c in _urlControllers) {
       c.dispose();
     }
@@ -172,16 +176,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       // First analyze the first link to get a base result
       ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls.first, null);
       await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(validUrls.first, user);
+      if (!mounted) return;
       // Skip quiz to get result fast
       ref.read(linkQuizProvider.notifier).skipQuiz();
       await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
       final state = ref.read(linkQuizProvider);
       if (state.enhancedResult != null) {
-        if (mounted) {
-          // Open multi-compare sheet with remaining URLs pre-filled
-          _showMultiCompareSheetWithLinks(
-            context, ref, state.enhancedResult!, validUrls.sublist(1));
-        }
+        _showMultiCompareSheetWithLinks(
+          context, ref, state.enhancedResult!, validUrls.sublist(1));
       }
       return;
     }
@@ -303,7 +306,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       _buildInfoCards(),
                     ],
                     if (quizState.phase == LinkFlowPhase.quiz &&
-                        quizState.quiz != null)
+                        quizState.quiz != null &&
+                        quizState.baseResult != null)
                       _QuizView(
                         quiz: quizState.quiz!,
                         answeredQuestions: quizState.answeredQuestions,
@@ -2536,40 +2540,44 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
       if (url.isNotEmpty && _isValidUrl(url)) validLinks.add(url);
     }
     if (validLinks.isEmpty) {
-      setState(() => _error = 'Add at least one valid product link');
+      if (mounted) setState(() => _error = 'Add at least one valid product link');
       return;
     }
 
-    setState(() {
-      _isAnalyzing = true;
-      _error = null;
-      _aiComparison = null;
-      _bestMatchUrl = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isAnalyzing = true;
+        _error = null;
+        _aiComparison = null;
+        _bestMatchUrl = null;
+      });
+    }
 
     final user = ref.read(userProfileProvider).valueOrNull;
     if (user == null) {
-      setState(() {
-        _isAnalyzing = false;
-        _error = 'Please sign in first';
-      });
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+          _error = 'Please sign in first';
+        });
+      }
       return;
     }
 
     final analyzedResults = <EnhancedAnalysisResult>[];
     for (int i = 0; i < _linkControllers.length; i++) {
+      if (!mounted) break;
       final url = _linkControllers[i].text.trim();
       if (url.isEmpty || !_isValidUrl(url)) continue;
 
-      setState(() => _analyzingIndex = i);
+      if (mounted) setState(() => _analyzingIndex = i);
       try {
-        // Use the link quiz notifier to analyze
         await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(url, user);
-        // Skip quiz and get result directly
+        if (!mounted) break;
         ref.read(linkQuizProvider.notifier).skipQuiz();
 
-        // Wait a moment for state to settle
         await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) break;
         final state = ref.read(linkQuizProvider);
         if (state.enhancedResult != null) {
           analyzedResults.add(state.enhancedResult!);
@@ -2583,16 +2591,19 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
       }
     }
 
+    if (!mounted) return;
+
     // Add the first result
     final allResults = [widget.firstResult, ...analyzedResults];
 
+    if (!mounted) return;
     setState(() {
       _analyzingIndex = -1;
       _isAnalyzing = false;
     });
 
     if (allResults.length < 2) {
-      setState(() => _error = 'Need at least 2 products to compare');
+      if (mounted) setState(() => _error = 'Need at least 2 products to compare');
       return;
     }
 
@@ -2603,11 +2614,12 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
         .toSet();
 
     // Now do AI comparison
-    setState(() => _isComparing = true);
+    if (mounted) setState(() => _isComparing = true);
 
     try {
       final aiRepo = ref.read(aiRepositoryProvider);
       final comparison = await _buildAiComparison(aiRepo, allResults, categories);
+      if (!mounted) return;
       
       // Find best match (highest enhanced score)
       EnhancedAnalysisResult best = allResults.first;
@@ -2621,10 +2633,12 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
         _isComparing = false;
       });
     } catch (e) {
-      setState(() {
-        _isComparing = false;
-        _error = 'AI comparison failed: ${e.toString().length > 80 ? e.toString().substring(0, 80) : e}';
-      });
+      if (mounted) {
+        setState(() {
+          _isComparing = false;
+          _error = 'AI comparison failed: ${e.toString().length > 80 ? e.toString().substring(0, 80) : e}';
+        });
+      }
     }
   }
 
