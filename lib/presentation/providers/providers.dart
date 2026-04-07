@@ -485,14 +485,38 @@ int _storageCapacityMB(ProductEntity p) {
 /// Representative is the base model (no storage in ID) or smallest storage.
 List<ProductEntity> deduplicateVariants(List<ProductEntity> products) {
   final seen = <String, ProductEntity>{};
+  final nameKeys = <String, ProductEntity>{};
   for (final p in products) {
+    // Primary dedup: variantGroup
     final key = p.variantGroup.isNotEmpty ? p.variantGroup : p.id;
     final existing = seen[key];
     if (existing == null || _storageCapacityMB(p) < _storageCapacityMB(existing)) {
-      seen[key] = p; // prefer base model (0) or smaller storage as representative
+      seen[key] = p;
+    }
+    // Secondary dedup: normalized name (catches same product with different IDs)
+    final nameKey = _normalizeProductName(p.name);
+    if (!nameKeys.containsKey(nameKey)) {
+      nameKeys[nameKey] = p;
     }
   }
-  return seen.values.toList();
+  // Merge: prefer variantGroup dedup, then name dedup
+  final result = <String, ProductEntity>{};
+  for (final p in seen.values) {
+    final nameKey = _normalizeProductName(p.name);
+    result.putIfAbsent(nameKey, () => p);
+  }
+  return result.values.toList();
+}
+
+/// Normalize product name for dedup (strip storage/color variants)
+String _normalizeProductName(String name) {
+  return name
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s*\(\d+\s*gb\)'), '') // (512 GB)
+      .replaceAll(RegExp(r'\s*\(\d+\s*tb\)'), '') // (1 TB)
+      .replaceAll(RegExp(r'\s*\d+\s*gb\s*$'), '')  // trailing "512 GB"
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
 
 /// Static per-category cache — survives provider re-reads, cleared only on app restart.
@@ -2023,7 +2047,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
     debugPrint('=== COMPAIR:   ${e.key}: ${e.value.length} products ===');
   }
 
-  // Sort by score and enforce brand diversity (max 5 per brand per category)
+  // Sort by score and enforce brand diversity (max 3 per brand per category)
   for (final cat in byCategory.keys.toList()) {
     final all = byCategory[cat]!;
     all.sort((a, b) => youtubeScore(b).compareTo(youtubeScore(a)));
@@ -2033,7 +2057,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
     for (final p in all) {
       final brand = (p.brand ?? '').toLowerCase().trim();
       final count = brandCount[brand] ?? 0;
-      if (count < 5) {
+      if (count < 3) {
         diverse.add(p);
         brandCount[brand] = count + 1;
       }
@@ -2042,7 +2066,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
     byCategory[cat] = diverse;
   }
 
-  // ── TRENDING: YouTube-style top products (max 2 per brand, 4 per category) ─
+  // ── TRENDING: YouTube-style top products (max 2 per brand, 3 per category) ─
   final allScored = pool
       .map((p) => (product: p, score: youtubeScore(p)))
       .toList()
@@ -2058,7 +2082,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
     if (nicheCategories.contains(cat) && trending.length > 20) continue;
     final catCount = trendingCatCount[cat] ?? 0;
     final brandCnt = trendingBrandCount[brand] ?? 0;
-    if (catCount < 4 && brandCnt < 2) {
+    if (catCount < 3 && brandCnt < 2) {
       trending.add(s.product);
       trendingCatCount[cat] = catCount + 1;
       trendingBrandCount[brand] = brandCnt + 1;
@@ -2218,12 +2242,12 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   debugPrint('=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===');
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v20_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v21_${user?.uid ?? "anon"}';
 
-  // Clear old cache versions to force fresh data
+  // Clear ALL old cache versions to force fresh data
   try {
     for (final oldKey in ['home_feed_v17_modern', 'home_feed_v18_${user?.uid ?? "anon"}',
-                          'home_feed_v19_${user?.uid ?? "anon"}']) {
+                          'home_feed_v19_${user?.uid ?? "anon"}', 'home_feed_v20_${user?.uid ?? "anon"}']) {
       cache.delete(oldKey);
     }
   } catch (_) {}
@@ -2248,6 +2272,10 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // 2. No cache — aggressive multi-phase strategy
+  // IMPORTANT: Most Firestore products do NOT have isActive/createdAt fields.
+  // Using activeOnly or orderBy:'createdAt' would exclude 99% of products.
+  // Strategy: fetch large pools by techScore & trendScore (client-sorted),
+  // then filter for quality/recency in _buildHomeFeed.
   debugPrint('=== COMPAIR: homeFeed — multi-phase strategy ===');
 
   final allProducts = <ProductEntity>[];
@@ -2261,42 +2289,39 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   final sw = Stopwatch()..start();
 
-  // Phase 1: Large bulk query by createdAt DESC (gets newest products first)
+  // Phase 1: Large bulk query by techScore (client-sorted, includes ALL products)
   try {
     final bulkResult = await repo.getProducts(
-      limit: 500,
-      orderBy: 'createdAt',
+      limit: 600,
+      orderBy: 'techScore',
       descending: true,
-      activeOnly: true,
     ).timeout(const Duration(seconds: 15));
     bulkResult.when(
       success: (products) => addProducts(products),
       failure: (_) {},
     );
-    debugPrint('=== COMPAIR: Phase 1 createdAt bulk got ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+    debugPrint('=== COMPAIR: Phase 1 techScore bulk got ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
     debugPrint('=== COMPAIR: Phase 1 error: $e ===');
   }
 
-  // Phase 2: Bulk query by techScore (gets high quality active products)
+  // Phase 2: Bulk query by trendScore (client-sorted, popular products)
   try {
     final trendResult = await repo.getProducts(
-      limit: 500,
-      orderBy: 'techScore',
+      limit: 600,
+      orderBy: 'trendScore',
       descending: true,
-      activeOnly: true,
     ).timeout(const Duration(seconds: 15));
     trendResult.when(
       success: (products) => addProducts(products),
       failure: (_) {},
     );
-    debugPrint('=== COMPAIR: Phase 2 techScore bulk got total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+    debugPrint('=== COMPAIR: Phase 2 trendScore bulk got total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
     debugPrint('=== COMPAIR: Phase 2 error: $e ===');
   }
 
-  // Phase 3: Per-category queries for ALL important categories (ensures minimum 20 per cat)
-  // Prioritize user's interest categories, then mainstream categories
+  // Phase 3: Per-category queries for ALL important categories (min 20 per cat)
   final userInterests = user?.interestCategories
       .map((c) => c.toLowerCase().trim())
       .toList() ?? [];
@@ -2304,7 +2329,11 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     ...userInterests,
     ...['smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
         'gpus', 'monitors', 'keyboards', 'mice', 'cameras', 'speakers',
-        'tvs', 'gamepads', 'desktops', 'consoles'],
+        'tvs', 'gamepads', 'desktops', 'consoles', 'earphones', 'drones',
+        'printers', 'routers', 'webcams', 'action-cameras', 'soundbars',
+        'microphones', 'projectors', 'robot-vacuums', 'smart-rings',
+        'vr-headsets', 'dashcams', 'cpus', 'motherboards', 'ram', 'ssd',
+        'psu', 'cases', 'coolers'],
   };
 
   // Check which categories need more products
@@ -2314,17 +2343,15 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     currentCatCounts[cat] = (currentCatCounts[cat] ?? 0) + 1;
   }
   final needMoreCats = phase3Cats.where((cat) =>
-      (currentCatCounts[cat] ?? 0) < 25).toList();
+      (currentCatCounts[cat] ?? 0) < 20).toList();
 
   if (needMoreCats.isNotEmpty) {
     debugPrint('=== COMPAIR: Phase 3 — fetching ${needMoreCats.length} categories needing more products ===');
     try {
-      // Batch in groups of 5 to avoid too many concurrent connections
       for (var i = 0; i < needMoreCats.length; i += 5) {
         final batch = needMoreCats.skip(i).take(5);
         final futures = batch.map((cat) => repo.getProducts(
-          category: cat, limit: 50, orderBy: 'techScore', descending: true,
-          activeOnly: true,
+          category: cat, limit: 60, orderBy: 'techScore', descending: true,
         ).timeout(const Duration(seconds: 12)).catchError((_) =>
           const Success<List<ProductEntity>>([])));
         final results = await Future.wait(futures);
@@ -2341,7 +2368,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     }
   }
 
-  // Fallback: if both phases returned nothing, retry with longer timeout
+  // Fallback: if all phases returned nothing, retry with longer timeout
   if (allProducts.isEmpty) {
     for (var attempt = 0; attempt <= 2; attempt++) {
       try {
