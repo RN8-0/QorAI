@@ -25,6 +25,7 @@ class ProductEntity extends Equatable {
   final Map<String, double> techSubscores; // Sub-category scores {processor: 85, camera: 92, ...}
   final List<String> images; // All product images (pulled from admin panel)
   final DateTime lastUpdated;
+  final DateTime? createdAt; // When the product was first added to the database
   final bool isActive;
   final String variantGroup; // groups storage/RAM variants: "oneplus-15" for all OnePlus 15 variants
   final Map<String, String> keySpecs; // Key Specs — key specs from epey.com summary grid
@@ -51,6 +52,7 @@ class ProductEntity extends Equatable {
     this.techSubscores = const {},
     this.images = const [],
     required this.lastUpdated,
+    this.createdAt,
     this.isActive = true,
     this.variantGroup = '',
     this.keySpecs = const {},

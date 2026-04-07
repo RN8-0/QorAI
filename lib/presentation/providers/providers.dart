@@ -1864,17 +1864,27 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
   }
 
   // ── HARD FILTER: 2022+ only, no defunct brands, no known old products ─────
+  final cutoffDate = DateTime(2022, 1, 1);
   var pool = deduped.where((p) {
     final brand = (p.brand ?? '').toLowerCase().trim();
     if (defunctBrands.contains(brand)) return false;
     if (isKnownOldProduct(p)) return false;
+
+    // Use createdAt if available (most reliable — directly from Firestore)
+    if (p.createdAt != null && p.createdAt!.isBefore(cutoffDate)) {
+      // Product was added to DB before 2022 — likely old
+      // Still allow if exact release year says it's new (re-scraped old products)
+      final exactYear = getExactReleaseYear(p);
+      if (exactYear == null || exactYear < 2022) return false;
+    }
+
     // If exact year is known, use it strictly
     final exactYear = getExactReleaseYear(p);
     if (exactYear != null) return exactYear >= 2022;
-    // If no exact year, only include if techScore suggests modern product
+
+    // If no exact year and no createdAt, only include if techScore suggests modern product
     final ts = p.techScore;
-    if (ts < 30) return false; // Very low tech score = likely old
-    // Allow products without known year if they have decent tech scores
+    if (ts < 30) return false;
     return true;
   }).toList();
 
@@ -1988,6 +1998,13 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
     else if (yearDiff <= 6) recency = 0.15;
     else                    recency = 0.05;
 
+    // Bonus for products with recent createdAt (freshly scraped = up-to-date)
+    if (p.createdAt != null) {
+      final daysSinceCreated = DateTime.now().difference(p.createdAt!).inDays;
+      if (daysSinceCreated < 90) recency = (recency + 0.15).clamp(0.0, 1.0);
+      else if (daysSinceCreated < 180) recency = (recency + 0.08).clamp(0.0, 1.0);
+    }
+
     final quality = (p.techScore / 100.0).clamp(0.0, 1.0);
 
     return ((engagement * 0.30) + (recency * 0.30) + (quality * 0.25) + 0.15) *
@@ -2092,15 +2109,30 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
   }
 
   // ── NEW ARRIVALS: recent products with decent quality ─────────────────────
+  // Prefer createdAt for genuinely new additions to the database
+  final now = DateTime.now();
   var arrivalCandidates = allScored
-      .where((s) => estimateYear(s.product) >= currentYear - 2
-                 && s.product.techScore >= 20)
+      .where((s) {
+        final p = s.product;
+        // Truly new: added to DB in last 6 months
+        if (p.createdAt != null && now.difference(p.createdAt!).inDays < 180) return true;
+        // Fallback: estimated recent release with decent quality
+        return estimateYear(p) >= currentYear - 1 && p.techScore >= 20;
+      })
       .toList();
   if (arrivalCandidates.length < 10) {
     arrivalCandidates = allScored
-        .where((s) => estimateYear(s.product) >= currentYear - 3)
+        .where((s) => estimateYear(s.product) >= currentYear - 2)
         .take(200).toList();
   }
+  // Sort by createdAt DESC, then by score
+  arrivalCandidates.sort((a, b) {
+    final aDate = a.product.createdAt ?? DateTime(2020);
+    final bDate = b.product.createdAt ?? DateTime(2020);
+    final dateComp = bDate.compareTo(aDate);
+    if (dateComp != 0) return dateComp;
+    return b.score.compareTo(a.score);
+  });
 
   final arrivalsCatCount = <String, int>{};
   final arrivalsBrandCount = <String, int>{};
@@ -2186,7 +2218,15 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   debugPrint('=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===');
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v18_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v20_${user?.uid ?? "anon"}';
+
+  // Clear old cache versions to force fresh data
+  try {
+    for (final oldKey in ['home_feed_v17_modern', 'home_feed_v18_${user?.uid ?? "anon"}',
+                          'home_feed_v19_${user?.uid ?? "anon"}']) {
+      cache.delete(oldKey);
+    }
+  } catch (_) {}
 
   // 1. Try Hive cache first (synchronous, < 5ms)
   try {
@@ -2221,34 +2261,36 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   final sw = Stopwatch()..start();
 
-  // Phase 1: Large bulk query by techScore (gets high-quality modern products)
+  // Phase 1: Large bulk query by createdAt DESC (gets newest products first)
   try {
     final bulkResult = await repo.getProducts(
       limit: 500,
-      orderBy: 'techScore',
+      orderBy: 'createdAt',
       descending: true,
+      activeOnly: true,
     ).timeout(const Duration(seconds: 15));
     bulkResult.when(
       success: (products) => addProducts(products),
       failure: (_) {},
     );
-    debugPrint('=== COMPAIR: Phase 1 techScore bulk got ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+    debugPrint('=== COMPAIR: Phase 1 createdAt bulk got ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
     debugPrint('=== COMPAIR: Phase 1 error: $e ===');
   }
 
-  // Phase 2: Bulk query by trendScore (gets popular products)
+  // Phase 2: Bulk query by techScore (gets high quality active products)
   try {
     final trendResult = await repo.getProducts(
       limit: 500,
-      orderBy: 'trendScore',
+      orderBy: 'techScore',
       descending: true,
+      activeOnly: true,
     ).timeout(const Duration(seconds: 15));
     trendResult.when(
       success: (products) => addProducts(products),
       failure: (_) {},
     );
-    debugPrint('=== COMPAIR: Phase 2 trendScore bulk got total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+    debugPrint('=== COMPAIR: Phase 2 techScore bulk got total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
     debugPrint('=== COMPAIR: Phase 2 error: $e ===');
   }
@@ -2282,6 +2324,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
         final batch = needMoreCats.skip(i).take(5);
         final futures = batch.map((cat) => repo.getProducts(
           category: cat, limit: 50, orderBy: 'techScore', descending: true,
+          activeOnly: true,
         ).timeout(const Duration(seconds: 12)).catchError((_) =>
           const Success<List<ProductEntity>>([])));
         final results = await Future.wait(futures);
@@ -2337,6 +2380,9 @@ void _saveProductsToCache(CacheService cache, List<ProductEntity> products, Stri
       final m = ProductModel.fromEntity(p).toFirestore();
       if (m['lastUpdated'] is Timestamp) {
         m['lastUpdated'] = (m['lastUpdated'] as Timestamp).toDate().toIso8601String();
+      }
+      if (m['createdAt'] is Timestamp) {
+        m['createdAt'] = (m['createdAt'] as Timestamp).toDate().toIso8601String();
       }
       return m;
     }).toList();

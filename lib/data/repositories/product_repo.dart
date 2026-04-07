@@ -62,6 +62,7 @@ class ProductRepository {
     String? lastProductId,
     String orderBy = 'name',
     bool descending = false,
+    bool activeOnly = false,
   }) async {
     try {
       final products = await _firebaseDS.getProducts(
@@ -70,6 +71,7 @@ class ProductRepository {
         limit: limit,
         orderBy: orderBy,
         descending: descending,
+        activeOnly: activeOnly,
       );
       return Success(products);
     } catch (e) {

@@ -29,6 +29,7 @@ class ProductModel extends ProductEntity {
     super.techSubscores,
     super.images,
     required super.lastUpdated,
+    super.createdAt,
     super.isActive,
     super.variantGroup,
   });
@@ -133,6 +134,8 @@ class ProductModel extends ProductEntity {
       images: List<String>.from(data['images'] ?? []),
       lastUpdated:
           (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
+                 (data['scrapedAt'] as Timestamp?)?.toDate(),
       isActive: data['isActive'] ?? true,
       variantGroup: data['variantGroup'] as String? ?? '',
     );
@@ -166,6 +169,7 @@ class ProductModel extends ProductEntity {
       'techSubscores': techSubscores,
       'images': images,
       'lastUpdated': Timestamp.fromDate(lastUpdated),
+      if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
       'isActive': isActive,
       'variantGroup': variantGroup,
     };
@@ -196,6 +200,7 @@ class ProductModel extends ProductEntity {
       techSubscores: entity.techSubscores,
       images: entity.images,
       lastUpdated: entity.lastUpdated,
+      createdAt: entity.createdAt,
       isActive: entity.isActive,
     );
   }
@@ -245,6 +250,9 @@ class ProductModel extends ProductEntity {
       lastUpdated: data['lastUpdated'] is String
           ? DateTime.tryParse(data['lastUpdated']) ?? DateTime.now()
           : DateTime.now(),
+      createdAt: data['createdAt'] is String
+          ? DateTime.tryParse(data['createdAt'])
+          : null,
       isActive: data['isActive'] ?? true,
     );
   }

@@ -116,6 +116,7 @@ class FirebaseDataSource {
     DocumentSnapshot? startAfter,
     String orderBy = 'name',
     bool descending = false,
+    bool activeOnly = false,
   }) async {
     try {
       Query query = _firestore
@@ -126,6 +127,9 @@ class FirebaseDataSource {
       }
       if (subcategory != null) {
         query = query.where('subcategory', isEqualTo: subcategory);
+      }
+      if (activeOnly) {
+        query = query.where('isActive', isEqualTo: true);
       }
 
       // Sorting strategy:
@@ -148,7 +152,7 @@ class FirebaseDataSource {
       query = query.limit(limit);
 
       // Try Firestore local cache first for faster response, fallback to server
-      debugPrint('=== COMPAIR: getProducts EXECUTING query (limit=$limit, orderBy=$orderBy, cat=$category, clientSort=$useClientSort) ===');
+      debugPrint('=== COMPAIR: getProducts EXECUTING query (limit=$limit, orderBy=$orderBy, cat=$category, active=$activeOnly, clientSort=$useClientSort) ===');
       final sw = Stopwatch()..start();
       QuerySnapshot snapshot;
       try {
