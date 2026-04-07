@@ -795,13 +795,176 @@ async function loadNotificationHistory(){
 // ═══════════════════════════════════════
 function updateAlgoLabel(input){const id=input.id.replace(/^(weight|boost)/,'label');const el=document.getElementById(id);if(el)el.textContent=input.value+'%'}
 
-async function loadAlgorithmConfig(){try{const d=await db.collection('app_config').doc('algorithm').get();if(!d.exists)return;const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist)document.getElementById('brandBlacklist').value=c.brandBlacklist;if(c.brandBoost)document.getElementById('brandBoost').value=c.brandBoost}catch(e){console.error(e)}}
+async function loadAlgorithmConfig(){try{const d=await db.collection('app_config').doc('algorithm').get();if(!d.exists)return;const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist)document.getElementById('brandBlacklist').value=c.brandBlacklist;if(c.brandBoost)document.getElementById('brandBoost').value=c.brandBoost;loadPinnedProducts(c.pinnedProducts||[]);loadHiddenProducts(c.hiddenProducts||[]);loadCategoryToggles(c.disabledCategories||[])}catch(e){console.error(e)}}
 
 async function saveAlgorithmConfig(){
-  const c={};['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount'].forEach(f=>{const el=document.getElementById(f);if(el)c[f]=parseInt(el.value)||0});
+  const c={};['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el)c[f]=parseInt(el.value)||0});
   c.brandBlacklist=document.getElementById('brandBlacklist').value;c.brandBoost=document.getElementById('brandBoost').value;
+  c.pinnedProducts=_pinnedProducts||[];c.hiddenProducts=_hiddenProducts||[];c.disabledCategories=_disabledCategories||[];
   c.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
-  try{await db.collection('app_config').doc('algorithm').set(c,{merge:true});toast('Saved','s')}catch(e){toast('Error: '+e.message,'e')}
+  try{await db.collection('app_config').doc('algorithm').set(c,{merge:true});toast('Saved','s');logActivity('algorithm_update','Algorithm config updated')}catch(e){toast('Error: '+e.message,'e')}
+}
+
+// ═══════════════════════════════════════
+//  FEED MANAGEMENT
+// ═══════════════════════════════════════
+
+let _pinnedProducts = [];
+let _hiddenProducts = [];
+let _disabledCategories = [];
+
+const ALL_CATEGORIES = [
+  'smartphones','laptops','tablets','headphones','smartwatches','gpus','monitors',
+  'keyboards','mice','cameras','speakers','tvs','gamepads','desktops','consoles',
+  'earphones','drones','printers','routers','webcams','action-cameras','soundbars',
+  'microphones','projectors','robot-vacuums','smart-rings','vr-headsets','dashcams',
+  'cpus','motherboards','ram','ssd','psu','cases','coolers','e-readers','gimbals',
+  'tripods','lenses','media-players'
+];
+
+function loadPinnedProducts(list) {
+  _pinnedProducts = list || [];
+  renderPinnedProducts();
+}
+
+function renderPinnedProducts() {
+  const el = document.getElementById('pinnedProductsList');
+  if (!el) return;
+  if (_pinnedProducts.length === 0) { el.innerHTML = '<span class="text-muted">No pinned products</span>'; return; }
+  el.innerHTML = _pinnedProducts.map(id =>
+    `<span class="tag tag-green" style="cursor:pointer" onclick="removePinnedProduct('${id}')">${id} ✕</span>`
+  ).join('');
+}
+
+function addPinnedProduct() {
+  const input = document.getElementById('pinnedProductId');
+  const id = (input.value || '').trim().toLowerCase();
+  if (!id) return;
+  if (_pinnedProducts.includes(id)) { toast('Already pinned', 'w'); return; }
+  if (_pinnedProducts.length >= 10) { toast('Max 10 pinned products', 'w'); return; }
+  _pinnedProducts.push(id);
+  input.value = '';
+  renderPinnedProducts();
+  toast('Pinned: ' + id, 's');
+}
+
+function removePinnedProduct(id) {
+  _pinnedProducts = _pinnedProducts.filter(p => p !== id);
+  renderPinnedProducts();
+}
+
+function loadHiddenProducts(list) {
+  _hiddenProducts = list || [];
+  renderHiddenProducts();
+}
+
+function renderHiddenProducts() {
+  const el = document.getElementById('hiddenProductsList');
+  if (!el) return;
+  if (_hiddenProducts.length === 0) { el.innerHTML = '<span class="text-muted">No hidden products</span>'; return; }
+  el.innerHTML = _hiddenProducts.map(id =>
+    `<span class="tag tag-red" style="cursor:pointer" onclick="removeHiddenProduct('${id}')">${id} ✕</span>`
+  ).join('');
+}
+
+function addHiddenProduct() {
+  const input = document.getElementById('hiddenProductId');
+  const id = (input.value || '').trim().toLowerCase();
+  if (!id) return;
+  if (_hiddenProducts.includes(id)) { toast('Already hidden', 'w'); return; }
+  _hiddenProducts.push(id);
+  input.value = '';
+  renderHiddenProducts();
+  toast('Hidden: ' + id, 's');
+}
+
+function removeHiddenProduct(id) {
+  _hiddenProducts = _hiddenProducts.filter(p => p !== id);
+  renderHiddenProducts();
+}
+
+function loadCategoryToggles(disabledList) {
+  _disabledCategories = disabledList || [];
+  const el = document.getElementById('categoryToggles');
+  if (!el) return;
+  el.innerHTML = ALL_CATEGORIES.map(cat => {
+    const checked = !_disabledCategories.includes(cat);
+    return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0">
+      <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleCategory('${cat}', this.checked)">
+      <span style="font-size:13px">${cat}</span>
+    </label>`;
+  }).join('');
+}
+
+function toggleCategory(cat, enabled) {
+  if (enabled) {
+    _disabledCategories = _disabledCategories.filter(c => c !== cat);
+  } else {
+    if (!_disabledCategories.includes(cat)) _disabledCategories.push(cat);
+  }
+}
+
+function selectAllCategories() {
+  _disabledCategories = [];
+  loadCategoryToggles([]);
+}
+
+function deselectAllCategories() {
+  _disabledCategories = [...ALL_CATEGORIES];
+  loadCategoryToggles([...ALL_CATEGORIES]);
+}
+
+async function previewFeedStats() {
+  const el = document.getElementById('feedStatsPreview');
+  if (!el) return;
+  el.innerHTML = '<div class="spinner" style="margin:8px auto"></div>';
+  try {
+    const counts = {};
+    let total = 0;
+    for (const cat of ALL_CATEGORIES) {
+      const snap = await db.collection('products')
+        .where('category', '==', cat)
+        .limit(1).get();
+      // Use count aggregation or estimate
+      const countSnap = await db.collection('products')
+        .where('category', '==', cat).get();
+      counts[cat] = countSnap.size;
+      total += countSnap.size;
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const empty = sorted.filter(([, c]) => c === 0).map(([n]) => n);
+    el.innerHTML = `
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px">
+        <strong>📊 Feed Statistics</strong><br>
+        <span>Total products: <b>${total.toLocaleString()}</b></span><br>
+        <span>Categories with products: <b>${sorted.filter(([,c])=>c>0).length}</b> / ${ALL_CATEGORIES.length}</span><br>
+        ${empty.length > 0 ? `<span style="color:var(--red)">Empty categories: ${empty.join(', ')}</span><br>` : ''}
+        <div style="margin-top:8px;max-height:200px;overflow-y:auto">
+          ${sorted.filter(([,c])=>c>0).map(([n,c]) =>
+            `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)">
+              <span>${n}</span><span><b>${c}</b></span>
+            </div>`
+          ).join('')}
+        </div>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
+  }
+}
+
+async function clearAllUserCaches() {
+  if (!confirm('This will force all users to reload their home feed on next app open. Continue?')) return;
+  try {
+    // Bump the cache version in app_config so the app knows to refresh
+    await db.collection('app_config').doc('algorithm').set({
+      cacheVersion: Date.now(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    toast('Cache invalidated — users will see fresh feed on next open', 's');
+    logActivity('cache_clear', 'Cleared all user feed caches');
+  } catch (e) {
+    toast('Error: ' + e.message, 'e');
+  }
 }
 
 // ═══════════════════════════════════════

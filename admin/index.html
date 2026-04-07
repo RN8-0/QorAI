@@ -273,12 +273,46 @@
             <div class="slider-row"><label>Budget Match</label><input type="range" min="0" max="30" value="15" id="boostBudget" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelBudget">15%</span></div>
           </div>
         </div>
-        <div class="card"><div class="card-title">Home Feed</div>
+        <div class="card"><div class="card-title">🏠 Home Feed Control</div>
           <div class="form-grid">
-            <div class="form-field"><label>Min Year</label><input class="input" type="number" id="minYear" value="2022"></div>
-            <div class="form-field"><label>Max per Brand</label><input class="input" type="number" id="maxPerBrand" value="2"></div>
-            <div class="form-field"><label>Trending Count</label><input class="input" type="number" id="trendingCount" value="50"></div>
-            <div class="form-field"><label>New Arrivals</label><input class="input" type="number" id="newArrivalsCount" value="25"></div>
+            <div class="form-field"><label>Min Year Filter</label><input class="input" type="number" id="minYear" value="2018" min="2010" max="2026"><small class="text-muted">Products older than this year are hidden</small></div>
+            <div class="form-field"><label>Max per Brand (per category)</label><input class="input" type="number" id="maxPerBrand" value="3" min="1" max="10"></div>
+            <div class="form-field"><label>Trending Count</label><input class="input" type="number" id="trendingCount" value="70" min="10" max="200"></div>
+            <div class="form-field"><label>New Arrivals Count</label><input class="input" type="number" id="newArrivalsCount" value="35" min="5" max="100"></div>
+            <div class="form-field"><label>Products per Category</label><input class="input" type="number" id="productsPerCategory" value="40" min="10" max="100"><small class="text-muted">Fetched from Firestore per category</small></div>
+            <div class="form-field"><label>Cache Duration (hours)</label><input class="input" type="number" id="cacheDuration" value="4" min="1" max="48"></div>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn btn-ghost btn-sm" onclick="previewFeedStats()" style="margin-right:8px">📊 Preview Feed Stats</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearAllUserCaches()">🗑️ Clear All User Caches</button>
+          </div>
+          <div id="feedStatsPreview" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card"><div class="card-title">📌 Pinned Products (Always Show on Home)</div>
+          <p class="text-muted" style="margin-bottom:12px">Add product IDs to always show them in the Featured section. Max 10.</p>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input class="input" id="pinnedProductId" placeholder="Enter product ID (e.g. samsung-galaxy-s25)" style="flex:1">
+            <button class="btn btn-primary btn-sm" onclick="addPinnedProduct()">Add</button>
+          </div>
+          <div id="pinnedProductsList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
+        <div class="card"><div class="card-title">🚫 Hidden Products (Never Show on Home)</div>
+          <p class="text-muted" style="margin-bottom:12px">Add product IDs to permanently hide from the home feed.</p>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input class="input" id="hiddenProductId" placeholder="Enter product ID to hide" style="flex:1">
+            <button class="btn btn-ghost btn-sm" onclick="addHiddenProduct()">Add</button>
+          </div>
+          <div id="hiddenProductsList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
+        <div class="card"><div class="card-title">📂 Category Visibility</div>
+          <p class="text-muted" style="margin-bottom:12px">Toggle which categories appear on the home feed.</p>
+          <div id="categoryToggles" class="form-grid" style="grid-template-columns:repeat(4,1fr)"></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-ghost btn-sm" onclick="selectAllCategories()">Select All</button>
+            <button class="btn btn-ghost btn-sm" onclick="deselectAllCategories()">Deselect All</button>
           </div>
         </div>
       </section>

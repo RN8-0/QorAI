@@ -1809,7 +1809,8 @@ class HomeFeed {
   });
 }
 
-HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntity? user}) {
+HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
+    {UserEntity? user, List<String> hiddenIds = const [], List<String> disabledCats = const []}) {
   final deduped = deduplicateVariants(products);
   final currentYear = DateTime.now().year;
 
@@ -1887,28 +1888,28 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
     return false;
   }
 
-  // ── HARD FILTER: 2022+ only, no defunct brands, no known old products ─────
-  final cutoffDate = DateTime(2022, 1, 1);
+  // ── HARD FILTER: no defunct brands, no known old products, prefer modern ────
+  final cutoffDate = DateTime(2018, 1, 1);
+  final hiddenSet = hiddenIds.toSet();
   var pool = deduped.where((p) {
+    if (hiddenSet.contains(p.id)) return false;
     final brand = (p.brand ?? '').toLowerCase().trim();
     if (defunctBrands.contains(brand)) return false;
     if (isKnownOldProduct(p)) return false;
 
-    // Use createdAt if available (most reliable — directly from Firestore)
+    // Use createdAt if available
     if (p.createdAt != null && p.createdAt!.isBefore(cutoffDate)) {
-      // Product was added to DB before 2022 — likely old
-      // Still allow if exact release year says it's new (re-scraped old products)
       final exactYear = getExactReleaseYear(p);
-      if (exactYear == null || exactYear < 2022) return false;
+      if (exactYear == null || exactYear < 2018) return false;
     }
 
-    // If exact year is known, use it strictly
+    // If exact year is known, filter pre-2018
     final exactYear = getExactReleaseYear(p);
-    if (exactYear != null) return exactYear >= 2022;
+    if (exactYear != null) return exactYear >= 2018;
 
-    // If no exact year and no createdAt, only include if techScore suggests modern product
+    // If no exact year and no createdAt, include if techScore is decent
     final ts = p.techScore;
-    if (ts < 30) return false;
+    if (ts < 10) return false;
     return true;
   }).toList();
 
@@ -2045,6 +2046,12 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntit
   debugPrint('=== COMPAIR: byCategory keys: ${byCategory.keys.join(",")} ===');
   for (final e in byCategory.entries) {
     debugPrint('=== COMPAIR:   ${e.key}: ${e.value.length} products ===');
+  }
+
+  // Remove admin-disabled categories
+  if (disabledCats.isNotEmpty) {
+    final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
+    byCategory.removeWhere((key, _) => disabledSet.contains(key));
   }
 
   // Sort by score and enforce brand diversity (max 3 per brand per category)
@@ -2241,14 +2248,29 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final user = ref.read(userProfileProvider).valueOrNull;
   debugPrint('=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===');
 
-  // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v21_${user?.uid ?? "anon"}';
-
-  // Clear ALL old cache versions to force fresh data
+  // Read admin feed config from Firestore
+  List<String> pinnedIds = [];
+  List<String> hiddenIds = [];
+  List<String> disabledCats = [];
   try {
-    for (final oldKey in ['home_feed_v17_modern', 'home_feed_v18_${user?.uid ?? "anon"}',
-                          'home_feed_v19_${user?.uid ?? "anon"}', 'home_feed_v20_${user?.uid ?? "anon"}']) {
-      cache.delete(oldKey);
+    final configDoc = await FirebaseFirestore.instance
+        .collection('app_config').doc('algorithm').get();
+    if (configDoc.exists) {
+      final data = configDoc.data() ?? {};
+      pinnedIds = List<String>.from(data['pinnedProducts'] ?? []);
+      hiddenIds = List<String>.from(data['hiddenProducts'] ?? []);
+      disabledCats = List<String>.from(data['disabledCategories'] ?? []);
+    }
+  } catch (_) {}
+
+  // Cache key includes user UID for personalized feeds
+  final cacheKey = 'home_feed_v22_${user?.uid ?? "anon"}';
+
+  // Clear ALL old cache versions
+  try {
+    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21']) {
+      final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
+      cache.delete(key);
     }
   } catch (_) {}
 
@@ -2265,18 +2287,20 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       debugPrint('=== COMPAIR: homeFeed from HIVE cache: ${products.length} products in ${sw.elapsedMilliseconds}ms ===');
       ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
           products.whereType<ProductModel>().toList());
-      return _buildHomeFeed(products, country, user: user);
+      return _buildHomeFeed(products, country, user: user,
+          hiddenIds: hiddenIds, disabledCats: disabledCats);
     }
   } catch (e) {
     debugPrint('=== COMPAIR: Hive cache read error: $e ===');
   }
 
-  // 2. No cache — aggressive multi-phase strategy
-  // IMPORTANT: Most Firestore products do NOT have isActive/createdAt fields.
-  // Using activeOnly or orderBy:'createdAt' would exclude 99% of products.
-  // Strategy: fetch large pools by techScore & trendScore (client-sorted),
-  // then filter for quality/recency in _buildHomeFeed.
-  debugPrint('=== COMPAIR: homeFeed — multi-phase strategy ===');
+  // 2. No cache — CATEGORY-FIRST strategy
+  // IMPORTANT: Bulk queries by techScore/trendScore are CLIENT-SORTED,
+  // meaning Firestore returns docs in document-ID order (alphabetical).
+  // This gives us only A-brand products (A4Tech, Acer, Afox...).
+  // Instead, query EACH category separately — category filter uses Firestore index,
+  // giving us products from every category.
+  debugPrint('=== COMPAIR: homeFeed — category-first strategy ===');
 
   final allProducts = <ProductEntity>[];
   final seenIds = <String>{};
@@ -2289,106 +2313,86 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   final sw = Stopwatch()..start();
 
-  // Phase 1: Large bulk query by techScore (client-sorted, includes ALL products)
+  // ALL categories to query (35+ categories)
+  final userInterests = user?.interestCategories
+      .map((c) => c.toLowerCase().trim())
+      .toList() ?? [];
+
+  final allCategories = <String>[
+    // User interests first (higher priority)
+    ...userInterests,
+    // Then all standard categories
+    'smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
+    'gpus', 'monitors', 'keyboards', 'mice', 'cameras', 'speakers',
+    'tvs', 'gamepads', 'desktops', 'consoles', 'earphones', 'drones',
+    'printers', 'routers', 'webcams', 'action-cameras', 'soundbars',
+    'microphones', 'projectors', 'robot-vacuums', 'smart-rings',
+    'vr-headsets', 'dashcams', 'cpus', 'motherboards', 'ram', 'ssd',
+    'psu', 'cases', 'coolers', 'e-readers', 'gimbals', 'tripods',
+    'lenses', 'media-players',
+  ];
+  // Deduplicate (user interests may overlap with standard list)
+  // Also remove admin-disabled categories from Firestore queries
+  final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
+  final categoriesToFetch = allCategories.toSet()
+      .where((c) => !disabledSet.contains(c)).toList();
+
+  // Phase 1: Fetch ALL categories in parallel batches of 8
+  debugPrint('=== COMPAIR: Phase 1 — fetching ${categoriesToFetch.length} categories ===');
   try {
-    final bulkResult = await repo.getProducts(
-      limit: 600,
-      orderBy: 'techScore',
-      descending: true,
-    ).timeout(const Duration(seconds: 15));
-    bulkResult.when(
-      success: (products) => addProducts(products),
-      failure: (_) {},
-    );
-    debugPrint('=== COMPAIR: Phase 1 techScore bulk got ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+    for (var i = 0; i < categoriesToFetch.length; i += 8) {
+      final batch = categoriesToFetch.skip(i).take(8);
+      final futures = batch.map((cat) => repo.getProducts(
+        category: cat, limit: 40, orderBy: 'techScore', descending: true,
+      ).timeout(const Duration(seconds: 12)).catchError((_) =>
+        const Success<List<ProductEntity>>([])));
+      final results = await Future.wait(futures);
+      for (final result in results) {
+        result.when(
+          success: (products) => addProducts(products),
+          failure: (_) {},
+        );
+      }
+    }
+    debugPrint('=== COMPAIR: Phase 1 category queries done: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
     debugPrint('=== COMPAIR: Phase 1 error: $e ===');
   }
 
-  // Phase 2: Bulk query by trendScore (client-sorted, popular products)
-  try {
-    final trendResult = await repo.getProducts(
-      limit: 600,
-      orderBy: 'trendScore',
-      descending: true,
-    ).timeout(const Duration(seconds: 15));
-    trendResult.when(
-      success: (products) => addProducts(products),
-      failure: (_) {},
-    );
-    debugPrint('=== COMPAIR: Phase 2 trendScore bulk got total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
-  } catch (e) {
-    debugPrint('=== COMPAIR: Phase 2 error: $e ===');
-  }
-
-  // Phase 3: Per-category queries for ALL important categories (min 20 per cat)
-  final userInterests = user?.interestCategories
-      .map((c) => c.toLowerCase().trim())
-      .toList() ?? [];
-  final phase3Cats = <String>{
-    ...userInterests,
-    ...['smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
-        'gpus', 'monitors', 'keyboards', 'mice', 'cameras', 'speakers',
-        'tvs', 'gamepads', 'desktops', 'consoles', 'earphones', 'drones',
-        'printers', 'routers', 'webcams', 'action-cameras', 'soundbars',
-        'microphones', 'projectors', 'robot-vacuums', 'smart-rings',
-        'vr-headsets', 'dashcams', 'cpus', 'motherboards', 'ram', 'ssd',
-        'psu', 'cases', 'coolers'],
-  };
-
-  // Check which categories need more products
-  final currentCatCounts = <String, int>{};
-  for (final p in allProducts) {
-    final cat = p.category.toLowerCase().trim();
-    currentCatCounts[cat] = (currentCatCounts[cat] ?? 0) + 1;
-  }
-  final needMoreCats = phase3Cats.where((cat) =>
-      (currentCatCounts[cat] ?? 0) < 20).toList();
-
-  if (needMoreCats.isNotEmpty) {
-    debugPrint('=== COMPAIR: Phase 3 — fetching ${needMoreCats.length} categories needing more products ===');
+  // Phase 2: If still very low, fetch a bulk batch as fallback
+  if (allProducts.length < 100) {
+    debugPrint('=== COMPAIR: Phase 2 — bulk fallback (only ${allProducts.length} products) ===');
     try {
-      for (var i = 0; i < needMoreCats.length; i += 5) {
-        final batch = needMoreCats.skip(i).take(5);
-        final futures = batch.map((cat) => repo.getProducts(
-          category: cat, limit: 60, orderBy: 'techScore', descending: true,
-        ).timeout(const Duration(seconds: 12)).catchError((_) =>
-          const Success<List<ProductEntity>>([])));
-        final results = await Future.wait(futures);
-        for (final result in results) {
-          result.when(
-            success: (products) => addProducts(products),
-            failure: (_) {},
-          );
-        }
-      }
-      debugPrint('=== COMPAIR: Phase 3 cat queries done, total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
-    } catch (e) {
-      debugPrint('=== COMPAIR: Phase 3 error: $e ===');
-    }
-  }
-
-  // Fallback: if all phases returned nothing, retry with longer timeout
-  if (allProducts.isEmpty) {
-    for (var attempt = 0; attempt <= 2; attempt++) {
-      try {
-        final bulkResult = await repo.getProducts(
-          limit: 500,
-          orderBy: 'trendScore',
-          descending: true,
-        ).timeout(const Duration(seconds: 30));
-        bulkResult.when(
-          success: (products) => addProducts(products),
-          failure: (_) {},
-        );
-        if (allProducts.isNotEmpty) break;
-      } catch (_) {}
-      if (attempt < 2) await Future.delayed(Duration(seconds: attempt + 1));
-    }
+      final bulkResult = await repo.getProducts(
+        limit: 500,
+        orderBy: 'name',
+        descending: false,
+      ).timeout(const Duration(seconds: 20));
+      bulkResult.when(
+        success: (products) => addProducts(products),
+        failure: (_) {},
+      );
+      debugPrint('=== COMPAIR: Phase 2 bulk fallback total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+    } catch (_) {}
   }
 
   sw.stop();
   debugPrint('=== COMPAIR: homeFeed total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+
+  // Also fetch pinned products by ID if they're not already in the pool
+  if (pinnedIds.isNotEmpty) {
+    final missingPinned = pinnedIds.where((id) => !seenIds.contains(id)).toList();
+    if (missingPinned.isNotEmpty) {
+      try {
+        final pinnedResult = await repo.getProductsByIds(missingPinned)
+            .timeout(const Duration(seconds: 10));
+        pinnedResult.when(
+          success: (products) => addProducts(products),
+          failure: (_) {},
+        );
+      } catch (_) {}
+    }
+  }
 
   if (allProducts.isEmpty) {
     debugPrint('=== COMPAIR: homeFeed EMPTY — all queries returned 0 docs ===');
@@ -2398,7 +2402,8 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   _saveProductsToCache(cache, allProducts, cacheKey);
   ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
       allProducts.whereType<ProductModel>().toList());
-  return _buildHomeFeed(allProducts, country, user: user);
+  return _buildHomeFeed(allProducts, country, user: user,
+      hiddenIds: hiddenIds, disabledCats: disabledCats);
 });
 
 void _saveProductsToCache(CacheService cache, List<ProductEntity> products, String cacheKey) {
