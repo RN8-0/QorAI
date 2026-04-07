@@ -9,6 +9,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -1784,14 +1785,15 @@ class HomeFeed {
   });
 }
 
-HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
+HomeFeed _buildHomeFeed(List<ProductEntity> products, String country, {UserEntity? user}) {
   final deduped = deduplicateVariants(products);
   final currentYear = DateTime.now().year;
 
-  // ── Helper: extract release year from specs ────────────────────────────────
-  int getReleaseYear(ProductEntity p) {
+  // ── Helper: extract release year from specs (STRICT) ───────────────────
+  int? getExactReleaseYear(ProductEntity p) {
     for (final key in ['release year', 'Release Year', 'release_year',
-                       'Release Date', 'Piyasaya Çıkış Tarihi', 'Yıl', 'yıl', 'year']) {
+                       'Release Date', 'Piyasaya Çıkış Tarihi', 'Yıl', 'yıl', 'year',
+                       'Çıkış Tarihi', 'Piyasaya Sürülme', 'release date']) {
       final val = p.specs[key];
       if (val != null) {
         final digits = val.toString().replaceAll(RegExp(r'[^0-9]'), '');
@@ -1801,23 +1803,41 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
         }
       }
     }
-    // No release year in specs — estimate from techScore & trendScore.
-    // Old products typically have low scores. Using lastUpdated.year is
-    // unreliable because Firestore docs get re-scraped regularly.
-    final ts = p.techScore;
-    if (ts >= 55) return currentYear;      // modern high-end
-    if (ts >= 40) return currentYear - 1;  // recent
-    if (ts >= 25) return currentYear - 3;  // aging
-    if (ts >= 15) return currentYear - 5;  // old
-    return currentYear - 8;                // very old / legacy
+    // Also try keySpecs
+    for (final key in ['Çıkış Tarihi', 'Release Date', 'Yıl', 'year']) {
+      final val = p.keySpecs[key];
+      if (val != null) {
+        final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
+        if (digits.length >= 4) {
+          final year = int.tryParse(digits.substring(0, 4));
+          if (year != null && year > 2000 && year <= currentYear + 1) return year;
+        }
+      }
+    }
+    return null; // No reliable year found
   }
 
-  // ── NO BRAND BLACKLIST — show ALL products from database ──────────────────
-  // Previous approach blacklisted 50+ brands and whitelisted per-category,
-  // which eliminated 99% of products. Now we show everything EXCEPT
-  // genuinely defunct brands that no longer exist in 2026.
+  // Relaxed year: either exact or estimated (for scoring only, NOT filtering)
+  int estimateYear(ProductEntity p) {
+    final exact = getExactReleaseYear(p);
+    if (exact != null) return exact;
+    // For products WITHOUT a known release year, use name/model heuristics
+    final name = p.name.toLowerCase();
+    // Try to extract 4-digit year from product name
+    final nameYearMatch = RegExp(r'20(1[5-9]|2[0-9])').firstMatch(name);
+    if (nameYearMatch != null) {
+      final y = int.tryParse(nameYearMatch.group(0)!);
+      if (y != null && y > 2000 && y <= currentYear + 1) return y;
+    }
+    // Conservative estimate for unknowns
+    final ts = p.techScore;
+    if (ts >= 60) return currentYear - 1;
+    if (ts >= 40) return currentYear - 3;
+    if (ts >= 20) return currentYear - 5;
+    return currentYear - 8;
+  }
 
-  // Brands that are completely dead/discontinued/legacy — hard filter
+  // ── Defunct brands ─────────────────────────────────────────────────────────
   const defunctBrands = {
     'alcatel', 'micromax', 'karbonn', 'lava', 'intex', 'xolo',
     'coolpad', 'leeco', 'le eco', 'gionee', 'panasonic mobile',
@@ -1826,35 +1846,37 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
     'homtom', 'bluboo', 'elephone', 'leagoo', 'maze', 'nomu',
     'altus', 'vestel', 'casper', 'reeder', 'general mobile', 'turkcell',
     'grundig', 'beko', 'arçelik', 'hometech', 'vorcom', 'tcl mobile',
-    // Legacy/budget brands with outdated product lines
     'a4tech', '3plus', 'a4 tech', 'genius', 'trust', 'canyon',
     'defender', 'sven', 'oklick', 'qumo', 'dexp', 'digma',
     'prestigio', 'texet', 'explay', 'fly', 'irbis', 'ark',
+    '360fly', 'jawbone', 'pebble', 'nexus', 'essential',
   };
 
-  // ── Filter: remove pre-2024 + defunct brands ─────────────────────
+  // ── Known old product name patterns ────────────────────────────────────────
+  bool isKnownOldProduct(ProductEntity p) {
+    final name = p.name.toLowerCase();
+    // Products with very old model numbers or known discontinued products
+    if (name.contains('360fly')) return true;
+    if (name.contains('3plus') || name.contains('3 plus')) return true;
+    if (RegExp(r'aspire\s*3\s*a315').hasMatch(name)) return true; // Old Acer Aspire 3
+    if (name.contains('1more s1001')) return true; // Old 1MORE speaker
+    return false;
+  }
+
+  // ── HARD FILTER: 2022+ only, no defunct brands, no known old products ─────
   var pool = deduped.where((p) {
-    final year = getReleaseYear(p);
     final brand = (p.brand ?? '').toLowerCase().trim();
     if (defunctBrands.contains(brand)) return false;
-    return year >= 2024;
+    if (isKnownOldProduct(p)) return false;
+    // If exact year is known, use it strictly
+    final exactYear = getExactReleaseYear(p);
+    if (exactYear != null) return exactYear >= 2022;
+    // If no exact year, only include if techScore suggests modern product
+    final ts = p.techScore;
+    if (ts < 30) return false; // Very low tech score = likely old
+    // Allow products without known year if they have decent tech scores
+    return true;
   }).toList();
-
-  // If still too small, relax to 2022+
-  if (pool.length < 100) {
-    pool = deduped.where((p) {
-      final year = getReleaseYear(p);
-      final brand = (p.brand ?? '').toLowerCase().trim();
-      if (defunctBrands.contains(brand)) return false;
-      return year >= 2022;
-    }).toList();
-  }
-
-  // If still too small, use everything
-  if (pool.length < 50) {
-    debugPrint('=== COMPAIR: pool too small (${pool.length}), using ALL products ===');
-    pool = deduped;
-  }
 
   debugPrint('=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===');
 
@@ -1877,14 +1899,85 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
     final brand = (p.brand ?? '').toLowerCase().trim();
     if (tier1Brands.contains(brand)) return 1.15;
     if (tier2Brands.contains(brand)) return 1.08;
-    return 0.90; // lesser-known brands get slight demotion
+    return 0.90;
   }
 
-  // ── YouTube-style composite score ─────────────────────────────────────────
+  // ── USER PROFILE PERSONALIZATION BOOST ─────────────────────────────────────
+  double userBoost(ProductEntity p) {
+    if (user == null) return 1.0;
+    double boost = 1.0;
+    final cat = p.category.toLowerCase().trim();
+    final brand = (p.brand ?? '').toLowerCase().trim();
+
+    // Boost products in user's interest categories
+    for (final interest in user.interestCategories) {
+      if (cat == interest.toLowerCase() || cat.contains(interest.toLowerCase())) {
+        boost *= 1.35;
+        break;
+      }
+    }
+
+    // Boost primary category
+    if (user.primaryCategory != null &&
+        cat == user.primaryCategory!.toLowerCase()) {
+      boost *= 1.25;
+    }
+
+    // Ecosystem match (apple user → apple products boosted, android → android brands)
+    if (user.ecosystem == 'apple' && brand == 'apple') boost *= 1.3;
+    if (user.ecosystem == 'android' && {'samsung', 'xiaomi', 'oneplus', 'oppo',
+        'realme', 'huawei', 'honor', 'nothing', 'google'}.contains(brand)) {
+      boost *= 1.15;
+    }
+
+    // Budget match
+    final price = p.getPriceForCountry(user.country) ?? 0;
+    if (price > 0) {
+      switch (user.budgetRange) {
+        case 'low':
+          if (price < 300) boost *= 1.2;
+          else if (price > 1000) boost *= 0.7;
+          break;
+        case 'mid':
+          if (price >= 200 && price <= 800) boost *= 1.15;
+          break;
+        case 'high':
+          if (price >= 500 && price <= 2000) boost *= 1.15;
+          break;
+        case 'premium':
+          if (price >= 800) boost *= 1.2;
+          else if (price < 300) boost *= 0.7;
+          break;
+      }
+    }
+
+    // Profession-based category affinity
+    final profCats = <String, List<String>>{
+      'student': ['laptops', 'tablets', 'headphones', 'e-readers'],
+      'engineer': ['laptops', 'monitors', 'keyboards', 'mice', 'gpus', 'cpus'],
+      'designer': ['laptops', 'monitors', 'tablets', 'cameras', 'mice'],
+      'gamer': ['gpus', 'monitors', 'keyboards', 'mice', 'headphones', 'gamepads', 'desktops'],
+      'healthcare': ['tablets', 'smartwatches', 'smartphones'],
+      'teacher': ['laptops', 'tablets', 'projectors', 'webcams'],
+      'finance': ['laptops', 'monitors', 'smartphones'],
+    };
+    final pCats = profCats[user.profession] ?? [];
+    if (pCats.contains(cat)) boost *= 1.15;
+
+    // Profile vector match (if available)
+    if (user.profileVector.isNotEmpty) {
+      final catScore = user.profileVector[cat] ?? 0.0;
+      if (catScore > 0.5) boost *= 1.0 + (catScore * 0.3);
+    }
+
+    return boost;
+  }
+
+  // ── YouTube-style composite score WITH user personalization ────────────────
   double youtubeScore(ProductEntity p) {
     final engagement = (p.trendScore / 10.0).clamp(0.0, 1.0);
 
-    final year = getReleaseYear(p);
+    final year = estimateYear(p);
     final yearDiff = currentYear - year;
     double recency;
     if (yearDiff <= 0)      recency = 1.00;
@@ -1897,7 +1990,8 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
 
     final quality = (p.techScore / 100.0).clamp(0.0, 1.0);
 
-    return ((engagement * 0.35) + (recency * 0.30) + (quality * 0.35)) * brandBoost(p);
+    return ((engagement * 0.30) + (recency * 0.30) + (quality * 0.25) + 0.15) *
+        brandBoost(p) * userBoost(p);
   }
 
   // ── By category: scored, top 60 each with brand diversity ─────────────────
@@ -1912,7 +2006,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
     debugPrint('=== COMPAIR:   ${e.key}: ${e.value.length} products ===');
   }
 
-  // Sort by score and enforce brand diversity (max 8 per brand per category)
+  // Sort by score and enforce brand diversity (max 5 per brand per category)
   for (final cat in byCategory.keys.toList()) {
     final all = byCategory[cat]!;
     all.sort((a, b) => youtubeScore(b).compareTo(youtubeScore(a)));
@@ -1922,21 +2016,14 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
     for (final p in all) {
       final brand = (p.brand ?? '').toLowerCase().trim();
       final count = brandCount[brand] ?? 0;
-      if (count < 8) {
+      if (count < 5) {
         diverse.add(p);
         brandCount[brand] = count + 1;
       }
       if (diverse.length >= 60) break;
     }
-    // Use all products if diversity filter gives too few
-    if (diverse.length < 25 && all.length >= 10) {
-      byCategory[cat] = all.take(60).toList();
-    } else {
-      byCategory[cat] = diverse;
-    }
+    byCategory[cat] = diverse;
   }
-
-  // ── NO categoryBrandWhitelist — removed, was killing product diversity ────
 
   // ── TRENDING: YouTube-style top products (max 2 per brand, 4 per category) ─
   final allScored = pool
@@ -1965,9 +2052,18 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
   // ── FEATURED: Best product per mainstream category (unique brands) ────────
   final featured = <ProductEntity>[];
   final seenBrands = <String>{};
-  const featuredCategories = [
+  // Prioritize user's interest categories first
+  final userInterests = user?.interestCategories
+      .map((c) => c.toLowerCase().trim())
+      .toList() ?? [];
+  final featuredCategoriesBase = [
     'smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
     'gpus', 'monitors', 'cameras', 'speakers', 'tvs',
+  ];
+  // Put user interest categories first
+  final featuredCategories = <String>[
+    ...userInterests.where((c) => byCategory.containsKey(c)),
+    ...featuredCategoriesBase.where((c) => !userInterests.contains(c)),
   ];
   for (final cat in featuredCategories) {
     final catProducts = byCategory[cat] ?? [];
@@ -1997,11 +2093,13 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
 
   // ── NEW ARRIVALS: recent products with decent quality ─────────────────────
   var arrivalCandidates = allScored
-      .where((s) => getReleaseYear(s.product) >= currentYear - 3
-                 && s.product.techScore >= 15)
+      .where((s) => estimateYear(s.product) >= currentYear - 2
+                 && s.product.techScore >= 20)
       .toList();
   if (arrivalCandidates.length < 10) {
-    arrivalCandidates = allScored.take(200).toList();
+    arrivalCandidates = allScored
+        .where((s) => estimateYear(s.product) >= currentYear - 3)
+        .take(200).toList();
   }
 
   final arrivalsCatCount = <String, int>{};
@@ -2030,15 +2128,15 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
       .where((s) => !shownIds.contains(s.product.id)
                  && s.product.techScore >= 10)
       .toList();
-  // If not enough, use all remaining
   if (discoverCandidates.length < 10) {
     discoverCandidates.addAll(allScored
         .where((s) => !shownIds.contains(s.product.id)
                    && !discoverCandidates.any((d) => d.product.id == s.product.id))
         .toList());
   }
-  // Shuffle for discovery feel, then take diverse set
-  discoverCandidates.shuffle();
+  // Shuffle for discovery feel with user-seed
+  final userSeed = user?.uid.hashCode ?? DateTime.now().day;
+  discoverCandidates.shuffle(Random(userSeed));
   final discoverBrandCount = <String, int>{};
   final discoverCatCount = <String, int>{};
   final discover = <ProductEntity>[];
@@ -2084,11 +2182,15 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final country = ref.read(selectedCountryProvider);
   final repo = ref.read(productRepositoryProvider);
   final cache = ref.read(cacheServiceProvider);
-  debugPrint('=== COMPAIR: homeFeedProvider — start ===');
+  final user = ref.read(userProfileProvider).valueOrNull;
+  debugPrint('=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===');
+
+  // Cache key includes user UID for personalized feeds
+  final cacheKey = 'home_feed_v18_${user?.uid ?? "anon"}';
 
   // 1. Try Hive cache first (synchronous, < 5ms)
   try {
-    final cached = cache.getLocal<List<dynamic>>('home_feed_v17_modern');
+    final cached = cache.getLocal<List<dynamic>>(cacheKey);
     if (cached != null && cached.isNotEmpty) {
       final sw = Stopwatch()..start();
       final products = cached
@@ -2099,16 +2201,14 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       debugPrint('=== COMPAIR: homeFeed from HIVE cache: ${products.length} products in ${sw.elapsedMilliseconds}ms ===');
       ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
           products.whereType<ProductModel>().toList());
-      return _buildHomeFeed(products, country);
+      return _buildHomeFeed(products, country, user: user);
     }
   } catch (e) {
     debugPrint('=== COMPAIR: Hive cache read error: $e ===');
   }
 
-  // 2. No cache — FAST two-phase strategy
-  //    Phase 1: Single bulk query (no category filter) for instant content
-  //    Phase 2: Enrich with 4 priority categories in parallel
-  debugPrint('=== COMPAIR: homeFeed — fast two-phase strategy ===');
+  // 2. No cache — aggressive multi-phase strategy
+  debugPrint('=== COMPAIR: homeFeed — multi-phase strategy ===');
 
   final allProducts = <ProductEntity>[];
   final seenIds = <String>{};
@@ -2121,46 +2221,84 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   final sw = Stopwatch()..start();
 
-  // Phase 1: Single bulk query — fastest way to get diverse content (1 query instead of 38)
+  // Phase 1: Large bulk query by techScore (gets high-quality modern products)
   try {
     final bulkResult = await repo.getProducts(
-      limit: 300,
-      orderBy: 'trendScore',
+      limit: 500,
+      orderBy: 'techScore',
       descending: true,
     ).timeout(const Duration(seconds: 15));
     bulkResult.when(
       success: (products) => addProducts(products),
       failure: (_) {},
     );
-    debugPrint('=== COMPAIR: Phase 1 bulk got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+    debugPrint('=== COMPAIR: Phase 1 techScore bulk got ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
-    debugPrint('=== COMPAIR: Phase 1 bulk error: $e ===');
+    debugPrint('=== COMPAIR: Phase 1 error: $e ===');
   }
 
-  // Phase 2: Enrich with 4 priority categories (only if bulk was sparse)
-  const priorityCats = ['smartphones', 'laptops', 'tablets', 'headphones'];
+  // Phase 2: Bulk query by trendScore (gets popular products)
+  try {
+    final trendResult = await repo.getProducts(
+      limit: 500,
+      orderBy: 'trendScore',
+      descending: true,
+    ).timeout(const Duration(seconds: 15));
+    trendResult.when(
+      success: (products) => addProducts(products),
+      failure: (_) {},
+    );
+    debugPrint('=== COMPAIR: Phase 2 trendScore bulk got total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+  } catch (e) {
+    debugPrint('=== COMPAIR: Phase 2 error: $e ===');
+  }
 
-  if (allProducts.length < 200) {
+  // Phase 3: Per-category queries for ALL important categories (ensures minimum 20 per cat)
+  // Prioritize user's interest categories, then mainstream categories
+  final userInterests = user?.interestCategories
+      .map((c) => c.toLowerCase().trim())
+      .toList() ?? [];
+  final phase3Cats = <String>{
+    ...userInterests,
+    ...['smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
+        'gpus', 'monitors', 'keyboards', 'mice', 'cameras', 'speakers',
+        'tvs', 'gamepads', 'desktops', 'consoles'],
+  };
+
+  // Check which categories need more products
+  final currentCatCounts = <String, int>{};
+  for (final p in allProducts) {
+    final cat = p.category.toLowerCase().trim();
+    currentCatCounts[cat] = (currentCatCounts[cat] ?? 0) + 1;
+  }
+  final needMoreCats = phase3Cats.where((cat) =>
+      (currentCatCounts[cat] ?? 0) < 25).toList();
+
+  if (needMoreCats.isNotEmpty) {
+    debugPrint('=== COMPAIR: Phase 3 — fetching ${needMoreCats.length} categories needing more products ===');
     try {
-      final priorityFutures = priorityCats.map((cat) => repo.getProducts(
-        category: cat, limit: 20, orderBy: 'trendScore', descending: true,
-      ).timeout(const Duration(seconds: 12)).catchError((_) =>
-        const Success<List<ProductEntity>>([])));
-
-      final priorityResults = await Future.wait(priorityFutures);
-      for (final result in priorityResults) {
-        result.when(
-          success: (products) => addProducts(products),
-          failure: (_) {},
-        );
+      // Batch in groups of 5 to avoid too many concurrent connections
+      for (var i = 0; i < needMoreCats.length; i += 5) {
+        final batch = needMoreCats.skip(i).take(5);
+        final futures = batch.map((cat) => repo.getProducts(
+          category: cat, limit: 50, orderBy: 'techScore', descending: true,
+        ).timeout(const Duration(seconds: 12)).catchError((_) =>
+          const Success<List<ProductEntity>>([])));
+        final results = await Future.wait(futures);
+        for (final result in results) {
+          result.when(
+            success: (products) => addProducts(products),
+            failure: (_) {},
+          );
+        }
       }
-      debugPrint('=== COMPAIR: Phase 2 priority cats added, total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
+      debugPrint('=== COMPAIR: Phase 3 cat queries done, total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
     } catch (e) {
-      debugPrint('=== COMPAIR: Phase 2 error: $e ===');
+      debugPrint('=== COMPAIR: Phase 3 error: $e ===');
     }
   }
 
-  // Fallback: if both phases returned nothing, retry bulk with longer timeout
+  // Fallback: if both phases returned nothing, retry with longer timeout
   if (allProducts.isEmpty) {
     for (var attempt = 0; attempt <= 2; attempt++) {
       try {
@@ -2187,13 +2325,13 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     return const HomeFeed(trending: [], featured: [], byCategory: {}, newArrivals: [], all: []);
   }
 
-  _saveProductsToCache(cache, allProducts);
+  _saveProductsToCache(cache, allProducts, cacheKey);
   ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
       allProducts.whereType<ProductModel>().toList());
-  return _buildHomeFeed(allProducts, country);
+  return _buildHomeFeed(allProducts, country, user: user);
 });
 
-void _saveProductsToCache(CacheService cache, List<ProductEntity> products) {
+void _saveProductsToCache(CacheService cache, List<ProductEntity> products, String cacheKey) {
   try {
     final maps = products.map((p) {
       final m = ProductModel.fromEntity(p).toFirestore();
@@ -2202,7 +2340,7 @@ void _saveProductsToCache(CacheService cache, List<ProductEntity> products) {
       }
       return m;
     }).toList();
-    cache.setLocal('home_feed_v17_modern', maps, duration: const Duration(hours: 6));
+    cache.setLocal(cacheKey, maps, duration: const Duration(hours: 4));
   } catch (_) {}
 }
 
