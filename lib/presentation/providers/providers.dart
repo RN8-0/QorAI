@@ -1801,7 +1801,15 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
         }
       }
     }
-    return p.lastUpdated.year;
+    // No release year in specs — estimate from techScore & trendScore.
+    // Old products typically have low scores. Using lastUpdated.year is
+    // unreliable because Firestore docs get re-scraped regularly.
+    final ts = p.techScore;
+    if (ts >= 55) return currentYear;      // modern high-end
+    if (ts >= 40) return currentYear - 1;  // recent
+    if (ts >= 25) return currentYear - 3;  // aging
+    if (ts >= 15) return currentYear - 5;  // old
+    return currentYear - 8;                // very old / legacy
   }
 
   // ── NO BRAND BLACKLIST — show ALL products from database ──────────────────
@@ -1809,7 +1817,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
   // which eliminated 99% of products. Now we show everything EXCEPT
   // genuinely defunct brands that no longer exist in 2026.
 
-  // Brands that are completely dead/discontinued — hard filter
+  // Brands that are completely dead/discontinued/legacy — hard filter
   const defunctBrands = {
     'alcatel', 'micromax', 'karbonn', 'lava', 'intex', 'xolo',
     'coolpad', 'leeco', 'le eco', 'gionee', 'panasonic mobile',
@@ -1818,6 +1826,10 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country) {
     'homtom', 'bluboo', 'elephone', 'leagoo', 'maze', 'nomu',
     'altus', 'vestel', 'casper', 'reeder', 'general mobile', 'turkcell',
     'grundig', 'beko', 'arçelik', 'hometech', 'vorcom', 'tcl mobile',
+    // Legacy/budget brands with outdated product lines
+    'a4tech', '3plus', 'a4 tech', 'genius', 'trust', 'canyon',
+    'defender', 'sven', 'oklick', 'qumo', 'dexp', 'digma',
+    'prestigio', 'texet', 'explay', 'fly', 'irbis', 'ark',
   };
 
   // ── Filter: remove pre-2024 + defunct brands ─────────────────────
@@ -2076,7 +2088,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   // 1. Try Hive cache first (synchronous, < 5ms)
   try {
-    final cached = cache.getLocal<List<dynamic>>('home_feed_v16_fast');
+    final cached = cache.getLocal<List<dynamic>>('home_feed_v17_modern');
     if (cached != null && cached.isNotEmpty) {
       final sw = Stopwatch()..start();
       final products = cached
@@ -2190,7 +2202,7 @@ void _saveProductsToCache(CacheService cache, List<ProductEntity> products) {
       }
       return m;
     }).toList();
-    cache.setLocal('home_feed_v16_fast', maps, duration: const Duration(hours: 6));
+    cache.setLocal('home_feed_v17_modern', maps, duration: const Duration(hours: 6));
   } catch (_) {}
 }
 

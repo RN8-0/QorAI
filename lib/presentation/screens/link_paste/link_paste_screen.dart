@@ -120,14 +120,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   void _showMultiCompareSheetWithLinks(
       BuildContext context, WidgetRef ref,
-      EnhancedAnalysisResult firstResult, List<String> extraUrls) {
+      List<String> allUrls) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: true,
       builder: (_) => _MultiCompareSheet(
-        firstResult: firstResult,
-        prefillUrls: extraUrls,
+        allUrls: allUrls,
       ),
     );
   }
@@ -171,21 +172,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       fn.unfocus();
     }
 
-    // If multiple valid URLs → open multi-compare sheet with all links
+    // If multiple valid URLs → open multi-compare sheet with all links immediately
     if (validUrls.length > 1) {
-      // First analyze the first link to get a base result
       ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls.first, null);
-      await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(validUrls.first, user);
-      if (!mounted) return;
-      // Skip quiz to get result fast
-      ref.read(linkQuizProvider.notifier).skipQuiz();
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-      final state = ref.read(linkQuizProvider);
-      if (state.enhancedResult != null) {
-        _showMultiCompareSheetWithLinks(
-          context, ref, state.enhancedResult!, validUrls.sublist(1));
-      }
+      _showMultiCompareSheetWithLinks(context, ref, validUrls);
       return;
     }
 
@@ -956,20 +946,24 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(26),
-              gradient: isFirst
-                  ? SweepGradient(
-                      colors: const [
+              gradient: SweepGradient(
+                colors: isFirst
+                    ? const [
                         Color(0xFF6366F1),
                         Color(0xFFEC4899),
                         Color(0xFF06B6D4),
                         Color(0xFF8B5CF6),
                         Color(0xFF6366F1),
+                      ]
+                    : const [
+                        Color(0xFF6366F1),
+                        Color(0xFF06B6D4),
+                        Color(0xFF8B5CF6),
+                        Color(0xFF6366F1),
                       ],
-                      transform:
-                          GradientRotation(_orbController.value * 2 * pi),
-                    )
-                  : null,
-              color: isFirst ? null : context.dividerColor.withValues(alpha: 0.3),
+                transform:
+                    GradientRotation(_orbController.value * 2 * pi),
+              ),
             ),
             child: child,
           );
@@ -2415,11 +2409,12 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
 
   void _showMultiCompareSheet(
       BuildContext context, WidgetRef ref, EnhancedAnalysisResult result) {
+    // Open sheet with the already-analyzed URL as the first link
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MultiCompareSheet(firstResult: result),
+      builder: (_) => _MultiCompareSheet(allUrls: [result.baseResult.url]),
     );
   }
 }
@@ -2464,18 +2459,14 @@ class _LinkAnalysisImageState extends State<_LinkAnalysisImage> {
 }
 
 class _MultiCompareSheet extends ConsumerStatefulWidget {
-  final EnhancedAnalysisResult firstResult;
-  final List<String>? prefillUrls;
-  const _MultiCompareSheet({required this.firstResult, this.prefillUrls});
+  final List<String> allUrls;
+  const _MultiCompareSheet({required this.allUrls});
 
   @override
   ConsumerState<_MultiCompareSheet> createState() => _MultiCompareSheetState();
 }
 
 class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
-  final List<TextEditingController> _linkControllers = [
-    TextEditingController(),
-  ];
   final List<EnhancedAnalysisResult?> _results = [];
   bool _isAnalyzing = false;
   int _analyzingIndex = -1;
@@ -2487,62 +2478,18 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
   @override
   void initState() {
     super.initState();
-    _results.add(null);
-    // Pre-fill extra URLs if provided
-    if (widget.prefillUrls != null) {
-      for (final url in widget.prefillUrls!) {
-        _linkControllers.add(TextEditingController(text: url));
-        _results.add(null);
-      }
-      // Auto-start analysis after frame renders
-      WidgetsBinding.instance.addPostFrameCallback((_) => _analyzeAll());
-    }
+    _results.addAll(List.filled(widget.allUrls.length, null));
+    // Auto-start analysis
+    WidgetsBinding.instance.addPostFrameCallback((_) => _analyzeAll());
   }
 
   @override
   void dispose() {
-    for (final c in _linkControllers) {
-      c.dispose();
-    }
     super.dispose();
   }
 
-  bool _isValidUrl(String text) {
-    try {
-      final uri = Uri.parse(text.trim());
-      return uri.scheme == 'http' || uri.scheme == 'https';
-    } catch (_) {
-      return false;
-    }
-  }
-
-  void _addLinkField() {
-    if (_linkControllers.length >= 4) return; // max 4 extra (5 total with first)
-    setState(() {
-      _linkControllers.add(TextEditingController());
-      _results.add(null);
-    });
-  }
-
-  void _removeLinkField(int index) {
-    if (_linkControllers.length <= 1) return;
-    setState(() {
-      _linkControllers[index].dispose();
-      _linkControllers.removeAt(index);
-      _results.removeAt(index);
-    });
-  }
-
   Future<void> _analyzeAll() async {
-    final validLinks = <String>[];
-    for (final c in _linkControllers) {
-      final url = c.text.trim();
-      if (url.isNotEmpty && _isValidUrl(url)) validLinks.add(url);
-    }
-    if (validLinks.isEmpty) {
-      if (mounted) setState(() => _error = 'Add at least one valid product link');
-      return;
-    }
+    if (widget.allUrls.isEmpty) return;
 
     if (mounted) {
       setState(() {
@@ -2565,10 +2512,9 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
     }
 
     final analyzedResults = <EnhancedAnalysisResult>[];
-    for (int i = 0; i < _linkControllers.length; i++) {
+    for (int i = 0; i < widget.allUrls.length; i++) {
       if (!mounted) break;
-      final url = _linkControllers[i].text.trim();
-      if (url.isEmpty || !_isValidUrl(url)) continue;
+      final url = widget.allUrls[i];
 
       if (mounted) setState(() => _analyzingIndex = i);
       try {
@@ -2593,37 +2539,32 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
 
     if (!mounted) return;
 
-    // Add the first result
-    final allResults = [widget.firstResult, ...analyzedResults];
-
-    if (!mounted) return;
     setState(() {
       _analyzingIndex = -1;
       _isAnalyzing = false;
     });
 
-    if (allResults.length < 2) {
+    if (analyzedResults.length < 2) {
       if (mounted) setState(() => _error = 'Need at least 2 products to compare');
       return;
     }
 
     // Check categories
-    final categories = allResults
+    final categories = analyzedResults
         .map((r) => r.baseResult.category?.toLowerCase().trim() ?? '')
         .where((c) => c.isNotEmpty)
         .toSet();
 
-    // Now do AI comparison
+    // AI comparison
     if (mounted) setState(() => _isComparing = true);
 
     try {
-      final aiRepo = ref.read(aiRepositoryProvider);
-      final comparison = await _buildAiComparison(aiRepo, allResults, categories);
+      final comparison = _buildAiComparison(analyzedResults, categories);
       if (!mounted) return;
       
       // Find best match (highest enhanced score)
-      EnhancedAnalysisResult best = allResults.first;
-      for (final r in allResults) {
+      EnhancedAnalysisResult best = analyzedResults.first;
+      for (final r in analyzedResults) {
         if (r.enhancedScore > best.enhancedScore) best = r;
       }
 
@@ -2642,8 +2583,8 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
     }
   }
 
-  Future<String> _buildAiComparison(
-      dynamic aiRepo, List<EnhancedAnalysisResult> results, Set<String> categories) async {
+  String _buildAiComparison(
+      List<EnhancedAnalysisResult> results, Set<String> categories) {
     final isSameCategory = categories.length <= 1;
     final buf = StringBuffer();
 
@@ -2683,10 +2624,6 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final first = widget.firstResult;
-    final firstName = first.baseResult.metadata.title ?? 'Current Product';
-    final firstScore = first.enhancedScore;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -2752,51 +2689,25 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                 controller: scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  // First product (already analyzed) - locked card
-                  _buildLockedProductCard(firstName, firstScore, first.baseResult.url),
-                  const SizedBox(height: 12),
-
-                  // Additional link inputs
-                  ...List.generate(_linkControllers.length, (i) {
+                  // All product cards (analyzed or pending)
+                  ...List.generate(widget.allUrls.length, (i) {
+                    final result = i < _results.length ? _results[i] : null;
+                    final url = widget.allUrls[i];
+                    if (result != null) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildLockedProductCard(
+                          result.baseResult.metadata.title ?? 'Product ${i + 1}',
+                          result.enhancedScore,
+                          url,
+                        ),
+                      );
+                    }
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildLinkInput(i),
+                      child: _buildPendingCard(i, url),
                     );
                   }),
-
-                  // Add link button
-                  if (_linkControllers.length < 4)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: InkWell(
-                        onTap: _addLinkField,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                              style: BorderStyle.solid,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_link_rounded,
-                                  color: AppTheme.primaryBlue.withValues(alpha: 0.7),
-                                  size: 20),
-                              const SizedBox(width: 8),
-                              Text(context.l10n?.addAnotherLink ?? 'Add another link',
-                                  style: GoogleFonts.plusJakartaSans(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: AppTheme.primaryBlue.withValues(alpha: 0.7))),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
 
                   // Error
                   if (_error != null)
@@ -2823,65 +2734,42 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                       ),
                     ),
 
-                  // Compare button
-                  if (_aiComparison == null)
+                  // Progress/status indicator
+                  if (_isAnalyzing || _isComparing)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: GradientButton(
-                        height: 52,
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.primaryBlue, AppTheme.neonPurple],
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [
+                            AppTheme.primaryBlue.withValues(alpha: 0.08),
+                            AppTheme.neonPurple.withValues(alpha: 0.05),
+                          ]),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.15)),
                         ),
-                        borderRadius: BorderRadius.circular(20),
-                        onPressed: (_isAnalyzing || _isComparing) ? null : _analyzeAll,
-                        child: _isAnalyzing
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2.5, color: context.surfaceVariantColor),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                      'Analyzing link ${_analyzingIndex + 1}...',
-                                      style: GoogleFonts.plusJakartaSans(
-                                          fontWeight: FontWeight.w700,
-                                          color: context.surfaceVariantColor)),
-                                ],
-                              )
-                            : _isComparing
-                                ? Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2.5, color: context.surfaceVariantColor),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(context.l10n?.aiComparing ?? 'AI comparing...',
-                                          style: GoogleFonts.plusJakartaSans(
-                                              fontWeight: FontWeight.w700,
-                                              color: context.surfaceVariantColor)),
-                                    ],
-                                  )
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.auto_awesome_rounded,
-                                          color: context.surfaceVariantColor, size: 20),
-                                      const SizedBox(width: 10),
-                                      Text(context.l10n?.compareWithAi ?? 'Compare with AI',
-                                          style: GoogleFonts.plusJakartaSans(
-                                              fontWeight: FontWeight.w700,
-                                              color: context.surfaceVariantColor,
-                                              fontSize: 16)),
-                                    ],
-                                  ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: AppTheme.primaryBlue),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              _isComparing
+                                  ? (context.l10n?.aiComparing ?? 'AI comparing products...')
+                                  : 'Analyzing product ${_analyzingIndex + 1}/${widget.allUrls.length}...',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: context.textPrimary),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
@@ -2974,95 +2862,56 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
     );
   }
 
-  Widget _buildLinkInput(int index) {
-    final isAnalyzed = index < _results.length && _results[index] != null;
+  Widget _buildPendingCard(int index, String url) {
     final isCurrentlyAnalyzing = _isAnalyzing && _analyzingIndex == index;
 
     return GlassContainer(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          // Status icon
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isAnalyzed
-                  ? AppTheme.success.withValues(alpha: 0.1)
-                  : isCurrentlyAnalyzing
-                      ? AppTheme.primaryBlue.withValues(alpha: 0.1)
-                      : context.surfaceVariantColor,
+              color: isCurrentlyAnalyzing
+                  ? AppTheme.primaryBlue.withValues(alpha: 0.1)
+                  : context.surfaceVariantColor,
               borderRadius: BorderRadius.circular(10),
             ),
             child: isCurrentlyAnalyzing
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBlue),
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppTheme.primaryBlue),
                   )
-                : Icon(
-                    isAnalyzed ? Icons.check_circle_rounded : Icons.link_rounded,
-                    size: 18,
-                    color: isAnalyzed ? AppTheme.success : AppTheme.slate400,
-                  ),
+                : Icon(Icons.link_rounded, size: 18, color: AppTheme.slate400),
           ),
           const SizedBox(width: 10),
-          // Input
           Expanded(
-            child: isAnalyzed
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _results[index]!.baseResult.metadata.title ?? 'Product',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: context.textPrimary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${_results[index]!.enhancedScore.toStringAsFixed(0)}% match',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: context.textSecondary),
-                      ),
-                    ],
-                  )
-                : TextField(
-                    controller: _linkControllers[index],
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: context.l10n?.pasteProductUrlHint ?? 'Paste product URL...',
-                      hintStyle: GoogleFonts.plusJakartaSans(
-                          fontSize: 13, color: AppTheme.slate400),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-          ),
-          // Remove button
-          if (_linkControllers.length > 1 && !_isAnalyzing)
-            GestureDetector(
-              onTap: () => _removeLinkField(index),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.error.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCurrentlyAnalyzing ? 'Analyzing...' : 'Waiting...',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600, fontSize: 13,
+                      color: context.textPrimary),
                 ),
-                child: const Icon(Icons.close_rounded,
-                    size: 16, color: AppTheme.error),
-              ),
+                Text(
+                  Uri.tryParse(url)?.host ?? url,
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textSecondary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildComparisonResult() {
-    final allResults = [widget.firstResult, ..._results.where((r) => r != null).cast<EnhancedAnalysisResult>()];
+    final allResults = _results.where((r) => r != null).cast<EnhancedAnalysisResult>().toList();
 
     // Sort by score
     final sorted = List<EnhancedAnalysisResult>.from(allResults)
