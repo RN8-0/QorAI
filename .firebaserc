@@ -1,0 +1,21 @@
+{
+  "projects": {
+    "default": "compair-99b6e"
+  },
+  "targets": {
+    "compair-99b6e": {
+      "hosting": {
+        "website": [
+          "compair-website"
+        ],
+        "admin": [
+          "compair-admin-panel"
+        ],
+        "default": [
+          "compair-99b6e"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

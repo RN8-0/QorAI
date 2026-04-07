@@ -1,0 +1,514 @@
+{
+  "products": [
+    {
+      "id": "turkish-airlines",
+      "name": "Türk Hava Yolları",
+      "brand": "THY",
+      "category": "travel",
+      "subcategory": "airlines",
+      "description": "Türkiye'nin bayrak taşıyıcı havayolu. Geniş uçuş ağı, Miles&Smiles programı.",
+      "imageUrl": "https://turkishairlines.com/logo.png",
+      "prices": {
+        "domestic_avg": 1500,
+        "europe_avg": 4500,
+        "intercontinental_avg": 12000
+      },
+      "currency": "TRY",
+      "specs": {
+        "destinations": "340+",
+        "fleet_size": "400+",
+        "alliance": "Star Alliance",
+        "loyalty_program": "Miles&Smiles",
+        "cabin_classes": ["Economy", "Business", "First"],
+        "lounge_access": "Business ve üzeri"
+      },
+      "pros": ["Geniş uçuş ağı", "Kaliteli yemek servisi", "Miles&Smiles avantajları", "İstanbul hub bağlantısı"],
+      "cons": ["Fiyatlar yüksek olabiliyor", "Ekonomi koltuklar dar", "Sık rötar"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.2,
+        "compair": 85
+      },
+      "tags": ["thy", "türk hava yolları", "star alliance", "miles smiles", "havayolu"],
+      "affiliateLinks": {
+        "official": "https://turkishairlines.com"
+      },
+      "trendScore": 90,
+      "isActive": true
+    },
+    {
+      "id": "pegasus-airlines",
+      "name": "Pegasus Airlines",
+      "brand": "Pegasus",
+      "category": "travel",
+      "subcategory": "airlines",
+      "description": "Türkiye'nin düşük maliyetli havayolu. Uygun fiyatlar, ek hizmetler ücretli.",
+      "imageUrl": "https://flypgs.com/logo.png",
+      "prices": {
+        "domestic_avg": 800,
+        "europe_avg": 2500,
+        "intercontinental_avg": null
+      },
+      "currency": "TRY",
+      "specs": {
+        "destinations": "120+",
+        "fleet_size": "100+",
+        "model": "Low-cost carrier",
+        "loyalty_program": "BolBol",
+        "cabin_classes": ["Economy", "Economy Extra"],
+        "baggage": "Ücretli (Basic)"
+      },
+      "pros": ["Uygun fiyatlar", "Sık sefer", "BolBol puan programı", "Genç filo"],
+      "cons": ["Ek hizmetler ücretli", "Koltuk aralığı dar", "Yemek ücretli"],
+      "ratings": {
+        "expert": 7.5,
+        "community": 3.8,
+        "compair": 75
+      },
+      "tags": ["pegasus", "ucuz uçuş", "low cost", "bolbol", "havayolu"],
+      "affiliateLinks": {
+        "official": "https://flypgs.com"
+      },
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "sunexpress",
+      "name": "SunExpress",
+      "brand": "SunExpress",
+      "category": "travel",
+      "subcategory": "airlines",
+      "description": "THY ve Lufthansa ortaklığı. Avrupa destinasyonlarına odaklı.",
+      "imageUrl": "https://sunexpress.com/logo.png",
+      "prices": {
+        "domestic_avg": 900,
+        "europe_avg": 2800,
+        "intercontinental_avg": null
+      },
+      "currency": "TRY",
+      "specs": {
+        "destinations": "90+",
+        "fleet_size": "70+",
+        "partnership": "THY & Lufthansa",
+        "loyalty_program": "SunPoints / Miles&Smiles",
+        "cabin_classes": ["Economy", "Economy Plus"],
+        "hub": "Antalya, İzmir"
+      },
+      "pros": ["Güvenilir operasyon", "Avrupa'ya iyi bağlantı", "THY ile kod paylaşımı"],
+      "cons": ["Sınırlı destinasyon", "Ek hizmetler ücretli", "Lounge erişimi yok"],
+      "ratings": {
+        "expert": 7.8,
+        "community": 4.0,
+        "compair": 78
+      },
+      "tags": ["sunexpress", "thy", "lufthansa", "avrupa", "havayolu"],
+      "affiliateLinks": {
+        "official": "https://sunexpress.com"
+      },
+      "trendScore": 70,
+      "isActive": true
+    },
+    {
+      "id": "booking-com",
+      "name": "Booking.com",
+      "brand": "Booking Holdings",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Dünyanın en büyük otel rezervasyon platformu. Geniş seçenek, ücretsiz iptal seçenekleri.",
+      "imageUrl": "https://booking.com/logo.png",
+      "prices": {
+        "service_fee": "Dahil (otele göre değişir)"
+      },
+      "currency": "TRY",
+      "specs": {
+        "properties": "28+ milyon",
+        "countries": "220+",
+        "loyalty_program": "Genius (3 seviye)",
+        "payment": "Şimdi öde / Otelde öde",
+        "cancellation": "Ücretsiz iptal seçenekleri",
+        "reviews": "300+ milyon"
+      },
+      "pros": ["En geniş seçenek", "Genius indirimleri", "Ücretsiz iptal", "Gerçek kullanıcı yorumları"],
+      "cons": ["Fiyatlar her zaman en ucuz değil", "Bazı ücretler gizli", "Otel ile iletişim zor"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.4,
+        "compair": 88
+      },
+      "tags": ["booking", "otel", "rezervasyon", "genius", "seyahat"],
+      "affiliateLinks": {
+        "official": "https://booking.com"
+      },
+      "trendScore": 95,
+      "isActive": true
+    },
+    {
+      "id": "airbnb",
+      "name": "Airbnb",
+      "brand": "Airbnb",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Ev ve deneyim paylaşım platformu. Benzersiz konaklama seçenekleri.",
+      "imageUrl": "https://airbnb.com/logo.png",
+      "prices": {
+        "service_fee": "%14-16 (misafir)"
+      },
+      "currency": "TRY",
+      "specs": {
+        "listings": "7+ milyon",
+        "countries": "220+",
+        "property_types": ["Ev", "Daire", "Villa", "Unique stays"],
+        "experiences": true,
+        "superhost": true,
+        "aircover": "Misafir koruması"
+      },
+      "pros": ["Benzersiz konaklama", "Yerel deneyim", "Uzun konaklama indirimi", "AirCover güvencesi"],
+      "cons": ["Hizmet ücreti yüksek", "Kalite değişken", "Temizlik ücreti ayrı", "İptal politikaları karmaşık"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.3,
+        "compair": 85
+      },
+      "tags": ["airbnb", "kiralık ev", "konaklama", "deneyim", "seyahat"],
+      "affiliateLinks": {
+        "official": "https://airbnb.com"
+      },
+      "trendScore": 92,
+      "isActive": true
+    },
+    {
+      "id": "hotels-com",
+      "name": "Hotels.com",
+      "brand": "Expedia Group",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Otel karşılaştırma ve rezervasyon sitesi. 10 gece = 1 gece bedava programı.",
+      "imageUrl": "https://hotels.com/logo.png",
+      "prices": {
+        "service_fee": "Dahil"
+      },
+      "currency": "TRY",
+      "specs": {
+        "properties": "500.000+",
+        "countries": "200+",
+        "loyalty_program": "Hotels.com Rewards (10 gece = 1 bedava)",
+        "price_match": true,
+        "secret_prices": "Üyelere özel"
+      },
+      "pros": ["10 gece 1 bedava", "Fiyat eşleştirme garantisi", "Gizli fiyatlar", "Expedia entegrasyonu"],
+      "cons": ["Seçenek Booking kadar geniş değil", "Ödül kullanımı sınırlı", "Müşteri hizmetleri orta"],
+      "ratings": {
+        "expert": 8.0,
+        "community": 4.1,
+        "compair": 80
+      },
+      "tags": ["hotels", "otel", "expedia", "rezervasyon", "seyahat"],
+      "affiliateLinks": {
+        "official": "https://tr.hotels.com"
+      },
+      "trendScore": 78,
+      "isActive": true
+    },
+    {
+      "id": "trivago",
+      "name": "Trivago",
+      "brand": "Trivago",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Otel fiyat karşılaştırma motoru. Farklı sitelerdeki fiyatları karşılaştırır.",
+      "imageUrl": "https://trivago.com/logo.png",
+      "prices": {
+        "service_fee": "Ücretsiz (karşılaştırma)"
+      },
+      "currency": "TRY",
+      "specs": {
+        "comparisons": "400+ site",
+        "hotels": "5+ milyon",
+        "countries": "190+",
+        "model": "Meta-arama",
+        "direct_booking": false
+      },
+      "pros": ["Fiyat karşılaştırma", "Geniş kapsam", "Ücretsiz kullanım", "Şeffaf fiyatlar"],
+      "cons": ["Direkt rezervasyon yok", "Bazı siteler eksik", "Güncel olmayabilir"],
+      "ratings": {
+        "expert": 7.5,
+        "community": 4.0,
+        "compair": 75
+      },
+      "tags": ["trivago", "karşılaştırma", "otel", "fiyat", "seyahat"],
+      "affiliateLinks": {
+        "official": "https://trivago.com.tr"
+      },
+      "trendScore": 72,
+      "isActive": true
+    },
+    {
+      "id": "jolly-tur",
+      "name": "Jolly Tur",
+      "brand": "Jolly",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Türkiye'nin köklü tur operatörü. Paket turlar, uçak+otel kombinasyonları.",
+      "imageUrl": "https://jollytur.com/logo.png",
+      "prices": {
+        "service_fee": "Dahil"
+      },
+      "currency": "TRY",
+      "specs": {
+        "experience": "40+ yıl",
+        "services": ["Paket tur", "Uçak bileti", "Otel", "Transfer", "Vize"],
+        "destinations": "Dünya geneli",
+        "payment": "Taksit imkanı",
+        "support": "7/24"
+      },
+      "pros": ["Güvenilir marka", "Paket tur kolaylığı", "Taksit imkanı", "Türkçe destek"],
+      "cons": ["Fiyatlar yüksek olabilir", "Esneklik az", "İptal şartları katı"],
+      "ratings": {
+        "expert": 8.0,
+        "community": 4.0,
+        "compair": 80
+      },
+      "tags": ["jolly", "tur", "paket tur", "tatil", "seyahat"],
+      "affiliateLinks": {
+        "official": "https://jollytur.com"
+      },
+      "trendScore": 75,
+      "isActive": true
+    },
+    {
+      "id": "etstur",
+      "name": "ETS Tur",
+      "brand": "ETS",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Online seyahat platformu. Erken rezervasyon avantajları, geniş otel ağı.",
+      "imageUrl": "https://etstur.com/logo.png",
+      "prices": {
+        "service_fee": "Dahil"
+      },
+      "currency": "TRY",
+      "specs": {
+        "services": ["Otel", "Uçak", "Tur", "Transfer", "Aktivite"],
+        "early_booking": "%50'ye varan indirim",
+        "payment": "12 taksit",
+        "mobile_app": true,
+        "support": "7/24"
+      },
+      "pros": ["Erken rezervasyon indirimi", "Geniş otel seçeneği", "Taksit imkanı", "Türkiye odaklı"],
+      "cons": ["Yurtdışı seçenekleri sınırlı", "Web sitesi bazen yavaş", "İptal ücretleri"],
+      "ratings": {
+        "expert": 7.8,
+        "community": 4.1,
+        "compair": 78
+      },
+      "tags": ["etstur", "otel", "erken rezervasyon", "tatil", "seyahat"],
+      "affiliateLinks": {
+        "official": "https://etstur.com"
+      },
+      "trendScore": 80,
+      "isActive": true
+    },
+    {
+      "id": "skyscanner",
+      "name": "Skyscanner",
+      "brand": "Skyscanner",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Uçak bileti, otel ve araç kiralama karşılaştırma motoru.",
+      "imageUrl": "https://skyscanner.com/logo.png",
+      "prices": {
+        "service_fee": "Ücretsiz (karşılaştırma)"
+      },
+      "currency": "TRY",
+      "specs": {
+        "comparisons": "1000+ havayolu",
+        "services": ["Uçak", "Otel", "Araç kiralama"],
+        "features": ["Fiyat uyarısı", "Her yere uç", "Ay görünümü"],
+        "model": "Meta-arama",
+        "mobile_app": true
+      },
+      "pros": ["En ucuz uçuşu bulma", "Her yere uç özelliği", "Fiyat uyarıları", "Esnek tarih arama"],
+      "cons": ["Direkt rezervasyon yok", "Fiyatlar değişebilir", "Üçüncü parti sorunları"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.4,
+        "compair": 85
+      },
+      "tags": ["skyscanner", "uçak bileti", "karşılaştırma", "ucuz uçuş", "seyahat"],
+      "affiliateLinks": {
+        "official": "https://skyscanner.com.tr"
+      },
+      "trendScore": 88,
+      "isActive": true
+    },
+    {
+      "id": "miles-smiles-card",
+      "name": "Miles&Smiles Kredi Kartı",
+      "brand": "Garanti BBVA / THY",
+      "category": "travel",
+      "subcategory": "travel_cards",
+      "description": "THY Miles&Smiles mil kazandıran kredi kartı. Uçuş ve alışverişlerde mil.",
+      "imageUrl": "https://garantibbva.com.tr/miles-smiles.png",
+      "prices": {
+        "annual_fee": 1999,
+        "classic_fee": 499
+      },
+      "currency": "TRY",
+      "specs": {
+        "miles_rate": "1 TL = 1 Mil (THY), 2 TL = 1 Mil (diğer)",
+        "welcome_bonus": "10.000 Mil",
+        "lounge_access": "Classic+ ve üzeri",
+        "free_baggage": "Elite seviyesi",
+        "insurance": "Seyahat sigortası dahil",
+        "variants": ["Classic", "Classic+", "Elite", "Elite Plus"]
+      },
+      "pros": ["Mil kazanımı yüksek", "Lounge erişimi", "THY ile entegrasyon", "Hoşgeldin mili"],
+      "cons": ["Yıllık ücreti yüksek", "THY dışında kazanım düşük", "Mil kullanımı sınırlı dönemler"],
+      "ratings": {
+        "expert": 8.2,
+        "community": 4.2,
+        "compair": 82
+      },
+      "tags": ["miles smiles", "kredi kartı", "thy", "mil", "seyahat kartı"],
+      "affiliateLinks": {
+        "garanti": "https://garantibbva.com.tr/milesandsmiles"
+      },
+      "trendScore": 82,
+      "isActive": true
+    },
+    {
+      "id": "maximum-kart",
+      "name": "Maximum Kart (Seyahat)",
+      "brand": "İş Bankası",
+      "category": "travel",
+      "subcategory": "travel_cards",
+      "description": "İş Bankası'nın seyahat avantajlı kredi kartı. MaxiPuan ve seyahat indirimleri.",
+      "imageUrl": "https://isbank.com.tr/maximum.png",
+      "prices": {
+        "annual_fee": 0,
+        "premium_fee": 999
+      },
+      "currency": "TRY",
+      "specs": {
+        "rewards": "MaxiPuan",
+        "travel_discount": "%5-15 seyahat",
+        "lounge_access": "Platinum ve üzeri",
+        "insurance": "Seyahat sigortası (Premium)",
+        "partners": ["THY", "Pegasus", "Booking.com", "Jollytur"]
+      },
+      "pros": ["Ücretsiz seçenekler", "Geniş partner ağı", "MaxiPuan esnekliği", "Taksit avantajları"],
+      "cons": ["Mil kazanımı yok", "Lounge sadece premium", "Puan değeri düşük"],
+      "ratings": {
+        "expert": 7.5,
+        "community": 4.0,
+        "compair": 75
+      },
+      "tags": ["maximum", "kredi kartı", "iş bankası", "seyahat", "maxipuan"],
+      "affiliateLinks": {
+        "isbank": "https://isbank.com.tr/maximum"
+      },
+      "trendScore": 70,
+      "isActive": true
+    },
+    {
+      "id": "hilton-honors",
+      "name": "Hilton Honors",
+      "brand": "Hilton",
+      "category": "travel",
+      "subcategory": "hotels",
+      "description": "Hilton'un sadakat programı. Dünya genelinde 7000+ otelde puan kazanın.",
+      "imageUrl": "https://hilton.com/honors.png",
+      "prices": {
+        "membership": "Ücretsiz"
+      },
+      "currency": "TRY",
+      "specs": {
+        "properties": "7000+",
+        "brands": ["Hilton", "DoubleTree", "Hampton", "Conrad", "Waldorf Astoria"],
+        "tiers": ["Member", "Silver", "Gold", "Diamond"],
+        "points_value": "0.5 cent/puan",
+        "elite_nights": "Gold: 40 gece, Diamond: 60 gece",
+        "benefits": ["Ücretsiz WiFi", "Geç çıkış", "Oda yükseltme"]
+      },
+      "pros": ["Geniş otel ağı", "5. gece bedava", "Puan transferi", "Elite statü eşleştirme"],
+      "cons": ["Türkiye'de az otel", "Puan değeri düşük", "Elite statü zor"],
+      "ratings": {
+        "expert": 8.0,
+        "community": 4.2,
+        "compair": 80
+      },
+      "tags": ["hilton", "honors", "otel", "sadakat", "puan"],
+      "affiliateLinks": {
+        "official": "https://hiltonhonors.com"
+      },
+      "trendScore": 75,
+      "isActive": true
+    },
+    {
+      "id": "marriott-bonvoy",
+      "name": "Marriott Bonvoy",
+      "brand": "Marriott",
+      "category": "travel",
+      "subcategory": "hotels",
+      "description": "Marriott'un sadakat programı. 30+ marka, 8000+ otel.",
+      "imageUrl": "https://marriott.com/bonvoy.png",
+      "prices": {
+        "membership": "Ücretsiz"
+      },
+      "currency": "TRY",
+      "specs": {
+        "properties": "8000+",
+        "brands": ["Marriott", "Sheraton", "W Hotels", "Ritz-Carlton", "St. Regis", "JW Marriott"],
+        "tiers": ["Member", "Silver", "Gold", "Platinum", "Titanium", "Ambassador"],
+        "points_value": "0.7 cent/puan",
+        "elite_nights": "Gold: 25 gece, Platinum: 50 gece"
+      },
+      "pros": ["En geniş otel ağı", "Premium markalar", "Havayolu transferi", "Suite gece ödülleri"],
+      "cons": ["Dinamik fiyatlandırma", "Puan enflasyonu", "Elite avantajlar tutarsız"],
+      "ratings": {
+        "expert": 8.3,
+        "community": 4.1,
+        "compair": 83
+      },
+      "tags": ["marriott", "bonvoy", "otel", "sadakat", "puan"],
+      "affiliateLinks": {
+        "official": "https://marriott.com/loyalty"
+      },
+      "trendScore": 80,
+      "isActive": true
+    },
+    {
+      "id": "google-flights",
+      "name": "Google Flights",
+      "brand": "Google",
+      "category": "travel",
+      "subcategory": "booking_platforms",
+      "description": "Google'ın uçuş arama motoru. Fiyat takibi, esnek tarih arama.",
+      "imageUrl": "https://google.com/flights.png",
+      "prices": {
+        "service_fee": "Ücretsiz"
+      },
+      "currency": "TRY",
+      "specs": {
+        "features": ["Fiyat takibi", "Esnek tarihler", "Harita görünümü", "Fiyat grafikleri"],
+        "filters": ["Aktarma", "Havayolu", "Bagaj", "Süre"],
+        "price_tracking": true,
+        "calendar_view": true,
+        "explore": "Keşfet özelliği"
+      },
+      "pros": ["Tamamen ücretsiz", "Güçlü filtreler", "Fiyat takibi", "Temiz arayüz"],
+      "cons": ["Tüm havayolları yok", "Direkt rezervasyon yok", "Otel yok"],
+      "ratings": {
+        "expert": 8.7,
+        "community": 4.5,
+        "compair": 87
+      },
+      "tags": ["google", "flights", "uçak", "arama", "karşılaştırma"],
+      "affiliateLinks": {
+        "official": "https://google.com/flights"
+      },
+      "trendScore": 90,
+      "isActive": true
+    }
+  ]
+}

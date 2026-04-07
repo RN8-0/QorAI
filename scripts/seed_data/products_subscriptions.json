@@ -1,0 +1,566 @@
+{
+  "products": [
+    {
+      "id": "netflix-standard",
+      "name": "Netflix Standart",
+      "brand": "Netflix",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Dünyanın en popüler streaming servisi. Binlerce film, dizi ve belgesel. Full HD kalite.",
+      "imageUrl": "https://assets.nflxext.com/ffe/siteui/netflix-logo.png",
+      "prices": {
+        "TR": 129.99,
+        "US": 15.49,
+        "EU": 12.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "quality": "Full HD 1080p",
+        "screens": 2,
+        "downloads": true,
+        "ads": false,
+        "profiles": 5,
+        "content_type": "Film, Dizi, Belgesel, Anime",
+        "turkish_content": true,
+        "offline_viewing": true
+      },
+      "pros": ["En geniş içerik kütüphanesi", "Türkçe altyazı/dublaj", "Orijinal yapımlar kaliteli", "Çevrimdışı indirme"],
+      "cons": ["Sürekli zam", "İçerikler bölgeye göre değişiyor", "Bazı içerikler kaldırılıyor"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.3,
+        "compair": 85
+      },
+      "tags": ["netflix", "streaming", "dizi", "film", "abonelik"],
+      "affiliateLinks": {
+        "official": "https://netflix.com/tr"
+      },
+      "trendScore": 95,
+      "isActive": true
+    },
+    {
+      "id": "netflix-premium",
+      "name": "Netflix Premium",
+      "brand": "Netflix",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Netflix'in en üst planı. 4K Ultra HD + HDR, 4 ekran, mekansal ses.",
+      "imageUrl": "https://assets.nflxext.com/ffe/siteui/netflix-logo.png",
+      "prices": {
+        "TR": 189.99,
+        "US": 22.99,
+        "EU": 17.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "quality": "4K Ultra HD + HDR",
+        "screens": 4,
+        "downloads": true,
+        "ads": false,
+        "profiles": 5,
+        "spatial_audio": true,
+        "content_type": "Film, Dizi, Belgesel, Anime",
+        "turkish_content": true
+      },
+      "pros": ["4K + HDR kalite", "4 ekran aynı anda", "Dolby Atmos ses", "Aile için ideal"],
+      "cons": ["En pahalı plan", "4K içerik sınırlı", "Hızlı internet gerekli (25 Mbps+)"],
+      "ratings": {
+        "expert": 8.7,
+        "community": 4.4,
+        "compair": 87
+      },
+      "tags": ["netflix", "streaming", "4k", "premium", "abonelik"],
+      "affiliateLinks": {
+        "official": "https://netflix.com/tr"
+      },
+      "trendScore": 88,
+      "isActive": true
+    },
+    {
+      "id": "spotify-premium",
+      "name": "Spotify Premium Bireysel",
+      "brand": "Spotify",
+      "category": "subscription",
+      "subcategory": "music",
+      "description": "Dünyanın en popüler müzik streaming servisi. 100M+ şarkı, podcast, reklamsız dinleme.",
+      "imageUrl": "https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png",
+      "prices": {
+        "TR": 59.99,
+        "US": 11.99,
+        "EU": 10.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "quality": "320 kbps (çok yüksek)",
+        "offline": true,
+        "ads": false,
+        "podcasts": true,
+        "lyrics": true,
+        "devices": "sınırsız",
+        "social_features": true
+      },
+      "pros": ["En geniş müzik kütüphanesi", "Harika algoritma önerileri", "Podcast entegrasyonu", "Çevrimdışı dinleme"],
+      "cons": ["Hi-Fi ses yok", "Bazı podcast'ler premium değil", "Şarkı sözleri bazen eksik"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.6,
+        "compair": 90
+      },
+      "tags": ["spotify", "müzik", "podcast", "streaming", "abonelik"],
+      "affiliateLinks": {
+        "official": "https://spotify.com/tr/premium"
+      },
+      "trendScore": 96,
+      "isActive": true
+    },
+    {
+      "id": "spotify-duo",
+      "name": "Spotify Premium Duo",
+      "brand": "Spotify",
+      "category": "subscription",
+      "subcategory": "music",
+      "description": "Aynı adreste yaşayan 2 kişi için Spotify Premium. Duo Mix özelliği dahil.",
+      "imageUrl": "https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png",
+      "prices": {
+        "TR": 79.99,
+        "US": 16.99,
+        "EU": 14.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "quality": "320 kbps",
+        "accounts": 2,
+        "offline": true,
+        "ads": false,
+        "duo_mix": true,
+        "same_address": true
+      },
+      "pros": ["2 kişi için ekonomik", "Duo Mix ortak playlist", "Ayrı hesaplar"],
+      "cons": ["Aynı adres şartı", "3+ kişi için uygun değil"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.4,
+        "compair": 85
+      },
+      "tags": ["spotify", "müzik", "duo", "çift", "abonelik"],
+      "affiliateLinks": {
+        "official": "https://spotify.com/tr/duo"
+      },
+      "trendScore": 78,
+      "isActive": true
+    },
+    {
+      "id": "youtube-premium",
+      "name": "YouTube Premium",
+      "brand": "Google",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Reklamsız YouTube + YouTube Music dahil. Arka planda oynatma, indirme.",
+      "imageUrl": "https://youtube.com/img/desktop/yt_1200.png",
+      "prices": {
+        "TR": 99.99,
+        "US": 13.99,
+        "EU": 11.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "ad_free": true,
+        "background_play": true,
+        "downloads": true,
+        "youtube_music": true,
+        "quality": "4K (destekleyen videolarda)",
+        "picture_in_picture": true
+      },
+      "pros": ["Reklamsız YouTube", "YouTube Music dahil", "Arka plan oynatma", "İndirme özelliği"],
+      "cons": ["YouTube Originals zayıf", "Music uygulaması Spotify'dan geride", "Fiyat artışları"],
+      "ratings": {
+        "expert": 8.3,
+        "community": 4.2,
+        "compair": 83
+      },
+      "tags": ["youtube", "google", "streaming", "müzik", "reklamsız"],
+      "affiliateLinks": {
+        "official": "https://youtube.com/premium"
+      },
+      "trendScore": 89,
+      "isActive": true
+    },
+    {
+      "id": "apple-music",
+      "name": "Apple Music Bireysel",
+      "brand": "Apple",
+      "category": "subscription",
+      "subcategory": "music",
+      "description": "Apple'ın müzik streaming servisi. 100M+ şarkı, Lossless Audio, Spatial Audio dahil.",
+      "imageUrl": "https://apple.com/v/apple-music/b/images/overview/icon.png",
+      "prices": {
+        "TR": 39.99,
+        "US": 10.99,
+        "EU": 10.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "quality": "Lossless (24-bit/192 kHz)",
+        "spatial_audio": true,
+        "offline": true,
+        "lyrics": true,
+        "apple_integration": true,
+        "music_videos": true
+      },
+      "pros": ["Lossless ses ücretsiz", "Spatial Audio", "Apple ekosistem entegrasyonu", "Türkiye'de ucuz"],
+      "cons": ["Android'de sınırlı", "Algoritma Spotify kadar iyi değil", "Web player zayıf"],
+      "ratings": {
+        "expert": 8.7,
+        "community": 4.4,
+        "compair": 87
+      },
+      "tags": ["apple music", "apple", "müzik", "lossless", "spatial audio"],
+      "affiliateLinks": {
+        "official": "https://music.apple.com/tr"
+      },
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "apple-one-bireysel",
+      "name": "Apple One Bireysel",
+      "brand": "Apple",
+      "category": "subscription",
+      "subcategory": "bundle",
+      "description": "Apple Music + Apple TV+ + iCloud 50GB + Apple Arcade tek pakette.",
+      "imageUrl": "https://apple.com/v/apple-one/images/icon.png",
+      "prices": {
+        "TR": 84.99,
+        "US": 19.95,
+        "EU": 16.95
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "includes": ["Apple Music", "Apple TV+", "iCloud 50GB", "Apple Arcade"],
+        "savings": "%30+ tasarruf",
+        "family_sharing": false,
+        "ecosystem": "apple"
+      },
+      "pros": ["Ayrı almaktan %30+ ucuz", "4 servis bir arada", "Tek fatura"],
+      "cons": ["Sadece Apple cihazlar", "iCloud 50GB az olabilir", "TV+ içerik az"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.3,
+        "compair": 85
+      },
+      "tags": ["apple one", "apple", "bundle", "abonelik", "paket"],
+      "affiliateLinks": {
+        "official": "https://apple.com/tr/apple-one"
+      },
+      "trendScore": 80,
+      "isActive": true
+    },
+    {
+      "id": "disney-plus",
+      "name": "Disney+",
+      "brand": "Disney",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Disney, Pixar, Marvel, Star Wars ve National Geographic içerikleri. Aile dostu.",
+      "imageUrl": "https://disney.com/disneyplus-logo.png",
+      "prices": {
+        "TR": 134.99,
+        "US": 13.99,
+        "EU": 8.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "quality": "4K UHD + HDR",
+        "screens": 4,
+        "downloads": true,
+        "profiles": 7,
+        "content": ["Disney", "Pixar", "Marvel", "Star Wars", "National Geographic", "Star"],
+        "kids_mode": true
+      },
+      "pros": ["Marvel/Star Wars içerikleri", "Aile dostu", "4K dahil", "Çocuk modu"],
+      "cons": ["İçerik Netflix'ten az", "Yeni içerik yavaş geliyor", "Türkiye'de pahalı"],
+      "ratings": {
+        "expert": 8.2,
+        "community": 4.2,
+        "compair": 82
+      },
+      "tags": ["disney", "marvel", "star wars", "streaming", "aile"],
+      "affiliateLinks": {
+        "official": "https://disneyplus.com/tr"
+      },
+      "trendScore": 84,
+      "isActive": true
+    },
+    {
+      "id": "amazon-prime-video",
+      "name": "Amazon Prime Video",
+      "brand": "Amazon",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Amazon'un streaming servisi. Prime üyeliğine dahil veya ayrı satın alınabilir.",
+      "imageUrl": "https://primevideo.com/logo.png",
+      "prices": {
+        "TR": 39.00,
+        "US": 8.99,
+        "EU": 8.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "quality": "4K UHD + HDR",
+        "screens": 3,
+        "downloads": true,
+        "profiles": 6,
+        "x_ray": true,
+        "channels": true,
+        "rent_buy": true
+      },
+      "pros": ["Çok ucuz", "Kaliteli orijinal yapımlar", "X-Ray özelliği", "Prime ile birlikte gelir"],
+      "cons": ["Arayüz karmaşık", "Bazı içerikler ek ücretli", "Türk içerik az"],
+      "ratings": {
+        "expert": 7.8,
+        "community": 4.0,
+        "compair": 78
+      },
+      "tags": ["amazon", "prime video", "streaming", "ucuz"],
+      "affiliateLinks": {
+        "official": "https://primevideo.com"
+      },
+      "trendScore": 75,
+      "isActive": true
+    },
+    {
+      "id": "icloud-200gb",
+      "name": "iCloud+ 200GB",
+      "brand": "Apple",
+      "category": "subscription",
+      "subcategory": "cloud",
+      "description": "Apple'ın bulut depolama servisi. Fotoğraf, yedekleme ve iCloud Private Relay.",
+      "imageUrl": "https://apple.com/v/icloud/images/icon.png",
+      "prices": {
+        "TR": 64.99,
+        "US": 2.99,
+        "EU": 2.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "storage": "200 GB",
+        "family_sharing": true,
+        "private_relay": true,
+        "hide_my_email": true,
+        "custom_email_domain": true,
+        "homekit_secure_video": true
+      },
+      "pros": ["Apple entegrasyonu kusursuz", "Private Relay dahil", "Aile paylaşımı 5 kişi", "HomeKit video"],
+      "cons": ["Sadece Apple cihazlar", "Windows'ta sınırlı", "Türkiye'de göreceli pahalı"],
+      "ratings": {
+        "expert": 8.0,
+        "community": 4.3,
+        "compair": 80
+      },
+      "tags": ["icloud", "apple", "bulut", "depolama", "yedekleme"],
+      "affiliateLinks": {
+        "official": "https://apple.com/tr/icloud"
+      },
+      "trendScore": 82,
+      "isActive": true
+    },
+    {
+      "id": "google-one-200gb",
+      "name": "Google One 200GB",
+      "brand": "Google",
+      "category": "subscription",
+      "subcategory": "cloud",
+      "description": "Google'ın bulut depolama servisi. Drive, Gmail, Photos için ek alan + VPN.",
+      "imageUrl": "https://one.google.com/logo.png",
+      "prices": {
+        "TR": 59.99,
+        "US": 2.99,
+        "EU": 2.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "storage": "200 GB",
+        "family_sharing": true,
+        "vpn": true,
+        "dark_web_report": true,
+        "google_experts": true,
+        "extra_features": ["Google Photos düzenleme", "10% Google Store indirimi"]
+      },
+      "pros": ["VPN dahil", "Aile paylaşımı 5 kişi", "Google Photos ek özellikler", "Cross-platform"],
+      "cons": ["VPN yavaş olabilir", "Depolama sınırlı uygulamalar arası paylaşılıyor"],
+      "ratings": {
+        "expert": 8.2,
+        "community": 4.2,
+        "compair": 82
+      },
+      "tags": ["google one", "google", "bulut", "depolama", "vpn"],
+      "affiliateLinks": {
+        "official": "https://one.google.com"
+      },
+      "trendScore": 80,
+      "isActive": true
+    },
+    {
+      "id": "chatgpt-plus",
+      "name": "ChatGPT Plus",
+      "brand": "OpenAI",
+      "category": "subscription",
+      "subcategory": "ai_tools",
+      "description": "ChatGPT'nin premium versiyonu. GPT-4o erişimi, hızlı yanıt, öncelikli erişim.",
+      "imageUrl": "https://openai.com/chatgpt-logo.png",
+      "prices": {
+        "TR": 699.00,
+        "US": 20.00,
+        "EU": 20.00
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "model": "GPT-4o, GPT-4o mini",
+        "response_speed": "5x hızlı",
+        "priority_access": true,
+        "plugins": true,
+        "code_interpreter": true,
+        "dalle": true,
+        "voice_mode": true,
+        "file_upload": true
+      },
+      "pros": ["GPT-4o erişimi", "DALL-E görsel oluşturma", "Kod yorumlayıcı", "Dosya analizi"],
+      "cons": ["Türkiye'de çok pahalı", "Mesaj limitleri var", "Yoğun saatlerde yavaşlayabilir"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.5,
+        "compair": 90
+      },
+      "tags": ["chatgpt", "openai", "ai", "yapay zeka", "gpt-4"],
+      "affiliateLinks": {
+        "official": "https://chat.openai.com"
+      },
+      "trendScore": 98,
+      "isActive": true
+    },
+    {
+      "id": "notion-plus",
+      "name": "Notion Plus",
+      "brand": "Notion",
+      "category": "subscription",
+      "subcategory": "productivity",
+      "description": "All-in-one workspace. Not alma, proje yönetimi, veritabanı, wiki hepsi bir arada.",
+      "imageUrl": "https://notion.so/logo.png",
+      "prices": {
+        "TR": 320.00,
+        "US": 10.00,
+        "EU": 10.00
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "blocks": "sınırsız",
+        "file_upload": "sınırsız",
+        "guests": 100,
+        "version_history": "30 gün",
+        "api_access": true,
+        "ai_addon": "opsiyonel"
+      },
+      "pros": ["Çok yönlü", "Güçlü veritabanı", "Template zenginliği", "Takım işbirliği"],
+      "cons": ["Öğrenme eğrisi dik", "Mobil uygulama yavaş", "Çevrimdışı sınırlı"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.5,
+        "compair": 88
+      },
+      "tags": ["notion", "not", "proje yönetimi", "verimlilik", "workspace"],
+      "affiliateLinks": {
+        "official": "https://notion.so/pricing"
+      },
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "canva-pro",
+      "name": "Canva Pro",
+      "brand": "Canva",
+      "category": "subscription",
+      "subcategory": "productivity",
+      "description": "Online grafik tasarım aracı. Milyonlarca şablon, stok fotoğraf, AI araçları.",
+      "imageUrl": "https://canva.com/logo.png",
+      "prices": {
+        "TR": 209.99,
+        "US": 12.99,
+        "EU": 11.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "templates": "1M+",
+        "stock_photos": "100M+",
+        "storage": "1 TB",
+        "brand_kit": true,
+        "background_remover": true,
+        "magic_resize": true,
+        "ai_tools": true
+      },
+      "pros": ["Kullanımı çok kolay", "Zengin şablon", "AI araçları", "Takım özellikleri"],
+      "cons": ["Profesyonel tasarım için sınırlı", "İnternet bağlantısı şart", "Bazı özellikler ekstra ücretli"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.6,
+        "compair": 85
+      },
+      "tags": ["canva", "tasarım", "grafik", "sosyal medya", "şablon"],
+      "affiliateLinks": {
+        "official": "https://canva.com/pro"
+      },
+      "trendScore": 90,
+      "isActive": true
+    },
+    {
+      "id": "microsoft-365-personal",
+      "name": "Microsoft 365 Personal",
+      "brand": "Microsoft",
+      "category": "subscription",
+      "subcategory": "productivity",
+      "description": "Word, Excel, PowerPoint, Outlook + 1TB OneDrive. Tüm cihazlarda kullanım.",
+      "imageUrl": "https://microsoft.com/365-logo.png",
+      "prices": {
+        "TR": 359.99,
+        "US": 9.99,
+        "EU": 7.00
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "apps": ["Word", "Excel", "PowerPoint", "Outlook", "OneNote", "OneDrive"],
+        "storage": "1 TB OneDrive",
+        "devices": 5,
+        "copilot": "opsiyonel",
+        "mobile_apps": true,
+        "web_apps": true
+      },
+      "pros": ["Office standartı", "1TB OneDrive", "5 cihaz", "Sürekli güncel"],
+      "cons": ["Abonelik zorunlu", "Copilot ekstra ücretli", "macOS'ta bazı özellikler eksik"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.3,
+        "compair": 85
+      },
+      "tags": ["microsoft", "office", "365", "word", "excel", "onedrive"],
+      "affiliateLinks": {
+        "official": "https://microsoft.com/tr-tr/microsoft-365"
+      },
+      "trendScore": 82,
+      "isActive": true
+    }
+  ]
+}

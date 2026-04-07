@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Services — Compair</title>
+  <meta name="description" content="Browse all product categories and services. Smartphones, laptops, GPUs, subscriptions and more.">
+  <link rel="canonical" href="https://compair.digital/services">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="logo-icon">C</div><h1>Compair</h1></div>
+      <nav class="sidebar-nav">
+        <a href="/link-analysis.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link Analysis</a>
+        <a href="/compare.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Compare</a>
+        <a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Home</a>
+        <a href="/services.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Services</a>
+        <a href="/ai-chat.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>AI Chat</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/privacy.html">Privacy Policy</a><a href="/terms.html">Terms of Service</a><a href="/faq.html">FAQ</a>
+        <span class="copyright">© 2025 Compair</span>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="mobile-hamburger" id="hamburger"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        <div class="search-bar">
+          <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search categories..." id="cat-search">
+        </div>
+        <div class="topbar-actions">
+          <div id="auth-btn-container"></div>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <div class="page-header fade-in">
+          <h1>All Categories</h1>
+          <p>Browse 40+ product categories</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;" class="fade-in fade-in-delay-1" id="all-categories">
+          <!-- Filled by JS -->
+        </div>
+
+        <!-- Subscriptions Section -->
+        <section class="fade-in fade-in-delay-2" style="margin-top:40px;">
+          <div class="section-header">
+            <div class="section-title">
+              <div class="icon-box" style="background:#7C3AED15;">🔔</div>
+              <div><h2>Subscription Services</h2><p>Compare and track your subscriptions</p></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;" id="services-subscriptions"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <nav class="mobile-nav">
+    <a href="/link-analysis.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link</a>
+    <a href="/compare.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Compare</a>
+    <a href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Home</a>
+    <a href="/services.html" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Services</a>
+    <a href="/ai-chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>AI Chat</a>
+  </nav>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    const ALL_CATS = [
+      { name: 'Smartphones', icon: '📱', color: '#3B82F6', bg: '#EFF6FF' },
+      { name: 'Laptops', icon: '💻', color: '#8B5CF6', bg: '#F5F3FF' },
+      { name: 'Tablets', icon: '📟', color: '#06B6D4', bg: '#ECFEFF' },
+      { name: 'Desktops', icon: '🖥️', color: '#6366F1', bg: '#EEF2FF' },
+      { name: 'Monitors', icon: '🖥️', color: '#0EA5E9', bg: '#F0F9FF' },
+      { name: 'TVs', icon: '📺', color: '#F97316', bg: '#FFF7ED' },
+      { name: 'Headphones', icon: '🎧', color: '#EC4899', bg: '#FDF2F8' },
+      { name: 'Speakers', icon: '🔊', color: '#D946EF', bg: '#FAF5FF' },
+      { name: 'Cameras', icon: '📷', color: '#F97316', bg: '#FFF7ED' },
+      { name: 'Smartwatches', icon: '⌚', color: '#14B8A6', bg: '#F0FDFA' },
+      { name: 'GPUs', icon: '🎮', color: '#EF4444', bg: '#FEF2F2' },
+      { name: 'CPUs', icon: '⚡', color: '#3B82F6', bg: '#EFF6FF' },
+      { name: 'Motherboards', icon: '🔧', color: '#8B5CF6', bg: '#F5F3FF' },
+      { name: 'RAM', icon: '💾', color: '#10B981', bg: '#ECFDF5' },
+      { name: 'SSDs', icon: '💽', color: '#F59E0B', bg: '#FFFBEB' },
+      { name: 'PSUs', icon: '🔌', color: '#06B6D4', bg: '#ECFEFF' },
+      { name: 'PC Cases', icon: '🖥️', color: '#6366F1', bg: '#EEF2FF' },
+      { name: 'Coolers', icon: '❄️', color: '#14B8A6', bg: '#F0FDFA' },
+      { name: 'Dashcams', icon: '📹', color: '#64748B', bg: '#F8FAFC' },
+      { name: 'Drones', icon: '🚁', color: '#A855F7', bg: '#FAF5FF' },
+      { name: 'Routers', icon: '📡', color: '#0EA5E9', bg: '#F0F9FF' },
+      { name: 'Keyboards', icon: '⌨️', color: '#6366F1', bg: '#EEF2FF' },
+      { name: 'Mice', icon: '🖱️', color: '#64748B', bg: '#F8FAFC' },
+      { name: 'Projectors', icon: '📽️', color: '#D946EF', bg: '#FAF5FF' },
+      { name: 'Smart Home', icon: '🏠', color: '#22C55E', bg: '#F0FDF4' },
+      { name: 'Fitness', icon: '💪', color: '#EF4444', bg: '#FEF2F2' },
+      { name: 'E-Readers', icon: '📖', color: '#64748B', bg: '#F8FAFC' },
+      { name: 'Printers', icon: '🖨️', color: '#F97316', bg: '#FFF7ED' },
+    ];
+    document.addEventListener('DOMContentLoaded', () => {
+      const grid = document.getElementById('all-categories');
+      if (grid) {
+        grid.innerHTML = ALL_CATS.map(c => `
+          <div class="category-item" style="padding:20px;">
+            <div class="category-icon" style="background:${c.bg};font-size:28px;">${c.icon}</div>
+            <div class="cat-name" style="font-size:13px;">${c.name}</div>
+          </div>
+        `).join('');
+      }
+      const subGrid = document.getElementById('services-subscriptions');
+      if (subGrid) {
+        subGrid.innerHTML = SUBSCRIPTIONS.map(s => `
+          <div class="sub-card">
+            <div class="sub-header">
+              <div class="sub-icon" style="background:${s.color}">${s.icon}</div>
+              <div>
+                <div class="sub-name">${s.name}</div>
+                <span class="sub-cat" style="background:${s.color}15;color:${s.color}">${s.cat}</span>
+              </div>
+            </div>
+            <div class="sub-desc">${s.desc}</div>
+            <div class="sub-footer">
+              <span class="sub-price" style="color:${s.color}">${s.price}/mo</span>
+              <span class="sub-compare" style="background:${s.color}15;color:${s.color}">Compare</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    });
+  </script>
+</body>
+</html>

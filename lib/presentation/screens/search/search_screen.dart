@@ -1,0 +1,564 @@
+import 'dart:async';
+
+import 'package:compair/core/constants.dart';
+import 'package:compair/core/errors.dart';
+import 'package:compair/core/theme.dart';
+import 'package:compair/domain/entities/product_entity.dart';
+import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/product_image_box.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+// ─── Search Screen ───────────────────────────────────────────────────────────
+
+class SearchScreen extends ConsumerStatefulWidget {
+  const SearchScreen({super.key});
+  @override
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends ConsumerState<SearchScreen> {
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+  List<ProductEntity> _results = [];
+  bool _searching = false;
+  Timer? _debounce;
+
+  static const _trendingSearches = [
+    'iPhone', 'Samsung Galaxy', 'MacBook Pro',
+    'PlayStation', 'iPad Pro', 'AirPods',
+    'Dell XPS', 'Sony WH-1000XM5', 'RTX 4090',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String q) {
+    _debounce?.cancel();
+    if (q.trim().length < 2) {
+      setState(() { _results = []; _searching = false; });
+      return;
+    }
+    setState(() => _searching = true);
+    _debounce = Timer(const Duration(milliseconds: 350), () => _search(q));
+  }
+
+  Future<void> _search(String q) async {
+    if (q.trim().isEmpty) return;
+    setState(() => _searching = true);
+    ref.read(searchQueryProvider.notifier).state = q;
+    try {
+      final result = await ref.read(productRepositoryProvider)
+          .searchProducts(query: q.trim(), limit: AppConstants.searchPageSize);
+      if (!mounted) return;
+      switch (result) {
+        case Success(data: final products):
+          setState(() { _results = products; _searching = false; });
+          if (products.isNotEmpty) {
+            final recent = List<String>.from(ref.read(recentSearchesProvider));
+            recent.remove(q);
+            recent.insert(0, q);
+            if (recent.length > 10) recent.removeRange(10, recent.length);
+            ref.read(recentSearchesProvider.notifier).state = recent;
+          }
+        case Failure(error: final e):
+          debugPrint('SEARCH UI: failure: $e');
+          setState(() { _results = []; _searching = false; });
+      }
+    } catch (e) {
+      debugPrint('SEARCH UI: exception: $e');
+      if (mounted) setState(() { _results = []; _searching = false; });
+    }
+  }
+
+  void _openProduct(ProductEntity p) {
+    HapticFeedback.lightImpact();
+    ref.read(behaviorTrackingProvider)
+        .trackSearch(_ctrl.text, tappedProductId: p.id);
+    context.push('/product/${p.id}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.of(context).padding.top;
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final hasQuery = _ctrl.text.trim().isNotEmpty;
+
+    return Scaffold(
+      backgroundColor: context.backgroundColor,
+      body: Column(children: [
+        // ─── Search Header ────────────────────────────────────────────
+        Container(
+          padding: EdgeInsets.only(top: top + 8, bottom: 12, left: 16, right: 16),
+          decoration: BoxDecoration(color: context.surfaceVariantColor,
+            border: Border(bottom: BorderSide(color: context.dividerColor, width: 0.5))),
+          child: Row(children: [
+            Expanded(child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(12)),
+              child: TextField(
+                controller: _ctrl,
+                focusNode: _focus,
+                onChanged: _onChanged,
+                style: GoogleFonts.plusJakartaSans(fontSize: 16,
+                    color: context.textPrimary),
+                decoration: InputDecoration(
+                  hintText: context.l10n?.searchProductsHint ?? 'Search products...',
+                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 16,
+                      color: context.textTertiaryColor),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      size: 20, color: context.textSecondary),
+                  suffixIcon: hasQuery ? GestureDetector(
+                    onTap: () {
+                      _ctrl.clear();
+                      setState(() { _results = []; _searching = false; });
+                    },
+                    child: Icon(Icons.close_rounded,
+                        size: 18, color: context.textSecondary),
+                  ) : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10)),
+              ),
+            )),
+            if (hasQuery) ...[
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () {
+                  _ctrl.clear();
+                  _focus.unfocus();
+                  setState(() { _results = []; _searching = false; });
+                },
+                child: Text(context.l10n?.cancel ?? 'Cancel', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w500,
+                    color: AppTheme.neonCyan)),
+              ),
+            ],
+          ]),
+        ),
+
+        // ─── Body ─────────────────────────────────────────────────────
+        Expanded(child: _searching
+            ? const Center(child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppTheme.neonCyan))
+            : hasQuery
+                ? _results.isEmpty
+                    ? _buildNoResults()
+                    : _buildResults(bottom)
+                : _buildEmptyState(bottom)),
+      ]),
+    );
+  }
+
+  // ─── Empty State: Popular Products + Trending ──────────────────────────────
+
+  Widget _buildEmptyState(double bottom) {
+    final recents = ref.watch(recentSearchesProvider);
+    return CustomScrollView(
+      slivers: [
+        // Recent searches
+        if (recents.isNotEmpty) SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Text(context.l10n?.recent ?? 'Recent', style: GoogleFonts.plusJakartaSans(fontSize: 18,
+                    fontWeight: FontWeight.w700, color: context.textPrimary)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    ref.read(recentSearchesProvider.notifier).state = [];
+                  },
+                  child: Text(context.l10n?.clearLabel ?? 'Clear', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13, color: AppTheme.neonCyan)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 8, children: recents.map((q) =>
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _ctrl.text = q;
+                    _onChanged(q);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: context.surfaceVariantColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.dividerColor)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.history_rounded,
+                          size: 14, color: context.textSecondary),
+                      const SizedBox(width: 6),
+                      Text(q, style: GoogleFonts.plusJakartaSans(fontSize: 13,
+                          color: context.textSecondary)),
+                    ]),
+                  ),
+                ),
+              ).toList()),
+            ]),
+          ),
+        ),
+
+        // Trending searches
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.trending_up_rounded,
+                    size: 18, color: Color(0xFFFF9500)),
+                const SizedBox(width: 6),
+                Text(context.l10n?.trendingSearches ?? 'Trending Searches', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18, fontWeight: FontWeight.w700,
+                    color: context.textPrimary)),
+              ]),
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8,
+                children: _trendingSearches.asMap().entries.map((e) =>
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _ctrl.text = e.value;
+                      _onChanged(e.value);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: e.key < 3
+                            ? LinearGradient(colors: [
+                                AppTheme.neonCyan.withValues(alpha: 0.10),
+                                AppTheme.neonCyan.withValues(alpha: 0.04)])
+                            : null,
+                        color: e.key >= 3 ? context.surfaceVariantColor : null,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: e.key < 3
+                            ? AppTheme.neonCyan.withValues(alpha: 0.25)
+                            : context.dividerColor)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        if (e.key < 3) ...[
+                          Text('#${e.key + 1}', style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11, fontWeight: FontWeight.w800,
+                              color: AppTheme.neonCyan)),
+                          const SizedBox(width: 5),
+                        ],
+                        Text(e.value, style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13, fontWeight: e.key < 3
+                                ? FontWeight.w600 : FontWeight.w400,
+                            color: context.textSecondary)),
+                      ]),
+                    ),
+                  ).animate(delay: (e.key * 50).ms)
+                      .fadeIn(duration: 300.ms).slideX(begin: 0.05),
+                ).toList()),
+            ]),
+          ),
+        ),
+
+        // Top Rated Products heading
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
+            child: Row(children: [
+              const Icon(Icons.star_rounded, size: 18, color: Color(0xFFFFCC00)),
+              const SizedBox(width: 6),
+              Text(context.l10n?.topRatedProducts ?? 'Top Rated Products', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18, fontWeight: FontWeight.w700,
+                  color: context.textPrimary)),
+              const Spacer(),
+              Text(context.l10n?.byTechScore ?? 'by Tech Score', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, color: context.textSecondary)),
+            ]),
+          ),
+        ),
+
+        // Top rated products grid
+        _TopRatedGrid(onTap: _openProduct),
+
+        SliverPadding(padding: EdgeInsets.only(
+            bottom: bottom + AppTheme.navBarTotalClearance + 20)),
+      ],
+    );
+  }
+
+  // ─── No Results ────────────────────────────────────────────────────────────
+
+  Widget _buildNoResults() {
+    return Center(child: Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.brandCyan.withValues(alpha: 0.12),
+                AppTheme.brandBlue.withValues(alpha: 0.08),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+            boxShadow: [
+              BoxShadow(color: AppTheme.brandCyan.withValues(alpha: 0.10), blurRadius: 12),
+            ]),
+          child: ShaderMask(
+            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            child: const Icon(Icons.search_off_rounded, size: 32, color: Colors.white),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(context.l10n?.noResultsFound ?? 'No results found', style: GoogleFonts.plusJakartaSans(
+            fontSize: 18, fontWeight: FontWeight.w700,
+            color: context.textPrimary)),
+        const SizedBox(height: 6),
+        Text(context.l10n?.tryDifferentKeywords ?? 'Try different keywords or check for typos',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                color: context.textSecondary)),
+      ]).animate().fadeIn(duration: 300.ms).scale(
+          begin: const Offset(0.95, 0.95))),
+    );
+  }
+
+  // ─── Search Results ────────────────────────────────────────────────────────
+
+  Widget _buildResults(double bottom) {
+    final country = ref.watch(selectedCountryProvider);
+    return ListView.builder(
+      padding: EdgeInsets.only(
+          left: 16, right: 16, top: 8,
+          bottom: bottom + AppTheme.navBarTotalClearance + 20),
+      itemCount: _results.length,
+      itemBuilder: (context, i) {
+        final p = _results[i];
+        final price = p.getPriceForCountry(country);
+        final priceStr = price != null ? '\$${price.toStringAsFixed(0)}' : null;
+        return GestureDetector(
+          onTap: () => _openProduct(p),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.brandCyan.withValues(alpha: 0.05),
+                  AppTheme.brandBlue.withValues(alpha: 0.02),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.10), width: 0.5),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]),
+            child: Row(children: [
+              // Image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ProductImageBox(
+                    imageUrl: p.imageURL, height: 60,
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              const SizedBox(width: 12),
+              // Info
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary)),
+                const SizedBox(height: 2),
+                Text(p.brand ?? '', style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                    color: context.textSecondary)),
+                if (priceStr != null) ...[
+                  const SizedBox(height: 4),
+                  Text(priceStr, style: GoogleFonts.plusJakartaSans(fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.neonCyan)),
+                ],
+              ])),
+              // Tech score badge
+              if (p.techScore > 0) Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [
+                    _scoreColor(p.techScore),
+                    _scoreColor(p.techScore).withValues(alpha: 0.7)])),
+                child: Center(child: Text(p.techScore.round().toString(),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                        fontWeight: FontWeight.w800, color: Colors.white))),
+              ),
+            ]),
+          ),
+        ).animate(delay: (i * 30).ms).fadeIn(duration: 200.ms)
+            .slideX(begin: 0.03);
+      },
+    );
+  }
+
+  Color _scoreColor(double score) {
+    if (score >= 80) return const Color(0xFF34C759);
+    if (score >= 60) return const Color(0xFFFF9500);
+    return const Color(0xFFFF3B30);
+  }
+}
+
+
+// ─── Top Rated Products Grid ─────────────────────────────────────────────────
+
+class _TopRatedGrid extends ConsumerWidget {
+  final ValueChanged<ProductEntity> onTap;
+  const _TopRatedGrid({required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trending = ref.watch(trendingProductsProvider);
+    final country = ref.watch(selectedCountryProvider);
+
+    return trending.when(
+      loading: () => const SliverToBoxAdapter(
+        child: Padding(padding: EdgeInsets.all(40),
+          child: Center(child: CircularProgressIndicator(
+              strokeWidth: 2, color: AppTheme.neonCyan)))),
+      error: (_, __) => SliverToBoxAdapter(
+        child: Padding(padding: const EdgeInsets.all(20),
+          child: Center(child: Text(context.l10n?.couldNotLoadProducts ?? 'Could not load products',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14, color: context.textSecondary))))),
+      data: (products) {
+        // Sort by techScore descending, take top 20
+        final sorted = List<ProductEntity>.from(products)
+          ..sort((a, b) => b.techScore.compareTo(a.techScore));
+        final top = sorted.take(20).toList();
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 0.78),
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final p = top[i];
+              final price = p.getPriceForCountry(country);
+              final priceStr = price != null ? '\$${price.toStringAsFixed(0)}' : null;
+              return GestureDetector(
+                onTap: () => onTap(p),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: context.surfaceVariantColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: context.dividerColor, width: 0.5)),
+                  child: Column(children: [
+                    // Image + score badge
+                    Expanded(child: Stack(children: [
+                      Center(child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: ProductImageBox(
+                            imageUrl: p.imageURL, height: 100,
+                            borderRadius: BorderRadius.circular(14)),
+                      )),
+                      // Rank badge
+                      if (i < 3) Positioned(top: 8, left: 8,
+                        child: Container(
+                          width: 26, height: 26,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(colors: [
+                              i == 0 ? const Color(0xFFFFD700)
+                                  : i == 1 ? const Color(0xFFC0C0C0)
+                                      : const Color(0xFFCD7F32),
+                              i == 0 ? const Color(0xFFF59E0B)
+                                  : i == 1 ? const Color(0xFF94A3B8)
+                                      : const Color(0xFFB45309)])),
+                          child: Center(child: Text('${i + 1}',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white))),
+                        ),
+                      ),
+                      // Tech score
+                      if (p.techScore > 0) Positioned(top: 8, right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _scoreColor(p.techScore),
+                            borderRadius: BorderRadius.circular(8)),
+                          child: Text(p.techScore.round().toString(),
+                              style: GoogleFonts.plusJakartaSans(fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white)),
+                        ),
+                      ),
+                    ])),
+                    // Info
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text(p.name, maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: context.textPrimary)),
+                        const SizedBox(height: 2),
+                        Row(children: [
+                          Text(p.brand ?? '', style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11, color: context.textSecondary)),
+                          if (priceStr != null) ...[
+                            const Spacer(),
+                            Text(priceStr, style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12, fontWeight: FontWeight.w700,
+                                color: AppTheme.neonCyan)),
+                          ],
+                        ]),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ).animate(delay: (i * 60).ms)
+                  .fadeIn(duration: 300.ms)
+                  .scale(begin: const Offset(0.95, 0.95));
+            }, childCount: top.length),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _scoreColor(double score) {
+    if (score >= 80) return const Color(0xFF34C759);
+    if (score >= 60) return const Color(0xFFFF9500);
+    return const Color(0xFFFF3B30);
+  }
+}

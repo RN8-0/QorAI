@@ -1,0 +1,235 @@
+/// Filter state models and product filter applier.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:compair/domain/entities/product_entity.dart';
+import 'package:compair/config/filter_config.dart';
+
+// ---------------------------------------------------------------------------
+// FilterState
+// ---------------------------------------------------------------------------
+
+class FilterState {
+  final Map<String, Set<String>> multiSelect;
+  final Map<String, RangeValues> ranges;
+  final Map<String, bool?> toggles;
+
+  const FilterState({
+    this.multiSelect = const {},
+    this.ranges = const {},
+    this.toggles = const {},
+  });
+
+  bool get isActive =>
+      multiSelect.values.any((s) => s.isNotEmpty) ||
+      ranges.isNotEmpty ||
+      toggles.values.any((v) => v != null);
+
+  int get activeCount =>
+      multiSelect.values.where((s) => s.isNotEmpty).length +
+      ranges.length +
+      toggles.values.where((v) => v != null).length;
+
+  FilterState copyWith({
+    Map<String, Set<String>>? multiSelect,
+    Map<String, RangeValues>? ranges,
+    Map<String, bool?>? toggles,
+  }) {
+    return FilterState(
+      multiSelect: multiSelect ?? this.multiSelect,
+      ranges: ranges ?? this.ranges,
+      toggles: toggles ?? this.toggles,
+    );
+  }
+
+  FilterState reset() => const FilterState();
+}
+
+// ---------------------------------------------------------------------------
+// FilterApplier
+// ---------------------------------------------------------------------------
+
+class FilterApplier {
+  FilterApplier._();
+
+  static List<ProductEntity> apply(
+    List<ProductEntity> products,
+    FilterState state,
+    List<FilterDefinition> definitions,
+  ) {
+    if (!state.isActive) return products;
+
+    return products.where((product) {
+      final flatSpecs = _flattenSpecs(product);
+
+      for (final def in definitions) {
+        switch (def.type) {
+          case FilterType.multiSelect:
+            if (!_passesMultiSelect(product, def, state, flatSpecs)) {
+              return false;
+            }
+          case FilterType.rangeSlider:
+            if (!_passesRange(def, state, flatSpecs)) return false;
+          case FilterType.toggle:
+            if (!_passesToggle(def, state, flatSpecs)) return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  // ── helpers ───────────────────────────────────────────────────────────────
+
+  /// Merges specSections (nested Map) and specs (flat Map) into a single
+  /// Map<String, String> for easy lookup. Also adds price from product.prices.
+  static Map<String, String> _flattenSpecs(ProductEntity product) {
+    final flat = <String, String>{};
+
+    // Flat specs map
+    for (final entry in product.specs.entries) {
+      if (entry.value != null) {
+        flat[entry.key] = entry.value.toString();
+      }
+    }
+
+    // Nested specSections: { sectionName: { key: value, ... } }
+    for (final section in product.specSections.values) {
+      if (section is Map) {
+        for (final entry in section.entries) {
+          if (entry.value != null) {
+            flat[entry.key.toString()] = entry.value.toString();
+          }
+        }
+      }
+    }
+
+    // Add lowest available price for price range filtering
+    if (product.prices.isNotEmpty) {
+      final lowestPrice = product.prices.values
+          .fold<double>(double.infinity, (m, v) => v < m ? v : m);
+      if (lowestPrice != double.infinity) {
+        flat['price'] = lowestPrice.toStringAsFixed(0);
+        flat['Price'] = lowestPrice.toStringAsFixed(0);
+      }
+    }
+
+    // Add tech score for score range filtering
+    flat['techScore'] = product.techScore.toStringAsFixed(0);
+
+    return flat;
+  }
+
+  static bool _passesMultiSelect(
+    ProductEntity product,
+    FilterDefinition def,
+    FilterState state,
+    Map<String, String> flatSpecs,
+  ) {
+    final selected = state.multiSelect[def.id];
+    if (selected == null || selected.isEmpty) return true;
+
+    final selectedLabels = (def.options ?? [])
+        .where((o) => selected.contains(o.id))
+        .map((o) => o.label.toLowerCase())
+        .toList();
+
+    if (selectedLabels.isEmpty) return true;
+
+    // Brand filter checks product.brand directly.
+    if (def.id == 'brand') {
+      final brandLower = (product.brand ?? '').toLowerCase();
+      return selectedLabels.any((l) => brandLower.contains(l) || l.contains(brandLower));
+    }
+
+    // Score range filter checks product.techScore against range buckets.
+    if (def.id == 'tech_score') {
+      final score = product.techScore;
+      final selectedIds = selected.toList();
+      return selectedIds.any((id) {
+        final parts = id.split('-');
+        if (parts.length != 2) return false;
+        final lo = double.tryParse(parts[0]);
+        final hi = double.tryParse(parts[1]);
+        if (lo == null || hi == null) return false;
+        return score >= lo && score <= hi;
+      });
+    }
+
+    // For other filters, search spec values.
+    final specValue = _findSpecValue(def.specKeys, flatSpecs);
+    if (specValue == null) return false;
+    final specLower = specValue.toLowerCase();
+
+    return selectedLabels.any((label) => specLower.contains(label));
+  }
+
+  static bool _passesRange(
+    FilterDefinition def,
+    FilterState state,
+    Map<String, String> flatSpecs,
+  ) {
+    final range = state.ranges[def.id];
+    if (range == null) return true;
+
+    final specValue = _findSpecValue(def.specKeys, flatSpecs);
+    if (specValue == null) return false;
+
+    final number = _extractFirstNumber(specValue);
+    if (number == null) return false;
+
+    return number >= range.start && number <= range.end;
+  }
+
+  static bool _passesToggle(
+    FilterDefinition def,
+    FilterState state,
+    Map<String, String> flatSpecs,
+  ) {
+    final wantTrue = state.toggles[def.id];
+    if (wantTrue == null) return true;
+
+    final specValue = _findSpecValue(def.specKeys, flatSpecs);
+    final isPresent = specValue != null;
+    final valueLower = (specValue ?? '').toLowerCase().trim();
+
+    // Explicit "no" markers
+    final isNegative = valueLower == 'no' ||
+        valueLower == 'false' ||
+        valueLower.contains('✗') ||
+        valueLower == 'n/a' ||
+        valueLower == '-';
+
+    // Explicit "yes" markers (or simply present with non-negative value)
+    final isPositive = isPresent &&
+        !isNegative &&
+        (valueLower == 'yes' ||
+            valueLower == 'true' ||
+            valueLower.contains('✓') ||
+            valueLower.isNotEmpty);
+
+    return wantTrue ? isPositive : isNegative;
+  }
+
+  /// Returns the first spec value found for any of the provided keys
+  /// (case-insensitive key match).
+  static String? _findSpecValue(List<String> keys, Map<String, String> flatSpecs) {
+    for (final key in keys) {
+      final lower = key.toLowerCase();
+      // Exact match first
+      final exact = flatSpecs[key];
+      if (exact != null) return exact;
+      // Case-insensitive fallback
+      for (final entry in flatSpecs.entries) {
+        if (entry.key.toLowerCase() == lower) return entry.value;
+      }
+    }
+    return null;
+  }
+
+  /// Extracts the first numeric value from a string like "6.1 in", "128 GB", "4200 mAh".
+  static double? _extractFirstNumber(String value) {
+    final match = RegExp(r'[\d]+(?:[.,]\d+)?').firstMatch(value.replaceAll(',', '.'));
+    if (match == null) return null;
+    return double.tryParse(match.group(0)!.replaceAll(',', '.'));
+  }
+}

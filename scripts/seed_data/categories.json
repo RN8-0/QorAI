@@ -1,0 +1,58 @@
+{
+  "categories": [
+    {
+      "id": "tech",
+      "name": "Teknoloji",
+      "emoji": "💻",
+      "description": "Akıllı telefonlar, tabletler, laptoplar ve diğer teknoloji ürünleri",
+      "order": 1,
+      "isActive": true,
+      "subcategories": ["smartphones", "laptops", "tablets", "headphones", "smartwatches", "gaming_hw"]
+    },
+    {
+      "id": "subscription",
+      "name": "Abonelikler",
+      "emoji": "📺",
+      "description": "Dijital abonelik servisleri - streaming, müzik, bulut depolama",
+      "order": 2,
+      "isActive": true,
+      "subcategories": ["streaming", "music", "cloud", "productivity", "gaming_sub"]
+    },
+    {
+      "id": "gaming",
+      "name": "Oyun",
+      "emoji": "🎮",
+      "description": "Oyun konsolları, PC gaming ve oyun aksesuarları",
+      "order": 3,
+      "isActive": true,
+      "subcategories": ["consoles", "pc_gaming", "accessories", "games"]
+    },
+    {
+      "id": "travel",
+      "name": "Seyahat",
+      "emoji": "✈️",
+      "description": "Havayolu, otel ve seyahat karşılaştırma platformları",
+      "order": 4,
+      "isActive": true,
+      "subcategories": ["airlines", "hotels", "booking_platforms", "travel_cards"]
+    },
+    {
+      "id": "productivity",
+      "name": "Verimlilik",
+      "emoji": "📊",
+      "description": "İş ve verimlilik araçları, yazılımlar",
+      "order": 5,
+      "isActive": true,
+      "subcategories": ["office", "notes", "project_management", "ai_tools"]
+    },
+    {
+      "id": "entertainment",
+      "name": "Eğlence",
+      "emoji": "🎬",
+      "description": "Film, dizi, podcast ve eğlence içerikleri",
+      "order": 6,
+      "isActive": true,
+      "subcategories": ["movies", "series", "podcasts", "ebooks"]
+    }
+  ]
+}

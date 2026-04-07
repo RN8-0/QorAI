@@ -1,0 +1,272 @@
+/// Compair - AI Request/Response Entities
+/// Blueprint Section 7.2, 7.3, 9.1
+
+import 'package:equatable/equatable.dart';
+
+/// AI comparison request
+class CompareRequest extends Equatable {
+  final List<String> productIds;
+  final Map<String, dynamic> userProfile;
+  final String country;
+  final String category;
+
+  const CompareRequest({
+    required this.productIds,
+    required this.userProfile,
+    required this.country,
+    required this.category,
+  });
+
+  @override
+  List<Object?> get props => [productIds, country];
+}
+
+/// AI comparison result
+class ComparisonResult extends Equatable {
+  final Map<String, ProductScore> scores;
+  final String analysis;
+  final String? winnerId;
+  final DateTime generatedAt;
+
+  const ComparisonResult({
+    required this.scores,
+    required this.analysis,
+    this.winnerId,
+    required this.generatedAt,
+  });
+
+  @override
+  List<Object?> get props => [scores, generatedAt];
+}
+
+class ProductScore extends Equatable {
+  final String productId;
+  final double totalScore;
+  final double personalFit;
+  final double community;
+  final double expert;
+  final double valuePrice;
+  final List<String> pros;
+  final List<String> cons;
+
+  const ProductScore({
+    required this.productId,
+    required this.totalScore,
+    required this.personalFit,
+    required this.community,
+    required this.expert,
+    required this.valuePrice,
+    this.pros = const [],
+    this.cons = const [],
+  });
+
+  @override
+  List<Object?> get props => [productId, totalScore];
+}
+
+/// AI recommendation request
+class RecommendRequest extends Equatable {
+  final Map<String, dynamic> userProfile;
+  final String category;
+  final String country;
+  final int limit;
+
+  const RecommendRequest({
+    required this.userProfile,
+    required this.category,
+    required this.country,
+    this.limit = 10,
+  });
+
+  @override
+  List<Object?> get props => [category, country];
+}
+
+/// AI recommendation result
+class RecommendationResult extends Equatable {
+  final List<RecommendedProduct> recommendations;
+  final DateTime generatedAt;
+
+  const RecommendationResult({
+    required this.recommendations,
+    required this.generatedAt,
+  });
+
+  @override
+  List<Object?> get props => [recommendations, generatedAt];
+}
+
+class RecommendedProduct extends Equatable {
+  final String productId;
+  final double score;
+  final String reason;
+
+  const RecommendedProduct({
+    required this.productId,
+    required this.score,
+    required this.reason,
+  });
+
+  @override
+  List<Object?> get props => [productId, score];
+}
+
+/// Link analysis request - Section 9.1
+class LinkAnalysisRequest extends Equatable {
+  final String url;
+  final Map<String, dynamic> userProfile;
+  final String country;
+
+  const LinkAnalysisRequest({
+    required this.url,
+    required this.userProfile,
+    required this.country,
+  });
+
+  @override
+  List<Object?> get props => [url];
+}
+
+/// Link analysis result - Section 9.1
+class LinkAnalysisResult extends Equatable {
+  final String url;
+  final OgMetadata metadata;
+  final double aiScore;
+  final String aiAnalysis;
+  final String? category;
+  final DateTime analyzedAt;
+
+  const LinkAnalysisResult({
+    required this.url,
+    required this.metadata,
+    required this.aiScore,
+    required this.aiAnalysis,
+    this.category,
+    required this.analyzedAt,
+  });
+
+  @override
+  List<Object?> get props => [url, aiScore];
+}
+
+/// Open Graph Metadata - Section 9.2
+class OgMetadata extends Equatable {
+  final String? title;
+  final String? description;
+  final String? image;
+  final String? price;
+  final String? siteName;
+
+  const OgMetadata({
+    this.title,
+    this.description,
+    this.image,
+    this.price,
+    this.siteName,
+  });
+
+  @override
+  List<Object?> get props => [title, description];
+}
+
+/// Product Quiz — AI-generated questions to gauge user-product compatibility.
+/// Quizzes are cached per category in Firestore so they can be reused.
+class ProductQuiz extends Equatable {
+  final String id;
+  final String category;
+  final String productTitle;
+  final List<QuizQuestion> questions;
+  final DateTime createdAt;
+
+  const ProductQuiz({
+    required this.id,
+    required this.category,
+    required this.productTitle,
+    required this.questions,
+    required this.createdAt,
+  });
+
+  @override
+  List<Object?> get props => [id, category];
+}
+
+class QuizQuestion extends Equatable {
+  final String id;
+  final String text;
+  final List<String> options;
+  final String? selectedOption;
+
+  const QuizQuestion({
+    required this.id,
+    required this.text,
+    required this.options,
+    this.selectedOption,
+  });
+
+  QuizQuestion copyWith({String? selectedOption}) => QuizQuestion(
+        id: id,
+        text: text,
+        options: options,
+        selectedOption: selectedOption ?? this.selectedOption,
+      );
+
+  @override
+  List<Object?> get props => [id, text, selectedOption];
+}
+
+/// Extended link analysis result with quiz-enhanced compatibility data.
+class EnhancedAnalysisResult extends Equatable {
+  final LinkAnalysisResult baseResult;
+  final double enhancedScore;
+  final List<CompatibilityFactor> factors;
+  final String detailedVerdict;
+  final List<String> prosForUser;
+  final List<String> consForUser;
+  final List<String> alternatives;
+
+  const EnhancedAnalysisResult({
+    required this.baseResult,
+    required this.enhancedScore,
+    required this.factors,
+    required this.detailedVerdict,
+    this.prosForUser = const [],
+    this.consForUser = const [],
+    this.alternatives = const [],
+  });
+
+  @override
+  List<Object?> get props => [baseResult, enhancedScore];
+}
+
+class CompatibilityFactor extends Equatable {
+  final String label;
+  final double score;
+  final String emoji;
+
+  const CompatibilityFactor({
+    required this.label,
+    required this.score,
+    required this.emoji,
+  });
+
+  @override
+  List<Object?> get props => [label, score];
+}
+
+/// Score calculation request - Section 8.1
+class ScoreRequest extends Equatable {
+  final String productId;
+  final Map<String, dynamic> userProfile;
+  final Map<String, dynamic> productData;
+  final String country;
+
+  const ScoreRequest({
+    required this.productId,
+    required this.userProfile,
+    required this.productData,
+    required this.country,
+  });
+
+  @override
+  List<Object?> get props => [productId, country];
+}

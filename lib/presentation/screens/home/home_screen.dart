@@ -1,0 +1,2973 @@
+/// Compair - Dynamic Home Screen (iOS-style redesign)
+/// Rich, diverse layout with hero banners, category spotlights,
+/// parallax cards and spring animations.
+library;
+
+import 'dart:async';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:compair/core/errors.dart';
+import 'package:compair/core/theme.dart';
+import 'package:compair/domain/entities/product_entity.dart';
+import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/product_image_box.dart';
+import 'package:compair/presentation/widgets/subscription_logo_widget.dart';
+import 'package:compair/routing/router.dart';
+import 'package:compair/services/profile_algorithm_service.dart';
+import 'package:compair/data/models/other_models.dart';
+
+// ============================================================================
+// HOME SCREEN
+// ============================================================================
+
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _heroCtrl;
+  late final ScrollController _scrollCtrl;
+  late final PageController _heroPageCtrl;
+  Timer? _heroAutoScroll;
+  int _currentHeroPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _heroCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat(reverse: true);
+    _scrollCtrl = ScrollController();
+    _heroPageCtrl = PageController(viewportFraction: 0.92);
+    _startHeroAutoScroll();
+  }
+
+  void _startHeroAutoScroll() {
+    _heroAutoScroll?.cancel();
+    _heroAutoScroll = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_heroPageCtrl.hasClients) return;
+      final maxPage = (_heroPageCtrl.position.maxScrollExtent /
+              (_heroPageCtrl.position.viewportDimension * 0.92))
+          .ceil();
+      _currentHeroPage = (_currentHeroPage + 1) % (maxPage + 1);
+      _heroPageCtrl.animateToPage(
+        _currentHeroPage,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _heroCtrl.dispose();
+    _scrollCtrl.dispose();
+    _heroPageCtrl.dispose();
+    _heroAutoScroll?.cancel();
+    super.dispose();
+  }
+
+  void _showNotificationsSheet(BuildContext context) {
+    HapticFeedback.lightImpact();
+    final bottomPad = MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: bottomPad),
+        child: Container(
+        height: MediaQuery.of(ctx).size.height * 0.55,
+        decoration: BoxDecoration(
+          color: ctx.surfaceElevatedColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: ctx.dividerColor)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: ctx.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(ctx.l10n?.notifications ?? 'Notifications',
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18, fontWeight: FontWeight.w700,
+                    color: ctx.textPrimary)),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.notifications_none_rounded, size: 56,
+                        color: ctx.textTertiaryColor.withValues(alpha: 0.5)),
+                    const SizedBox(height: 16),
+                    Text(ctx.l10n?.noNotificationsYet ?? 'No notifications yet',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16, fontWeight: FontWeight.w600,
+                            color: ctx.textSecondary)),
+                    const SizedBox(height: 8),
+                    Text(ctx.l10n?.notificationsWillAppear ?? 'Price drops and recommendations will appear here',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13, color: ctx.textTertiaryColor)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+
+  // === BUILD ================================================================
+
+  @override
+  Widget build(BuildContext context) {
+    final userProfile = ref.watch(userProfileProvider);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: RefreshIndicator(
+        color: AppTheme.primaryBlue,
+        onRefresh: () async {
+          HapticFeedback.mediumImpact();
+          ref.invalidate(homeFeedProvider);
+          ref.invalidate(categoriesProvider);
+          ref.invalidate(personalizedRecommendationsProvider);
+          ref.invalidate(userCategoryPriorityProvider);
+        },
+        child: CustomScrollView(
+          controller: _scrollCtrl,
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: [
+            _buildAppBar(context, userProfile),
+            _buildQuizReminder(userProfile),
+            SliverToBoxAdapter(child: _buildSearchBar(context)),
+
+            // Categories
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: context.l10n?.categories ?? 'Categories',
+                onSeeAll: () => _showAllCategoriesSheet(context),
+              ),
+            ),
+            SliverToBoxAdapter(child: _buildCategoriesSection()),
+
+            // For You
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: context.l10n?.forYou ?? 'For You',
+                icon: Icons.auto_awesome_rounded,
+                iconColor: const Color(0xFFF59E0B),
+                subtitle: _getPersonalizationSubtitle(userProfile),
+                onSeeAll: () => context.push(AppRoutes.search),
+              ),
+            ),
+            SliverToBoxAdapter(child: _buildPersonalizedSection()),
+
+            // Smartphones (conditionally shown)
+            ..._buildCategoryBlock(
+              title: context.l10n?.smartphones ?? 'Smartphones',
+              categoryId: 'smartphones',
+              icon: Icons.smartphone_rounded,
+              iconColor: const Color(0xFF3B82F6),
+              wide: true,
+            ),
+
+            // Trending
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: context.l10n?.trendingToday ?? 'Trending Today',
+                icon: Icons.local_fire_department_rounded,
+                iconColor: const Color(0xFFEF4444),
+                onSeeAll: () => context.push(AppRoutes.search),
+              ),
+            ),
+            SliverToBoxAdapter(child: _buildTrendsSection()),
+
+            // Laptops
+            ..._buildCategoryBlock(
+              title: context.l10n?.laptops ?? 'Laptops',
+              categoryId: 'laptops',
+              icon: Icons.laptop_rounded,
+              iconColor: const Color(0xFF6366F1),
+              wide: true,
+            ),
+
+            // New Arrivals
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: context.l10n?.newArrivals ?? 'New Arrivals',
+                icon: Icons.fiber_new_rounded,
+                iconColor: const Color(0xFF10B981),
+                subtitle: context.l10n?.latestHighScoring ?? 'Latest high-scoring products',
+                onSeeAll: () => context.push(AppRoutes.search),
+              ),
+            ),
+            SliverToBoxAdapter(child: _buildNewArrivalsSection()),
+
+            // Tablets
+            ..._buildCategoryBlock(
+              title: context.l10n?.tablets ?? 'Tablets',
+              categoryId: 'tablets',
+              icon: Icons.tablet_mac_rounded,
+              iconColor: const Color(0xFF3B82F6),
+              wide: true,
+            ),
+
+            // Headphones
+            ..._buildCategoryBlock(
+              title: context.l10n?.headphones ?? 'Headphones',
+              categoryId: 'headphones',
+              icon: Icons.headphones_rounded,
+              iconColor: const Color(0xFFEC4899),
+              wide: true,
+            ),
+
+            // Monitors
+            ..._buildCategoryBlock(
+              title: context.l10n?.monitors ?? 'Monitors',
+              categoryId: 'monitors',
+              icon: Icons.monitor_rounded,
+              iconColor: const Color(0xFF10B981),
+              wide: true,
+            ),
+
+            // TVs
+            ..._buildCategoryBlock(
+              title: context.l10n?.tvsAndDisplays ?? 'TVs & Displays',
+              categoryId: 'tvs',
+              icon: Icons.tv_rounded,
+              iconColor: const Color(0xFF0EA5E9),
+              wide: false,
+            ),
+
+            // Processors
+            ..._buildCategoryBlock(
+              title: context.l10n?.processors ?? 'Processors',
+              categoryId: 'cpus',
+              icon: Icons.developer_board_rounded,
+              iconColor: const Color(0xFF06B6D4),
+              wide: false,
+            ),
+
+            // Graphics Cards
+            ..._buildCategoryBlock(
+              title: context.l10n?.graphicsCards ?? 'Graphics Cards',
+              categoryId: 'gpus',
+              icon: Icons.videogame_asset_rounded,
+              iconColor: const Color(0xFF8B5CF6),
+              wide: false,
+            ),
+
+            // Smartwatches
+            ..._buildCategoryBlock(
+              title: context.l10n?.smartwatches ?? 'Smartwatches',
+              categoryId: 'smartwatches',
+              icon: Icons.watch_rounded,
+              iconColor: const Color(0xFF14B8A6),
+              wide: true,
+            ),
+
+            // Keyboards
+            ..._buildCategoryBlock(
+              title: context.l10n?.catKeyboards ?? 'Keyboards',
+              categoryId: 'keyboards',
+              icon: Icons.keyboard_rounded,
+              iconColor: const Color(0xFF64748B),
+              wide: false,
+            ),
+
+            // Mice
+            ..._buildCategoryBlock(
+              title: context.l10n?.catMice ?? 'Mice',
+              categoryId: 'mice',
+              icon: Icons.mouse_rounded,
+              iconColor: const Color(0xFF78716C),
+              wide: false,
+            ),
+
+            // Desktops
+            ..._buildCategoryBlock(
+              title: context.l10n?.catDesktops ?? 'Desktops',
+              categoryId: 'desktops',
+              icon: Icons.desktop_windows_rounded,
+              iconColor: const Color(0xFF6366F1),
+              wide: false,
+            ),
+
+            // Cameras
+            ..._buildCategoryBlock(
+              title: context.l10n?.catCameras ?? 'Cameras',
+              categoryId: 'cameras',
+              icon: Icons.camera_alt_rounded,
+              iconColor: const Color(0xFFF97316),
+              wide: false,
+            ),
+
+            // Discover — hidden gems, shuffled for variety
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: context.l10n?.exploreProducts ?? 'Discover',
+                icon: Icons.explore_rounded,
+                iconColor: const Color(0xFFF59E0B),
+                subtitle: context.l10n?.discoverPopular ?? 'Popular products from every category',
+                onSeeAll: () => context.push(AppRoutes.search),
+              ),
+            ),
+            SliverToBoxAdapter(child: _buildDiscoverSection()),
+
+            // Speakers
+            ..._buildCategoryBlock(
+              title: context.l10n?.catSpeakers ?? 'Speakers',
+              categoryId: 'speakers',
+              icon: Icons.speaker_rounded,
+              iconColor: const Color(0xFFEF4444),
+              wide: false,
+            ),
+
+            // Gaming Consoles
+            ..._buildCategoryBlock(
+              title: context.l10n?.catConsoles ?? 'Consoles',
+              categoryId: 'consoles',
+              icon: Icons.gamepad_rounded,
+              iconColor: const Color(0xFF8B5CF6),
+              wide: false,
+            ),
+
+            // Routers
+            ..._buildCategoryBlock(
+              title: context.l10n?.catRouters ?? 'Networking',
+              categoryId: 'routers',
+              icon: Icons.router_rounded,
+              iconColor: const Color(0xFF22C55E),
+              wide: false,
+            ),
+
+            // Gamepads
+            ..._buildCategoryBlock(
+              title: context.l10n?.catGamepads ?? 'Gamepads',
+              categoryId: 'gamepads',
+              icon: Icons.sports_esports_rounded,
+              iconColor: const Color(0xFFA855F7),
+              wide: false,
+            ),
+
+            // Webcams
+            ..._buildCategoryBlock(
+              title: context.l10n?.catWebcams ?? 'Webcams',
+              categoryId: 'webcams',
+              icon: Icons.videocam_rounded,
+              iconColor: const Color(0xFF0EA5E9),
+              wide: false,
+            ),
+
+            // Dashcams
+            ..._buildCategoryBlock(
+              title: context.l10n?.catDashcams ?? 'Dashcams',
+              categoryId: 'dashcams',
+              icon: Icons.directions_car_rounded,
+              iconColor: const Color(0xFFD97706),
+              wide: false,
+            ),
+
+            // Media Players
+            ..._buildCategoryBlock(
+              title: context.l10n?.catMediaPlayers ?? 'Media Players',
+              categoryId: 'media-players',
+              icon: Icons.live_tv_rounded,
+              iconColor: const Color(0xFF7C3AED),
+              wide: false,
+            ),
+
+            // Cases
+            ..._buildCategoryBlock(
+              title: context.l10n?.catCases ?? 'Cases',
+              categoryId: 'cases',
+              icon: Icons.inventory_2_rounded,
+              iconColor: const Color(0xFF475569),
+              wide: false,
+            ),
+
+            // Drones
+            ..._buildCategoryBlock(
+              title: context.l10n?.catDrones ?? 'Drones',
+              categoryId: 'drones',
+              icon: Icons.flight_rounded,
+              iconColor: const Color(0xFF0EA5E9),
+              wide: false,
+            ),
+
+            // Robot Vacuums
+            ..._buildCategoryBlock(
+              title: context.l10n?.catRobotVacuums ?? 'Robot Vacuums',
+              categoryId: 'robot-vacuums',
+              icon: Icons.smart_toy_rounded,
+              iconColor: const Color(0xFF06B6D4),
+              wide: false,
+            ),
+
+            // Soundbars
+            ..._buildCategoryBlock(
+              title: 'Soundbars',
+              categoryId: 'soundbars',
+              icon: Icons.surround_sound_rounded,
+              iconColor: const Color(0xFFE11D48),
+              wide: false,
+            ),
+
+            // Microphones
+            ..._buildCategoryBlock(
+              title: 'Microphones',
+              categoryId: 'microphones',
+              icon: Icons.mic_rounded,
+              iconColor: const Color(0xFF7C3AED),
+              wide: false,
+            ),
+
+            // Smart Rings
+            ..._buildCategoryBlock(
+              title: 'Smart Rings',
+              categoryId: 'smart-rings',
+              icon: Icons.ring_volume_rounded,
+              iconColor: const Color(0xFFD946EF),
+              wide: false,
+            ),
+
+            // E-Readers
+            ..._buildCategoryBlock(
+              title: 'E-Readers',
+              categoryId: 'e-readers',
+              icon: Icons.menu_book_rounded,
+              iconColor: const Color(0xFF059669),
+              wide: false,
+            ),
+
+            // VR Headsets
+            ..._buildCategoryBlock(
+              title: 'VR Headsets',
+              categoryId: 'vr-headsets',
+              icon: Icons.vrpano_rounded,
+              iconColor: const Color(0xFF6366F1),
+              wide: false,
+            ),
+
+            // Motherboards
+            ..._buildCategoryBlock(
+              title: 'Motherboards',
+              categoryId: 'motherboards',
+              icon: Icons.memory_rounded,
+              iconColor: const Color(0xFF0D9488),
+              wide: false,
+            ),
+
+            // RAM
+            ..._buildCategoryBlock(
+              title: 'RAM',
+              categoryId: 'ram',
+              icon: Icons.storage_rounded,
+              iconColor: const Color(0xFF2563EB),
+              wide: false,
+            ),
+
+            // SSD / Storage
+            ..._buildCategoryBlock(
+              title: 'SSD & Storage',
+              categoryId: 'ssd',
+              icon: Icons.sd_storage_rounded,
+              iconColor: const Color(0xFF7C3AED),
+              wide: false,
+            ),
+
+            // Power Supplies
+            ..._buildCategoryBlock(
+              title: 'Power Supplies',
+              categoryId: 'psu',
+              icon: Icons.power_rounded,
+              iconColor: const Color(0xFFEA580C),
+              wide: false,
+            ),
+
+            // Coolers
+            ..._buildCategoryBlock(
+              title: 'Coolers',
+              categoryId: 'coolers',
+              icon: Icons.ac_unit_rounded,
+              iconColor: const Color(0xFF0284C7),
+              wide: false,
+            ),
+
+            // Printers
+            ..._buildCategoryBlock(
+              title: 'Printers',
+              categoryId: 'printers',
+              icon: Icons.print_rounded,
+              iconColor: const Color(0xFF475569),
+              wide: false,
+            ),
+
+            // Projectors
+            ..._buildCategoryBlock(
+              title: 'Projectors',
+              categoryId: 'projectors',
+              icon: Icons.videocam_rounded,
+              iconColor: const Color(0xFFCA8A04),
+              wide: false,
+            ),
+
+            // Gimbals
+            ..._buildCategoryBlock(
+              title: 'Gimbals',
+              categoryId: 'gimbals',
+              icon: Icons.control_camera_rounded,
+              iconColor: const Color(0xFF0891B2),
+              wide: false,
+            ),
+
+            // Tripods
+            ..._buildCategoryBlock(
+              title: 'Tripods',
+              categoryId: 'tripods',
+              icon: Icons.filter_center_focus_rounded,
+              iconColor: const Color(0xFF65A30D),
+              wide: false,
+            ),
+
+            // Lenses
+            ..._buildCategoryBlock(
+              title: 'Lenses',
+              categoryId: 'lenses',
+              icon: Icons.camera_rounded,
+              iconColor: const Color(0xFFDB2777),
+              wide: false,
+            ),
+
+            // Dynamic user-interest sections
+            ..._buildDynamicSections(userProfile),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // === HELPERS ===============================================================
+
+  String? _getPersonalizationSubtitle(AsyncValue userProfile) {
+    return userProfile.when(
+      data: (user) {
+        if (user == null) return null;
+        if (!user.quizCompleted) return context.l10n?.completeProfileSuggestion ?? 'Complete your profile for better suggestions';
+        final parts = <String>[];
+        // Show profession if set
+        if (user.profession != null && user.profession != 'other') {
+          final labels = {
+            'engineer': context.l10n?.engineers ?? 'Engineers',
+            'designer': context.l10n?.designers ?? 'Designers',
+            'student': context.l10n?.students ?? 'Students',
+            'manager': context.l10n?.managers ?? 'Managers',
+            'healthcare': context.l10n?.healthcarePros ?? 'Healthcare pros',
+            'teacher': context.l10n?.teachers ?? 'Teachers',
+            'finance': context.l10n?.financePros ?? 'Finance pros',
+          };
+          parts.add(context.l10n?.topPicksFor(labels[user.profession] ?? 'you') ?? 'Top picks for ${labels[user.profession] ?? 'you'}');
+        } else {
+          final ecosystem = user.ecosystem == 'apple' ? 'Apple'
+              : user.ecosystem == 'android' ? 'Android' : 'All';
+          parts.add(context.l10n?.curatedFor(ecosystem) ?? 'Curated for $ecosystem users');
+        }
+        // Add budget hint
+        if (user.budgetRange == 'high') parts.add(context.l10n?.premiumPicks ?? 'premium picks');
+        else if (user.budgetRange == 'low') parts.add(context.l10n?.budgetFriendly ?? 'budget-friendly');
+        return parts.join(' • ');
+      },
+      loading: () => null,
+      error: (_, __) => null,
+    );
+  }
+
+  Color _getTechScoreColor(double score) {
+    if (score >= 85) return const Color(0xFF10B981);
+    if (score >= 70) return const Color(0xFFF59E0B);
+    if (score >= 50) return const Color(0xFFF97316);
+    return const Color(0xFFEF4444);
+  }
+
+  // === APP BAR ===============================================================
+
+  Widget _buildAppBar(BuildContext context, AsyncValue userProfile) {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? (context.l10n?.goodMorning ?? 'Good morning')
+        : hour < 17 ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
+        : (context.l10n?.goodEvening ?? 'Good evening');
+    final userName = userProfile.whenOrNull(
+      data: (user) => user?.displayName?.split(' ').first,
+    ) as String?;
+    
+    return SliverToBoxAdapter(
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 20, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // App logo / title
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShaderMask(
+                          shaderCallback: (bounds) =>
+                              AppTheme.primaryGradient.createShader(
+                            Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
+                          child: Text('Compair',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 22, fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.8, color: Colors.white)),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          userName != null ? '$greeting, $userName 👋' : '$greeting 👋',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _AppBarButton(
+                    icon: Icons.diamond_rounded,
+                    onTap: () => context.push(AppRoutes.premium),
+                    isPrimary: true,
+                  ),
+                  const SizedBox(width: 8),
+                  _AppBarButton(
+                    icon: Icons.notifications_none_rounded,
+                    onTap: () => _showNotificationsSheet(context),
+                  ),
+                  const SizedBox(width: 8),
+                  // Profile avatar button
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.push(AppRoutes.profile);
+                    },
+                    child: Container(
+                      width: 38, height: 38,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.25), width: 1.5),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: userProfile.whenOrNull(
+                          data: (user) {
+                            if (user?.photoURL != null) {
+                              return CachedNetworkImage(
+                                imageUrl: user!.photoURL!,
+                                width: 38, height: 38, fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => _buildAvatarFallback(user.displayName),
+                              );
+                            }
+                            return _buildAvatarFallback(user?.displayName);
+                          },
+                        ) ?? _buildAvatarFallback(null),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarFallback(String? name) {
+    return Container(
+      width: 38, height: 38,
+      decoration: const BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+      ),
+      child: Center(
+        child: Text(
+          (name ?? '?')[0].toUpperCase(),
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // === QUIZ REMINDER =========================================================
+
+  Widget _buildQuizReminder(AsyncValue userProfile) {
+    return userProfile.when(
+      data: (user) {
+        if (user != null && !user.quizCompleted) {
+          return SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: GestureDetector(
+                onTap: () => context.push(AppRoutes.quiz),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.aiBannerGradient,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: context.surfaceElevatedColor,
+                          borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.psychology_rounded,
+                            color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(context.l10n?.completeYourProfile ?? 'Complete Your Profile',
+                                style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white, fontSize: 15,
+                                    fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 2),
+                            Text(context.l10n?.getAiRecommendations ?? 'Get AI-powered recommendations',
+                                style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white70, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded,
+                          color: Colors.white54, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
+          );
+        }
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+      },
+      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+    );
+  }
+
+  // === SEARCH BAR ============================================================
+
+  Widget _buildSearchBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          context.push(AppRoutes.search);
+        },
+        child: Container(
+          height: 52,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.brandBlue.withValues(alpha: 0.08),
+                AppTheme.brandCyan.withValues(alpha: 0.04),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppTheme.brandBlue.withValues(alpha: 0.15),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.brandBlue.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) =>
+                    AppTheme.primaryGradient.createShader(bounds),
+                child: const Icon(Icons.search_rounded, size: 22, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(context.l10n?.searchProducts ?? 'Search products...',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15, color: context.textTertiaryColor)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, duration: 300.ms);
+  }
+
+  // === QUICK ACTIONS ===========================================================
+
+  Widget _buildQuickActions(BuildContext context) {
+    final actions = [
+      _QuickAction(
+        icon: Icons.compare_arrows_rounded,
+        label: context.l10n?.compare ?? 'Compare',
+        gradient: const LinearGradient(colors: [Color(0xFF2196F3), Color(0xFF00E5FF)]),
+        onTap: () => context.push(AppRoutes.compare),
+      ),
+      _QuickAction(
+        icon: Icons.computer_rounded,
+        label: context.l10n?.pcBuild ?? 'PC Build',
+        gradient: const LinearGradient(colors: [Color(0xFF1565C0), Color(0xFF2196F3)]),
+        onTap: () => context.push(AppRoutes.pcBuilder),
+      ),
+      _QuickAction(
+        icon: Icons.link_rounded,
+        label: context.l10n?.linkPaste ?? 'Link Paste',
+        gradient: const LinearGradient(colors: [Color(0xFF0097A7), Color(0xFF00E5FF)]),
+        onTap: () => context.push(AppRoutes.linkPaste),
+      ),
+      _QuickAction(
+        icon: Icons.bookmark_rounded,
+        label: context.l10n?.collection ?? 'Collection',
+        gradient: const LinearGradient(colors: [Color(0xFF1565C0), Color(0xFF4FC3F7)]),
+        onTap: () => context.push(AppRoutes.collection),
+      ),
+    ];
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      child: Row(
+        children: actions.asMap().entries.map((entry) {
+          final i = entry.key;
+          final action = entry.value;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < actions.length - 1 ? 10 : 0),
+              child: action,
+            ),
+          );
+        }).toList(),
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, duration: 300.ms);
+  }
+
+  // === PC BUILDER CARD =======================================================
+
+  Widget _buildPcBuilderCard(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: GestureDetector(
+        onTap: () => context.push(AppRoutes.pcBuilder),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppTheme.premiumPurple, AppTheme.neonBlue],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.premiumPurple.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.computer_rounded,
+                    size: 28, color: Colors.white),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(context.l10n?.pcBuilder ?? 'PC Builder',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                                color: Colors.white)),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: context.surfaceElevatedColor,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('AI',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(context.l10n?.buildDreamPc ?? 'Build your dream PC with AI guidance',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.85))),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_rounded,
+                  color: Colors.white.withValues(alpha: 0.8), size: 22),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0);
+  }
+
+  // === HERO BANNER ===========================================================
+
+  Widget _buildHeroCarousel() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return ref.watch(featuredProductsProvider).when(
+      data: (products) {
+        if (products.isEmpty) return const SizedBox.shrink();
+        return Column(
+          children: [
+            SizedBox(
+              height: 220,
+              child: PageView.builder(
+                controller: _heroPageCtrl,
+                itemCount: products.length,
+                onPageChanged: (i) => setState(() => _currentHeroPage = i),
+                itemBuilder: (context, index) {
+                  final p = products[index];
+                  final scoreColor = _getTechScoreColor(p.techScore);
+                  // Parallax scale effect
+                  double scale = 1.0;
+                  if (_heroPageCtrl.position.haveDimensions) {
+                    final page = _heroPageCtrl.page ?? _currentHeroPage.toDouble();
+                    scale = (1 - (page - index).abs() * 0.08).clamp(0.92, 1.0);
+                  }
+                  return GestureDetector(
+                    onTap: () => context.push('/product/${p.id}'),
+                    child: AnimatedBuilder(
+                      animation: _heroCtrl,
+                      builder: (context, child) {
+                        final t = _heroCtrl.value;
+                        return Transform.scale(
+                          scale: scale,
+                          child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            color: context.surfaceVariantColor,
+                            border: Border.all(color: context.dividerColor),
+                            boxShadow: [
+                              BoxShadow(
+                                color: scoreColor.withValues(alpha: 0.10),
+                                blurRadius: 20, offset: const Offset(0, 6)),
+                              BoxShadow(
+                                color: (isDark ? Colors.black : Colors.black12).withValues(alpha: isDark ? 0.04 : 0.06),
+                                blurRadius: 8, offset: const Offset(0, 2)),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                right: -30, top: -30,
+                                child: Container(
+                                  width: 150, height: 150,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(colors: [
+                                      scoreColor.withValues(alpha: 0.08),
+                                      Colors.transparent]),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(18),
+                                child: Row(children: [
+                                  // Image left
+                                  Container(
+                                    width: 110, height: 184,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white : const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(14)),
+                                    padding: const EdgeInsets.all(8),
+                                    child: Transform.translate(
+                                      offset: Offset(0, -3 + (6 * sin(t * pi))),
+                                      child: p.imageURL.isNotEmpty
+                                          ? ProductImageBox(
+                                              imageUrl: p.imageURL, height: 143,
+                                              borderRadius: BorderRadius.circular(10),
+                                              padding: EdgeInsets.zero)
+                                          : const SizedBox(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  // Details right
+                                  Expanded(child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(colors: [
+                                            scoreColor.withValues(alpha: 0.12),
+                                            scoreColor.withValues(alpha: 0.06)]),
+                                          borderRadius: BorderRadius.circular(20)),
+                                        child: Text(
+                                          p.category.isNotEmpty
+                                              ? p.category[0].toUpperCase() + p.category.substring(1)
+                                              : 'Featured',
+                                          style: GoogleFonts.plusJakartaSans(
+                                              color: scoreColor, fontSize: 11,
+                                              fontWeight: FontWeight.w700)),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(p.name,
+                                          maxLines: 2, overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.plusJakartaSans(
+                                              color: context.textPrimary, fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.5, height: 1.15)),
+                                      const SizedBox(height: 8),
+                                      if (p.techScore > 0) Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.accentCyan.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(12)),
+                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                          Icon(Icons.local_fire_department_rounded,
+                                              size: 13, color: AppTheme.accentCyan),
+                                          const SizedBox(width: 4),
+                                          Text('${p.techScore.toInt()}',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 12, fontWeight: FontWeight.w700,
+                                                  color: AppTheme.accentCyan)),
+                                        ]),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          gradient: AppTheme.primaryGradient,
+                                          borderRadius: BorderRadius.circular(20)),
+                                        child: Text('View Details',
+                                            style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 11, fontWeight: FontWeight.w600,
+                                                color: Colors.white)),
+                                      ),
+                                    ],
+                                  )),
+                                ]),
+                              ),
+                            ],
+                          ),
+                        ),
+                        );
+                      },
+                    ),
+                  ).animate().fadeIn(duration: 400.ms);
+                },
+              ),
+            ),
+            // Page indicators
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                products.length,
+                (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: i == _currentHeroPage ? 20 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(3),
+                    color: i == _currentHeroPage
+                        ? AppTheme.neonCyan
+                        : context.dividerColor,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => Container(
+        height: 190, margin: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(24)),
+      ).animate(onPlay: (c) => c.repeat(reverse: true))
+       .shimmer(duration: 1200.ms, color: Colors.white10),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  // === TRUST STRIP =============================================================
+
+  Widget _buildTrustStrip() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.dividerColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _TrustItem(icon: Icons.inventory_2_rounded, value: '37K+', label: context.l10n?.productsLabel ?? 'Products'),
+            _trustDivider(),
+            _TrustItem(icon: Icons.category_rounded, value: '50+', label: context.l10n?.categories ?? 'Categories'),
+            _trustDivider(),
+            _TrustItem(icon: Icons.auto_awesome_rounded, value: 'AI', label: context.l10n?.aiPoweredLabel ?? 'Powered'),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
+  }
+
+  Widget _trustDivider() => Container(
+    width: 1, height: 28,
+    color: context.dividerColor,
+  );
+
+
+  // === CATEGORIES ============================================================
+
+  List<Map<String, Object>> _getCategoryGroups(BuildContext context) {
+    final l = context.l10n;
+    return [
+    {'group': l?.catGroupMobile ?? 'Mobile', 'icon': Icons.smartphone_rounded, 'color': const Color(0xFF3B82F6),
+     'items': [
+       {'id': 'smartphones', 'name': l?.catSmartphones ?? 'Smartphones', 'icon': Icons.smartphone_rounded},
+       {'id': 'tablets', 'name': l?.catTablets ?? 'Tablets', 'icon': Icons.tablet_mac_rounded},
+     ]},
+    {'group': l?.catGroupComputers ?? 'Computers', 'icon': Icons.laptop_rounded, 'color': const Color(0xFF6366F1),
+     'items': [
+       {'id': 'laptops', 'name': l?.catLaptops ?? 'Laptops', 'icon': Icons.laptop_rounded},
+       {'id': 'desktops', 'name': l?.catDesktops ?? 'Desktops', 'icon': Icons.desktop_windows_rounded},
+     ]},
+    {'group': l?.catGroupComponents ?? 'PC Components', 'icon': Icons.memory_rounded, 'color': const Color(0xFF06B6D4),
+     'items': [
+       {'id': 'cpus', 'name': l?.catCpus ?? 'CPUs', 'icon': Icons.developer_board_rounded},
+       {'id': 'gpus', 'name': l?.catGpus ?? 'Graphics Cards', 'icon': Icons.videogame_asset_rounded},
+       {'id': 'ram', 'name': l?.catRam ?? 'RAM', 'icon': Icons.memory_rounded},
+       {'id': 'ssd', 'name': l?.catSsd ?? 'SSDs', 'icon': Icons.storage_rounded},
+       {'id': 'motherboards', 'name': l?.catMotherboards ?? 'Motherboards', 'icon': Icons.developer_board},
+       {'id': 'psu', 'name': l?.catPsu ?? 'Power Supplies', 'icon': Icons.bolt_rounded},
+       {'id': 'cases', 'name': l?.catCases ?? 'Cases', 'icon': Icons.computer_rounded},
+       {'id': 'coolers', 'name': l?.catCoolers ?? 'Coolers', 'icon': Icons.mode_fan_off_rounded},
+       {'id': 'monitors', 'name': l?.catMonitors ?? 'Monitors', 'icon': Icons.monitor_rounded},
+       {'id': 'keyboards', 'name': l?.catKeyboards ?? 'Keyboards', 'icon': Icons.keyboard_rounded},
+       {'id': 'mice', 'name': l?.catMice ?? 'Mice', 'icon': Icons.mouse_rounded},
+       {'id': 'webcams', 'name': l?.catWebcams ?? 'Webcams', 'icon': Icons.camera_front_rounded},
+     ]},
+    {'group': l?.catGroupDisplay ?? 'Display', 'icon': Icons.tv_rounded, 'color': const Color(0xFF10B981),
+     'items': [
+       {'id': 'tvs', 'name': l?.catTvs ?? 'TVs', 'icon': Icons.tv_rounded},
+       {'id': 'projectors', 'name': l?.catProjectors ?? 'Projectors', 'icon': Icons.videocam_rounded},
+       {'id': 'media-players', 'name': l?.catMediaPlayers ?? 'Media Players', 'icon': Icons.play_circle_outline_rounded},
+     ]},
+    {'group': l?.catGroupAudio ?? 'Audio', 'icon': Icons.headphones_rounded, 'color': const Color(0xFFEC4899),
+     'items': [
+       {'id': 'headphones', 'name': l?.catHeadphones ?? 'Headphones', 'icon': Icons.headphones_rounded},
+       {'id': 'speakers', 'name': l?.catSpeakers ?? 'Speakers', 'icon': Icons.speaker_rounded},
+       {'id': 'soundbars', 'name': l?.catSoundbars ?? 'Soundbars', 'icon': Icons.speaker_group_rounded},
+       {'id': 'microphones', 'name': l?.catMicrophones ?? 'Microphones', 'icon': Icons.mic_rounded},
+     ]},
+    {'group': l?.catGroupWearables ?? 'Wearables', 'icon': Icons.watch_rounded, 'color': const Color(0xFF14B8A6),
+     'items': [
+       {'id': 'smartwatches', 'name': l?.catSmartwatches ?? 'Smartwatches', 'icon': Icons.watch_rounded},
+       {'id': 'smart-rings', 'name': l?.catSmartRings ?? 'Smart Rings', 'icon': Icons.fingerprint_rounded},
+     ]},
+    {'group': l?.catGroupCameras ?? 'Cameras', 'icon': Icons.camera_alt_rounded, 'color': const Color(0xFFF97316),
+     'items': [
+       {'id': 'cameras', 'name': l?.catCameras ?? 'Cameras', 'icon': Icons.camera_alt_rounded},
+       {'id': 'action-cameras', 'name': l?.catActionCameras ?? 'Action Cameras', 'icon': Icons.videocam_outlined},
+       {'id': 'security-cameras', 'name': l?.catSecurityCameras ?? 'Security Cameras', 'icon': Icons.security_rounded},
+       {'id': 'ip-cameras', 'name': l?.catIpCameras ?? 'IP Cameras', 'icon': Icons.videocam_rounded},
+       {'id': 'dashcams', 'name': l?.catDashcams ?? 'Dashcams', 'icon': Icons.directions_car_rounded},
+       {'id': 'gimbals', 'name': l?.catGimbals ?? 'Gimbals', 'icon': Icons.camera_rounded},
+       {'id': 'tripods', 'name': l?.catTripods ?? 'Tripods', 'icon': Icons.camera_alt_outlined},
+       {'id': 'lenses', 'name': l?.catLenses ?? 'Lenses', 'icon': Icons.camera_roll_rounded},
+     ]},
+    {'group': l?.catGroupGaming ?? 'Gaming', 'icon': Icons.gamepad_rounded, 'color': const Color(0xFF8B5CF6),
+     'items': [
+       {'id': 'consoles', 'name': l?.catGamingConsoles ?? 'Gaming Consoles', 'icon': Icons.gamepad_rounded},
+       {'id': 'gamepads', 'name': l?.catGamepads ?? 'Gamepads', 'icon': Icons.sports_esports_rounded},
+       {'id': 'vr-headsets', 'name': l?.catVrHeadsets ?? 'VR Headsets', 'icon': Icons.vrpano_rounded},
+     ]},
+    {'group': l?.catGroupPeripherals ?? 'Peripherals', 'icon': Icons.print_rounded, 'color': const Color(0xFF0EA5E9),
+     'items': [
+       {'id': 'printers', 'name': l?.catPrinters ?? 'Printers', 'icon': Icons.print_rounded},
+     ]},
+    {'group': l?.catGroupNetworking ?? 'Networking', 'icon': Icons.router_rounded, 'color': const Color(0xFF3B82F6),
+     'items': [
+       {'id': 'routers', 'name': l?.catRoutersModems ?? 'Routers & Modems', 'icon': Icons.router_rounded},
+     ]},
+    {'group': l?.catGroupSmartHome ?? 'Smart Home', 'icon': Icons.cleaning_services_rounded, 'color': const Color(0xFFF59E0B),
+     'items': [
+       {'id': 'robot-vacuums', 'name': l?.catRobotVacuums ?? 'Robot Vacuums', 'icon': Icons.cleaning_services_rounded},
+     ]},
+    {'group': l?.catGroupAccessories ?? 'Accessories', 'icon': Icons.battery_charging_full_rounded, 'color': const Color(0xFF22C55E),
+     'items': [
+       {'id': 'powerbanks', 'name': l?.catPowerBanks ?? 'Power Banks', 'icon': Icons.battery_charging_full_rounded},
+       {'id': 'e-readers', 'name': l?.catEReaders ?? 'E-Readers', 'icon': Icons.book_rounded},
+     ]},
+    {'group': l?.catGroupDrones ?? 'Drones', 'icon': Icons.flight_takeoff_rounded, 'color': const Color(0xFF06B6D4),
+     'items': [
+       {'id': 'drones', 'name': l?.catDrones ?? 'Drones', 'icon': Icons.flight_takeoff_rounded},
+     ]},
+  ];
+  }
+
+  // Flat list of individual categories (group color inherited by each item)
+  List<Map<String, Object>> _getFlatCategories(BuildContext context) {
+    final flat = <Map<String, Object>>[];
+    for (final group in _getCategoryGroups(context)) {
+      final color = group['color'] as Color;
+      for (final item in (group['items'] as List).cast<Map<String, Object>>()) {
+        flat.add({
+          'id': item['id'] as String,
+          'name': item['name'] as String,
+          'icon': item['icon'] as IconData? ?? group['icon'] as IconData,
+          'color': color,
+        });
+      }
+    }
+    return flat;
+  }
+
+  void _showAllCategoriesSheet(BuildContext context) {
+    HapticFeedback.mediumImpact();
+    final categories = _getFlatCategories(context);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _AllCategoriesPage(categories: categories),
+        fullscreenDialog: false,
+      ),
+    );
+  }
+
+  Widget _buildCategoriesSection() {
+    final categories = _getFlatCategories(context);
+    final half = (categories.length / 2).ceil();
+    final row1 = categories.sublist(0, half);
+    final row2 = categories.sublist(half);
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 96,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            physics: const BouncingScrollPhysics(),
+            itemCount: row1.length,
+            itemBuilder: (context, i) => _buildFlatCategoryChip(row1[i], i),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 96,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            physics: const BouncingScrollPhysics(),
+            itemCount: row2.length,
+            itemBuilder: (context, i) => _buildFlatCategoryChip(row2[i], i),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFlatCategoryChip(Map<String, Object> cat, int index) {
+    final color = cat['color'] as Color;
+    final icon = cat['icon'] as IconData;
+    final name = cat['name'] as String;
+    final id = cat['id'] as String;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        context.push('${AppRoutes.browse}?id=$id&name=${Uri.encodeComponent(name)}');
+      },
+      child: Container(
+        width: 76,
+        margin: const EdgeInsets.only(right: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(
+                color: context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: color.withValues(alpha: 0.25)),
+                boxShadow: [BoxShadow(
+                    color: color.withValues(alpha: 0.12),
+                    blurRadius: 6, offset: const Offset(0, 2))],
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 6),
+            Text(name,
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10.5, fontWeight: FontWeight.w600,
+                    color: context.textSecondary, height: 1.2)),
+          ],
+        ),
+      ),
+    ).animate()
+     .fadeIn(delay: (30 * index).ms, duration: 280.ms)
+     .slideX(begin: 0.06, end: 0, duration: 280.ms);
+  }
+
+  void _showCategoryBottomSheet(BuildContext context, String groupName,
+      IconData groupIcon, Color groupColor,
+      List<Map<String, Object>> items) {
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: context.surfaceElevatedColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: context.dividerColor))),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: context.dividerColor,
+                borderRadius: BorderRadius.circular(2)))),
+            Row(children: [
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      colors: [groupColor, groupColor.withValues(alpha: 0.7)]),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: groupColor.withValues(alpha: 0.3),
+                      blurRadius: 8, offset: const Offset(0, 3))]),
+                child: Icon(groupIcon, color: Colors.white, size: 24)),
+              const SizedBox(width: 14),
+              Flexible(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(groupName, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20, fontWeight: FontWeight.w700,
+                      color: context.textPrimary)),
+                  Text(items.length == 1
+                      ? (context.l10n?.oneCategory ?? '1 category')
+                      : (context.l10n?.nCategories('${items.length}') ?? '${items.length} categories'),
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13, color: context.textTertiaryColor)),
+                ])),
+            ]),
+            const SizedBox(height: 24),
+            ...items.map((item) {
+              final subIcon = item['icon'] as IconData;
+              final subName = item['name'] as String;
+              final subId = item['id'] as String;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(
+                      '${AppRoutes.browse}?id=$subId&name=${Uri.encodeComponent(subName)}');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: groupColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: groupColor.withValues(alpha: 0.10))),
+                    child: Row(children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: groupColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(10)),
+                        child: Icon(subIcon, size: 18, color: groupColor)),
+                      const SizedBox(width: 14),
+                      Expanded(child: Text(subName,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15, fontWeight: FontWeight.w600,
+                              color: context.textPrimary))),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 14,
+                          color: groupColor.withValues(alpha: 0.5)),
+                    ]),
+                  ),
+                ),
+              );
+            }),
+            SizedBox(height: MediaQuery.of(context).padding.bottom +
+                AppTheme.navBarTotalClearance),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // === PERSONALIZED SECTION ==================================================
+
+  Widget _buildPersonalizedSection() {
+    final userProfile = ref.watch(userProfileProvider);
+    final user = userProfile.valueOrNull;
+    final algorithmService = ref.read(profileAlgorithmServiceProvider);
+
+    return SizedBox(
+      height: 200,
+      child: ref.watch(personalizedRecommendationsProvider).when(
+        data: (products) {
+          if (products.isEmpty) return Center(child: Text(context.l10n?.noRecommendationsYet ?? 'No recommendations yet',
+              style: GoogleFonts.plusJakartaSans(color: context.textTertiaryColor)));
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              final price = product.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+              return _WideProductCard(
+                product: product, price: price,
+                onTap: () => context.push('/product/${product.id}'),
+              ).animate()
+               .fadeIn(delay: (60 * index).ms, duration: 350.ms)
+               .slideX(begin: 0.05, duration: 350.ms);
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 200, cardWidth: 260),
+        error: (_, __) => const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  // === WIDE PRODUCT CARDS ====================================================
+
+  // === CONDITIONAL CATEGORY BLOCK ============================================
+  // Shows header + products only if the category has data
+
+  List<Widget> _buildCategoryBlock({
+    required String title,
+    required String categoryId,
+    required IconData icon,
+    required Color iconColor,
+    bool wide = true,
+  }) {
+    final feed = ref.watch(homeFeedProvider);
+    final productCount = feed.whenOrNull(
+      data: (f) => f.byCategory[categoryId]?.length ?? 0,
+    ) ?? 0;
+    // During loading show skeleton; once loaded, require at least 3 products
+    final isLoading = feed.isLoading;
+    if (!isLoading && productCount < 1) return [];
+
+    final routeName = categoryId == 'cpus' ? 'CPUs' : title;
+    return [
+      SliverToBoxAdapter(
+        child: _SectionHeader(
+          title: title,
+          icon: icon,
+          iconColor: iconColor,
+          onSeeAll: () => context.push(
+            '${AppRoutes.browse}?id=$categoryId&name=$routeName'),
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: wide
+            ? _buildWideProductCards(categoryId)
+            : _buildCompactGridSection(categoryId),
+      ),
+    ];
+  }
+
+  // === WIDE PRODUCT CARDS ====================================================
+
+  Widget _buildWideProductCards(String categoryId) {
+    return SizedBox(
+      height: 200,
+      child: ref.watch(homeFeedProvider).when(
+        data: (feed) {
+          var products = feed.byCategory[categoryId] ?? [];
+          if (products.isEmpty) return const SizedBox.shrink();
+
+          // Sort products within category by user relevance
+          final user = ref.read(userProfileProvider).valueOrNull;
+          if (user != null) {
+            final algo = ref.read(profileAlgorithmServiceProvider);
+            final behavior = ref.read(behaviorSignalsProvider).valueOrNull
+                ?? BehaviorSignals.empty;
+            products = algo.sortByRelevance(
+                user: user, products: products, behavior: behavior);
+          }
+
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: min(25, products.length),
+            itemBuilder: (context, index) {
+              final p = products[index];
+              final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+              return Align(
+                alignment: Alignment.topCenter,
+                child: _WideProductCard(
+                  product: p, price: price,
+                  onTap: () => context.push('/product/${p.id}'),
+                ).animate()
+                 .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+                 .slideX(begin: 0.06, duration: 300.ms),
+              );
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 200, cardWidth: 240),
+        error: (_, __) => const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  // === COMPACT GRID SECTION (now horizontal scroll) ===========================
+
+  Widget _buildCompactGridSection(String categoryId) {
+    return SizedBox(
+      height: 200,
+      child: ref.watch(homeFeedProvider).when(
+        data: (feed) {
+          var products = feed.byCategory[categoryId] ?? [];
+          if (products.isEmpty) return const SizedBox.shrink();
+
+          final user = ref.read(userProfileProvider).valueOrNull;
+          if (user != null) {
+            final algo = ref.read(profileAlgorithmServiceProvider);
+            final behavior = ref.read(behaviorSignalsProvider).valueOrNull
+                ?? BehaviorSignals.empty;
+            products = algo.sortByRelevance(
+                user: user, products: products, behavior: behavior);
+          }
+
+          final display = products.take(25).toList();
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: display.length,
+            itemBuilder: (context, index) {
+              final p = display[index];
+              final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+              return _WideProductCard(
+                product: p, price: price,
+                onTap: () => context.push('/product/${p.id}'),
+              ).animate()
+               .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+               .slideX(begin: 0.06, duration: 300.ms);
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 200, cardWidth: 260),
+        error: (_, __) => const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  // === TRENDING ==============================================================
+
+  Widget _buildTrendsSection() {
+    return SizedBox(
+      height: 200,
+      child: ref.watch(homeFeedProvider).when(
+        data: (feed) {
+          final trending = feed.trending;
+          if (trending.isEmpty) return const SizedBox.shrink();
+          final display = trending.take(15).toList();
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: display.length,
+            itemBuilder: (context, index) {
+              final p = display[index];
+              final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+              return _TrendingWideCard(
+                rank: index + 1,
+                product: p,
+                price: price,
+                onTap: () => p.id.isNotEmpty ? context.push('/product/${p.id}') : null,
+              ).animate()
+               .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+               .slideX(begin: 0.06, duration: 300.ms);
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 200, cardWidth: 260),
+        error: (e, __) => _buildRetryWidget(
+          onRetry: () => ref.invalidate(homeFeedProvider),
+        ),
+      ),
+    );
+  }
+
+  // === NEW ARRIVALS ==========================================================
+
+  Widget _buildNewArrivalsSection() {
+    return SizedBox(
+      height: 200,
+      child: ref.watch(newArrivalsProvider).when(
+        data: (products) {
+          if (products.isEmpty) return const SizedBox.shrink();
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final p = products[index];
+              final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+              return _WideProductCard(
+                  product: p, price: price, showNewBadge: true,
+                  onTap: () => context.push('/product/${p.id}'),
+                ).animate()
+                 .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+                 .slideX(begin: 0.06, duration: 300.ms);
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 200, cardWidth: 155),
+        error: (_, __) => _buildRetryWidget(
+          onRetry: () => ref.invalidate(newArrivalsProvider),
+        ),
+      ),
+    );
+  }
+
+  // === DISCOVER (Hidden Gems) ================================================
+
+  Widget _buildDiscoverSection() {
+    return SizedBox(
+      height: 200,
+      child: ref.watch(discoverProductsProvider).when(
+        data: (products) {
+          if (products.isEmpty) return const SizedBox.shrink();
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final p = products[index];
+              final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+              return _WideProductCard(
+                  product: p, price: price, showNewBadge: false,
+                  onTap: () => context.push('/product/${p.id}'),
+                ).animate()
+                 .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+                 .slideX(begin: 0.06, duration: 300.ms);
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 200, cardWidth: 155),
+        error: (_, __) => _buildRetryWidget(
+          onRetry: () => ref.invalidate(discoverProductsProvider),
+        ),
+      ),
+    );
+  }
+
+  // === QUICK COMPARE =========================================================
+
+  Widget _buildQuickCompareSection(AsyncValue userProfile) {
+    return SizedBox(
+      height: 185,
+      child: ref.watch(predefinedComparisonsProvider).when(
+        data: (comparisons) {
+          if (comparisons.isEmpty) return _buildQuickCompareFallback();
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: comparisons.length,
+            itemBuilder: (context, index) {
+              final comp = comparisons[index];
+              final parts = (comp.title ?? 'A vs B').split(' vs ');
+              return _CompareCard(
+                product1: parts.isNotEmpty ? parts[0] : 'A',
+                product2: parts.length > 1 ? parts[1] : 'B',
+                onTap: () {
+                  ref.read(comparisonNotifierProvider.notifier).clearSelection();
+                  for (final id in comp.itemIds) {
+                    ref.read(comparisonNotifierProvider.notifier).toggleProduct(id);
+                  }
+                  context.push(AppRoutes.compare);
+                },
+              ).animate()
+               .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+               .slideX(begin: 0.05, duration: 300.ms);
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 185, cardWidth: 240),
+        error: (_, __) => _buildQuickCompareFallback(),
+      ),
+    );
+  }
+
+  Widget _buildQuickCompareFallback() {
+    return ref.watch(trendingProductsProvider).when(
+      data: (products) {
+        if (products.length < 2) return const SizedBox.shrink();
+        final pairs = <List<ProductEntity>>[];
+        for (int i = 0; i + 1 < products.length; i += 2) {
+          pairs.add([products[i], products[i + 1]]);
+        }
+        return ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          physics: const BouncingScrollPhysics(),
+          itemCount: pairs.length,
+          itemBuilder: (context, index) {
+            final pair = pairs[index];
+            return _CompareCard(
+              product1: pair[0].name, product2: pair[1].name,
+              imageURL1: pair[0].imageURL, imageURL2: pair[1].imageURL,
+              onTap: () {
+                ref.read(comparisonNotifierProvider.notifier).clearSelection();
+                ref.read(comparisonNotifierProvider.notifier).toggleProduct(pair[0].id);
+                ref.read(comparisonNotifierProvider.notifier).toggleProduct(pair[1].id);
+                context.push(AppRoutes.compare);
+              },
+            );
+          },
+        );
+      },
+      loading: () => _buildSkeletonRow(height: 185, cardWidth: 240),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  // === DYNAMIC USER SECTIONS =================================================
+
+  static const _alreadyFeatured = {
+    'smartphones', 'laptops', 'monitors', 'cpus', 'tablets',
+    'headphones', 'tvs', 'gpus', 'smartwatches',
+    'keyboards', 'mice', 'desktops', 'cameras', 'speakers',
+    'consoles', 'routers', 'gamepads', 'webcams', 'dashcams',
+    'media-players', 'cases', 'drones', 'robot-vacuums',
+  };
+
+  List<Widget> _buildDynamicSections(AsyncValue userProfile) {
+    final priorityAsync = ref.watch(userCategoryPriorityProvider);
+    final priority = priorityAsync.valueOrNull ??
+        ['smartphones', 'laptops', 'tablets', 'gpus'];
+    final filtered = priority
+        .where((c) => !_alreadyFeatured.contains(c))
+        .where((c) => !{'tech', 'subscription', 'gaming', 'travel', 'productivity', 'entertainment'}.contains(c))
+        .take(5);
+
+    final feed = ref.watch(homeFeedProvider);
+    final sections = <Widget>[];
+    for (final category in filtered) {
+      // Skip categories with fewer than 3 products
+      final productCount = feed.whenOrNull(
+        data: (f) => f.byCategory[category]?.length ?? 0,
+      ) ?? 0;
+      final isLoading = feed.isLoading;
+      if (!isLoading && productCount < 3) continue;
+
+      final info = _categoryMeta(category);
+      sections.add(
+        SliverToBoxAdapter(
+          child: Column(children: [
+            _SectionHeader(
+              title: info['title'] as String,
+              icon: info['icon'] as IconData,
+              iconColor: info['color'] as Color,
+              onSeeAll: () => context.push(
+                '${AppRoutes.browse}?id=$category&name=${Uri.encodeComponent(category)}'),
+            ),
+            _buildCategoryProductsRow(category),
+          ]),
+        ),
+      );
+    }
+    return sections;
+  }
+
+  Map<String, dynamic> _categoryMeta(String cat) {
+    final l = context.l10n;
+    final meta = <String, Map<String, dynamic>>{
+      'tablets': {'title': l?.catTablets ?? 'Tablets', 'icon': Icons.tablet_mac_rounded, 'color': const Color(0xFF3B82F6)},
+      'gpus': {'title': l?.catGpus ?? 'Graphics Cards', 'icon': Icons.videogame_asset_rounded, 'color': const Color(0xFF8B5CF6)},
+      'desktops': {'title': l?.catDesktops ?? 'Desktops', 'icon': Icons.desktop_windows_rounded, 'color': const Color(0xFF6366F1)},
+      'headphones': {'title': l?.catHeadphones ?? 'Headphones', 'icon': Icons.headphones_rounded, 'color': const Color(0xFFEC4899)},
+      'tvs': {'title': l?.catTvs ?? 'TVs & Displays', 'icon': Icons.tv_rounded, 'color': const Color(0xFF10B981)},
+      'smartwatches': {'title': l?.catSmartwatches ?? 'Smartwatches', 'icon': Icons.watch_rounded, 'color': const Color(0xFF14B8A6)},
+      'cameras': {'title': l?.catCameras ?? 'Cameras', 'icon': Icons.camera_alt_rounded, 'color': const Color(0xFFF97316)},
+      'consoles': {'title': l?.catConsoles ?? 'Gaming', 'icon': Icons.gamepad_rounded, 'color': const Color(0xFF8B5CF6)},
+      'speakers': {'title': l?.catSpeakers ?? 'Speakers', 'icon': Icons.speaker_rounded, 'color': const Color(0xFFEF4444)},
+      'routers': {'title': l?.catGroupNetworking ?? 'Networking', 'icon': Icons.router_rounded, 'color': const Color(0xFF22C55E)},
+      'drones': {'title': l?.catDrones ?? 'Drones', 'icon': Icons.flight_rounded, 'color': const Color(0xFF0EA5E9)},
+      'robot-vacuums': {'title': l?.catGroupSmartHome ?? 'Smart Home', 'icon': Icons.smart_toy_rounded, 'color': const Color(0xFF06B6D4)},
+    };
+    return meta[cat] ?? {'title': cat.replaceAll('-', ' ').replaceAll('_', ' '), 'icon': Icons.devices_rounded, 'color': context.textTertiaryColor};
+  }
+
+  Widget _buildCategoryProductsRow(String category) {
+    return SizedBox(
+      height: 200,
+      child: ref.watch(homeFeedProvider).when(
+        data: (feed) {
+          final products = feed.byCategory[category] ?? [];
+          if (products.isEmpty) return const SizedBox.shrink();
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: min(25, products.length),
+            itemBuilder: (context, index) {
+              final p = products[index];
+              final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+              return _WideProductCard(
+                  product: p, price: price,
+                  onTap: () => context.push('/product/${p.id}'),
+                ).animate().fadeIn(delay: (50 * index).ms, duration: 300.ms);
+            },
+          );
+        },
+        loading: () => _buildSkeletonRow(height: 200, cardWidth: 155),
+        error: (_, __) => const SizedBox.shrink(),
+      ),
+    );
+  }
+  // === SUBSCRIPTION INTELLIGENCE BANNER =======================================
+
+
+
+  // === SKELETON ==============================================================
+
+  Widget _buildSkeletonRow({required double height, required double cardWidth}) {
+    return SizedBox(
+      height: height,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: 5,
+        itemBuilder: (_, __) => _SkeletonCard(width: cardWidth, height: height - 8),
+      ),
+    );
+  }
+
+  Widget _buildRetryWidget({required VoidCallback onRetry}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off_rounded, size: 32, color: Colors.grey.shade400),
+            const SizedBox(height: 8),
+            Text(
+              'Yüklenemedi',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: onRetry,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Tekrar Dene',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: AppTheme.primaryBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// REUSABLE WIDGETS
+// ============================================================================
+
+class _AppBarButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isPrimary;
+  const _AppBarButton({required this.icon, required this.onTap,
+      this.isPrimary = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () { HapticFeedback.lightImpact(); onTap(); },
+      child: Container(
+        width: 38, height: 38,
+        decoration: BoxDecoration(
+          color: isPrimary
+              ? AppTheme.neonCyan.withValues(alpha: 0.10)
+              : context.textTertiaryColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isPrimary
+              ? AppTheme.neonCyan.withValues(alpha: 0.20)
+              : context.dividerColor)),
+        child: Icon(icon, size: 20,
+            color: isPrimary ? AppTheme.neonCyan : context.textTertiaryColor),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+  final Color? iconColor;
+  final VoidCallback? onSeeAll;
+  const _SectionHeader({required this.title, this.subtitle, this.icon,
+      this.iconColor, this.onSeeAll});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+      child: Row(children: [
+        if (icon != null) ...[
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  (iconColor ?? AppTheme.brandBlue).withValues(alpha: 0.15),
+                  (iconColor ?? AppTheme.brandCyan).withValues(alpha: 0.08),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 17, color: iconColor ?? AppTheme.brandCyan),
+          ),
+          const SizedBox(width: 10),
+        ],
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: GoogleFonts.plusJakartaSans(
+                fontSize: 18, fontWeight: FontWeight.w800,
+                color: context.textPrimary, letterSpacing: -0.3)),
+            if (subtitle != null) Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(subtitle!, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, color: context.textSecondary))),
+          ],
+        )),
+        if (onSeeAll != null)
+          GestureDetector(
+            onTap: onSeeAll,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.brandBlue.withValues(alpha: 0.12),
+                    AppTheme.brandCyan.withValues(alpha: 0.06),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.15),
+                  width: 0.5,
+                ),
+              ),
+              child: Text(context.l10n?.seeAll ?? 'See All', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w600,
+                  color: AppTheme.brandCyan)),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+class _TechBadge extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _TechBadge({required this.label, required this.value,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3))),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.speed_rounded, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text('$label $value', style: GoogleFonts.plusJakartaSans(
+            fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      ]),
+    );
+  }
+}
+
+// === FOR YOU CARD =============================================================
+
+class _ForYouCard extends StatelessWidget {
+  final ProductEntity product;
+  final double price;
+  final int fitScore;
+  final VoidCallback onTap;
+  const _ForYouCard({required this.product, required this.price,
+      required this.fitScore, required this.onTap});
+
+  Color _fitColor(int s) => s >= 80 ? const Color(0xFF10B981)
+      : s >= 60 ? const Color(0xFFF59E0B) : const Color(0xFF94A3B8);
+  Color _techColor(double s) => s >= 85 ? const Color(0xFF10B981)
+      : s >= 70 ? const Color(0xFFF59E0B) : s >= 50 ? const Color(0xFFF97316)
+      : const Color(0xFFEF4444);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 170, margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: context.dividerColor)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Stack(children: [
+            Container(
+              height: 110, width: double.infinity, padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
+              child: ProductImageBox(
+                imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
+                height: 94, borderRadius: BorderRadius.circular(12),
+                padding: EdgeInsets.zero),
+            ),
+            if (fitScore > 0) Positioned(top: 8, right: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: _fitColor(fitScore), borderRadius: BorderRadius.circular(10),
+                boxShadow: [BoxShadow(color: _fitColor(fitScore).withValues(alpha: 0.4),
+                    blurRadius: 6, offset: const Offset(0, 2))]),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.favorite_rounded, size: 10, color: Colors.white),
+                const SizedBox(width: 3),
+                Text('$fitScore%', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+              ]),
+            )),
+            if (product.techScore > 0) Positioned(top: 8, left: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(color: context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: context.dividerColor)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.speed_rounded, size: 10, color: _techColor(product.techScore)),
+                const SizedBox(width: 3),
+                Text('${product.techScore.toInt()}', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: _techColor(product.techScore))),
+              ]),
+            )),
+          ]),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (product.brand != null) Text(product.brand!,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 10,
+                      color: context.textTertiaryColor, fontWeight: FontWeight.w500),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
+              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13,
+                      fontWeight: FontWeight.w600, color: context.textPrimary,
+                      height: 1.15)),
+              const SizedBox(height: 4),
+              if (price > 0) Text('\$${price.toStringAsFixed(0)}',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                      fontWeight: FontWeight.w700, color: AppTheme.neonCyan)),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// === WIDE PRODUCT CARD ========================================================
+
+class _WideProductCard extends StatelessWidget {
+  final ProductEntity product;
+  final double price;
+  final bool showNewBadge;
+  final VoidCallback onTap;
+  const _WideProductCard({required this.product, required this.price,
+      this.showNewBadge = false, required this.onTap});
+
+  Color _techColor(double s) => s >= 85 ? const Color(0xFF10B981)
+      : s >= 70 ? const Color(0xFFF59E0B) : s >= 50 ? const Color(0xFFF97316)
+      : const Color(0xFFEF4444);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // In dark theme: white image bg for product contrast
+    // In light theme: match card bg so no visible line
+    final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 260,
+        height: 200,
+        margin: const EdgeInsets.only(right: 14),
+        decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.brandCyan.withValues(alpha: 0.12),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.brandCyan.withValues(alpha: 0.06),
+                blurRadius: 12,
+                spreadRadius: -2,
+              ),
+            ]),
+        child: Row(children: [
+          // Image section
+          Stack(children: [
+            Container(
+              width: 110, height: 200,
+              decoration: BoxDecoration(
+                color: imageBg,
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(20))),
+              padding: const EdgeInsets.all(10),
+              child: ProductImageBox(
+                imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
+                height: 180, borderRadius: BorderRadius.circular(12),
+                padding: EdgeInsets.zero),
+            ),
+            if (showNewBadge) Positioned(top: 10, left: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(color: const Color(0xFF10B981),
+                  borderRadius: BorderRadius.circular(8)),
+              child: Text('NEW', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9, fontWeight: FontWeight.w700,
+                  color: Colors.white, letterSpacing: 0.5)),
+            )),
+          ]),
+          // Details section
+          Expanded(child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (product.brand != null && product.brand!.isNotEmpty)
+                  Text(product.brand!.toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10,
+                          fontWeight: FontWeight.w600, color: AppTheme.accentCyan,
+                          letterSpacing: 0.8),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                        fontWeight: FontWeight.w700, color: context.textPrimary,
+                        height: 1.2)),
+                const SizedBox(height: 8),
+                if (product.techScore > 0) Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentCyan.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.local_fire_department_rounded,
+                          size: 12, color: AppTheme.accentCyan),
+                      const SizedBox(width: 3),
+                      Text('${product.techScore.toInt()}',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11, fontWeight: FontWeight.w700,
+                              color: AppTheme.accentCyan)),
+                    ]),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(20)),
+                  child: Text(context.l10n?.viewDetails ?? 'View Details',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11, fontWeight: FontWeight.w600,
+                          color: Colors.white)),
+                ),
+              ],
+            ),
+          )),
+        ]),
+      ),
+    );
+  }
+}
+
+class _MiniScore extends StatelessWidget {
+  final double value;
+  final String label;
+  const _MiniScore({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value >= 85 ? const Color(0xFF10B981)
+        : value >= 70 ? const Color(0xFFF59E0B) : const Color(0xFFF97316);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(8)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.speed_rounded, size: 11, color: color),
+        const SizedBox(width: 3),
+        Text('${value.toInt()}', style: GoogleFonts.plusJakartaSans(
+            fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      ]),
+    );
+  }
+}
+
+// === COMPACT PRODUCT CARD =====================================================
+
+class _CompactProductCard extends StatelessWidget {
+  final ProductEntity product;
+  final double price;
+  final bool showNewBadge;
+  final VoidCallback onTap;
+  const _CompactProductCard({required this.product, required this.price,
+      this.showNewBadge = false, required this.onTap});
+
+  Color _techColor(double s) => s >= 85 ? const Color(0xFF10B981)
+      : s >= 70 ? const Color(0xFFF59E0B) : s >= 50 ? const Color(0xFFF97316)
+      : const Color(0xFFEF4444);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 155, margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.brandCyan.withValues(alpha: 0.12),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.brandCyan.withValues(alpha: 0.06),
+                blurRadius: 12,
+                spreadRadius: -2,
+              ),
+            ]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Stack(children: [
+            Container(
+              height: 110, width: double.infinity, padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
+              child: ProductImageBox(
+                imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
+                height: 94, borderRadius: BorderRadius.circular(10),
+                padding: EdgeInsets.zero),
+            ),
+            if (showNewBadge) Positioned(top: 8, left: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: const Color(0xFF10B981),
+                  borderRadius: BorderRadius.circular(8)),
+              child: Text(context.l10n?.newBadge ?? 'NEW', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9, fontWeight: FontWeight.w700,
+                  color: Colors.white, letterSpacing: 0.5)),
+            )),
+            if (product.techScore > 0) Positioned(top: 8, right: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(color: context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: context.dividerColor)),
+              child: Text('${product.techScore.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: _techColor(product.techScore))),
+            )),
+          ]),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (product.brand != null) Text(product.brand!,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 10,
+                      color: context.textTertiaryColor, fontWeight: FontWeight.w500),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
+              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                      fontWeight: FontWeight.w600, color: context.textPrimary,
+                      height: 1.15)),
+              if (price > 0) ...[
+                const SizedBox(height: 3),
+                Text('\$${price.toStringAsFixed(0)}',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13,
+                        fontWeight: FontWeight.w700, color: AppTheme.primaryBlue)),
+              ],
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// === TREND CARD ===============================================================
+
+class _TrendCard extends StatelessWidget {
+  final int rank;
+  final String name;
+  final String imageURL;
+  final String? productId;
+  const _TrendCard({required this.rank, required this.name,
+      this.imageURL = '', this.productId});
+
+  @override
+  Widget build(BuildContext context) {
+    final rankColors = [Colors.amber, const Color(0xFF94A3B8), Colors.orange];
+    return GestureDetector(
+      onTap: productId != null && productId!.isNotEmpty
+          ? () => context.push('/product/$productId') : null,
+      child: Container(
+        width: 140, margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: context.dividerColor)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Stack(children: [
+            Container(
+              height: 100, width: double.infinity, padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
+              child: ProductImageBox(
+                imageUrl: imageURL.isNotEmpty ? imageURL : null,
+                height: 84, borderRadius: BorderRadius.circular(10),
+                padding: EdgeInsets.zero),
+            ),
+            Positioned(top: 6, left: 6, child: Container(
+              width: 24, height: 24,
+              decoration: BoxDecoration(
+                color: rank <= 3 ? rankColors[rank - 1] : context.surfaceElevatedColor,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: rank <= 3 ? [BoxShadow(
+                    color: rankColors[rank - 1].withValues(alpha: 0.4),
+                    blurRadius: 4)] : null),
+              child: Center(child: Text('#$rank',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                      color: rank <= 3 ? Colors.white : context.textPrimary))),
+            )),
+          ]),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+            child: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                    fontWeight: FontWeight.w600, color: context.textPrimary,
+                    height: 1.15)),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// === TRENDING WIDE CARD =======================================================
+
+class _TrendingWideCard extends StatelessWidget {
+  final int rank;
+  final ProductEntity product;
+  final double price;
+  final VoidCallback? onTap;
+  const _TrendingWideCard({required this.rank, required this.product,
+      required this.price, this.onTap});
+
+  Color get _rankColor => rank == 1 ? Colors.amber
+      : rank == 2 ? const Color(0xFF94A3B8) : rank == 3
+          ? Colors.orange : const Color(0xFF6366F1);
+
+  Color _techColor(double s) => s >= 85 ? const Color(0xFF10B981)
+      : s >= 70 ? const Color(0xFFF59E0B) : s >= 50 ? const Color(0xFFF97316)
+      : const Color(0xFFEF4444);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 260,
+        height: 200,
+        margin: const EdgeInsets.only(right: 14),
+        decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.brandCyan.withValues(alpha: 0.12),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.brandCyan.withValues(alpha: 0.06),
+                blurRadius: 12, spreadRadius: -2,
+              ),
+            ]),
+        child: Row(children: [
+          // Image section with rank badge
+          Stack(children: [
+            Container(
+              width: 110, height: 200,
+              decoration: BoxDecoration(
+                color: imageBg,
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(20))),
+              padding: const EdgeInsets.all(10),
+              child: ProductImageBox(
+                imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
+                height: 180, borderRadius: BorderRadius.circular(12),
+                padding: EdgeInsets.zero),
+            ),
+            Positioned(top: 10, left: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+              decoration: BoxDecoration(
+                color: rank <= 3 ? _rankColor : context.surfaceElevatedColor,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: rank <= 3 ? [BoxShadow(
+                    color: _rankColor.withValues(alpha: 0.4), blurRadius: 6)] : null),
+              child: Text('#$rank', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10, fontWeight: FontWeight.w800,
+                  color: rank <= 3 ? Colors.white : context.textPrimary)),
+            )),
+          ]),
+          // Details section
+          Expanded(child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (product.brand != null && product.brand!.isNotEmpty)
+                  Text(product.brand!.toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10,
+                          fontWeight: FontWeight.w600, color: AppTheme.accentCyan,
+                          letterSpacing: 0.8),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                        fontWeight: FontWeight.w700, color: context.textPrimary,
+                        height: 1.2)),
+                const SizedBox(height: 8),
+                if (product.techScore > 0) Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentCyan.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.local_fire_department_rounded,
+                        size: 12, color: AppTheme.accentCyan),
+                    const SizedBox(width: 3),
+                    Text('${product.techScore.toInt()}',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11, fontWeight: FontWeight.w700,
+                            color: AppTheme.accentCyan)),
+                  ]),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(20)),
+                  child: Text('View Details',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11, fontWeight: FontWeight.w600,
+                          color: Colors.white)),
+                ),
+              ],
+            ),
+          )),
+        ]),
+      ),
+    );
+  }
+}
+
+// === COMPARE CARD =============================================================
+
+class _CompareCard extends StatelessWidget {
+  final String product1;
+  final String product2;
+  final String imageURL1;
+  final String imageURL2;
+  final VoidCallback onTap;
+  const _CompareCard({required this.product1, required this.product2,
+      this.imageURL1 = '', this.imageURL2 = '', required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 260, margin: const EdgeInsets.only(right: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: context.dividerColor)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _CmpImg(url: imageURL1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(10)),
+                child: Text('VS', style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w900, fontSize: 12,
+                    color: Colors.white)),
+              ),
+            ),
+            _CmpImg(url: imageURL2),
+          ]),
+          const SizedBox(height: 12),
+          Text('$product1 vs $product2', maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(fontSize: 13,
+                  fontWeight: FontWeight.w600, color: context.textPrimary)),
+          const SizedBox(height: 4),
+          Text(context.l10n?.compareNowSmall ?? 'Compare now', style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, fontWeight: FontWeight.w600,
+              color: AppTheme.primaryBlue)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _CmpImg extends StatelessWidget {
+  final String url;
+  const _CmpImg({required this.url});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64, height: 64,
+      decoration: BoxDecoration(color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.dividerColor)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: url.isNotEmpty
+            ? CachedNetworkImage(imageUrl: url, fit: BoxFit.contain,
+                errorWidget: (_, __, ___) => Icon(Icons.devices, size: 28,
+                    color: context.textTertiaryColor),
+                placeholder: (_, __) => Icon(Icons.devices, size: 28,
+                    color: context.textTertiaryColor))
+            : Icon(Icons.devices, size: 28, color: context.textTertiaryColor),
+      ),
+    );
+  }
+}
+
+// === SKELETON CARD ============================================================
+
+class _SkeletonCard extends StatefulWidget {
+  final double width;
+  final double height;
+  const _SkeletonCard({required this.width, required this.height});
+  @override
+  State<_SkeletonCard> createState() => _SkeletonCardState();
+}
+
+class _SkeletonCardState extends State<_SkeletonCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 1200))
+      ..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.3, end: 0.7)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Container(
+        width: widget.width, height: widget.height,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor.withValues(alpha: _anim.value + 0.2),
+          borderRadius: BorderRadius.circular(20)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(flex: 55, child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor.withValues(alpha: _anim.value + 0.3),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
+          )),
+          Expanded(flex: 45, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _bar(60, 6), const SizedBox(height: 6),
+                _bar(double.infinity, 8), const SizedBox(height: 6),
+                _bar(70, 8),
+              ],
+            ),
+          )),
+        ]),
+      ),
+    );
+  }
+
+  Widget _bar(double w, double h) => Container(
+    height: h, width: w,
+    decoration: BoxDecoration(
+      color: context.surfaceElevatedColor.withValues(alpha: _anim.value + 0.3),
+      borderRadius: BorderRadius.circular(4)),
+  );
+}
+
+// === QUICK ACTION =============================================================
+
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Gradient gradient;
+  final VoidCallback onTap;
+  const _QuickAction({required this.icon, required this.label,
+      required this.gradient, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () { HapticFeedback.selectionClick(); onTap(); },
+      child: Column(
+        children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: (gradient as LinearGradient).colors.first.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: GoogleFonts.plusJakartaSans(
+              fontSize: 11, fontWeight: FontWeight.w600,
+              color: context.textSecondary)),
+        ],
+      ),
+    );
+  }
+}
+
+// === TRUST ITEM ===============================================================
+
+class _TrustItem extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  const _TrustItem({required this.icon, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ShaderMask(
+          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+          child: Icon(icon, size: 18, color: Colors.white),
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: GoogleFonts.plusJakartaSans(
+                fontSize: 14, fontWeight: FontWeight.w800,
+                color: context.textPrimary)),
+            Text(label, style: GoogleFonts.plusJakartaSans(
+                fontSize: 10, color: context.textTertiaryColor)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full-page All Categories
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AllCategoriesPage extends StatefulWidget {
+  const _AllCategoriesPage({required this.categories});
+  final List<Map<String, Object>> categories;
+
+  @override
+  State<_AllCategoriesPage> createState() => _AllCategoriesPageState();
+}
+
+class _AllCategoriesPageState extends State<_AllCategoriesPage> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final filtered = _query.isEmpty
+        ? widget.categories
+        : widget.categories
+            .where((c) => (c['name'] as String)
+                .toLowerCase()
+                .contains(_query.toLowerCase()))
+            .toList();
+
+    return Scaffold(
+      backgroundColor: isDark ? context.surfaceColor : AppTheme.surfaceLight,
+      appBar: AppBar(
+        backgroundColor: isDark ? context.surfaceColor : AppTheme.surfaceLight,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded,
+              color: isDark ? context.textPrimary : AppTheme.textPrimaryLight),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'All Categories',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18, fontWeight: FontWeight.w700,
+            color: isDark ? context.textPrimary : AppTheme.textPrimaryLight,
+          ),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${filtered.length}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, fontWeight: FontWeight.w700,
+                color: AppTheme.primaryBlue,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (v) => setState(() => _query = v),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: isDark ? context.textPrimary : AppTheme.textPrimaryLight,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search categories...',
+                hintStyle: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: isDark ? context.textSecondary : AppTheme.textSecondaryLight,
+                ),
+                prefixIcon: Icon(Icons.search_rounded,
+                    color: isDark ? context.textSecondary : AppTheme.textSecondaryLight,
+                    size: 20),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.close_rounded,
+                            color: isDark ? context.textSecondary : AppTheme.textSecondaryLight,
+                            size: 18),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: isDark ? context.surfaceVariantColor : AppTheme.surfaceVariantLight,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              itemCount: filtered.length,
+              itemBuilder: (ctx, i) {
+                final cat = filtered[i];
+                final color = cat['color'] as Color;
+                final icon = cat['icon'] as IconData;
+                final name = cat['name'] as String;
+                final id = cat['id'] as String;
+                return ListTile(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.of(context).pop();
+                    context.push('${AppRoutes.browse}?id=$id&name=${Uri.encodeComponent(name)}');
+                  },
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  leading: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
+                  ),
+                  title: Text(
+                    name,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14, fontWeight: FontWeight.w600,
+                      color: isDark ? context.textPrimary : AppTheme.textPrimaryLight,
+                    ),
+                  ),
+                  trailing: Icon(Icons.chevron_right_rounded,
+                      size: 18,
+                      color: isDark ? context.textTertiaryColor : AppTheme.textSecondaryLight),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  tileColor: Colors.transparent,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

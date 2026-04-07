@@ -1,0 +1,163 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+
+/// Loads the EN→TR spec dictionary from assets and provides bidirectional translation.
+/// Uses the scraper's 7,300+ entry dictionary for comprehensive coverage.
+class SpecTranslationService {
+  SpecTranslationService._();
+  static final instance = SpecTranslationService._();
+
+  Map<String, String>? _enTr;
+  Map<String, String>? _trEn; // Reverse lookup: TR→EN
+  bool _loading = false;
+
+  Future<void> init() async {
+    if (_enTr != null || _loading) return;
+    _loading = true;
+    try {
+      final raw = await rootBundle.loadString('assets/en_tr_specs.json');
+      _enTr = Map<String, String>.from(json.decode(raw) as Map);
+      // Build reverse map for TR→EN translation
+      _trEn = {};
+      for (final entry in _enTr!.entries) {
+        _trEn![entry.value.toLowerCase().trim()] = entry.key;
+      }
+    } catch (_) {
+      _enTr = {};
+      _trEn = {};
+    }
+    _loading = false;
+  }
+
+  /// Translate a spec value/name from English → Turkish.
+  /// Returns original if no translation found.
+  String translate(String text) {
+    if (_enTr == null || _enTr!.isEmpty) return text;
+    final key = text.toLowerCase().trim();
+    return _enTr![key] ?? text;
+  }
+
+  /// Translate a spec value/name from Turkish → English.
+  /// Returns original if no translation found.
+  String translateToEn(String text) {
+    if (_trEn == null || _trEn!.isEmpty) return text;
+    final key = text.toLowerCase().trim();
+    return _trEn![key] ?? text;
+  }
+
+  /// Auto-detect direction: if app language is Turkish, translate EN→TR.
+  /// If app language is English or other, translate TR→EN.
+  String autoTranslate(String text, String appLanguage) {
+    if (appLanguage == 'tr') {
+      return translate(text); // EN→TR
+    } else {
+      return translateToEn(text); // TR→EN
+    }
+  }
+
+  /// Translate word-by-word using sliding window (3→2→1 words).
+  /// Handles parenthetical suffixes: "Print Speed (Color)" → "Baskı Hızı (Renkli)"
+  String translateWords(String text) {
+    if (_enTr == null || _enTr!.isEmpty) return text;
+
+    // Handle parenthetical content separately
+    final parenMatch = RegExp(r'^(.*?)\s*\(([^)]+)\)\s*$').firstMatch(text);
+    if (parenMatch != null) {
+      final mainPart = parenMatch.group(1)!.trim();
+      final parenContent = parenMatch.group(2)!.trim();
+      if (mainPart.isNotEmpty) {
+        final translatedMain = _translateWordInner(mainPart);
+        final translatedParen = translate(parenContent.toLowerCase());
+        final parenFinal = translatedParen != parenContent.toLowerCase()
+            ? translatedParen
+            : _translateWordInner(parenContent);
+        return '$translatedMain ($parenFinal)';
+      }
+    }
+
+    return _translateWordInner(text);
+  }
+
+  String _translateWordInner(String text) {
+    if (_enTr == null || _enTr!.isEmpty) return text;
+    final words = text.split(RegExp(r'\s+'));
+    if (words.length <= 1) return translate(text);
+
+    final result = <String>[];
+    int i = 0;
+    while (i < words.length) {
+      bool found = false;
+      // Try 3-word window
+      if (i + 2 < words.length) {
+        final tri = '${words[i]} ${words[i + 1]} ${words[i + 2]}'.toLowerCase();
+        final t = _enTr![tri];
+        if (t != null) { result.add(t); i += 3; found = true; }
+      }
+      // Try 2-word window
+      if (!found && i + 1 < words.length) {
+        final bi = '${words[i]} ${words[i + 1]}'.toLowerCase();
+        final t = _enTr![bi];
+        if (t != null) { result.add(t); i += 2; found = true; }
+      }
+      // Try single word
+      if (!found) {
+        final single = words[i].toLowerCase();
+        final t = _enTr![single];
+        result.add(t ?? words[i]);
+        i++;
+      }
+    }
+    return result.join(' ');
+  }
+
+  /// Translate word-by-word Turkish → English using sliding window.
+  String translateWordsToEn(String text) {
+    if (_trEn == null || _trEn!.isEmpty) return text;
+
+    final parenMatch = RegExp(r'^(.*?)\s*\(([^)]+)\)\s*$').firstMatch(text);
+    if (parenMatch != null) {
+      final mainPart = parenMatch.group(1)!.trim();
+      final parenContent = parenMatch.group(2)!.trim();
+      if (mainPart.isNotEmpty) {
+        final translatedMain = _translateWordInnerReverse(mainPart);
+        final translatedParen = translateToEn(parenContent.toLowerCase());
+        final parenFinal = translatedParen != parenContent.toLowerCase()
+            ? translatedParen
+            : _translateWordInnerReverse(parenContent);
+        return '$translatedMain ($parenFinal)';
+      }
+    }
+    return _translateWordInnerReverse(text);
+  }
+
+  String _translateWordInnerReverse(String text) {
+    if (_trEn == null || _trEn!.isEmpty) return text;
+    final words = text.split(RegExp(r'\s+'));
+    if (words.length <= 1) return translateToEn(text);
+
+    final result = <String>[];
+    int i = 0;
+    while (i < words.length) {
+      bool found = false;
+      if (i + 2 < words.length) {
+        final tri = '${words[i]} ${words[i + 1]} ${words[i + 2]}'.toLowerCase();
+        final t = _trEn![tri];
+        if (t != null) { result.add(t); i += 3; found = true; }
+      }
+      if (!found && i + 1 < words.length) {
+        final bi = '${words[i]} ${words[i + 1]}'.toLowerCase();
+        final t = _trEn![bi];
+        if (t != null) { result.add(t); i += 2; found = true; }
+      }
+      if (!found) {
+        final single = words[i].toLowerCase();
+        final t = _trEn![single];
+        result.add(t ?? words[i]);
+        i++;
+      }
+    }
+    return result.join(' ');
+  }
+
+  bool get isLoaded => _enTr != null && _enTr!.isNotEmpty;
+}

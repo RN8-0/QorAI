@@ -1,0 +1,697 @@
+{
+  "products": [
+    {
+      "id": "iphone-16-pro",
+      "name": "iPhone 16 Pro",
+      "brand": "Apple",
+      "category": "tech",
+      "subcategory": "smartphones",
+      "description": "Apple'ın en gelişmiş iPhone modeli. A18 Pro çip, 48MP kamera sistemi ve titanium tasarım.",
+      "imageUrl": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-16-pro-finish-select-202409-6-3inch_GEO_EMEA",
+      "prices": {
+        "TR": 74999,
+        "US": 999,
+        "EU": 1199
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "6.3 inç Super Retina XDR",
+        "processor": "A18 Pro",
+        "ram": "8 GB",
+        "storage": "128 GB / 256 GB / 512 GB / 1 TB",
+        "camera": "48MP + 12MP + 12MP",
+        "battery": "3582 mAh",
+        "os": "iOS 18",
+        "ecosystem": "apple",
+        "5g": true,
+        "wireless_charging": true
+      },
+      "pros": ["Üstün kamera kalitesi", "Güçlü A18 Pro işlemci", "Titanium tasarım", "5 yıl yazılım desteği", "Ekosistem uyumu"],
+      "cons": ["Yüksek fiyat", "USB-C aksesuarları ayrı satılıyor", "Şarj adaptörü kutuda yok"],
+      "ratings": {
+        "expert": 9.2,
+        "community": 4.7,
+        "compair": 92
+      },
+      "tags": ["iphone", "apple", "flagship", "telefon", "akıllı telefon", "premium"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/iphone16pro",
+        "trendyol": "https://trendyol.com/iphone-16-pro",
+        "hepsiburada": "https://hepsiburada.com/iphone-16-pro"
+      },
+      "releaseDate": "2024-09-20",
+      "trendScore": 95,
+      "isActive": true
+    },
+    {
+      "id": "iphone-16",
+      "name": "iPhone 16",
+      "brand": "Apple",
+      "category": "tech",
+      "subcategory": "smartphones",
+      "description": "Yeni nesil iPhone. A18 çip, gelişmiş kamera sistemi ve tüm gün pil ömrü.",
+      "imageUrl": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-16-finish-select-202409-6-1inch",
+      "prices": {
+        "TR": 54999,
+        "US": 799,
+        "EU": 969
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "6.1 inç Super Retina XDR",
+        "processor": "A18",
+        "ram": "8 GB",
+        "storage": "128 GB / 256 GB / 512 GB",
+        "camera": "48MP + 12MP",
+        "battery": "3561 mAh",
+        "os": "iOS 18",
+        "ecosystem": "apple",
+        "5g": true,
+        "wireless_charging": true
+      },
+      "pros": ["Uygun fiyat/performans", "Güçlü A18 işlemci", "Tüm gün pil ömrü", "Kompakt boyut"],
+      "cons": ["ProMotion ekran yok", "Telefoto lens yok", "60Hz ekran"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.6,
+        "compair": 88
+      },
+      "tags": ["iphone", "apple", "telefon", "akıllı telefon"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/iphone16",
+        "trendyol": "https://trendyol.com/iphone-16"
+      },
+      "releaseDate": "2024-09-20",
+      "trendScore": 88,
+      "isActive": true
+    },
+    {
+      "id": "samsung-galaxy-s24-ultra",
+      "name": "Samsung Galaxy S24 Ultra",
+      "brand": "Samsung",
+      "category": "tech",
+      "subcategory": "smartphones",
+      "description": "Samsung'un en güçlü Galaxy modeli. Snapdragon 8 Gen 3, 200MP kamera, S Pen dahil.",
+      "imageUrl": "https://images.samsung.com/tr/smartphones/galaxy-s24-ultra",
+      "prices": {
+        "TR": 69999,
+        "US": 1299,
+        "EU": 1449
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "6.8 inç Dynamic AMOLED 2X, 120Hz",
+        "processor": "Snapdragon 8 Gen 3",
+        "ram": "12 GB",
+        "storage": "256 GB / 512 GB / 1 TB",
+        "camera": "200MP + 12MP + 50MP + 10MP",
+        "battery": "5000 mAh",
+        "os": "Android 14, One UI 6.1",
+        "ecosystem": "android",
+        "5g": true,
+        "wireless_charging": true,
+        "s_pen": true
+      },
+      "pros": ["200MP ana kamera", "S Pen dahil", "7 yıl güncelleme", "Titanium çerçeve", "Parlak ekran"],
+      "cons": ["Ağır ve büyük", "Yüksek fiyat", "Isınma sorunu olabilir"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.6,
+        "compair": 90
+      },
+      "tags": ["samsung", "galaxy", "android", "flagship", "telefon", "s pen"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/galaxys24ultra",
+        "trendyol": "https://trendyol.com/galaxy-s24-ultra",
+        "samsung": "https://samsung.com/tr/galaxy-s24-ultra"
+      },
+      "releaseDate": "2024-01-31",
+      "trendScore": 92,
+      "isActive": true
+    },
+    {
+      "id": "samsung-galaxy-s24",
+      "name": "Samsung Galaxy S24",
+      "brand": "Samsung",
+      "category": "tech",
+      "subcategory": "smartphones",
+      "description": "Kompakt flagship. Galaxy AI özellikleri, 50MP kamera ve 120Hz ekran.",
+      "imageUrl": "https://images.samsung.com/tr/smartphones/galaxy-s24",
+      "prices": {
+        "TR": 42999,
+        "US": 799,
+        "EU": 899
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "6.2 inç Dynamic AMOLED 2X, 120Hz",
+        "processor": "Exynos 2400",
+        "ram": "8 GB",
+        "storage": "128 GB / 256 GB",
+        "camera": "50MP + 12MP + 10MP",
+        "battery": "4000 mAh",
+        "os": "Android 14, One UI 6.1",
+        "ecosystem": "android",
+        "5g": true,
+        "wireless_charging": true
+      },
+      "pros": ["Kompakt boyut", "Galaxy AI özellikleri", "7 yıl güncelleme", "120Hz ekran"],
+      "cons": ["Exynos işlemci (TR)", "Küçük pil", "Plastik arka"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.4,
+        "compair": 85
+      },
+      "tags": ["samsung", "galaxy", "android", "telefon", "kompakt"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/galaxys24",
+        "trendyol": "https://trendyol.com/galaxy-s24"
+      },
+      "releaseDate": "2024-01-31",
+      "trendScore": 82,
+      "isActive": true
+    },
+    {
+      "id": "google-pixel-9-pro",
+      "name": "Google Pixel 9 Pro",
+      "brand": "Google",
+      "category": "tech",
+      "subcategory": "smartphones",
+      "description": "Google'ın AI odaklı flagship telefonu. Tensor G4, en iyi hesaplamalı fotoğrafçılık.",
+      "imageUrl": "https://store.google.com/product/pixel_9_pro",
+      "prices": {
+        "TR": 52999,
+        "US": 999,
+        "EU": 1099
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "6.3 inç LTPO OLED, 120Hz",
+        "processor": "Google Tensor G4",
+        "ram": "16 GB",
+        "storage": "128 GB / 256 GB / 512 GB",
+        "camera": "50MP + 48MP + 48MP",
+        "battery": "4700 mAh",
+        "os": "Android 15",
+        "ecosystem": "android",
+        "5g": true,
+        "wireless_charging": true
+      },
+      "pros": ["En iyi fotoğraf işleme", "7 yıl güncelleme", "Saf Android deneyimi", "Gemini AI entegrasyonu"],
+      "cons": ["Türkiye'de resmi satış yok", "Tensor işlemci sınırlı oyun performansı"],
+      "ratings": {
+        "expert": 8.9,
+        "community": 4.5,
+        "compair": 89
+      },
+      "tags": ["google", "pixel", "android", "ai", "telefon", "kamera"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/pixel9pro"
+      },
+      "releaseDate": "2024-08-22",
+      "trendScore": 78,
+      "isActive": true
+    },
+    {
+      "id": "xiaomi-14-ultra",
+      "name": "Xiaomi 14 Ultra",
+      "brand": "Xiaomi",
+      "category": "tech",
+      "subcategory": "smartphones",
+      "description": "Leica işbirlikli kamera sistemi. Snapdragon 8 Gen 3 ve profesyonel fotoğraf özellikleri.",
+      "imageUrl": "https://xiaomi.com/tr/xiaomi-14-ultra",
+      "prices": {
+        "TR": 54999,
+        "US": 999,
+        "EU": 1199
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "6.73 inç LTPO AMOLED, 120Hz",
+        "processor": "Snapdragon 8 Gen 3",
+        "ram": "16 GB",
+        "storage": "512 GB",
+        "camera": "50MP + 50MP + 50MP + 50MP (Leica)",
+        "battery": "5000 mAh",
+        "os": "Android 14, HyperOS",
+        "ecosystem": "android",
+        "5g": true,
+        "wireless_charging": true
+      },
+      "pros": ["Leica kamera sistemi", "4 adet 50MP sensör", "Hızlı şarj 90W", "Fiyat/performans"],
+      "cons": ["HyperOS alışma süreci", "Büyük ve ağır", "Yazılım güncellemeleri belirsiz"],
+      "ratings": {
+        "expert": 8.7,
+        "community": 4.4,
+        "compair": 87
+      },
+      "tags": ["xiaomi", "android", "leica", "kamera", "telefon"],
+      "affiliateLinks": {
+        "trendyol": "https://trendyol.com/xiaomi-14-ultra",
+        "hepsiburada": "https://hepsiburada.com/xiaomi-14-ultra"
+      },
+      "releaseDate": "2024-02-25",
+      "trendScore": 80,
+      "isActive": true
+    },
+    {
+      "id": "macbook-air-m3",
+      "name": "MacBook Air M3",
+      "brand": "Apple",
+      "category": "tech",
+      "subcategory": "laptops",
+      "description": "Apple M3 çipli ultra ince ve hafif laptop. Tüm gün pil ömrü, fansız tasarım.",
+      "imageUrl": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/macbook-air-m3",
+      "prices": {
+        "TR": 47999,
+        "US": 1099,
+        "EU": 1299
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "13.6 inç Liquid Retina",
+        "processor": "Apple M3",
+        "ram": "8 GB / 16 GB / 24 GB",
+        "storage": "256 GB / 512 GB / 1 TB / 2 TB",
+        "battery": "18 saat",
+        "weight": "1.24 kg",
+        "os": "macOS Sonoma",
+        "ecosystem": "apple"
+      },
+      "pros": ["Sessiz fansız tasarım", "18 saat pil ömrü", "Hafif ve ince", "M3 performansı"],
+      "cons": ["8GB RAM yetersiz kalabilir", "Tek harici ekran desteği", "MagSafe zorunlu"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.7,
+        "compair": 90
+      },
+      "tags": ["macbook", "apple", "laptop", "m3", "ultrabook"],
+      "affiliateLinks": {
+        "apple": "https://apple.com/tr/shop/buy-mac/macbook-air",
+        "mediamarkt": "https://mediamarkt.com.tr/macbook-air-m3"
+      },
+      "releaseDate": "2024-03-08",
+      "trendScore": 93,
+      "isActive": true
+    },
+    {
+      "id": "macbook-pro-14-m3-pro",
+      "name": "MacBook Pro 14\" M3 Pro",
+      "brand": "Apple",
+      "category": "tech",
+      "subcategory": "laptops",
+      "description": "Profesyoneller için güçlü laptop. M3 Pro çip, Mini-LED ekran, ProRes desteği.",
+      "imageUrl": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/macbook-pro-14-m3-pro",
+      "prices": {
+        "TR": 84999,
+        "US": 1999,
+        "EU": 2399
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "14.2 inç Liquid Retina XDR, ProMotion",
+        "processor": "Apple M3 Pro",
+        "ram": "18 GB / 36 GB",
+        "storage": "512 GB / 1 TB / 2 TB / 4 TB",
+        "battery": "17 saat",
+        "weight": "1.55 kg",
+        "os": "macOS Sonoma",
+        "ecosystem": "apple"
+      },
+      "pros": ["M3 Pro performansı", "Mini-LED ekran", "ProRes video düzenleme", "3 Thunderbolt port"],
+      "cons": ["Çok yüksek fiyat", "Ağır", "HDMI 2.0 (8K yok)"],
+      "ratings": {
+        "expert": 9.3,
+        "community": 4.8,
+        "compair": 93
+      },
+      "tags": ["macbook", "apple", "laptop", "m3 pro", "profesyonel"],
+      "affiliateLinks": {
+        "apple": "https://apple.com/tr/shop/buy-mac/macbook-pro"
+      },
+      "releaseDate": "2023-11-07",
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "dell-xps-15",
+      "name": "Dell XPS 15",
+      "brand": "Dell",
+      "category": "tech",
+      "subcategory": "laptops",
+      "description": "Premium Windows laptop. Intel Core Ultra, OLED ekran seçeneği, kompakt tasarım.",
+      "imageUrl": "https://dell.com/tr/xps-15",
+      "prices": {
+        "TR": 62999,
+        "US": 1499,
+        "EU": 1699
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "15.6 inç OLED 3.5K / FHD+",
+        "processor": "Intel Core Ultra 7 155H",
+        "ram": "16 GB / 32 GB / 64 GB",
+        "storage": "512 GB / 1 TB / 2 TB",
+        "gpu": "Intel Arc / NVIDIA RTX 4050/4060",
+        "battery": "86 Wh",
+        "weight": "1.86 kg",
+        "os": "Windows 11",
+        "ecosystem": "windows"
+      },
+      "pros": ["OLED ekran seçeneği", "Premium yapı kalitesi", "Kompakt tasarım", "Güçlü performans"],
+      "cons": ["Pahalı", "Webcam kalitesi orta", "Fan gürültüsü yük altında"],
+      "ratings": {
+        "expert": 8.6,
+        "community": 4.4,
+        "compair": 86
+      },
+      "tags": ["dell", "xps", "windows", "laptop", "oled", "ultrabook"],
+      "affiliateLinks": {
+        "dell": "https://dell.com/tr/xps-15",
+        "hepsiburada": "https://hepsiburada.com/dell-xps-15"
+      },
+      "releaseDate": "2024-04-15",
+      "trendScore": 78,
+      "isActive": true
+    },
+    {
+      "id": "lenovo-thinkpad-x1-carbon",
+      "name": "Lenovo ThinkPad X1 Carbon Gen 12",
+      "brand": "Lenovo",
+      "category": "tech",
+      "subcategory": "laptops",
+      "description": "İş dünyasının tercihi. Intel Core Ultra, efsanevi klavye, MIL-STD dayanıklılık.",
+      "imageUrl": "https://lenovo.com/tr/thinkpad-x1-carbon",
+      "prices": {
+        "TR": 58999,
+        "US": 1399,
+        "EU": 1599
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "14 inç 2.8K OLED / 2K IPS",
+        "processor": "Intel Core Ultra 7 155U",
+        "ram": "16 GB / 32 GB",
+        "storage": "256 GB / 512 GB / 1 TB",
+        "battery": "57 Wh",
+        "weight": "1.09 kg",
+        "os": "Windows 11 Pro",
+        "ecosystem": "windows"
+      },
+      "pros": ["En iyi klavye", "Ultra hafif", "MIL-STD dayanıklılık", "İş odaklı özellikler"],
+      "cons": ["GPU yok", "RAM yükseltilemez", "OLED'de pil ömrü düşük"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.5,
+        "compair": 88
+      },
+      "tags": ["lenovo", "thinkpad", "windows", "laptop", "iş", "ultrabook"],
+      "affiliateLinks": {
+        "lenovo": "https://lenovo.com/tr/thinkpad-x1-carbon"
+      },
+      "releaseDate": "2024-01-08",
+      "trendScore": 75,
+      "isActive": true
+    },
+    {
+      "id": "airpods-pro-2",
+      "name": "AirPods Pro 2 (USB-C)",
+      "brand": "Apple",
+      "category": "tech",
+      "subcategory": "headphones",
+      "description": "Apple'ın en gelişmiş kablosuz kulaklığı. Aktif gürültü engelleme, uyarlanabilir ses.",
+      "imageUrl": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/airpods-pro-2",
+      "prices": {
+        "TR": 9999,
+        "US": 249,
+        "EU": 279
+      },
+      "currency": "TRY",
+      "specs": {
+        "type": "True Wireless",
+        "driver": "Apple H2 çip",
+        "anc": true,
+        "battery_buds": "6 saat (ANC açık)",
+        "battery_case": "30 saat toplam",
+        "water_resistance": "IPX4",
+        "ecosystem": "apple",
+        "spatial_audio": true
+      },
+      "pros": ["Üstün ANC", "Spatial Audio", "Apple ekosistem entegrasyonu", "Konuşma algılama"],
+      "cons": ["Sadece Apple için en iyi", "Pahalı", "Kulak içi tasarım herkes için uygun değil"],
+      "ratings": {
+        "expert": 9.1,
+        "community": 4.7,
+        "compair": 91
+      },
+      "tags": ["airpods", "apple", "kulaklık", "tws", "anc", "kablosuz"],
+      "affiliateLinks": {
+        "apple": "https://apple.com/tr/shop/product/airpods-pro",
+        "trendyol": "https://trendyol.com/airpods-pro-2"
+      },
+      "releaseDate": "2023-09-22",
+      "trendScore": 94,
+      "isActive": true
+    },
+    {
+      "id": "sony-wh-1000xm5",
+      "name": "Sony WH-1000XM5",
+      "brand": "Sony",
+      "category": "tech",
+      "subcategory": "headphones",
+      "description": "Sektör lideri kablosuz kulaklık. En iyi ANC, 30 saat pil, çok noktadan bağlantı.",
+      "imageUrl": "https://sony.com.tr/wh-1000xm5",
+      "prices": {
+        "TR": 12999,
+        "US": 349,
+        "EU": 399
+      },
+      "currency": "TRY",
+      "specs": {
+        "type": "Over-ear Wireless",
+        "driver": "30mm, LDAC",
+        "anc": true,
+        "battery": "30 saat (ANC açık)",
+        "water_resistance": "Yok",
+        "ecosystem": "universal",
+        "multipoint": true,
+        "ldac": true
+      },
+      "pros": ["En iyi ANC performansı", "30 saat pil", "Multipoint bağlantı", "Konfor"],
+      "cons": ["Katlanmıyor", "Pahalı", "Su dayanıklılığı yok"],
+      "ratings": {
+        "expert": 9.2,
+        "community": 4.6,
+        "compair": 92
+      },
+      "tags": ["sony", "kulaklık", "anc", "bluetooth", "over-ear", "premium"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/sony-xm5",
+        "mediamarkt": "https://mediamarkt.com.tr/sony-wh-1000xm5"
+      },
+      "releaseDate": "2022-05-18",
+      "trendScore": 88,
+      "isActive": true
+    },
+    {
+      "id": "samsung-galaxy-buds3-pro",
+      "name": "Samsung Galaxy Buds3 Pro",
+      "brand": "Samsung",
+      "category": "tech",
+      "subcategory": "headphones",
+      "description": "Samsung'un premium TWS kulaklığı. Galaxy AI destekli ses, 360 Audio.",
+      "imageUrl": "https://samsung.com/tr/galaxy-buds3-pro",
+      "prices": {
+        "TR": 7999,
+        "US": 249,
+        "EU": 279
+      },
+      "currency": "TRY",
+      "specs": {
+        "type": "True Wireless",
+        "driver": "10.5mm + 6.1mm planar",
+        "anc": true,
+        "battery_buds": "7 saat (ANC açık)",
+        "battery_case": "30 saat toplam",
+        "water_resistance": "IP57",
+        "ecosystem": "android",
+        "spatial_audio": true
+      },
+      "pros": ["Dual driver", "Galaxy AI özellikleri", "IP57 su dayanıklılığı", "Şık tasarım"],
+      "cons": ["AirPods benzeri tasarım tartışmalı", "Samsung dışı cihazlarda sınırlı"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.3,
+        "compair": 85
+      },
+      "tags": ["samsung", "galaxy buds", "kulaklık", "tws", "anc"],
+      "affiliateLinks": {
+        "samsung": "https://samsung.com/tr/galaxy-buds3-pro",
+        "trendyol": "https://trendyol.com/galaxy-buds3-pro"
+      },
+      "releaseDate": "2024-07-10",
+      "trendScore": 82,
+      "isActive": true
+    },
+    {
+      "id": "apple-watch-series-10",
+      "name": "Apple Watch Series 10",
+      "brand": "Apple",
+      "category": "tech",
+      "subcategory": "smartwatches",
+      "description": "Apple'ın en ince akıllı saati. Daha büyük ekran, uyku apnesi algılama.",
+      "imageUrl": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/apple-watch-series-10",
+      "prices": {
+        "TR": 18999,
+        "US": 399,
+        "EU": 449
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "46mm OLED LTPO3",
+        "processor": "S10 SiP",
+        "battery": "18 saat",
+        "water_resistance": "50m + dalış sertifikası",
+        "sensors": "EKG, SpO2, uyku apnesi, düşme algılama",
+        "ecosystem": "apple",
+        "gps": true,
+        "cellular": "opsiyonel"
+      },
+      "pros": ["En ince Apple Watch", "Büyük ekran", "Uyku apnesi algılama", "Sağlık özellikleri"],
+      "cons": ["Sadece iPhone ile çalışır", "Pahalı", "Pil ömrü kısa"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.6,
+        "compair": 90
+      },
+      "tags": ["apple watch", "apple", "akıllı saat", "sağlık", "fitness"],
+      "affiliateLinks": {
+        "apple": "https://apple.com/tr/shop/buy-watch/apple-watch"
+      },
+      "releaseDate": "2024-09-20",
+      "trendScore": 91,
+      "isActive": true
+    },
+    {
+      "id": "samsung-galaxy-watch7",
+      "name": "Samsung Galaxy Watch 7",
+      "brand": "Samsung",
+      "category": "tech",
+      "subcategory": "smartwatches",
+      "description": "Wear OS tabanlı akıllı saat. BioActive sensör, Galaxy AI sağlık içgörüleri.",
+      "imageUrl": "https://samsung.com/tr/galaxy-watch7",
+      "prices": {
+        "TR": 11999,
+        "US": 299,
+        "EU": 319
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "44mm Super AMOLED",
+        "processor": "Exynos W1000",
+        "battery": "40 saat",
+        "water_resistance": "5ATM + IP68",
+        "sensors": "BioActive (EKG, tansiyon, vücut kompozisyonu)",
+        "ecosystem": "android",
+        "gps": true,
+        "cellular": "opsiyonel"
+      },
+      "pros": ["Wear OS uygulamaları", "BioActive sensör", "Uzun pil ömrü", "Uygun fiyat"],
+      "cons": ["iPhone ile sınırlı", "Bazı özellikler Samsung'a özel"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.4,
+        "compair": 85
+      },
+      "tags": ["samsung", "galaxy watch", "akıllı saat", "wear os", "android"],
+      "affiliateLinks": {
+        "samsung": "https://samsung.com/tr/galaxy-watch7",
+        "trendyol": "https://trendyol.com/galaxy-watch7"
+      },
+      "releaseDate": "2024-07-10",
+      "trendScore": 83,
+      "isActive": true
+    },
+    {
+      "id": "ipad-pro-m4",
+      "name": "iPad Pro M4 (11\")",
+      "brand": "Apple",
+      "category": "tech",
+      "subcategory": "tablets",
+      "description": "En güçlü iPad. M4 çip, Ultra Retina XDR OLED ekran, Apple Pencil Pro desteği.",
+      "imageUrl": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/ipad-pro-m4",
+      "prices": {
+        "TR": 44999,
+        "US": 999,
+        "EU": 1199
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "11 inç Ultra Retina XDR OLED, 120Hz",
+        "processor": "Apple M4",
+        "ram": "8 GB / 16 GB",
+        "storage": "256 GB / 512 GB / 1 TB / 2 TB",
+        "battery": "10 saat",
+        "weight": "444 g",
+        "os": "iPadOS 18",
+        "ecosystem": "apple",
+        "pencil": "Apple Pencil Pro"
+      },
+      "pros": ["M4 performansı", "OLED ekran", "Ultra ince 5.3mm", "Apple Pencil Pro"],
+      "cons": ["iPadOS sınırlamaları", "Aksesuarlar ayrı", "Çok pahalı"],
+      "ratings": {
+        "expert": 9.4,
+        "community": 4.7,
+        "compair": 94
+      },
+      "tags": ["ipad", "apple", "tablet", "m4", "oled", "profesyonel"],
+      "affiliateLinks": {
+        "apple": "https://apple.com/tr/shop/buy-ipad/ipad-pro"
+      },
+      "releaseDate": "2024-05-15",
+      "trendScore": 89,
+      "isActive": true
+    },
+    {
+      "id": "samsung-galaxy-tab-s9-ultra",
+      "name": "Samsung Galaxy Tab S9 Ultra",
+      "brand": "Samsung",
+      "category": "tech",
+      "subcategory": "tablets",
+      "description": "Samsung'un en büyük tableti. 14.6\" AMOLED ekran, S Pen dahil, DeX modu.",
+      "imageUrl": "https://samsung.com/tr/galaxy-tab-s9-ultra",
+      "prices": {
+        "TR": 42999,
+        "US": 1199,
+        "EU": 1349
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "14.6 inç Dynamic AMOLED 2X, 120Hz",
+        "processor": "Snapdragon 8 Gen 2",
+        "ram": "12 GB / 16 GB",
+        "storage": "256 GB / 512 GB / 1 TB",
+        "battery": "11200 mAh",
+        "weight": "732 g",
+        "os": "Android 14, One UI 6",
+        "ecosystem": "android",
+        "s_pen": true
+      },
+      "pros": ["Dev 14.6\" ekran", "S Pen dahil", "DeX masaüstü modu", "SD kart desteği"],
+      "cons": ["Çok büyük ve ağır", "Android tablet uygulamaları sınırlı"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.5,
+        "compair": 88
+      },
+      "tags": ["samsung", "galaxy tab", "tablet", "android", "s pen", "büyük ekran"],
+      "affiliateLinks": {
+        "samsung": "https://samsung.com/tr/galaxy-tab-s9-ultra",
+        "trendyol": "https://trendyol.com/galaxy-tab-s9-ultra"
+      },
+      "releaseDate": "2023-08-11",
+      "trendScore": 79,
+      "isActive": true
+    }
+  ]
+}

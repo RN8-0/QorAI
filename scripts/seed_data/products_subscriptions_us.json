@@ -1,0 +1,445 @@
+{
+  "products": [
+    {
+      "id": "netflix-premium",
+      "name": "Netflix Premium",
+      "brand": "Netflix",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Stream unlimited movies and TV shows in 4K Ultra HD on up to 4 screens simultaneously.",
+      "imageUrl": "https://images.ctfassets.net/4cd45et68cgf/Rx83JoRDMkYNlMC9MKzcB/2b14d5a59fc3937afd3f03191e19502d/Netflix-Symbol.png",
+      "prices": {
+        "US": 22.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "4 simultaneous",
+        "quality": "4K Ultra HD + HDR",
+        "downloads": "6 devices",
+        "ads": false,
+        "profiles": "5",
+        "type": "monthly"
+      },
+      "pros": ["Largest original content library", "4K + HDR quality", "No ads", "Download for offline", "Global availability"],
+      "cons": ["Most expensive streaming option", "Password sharing crackdown", "Content varies by region"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.4,
+        "compair": 85
+      },
+      "tags": ["netflix", "streaming", "movies", "tv shows", "4k"],
+      "affiliateLinks": {
+        "direct": "https://www.netflix.com/signup"
+      },
+      "trendScore": 90,
+      "isActive": true
+    },
+    {
+      "id": "netflix-standard-ads",
+      "name": "Netflix Standard with ads",
+      "brand": "Netflix",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Budget-friendly Netflix with occasional ads. Stream on 2 screens in Full HD.",
+      "imageUrl": "https://images.ctfassets.net/4cd45et68cgf/Rx83JoRDMkYNlMC9MKzcB/2b14d5a59fc3937afd3f03191e19502d/Netflix-Symbol.png",
+      "prices": {
+        "US": 6.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "2 simultaneous",
+        "quality": "Full HD 1080p",
+        "downloads": "2 devices",
+        "ads": true,
+        "profiles": "5",
+        "type": "monthly"
+      },
+      "pros": ["Very affordable", "Still great content", "Good video quality", "Same profiles feature"],
+      "cons": ["Has ads", "No 4K", "Limited downloads", "Some content missing"],
+      "ratings": {
+        "expert": 7.5,
+        "community": 4.0,
+        "compair": 78
+      },
+      "tags": ["netflix", "streaming", "budget", "ads"],
+      "affiliateLinks": {
+        "direct": "https://www.netflix.com/signup"
+      },
+      "trendScore": 82,
+      "isActive": true
+    },
+    {
+      "id": "disney-plus-premium",
+      "name": "Disney+ Premium",
+      "brand": "Disney",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "All Disney, Pixar, Marvel, Star Wars, and National Geographic content without ads.",
+      "imageUrl": "https://cnbl-cdn.bamgrid.com/assets/7ecc8bcb60ad77193058d63e321bd21cbac2fc67281dbd9927676ea4a4c83594/original",
+      "prices": {
+        "US": 13.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "4 simultaneous",
+        "quality": "4K Ultra HD + HDR",
+        "downloads": "10 devices",
+        "ads": false,
+        "profiles": "7",
+        "type": "monthly"
+      },
+      "pros": ["Marvel & Star Wars content", "Great for families", "4K + HDR included", "IMAX Enhanced", "GroupWatch feature"],
+      "cons": ["Smaller library than Netflix", "Less original content", "Kids-focused"],
+      "ratings": {
+        "expert": 8.3,
+        "community": 4.5,
+        "compair": 83
+      },
+      "tags": ["disney", "streaming", "marvel", "star wars", "pixar", "family"],
+      "affiliateLinks": {
+        "direct": "https://www.disneyplus.com/"
+      },
+      "trendScore": 88,
+      "isActive": true
+    },
+    {
+      "id": "hulu-no-ads",
+      "name": "Hulu (No Ads)",
+      "brand": "Hulu",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Stream current TV shows, original series, and movies without interruptions.",
+      "imageUrl": "https://press.hulu.com/wp-content/uploads/2020/02/hulu-green.png",
+      "prices": {
+        "US": 17.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "2 simultaneous",
+        "quality": "Full HD 1080p",
+        "downloads": "25 titles",
+        "ads": false,
+        "profiles": "6",
+        "type": "monthly"
+      },
+      "pros": ["Next-day TV episodes", "Great Hulu Originals", "No ads", "Pairs well with Disney+"],
+      "cons": ["No 4K content", "Limited screens", "US only"],
+      "ratings": {
+        "expert": 8.0,
+        "community": 4.2,
+        "compair": 80
+      },
+      "tags": ["hulu", "streaming", "tv shows", "originals"],
+      "affiliateLinks": {
+        "direct": "https://www.hulu.com/"
+      },
+      "trendScore": 75,
+      "isActive": true
+    },
+    {
+      "id": "hbo-max",
+      "name": "Max (HBO) Ad-Free",
+      "brand": "Warner Bros. Discovery",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Premium streaming with HBO Originals, Warner Bros. movies, and exclusive content.",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Max_logo.svg",
+      "prices": {
+        "US": 15.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "2 simultaneous",
+        "quality": "Full HD 1080p",
+        "downloads": "30 titles",
+        "ads": false,
+        "profiles": "5",
+        "type": "monthly"
+      },
+      "pros": ["HBO originals", "Warner Bros. movies", "DC content", "Same-day movie releases"],
+      "cons": ["No 4K in base plan", "Confusing rebrand history", "Limited screens"],
+      "ratings": {
+        "expert": 8.4,
+        "community": 4.3,
+        "compair": 84
+      },
+      "tags": ["max", "hbo", "streaming", "movies", "originals"],
+      "affiliateLinks": {
+        "direct": "https://www.max.com/"
+      },
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "max-ultimate",
+      "name": "Max Ultimate Ad-Free",
+      "brand": "Warner Bros. Discovery",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "The complete Max experience with 4K, Dolby Atmos, and 4 simultaneous streams.",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Max_logo.svg",
+      "prices": {
+        "US": 20.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "4 simultaneous",
+        "quality": "4K Ultra HD + Dolby Atmos",
+        "downloads": "100 titles",
+        "ads": false,
+        "profiles": "5",
+        "type": "monthly"
+      },
+      "pros": ["4K + Dolby Atmos", "4 streams", "100 downloads", "HBO originals", "R-rated content"],
+      "cons": ["Most expensive", "4K library limited", "Requires good internet"],
+      "ratings": {
+        "expert": 8.7,
+        "community": 4.4,
+        "compair": 87
+      },
+      "tags": ["max", "hbo", "streaming", "4k", "premium"],
+      "affiliateLinks": {
+        "direct": "https://www.max.com/"
+      },
+      "trendScore": 80,
+      "isActive": true
+    },
+    {
+      "id": "apple-tv-plus",
+      "name": "Apple TV+",
+      "brand": "Apple",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Award-winning Apple Originals in stunning 4K HDR with Dolby Vision and Atmos.",
+      "imageUrl": "https://tv.apple.com/assets/brands/apple-tv-plus/logo.png",
+      "prices": {
+        "US": 9.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "6 simultaneous",
+        "quality": "4K Ultra HD + Dolby Vision/Atmos",
+        "downloads": "Unlimited",
+        "ads": false,
+        "profiles": "6",
+        "type": "monthly"
+      },
+      "pros": ["Affordable price", "Highest video quality", "Award-winning originals", "6 streams included", "Family Sharing"],
+      "cons": ["Smallest library", "Originals only - no licensed content", "Slow content release"],
+      "ratings": {
+        "expert": 8.2,
+        "community": 4.1,
+        "compair": 82
+      },
+      "tags": ["apple", "streaming", "originals", "4k", "dolby"],
+      "affiliateLinks": {
+        "direct": "https://tv.apple.com/"
+      },
+      "trendScore": 78,
+      "isActive": true
+    },
+    {
+      "id": "spotify-premium-individual",
+      "name": "Spotify Premium Individual",
+      "brand": "Spotify",
+      "category": "subscription",
+      "subcategory": "music",
+      "description": "Ad-free music streaming with offline downloads and highest audio quality.",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg",
+      "prices": {
+        "US": 11.99
+      },
+      "currency": "USD",
+      "specs": {
+        "quality": "320 kbps (Very High)",
+        "downloads": "10,000 songs per device",
+        "ads": false,
+        "devices": "5",
+        "lyrics": true,
+        "type": "monthly"
+      },
+      "pros": ["Largest music library", "Best algorithm recommendations", "Podcast integration", "Works everywhere", "Lyrics included"],
+      "cons": ["No Hi-Fi option yet", "Some exclusive content", "Payouts to artists criticized"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.6,
+        "compair": 88
+      },
+      "tags": ["spotify", "music", "streaming", "podcasts"],
+      "affiliateLinks": {
+        "direct": "https://www.spotify.com/premium/"
+      },
+      "trendScore": 92,
+      "isActive": true
+    },
+    {
+      "id": "apple-music-individual",
+      "name": "Apple Music Individual",
+      "brand": "Apple",
+      "category": "subscription",
+      "subcategory": "music",
+      "description": "100 million songs in Lossless and Spatial Audio with Dolby Atmos.",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Apple_Music_icon.svg",
+      "prices": {
+        "US": 10.99
+      },
+      "currency": "USD",
+      "specs": {
+        "quality": "Lossless + Dolby Atmos",
+        "downloads": "100,000 songs",
+        "ads": false,
+        "devices": "10",
+        "lyrics": true,
+        "type": "monthly"
+      },
+      "pros": ["Lossless audio included", "Spatial Audio", "Apple ecosystem integration", "Sing feature", "Better artist payouts"],
+      "cons": ["Weaker recommendations", "No free tier", "Best with Apple devices"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.4,
+        "compair": 85
+      },
+      "tags": ["apple", "music", "streaming", "lossless", "spatial audio"],
+      "affiliateLinks": {
+        "direct": "https://music.apple.com/"
+      },
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "youtube-premium",
+      "name": "YouTube Premium",
+      "brand": "Google",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Ad-free YouTube with background play, downloads, and YouTube Music included.",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg",
+      "prices": {
+        "US": 13.99
+      },
+      "currency": "USD",
+      "specs": {
+        "quality": "4K HDR (where available)",
+        "downloads": "Unlimited",
+        "ads": false,
+        "includes": "YouTube Music Premium",
+        "background_play": true,
+        "type": "monthly"
+      },
+      "pros": ["No ads on all YouTube", "YouTube Music included", "Background play", "Picture-in-picture", "Download videos"],
+      "cons": ["Doesn't affect sponsor segments", "Expensive for just ad removal", "Family plan costs more"],
+      "ratings": {
+        "expert": 8.0,
+        "community": 4.2,
+        "compair": 80
+      },
+      "tags": ["youtube", "streaming", "music", "videos", "google"],
+      "affiliateLinks": {
+        "direct": "https://www.youtube.com/premium"
+      },
+      "trendScore": 83,
+      "isActive": true
+    },
+    {
+      "id": "amazon-prime-video",
+      "name": "Amazon Prime Video",
+      "brand": "Amazon",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Stream thousands of movies, TV shows, and award-winning Amazon Originals.",
+      "imageUrl": "https://images-na.ssl-images-amazon.com/images/G/01/digital/video/web/Logo-min.png",
+      "prices": {
+        "US": 8.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "3 simultaneous",
+        "quality": "4K Ultra HD",
+        "downloads": "25 titles",
+        "ads": false,
+        "profiles": "6",
+        "type": "monthly"
+      },
+      "pros": ["Affordable standalone price", "Great original content", "X-Ray feature", "Included with Prime membership", "Thursday Night Football"],
+      "cons": ["Confusing rental vs included", "UI could be better", "Content varies"],
+      "ratings": {
+        "expert": 8.1,
+        "community": 4.2,
+        "compair": 81
+      },
+      "tags": ["amazon", "prime video", "streaming", "movies", "originals"],
+      "affiliateLinks": {
+        "amazon": "https://www.amazon.com/gp/video/getstarted"
+      },
+      "trendScore": 80,
+      "isActive": true
+    },
+    {
+      "id": "disney-hulu-espn-bundle",
+      "name": "Disney Bundle Trio Premium",
+      "brand": "Disney",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Get Disney+, Hulu, and ESPN+ all ad-free in one subscription.",
+      "imageUrl": "https://cnbl-cdn.bamgrid.com/assets/7ecc8bcb60ad77193058d63e321bd21cbac2fc67281dbd9927676ea4a4c83594/original",
+      "prices": {
+        "US": 24.99
+      },
+      "currency": "USD",
+      "specs": {
+        "includes": "Disney+ Premium, Hulu No Ads, ESPN+",
+        "screens": "4 (Disney+) + 2 (Hulu)",
+        "quality": "4K Ultra HD",
+        "ads": false,
+        "type": "monthly"
+      },
+      "pros": ["Best streaming bundle value", "Disney + Hulu + Sports", "All ad-free", "Save vs individual subscriptions"],
+      "cons": ["Separate apps required", "ESPN+ has limited content", "Complex to manage"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.5,
+        "compair": 88
+      },
+      "tags": ["disney", "hulu", "espn", "bundle", "streaming", "sports"],
+      "affiliateLinks": {
+        "direct": "https://www.disneyplus.com/bundles"
+      },
+      "trendScore": 87,
+      "isActive": true
+    },
+    {
+      "id": "paramount-plus-showtime",
+      "name": "Paramount+ with Showtime",
+      "brand": "Paramount",
+      "category": "subscription",
+      "subcategory": "streaming",
+      "description": "Stream CBS shows, Paramount movies, and all Showtime content in one subscription.",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Paramount%2B_logo.svg",
+      "prices": {
+        "US": 11.99
+      },
+      "currency": "USD",
+      "specs": {
+        "screens": "3 simultaneous",
+        "quality": "4K Ultra HD",
+        "downloads": "Unlimited",
+        "ads": false,
+        "includes": "Showtime content",
+        "type": "monthly"
+      },
+      "pros": ["Showtime included", "NFL on CBS", "Great movies", "4K available", "Affordable"],
+      "cons": ["Smaller library", "Interface needs work", "Some ads on live TV"],
+      "ratings": {
+        "expert": 7.8,
+        "community": 4.0,
+        "compair": 78
+      },
+      "tags": ["paramount", "showtime", "streaming", "cbs", "movies"],
+      "affiliateLinks": {
+        "direct": "https://www.paramountplus.com/"
+      },
+      "trendScore": 72,
+      "isActive": true
+    }
+  ]
+}

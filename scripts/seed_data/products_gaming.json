@@ -1,0 +1,377 @@
+{
+  "products": [
+    {
+      "id": "ps5-slim",
+      "name": "PlayStation 5 Slim",
+      "brand": "Sony",
+      "category": "gaming",
+      "subcategory": "consoles",
+      "description": "Sony'nin yeni nesil konsolu. Daha ince tasarım, 1TB SSD, DualSense kontrolcü.",
+      "imageUrl": "https://playstation.com/ps5-slim.png",
+      "prices": {
+        "TR": 22999,
+        "US": 499,
+        "EU": 549
+      },
+      "currency": "TRY",
+      "specs": {
+        "storage": "1 TB SSD",
+        "resolution": "4K 120fps",
+        "ray_tracing": true,
+        "backwards_compatible": "PS4",
+        "controller": "DualSense",
+        "dimensions": "358x96x216 mm"
+      },
+      "pros": ["DualSense kontrolcü", "Güçlü oyun kütüphanesi", "VR Ready (PS VR2)", "SSD hızı"],
+      "cons": ["Yüksek fiyat", "Oyunlar pahalı", "Genişletilebilir depolama pahalı"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.6,
+        "compair": 90
+      },
+      "tags": ["playstation", "ps5", "sony", "konsol", "next-gen"],
+      "affiliateLinks": {
+        "mediamarkt": "https://mediamarkt.com.tr/ps5-slim",
+        "amazon": "https://amazon.com.tr/dp/ps5slim"
+      },
+      "releaseDate": "2023-11-10",
+      "trendScore": 92,
+      "isActive": true
+    },
+    {
+      "id": "xbox-series-x",
+      "name": "Xbox Series X",
+      "brand": "Microsoft",
+      "category": "gaming",
+      "subcategory": "consoles",
+      "description": "Microsoft'un en güçlü konsolu. 4K 120fps, Game Pass uyumu, geriye dönük uyumluluk.",
+      "imageUrl": "https://xbox.com/series-x.png",
+      "prices": {
+        "TR": 18999,
+        "US": 499,
+        "EU": 499
+      },
+      "currency": "TRY",
+      "specs": {
+        "storage": "1 TB SSD",
+        "resolution": "4K 120fps, 8K ready",
+        "ray_tracing": true,
+        "backwards_compatible": "Xbox, Xbox 360, Xbox One",
+        "controller": "Xbox Wireless Controller",
+        "quick_resume": true
+      },
+      "pros": ["Game Pass mükemmel değer", "Geriye uyumluluk 4 nesil", "Quick Resume", "Türkiye'de ucuz"],
+      "cons": ["Eksklüzif oyunlar az", "Tasarım polarize", "Game Pass fiyatları artıyor"],
+      "ratings": {
+        "expert": 8.8,
+        "community": 4.5,
+        "compair": 88
+      },
+      "tags": ["xbox", "microsoft", "konsol", "game pass", "next-gen"],
+      "affiliateLinks": {
+        "microsoft": "https://xbox.com/tr-TR/consoles/xbox-series-x",
+        "amazon": "https://amazon.com.tr/dp/xboxseriesx"
+      },
+      "releaseDate": "2020-11-10",
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "nintendo-switch-oled",
+      "name": "Nintendo Switch OLED",
+      "brand": "Nintendo",
+      "category": "gaming",
+      "subcategory": "consoles",
+      "description": "Nintendo'nun hibrit konsolu. 7\" OLED ekran, taşınabilir ve TV modu.",
+      "imageUrl": "https://nintendo.com/switch-oled.png",
+      "prices": {
+        "TR": 14999,
+        "US": 349,
+        "EU": 349
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "7 inç OLED",
+        "storage": "64 GB (SD genişletilebilir)",
+        "resolution": "720p taşınabilir, 1080p TV",
+        "battery": "4.5-9 saat",
+        "modes": ["Taşınabilir", "TV", "Masa üstü"]
+      },
+      "pros": ["Benzersiz oyunlar (Zelda, Mario)", "Taşınabilirlik", "Yerel çok oyunculu", "OLED ekran"],
+      "cons": ["Grafik gücü düşük", "Online hizmetler zayıf", "Joy-Con drift sorunu"],
+      "ratings": {
+        "expert": 8.5,
+        "community": 4.5,
+        "compair": 85
+      },
+      "tags": ["nintendo", "switch", "oled", "taşınabilir", "mario", "zelda"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/switcholed",
+        "mediamarkt": "https://mediamarkt.com.tr/switch-oled"
+      },
+      "releaseDate": "2021-10-08",
+      "trendScore": 88,
+      "isActive": true
+    },
+    {
+      "id": "steam-deck-oled",
+      "name": "Steam Deck OLED",
+      "brand": "Valve",
+      "category": "gaming",
+      "subcategory": "consoles",
+      "description": "Valve'ın taşınabilir PC oyun cihazı. OLED ekran, Steam kütüphanesi erişimi.",
+      "imageUrl": "https://store.steampowered.com/steamdeck-oled.png",
+      "prices": {
+        "TR": 22999,
+        "US": 549,
+        "EU": 569
+      },
+      "currency": "TRY",
+      "specs": {
+        "screen": "7.4 inç HDR OLED, 90Hz",
+        "processor": "AMD APU (Zen 2 + RDNA 2)",
+        "ram": "16 GB",
+        "storage": "512 GB / 1 TB NVMe",
+        "battery": "3-12 saat",
+        "os": "SteamOS (Linux)"
+      },
+      "pros": ["Tüm Steam kütüphanesi", "OLED ekran", "PC oyunları taşınabilir", "Moddable"],
+      "cons": ["Ağır", "Windows oyunlarında uyumluluk", "Türkiye'de garanti sorunu"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.7,
+        "compair": 90
+      },
+      "tags": ["steam deck", "valve", "pc gaming", "taşınabilir", "steam"],
+      "affiliateLinks": {
+        "steam": "https://store.steampowered.com/steamdeck"
+      },
+      "releaseDate": "2023-11-16",
+      "trendScore": 91,
+      "isActive": true
+    },
+    {
+      "id": "xbox-game-pass-ultimate",
+      "name": "Xbox Game Pass Ultimate",
+      "brand": "Microsoft",
+      "category": "subscription",
+      "subcategory": "gaming_sub",
+      "description": "Xbox ve PC'de 100+ oyun, EA Play, Cloud Gaming, Xbox Live Gold dahil.",
+      "imageUrl": "https://xbox.com/gamepass-ultimate.png",
+      "prices": {
+        "TR": 209.99,
+        "US": 17.99,
+        "EU": 14.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "games": "500+",
+        "platforms": ["Xbox", "PC", "Cloud", "Mobil"],
+        "ea_play": true,
+        "xbox_live_gold": true,
+        "day_one_releases": true,
+        "perks": true,
+        "cloud_gaming": true
+      },
+      "pros": ["İnanılmaz değer", "Day One yeni oyunlar", "EA Play dahil", "Cloud gaming"],
+      "cons": ["Oyunlar kütüphaneden çıkabiliyor", "Fiyat artışları", "İnternet bağımlılığı"],
+      "ratings": {
+        "expert": 9.5,
+        "community": 4.8,
+        "compair": 95
+      },
+      "tags": ["game pass", "xbox", "microsoft", "oyun aboneliği", "cloud gaming"],
+      "affiliateLinks": {
+        "microsoft": "https://xbox.com/tr-TR/xbox-game-pass"
+      },
+      "trendScore": 97,
+      "isActive": true
+    },
+    {
+      "id": "ps-plus-premium",
+      "name": "PlayStation Plus Premium",
+      "brand": "Sony",
+      "category": "subscription",
+      "subcategory": "gaming_sub",
+      "description": "Sony'nin üst tier aboneliği. Klasik oyunlar, cloud streaming, oyun denemeleri.",
+      "imageUrl": "https://playstation.com/psplus-premium.png",
+      "prices": {
+        "TR": 409.99,
+        "US": 17.99,
+        "EU": 16.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "games": "700+",
+        "classics": ["PS1", "PS2", "PSP", "PS3 (streaming)"],
+        "game_trials": true,
+        "cloud_streaming": true,
+        "monthly_games": 3,
+        "online_multiplayer": true
+      },
+      "pros": ["Klasik oyunlar", "Oyun denemeleri", "Cloud streaming", "Online multiplayer"],
+      "cons": ["Game Pass'e göre pahalı", "İçerik daha az", "PS3 sadece streaming"],
+      "ratings": {
+        "expert": 7.5,
+        "community": 4.0,
+        "compair": 75
+      },
+      "tags": ["playstation plus", "sony", "oyun aboneliği", "ps5", "ps4"],
+      "affiliateLinks": {
+        "playstation": "https://playstation.com/tr-tr/ps-plus"
+      },
+      "trendScore": 78,
+      "isActive": true
+    },
+    {
+      "id": "nintendo-switch-online",
+      "name": "Nintendo Switch Online + Expansion",
+      "brand": "Nintendo",
+      "category": "subscription",
+      "subcategory": "gaming_sub",
+      "description": "Nintendo'nun online servisi. N64, SEGA Genesis, GBA klasikleri dahil.",
+      "imageUrl": "https://nintendo.com/switch-online.png",
+      "prices": {
+        "TR": 179.99,
+        "US": 4.99,
+        "EU": 3.99
+      },
+      "currency": "TRY",
+      "billingCycle": "monthly",
+      "specs": {
+        "classics": ["NES", "SNES", "N64", "SEGA Genesis", "Game Boy"],
+        "online_play": true,
+        "cloud_saves": true,
+        "expansion_pack": ["Animal Crossing DLC", "Mario Kart DLC"]
+      },
+      "pros": ["Klasik Nintendo oyunları", "Çok ucuz", "DLC'ler dahil (Expansion)"],
+      "cons": ["Online altyapı zayıf", "Sınırlı özellikler", "Sesli sohbet yok"],
+      "ratings": {
+        "expert": 7.0,
+        "community": 3.8,
+        "compair": 70
+      },
+      "tags": ["nintendo", "switch online", "retro", "klasik oyunlar"],
+      "affiliateLinks": {
+        "nintendo": "https://nintendo.com/switch/online-service"
+      },
+      "trendScore": 72,
+      "isActive": true
+    },
+    {
+      "id": "logitech-g-pro-x-superlight-2",
+      "name": "Logitech G Pro X Superlight 2",
+      "brand": "Logitech",
+      "category": "gaming",
+      "subcategory": "accessories",
+      "description": "E-spor odaklı kablosuz mouse. 63g, HERO 2 sensör, 95 saat pil.",
+      "imageUrl": "https://logitech.com/gpro-superlight2.png",
+      "prices": {
+        "TR": 5299,
+        "US": 159,
+        "EU": 169
+      },
+      "currency": "TRY",
+      "specs": {
+        "sensor": "HERO 2 (32K DPI)",
+        "weight": "63 g",
+        "battery": "95 saat",
+        "switches": "LIGHTFORCE hibrit",
+        "polling_rate": "2000 Hz (LIGHTSPEED)",
+        "connection": "Kablosuz / USB"
+      },
+      "pros": ["Ultra hafif", "Pro seviye sensör", "95 saat pil", "E-spor standardı"],
+      "cons": ["Pahalı", "Sağ el tasarımı", "RGB yok"],
+      "ratings": {
+        "expert": 9.2,
+        "community": 4.7,
+        "compair": 92
+      },
+      "tags": ["logitech", "mouse", "gaming", "e-spor", "kablosuz"],
+      "affiliateLinks": {
+        "amazon": "https://amazon.com.tr/dp/superlight2",
+        "mediamarkt": "https://mediamarkt.com.tr/superlight-2"
+      },
+      "releaseDate": "2023-10-03",
+      "trendScore": 89,
+      "isActive": true
+    },
+    {
+      "id": "razer-deathadder-v3-pro",
+      "name": "Razer DeathAdder V3 Pro",
+      "brand": "Razer",
+      "category": "gaming",
+      "subcategory": "accessories",
+      "description": "Razer'ın efsanevi ergonomik mouse'unun kablosuz versiyonu. Focus Pro sensör.",
+      "imageUrl": "https://razer.com/deathadder-v3-pro.png",
+      "prices": {
+        "TR": 4799,
+        "US": 149,
+        "EU": 159
+      },
+      "currency": "TRY",
+      "specs": {
+        "sensor": "Focus Pro (30K DPI)",
+        "weight": "63 g",
+        "battery": "90 saat",
+        "switches": "Razer Gen-3 Optik",
+        "polling_rate": "4000 Hz (HyperPolling)",
+        "connection": "Kablosuz / USB"
+      },
+      "pros": ["Ergonomik tasarım", "Hafif", "90 saat pil", "4000Hz polling"],
+      "cons": ["Pahalı", "Sadece sağ el", "Şarj dock ayrı"],
+      "ratings": {
+        "expert": 9.0,
+        "community": 4.6,
+        "compair": 90
+      },
+      "tags": ["razer", "deathadder", "mouse", "gaming", "ergonomik"],
+      "affiliateLinks": {
+        "razer": "https://razer.com/gaming-mice/razer-deathadder-v3-pro",
+        "amazon": "https://amazon.com.tr/dp/deathadderv3pro"
+      },
+      "releaseDate": "2022-08-18",
+      "trendScore": 85,
+      "isActive": true
+    },
+    {
+      "id": "wooting-60he",
+      "name": "Wooting 60HE",
+      "brand": "Wooting",
+      "category": "gaming",
+      "subcategory": "accessories",
+      "description": "Analog mekanik klavye. Ayarlanabilir actuation, rapid trigger, e-spor standardı.",
+      "imageUrl": "https://wooting.io/60he.png",
+      "prices": {
+        "TR": 6999,
+        "US": 175,
+        "EU": 175
+      },
+      "currency": "TRY",
+      "specs": {
+        "layout": "60%",
+        "switches": "Lekker (Hall Effect)",
+        "actuation": "0.1-4.0mm ayarlanabilir",
+        "rapid_trigger": true,
+        "polling_rate": "1000 Hz",
+        "hot_swap": true
+      },
+      "pros": ["Analog input", "Rapid trigger", "Oyun avantajı", "E-spor popüler"],
+      "cons": ["Türkiye'de bulmak zor", "60% layout herkes için değil", "Pahalı"],
+      "ratings": {
+        "expert": 9.3,
+        "community": 4.8,
+        "compair": 93
+      },
+      "tags": ["wooting", "klavye", "mekanik", "analog", "e-spor", "rapid trigger"],
+      "affiliateLinks": {
+        "wooting": "https://wooting.io/wooting-60he"
+      },
+      "releaseDate": "2022-04-01",
+      "trendScore": 88,
+      "isActive": true
+    }
+  ]
+}
