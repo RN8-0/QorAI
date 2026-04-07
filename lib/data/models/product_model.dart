@@ -133,12 +133,20 @@ class ProductModel extends ProductEntity {
       techSubscores: _parseTechSubscores(data['techSubscores']),
       images: List<String>.from(data['images'] ?? []),
       lastUpdated:
-          (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
-                 (data['scrapedAt'] as Timestamp?)?.toDate(),
+          _parseOptionalDate(data['lastUpdated']) ?? DateTime.now(),
+      createdAt: _parseOptionalDate(data['createdAt']) ??
+                 _parseOptionalDate(data['scrapedAt']),
       isActive: data['isActive'] ?? true,
       variantGroup: data['variantGroup'] as String? ?? '',
     );
+  }
+
+  /// Safely parse a Firestore field that could be Timestamp, String, or null
+  static DateTime? _parseOptionalDate(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   /// Write to Firestore
