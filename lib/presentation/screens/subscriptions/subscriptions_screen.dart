@@ -1823,17 +1823,12 @@ class _SubResultView extends StatelessWidget {
           // Pros & Cons
           if (pros.isNotEmpty || cons.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (pros.isNotEmpty)
-                  Expanded(child: _buildProConList(context, '✅', pros, AppTheme.success)),
-                if (pros.isNotEmpty && cons.isNotEmpty)
-                  const SizedBox(width: 12),
-                if (cons.isNotEmpty)
-                  Expanded(child: _buildProConList(context, '❌', cons, AppTheme.error)),
-              ],
-            ),
+            if (pros.isNotEmpty) ...[
+              _buildProConSection(context, context.l10n?.prosForYou ?? 'Pros', '✅', pros, AppTheme.success),
+              if (cons.isNotEmpty) const SizedBox(height: 12),
+            ],
+            if (cons.isNotEmpty)
+              _buildProConSection(context, context.l10n?.consForYou ?? 'Cons', '❌', cons, AppTheme.error),
           ],
 
           // Community Sentiment
@@ -1864,24 +1859,39 @@ class _SubResultView extends StatelessWidget {
     );
   }
 
-  Widget _buildProConList(BuildContext context, String emoji, List<String> items, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: items.map((item) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 12)),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(item, style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: context.textSecondary, height: 1.3,
-              )),
+  Widget _buildProConSection(BuildContext context, String title, String emoji, List<String> items, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700, fontSize: 13, color: color,
+          )),
+          const SizedBox(height: 8),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 13)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(item, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, color: context.textSecondary, height: 1.4,
+                  )),
+                ),
+              ],
             ),
-          ],
-        ),
-      )).toList(),
+          )),
+        ],
+      ),
     );
   }
 
