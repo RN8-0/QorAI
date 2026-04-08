@@ -3083,6 +3083,25 @@ class _VariantsSection extends ConsumerWidget {
       data: (variants) {
         if (variants.isEmpty) return const SizedBox.shrink();
         final all = [product, ...variants]..sort((a, b) => a.name.compareTo(b.name));
+
+        // Deduplicate by storage label — keep current product or first match
+        final seen = <String>{};
+        final unique = <ProductEntity>[];
+        for (final v in all) {
+          final label = _storageLabel(v);
+          if (seen.contains(label)) {
+            // If the duplicate is the current product, replace the existing one
+            if (v.id == product.id) {
+              unique.removeWhere((u) => _storageLabel(u) == label);
+              unique.add(v);
+            }
+            continue;
+          }
+          seen.add(label);
+          unique.add(v);
+        }
+        if (unique.length <= 1) return const SizedBox.shrink();
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
@@ -3119,7 +3138,7 @@ class _VariantsSection extends ConsumerWidget {
                   spacing: 8,
                   runSpacing: 8,
                   alignment: WrapAlignment.center,
-                  children: all.map((v) => _VariantChip(
+                  children: unique.map((v) => _VariantChip(
                     product: v,
                     isSelected: v.id == product.id,
                   )).toList(),
@@ -3131,6 +3150,11 @@ class _VariantsSection extends ConsumerWidget {
       },
     );
   }
+
+  /// Extract storage-only label for deduplication
+  static String _storageLabel(ProductEntity p) {
+    return _VariantChip._extractStorageOnly(p);
+  }
 }
 
 class _VariantChip extends StatelessWidget {
@@ -3138,32 +3162,60 @@ class _VariantChip extends StatelessWidget {
   final bool isSelected;
   const _VariantChip({required this.product, required this.isSelected});
 
-  String get _variantLabel {
-    // 1. Try extracting storage from product name (e.g. "128 GB", "1 TB")
-    final storageMatch = RegExp(r'\b\d+\s*(TB|GB)\b', caseSensitive: false).firstMatch(product.name);
-    if (storageMatch != null) return storageMatch.group(0)!.trim().toUpperCase();
-    // 2. Try RAM/storage combo (e.g. "8/256")
-    final comboMatch = RegExp(r'\b\d+/\d+\b').firstMatch(product.name);
-    if (comboMatch != null) return '${comboMatch.group(0)!} GB';
-    // 3. Try extracting from specs/keySpecs
-    final specStorage = _extractStorageFromSpecs();
+  /// Extract storage-only value, ignoring RAM differences.
+  /// For "16 GB / 2048 GB" → "2048 GB" (largest = storage)
+  /// For "128 GB" → "128 GB"
+  static String _extractStorageOnly(ProductEntity p) {
+    // Find all GB/TB matches in product name
+    final allMatches = RegExp(r'\b(\d+)\s*(TB|GB)\b', caseSensitive: false)
+        .allMatches(p.name)
+        .toList();
+
+    if (allMatches.length >= 2) {
+      // Multiple matches (e.g. "16 GB / 2048 GB") → pick largest = storage
+      int bestVal = 0;
+      String bestLabel = '';
+      for (final m in allMatches) {
+        final num = int.tryParse(m.group(1)!) ?? 0;
+        final unit = m.group(2)!.toUpperCase();
+        final mb = unit == 'TB' ? num * 1024 : num;
+        if (mb > bestVal) {
+          bestVal = mb;
+          bestLabel = '$num $unit';
+        }
+      }
+      if (bestLabel.isNotEmpty) return bestLabel;
+    }
+    if (allMatches.length == 1) {
+      return allMatches.first.group(0)!.trim().toUpperCase();
+    }
+
+    // Try RAM/storage combo (e.g. "8/256") → extract storage part
+    final comboMatch = RegExp(r'\b(\d+)/(\d+)\b').firstMatch(p.name);
+    if (comboMatch != null) {
+      return '${comboMatch.group(2)} GB';
+    }
+
+    // Try extracting from specs
+    final specStorage = _extractStorageFromSpecsStatic(p);
     if (specStorage != null) return specStorage;
-    // 4. Final fallback: use differentiating suffix (not just last word)
-    return _extractModelSuffix();
+
+    // Fallback: differentiating suffix
+    final parts = p.name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[parts.length - 2]} ${parts.last}';
+    return parts.last;
   }
 
-  String? _extractStorageFromSpecs() {
+  static String? _extractStorageFromSpecsStatic(ProductEntity p) {
     final storageRegex = RegExp(r'(\d+)\s*(GB|TB)', caseSensitive: false);
-    // Check keySpecs for storage-related keys
-    for (final entry in product.keySpecs.entries) {
+    for (final entry in p.keySpecs.entries) {
       final key = entry.key.toLowerCase();
-      if (key.contains('storage') || key.contains('memory') || key.contains('capacity') || key.contains('rom') || key.contains('internal')) {
+      if (key.contains('storage') || key.contains('capacity') || key.contains('rom') || key.contains('internal')) {
         final m = storageRegex.firstMatch(entry.value);
         if (m != null) return '${m.group(1)} ${m.group(2)!.toUpperCase()}';
       }
     }
-    // Check specSections for storage group
-    for (final section in product.specSections.entries) {
+    for (final section in p.specSections.entries) {
       final sKey = section.key.toLowerCase();
       if ((sKey.contains('storage') || sKey.contains('memory')) && section.value is Map) {
         for (final spec in (section.value as Map).entries) {
@@ -3178,12 +3230,7 @@ class _VariantChip extends StatelessWidget {
     return null;
   }
 
-  String _extractModelSuffix() {
-    // Find the differentiating part between variant names (not generic words like Pro/Ultra)
-    final parts = product.name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[parts.length - 2]} ${parts.last}';
-    return parts.last;
-  }
+  String get _variantLabel => _extractStorageOnly(product);
 
   @override
   Widget build(BuildContext context) {
