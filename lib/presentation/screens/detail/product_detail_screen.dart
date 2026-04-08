@@ -1986,7 +1986,7 @@ class _SpecsCardState extends State<_SpecsCard> {
     return Container(
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: context.dividerColor),
         boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.04), blurRadius: 8)],
       ),
@@ -2043,11 +2043,12 @@ class _SpecsCardState extends State<_SpecsCard> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _localizedGroupName(context, groupKey),
+                                _localizedGroupName(context, groupKey).toUpperCase(),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: context.textPrimary,
+                                  fontSize: 13,
+                                  letterSpacing: 1.2,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -2325,6 +2326,7 @@ class _SpecRow extends StatelessWidget {
     return Column(
       children: [
         Container(
+          constraints: const BoxConstraints(minHeight: 44),
           color: isOdd ? context.surfaceColor : context.surfaceVariantColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
