@@ -134,6 +134,40 @@ class FirebaseDataSource {
     }
   }
 
+  /// Save a subscription comparison result
+  Future<void> saveSubscriptionHistory(String uid, Map<String, dynamic> entry) async {
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(uid);
+      await docRef.set({
+        'subscriptionHistory': FieldValue.arrayUnion([entry]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('[Firestore] Saved subscription history for $uid');
+    } catch (e) {
+      debugPrint('[Firestore] Failed to save subscription history: $e');
+    }
+  }
+
+  /// Read subscription comparison history
+  Future<List<Map<String, dynamic>>> getSubscriptionHistory(String uid) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .get();
+      final data = doc.data();
+      if (data == null || data['subscriptionHistory'] is! List) return [];
+      return (data['subscriptionHistory'] as List)
+          .cast<Map<String, dynamic>>()
+          .reversed
+          .take(20)
+          .toList();
+    } catch (e) {
+      debugPrint('[Firestore] Failed to read subscription history: $e');
+      return [];
+    }
+  }
+
   // ─── Products ─── Section 4.2
 
   Future<ProductModel?> getProduct(String id) async {

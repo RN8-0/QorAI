@@ -1771,6 +1771,21 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         scores: Map<String, double>.from(result['scores'] as Map? ?? {}),
         structured: result['structured'] as Map<String, dynamic>?,
       );
+
+      // Save subscription comparison to Firestore history
+      try {
+        final authState = _ref.read(authStateProvider).valueOrNull;
+        if (authState != null) {
+          final winnerData = (result['structured'] as Map<String, dynamic>?)?['winner'];
+          final entry = {
+            'timestamp': DateTime.now().toIso8601String(),
+            'services': names,
+            'scores': Map<String, double>.from(result['scores'] as Map? ?? {}),
+            'winner': winnerData is Map ? winnerData['overall'] : null,
+          };
+          _ref.read(firebaseDataSourceProvider).saveSubscriptionHistory(authState.uid, entry);
+        }
+      } catch (_) {}
     } catch (e) {
       debugPrint('=== COMPAIR: Sub analysis error: $e ===');
       final errMsg = e.toString().contains('timeout')
@@ -1791,6 +1806,13 @@ final subQuizProvider =
     subService: ref.read(subscriptionServiceProvider),
     ref: ref,
   );
+});
+
+/// Subscription comparison history for logged-in user
+final subscriptionHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final authState = ref.watch(authStateProvider).valueOrNull;
+  if (authState == null) return [];
+  return ref.read(firebaseDataSourceProvider).getSubscriptionHistory(authState.uid);
 });
 
 // ════════════════════════════════════════════════════
