@@ -5787,7 +5787,6 @@ Rules:
 
     if (cat.contains('phone') || cat.contains('mobile') || cat.contains('smartphone') || cat.contains('tablet')) {
       if (isApple) {
-        // Apple devices: no AnTuTu, use Geekbench + DxOMark
         return [
           _BenchmarkInfo('Geekbench Single', Icons.speed, AppTheme.neonCyan, 40, 4000),
           _BenchmarkInfo('Geekbench Multi', Icons.speed, AppTheme.green500, 80, 8000),
@@ -5795,46 +5794,35 @@ Rules:
         ];
       }
       return [
-        _BenchmarkInfo('AnTuTu', Icons.memory, const Color(0xFFFF6B35), 12, 2000000),
+        _BenchmarkInfo('Geekbench Single', Icons.speed, AppTheme.neonCyan, 40, 4000),
         _BenchmarkInfo('Geekbench Multi', Icons.speed, AppTheme.green500, 80, 8000),
-        _BenchmarkInfo('DxOMark Camera', Icons.camera_alt, AppTheme.neonCyan, 1.8, 160),
+        _BenchmarkInfo('DxOMark Camera', Icons.camera_alt, const Color(0xFFFF6B35), 1.8, 160),
       ];
-    } else if (cat.contains('laptop') || cat.contains('notebook')) {
+    } else if (cat.contains('laptop') || cat.contains('notebook') || cat.contains('desktop')) {
       return [
         _BenchmarkInfo('Cinebench R23', Icons.precision_manufacturing, const Color(0xFFFF6B35), 200, 20000),
-        _BenchmarkInfo('PCMark 10', Icons.computer, AppTheme.neonCyan, 80, 8000),
-        _BenchmarkInfo('3DMark Time Spy', Icons.games, AppTheme.green500, 150, 15000),
-      ];
-    } else if (cat.contains('monitor') || cat.contains('display') || cat.contains('tv')) {
-      return [
-        _BenchmarkInfo('Rtings Score', Icons.tv, AppTheme.neonCyan, 1.0, 10.0),
-        _BenchmarkInfo('Color Accuracy (ΔE)', Icons.palette, AppTheme.green500, 0.1, 5.0),
+        _BenchmarkInfo('Geekbench Multi', Icons.speed, AppTheme.neonCyan, 80, 8000),
+        _BenchmarkInfo('PassMark', Icons.assessment, AppTheme.green500, 600, 60000),
       ];
     } else if (cat.contains('cpu') || cat.contains('processor')) {
       return [
         _BenchmarkInfo('Cinebench R23', Icons.precision_manufacturing, const Color(0xFFFF6B35), 500, 40000),
-        _BenchmarkInfo('Geekbench 6', Icons.speed, AppTheme.neonCyan, 40, 4000),
-        _BenchmarkInfo('PassMark', Icons.assessment, AppTheme.green500, 600, 60000),
+        _BenchmarkInfo('Geekbench Single', Icons.speed, AppTheme.neonCyan, 40, 4000),
+        _BenchmarkInfo('PassMark CPU', Icons.assessment, AppTheme.green500, 600, 60000),
       ];
     } else if (cat.contains('gpu') || cat.contains('graphic')) {
       return [
-        _BenchmarkInfo('3DMark Time Spy', Icons.games, const Color(0xFFFF6B35), 350, 30000),
-        _BenchmarkInfo('Unigine Heaven', Icons.landscape, AppTheme.neonCyan, 50, 5000),
-      ];
-    } else if (cat.contains('headphone') || cat.contains('earphone') || cat.contains('audio')) {
-      return [
-        _BenchmarkInfo('Sound Quality', Icons.headphones, AppTheme.neonCyan, 1.0, 100),
-        _BenchmarkInfo('ANC Rating', Icons.noise_aware, AppTheme.green500, 1.0, 100),
+        _BenchmarkInfo('3DMark', Icons.games, const Color(0xFFFF6B35), 350, 30000),
+        _BenchmarkInfo('PassMark GPU', Icons.assessment, AppTheme.neonCyan, 500, 50000),
       ];
     } else if (cat.contains('camera')) {
       return [
-        _BenchmarkInfo('DxOMark Overall', Icons.camera, const Color(0xFFFF6B35), 1.5, 140),
-        _BenchmarkInfo('Video Score', Icons.videocam, AppTheme.neonCyan, 1.2, 120),
+        _BenchmarkInfo('DxOMark Camera', Icons.camera, const Color(0xFFFF6B35), 1.5, 160),
+        _BenchmarkInfo('DxOMark Video', Icons.videocam, AppTheme.neonCyan, 1.2, 120),
       ];
     }
-    return [
-      _BenchmarkInfo('Tech Score', Icons.analytics, AppTheme.neonCyan, 1.0, 100),
-    ];
+    // Monitors, keyboards, mice, headphones, speakers, accessories → no benchmarks
+    return [];
   }
 }
 
@@ -6771,12 +6759,12 @@ class _PremiumFeaturesSectionState
 
   bool _hasBenchmarkSupport(ProductEntity product) {
     final cat = product.categoryId.toLowerCase();
+    // Show benchmarks only for these categories
     return cat.contains('phone') || cat.contains('mobile') || cat.contains('smartphone') ||
            cat.contains('tablet') || cat.contains('laptop') || cat.contains('notebook') ||
-           cat.contains('monitor') || cat.contains('display') || cat.contains('tv') ||
+           cat.contains('desktop') ||
            cat.contains('cpu') || cat.contains('processor') ||
            cat.contains('gpu') || cat.contains('graphic') ||
-           cat.contains('headphone') || cat.contains('earphone') || cat.contains('audio') ||
            cat.contains('camera');
   }
 
