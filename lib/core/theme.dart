@@ -120,6 +120,76 @@ class AppTheme {
   static const Color youtube    = Color(0xFFFF0000);
 
   // ─────────────────────────────────────────────────────────────────────────
+  // CATEGORY COLORS — centralized palette for category icons/chips
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static const Color catMobile      = Color(0xFF3B82F6); // Blue-500
+  static const Color catComputers   = Color(0xFF6366F1); // Indigo-500
+  static const Color catComponents  = Color(0xFF06B6D4); // Cyan-500
+  static const Color catDisplay     = Color(0xFF10B981); // Emerald-500
+  static const Color catAudio       = Color(0xFFEC4899); // Pink-500
+  static const Color catWearables   = Color(0xFF14B8A6); // Teal-500
+  static const Color catCameras     = Color(0xFFF97316); // Orange-500
+  static const Color catGaming      = Color(0xFF8B5CF6); // Violet-500
+  static const Color catPeripherals = Color(0xFF0EA5E9); // Sky-500
+  static const Color catNetworking  = Color(0xFF3B82F6); // Blue-500
+  static const Color catSmartHome   = Color(0xFFF59E0B); // Amber-500
+  static const Color catAccessories = Color(0xFF22C55E); // Green-500
+  static const Color catDrones      = Color(0xFF06B6D4); // Cyan-500
+
+  /// Get category group color by group key
+  static Color categoryGroupColor(String groupKey) {
+    const map = {
+      'mobile': catMobile,
+      'computers': catComputers,
+      'pc components': catComponents,
+      'display': catDisplay,
+      'audio': catAudio,
+      'wearables': catWearables,
+      'cameras': catCameras,
+      'gaming': catGaming,
+      'peripherals': catPeripherals,
+      'networking': catNetworking,
+      'smart home': catSmartHome,
+      'accessories': catAccessories,
+      'drones': catDrones,
+    };
+    return map[groupKey.toLowerCase()] ?? brandBlue;
+  }
+
+  /// Get color for an individual category ID
+  static Color categoryColor(String categoryId) {
+    const map = {
+      'smartphones': catMobile, 'tablets': catMobile,
+      'laptops': catComputers, 'desktops': catComputers,
+      'cpus': catComponents, 'gpus': catGaming, 'ram': catComponents,
+      'ssd': catComponents, 'motherboards': catComponents,
+      'psu': catComponents, 'cases': catComponents,
+      'coolers': catComponents, 'monitors': catDisplay,
+      'keyboards': catPeripherals, 'mice': catPeripherals,
+      'webcams': catPeripherals,
+      'tvs': catDisplay, 'projectors': catDisplay,
+      'media-players': catDisplay,
+      'headphones': catAudio, 'earphones': catAudio,
+      'speakers': catAudio, 'soundbars': catAudio,
+      'microphones': catAudio,
+      'smartwatches': catWearables, 'smart-rings': catWearables,
+      'cameras': catCameras, 'action-cameras': catCameras,
+      'security-cameras': catCameras, 'ip-cameras': catCameras,
+      'dashcams': catCameras, 'gimbals': catCameras,
+      'tripods': catCameras, 'lenses': catCameras,
+      'consoles': catGaming, 'gamepads': catGaming,
+      'vr-headsets': catGaming,
+      'printers': catPeripherals,
+      'routers': catNetworking,
+      'robot-vacuums': catSmartHome,
+      'powerbanks': catAccessories, 'e-readers': catAccessories,
+      'drones': catDrones,
+    };
+    return map[categoryId.toLowerCase()] ?? brandBlue;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // LEGACY / COMPAT ALIASES
   // ─────────────────────────────────────────────────────────────────────────
 
