@@ -2043,11 +2043,10 @@ class _SpecsCardState extends State<_SpecsCard> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _localizedGroupName(context, groupKey).toUpperCase(),
+                                _localizedGroupName(context, groupKey),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
-                                  letterSpacing: 1.2,
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
                                 textAlign: TextAlign.center,
@@ -2339,7 +2338,7 @@ class _SpecRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -2418,7 +2417,7 @@ class _SpecRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: context.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               height: 1.4,
             ),
             textAlign: TextAlign.end,
@@ -2433,7 +2432,7 @@ class _SpecRow extends StatelessWidget {
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: context.textPrimary,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
       textAlign: TextAlign.end,
       softWrap: true,
@@ -3586,22 +3585,6 @@ class _ReviewsTab extends ConsumerStatefulWidget {
 }
 
 class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
-  bool _aiTriggered = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_aiTriggered) {
-        _aiTriggered = true;
-        final lang = Localizations.localeOf(context).languageCode;
-        ref.read(aiReviewCacheProvider(widget.product.id).notifier)
-            .startAnalysis(widget.product.name, lang);
-        ref.read(expertScoresCacheProvider(widget.product.id).notifier)
-            .fetchScores(widget.product.name, widget.product.category);
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -3610,14 +3593,6 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 40),
       children: [
-        // ── AI Review Summary (top) ──
-        _AIReviewSummaryCard(product: widget.product, isDark: widget.isDark, cardBg: cardBg),
-        const SizedBox(height: 12),
-
-        // ── Expert Scores ──
-        _ExpertScoresCard(product: widget.product, isDark: widget.isDark, cardBg: cardBg),
-        const SizedBox(height: 12),
-
         // ── YouTube Reviews ──
         _YouTubeReviewsCard(product: widget.product, isDark: widget.isDark, cardBg: cardBg),
         const SizedBox(height: 12),
@@ -3626,254 +3601,6 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
         _UserReviewsCard(product: widget.product, isDark: widget.isDark, cardBg: cardBg),
         const SizedBox(height: 16),
       ],
-    );
-  }
-}
-
-// ── AI Review Summary Card ──
-class _AIReviewSummaryCard extends ConsumerWidget {
-  final ProductEntity product;
-  final bool isDark;
-  final Color cardBg;
-  const _AIReviewSummaryCard({required this.product, required this.isDark, required this.cardBg});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final reviewAsync = ref.watch(aiReviewCacheProvider(product.id));
-
-    return reviewAsync.when(
-      data: (result) {
-        if (result == null) return _buildShimmer(context);
-        if (result.failed) return const SizedBox.shrink();
-        return _buildContent(context, result);
-      },
-      loading: () => _buildShimmer(context),
-      error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildShimmer(BuildContext context) {
-    return Container(
-      height: 140,
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(width: 24, height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary)),
-            const SizedBox(height: 8),
-            Text('Analyzing reviews...', style: TextStyle(
-              fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent(BuildContext context, AIReviewResult result) {
-    final theme = Theme.of(context);
-    return Card(
-      color: cardBg,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.auto_awesome, size: 20,
-                  color: theme.colorScheme.primary),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text(
-                context.l10n?.aiReviewSummary ?? 'AI Review Summary',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15, fontWeight: FontWeight.w700,
-                  color: context.textPrimary),
-              )),
-              if (result.satisfaction > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: (result.satisfaction >= 70 ? AppTheme.green500 : AppTheme.amber500)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8)),
-                  child: Text('${result.satisfaction}%',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: result.satisfaction >= 70 ? AppTheme.green500 : AppTheme.amber500)),
-                ),
-            ]),
-            if (result.summary.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(result.summary, style: TextStyle(
-                fontSize: 13, fontStyle: FontStyle.italic,
-                color: theme.colorScheme.onSurfaceVariant, height: 1.4)),
-            ],
-            if (result.praised.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              ...result.praised.map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.thumb_up_rounded, size: 14,
-                    color: AppTheme.green500),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(p, style: TextStyle(
-                    fontSize: 12.5, color: context.textPrimary))),
-                ]),
-              )),
-            ],
-            if (result.criticized.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              ...result.criticized.map((c) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.thumb_down_rounded, size: 14,
-                    color: AppTheme.rose500),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(c, style: TextStyle(
-                    fontSize: 12.5, color: context.textPrimary))),
-                ]),
-              )),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Expert Scores Card ──
-class _ExpertScoresCard extends ConsumerWidget {
-  final ProductEntity product;
-  final bool isDark;
-  final Color cardBg;
-  const _ExpertScoresCard({required this.product, required this.isDark, required this.cardBg});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scoresAsync = ref.watch(expertScoresCacheProvider(product.id));
-
-    return scoresAsync.when(
-      data: (result) {
-        if (result == null) return _buildShimmer(context);
-        if (result.failed || result.scores.isEmpty) return const SizedBox.shrink();
-        return _buildContent(context, result);
-      },
-      loading: () => _buildShimmer(context),
-      error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildShimmer(BuildContext context) {
-    return Container(
-      height: 100,
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(12)),
-      child: Center(
-        child: SizedBox(width: 20, height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2,
-            color: Theme.of(context).colorScheme.primary)),
-      ),
-    );
-  }
-
-  Color _verdictColor(String verdict) {
-    switch (verdict.toLowerCase()) {
-      case 'excellent': return AppTheme.green500;
-      case 'good': return AppTheme.primaryBlue;
-      case 'average': return AppTheme.amber500;
-      default: return AppTheme.rose500;
-    }
-  }
-
-  Widget _buildContent(BuildContext context, ExpertScoresResult result) {
-    final theme = Theme.of(context);
-    return Card(
-      color: cardBg,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.amber500.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.star_rate_rounded, size: 20,
-                  color: AppTheme.amber500),
-              ),
-              const SizedBox(width: 10),
-              Text('Expert Scores',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15, fontWeight: FontWeight.w700,
-                  color: context.textPrimary)),
-            ]),
-            const SizedBox(height: 14),
-            ...result.scores.map((entry) {
-              final normalized = entry.maxScore > 0
-                  ? entry.score / entry.maxScore : 0.0;
-              final barColor = _verdictColor(entry.verdict);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Expanded(child: Text(entry.source,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12.5, fontWeight: FontWeight.w600,
-                          color: context.textPrimary))),
-                      Text('${entry.score}/${entry.maxScore}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12, fontWeight: FontWeight.w700,
-                          color: barColor)),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: barColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6)),
-                        child: Text(entry.verdict,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10, fontWeight: FontWeight.w600,
-                            color: barColor)),
-                      ),
-                    ]),
-                    const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: normalized.clamp(0.0, 1.0),
-                        minHeight: 6,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -6838,16 +6565,6 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                         ),
                   ),
                 ),
-                if (currentUser != null)
-                  TextButton.icon(
-                    onPressed: () => _showWriteReviewSheet(context, currentUser.uid),
-                    icon: const Icon(Icons.edit_rounded, size: 16),
-                    label: Text(context.l10n?.writeAReview ?? 'Write a Review'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -8578,7 +8295,7 @@ class _SimilarProductsSection extends ConsumerWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 0.62,
+                childAspectRatio: 0.72,
               ),
               itemCount: top.length,
               itemBuilder: (context, i) => _SimilarGridCard(product: top[i]),
@@ -8620,20 +8337,19 @@ class _SimilarGridCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
             // Image section
             Stack(children: [
               Container(
-                height: 105, width: double.infinity,
-                padding: const EdgeInsets.all(8),
+                height: 100, width: double.infinity,
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: imageBg,
                   borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(16))),
                 child: ProductImageBox(
                   imageUrl: product.imageUrl,
-                  height: 89,
+                  height: 88,
                   borderRadius: BorderRadius.circular(10),
                   padding: EdgeInsets.zero,
                 ),
@@ -8660,42 +8376,50 @@ class _SimilarGridCard extends StatelessWidget {
                 )),
             ]),
             // Details section
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (product.brand != null && product.brand!.isNotEmpty)
-                    Text(product.brand!.toUpperCase(),
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9, fontWeight: FontWeight.w600,
-                            color: AppTheme.accentCyan,
-                            letterSpacing: 0.6),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 3),
-                  Text(product.name,
-                      maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12, fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                          height: 1.15)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(12)),
-                      child: Text(
-                          context.l10n?.viewDetails ?? 'View Details',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10, fontWeight: FontWeight.w600,
-                              color: Colors.white)),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (product.brand != null && product.brand!.isNotEmpty)
+                          Text(product.brand!.toUpperCase(),
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9, fontWeight: FontWeight.w600,
+                                  color: AppTheme.accentCyan,
+                                  letterSpacing: 0.6),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text(product.name,
+                            maxLines: 2, overflow: TextOverflow.ellipsis,
+                            softWrap: true,
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12, fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                                height: 1.15)),
+                      ],
                     ),
-                  ),
-                ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(12)),
+                        child: Text(
+                            context.l10n?.viewDetails ?? 'View Details',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10, fontWeight: FontWeight.w600,
+                                color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
