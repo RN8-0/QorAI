@@ -1235,6 +1235,305 @@ final linkQuizProvider =
   );
 });
 
+// ════════════════════════════════════════════════════
+// ─── COMPARE ANALYSIS FLOW ─── (Background-safe)
+// ════════════════════════════════════════════════════
+
+enum ComparePhase { idle, analyzingFirst, quiz, analyzing, done }
+
+/// Step type for the analyzing progress screen
+enum AnalysisStepType { scanLink, aiAnalysis, profileMatch }
+
+class AnalysisStep {
+  final String label;
+  final AnalysisStepType type;
+  final bool isDone;
+  final bool isActive;
+  final bool hasError;
+  const AnalysisStep(this.label, this.type,
+      {this.isDone = false, this.isActive = false, this.hasError = false});
+  AnalysisStep withDone() => AnalysisStep(label, type, isDone: true);
+  AnalysisStep withActive() => AnalysisStep(label, type, isActive: true);
+  AnalysisStep withError() => AnalysisStep(label, type, hasError: true);
+}
+
+class CompareAnalysisState {
+  final ComparePhase phase;
+  final List<EnhancedAnalysisResult> results;
+  final String? error;
+  final int progress;
+  final List<AnalysisStep> steps;
+  final ProductQuiz? quiz;
+  final List<QuizQuestion> quizAnswers;
+  final int quizIndex;
+  final LinkAnalysisResult? firstBaseResult;
+  final List<String> validUrls;
+
+  const CompareAnalysisState({
+    this.phase = ComparePhase.idle,
+    this.results = const [],
+    this.error,
+    this.progress = 0,
+    this.steps = const [],
+    this.quiz,
+    this.quizAnswers = const [],
+    this.quizIndex = 0,
+    this.firstBaseResult,
+    this.validUrls = const [],
+  });
+
+  bool get isWorking =>
+      phase == ComparePhase.analyzingFirst || phase == ComparePhase.analyzing;
+
+  CompareAnalysisState copyWith({
+    ComparePhase? phase,
+    List<EnhancedAnalysisResult>? results,
+    String? error,
+    int? progress,
+    List<AnalysisStep>? steps,
+    ProductQuiz? quiz,
+    List<QuizQuestion>? quizAnswers,
+    int? quizIndex,
+    LinkAnalysisResult? firstBaseResult,
+    List<String>? validUrls,
+  }) {
+    return CompareAnalysisState(
+      phase: phase ?? this.phase,
+      results: results ?? this.results,
+      error: error,
+      progress: progress ?? this.progress,
+      steps: steps ?? this.steps,
+      quiz: quiz ?? this.quiz,
+      quizAnswers: quizAnswers ?? this.quizAnswers,
+      quizIndex: quizIndex ?? this.quizIndex,
+      firstBaseResult: firstBaseResult ?? this.firstBaseResult,
+      validUrls: validUrls ?? this.validUrls,
+    );
+  }
+}
+
+class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
+  final AIRepository _aiRepo;
+  final GeminiService _gemini;
+  final BehaviorTrackingService _behaviorTracking;
+
+  CompareAnalysisNotifier({
+    required AIRepository aiRepo,
+    required GeminiService gemini,
+    required BehaviorTrackingService behaviorTracking,
+  })  : _aiRepo = aiRepo,
+        _gemini = gemini,
+        _behaviorTracking = behaviorTracking,
+        super(const CompareAnalysisState());
+
+  /// Phase 1: Analyze first URL → generate quiz
+  Future<void> startAnalysis(
+      List<String> urls, UserEntity user, String lang) async {
+    state = CompareAnalysisState(
+      phase: ComparePhase.analyzingFirst,
+      validUrls: urls,
+    );
+
+    final localizedUser = user.copyWith(language: lang);
+
+    try {
+      _behaviorTracking.trackLinkPaste(urls[0], null);
+      debugPrint('[Compare] Phase 1: Analyzing first URL for quiz: ${urls[0]}');
+      final Result<LinkAnalysisResult> firstResult =
+          await _aiRepo.analyzeLink(url: urls[0], user: localizedUser);
+
+      LinkAnalysisResult? firstData;
+      switch (firstResult) {
+        case Success<LinkAnalysisResult>(data: final d):
+          firstData = d;
+        case Failure<LinkAnalysisResult>(error: final err):
+          debugPrint('[Compare] First URL analysis failed: ${err.message}');
+          state = state.copyWith(
+            phase: ComparePhase.idle,
+            error: 'Could not analyze the first link: ${err.message}',
+          );
+          return;
+      }
+
+      debugPrint('[Compare] Generating quiz for: ${firstData.metadata.title}');
+      final quiz = await _gemini.generateQuiz(
+        category: firstData.category ?? 'general',
+        productTitle: firstData.metadata.title ?? 'Product',
+        url: urls[0],
+        language: lang,
+      );
+
+      if (quiz.questions.isNotEmpty) {
+        state = state.copyWith(
+          phase: ComparePhase.quiz,
+          quiz: quiz,
+          quizAnswers: List.from(quiz.questions),
+          quizIndex: 0,
+          firstBaseResult: firstData,
+        );
+      } else {
+        debugPrint('[Compare] No quiz questions, proceeding to analysis');
+        await _runAnalysis(localizedUser, const [], firstData);
+      }
+    } catch (e) {
+      debugPrint('[Compare] Phase 1 failed: $e');
+      state = state.copyWith(
+        phase: ComparePhase.idle,
+        error: 'Failed to prepare comparison: $e',
+      );
+    }
+  }
+
+  void answerQuestion(int index, String answer) {
+    final answers = List<QuizQuestion>.from(state.quizAnswers);
+    answers[index] = answers[index].copyWith(selectedOption: answer);
+    state = state.copyWith(
+      quizAnswers: answers,
+      quizIndex: index < answers.length - 1 ? index + 1 : state.quizIndex,
+    );
+  }
+
+  Future<void> submitQuiz(UserEntity user, String lang) async {
+    final localizedUser = user.copyWith(language: lang);
+    state = state.copyWith(phase: ComparePhase.analyzing, progress: 0);
+    await _runAnalysis(localizedUser, state.quizAnswers, state.firstBaseResult);
+  }
+
+  Future<void> skipQuiz(UserEntity user, String lang) async {
+    final localizedUser = user.copyWith(language: lang);
+    state = state.copyWith(phase: ComparePhase.analyzing, progress: 0);
+    await _runAnalysis(localizedUser, const [], state.firstBaseResult);
+  }
+
+  /// Phase 2: Enhanced analysis on all URLs
+  Future<void> _runAnalysis(
+    UserEntity user,
+    List<QuizQuestion> quizAnswers,
+    LinkAnalysisResult? firstBaseResult,
+  ) async {
+    final urls = state.validUrls;
+
+    // Initialize steps
+    state = state.copyWith(
+      phase: ComparePhase.analyzing,
+      steps: [
+        for (int i = 0; i < urls.length; i++)
+          AnalysisStep('Scanning Link ${i + 1}', AnalysisStepType.scanLink),
+        const AnalysisStep('Running AI analysis', AnalysisStepType.aiAnalysis),
+        const AnalysisStep(
+            'Matching with your profile', AnalysisStepType.profileMatch),
+      ],
+      progress: 0,
+    );
+
+    final results = <EnhancedAnalysisResult>[];
+    final baseResults = <LinkAnalysisResult>[];
+
+    // Scan each link sequentially
+    for (int i = 0; i < urls.length; i++) {
+      try {
+        LinkAnalysisResult data;
+        if (i == 0 && firstBaseResult != null) {
+          data = firstBaseResult;
+        } else {
+          _behaviorTracking.trackLinkPaste(urls[i], null);
+          debugPrint('[Compare] Analyzing: ${urls[i]}');
+          final Result<LinkAnalysisResult> result =
+              await _aiRepo.analyzeLink(url: urls[i], user: user);
+          switch (result) {
+            case Success<LinkAnalysisResult>(data: final d):
+              data = d;
+            case Failure<LinkAnalysisResult>(error: final err):
+              debugPrint('[Compare] analyzeLink failed: ${err.message}');
+              _updateStep(i, (s) => s.withError());
+              continue;
+          }
+        }
+        baseResults.add(data);
+        _updateStep(i, (s) => s.withDone());
+      } catch (e) {
+        debugPrint('[Compare] Unexpected error: $e');
+        _updateStep(i, (s) => s.withError());
+      }
+    }
+
+    if (baseResults.isEmpty) {
+      state = state.copyWith(
+        phase: ComparePhase.idle,
+        error:
+            'Could not analyze any of the provided links. Please check the URLs and try again.',
+      );
+      return;
+    }
+
+    // AI analysis step
+    final aiIdx = urls.length;
+    _updateStep(aiIdx, (s) => s.withActive());
+
+    for (final data in baseResults) {
+      try {
+        final enhanced = await _gemini.enhancedAnalysis(
+          baseResult: data,
+          answeredQuestions: quizAnswers,
+          profile: user,
+        );
+        debugPrint(
+            '[Compare] Score for "${data.metadata.title}": enhanced=${enhanced.enhancedScore}');
+        results.add(enhanced);
+      } catch (e) {
+        debugPrint('[Compare] Enhanced analysis fallback: $e');
+        results.add(EnhancedAnalysisResult(
+          baseResult: data,
+          enhancedScore: data.aiScore,
+          factors: const [],
+          detailedVerdict: data.aiAnalysis,
+        ));
+      }
+    }
+    _updateStep(aiIdx, (s) => s.withDone());
+
+    // Profile matching step (brief visual)
+    final profileIdx = urls.length + 1;
+    _updateStep(profileIdx, (s) => s.withActive());
+    await Future.delayed(const Duration(milliseconds: 500));
+    _updateStep(profileIdx, (s) => s.withDone());
+
+    debugPrint('[Compare] Done: ${results.length}/${urls.length} succeeded');
+    state = state.copyWith(
+      phase: ComparePhase.done,
+      results: results,
+      error: results.length < 2
+          ? (results.isEmpty
+              ? 'Could not analyze any of the provided links.'
+              : 'Only 1 link could be analyzed — need at least 2 for comparison')
+          : null,
+    );
+  }
+
+  void _updateStep(int index, AnalysisStep Function(AnalysisStep) updater) {
+    if (index >= state.steps.length) return;
+    final steps = List<AnalysisStep>.from(state.steps);
+    steps[index] = updater(steps[index]);
+    state = state.copyWith(
+      steps: steps,
+      progress: steps.where((s) => s.isDone || s.hasError).length,
+    );
+  }
+
+  void reset() {
+    state = const CompareAnalysisState();
+  }
+}
+
+final compareAnalysisProvider =
+    StateNotifierProvider<CompareAnalysisNotifier, CompareAnalysisState>((ref) {
+  return CompareAnalysisNotifier(
+    aiRepo: ref.read(aiRepositoryProvider),
+    gemini: ref.read(geminiServiceProvider),
+    behaviorTracking: ref.read(behaviorTrackingProvider),
+  );
+});
+
 // ─── Subscription Intelligence Provider ────────────────────────────────────
 
 enum SubFlowPhase { idle, quizLoading, quiz, analyzing, result }

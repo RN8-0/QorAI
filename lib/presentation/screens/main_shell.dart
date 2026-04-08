@@ -136,6 +136,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget _buildMobileLayout(int currentIndex,
       AsyncValue<ConnectivityStatus> connectivity, double bottomPadding) {
     final location = GoRouterState.of(context).matchedLocation;
+    final isLinkAiAnalyzing = ref.watch(compareAnalysisProvider).isWorking ||
+        ref.watch(linkQuizProvider).phase == LinkFlowPhase.analyzing ||
+        ref.watch(linkQuizProvider).phase == LinkFlowPhase.computing;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -153,6 +157,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           child: _FloatingNavBar(
             currentIndex: currentIndex,
             onTap: _onNavTap,
+            isLinkAiAnalyzing: isLinkAiAnalyzing,
           ),
         ),
         // Floating AI chat bubble (top of stack, above nav bar)
@@ -220,8 +225,13 @@ List<_NavItem> _buildNavItems(BuildContext context) {
 class _FloatingNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final bool isLinkAiAnalyzing;
 
-  const _FloatingNavBar({required this.currentIndex, required this.onTap});
+  const _FloatingNavBar({
+    required this.currentIndex,
+    required this.onTap,
+    this.isLinkAiAnalyzing = false,
+  });
 
   static const _brandGradient = LinearGradient(
     colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue, AppTheme.brandCyan],
@@ -336,23 +346,42 @@ class _FloatingNavBar extends StatelessWidget {
                                 : null,
                           ),
                         ),
-                        // Icon
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: isSelected
-                              ? ShaderMask(
-                                  key: ValueKey('active_$index'),
-                                  shaderCallback: (bounds) =>
-                                      _brandGradient.createShader(bounds),
-                                  blendMode: BlendMode.srcIn,
-                                  child: Icon(item.activeIcon, size: 22, color: Colors.white),
-                                )
-                              : Icon(
-                                  item.icon,
-                                  key: ValueKey('inactive_$index'),
-                                  size: 22,
-                                  color: AppTheme.slate600,
+                        // Icon with optional loading indicator for Link AI
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: isSelected
+                                  ? ShaderMask(
+                                      key: ValueKey('active_$index'),
+                                      shaderCallback: (bounds) =>
+                                          _brandGradient.createShader(bounds),
+                                      blendMode: BlendMode.srcIn,
+                                      child: Icon(item.activeIcon, size: 22, color: Colors.white),
+                                    )
+                                  : Icon(
+                                      item.icon,
+                                      key: ValueKey('inactive_$index'),
+                                      size: 22,
+                                      color: AppTheme.slate600,
+                                    ),
+                            ),
+                            // Loading indicator for Link AI tab (index 3)
+                            if (index == 3 && isLinkAiAnalyzing)
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: SizedBox(
+                                  width: 10,
+                                  height: 10,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    valueColor: const AlwaysStoppedAnimation(AppTheme.brandCyan),
+                                  ),
                                 ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 3),
                         // Label

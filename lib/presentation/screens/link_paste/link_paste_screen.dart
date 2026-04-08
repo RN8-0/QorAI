@@ -40,21 +40,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   final List<TextEditingController> _compareControllers = List.generate(4, (_) => TextEditingController());
   final List<FocusNode> _compareFocusNodes = List.generate(4, (_) => FocusNode());
   int _visibleCompareFields = 2; // Start with 2, expandable to 4
-  List<EnhancedAnalysisResult> _compareResults = [];
-  bool _compareAnalyzing = false;
-  String? _compareError;
-  int _compareProgress = 0; // How many completed so far
-
-  // Step-by-step progress tracking for analyzing screen
-  List<_AnalysisStep> _compareSteps = [];
-
-  // === COMPARE QUIZ STATE ===
-  bool _compareQuizActive = false;
-  ProductQuiz? _compareQuiz;
-  List<QuizQuestion> _compareQuizAnswers = [];
-  int _compareQuizIndex = 0;
-  LinkAnalysisResult? _compareFirstBaseResult;
-  List<String> _compareValidUrls = [];
+  // Compare state now managed by compareAnalysisProvider (survives navigation)
 
   // Legacy multi-link state (kept for backward compat)
   List<String> _multiLinkUrls = [];
@@ -148,18 +134,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   void _resetCompareFields() {
     for (final c in _compareControllers) { c.clear(); }
-    _compareResults = [];
-    _compareAnalyzing = false;
-    _compareError = null;
-    _compareProgress = 0;
-    _compareSteps = [];
     _visibleCompareFields = 2;
-    _compareQuizActive = false;
-    _compareQuiz = null;
-    _compareQuizAnswers = [];
-    _compareQuizIndex = 0;
-    _compareFirstBaseResult = null;
-    _compareValidUrls = [];
+    ref.read(compareAnalysisProvider.notifier).reset();
   }
 
   /// Continue to next product in multi-link flow (sequential quiz per product)
@@ -224,7 +200,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (mounted) _quizEntryController.forward(from: 0.0);
   }
 
-  /// Compare tab — analyze all URLs in parallel
+  /// Compare tab — analyze all URLs via background-safe provider
   Future<void> _startCompareAnalysis() async {
     final validUrls = _compareControllers
         .take(_visibleCompareFields)
@@ -247,238 +223,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     for (final fn in _compareFocusNodes) { fn.unfocus(); }
 
-    // Phase 1: Analyze first URL to get base result + generate quiz
-    setState(() {
-      _compareAnalyzing = true;
-      _compareError = null;
-      _compareResults = [];
-      _compareProgress = 0;
-      _compareValidUrls = validUrls;
-    });
-
     final user = _getOrCreateUser();
-    final aiRepo = ref.read(aiRepositoryProvider);
-    final gemini = ref.read(geminiServiceProvider);
     final lang = Localizations.localeOf(context).languageCode;
-    final localizedUser = user.copyWith(language: lang);
-
-    try {
-      // Analyze the first URL to get product info for quiz
-      debugPrint('[Compare] Phase 1: Analyzing first URL for quiz: ${validUrls[0]}');
-      ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls[0], null);
-      final Result<LinkAnalysisResult> firstResult =
-          await aiRepo.analyzeLink(url: validUrls[0], user: localizedUser);
-
-      LinkAnalysisResult? firstData;
-      switch (firstResult) {
-        case Success<LinkAnalysisResult>(data: final d):
-          firstData = d;
-        case Failure<LinkAnalysisResult>(error: final err):
-          debugPrint('[Compare] First URL analysis failed: ${err.message}');
-          if (mounted) setState(() {
-            _compareAnalyzing = false;
-            _compareError = 'Could not analyze the first link: ${err.message}';
-          });
-          return;
-      }
-
-      // Generate quiz based on first product
-      debugPrint('[Compare] Generating quiz for: ${firstData.metadata.title}');
-      final quiz = await gemini.generateQuiz(
-        category: firstData.category ?? 'general',
-        productTitle: firstData.metadata.title ?? 'Product',
-        url: validUrls[0],
-        language: lang,
-      );
-
-      if (!mounted) return;
-
-      if (quiz.questions.isNotEmpty) {
-        // Show quiz to user
-        setState(() {
-          _compareAnalyzing = false;
-          _compareQuizActive = true;
-          _compareQuiz = quiz;
-          _compareQuizAnswers = List.from(quiz.questions);
-          _compareQuizIndex = 0;
-          _compareFirstBaseResult = firstData;
-        });
-      } else {
-        // No quiz — proceed directly with analysis
-        debugPrint('[Compare] No quiz questions, proceeding to analysis');
-        await _runCompareAnalysis(validUrls, localizedUser, [], firstData);
-      }
-    } catch (e) {
-      debugPrint('[Compare] Quiz generation failed: $e');
-      if (mounted) setState(() {
-        _compareAnalyzing = false;
-        _compareError = 'Failed to prepare comparison: $e';
-      });
-    }
+    ref.read(compareAnalysisProvider.notifier).startAnalysis(validUrls, user, lang);
   }
 
   void _onCompareQuizAnswer(int index, String answer) {
-    setState(() {
-      _compareQuizAnswers[index] = _compareQuizAnswers[index].copyWith(selectedOption: answer);
-      if (index < _compareQuizAnswers.length - 1) {
-        _compareQuizIndex = index + 1;
-      }
-    });
+    ref.read(compareAnalysisProvider.notifier).answerQuestion(index, answer);
   }
 
   Future<void> _onCompareQuizSubmit() async {
     final user = _getOrCreateUser();
     final lang = Localizations.localeOf(context).languageCode;
-    final localizedUser = user.copyWith(language: lang);
-
-    setState(() {
-      _compareQuizActive = false;
-      _compareAnalyzing = true;
-      _compareProgress = 0;
-    });
-
-    await _runCompareAnalysis(
-      _compareValidUrls,
-      localizedUser,
-      _compareQuizAnswers,
-      _compareFirstBaseResult,
-    );
+    ref.read(compareAnalysisProvider.notifier).submitQuiz(user, lang);
   }
 
   void _onCompareQuizSkip() {
     final user = _getOrCreateUser();
     final lang = Localizations.localeOf(context).languageCode;
-    final localizedUser = user.copyWith(language: lang);
-
-    setState(() {
-      _compareQuizActive = false;
-      _compareAnalyzing = true;
-      _compareProgress = 0;
-    });
-
-    _runCompareAnalysis(
-      _compareValidUrls,
-      localizedUser,
-      [],
-      _compareFirstBaseResult,
-    );
-  }
-
-  /// Phase 2: Run enhanced analysis on all URLs using quiz answers
-  Future<void> _runCompareAnalysis(
-    List<String> validUrls,
-    UserEntity localizedUser,
-    List<QuizQuestion> quizAnswers,
-    LinkAnalysisResult? firstBaseResult,
-  ) async {
-    final aiRepo = ref.read(aiRepositoryProvider);
-    final gemini = ref.read(geminiServiceProvider);
-
-    // Initialize step tracking
-    if (mounted) {
-      setState(() {
-        _compareSteps = [
-          for (int i = 0; i < validUrls.length; i++)
-            _AnalysisStep('Scanning Link ${i + 1}', Icons.link_rounded),
-          _AnalysisStep('Running AI analysis', Icons.psychology_rounded),
-          _AnalysisStep('Matching with your profile', Icons.person_rounded),
-        ];
-      });
-    }
-
-    final results = <EnhancedAnalysisResult>[];
-
-    // Scan each link sequentially for clear step-by-step feedback
-    final baseResults = <LinkAnalysisResult>[];
-    for (int i = 0; i < validUrls.length; i++) {
-      final url = validUrls[i];
-      try {
-        LinkAnalysisResult data;
-        if (i == 0 && firstBaseResult != null) {
-          data = firstBaseResult;
-        } else {
-          ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
-          debugPrint('[Compare] Analyzing: $url');
-          final Result<LinkAnalysisResult> result =
-              await aiRepo.analyzeLink(url: url, user: localizedUser);
-          switch (result) {
-            case Success<LinkAnalysisResult>(data: final d):
-              data = d;
-            case Failure<LinkAnalysisResult>(error: final err):
-              debugPrint('[Compare] analyzeLink failed for $url: ${err.message}');
-              if (mounted) setState(() {
-                _compareSteps[i] = _compareSteps[i].withError();
-                _compareProgress++;
-              });
-              continue;
-          }
-        }
-        baseResults.add(data);
-        if (mounted) setState(() {
-          _compareSteps[i] = _compareSteps[i].withDone();
-          _compareProgress++;
-        });
-      } catch (e) {
-        debugPrint('[Compare] Unexpected error for $url: $e');
-        if (mounted) setState(() {
-          _compareSteps[i] = _compareSteps[i].withError();
-          _compareProgress++;
-        });
-      }
-    }
-
-    if (baseResults.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _compareAnalyzing = false;
-        _compareError = 'Could not analyze any of the provided links. Please check the URLs and try again.';
-      });
-      return;
-    }
-
-    // AI analysis step
-    final aiStepIdx = validUrls.length;
-    if (mounted) setState(() { _compareSteps[aiStepIdx] = _compareSteps[aiStepIdx].withActive(); });
-
-    for (final data in baseResults) {
-      try {
-        final enhanced = await gemini.enhancedAnalysis(
-          baseResult: data,
-          answeredQuestions: quizAnswers,
-          profile: localizedUser,
-        );
-        debugPrint('[Compare] Score for "${data.metadata.title}": initial=${data.aiScore}, enhanced=${enhanced.enhancedScore}');
-        results.add(enhanced);
-      } catch (e) {
-        debugPrint('[Compare] Enhanced analysis fallback for ${data.url}: $e');
-        results.add(EnhancedAnalysisResult(
-          baseResult: data,
-          enhancedScore: data.aiScore,
-          factors: const [],
-          detailedVerdict: data.aiAnalysis,
-        ));
-      }
-    }
-
-    if (mounted) setState(() { _compareSteps[aiStepIdx] = _compareSteps[aiStepIdx].withDone(); });
-
-    // Profile matching step
-    final profileStepIdx = validUrls.length + 1;
-    if (mounted) setState(() { _compareSteps[profileStepIdx] = _compareSteps[profileStepIdx].withActive(); });
-    await Future.delayed(const Duration(milliseconds: 500)); // Brief visual feedback
-    if (mounted) setState(() { _compareSteps[profileStepIdx] = _compareSteps[profileStepIdx].withDone(); });
-
-    if (!mounted) return;
-    debugPrint('[Compare] Done: ${results.length}/${validUrls.length} succeeded');
-    setState(() {
-      _compareAnalyzing = false;
-      _compareResults = results;
-      if (results.length < 2) {
-        _compareError = results.isEmpty
-            ? 'Could not analyze any of the provided links. Please check the URLs and try again.'
-            : 'Only 1 link could be analyzed — need at least 2 for comparison';
-      }
-    });
+    ref.read(compareAnalysisProvider.notifier).skipQuiz(user, lang);
   }
 
   // Legacy _startAnalysis for backward compat
@@ -487,13 +250,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   @override
   Widget build(BuildContext context) {
     final quizState = ref.watch(linkQuizProvider);
+    final compareState = ref.watch(compareAnalysisProvider);
     final isWorking = quizState.phase == LinkFlowPhase.analyzing ||
         quizState.phase == LinkFlowPhase.quizLoading ||
-        quizState.phase == LinkFlowPhase.computing;
+        quizState.phase == LinkFlowPhase.computing ||
+        compareState.isWorking;
 
     // Show back button when in active flow or comparison ready
     final showBack = quizState.phase != LinkFlowPhase.idle ||
-        _compareResults.isNotEmpty || _compareAnalyzing || _compareQuizActive;
+        compareState.phase != ComparePhase.idle;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -512,6 +277,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         onPressed: () {
                           HapticFeedback.mediumImpact();
                           ref.read(linkQuizProvider.notifier).reset();
+                          ref.read(compareAnalysisProvider.notifier).reset();
                           _resetLinkFields();
                           _resetCompareFields();
                           setState(() {});
@@ -532,7 +298,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   children: [
                     Builder(builder: (context) {
                       final isDark = Theme.of(context).brightness == Brightness.dark;
-                      final titleText = _compareResults.isNotEmpty
+                      final titleText = compareState.phase == ComparePhase.done
                           ? 'Comparison'
                           : _getTitle(quizState.phase);
                       if (isDark) {
@@ -576,7 +342,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   const SizedBox(width: 8),
                 ],
                 // Tab bar at the bottom of the app bar (only when idle)
-                bottom: (quizState.phase == LinkFlowPhase.idle && !_compareAnalyzing && _compareResults.isEmpty)
+                bottom: (quizState.phase == LinkFlowPhase.idle && compareState.phase == ComparePhase.idle)
                     ? PreferredSize(
                         preferredSize: const Size.fromHeight(48),
                         child: _buildTabBar(),
@@ -633,8 +399,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildBody(LinkQuizState quizState, bool isWorking) {
+    final compareState = ref.watch(compareAnalysisProvider);
+
     // Compare results view
-    if (_compareResults.length >= 2) {
+    if (compareState.phase == ComparePhase.done && compareState.results.length >= 2) {
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
@@ -647,26 +415,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       );
     }
 
-    // Compare analyzing view
-    if (_compareAnalyzing) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: _buildCompareAnalyzingView(),
-      );
+    // Compare analyzing view (Task 2: no scroll, centered)
+    if (compareState.phase == ComparePhase.analyzing || compareState.phase == ComparePhase.analyzingFirst) {
+      return _buildCompareAnalyzingView();
     }
 
     // Compare quiz view — reuse same _QuizView from Single Analysis
-    if (_compareQuizActive && _compareQuiz != null && _compareFirstBaseResult != null) {
+    if (compareState.phase == ComparePhase.quiz && compareState.quiz != null && compareState.firstBaseResult != null) {
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
             _buildProgressSteps(LinkFlowPhase.quiz),
             _QuizView(
-              quiz: _compareQuiz!,
-              answeredQuestions: _compareQuizAnswers,
-              currentIndex: _compareQuizIndex,
-              baseResult: _compareFirstBaseResult!,
+              quiz: compareState.quiz!,
+              answeredQuestions: compareState.quizAnswers,
+              currentIndex: compareState.quizIndex,
+              baseResult: compareState.firstBaseResult!,
               onAnswer: _onCompareQuizAnswer,
               onSubmit: _onCompareQuizSubmit,
               onSkip: _onCompareQuizSkip,
@@ -679,15 +444,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     }
 
     // Compare error
-    if (_compareError != null) {
+    if (compareState.error != null && compareState.phase != ComparePhase.idle) {
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            _buildError(_compareError!),
+            _buildError(compareState.error!),
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () => setState(() { _compareError = null; }),
+              onTap: () => ref.read(compareAnalysisProvider.notifier).reset(),
               child: Text('Try Again', style: GoogleFonts.inter(
                 color: AppTheme.brandBlue, fontWeight: FontWeight.w700)),
             ),
@@ -698,17 +463,29 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     // Active single analysis flow (quiz/result/analyzing)
     if (quizState.phase != LinkFlowPhase.idle) {
+      // Analyzing/computing phases: fixed centered, no scroll
+      if (quizState.phase == LinkFlowPhase.analyzing ||
+          quizState.phase == LinkFlowPhase.quizLoading ||
+          quizState.phase == LinkFlowPhase.computing) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildPhaseTimeline(quizState.phase),
+                _buildProgressSteps(quizState.phase),
+              ],
+            ),
+          ),
+        );
+      }
+      // Quiz and result phases: scrollable
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            // Phase progress timeline
-            if (quizState.phase != LinkFlowPhase.quiz &&
-                quizState.phase != LinkFlowPhase.result)
-              _buildPhaseTimeline(quizState.phase),
-
-            if (quizState.phase != LinkFlowPhase.idle)
-              _buildProgressSteps(quizState.phase),
+            _buildProgressSteps(quizState.phase),
 
             if (quizState.phase == LinkFlowPhase.quiz &&
                 quizState.quiz != null &&
@@ -1110,77 +887,94 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildCompareAnalyzingView() {
-    final totalSteps = _compareSteps.length;
-    final doneSteps = _compareSteps.where((s) => s.isDone).length;
+    final cState = ref.watch(compareAnalysisProvider);
+    final steps = cState.steps;
+    final totalSteps = steps.length;
+    final doneSteps = steps.where((s) => s.isDone).length;
     final progress = totalSteps > 0 ? doneSteps / totalSteps : 0.0;
 
-    return Column(
-      children: [
-        const SizedBox(height: 24),
-        // Animated icon
-        Container(
-          width: 72, height: 72,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                blurRadius: 20, offset: const Offset(0, 6)),
-            ],
-          ),
-          child: const Icon(Icons.compare_arrows_rounded,
-              color: Colors.white, size: 36),
-        ).animate(onPlay: (c) => c.repeat(reverse: true))
-         .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1200.ms),
-        const SizedBox(height: 20),
-        Text('Analyzing Products...',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800, fontSize: 18,
-            color: context.textPrimary)),
-        const SizedBox(height: 4),
-        Text('AI is comparing your products side by side',
-          style: GoogleFonts.inter(fontSize: 13, color: context.textTertiaryColor)),
-        const SizedBox(height: 20),
+    IconData _stepIcon(AnalysisStepType type) {
+      switch (type) {
+        case AnalysisStepType.scanLink: return Icons.link_rounded;
+        case AnalysisStepType.aiAnalysis: return Icons.psychology_rounded;
+        case AnalysisStepType.profileMatch: return Icons.person_rounded;
+      }
+    }
 
-        // Progress bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeOutCubic,
-              builder: (_, val, __) => LinearProgressIndicator(
-                value: val,
-                backgroundColor: context.surfaceVariantColor,
-                valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
-                minHeight: 6,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 24),
+            // Animated icon
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.brandBlue.withValues(alpha: 0.3),
+                    blurRadius: 20, offset: const Offset(0, 6)),
+                ],
+              ),
+              child: const Icon(Icons.compare_arrows_rounded,
+                  color: Colors.white, size: 36),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+             .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1200.ms),
+            const SizedBox(height: 20),
+            Text('Analyzing Products...',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800, fontSize: 18,
+                color: context.textPrimary)),
+            const SizedBox(height: 4),
+            Text('AI is comparing your products side by side',
+              style: GoogleFonts.inter(fontSize: 13, color: context.textTertiaryColor)),
+            const SizedBox(height: 20),
+
+            // Progress bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progress),
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, val, __) => LinearProgressIndicator(
+                    value: val,
+                    backgroundColor: context.surfaceVariantColor,
+                    valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
+                    minHeight: 6,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-        // Step-by-step list
-        GlassContainer(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            children: _compareSteps.asMap().entries.map((entry) {
-              final i = entry.key;
-              final step = entry.value;
-              return _buildAnalysisStepRow(step, i);
-            }).toList(),
-          ),
+            // Step-by-step list
+            if (steps.isNotEmpty)
+              GlassContainer(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  children: steps.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final step = entry.value;
+                    return _buildAnalysisStepRow(step, _stepIcon(step.type), i);
+                  }).toList(),
+                ),
+              ),
+            const SizedBox(height: 40),
+          ],
         ),
-        const SizedBox(height: 40),
-      ],
+      ),
     );
   }
 
-  Widget _buildAnalysisStepRow(_AnalysisStep step, int index) {
+  Widget _buildAnalysisStepRow(AnalysisStep step, IconData stepIcon, int index) {
     final Widget icon;
     final Color textColor;
     if (step.isDone) {
@@ -1221,7 +1015,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           shape: BoxShape.circle,
           color: context.surfaceVariantColor,
         ),
-        child: Icon(step.icon, color: context.textTertiaryColor, size: 14),
+        child: Icon(stepIcon, color: context.textTertiaryColor, size: 14),
       );
       textColor = context.textTertiaryColor;
     }
@@ -2206,8 +2000,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   /// Multi-link comparison view (shown after all products are analyzed)
   Widget _buildMultiLinkComparison() {
-    // Use compare results if available, otherwise legacy multi-link results
-    final results = _compareResults.isNotEmpty ? _compareResults : _multiLinkResults;
+    final compareState = ref.watch(compareAnalysisProvider);
+    final results = compareState.results.isNotEmpty ? compareState.results : _multiLinkResults;
     final sorted = List<EnhancedAnalysisResult>.from(results)
       ..sort((a, b) => b.enhancedScore.compareTo(a.enhancedScore));
     final winner = sorted.first;
@@ -2616,7 +2410,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           onTap: () {
             HapticFeedback.mediumImpact();
             ref.read(linkQuizProvider.notifier).reset();
+            ref.read(compareAnalysisProvider.notifier).reset();
             _resetLinkFields();
+            _resetCompareFields();
             setState(() {});
           },
           child: Container(
@@ -5084,21 +4880,3 @@ class _FeatureTile extends StatelessWidget {
   }
 }
 
-// Step state for the compare analyzing screen
-class _AnalysisStep {
-  final String label;
-  final IconData icon;
-  final bool isDone;
-  final bool isActive;
-  final bool hasError;
-
-  const _AnalysisStep(this.label, this.icon,
-      {this.isDone = false, this.isActive = false, this.hasError = false});
-
-  _AnalysisStep withDone() =>
-      _AnalysisStep(label, icon, isDone: true);
-  _AnalysisStep withActive() =>
-      _AnalysisStep(label, icon, isActive: true);
-  _AnalysisStep withError() =>
-      _AnalysisStep(label, icon, hasError: true);
-}
