@@ -1185,9 +1185,9 @@ Return valid JSON:
     final langName = _languageName(language);
     return '''
 You are Compair's deep compatibility analyzer. Given a product, the user's quiz
-answers, and their full profile, produce a comprehensive match report.
+answers, and their full profile, produce a comprehensive personalized match report.
 
-LANGUAGE: Write ALL text (verdict, pros, cons) in $langName.
+LANGUAGE: Write ALL text (verdict, pros, cons, alternatives) in $langName.
 
 Return valid JSON:
 {
@@ -1208,8 +1208,14 @@ Return valid JSON:
 Important:
 - The enhancedScore should differ from initialScore based on quiz answers
 - Factors must reflect the user's actual answers, not generic metrics
+- Usage Fit: how well this product matches what the user actually needs based on quiz answers
+- Budget Match: value for money relative to user's stated budget range
+- Ecosystem Fit: compatibility with user's existing devices and ecosystem (Apple/Android/Windows)
+- Future-proofing: how long this product will stay relevant for the user's use case
+- Lifestyle Match: how well it fits user's daily routine, profession, and living situation
 - Pros/cons must be personalized ("Since you mostly game, the GPU is overkill for you")
-- Alternatives must be real, current products
+- Alternatives must be real, currently available products in a similar price range
+- The verdict should explain WHY this product is or isn't right for THIS specific user
 - All text must be in $langName
 ''';
   }

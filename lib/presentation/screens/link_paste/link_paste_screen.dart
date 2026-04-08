@@ -2084,6 +2084,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final results = _compareResults.isNotEmpty ? _compareResults : _multiLinkResults;
     final sorted = List<EnhancedAnalysisResult>.from(results)
       ..sort((a, b) => b.enhancedScore.compareTo(a.enhancedScore));
+    final winner = sorted.first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2172,7 +2173,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 final isBest = i == 0;
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
+                  margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isBest
@@ -2197,7 +2198,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
                                     color: context.textPrimary),
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis),
 
                             if (r.prosForUser.isNotEmpty)
@@ -2245,7 +2246,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
         const SizedBox(height: 16),
 
-        // Best match verdict
+        // AI Verdict — personalized recommendation using Gemini's actual verdict
         GlassContainer(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -2273,22 +2274,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 ],
               ),
               const SizedBox(height: 10),
-              Text(
-                '${sorted.first.baseResult.metadata.title ?? "Product 1"} is your best match with a ${sorted.first.enhancedScore.toStringAsFixed(0)}% compatibility score.',
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: context.textPrimary,
-                    height: 1.5),
-              ),
-              if (sorted.length > 1) ...[
-                const SizedBox(height: 8),
+              // Show Gemini's actual detailed verdict if available
+              if (winner.detailedVerdict.isNotEmpty &&
+                  winner.detailedVerdict != winner.baseResult.aiAnalysis)
                 Text(
-                  'Score difference: ${(sorted.first.enhancedScore - sorted.last.enhancedScore).toStringAsFixed(0)} points between best and worst match.',
+                  winner.detailedVerdict,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: context.textSecondary,
-                      height: 1.4),
+                      fontSize: 14,
+                      color: context.textPrimary,
+                      height: 1.5),
+                )
+              else ...[
+                Text(
+                  '${winner.baseResult.metadata.title ?? "Product 1"} is your best match with a ${winner.enhancedScore.toStringAsFixed(0)}% compatibility score.',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: context.textPrimary,
+                      height: 1.5),
                 ),
+                if (sorted.length > 1) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Score difference: ${(winner.enhancedScore - sorted.last.enhancedScore).toStringAsFixed(0)} points between best and worst match.',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: context.textSecondary,
+                        height: 1.4),
+                  ),
+                ],
               ],
             ],
           ),
@@ -2296,16 +2309,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
         const SizedBox(height: 16),
 
-        // Individual product breakdowns
+        // Individual product breakdowns — full width cards
         ...List.generate(sorted.length, (i) {
           final r = sorted[i];
           final title = r.baseResult.metadata.title ?? 'Product ${i + 1}';
           final medal = i == 0 ? '🥇' : (i == 1 ? '🥈' : (i == 2 ? '🥉' : '#${i + 1}'));
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 16),
             child: GlassContainer(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2322,26 +2335,53 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis),
                       ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (r.enhancedScore >= 80
+                              ? AppTheme.scoreExcellent
+                              : r.enhancedScore >= 60
+                                  ? AppTheme.scoreGood
+                                  : AppTheme.scoreAverage)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('${r.enhancedScore.toStringAsFixed(0)}%',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                color: r.enhancedScore >= 80
+                                    ? AppTheme.scoreExcellent
+                                    : r.enhancedScore >= 60
+                                        ? AppTheme.scoreGood
+                                        : AppTheme.scoreAverage)),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   // Score breakdown bars from factors
-                  ...r.factors.take(4).map((f) =>
+                  ...r.factors.take(5).map((f) =>
                     _buildComparisonScoreBar(f.label, f.score, context),
                   ),
-                  // Pros
+                  // Pros for You
                   if (r.prosForUser.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    ...r.prosForUser.take(2).map((p) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
+                    const SizedBox(height: 12),
+                    Text('Pros for You',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppTheme.success)),
+                    const SizedBox(height: 6),
+                    ...r.prosForUser.take(3).map((p) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('✅ ', style: TextStyle(fontSize: 11)),
+                              const Text('✅ ', style: TextStyle(fontSize: 12)),
                               Expanded(
                                 child: Text(p,
                                     style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12, color: context.textSecondary, height: 1.3),
+                                        fontSize: 12, color: context.textSecondary, height: 1.4),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis),
                               ),
@@ -2349,19 +2389,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           ),
                         )),
                   ],
-                  // Cons
+                  // Cons for You
                   if (r.consForUser.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    ...r.consForUser.take(2).map((c) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
+                    const SizedBox(height: 8),
+                    Text('Cons for You',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppTheme.warning)),
+                    const SizedBox(height: 6),
+                    ...r.consForUser.take(3).map((c) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('⚠ ', style: TextStyle(fontSize: 11)),
+                              const Text('⚠️ ', style: TextStyle(fontSize: 12)),
                               Expanded(
                                 child: Text(c,
                                     style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12, color: context.textSecondary, height: 1.3),
+                                        fontSize: 12, color: context.textSecondary, height: 1.4),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis),
                               ),
@@ -2374,6 +2420,72 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             ),
           ).animate(delay: (600 + i * 150).ms).fadeIn(duration: 300.ms).slideY(begin: 0.03);
         }),
+
+        // Better Alternatives section (from the winner's alternatives list)
+        if (winner.alternatives.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          GlassContainer(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppTheme.brandCyan, AppTheme.brandSkyBlue],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.lightbulb_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('Better Alternatives',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: context.textPrimary)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text('Based on your profile, you might also consider:',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: context.textSecondary)),
+                const SizedBox(height: 8),
+                ...winner.alternatives.take(3).map((alt) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: context.surfaceVariantColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.arrow_forward_rounded,
+                            color: AppTheme.brandBlue, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(alt,
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: context.textPrimary,
+                                  fontWeight: FontWeight.w600),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
+              ],
+            ),
+          ).animate(delay: 900.ms).fadeIn(duration: 400.ms),
+        ],
 
         const SizedBox(height: 16),
 
@@ -2408,7 +2520,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               ],
             ),
           ),
-        ).animate(delay: 800.ms).fadeIn(duration: 300.ms),
+        ).animate(delay: 1000.ms).fadeIn(duration: 300.ms),
       ],
     );
   }
