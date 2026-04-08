@@ -1175,7 +1175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final algorithmService = ref.read(profileAlgorithmServiceProvider);
 
     return SizedBox(
-      height: 200,
+      height: 230,
       child: ref.watch(personalizedRecommendationsProvider).when(
         data: (products) {
           if (products.isEmpty) return Center(
@@ -1211,7 +1211,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 200, cardWidth: 260),
+        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
         error: (_, __) => const SizedBox.shrink(),
       ),
     );
@@ -1260,7 +1260,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildWideProductCards(String categoryId) {
     return SizedBox(
-      height: 200,
+      height: 230,
       child: ref.watch(homeFeedProvider).when(
         data: (feed) {
           var products = feed.byCategory[categoryId] ?? [];
@@ -1297,7 +1297,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 200, cardWidth: 240),
+        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
         error: (_, __) => const SizedBox.shrink(),
       ),
     );
@@ -1307,7 +1307,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildCompactGridSection(String categoryId) {
     return SizedBox(
-      height: 200,
+      height: 230,
       child: ref.watch(homeFeedProvider).when(
         data: (feed) {
           var products = feed.byCategory[categoryId] ?? [];
@@ -1341,7 +1341,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 200, cardWidth: 260),
+        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
         error: (_, __) => const SizedBox.shrink(),
       ),
     );
@@ -1351,7 +1351,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildTrendsSection() {
     return SizedBox(
-      height: 200,
+      height: 230,
       child: ref.watch(homeFeedProvider).when(
         data: (feed) {
           if (!_firstDataLogged) {
@@ -1391,7 +1391,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 200, cardWidth: 260),
+        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
         error: (e, __) => _buildRetryWidget(
           onRetry: () => ref.invalidate(homeFeedProvider),
         ),
@@ -1403,7 +1403,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildNewArrivalsSection() {
     return SizedBox(
-      height: 200,
+      height: 230,
       child: ref.watch(newArrivalsProvider).when(
         data: (products) {
           if (products.isEmpty) return Center(
@@ -1435,7 +1435,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 200, cardWidth: 155),
+        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
         error: (_, __) => _buildRetryWidget(
           onRetry: () => ref.invalidate(newArrivalsProvider),
         ),
@@ -1447,7 +1447,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildDiscoverSection() {
     return SizedBox(
-      height: 200,
+      height: 230,
       child: ref.watch(discoverProductsProvider).when(
         data: (products) {
           if (products.isEmpty) return Center(
@@ -1479,7 +1479,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 200, cardWidth: 155),
+        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
         error: (_, __) => _buildRetryWidget(
           onRetry: () => ref.invalidate(discoverProductsProvider),
         ),
@@ -1507,7 +1507,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 200,
+              height: 230,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1551,7 +1551,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 200,
+              height: 230,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1596,7 +1596,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 200,
+              height: 230,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1655,7 +1655,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 185, cardWidth: 240),
+        loading: () => _buildSkeletonRow(height: 185, cardWidth: 155),
         error: (_, __) => _buildQuickCompareFallback(),
       ),
     );
@@ -1689,7 +1689,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           },
         );
       },
-      loading: () => _buildSkeletonRow(height: 185, cardWidth: 240),
+      loading: () => _buildSkeletonRow(height: 185, cardWidth: 155),
       error: (_, __) => const SizedBox.shrink(),
     );
   }
@@ -1725,7 +1725,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       SliverToBoxAdapter(
         child: SizedBox(
-          height: 200,
+          height: 230,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1831,7 +1831,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildCategoryProductsRow(String category) {
     return SizedBox(
-      height: 200,
+      height: 230,
       child: ref.watch(homeFeedProvider).when(
         data: (feed) {
           final products = feed.byCategory[category] ?? [];
@@ -1852,7 +1852,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 200, cardWidth: 155),
+        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
         error: (_, __) => const SizedBox.shrink(),
       ),
     );
@@ -2140,25 +2140,18 @@ class _WideProductCard extends StatelessWidget {
   const _WideProductCard({required this.product, required this.price,
       this.showNewBadge = false, required this.onTap});
 
-  Color _techColor(double s) => s >= 85 ? const Color(0xFF10B981)
-      : s >= 70 ? const Color(0xFFF59E0B) : s >= 50 ? const Color(0xFFF97316)
-      : const Color(0xFFEF4444);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // In dark theme: white image bg for product contrast
-    // In light theme: match card bg so no visible line
     final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 260,
-        height: 200,
-        margin: const EdgeInsets.only(right: 14),
+        width: 155,
+        margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
             color: context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AppTheme.brandCyan.withValues(alpha: 0.12),
               width: 0.8,
@@ -2166,85 +2159,89 @@ class _WideProductCard extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: AppTheme.brandCyan.withValues(alpha: 0.06),
-                blurRadius: 12,
+                blurRadius: 10,
                 spreadRadius: -2,
               ),
             ]),
-        child: Row(children: [
-          // Image section
-          Stack(children: [
-            Container(
-              width: 110, height: 200,
-              decoration: BoxDecoration(
-                color: imageBg,
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(20))),
-              padding: const EdgeInsets.all(10),
-              child: ProductImageBox(
-                imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
-                height: 180, borderRadius: BorderRadius.circular(12),
-                padding: EdgeInsets.zero),
-            ),
-            if (showNewBadge) Positioned(top: 10, left: 8, child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(color: const Color(0xFF10B981),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Text('NEW', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 9, fontWeight: FontWeight.w700,
-                  color: Colors.white, letterSpacing: 0.5)),
-            )),
-          ]),
-          // Details section
-          Expanded(child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (product.brand != null && product.brand!.isNotEmpty)
-                  Text(product.brand!.toUpperCase(),
-                      style: GoogleFonts.plusJakartaSans(fontSize: 10,
-                          fontWeight: FontWeight.w600, color: AppTheme.accentCyan,
-                          letterSpacing: 0.8),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
-                        fontWeight: FontWeight.w700, color: context.textPrimary,
-                        height: 1.2)),
-                const SizedBox(height: 8),
-                if (product.techScore > 0) Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentCyan.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.local_fire_department_rounded,
-                          size: 12, color: AppTheme.accentCyan),
-                      const SizedBox(width: 3),
-                      Text('${product.techScore.toInt()}',
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11, fontWeight: FontWeight.w700,
-                              color: AppTheme.accentCyan)),
-                    ]),
-                  ),
-                ]),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(20)),
-                  child: Text(context.l10n?.viewDetails ?? 'View Details',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Image section
+            Stack(children: [
+              Container(
+                height: 105, width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: imageBg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
+                child: ProductImageBox(
+                  imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
+                  height: 89, borderRadius: BorderRadius.circular(10),
+                  padding: EdgeInsets.zero),
+              ),
+              if (showNewBadge) Positioned(top: 7, left: 7, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: const Color(0xFF10B981),
+                    borderRadius: BorderRadius.circular(6)),
+                child: Text('NEW', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 8, fontWeight: FontWeight.w700,
+                    color: Colors.white, letterSpacing: 0.5)),
+              )),
+              if (product.techScore > 0) Positioned(top: 7, right: 7, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentCyan.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.accentCyan.withValues(alpha: 0.3), width: 0.5)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.local_fire_department_rounded,
+                      size: 10, color: AppTheme.accentCyan),
+                  const SizedBox(width: 2),
+                  Text('${product.techScore.toInt()}',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11, fontWeight: FontWeight.w600,
-                          color: Colors.white)),
-                ),
-              ],
+                          fontSize: 10, fontWeight: FontWeight.w700,
+                          color: AppTheme.accentCyan)),
+                ]),
+              )),
+            ]),
+            // Details section
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (product.brand != null && product.brand!.isNotEmpty)
+                    Text(product.brand!.toUpperCase(),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 9,
+                            fontWeight: FontWeight.w600, color: AppTheme.accentCyan,
+                            letterSpacing: 0.6),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                          fontWeight: FontWeight.w700, color: context.textPrimary,
+                          height: 1.15)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(12)),
+                      child: Text(context.l10n?.viewDetails ?? 'View Details',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10, fontWeight: FontWeight.w600,
+                              color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          )),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -2436,10 +2433,6 @@ class _TrendingWideCard extends StatelessWidget {
       : rank == 2 ? const Color(0xFF94A3B8) : rank == 3
           ? Colors.orange : const Color(0xFF6366F1);
 
-  Color _techColor(double s) => s >= 85 ? const Color(0xFF10B981)
-      : s >= 70 ? const Color(0xFFF59E0B) : s >= 50 ? const Color(0xFFF97316)
-      : const Color(0xFFEF4444);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2447,12 +2440,11 @@ class _TrendingWideCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 260,
-        height: 200,
-        margin: const EdgeInsets.only(right: 14),
+        width: 155,
+        margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
             color: context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AppTheme.brandCyan.withValues(alpha: 0.12),
               width: 0.8,
@@ -2460,85 +2452,91 @@ class _TrendingWideCard extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: AppTheme.brandCyan.withValues(alpha: 0.06),
-                blurRadius: 12, spreadRadius: -2,
+                blurRadius: 10, spreadRadius: -2,
               ),
             ]),
-        child: Row(children: [
-          // Image section with rank badge
-          Stack(children: [
-            Container(
-              width: 110, height: 200,
-              decoration: BoxDecoration(
-                color: imageBg,
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(20))),
-              padding: const EdgeInsets.all(10),
-              child: ProductImageBox(
-                imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
-                height: 180, borderRadius: BorderRadius.circular(12),
-                padding: EdgeInsets.zero),
-            ),
-            Positioned(top: 10, left: 8, child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-              decoration: BoxDecoration(
-                color: rank <= 3 ? _rankColor : context.surfaceElevatedColor,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: rank <= 3 ? [BoxShadow(
-                    color: _rankColor.withValues(alpha: 0.4), blurRadius: 6)] : null),
-              child: Text('#$rank', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10, fontWeight: FontWeight.w800,
-                  color: rank <= 3 ? Colors.white : context.textPrimary)),
-            )),
-          ]),
-          // Details section
-          Expanded(child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (product.brand != null && product.brand!.isNotEmpty)
-                  Text(product.brand!.toUpperCase(),
-                      style: GoogleFonts.plusJakartaSans(fontSize: 10,
-                          fontWeight: FontWeight.w600, color: AppTheme.accentCyan,
-                          letterSpacing: 0.8),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
-                        fontWeight: FontWeight.w700, color: context.textPrimary,
-                        height: 1.2)),
-                const SizedBox(height: 8),
-                if (product.techScore > 0) Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentCyan.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.local_fire_department_rounded,
-                        size: 12, color: AppTheme.accentCyan),
-                    const SizedBox(width: 3),
-                    Text('${product.techScore.toInt()}',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11, fontWeight: FontWeight.w700,
-                            color: AppTheme.accentCyan)),
-                  ]),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(20)),
-                  child: Text('View Details',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Image section with rank badge
+            Stack(children: [
+              Container(
+                height: 105, width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: imageBg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
+                child: ProductImageBox(
+                  imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
+                  height: 89, borderRadius: BorderRadius.circular(10),
+                  padding: EdgeInsets.zero),
+              ),
+              Positioned(top: 7, left: 7, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: rank <= 3 ? _rankColor : context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: rank <= 3 ? [BoxShadow(
+                      color: _rankColor.withValues(alpha: 0.4), blurRadius: 4)] : null),
+                child: Text('#$rank', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9, fontWeight: FontWeight.w800,
+                    color: rank <= 3 ? Colors.white : context.textPrimary)),
+              )),
+              if (product.techScore > 0) Positioned(top: 7, right: 7, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentCyan.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.accentCyan.withValues(alpha: 0.3), width: 0.5)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.local_fire_department_rounded,
+                      size: 10, color: AppTheme.accentCyan),
+                  const SizedBox(width: 2),
+                  Text('${product.techScore.toInt()}',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11, fontWeight: FontWeight.w600,
-                          color: Colors.white)),
-                ),
-              ],
+                          fontSize: 10, fontWeight: FontWeight.w700,
+                          color: AppTheme.accentCyan)),
+                ]),
+              )),
+            ]),
+            // Details section
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (product.brand != null && product.brand!.isNotEmpty)
+                    Text(product.brand!.toUpperCase(),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 9,
+                            fontWeight: FontWeight.w600, color: AppTheme.accentCyan,
+                            letterSpacing: 0.6),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                          fontWeight: FontWeight.w700, color: context.textPrimary,
+                          height: 1.15)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(12)),
+                      child: Text('View Details',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10, fontWeight: FontWeight.w600,
+                              color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          )),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -2560,35 +2558,35 @@ class _CompareCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 260, margin: const EdgeInsets.only(right: 14),
-        padding: const EdgeInsets.all(16),
+        width: 180, margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(color: context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: context.dividerColor)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             _CmpImg(url: imageURL1),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                 decoration: BoxDecoration(gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(8)),
                 child: Text('VS', style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w900, fontSize: 12,
+                    fontWeight: FontWeight.w900, fontSize: 10,
                     color: Colors.white)),
               ),
             ),
             _CmpImg(url: imageURL2),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text('$product1 vs $product2', maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(fontSize: 13,
+              style: GoogleFonts.plusJakartaSans(fontSize: 11,
                   fontWeight: FontWeight.w600, color: context.textPrimary)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(context.l10n?.compareNowSmall ?? 'Compare now', style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, fontWeight: FontWeight.w600,
+              fontSize: 11, fontWeight: FontWeight.w600,
               color: AppTheme.primaryBlue)),
         ]),
       ),
@@ -2602,9 +2600,9 @@ class _CmpImg extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 64, height: 64,
+      width: 50, height: 50,
       decoration: BoxDecoration(color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: context.dividerColor)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(13),
