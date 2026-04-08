@@ -2474,10 +2474,10 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 /// Background refresh: fetch fresh data and update cache silently
 Future<void> _backgroundRefreshFeed(
   Ref ref,
-  dynamic repo,
+  ProductRepository repo,
   CacheService cache,
   String country,
-  dynamic user,
+  UserEntity? user,
   String cacheKey,
   List<String> pinnedIds,
   List<String> hiddenIds,
@@ -2502,10 +2502,10 @@ Future<void> _backgroundRefreshFeed(
 /// First-time network fetch with progressive loading
 Future<HomeFeed> _fetchFeedFromNetwork(
   Ref ref,
-  dynamic repo,
+  ProductRepository repo,
   CacheService cache,
   String country,
-  dynamic user,
+  UserEntity? user,
   String cacheKey,
   List<String> pinnedIds,
   List<String> hiddenIds,
@@ -2531,8 +2531,8 @@ Future<HomeFeed> _fetchFeedFromNetwork(
 
 /// Core product fetching: BULK-FIRST strategy (single query, fast cold start)
 Future<List<ProductEntity>> _fetchAllProducts(
-  dynamic repo,
-  dynamic user,
+  ProductRepository repo,
+  UserEntity? user,
   List<String> disabledCats,
   List<String> pinnedIds,
 ) async {
@@ -2553,12 +2553,12 @@ Future<List<ProductEntity>> _fetchAllProducts(
   // NO external timeout — the internal datasource has 90s for bulk queries.
   debugPrint('=== COMPAIR: BULK fetch — single query for all products ===');
   try {
-    final bulkResult = await (repo as dynamic).getProducts(
+    final bulkResult = await repo.getProducts(
       limit: 2000, orderBy: 'techScore', descending: true,
     );
-    (bulkResult as dynamic).when(
+    bulkResult.when(
       success: (products) {
-        addProducts(products as List<ProductEntity>);
+        addProducts(products);
         debugPrint('=== COMPAIR: BULK got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
       },
       failure: (e) => debugPrint('=== COMPAIR: BULK query failed: $e ==='),
@@ -2585,14 +2585,14 @@ Future<List<ProductEntity>> _fetchAllProducts(
       for (var i = 0; i < missingCats.length; i += 4) {
         final batch = missingCats.skip(i).take(4);
         try {
-          final futures = batch.map((cat) => (repo as dynamic).getProducts(
+          final futures = batch.map((cat) => repo.getProducts(
             category: cat, limit: 30, orderBy: 'techScore', descending: true,
           ).catchError((_) =>
-            const Success<List<ProductEntity>>([])) as Future);
+            const Success<List<ProductEntity>>([])));
           final results = await Future.wait(futures.toList());
           for (final result in results) {
-            (result as dynamic).when(
-              success: (products) => addProducts(products as List<ProductEntity>),
+            result.when(
+              success: (products) => addProducts(products),
               failure: (_) {},
             );
           }
@@ -2605,11 +2605,11 @@ Future<List<ProductEntity>> _fetchAllProducts(
     final priorityCats = ['smartphones', 'laptops', 'tablets', 'headphones'];
     for (final cat in priorityCats) {
       try {
-        final result = await (repo as dynamic).getProducts(
+        final result = await repo.getProducts(
           category: cat, limit: 50, orderBy: 'techScore', descending: true,
         );
-        (result as dynamic).when(
-          success: (products) => addProducts(products as List<ProductEntity>),
+        result.when(
+          success: (products) => addProducts(products),
           failure: (_) {},
         );
       } catch (_) {}
@@ -2625,10 +2625,10 @@ Future<List<ProductEntity>> _fetchAllProducts(
     final missingPinned = pinnedIds.where((id) => !seenIds.contains(id)).toList();
     if (missingPinned.isNotEmpty) {
       try {
-        final pinnedResult = await (repo as dynamic).getProductsByIds(missingPinned)
+        final pinnedResult = await repo.getProductsByIds(missingPinned)
             .timeout(const Duration(seconds: 8));
-        (pinnedResult as dynamic).when(
-          success: (products) => addProducts(products as List<ProductEntity>),
+        pinnedResult.when(
+          success: (products) => addProducts(products),
           failure: (_) {},
         );
       } catch (_) {}

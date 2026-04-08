@@ -37,11 +37,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   List<String> _multiLinkUrls = [];
   List<EnhancedAnalysisResult> _multiLinkResults = [];
   int _currentMultiLinkIndex = 0;
-  bool _multiLinkAnalyzing = false;
-  String? _multiLinkError;
   bool get _isMultiLinkFlow => _multiLinkUrls.length > 1;
   bool get _multiLinkComplete =>
-      _isMultiLinkFlow && !_multiLinkAnalyzing && _multiLinkResults.length >= 2;
+      _isMultiLinkFlow && _multiLinkResults.length >= _multiLinkUrls.length;
 
   // Keep single-controller alias for backward compat in analysis
   TextEditingController get _urlController => _urlControllers.first;
@@ -130,58 +128,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     _multiLinkUrls = [];
     _multiLinkResults = [];
     _currentMultiLinkIndex = 0;
-    _multiLinkAnalyzing = false;
-    _multiLinkError = null;
   }
 
-  /// Multi-link parallel comparison (no quiz — analyze all URLs at once)
-  Future<void> _startMultiComparison(List<String> urls, UserEntity user) async {
-    setState(() {
-      _multiLinkUrls = urls;
-      _multiLinkResults = [];
-      _multiLinkAnalyzing = true;
-      _multiLinkError = null;
-    });
-
-    final aiRepo = ref.read(aiRepositoryProvider);
-    final lang = Localizations.localeOf(context).languageCode;
-    final localizedUser = user.copyWith(language: lang);
-
-    // Analyze ALL URLs in parallel for fast comparison
-    final futures = urls.map((url) async {
-      try {
-        ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
-        final result = await aiRepo.analyzeLink(url: url, user: localizedUser);
-        return result.when(
-          success: (data) => EnhancedAnalysisResult(
-            baseResult: data,
-            enhancedScore: data.aiScore,
-            factors: const [],
-            detailedVerdict: data.aiAnalysis,
-          ),
-          failure: (_) => null,
-        );
-      } catch (_) {
-        return null;
-      }
-    });
-
-    final results = await Future.wait(futures);
-    final validResults = results.whereType<EnhancedAnalysisResult>().toList();
-
-    if (!mounted) return;
-    setState(() {
-      _multiLinkAnalyzing = false;
-      _multiLinkResults = validResults;
-      if (validResults.length < 2) {
-        _multiLinkError = validResults.isEmpty
-            ? 'Could not analyze any of the provided links'
-            : 'Only 1 link could be analyzed — need at least 2 for comparison';
-      }
-    });
-  }
-
-  /// Continue to next product in multi-link flow (legacy sequential — kept for safety)
+  /// Continue to next product in multi-link flow (sequential quiz per product)
   Future<void> _continueToNextProduct() async {
     final quizState = ref.read(linkQuizProvider);
     if (quizState.enhancedResult != null) {
@@ -196,7 +145,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       return;
     }
 
-    // Analyze next URL
+    // Analyze next URL with quiz
     ref.read(linkQuizProvider.notifier).reset();
     final user = ref.read(userProfileProvider).valueOrNull;
     if (user == null) return;
@@ -246,9 +195,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       fn.unfocus();
     }
 
-    // If multiple valid URLs → parallel analysis (no quiz, direct comparison)
+    // If multiple valid URLs → sequential quiz analysis (quiz for each product)
     if (validUrls.length > 1) {
-      await _startMultiComparison(validUrls, user);
+      setState(() {
+        _multiLinkUrls = validUrls;
+        _multiLinkResults = [];
+        _currentMultiLinkIndex = 0;
+      });
+      // Start analyzing first URL through quiz flow
+      ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls.first, null);
+      await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(validUrls.first, user);
+      if (mounted) _quizEntryController.forward(from: 0.0);
       return;
     }
 
@@ -263,13 +220,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final quizState = ref.watch(linkQuizProvider);
     final isWorking = quizState.phase == LinkFlowPhase.analyzing ||
         quizState.phase == LinkFlowPhase.quizLoading ||
-        quizState.phase == LinkFlowPhase.computing ||
-        _multiLinkAnalyzing;
+        quizState.phase == LinkFlowPhase.computing;
 
-    // Show back button when in active flow, multi-link analyzing, or comparison ready
+    // Show back button when in active flow or comparison ready
     final showBack = quizState.phase != LinkFlowPhase.idle ||
-        _multiLinkComplete ||
-        _multiLinkAnalyzing;
+        _multiLinkComplete;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -362,17 +317,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     if (_multiLinkComplete) ...[
                       _buildMultiLinkComparison(),
                     ]
-                    // Multi-link analyzing → show progress
-                    else if (_multiLinkAnalyzing) ...[
-                      _buildMultiLinkAnalyzingView(),
-                    ]
-                    // Multi-link error
-                    else if (_multiLinkError != null && _isMultiLinkFlow) ...[
-                      _buildError(_multiLinkError!),
-                      const SizedBox(height: 16),
-                    ]
-                    // Normal single-link flow
+                    // Normal flow (single or in-progress multi-link with quiz)
                     else ...[
+                      // Multi-link progress indicator
+                      if (_isMultiLinkFlow && quizState.phase != LinkFlowPhase.idle)
+                        _buildMultiLinkProgress(),
+
                       // Phase progress timeline (non-idle)
                       if (quizState.phase != LinkFlowPhase.idle &&
                           quizState.phase != LinkFlowPhase.quiz &&
@@ -421,6 +371,88 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       if (quizState.phase == LinkFlowPhase.result &&
                           quizState.enhancedResult != null) ...[
                         _EnhancedResultView(result: quizState.enhancedResult!),
+                        // "Next Product" button in multi-link mode
+                        if (_isMultiLinkFlow &&
+                            _currentMultiLinkIndex < _multiLinkUrls.length - 1)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: GestureDetector(
+                              onTap: _continueToNextProduct,
+                              child: Container(
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF06B6D4), Color(0xFF6366F1)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
+                                      blurRadius: 16, offset: const Offset(0, 6)),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.navigate_next_rounded,
+                                        color: Colors.white, size: 22),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Next Product (${_currentMultiLinkIndex + 2}/${_multiLinkUrls.length})',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700, fontSize: 15,
+                                        color: Colors.white, letterSpacing: -0.3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05),
+                          ),
+                        // "Show Comparison" button when on last product result
+                        if (_isMultiLinkFlow &&
+                            _currentMultiLinkIndex >= _multiLinkUrls.length - 1)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: GestureDetector(
+                              onTap: () {
+                                // Save last result and show comparison
+                                final lastResult = ref.read(linkQuizProvider).enhancedResult;
+                                if (lastResult != null) {
+                                  _multiLinkResults.add(lastResult);
+                                }
+                                ref.read(linkQuizProvider.notifier).reset();
+                                setState(() {});
+                              },
+                              child: Container(
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                                      blurRadius: 16, offset: const Offset(0, 6)),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.compare_arrows_rounded,
+                                        color: Colors.white, size: 22),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      context.l10n?.compare ?? 'Show Comparison',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700, fontSize: 15,
+                                        color: Colors.white, letterSpacing: -0.3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.05),
+                          ),
                       ],
                     ],
                     SizedBox(
@@ -460,6 +492,57 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         splashRadius: 20,
       ),
     );
+  }
+
+  Widget _buildMultiLinkProgress() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF6366F1).withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.compare_arrows_rounded,
+                color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Product ${_currentMultiLinkIndex + 1} of ${_multiLinkUrls.length}',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700, fontSize: 14,
+                    color: context.textPrimary, letterSpacing: -0.3),
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: (_currentMultiLinkIndex + 1) / _multiLinkUrls.length,
+                    backgroundColor: context.surfaceVariantColor,
+                    valueColor: const AlwaysStoppedAnimation(Color(0xFF6366F1)),
+                    minHeight: 4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms);
   }
 
   Widget _buildPhaseTimeline(LinkFlowPhase phase) {
@@ -1268,154 +1351,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     ).animate().fadeIn(duration: 300.ms).shakeX(amount: 4, duration: 300.ms);
   }
 
-  /// Multi-link parallel analysis loading view
-  Widget _buildMultiLinkAnalyzingView() {
-    return Column(
-      children: [
-        const SizedBox(height: 40),
-        // Animated comparison icon
-        Container(
-          width: 80, height: 80,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                blurRadius: 24, offset: const Offset(0, 8)),
-            ],
-          ),
-          child: const Icon(Icons.compare_arrows_rounded,
-              color: Colors.white, size: 40),
-        ).animate(onPlay: (c) => c.repeat(reverse: true))
-         .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1200.ms),
-        const SizedBox(height: 24),
-        Text(
-          'Analyzing ${_multiLinkUrls.length} Products...',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800, fontSize: 20,
-            color: context.textPrimary),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'AI is comparing your products side by side',
-          style: GoogleFonts.inter(
-            fontSize: 14, color: context.textTertiaryColor),
-        ),
-        const SizedBox(height: 32),
-        // URL list with status
-        ...List.generate(_multiLinkUrls.length, (i) {
-          final url = _multiLinkUrls[i];
-          final domain = Uri.tryParse(url)?.host ?? url;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: context.surfaceVariantColor.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(
-                        const Color(0xFF6366F1).withValues(alpha: 0.7)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(domain, maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 13, color: context.textSecondary)),
-                  ),
-                ],
-              ),
-            ),
-          ).animate().fadeIn(delay: Duration(milliseconds: i * 150), duration: 400.ms);
-        }),
-        const SizedBox(height: 40),
-      ],
-    );
-  }
-
-  /// Multi-link progress indicator showing which product is being analyzed
-  Widget _buildMultiLinkProgress() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: GlassContainer(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.compare_arrows_rounded,
-                  color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Comparing ${_multiLinkUrls.length} Products',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: context.textPrimary),
-                  ),
-                  const SizedBox(height: 4),
-                  // Progress dots
-                  Row(
-                    children: List.generate(_multiLinkUrls.length, (i) {
-                      final isDone = i < _multiLinkResults.length;
-                      final isCurrent = i == _currentMultiLinkIndex;
-                      return Container(
-                        width: isCurrent ? 24 : 8,
-                        height: 8,
-                        margin: const EdgeInsets.only(right: 4),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          gradient: isDone || isCurrent
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF6366F1), Color(0xFF06B6D4)])
-                              : null,
-                          color: !isDone && !isCurrent
-                              ? context.textTertiaryColor.withValues(alpha: 0.3)
-                              : null,
-                        ),
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              '${_multiLinkResults.length + 1}/${_multiLinkUrls.length}',
-              style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: const Color(0xFF6366F1)),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 300.ms);
-  }
-
   /// Multi-link comparison view (shown after all products are analyzed)
   Widget _buildMultiLinkComparison() {
     final sorted = List<EnhancedAnalysisResult>.from(_multiLinkResults)
@@ -1535,11 +1470,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                     color: context.textPrimary),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
-                            if (r.baseResult.metadata.price != null)
-                              Text(r.baseResult.metadata.price!,
-                                  style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 12,
-                                      color: context.textSecondary)),
+
                             if (r.prosForUser.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
@@ -2399,7 +2330,6 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
     final title = base.metadata.title ?? 'Product';
     final imageUrl = base.metadata.image;
     final category = base.category ?? '';
-    final price = base.metadata.price;
     final quizState = ref.watch(linkQuizProvider);
     final databaseMatch = quizState.databaseMatch;
     final similarProducts = quizState.similarProducts;
@@ -2506,22 +2436,6 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: _getScoreColor(score))),
-                      if (price != null && price.isNotEmpty) ...[
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppTheme.success.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(price,
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.success)),
-                        ),
-                      ],
                     ],
                   ),
                   if (base.metadata.siteName != null) ...[
@@ -3198,9 +3112,6 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
       final medal = i == 0 ? '🥇' : (i == 1 ? '🥈' : (i == 2 ? '🥉' : ''));
       buf.writeln('$medal **#${i + 1} $title**');
       buf.writeln('Match Score: ${r.enhancedScore.toStringAsFixed(0)}%');
-      if (r.baseResult.metadata.price != null) {
-        buf.writeln('Price: ${r.baseResult.metadata.price}');
-      }
       if (r.prosForUser.isNotEmpty) {
         buf.writeln('✅ ${r.prosForUser.first}');
       }
@@ -3580,11 +3491,7 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                                     color: context.textPrimary),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
-                            if (r.baseResult.metadata.price != null)
-                              Text(r.baseResult.metadata.price!,
-                                  style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 12,
-                                      color: context.textSecondary)),
+
                             if (r.prosForUser.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
