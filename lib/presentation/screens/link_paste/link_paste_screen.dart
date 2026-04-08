@@ -45,6 +45,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   String? _compareError;
   int _compareProgress = 0; // How many completed so far
 
+  // === COMPARE QUIZ STATE ===
+  bool _compareQuizActive = false;
+  ProductQuiz? _compareQuiz;
+  List<QuizQuestion> _compareQuizAnswers = [];
+  int _compareQuizIndex = 0;
+  LinkAnalysisResult? _compareFirstBaseResult;
+  List<String> _compareValidUrls = [];
+
   // Legacy multi-link state (kept for backward compat)
   List<String> _multiLinkUrls = [];
   List<EnhancedAnalysisResult> _multiLinkResults = [];
@@ -142,6 +150,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     _compareError = null;
     _compareProgress = 0;
     _visibleCompareFields = 2;
+    _compareQuizActive = false;
+    _compareQuiz = null;
+    _compareQuizAnswers = [];
+    _compareQuizIndex = 0;
+    _compareFirstBaseResult = null;
+    _compareValidUrls = [];
   }
 
   /// Continue to next product in multi-link flow (sequential quiz per product)
@@ -229,11 +243,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     for (final fn in _compareFocusNodes) { fn.unfocus(); }
 
+    // Phase 1: Analyze first URL to get base result + generate quiz
     setState(() {
       _compareAnalyzing = true;
       _compareError = null;
       _compareResults = [];
       _compareProgress = 0;
+      _compareValidUrls = validUrls;
     });
 
     final user = _getOrCreateUser();
@@ -242,56 +258,151 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final lang = Localizations.localeOf(context).languageCode;
     final localizedUser = user.copyWith(language: lang);
 
-    final results = <EnhancedAnalysisResult>[];
-    // Analyze all URLs in parallel
-    final futures = validUrls.map((url) async {
+    try {
+      // Analyze the first URL to get product info for quiz
+      debugPrint('[Compare] Phase 1: Analyzing first URL for quiz: ${validUrls[0]}');
+      ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls[0], null);
+      final Result<LinkAnalysisResult> firstResult =
+          await aiRepo.analyzeLink(url: validUrls[0], user: localizedUser);
+
+      LinkAnalysisResult? firstData;
+      switch (firstResult) {
+        case Success<LinkAnalysisResult>(data: final d):
+          firstData = d;
+        case Failure<LinkAnalysisResult>(error: final err):
+          debugPrint('[Compare] First URL analysis failed: ${err.message}');
+          if (mounted) setState(() {
+            _compareAnalyzing = false;
+            _compareError = 'Could not analyze the first link: ${err.message}';
+          });
+          return;
+      }
+
+      // Generate quiz based on first product
+      debugPrint('[Compare] Generating quiz for: ${firstData.metadata.title}');
+      final quiz = await gemini.generateQuiz(
+        category: firstData.category ?? 'general',
+        productTitle: firstData.metadata.title ?? 'Product',
+        url: validUrls[0],
+        language: lang,
+      );
+
+      if (!mounted) return;
+
+      if (quiz.questions.isNotEmpty) {
+        // Show quiz to user
+        setState(() {
+          _compareAnalyzing = false;
+          _compareQuizActive = true;
+          _compareQuiz = quiz;
+          _compareQuizAnswers = List.from(quiz.questions);
+          _compareQuizIndex = 0;
+          _compareFirstBaseResult = firstData;
+        });
+      } else {
+        // No quiz — proceed directly with analysis
+        debugPrint('[Compare] No quiz questions, proceeding to analysis');
+        await _runCompareAnalysis(validUrls, localizedUser, [], firstData);
+      }
+    } catch (e) {
+      debugPrint('[Compare] Quiz generation failed: $e');
+      if (mounted) setState(() {
+        _compareAnalyzing = false;
+        _compareError = 'Failed to prepare comparison: $e';
+      });
+    }
+  }
+
+  void _onCompareQuizAnswer(int index, String answer) {
+    setState(() {
+      _compareQuizAnswers[index] = _compareQuizAnswers[index].copyWith(selectedOption: answer);
+      if (index < _compareQuizAnswers.length - 1) {
+        _compareQuizIndex = index + 1;
+      }
+    });
+  }
+
+  Future<void> _onCompareQuizSubmit() async {
+    final user = _getOrCreateUser();
+    final lang = Localizations.localeOf(context).languageCode;
+    final localizedUser = user.copyWith(language: lang);
+
+    setState(() {
+      _compareQuizActive = false;
+      _compareAnalyzing = true;
+      _compareProgress = 0;
+    });
+
+    await _runCompareAnalysis(
+      _compareValidUrls,
+      localizedUser,
+      _compareQuizAnswers,
+      _compareFirstBaseResult,
+    );
+  }
+
+  void _onCompareQuizSkip() {
+    final user = _getOrCreateUser();
+    final lang = Localizations.localeOf(context).languageCode;
+    final localizedUser = user.copyWith(language: lang);
+
+    setState(() {
+      _compareQuizActive = false;
+      _compareAnalyzing = true;
+      _compareProgress = 0;
+    });
+
+    _runCompareAnalysis(
+      _compareValidUrls,
+      localizedUser,
+      [],
+      _compareFirstBaseResult,
+    );
+  }
+
+  /// Phase 2: Run enhanced analysis on all URLs using quiz answers
+  Future<void> _runCompareAnalysis(
+    List<String> validUrls,
+    UserEntity localizedUser,
+    List<QuizQuestion> quizAnswers,
+    LinkAnalysisResult? firstBaseResult,
+  ) async {
+    final aiRepo = ref.read(aiRepositoryProvider);
+    final gemini = ref.read(geminiServiceProvider);
+
+    final futures = validUrls.asMap().entries.map((entry) async {
+      final i = entry.key;
+      final url = entry.value;
       try {
-        ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
-        debugPrint('[Compare] Analyzing: $url');
-        final Result<LinkAnalysisResult> result = await aiRepo.analyzeLink(url: url, user: localizedUser);
-        
-        // Use pattern matching instead of extension .when() to avoid dynamic type issues
-        final LinkAnalysisResult? data;
-        switch (result) {
-          case Success<LinkAnalysisResult>(data: final d):
-            debugPrint('[Compare] analyzeLink success for $url: score=${d.aiScore}');
-            data = d;
-          case Failure<LinkAnalysisResult>(error: final err):
-            debugPrint('[Compare] analyzeLink failed for $url: ${err.message}');
-            if (mounted) setState(() { _compareProgress++; });
-            return null;
+        LinkAnalysisResult data;
+        if (i == 0 && firstBaseResult != null) {
+          data = firstBaseResult;
+        } else {
+          ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
+          debugPrint('[Compare] Analyzing: $url');
+          final Result<LinkAnalysisResult> result =
+              await aiRepo.analyzeLink(url: url, user: localizedUser);
+          switch (result) {
+            case Success<LinkAnalysisResult>(data: final d):
+              data = d;
+            case Failure<LinkAnalysisResult>(error: final err):
+              debugPrint('[Compare] analyzeLink failed for $url: ${err.message}');
+              if (mounted) setState(() { _compareProgress++; });
+              return null;
+          }
         }
-        
-        // Generate quiz and enhanced analysis
+
+        // Enhanced analysis with shared quiz answers
         try {
-          final quiz = await gemini.generateQuiz(
-            category: data.category ?? 'general',
-            productTitle: data.metadata.title ?? 'Product',
-            url: url,
-            language: lang,
-          );
           final enhanced = await gemini.enhancedAnalysis(
             baseResult: data,
-            answeredQuestions: quiz.questions,
+            answeredQuestions: quizAnswers,
             profile: localizedUser,
-          );
-          // Track quiz answers for user profile learning
-          ref.read(behaviorTrackingProvider).trackQuizAnswers(
-            url: url,
-            category: data.category,
-            answeredQuestions: quiz.questions
-                .map((q) => {
-                      'question': q.text,
-                      'selectedOption': q.selectedOption ?? '',
-                      'options': q.options,
-                    })
-                .toList(),
-            matchScore: enhanced.enhancedScore,
           );
           if (mounted) setState(() { _compareProgress++; });
           return enhanced;
         } catch (e) {
-          debugPrint('[Compare] Quiz/analysis fallback for $url: $e');
+          debugPrint('[Compare] Enhanced analysis fallback for $url: $e');
           if (mounted) setState(() { _compareProgress++; });
           return EnhancedAnalysisResult(
             baseResult: data,
@@ -335,7 +446,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     // Show back button when in active flow or comparison ready
     final showBack = quizState.phase != LinkFlowPhase.idle ||
-        _compareResults.isNotEmpty || _compareAnalyzing;
+        _compareResults.isNotEmpty || _compareAnalyzing || _compareQuizActive;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -494,6 +605,29 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: _buildCompareAnalyzingView(),
+      );
+    }
+
+    // Compare quiz view — reuse same _QuizView from Single Analysis
+    if (_compareQuizActive && _compareQuiz != null && _compareFirstBaseResult != null) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          children: [
+            _buildProgressSteps(LinkFlowPhase.quiz),
+            _QuizView(
+              quiz: _compareQuiz!,
+              answeredQuestions: _compareQuizAnswers,
+              currentIndex: _compareQuizIndex,
+              baseResult: _compareFirstBaseResult!,
+              onAnswer: _onCompareQuizAnswer,
+              onSubmit: _onCompareQuizSubmit,
+              onSkip: _onCompareQuizSkip,
+            ),
+            SizedBox(height: AppTheme.navBarTotalClearance +
+                MediaQuery.of(context).padding.bottom + 60),
+          ],
+        ),
       );
     }
 
