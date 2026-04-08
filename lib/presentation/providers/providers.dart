@@ -2089,6 +2089,87 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 }
 
 // ════════════════════════════════════════════════════
+// ─── EXPERT SCORES CACHE ───
+// ════════════════════════════════════════════════════
+
+class ExpertScoreEntry {
+  final String source;
+  final int score;
+  final int maxScore;
+  final String verdict;
+  const ExpertScoreEntry({
+    required this.source,
+    required this.score,
+    required this.maxScore,
+    required this.verdict,
+  });
+}
+
+class ExpertScoresResult {
+  final List<ExpertScoreEntry> scores;
+  final bool failed;
+  const ExpertScoresResult({this.scores = const [], this.failed = false});
+}
+
+final expertScoresCacheProvider = StateNotifierProvider.family<
+    _ExpertScoresNotifier, AsyncValue<ExpertScoresResult?>, String>((ref, productId) {
+  return _ExpertScoresNotifier(ref, productId);
+});
+
+class _ExpertScoresNotifier extends StateNotifier<AsyncValue<ExpertScoresResult?>> {
+  final Ref _ref;
+  final String _productId;
+  _ExpertScoresNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+
+  Future<void> fetchScores(String productName, String category) async {
+    if (state is AsyncLoading) return;
+    if (state.valueOrNull != null) return;
+    state = const AsyncValue.loading();
+    try {
+      final gemini = _ref.read(geminiServiceProvider);
+      final response = await gemini.jsonFreeTextQuery(
+        'You are a tech product review aggregator. For the product "$productName" (category: $category), '
+        'estimate typical review scores from well-known tech review sites.\n\n'
+        'Only include sites that would actually review this type of product.\n'
+        'For smartphones: GSMArena, Tom\'s Guide, PCMag, TechRadar\n'
+        'For laptops: NotebookCheck, LaptopMag, Tom\'s Guide, PCMag\n'
+        'For monitors/TVs: Rtings, Tom\'s Guide, PCMag\n'
+        'For headphones/audio: Rtings, What Hi-Fi, SoundGuys\n'
+        'For other products: pick 3-4 relevant review sites.\n\n'
+        'Return JSON: {"expertScores": [{"source": "<site name>", "score": <int>, "maxScore": <int usually 100 or 10>, "verdict": "<one word: Excellent/Good/Average/Below Average>"}]}\n'
+        'Include 3-4 sources maximum. If product is too new or niche, return empty array.',
+      );
+      if (response.isNotEmpty) {
+        try {
+          final cleaned = _cleanJsonString(response);
+          final data = _decodeJsonMap(cleaned);
+          if (data != null && data['expertScores'] is List) {
+            final entries = (data['expertScores'] as List).map((e) {
+              if (e is! Map) return null;
+              return ExpertScoreEntry(
+                source: e['source']?.toString() ?? '',
+                score: _safeInt(e['score']),
+                maxScore: _safeInt(e['maxScore'], 100),
+                verdict: e['verdict']?.toString() ?? '',
+              );
+            }).whereType<ExpertScoreEntry>().where((e) => e.source.isNotEmpty && e.score > 0).toList();
+            state = AsyncValue.data(ExpertScoresResult(scores: entries));
+          } else {
+            state = const AsyncValue.data(ExpertScoresResult(failed: true));
+          }
+        } catch (_) {
+          state = const AsyncValue.data(ExpertScoresResult(failed: true));
+        }
+      } else {
+        state = const AsyncValue.data(ExpertScoresResult(failed: true));
+      }
+    } catch (_) {
+      state = const AsyncValue.data(ExpertScoresResult(failed: true));
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
 // ─── DEEP ANALYSIS CACHE ───
 // ════════════════════════════════════════════════════
 
