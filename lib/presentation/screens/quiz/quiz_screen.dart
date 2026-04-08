@@ -460,8 +460,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
     setState(() => _isSubmitting = true);
 
-    final country = _country ?? 'TR';
+    final country = _country ?? ref.read(selectedCountryProvider);
     final countryInfo = SupportedCountries.countries[country];
+    final detectedCurrency = ref.read(currencyProvider);
 
     final quizData = {
       // Zorunlu alanlar
@@ -474,8 +475,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       'subscriptions':
           _subscriptions.contains('none') ? <String>[] : _subscriptions,
       'country': country,
-      'language': countryInfo?.language ?? 'tr',
-      'currency': countryInfo?.currency ?? 'TRY',
+      'language': countryInfo?.language ?? 'en',
+      'currency': countryInfo?.currency ?? detectedCurrency,
       'interestCategories': _interestCategories,
       'usageIntent': _usageIntent ?? 'all',
       'profession': _profession,

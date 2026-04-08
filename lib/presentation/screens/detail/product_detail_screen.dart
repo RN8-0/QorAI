@@ -7003,8 +7003,11 @@ class _PremiumFeaturesSectionState
       _advisorUserCollapsed = false;
     });
     final lang = Localizations.localeOf(context).languageCode;
-    final priceVal = widget.product.prices.isNotEmpty ? widget.product.prices.values.first : 0.0;
-    final price = priceVal > 0 ? '${priceVal.toStringAsFixed(0)} TL' : 'unknown price';
+    final country = ref.read(selectedCountryProvider);
+    final currency = ref.read(currencyProvider);
+    final priceVal = widget.product.getPriceForCountry(country) 
+        ?? (widget.product.prices.isNotEmpty ? widget.product.prices.values.first : 0.0);
+    final price = priceVal > 0 ? AppUtils.formatCurrency(priceVal, currency) : 'unknown price';
     ref.read(advisorCacheProvider(widget.product.id).notifier)
         .startQuery(widget.product.name, widget.product.category, price, lang);
   }
@@ -7022,8 +7025,11 @@ class _PremiumFeaturesSectionState
       _predictionUserCollapsed = false;
     });
     final lang = Localizations.localeOf(context).languageCode;
-    final priceVal = widget.product.prices.isNotEmpty ? widget.product.prices.values.first : 0.0;
-    final price = priceVal > 0 ? '${priceVal.toStringAsFixed(0)} TL' : 'unknown price';
+    final country = ref.read(selectedCountryProvider);
+    final currency = ref.read(currencyProvider);
+    final priceVal = widget.product.getPriceForCountry(country) 
+        ?? (widget.product.prices.isNotEmpty ? widget.product.prices.values.first : 0.0);
+    final price = priceVal > 0 ? AppUtils.formatCurrency(priceVal, currency) : 'unknown price';
     ref.read(predictionCacheProvider(widget.product.id).notifier)
         .startQuery(widget.product.name, widget.product.category, price, lang);
   }

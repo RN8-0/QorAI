@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/theme.dart';
+import 'package:compair/core/utils.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
@@ -297,12 +299,12 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
-class _ProductCard extends StatelessWidget {
+class _ProductCard extends ConsumerWidget {
   final ProductEntity product;
   const _ProductCard({required this.product});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final techScore = product.techScore;
     final scoreColor = techScore >= 80
@@ -470,7 +472,7 @@ class _ProductCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          _formatPrice(product),
+                          _formatPrice(product, ref),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             color: Colors.white,
@@ -488,12 +490,18 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
-  String _formatPrice(ProductEntity p) {
+  String _formatPrice(ProductEntity p, WidgetRef ref) {
+    final country = ref.read(selectedCountryProvider);
+    final currency = ref.read(currencyProvider);
+    final price = p.getPriceForCountry(country);
+    if (price != null) return AppUtils.formatCurrency(price, currency);
     final us = p.prices['US'];
-    final tr = p.prices['TR'];
-    if (us != null) return '\$${us.toStringAsFixed(0)}';
-    if (tr != null) return '₺${tr.toStringAsFixed(0)}';
-    final first = p.prices.entries.first;
-    return '${first.value.toStringAsFixed(0)}';
+    if (us != null) return AppUtils.formatCurrency(us, 'USD');
+    if (p.prices.isNotEmpty) {
+      final entry = p.prices.entries.first;
+      final cc = SupportedCountries.countries[entry.key]?.currency ?? 'USD';
+      return AppUtils.formatCurrency(entry.value, cc);
+    }
+    return '';
   }
 }

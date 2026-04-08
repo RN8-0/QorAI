@@ -164,13 +164,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   UserEntity _getOrCreateUser() {
     final userAsync = ref.read(userProfileProvider);
+    final country = ref.read(selectedCountryProvider);
+    final currency = ref.read(currencyProvider);
     return userAsync.valueOrNull ?? UserEntity(
       uid: 'anonymous',
       email: '',
       displayName: 'User',
-      country: 'TR',
+      country: country,
       language: Localizations.localeOf(context).languageCode,
-      currency: 'TRY',
+      currency: currency,
       priorities: const [],
       subscriptions: const [],
       createdAt: DateTime.now(),

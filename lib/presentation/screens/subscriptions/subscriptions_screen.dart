@@ -1558,21 +1558,9 @@ class _SubResultView extends StatelessWidget {
     return AppTheme.error;
   }
 
-  /// Format price with TL equivalent for Turkish users
+  /// Format price — AI already returns prices in user's currency
   String _formatPrice(String rawPrice) {
     if (rawPrice.isEmpty) return rawPrice;
-    if (countryCode.toUpperCase() != 'TR') return rawPrice;
-
-    // Try to extract USD amount and convert
-    final usdMatch = RegExp(r'(\d+[.,]?\d*)').firstMatch(rawPrice);
-    if (usdMatch != null) {
-      final usdAmount = double.tryParse(usdMatch.group(1)!.replaceAll(',', '.'));
-      if (usdAmount != null) {
-        const exchangeRate = 38.5; // Approximate USD→TRY rate
-        final tryAmount = (usdAmount * exchangeRate).toStringAsFixed(2);
-        return '₺$tryAmount/ay (~$rawPrice)';
-      }
-    }
     return rawPrice;
   }
 
