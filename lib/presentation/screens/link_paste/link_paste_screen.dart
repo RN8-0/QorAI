@@ -28,12 +28,24 @@ class LinkPasteScreen extends ConsumerStatefulWidget {
 
 class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     with TickerProviderStateMixin {
-  final List<TextEditingController> _urlControllers = [TextEditingController()];
-  final List<FocusNode> _focusNodes = [FocusNode()];
-  bool _hasCheckedClipboard = false;
-  String? _detectedClipboardUrl;
+  // === TAB SYSTEM ===
+  late TabController _tabController;
+  
+  // === SINGLE ANALYSIS TAB ===
+  final TextEditingController _singleUrlController = TextEditingController();
+  final FocusNode _singleFocusNode = FocusNode();
+  String? _detectedClipboardUrl; // Legacy - kept for old widgets
 
-  // Multi-link inline flow state
+  // === COMPARE TAB (up to 4 links) ===
+  final List<TextEditingController> _compareControllers = List.generate(4, (_) => TextEditingController());
+  final List<FocusNode> _compareFocusNodes = List.generate(4, (_) => FocusNode());
+  int _visibleCompareFields = 2; // Start with 2, expandable to 4
+  List<EnhancedAnalysisResult> _compareResults = [];
+  bool _compareAnalyzing = false;
+  String? _compareError;
+  int _compareProgress = 0; // How many completed so far
+
+  // Legacy multi-link state (kept for backward compat)
   List<String> _multiLinkUrls = [];
   List<EnhancedAnalysisResult> _multiLinkResults = [];
   int _currentMultiLinkIndex = 0;
@@ -42,8 +54,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       _isMultiLinkFlow && _multiLinkResults.length >= _multiLinkUrls.length;
 
   // Keep single-controller alias for backward compat in analysis
-  TextEditingController get _urlController => _urlControllers.first;
-  FocusNode get _focusNode => _focusNodes.first;
+  List<TextEditingController> get _urlControllers => [_singleUrlController];
+  List<FocusNode> get _focusNodes => [_singleFocusNode];
+  TextEditingController get _urlController => _singleUrlController;
+  FocusNode get _focusNode => _singleFocusNode;
 
   late AnimationController _pulseController;
   late AnimationController _orbController;
@@ -54,6 +68,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    
     // Only reset if the previous state was idle (don't interrupt ongoing analysis)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final current = ref.read(linkQuizProvider);
@@ -88,14 +104,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   @override
   void dispose() {
-    // Don't reset linkQuizProvider here — analysis may be running in background.
-    // Provider state is managed by Riverpod lifecycle, not widget lifecycle.
-    for (final c in _urlControllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
+    _tabController.dispose();
+    _singleUrlController.dispose();
+    _singleFocusNode.dispose();
+    for (final c in _compareControllers) { c.dispose(); }
+    for (final f in _compareFocusNodes) { f.dispose(); }
     _pulseController.dispose();
     _orbController.dispose();
     _quizEntryController.dispose();
@@ -116,18 +129,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   void _resetLinkFields() {
-    // Dispose extra controllers and reset to single empty field
-    for (int i = _urlControllers.length - 1; i > 0; i--) {
-      _urlControllers[i].dispose();
-      _urlControllers.removeAt(i);
-      _focusNodes[i].dispose();
-      _focusNodes.removeAt(i);
-    }
-    _urlControllers.first.clear();
-    // Reset multi-link state
+    _singleUrlController.clear();
     _multiLinkUrls = [];
     _multiLinkResults = [];
     _currentMultiLinkIndex = 0;
+  }
+
+  void _resetCompareFields() {
+    for (final c in _compareControllers) { c.clear(); }
+    _compareResults = [];
+    _compareAnalyzing = false;
+    _compareError = null;
+    _compareProgress = 0;
+    _visibleCompareFields = 2;
   }
 
   /// Continue to next product in multi-link flow (sequential quiz per product)
@@ -139,13 +153,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     _currentMultiLinkIndex++;
 
     if (_currentMultiLinkIndex >= _multiLinkUrls.length) {
-      // All products analyzed — show comparison
       ref.read(linkQuizProvider.notifier).reset();
       if (mounted) setState(() {});
       return;
     }
 
-    // Analyze next URL with quiz
     ref.read(linkQuizProvider.notifier).reset();
     final user = ref.read(userProfileProvider).valueOrNull;
     if (user == null) return;
@@ -156,29 +168,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (mounted) _quizEntryController.forward(from: 0.0);
   }
 
-  Future<void> _startAnalysis(String url) async {
-    // Collect all valid URLs from multi-link fields
-    final validUrls = _urlControllers
-        .map((c) => c.text.trim())
-        .where((u) => u.isNotEmpty && _isValidUrl(u))
-        .toList();
-
-    if (validUrls.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n?.pleaseEnterValidUrl ?? 'Please enter a valid product URL',
-              style: GoogleFonts.plusJakartaSans(color: context.surfaceVariantColor)),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      return;
-    }
-
+  UserEntity _getOrCreateUser() {
     final userAsync = ref.read(userProfileProvider);
-    final user = userAsync.valueOrNull ?? UserEntity(
+    return userAsync.valueOrNull ?? UserEntity(
       uid: 'anonymous',
       email: '',
       displayName: 'User',
@@ -190,30 +182,128 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
+  }
 
-    for (final fn in _focusNodes) {
-      fn.unfocus();
-    }
-
-    // If multiple valid URLs → sequential quiz analysis (quiz for each product)
-    if (validUrls.length > 1) {
-      setState(() {
-        _multiLinkUrls = validUrls;
-        _multiLinkResults = [];
-        _currentMultiLinkIndex = 0;
-      });
-      // Start analyzing first URL through quiz flow
-      ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls.first, null);
-      await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(validUrls.first, user);
-      if (mounted) _quizEntryController.forward(from: 0.0);
+  /// Single Analysis tab — start quiz flow for one URL
+  Future<void> _startSingleAnalysis() async {
+    final url = _singleUrlController.text.trim();
+    if (url.isEmpty || !_isValidUrl(url)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n?.pleaseEnterValidUrl ?? 'Please enter a valid product URL',
+              style: GoogleFonts.plusJakartaSans(color: context.surfaceVariantColor)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.error,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
       return;
     }
 
-    // Single link → normal analysis flow
-    ref.read(behaviorTrackingProvider).trackLinkPaste(validUrls.first, null);
-    await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(validUrls.first, user);
+    _singleFocusNode.unfocus();
+    ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
+    await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(url, _getOrCreateUser());
     if (mounted) _quizEntryController.forward(from: 0.0);
   }
+
+  /// Compare tab — analyze all URLs in parallel
+  Future<void> _startCompareAnalysis() async {
+    final validUrls = _compareControllers
+        .take(_visibleCompareFields)
+        .map((c) => c.text.trim())
+        .where((u) => u.isNotEmpty && _isValidUrl(u))
+        .toList();
+
+    if (validUrls.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter at least 2 valid product URLs',
+              style: GoogleFonts.plusJakartaSans(color: context.surfaceVariantColor)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.error,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    for (final fn in _compareFocusNodes) { fn.unfocus(); }
+
+    setState(() {
+      _compareAnalyzing = true;
+      _compareError = null;
+      _compareResults = [];
+      _compareProgress = 0;
+    });
+
+    final user = _getOrCreateUser();
+    final aiRepo = ref.read(aiRepositoryProvider);
+    final gemini = ref.read(geminiServiceProvider);
+    final lang = Localizations.localeOf(context).languageCode;
+    final localizedUser = user.copyWith(language: lang);
+
+    final results = <EnhancedAnalysisResult>[];
+    // Analyze all URLs in parallel
+    final futures = validUrls.map((url) async {
+      try {
+        ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
+        final result = await aiRepo.analyzeLink(url: url, user: localizedUser);
+        return result.when(
+          success: (data) async {
+            // Generate quiz questions for profile learning
+            try {
+              final quiz = await gemini.generateQuiz(
+                category: data.category ?? 'general',
+                productTitle: data.metadata.title ?? 'Product',
+                url: url,
+                language: lang,
+              );
+              // Auto-answer quiz based on user profile for enhanced analysis
+              final enhanced = await gemini.enhancedAnalysis(
+                baseResult: data,
+                answeredQuestions: quiz.questions,
+                profile: localizedUser,
+              );
+              if (mounted) setState(() { _compareProgress++; });
+              return enhanced;
+            } catch (_) {
+              if (mounted) setState(() { _compareProgress++; });
+              return EnhancedAnalysisResult(
+                baseResult: data,
+                enhancedScore: data.aiScore,
+                factors: const [],
+                detailedVerdict: data.aiAnalysis,
+              );
+            }
+          },
+          failure: (_) {
+            if (mounted) setState(() { _compareProgress++; });
+            return null;
+          },
+        );
+      } catch (_) {
+        if (mounted) setState(() { _compareProgress++; });
+        return null;
+      }
+    });
+
+    final allResults = await Future.wait(futures);
+    final validResults = allResults.whereType<EnhancedAnalysisResult>().toList();
+
+    if (!mounted) return;
+    setState(() {
+      _compareAnalyzing = false;
+      _compareResults = validResults;
+      if (validResults.length < 2) {
+        _compareError = validResults.isEmpty
+            ? 'Could not analyze any of the provided links'
+            : 'Only 1 link could be analyzed — need at least 2 for comparison';
+      }
+    });
+  }
+
+  // Legacy _startAnalysis for backward compat
+  Future<void> _startAnalysis(String url) async => _startSingleAnalysis();
 
   @override
   Widget build(BuildContext context) {
@@ -224,15 +314,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     // Show back button when in active flow or comparison ready
     final showBack = quizState.phase != LinkFlowPhase.idle ||
-        _multiLinkComplete;
+        _compareResults.isNotEmpty || _compareAnalyzing;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
       body: Stack(
         children: [
           _buildBackgroundOrbs(),
-          CustomScrollView(
-            slivers: [
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxScrolled) => [
               SliverAppBar(
                 backgroundColor: context.backgroundColor,
                 pinned: true,
@@ -244,6 +334,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           HapticFeedback.mediumImpact();
                           ref.read(linkQuizProvider.notifier).reset();
                           _resetLinkFields();
+                          _resetCompareFields();
                           setState(() {});
                         },
                       )
@@ -252,8 +343,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         child: Center(
                           child: Image.asset(
                             'assets/logo/compair_logo.png',
-                            width: 32,
-                            height: 32,
+                            width: 32, height: 32,
                           ),
                         ),
                       ),
@@ -263,11 +353,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   children: [
                     Builder(builder: (context) {
                       final isDark = Theme.of(context).brightness == Brightness.dark;
-                      final titleText = _multiLinkComplete
+                      final titleText = _compareResults.isNotEmpty
                           ? 'Comparison'
-                          : _isMultiLinkFlow && quizState.phase != LinkFlowPhase.idle
-                              ? 'Product ${_currentMultiLinkIndex + 1}/${_multiLinkUrls.length}'
-                              : _getTitle(quizState.phase);
+                          : _getTitle(quizState.phase);
                       if (isDark) {
                         return ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(
@@ -301,168 +389,630 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         HapticFeedback.mediumImpact();
                         ref.read(linkQuizProvider.notifier).reset();
                         _resetLinkFields();
+                        _resetCompareFields();
                         setState(() {});
                       },
                       tooltip: context.l10n?.startOver ?? 'Start over',
                     ),
                   const SizedBox(width: 8),
                 ],
-              ),
-              SliverPadding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    // Multi-link complete → show comparison view
-                    if (_multiLinkComplete) ...[
-                      _buildMultiLinkComparison(),
-                    ]
-                    // Normal flow (single or in-progress multi-link with quiz)
-                    else ...[
-                      // Multi-link progress indicator
-                      if (_isMultiLinkFlow && quizState.phase != LinkFlowPhase.idle)
-                        _buildMultiLinkProgress(),
-
-                      // Phase progress timeline (non-idle)
-                      if (quizState.phase != LinkFlowPhase.idle &&
-                          quizState.phase != LinkFlowPhase.quiz &&
-                          quizState.phase != LinkFlowPhase.result)
-                        _buildPhaseTimeline(quizState.phase),
-
-                      // Progress steps indicator (compact)
-                      if (quizState.phase != LinkFlowPhase.idle)
-                        _buildProgressSteps(quizState.phase),
-
-                      if (quizState.phase == LinkFlowPhase.idle) ...[
-                        _buildInputCard(isWorking),
-                        const SizedBox(height: 24),
-                        if (quizState.error != null) ...[
-                          _buildError(quizState.error!),
-                          const SizedBox(height: 16),
-                        ],
-                        _buildInfoCards(),
-                      ],
-                      if (quizState.phase == LinkFlowPhase.quiz &&
-                          quizState.quiz != null &&
-                          quizState.baseResult != null)
-                        _QuizView(
-                          quiz: quizState.quiz!,
-                          answeredQuestions: quizState.answeredQuestions,
-                          currentIndex: quizState.currentQuestionIndex,
-                          baseResult: quizState.baseResult!,
-                          onAnswer: (idx, answer) {
-                            ref
-                                .read(linkQuizProvider.notifier)
-                                .answerQuestion(idx, answer);
-                          },
-                          onSubmit: () async {
-                            final user =
-                                ref.read(userProfileProvider).valueOrNull;
-                            if (user != null) {
-                              await ref
-                                  .read(linkQuizProvider.notifier)
-                                  .submitQuiz(user);
-                            }
-                          },
-                          onSkip: () {
-                            ref.read(linkQuizProvider.notifier).skipQuiz();
-                          },
-                        ),
-                      if (quizState.phase == LinkFlowPhase.result &&
-                          quizState.enhancedResult != null) ...[
-                        _EnhancedResultView(result: quizState.enhancedResult!),
-                        // "Next Product" button in multi-link mode
-                        if (_isMultiLinkFlow &&
-                            _currentMultiLinkIndex < _multiLinkUrls.length - 1)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: GestureDetector(
-                              onTap: _continueToNextProduct,
-                              child: Container(
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF06B6D4), Color(0xFF6366F1)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
-                                      blurRadius: 16, offset: const Offset(0, 6)),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.navigate_next_rounded,
-                                        color: Colors.white, size: 22),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Next Product (${_currentMultiLinkIndex + 2}/${_multiLinkUrls.length})',
-                                      style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.w700, fontSize: 15,
-                                        color: Colors.white, letterSpacing: -0.3),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05),
-                          ),
-                        // "Show Comparison" button when on last product result
-                        if (_isMultiLinkFlow &&
-                            _currentMultiLinkIndex >= _multiLinkUrls.length - 1)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: GestureDetector(
-                              onTap: () {
-                                // Save last result and show comparison
-                                final lastResult = ref.read(linkQuizProvider).enhancedResult;
-                                if (lastResult != null) {
-                                  _multiLinkResults.add(lastResult);
-                                }
-                                ref.read(linkQuizProvider.notifier).reset();
-                                setState(() {});
-                              },
-                              child: Container(
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                                      blurRadius: 16, offset: const Offset(0, 6)),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.compare_arrows_rounded,
-                                        color: Colors.white, size: 22),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      context.l10n?.compare ?? 'Show Comparison',
-                                      style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.w700, fontSize: 15,
-                                        color: Colors.white, letterSpacing: -0.3),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.05),
-                          ),
-                      ],
-                    ],
-                    SizedBox(
-                        height: AppTheme.navBarTotalClearance +
-                            MediaQuery.of(context).padding.bottom + 60),
-                  ]),
-                ),
+                // Tab bar at the bottom of the app bar (only when idle)
+                bottom: (quizState.phase == LinkFlowPhase.idle && !_compareAnalyzing && _compareResults.isEmpty)
+                    ? PreferredSize(
+                        preferredSize: const Size.fromHeight(48),
+                        child: _buildTabBar(),
+                      )
+                    : null,
               ),
             ],
+            body: _buildBody(quizState, isWorking),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelColor: Colors.white,
+        unselectedLabelColor: context.textTertiaryColor,
+        labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
+        unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
+        dividerColor: Colors.transparent,
+        padding: const EdgeInsets.all(3),
+        tabs: const [
+          Tab(text: '🔍  Single Analysis'),
+          Tab(text: '⚡  Compare'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(LinkQuizState quizState, bool isWorking) {
+    // Compare results view
+    if (_compareResults.length >= 2) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          children: [
+            _buildMultiLinkComparison(),
+            SizedBox(height: AppTheme.navBarTotalClearance +
+                MediaQuery.of(context).padding.bottom + 60),
+          ],
+        ),
+      );
+    }
+
+    // Compare analyzing view
+    if (_compareAnalyzing) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: _buildCompareAnalyzingView(),
+      );
+    }
+
+    // Compare error
+    if (_compareError != null) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          children: [
+            _buildError(_compareError!),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => setState(() { _compareError = null; }),
+              child: Text('Try Again', style: GoogleFonts.inter(
+                color: const Color(0xFF6366F1), fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Active single analysis flow (quiz/result/analyzing)
+    if (quizState.phase != LinkFlowPhase.idle) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          children: [
+            // Phase progress timeline
+            if (quizState.phase != LinkFlowPhase.quiz &&
+                quizState.phase != LinkFlowPhase.result)
+              _buildPhaseTimeline(quizState.phase),
+
+            if (quizState.phase != LinkFlowPhase.idle)
+              _buildProgressSteps(quizState.phase),
+
+            if (quizState.phase == LinkFlowPhase.quiz &&
+                quizState.quiz != null &&
+                quizState.baseResult != null)
+              _QuizView(
+                quiz: quizState.quiz!,
+                answeredQuestions: quizState.answeredQuestions,
+                currentIndex: quizState.currentQuestionIndex,
+                baseResult: quizState.baseResult!,
+                onAnswer: (idx, answer) {
+                  ref.read(linkQuizProvider.notifier).answerQuestion(idx, answer);
+                },
+                onSubmit: () async {
+                  final user = ref.read(userProfileProvider).valueOrNull;
+                  if (user != null) {
+                    await ref.read(linkQuizProvider.notifier).submitQuiz(user);
+                  }
+                },
+                onSkip: () {
+                  ref.read(linkQuizProvider.notifier).skipQuiz();
+                },
+              ),
+
+            if (quizState.phase == LinkFlowPhase.result &&
+                quizState.enhancedResult != null) ...[
+              _EnhancedResultView(result: quizState.enhancedResult!),
+            ],
+
+            SizedBox(height: AppTheme.navBarTotalClearance +
+                MediaQuery.of(context).padding.bottom + 60),
+          ],
+        ),
+      );
+    }
+
+    // Idle state — show tabs
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        _buildSingleAnalysisTab(isWorking),
+        _buildCompareTab(),
+      ],
+    );
+  }
+
+  /// TAB 1: Single Analysis
+  Widget _buildSingleAnalysisTab(bool isWorking) {
+    final quizState = ref.watch(linkQuizProvider);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        children: [
+          // Single URL input card
+          GlassContainer(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFFEC4899)]),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.link_rounded, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Paste Product Link',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w800, fontSize: 16,
+                              color: context.textPrimary, letterSpacing: -0.3)),
+                          Text('Get AI-powered analysis with quiz',
+                            style: GoogleFonts.inter(
+                              fontSize: 12, color: context.textTertiaryColor)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // URL input field
+                Container(
+                  decoration: BoxDecoration(
+                    color: context.surfaceVariantColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                  ),
+                  child: TextField(
+                    controller: _singleUrlController,
+                    focusNode: _singleFocusNode,
+                    style: GoogleFonts.inter(
+                      fontSize: 14, color: context.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'https://www.amazon.com/product...',
+                      hintStyle: GoogleFonts.inter(
+                        fontSize: 14, color: context.textTertiaryColor),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                      prefixIcon: Icon(Icons.link_rounded,
+                        color: context.textTertiaryColor, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.content_paste_rounded,
+                          color: const Color(0xFF6366F1), size: 20),
+                        onPressed: () async {
+                          final data = await Clipboard.getData('text/plain');
+                          if (data?.text != null) {
+                            _singleUrlController.text = data!.text!;
+                          }
+                        },
+                      ),
+                    ),
+                    onSubmitted: (_) => _startSingleAnalysis(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Supported stores chips
+                Wrap(
+                  spacing: 6, runSpacing: 6,
+                  children: ['Amazon', 'eBay', 'Best Buy', 'Trendyol', 'AliExpress', '100+']
+                      .map((store) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: context.surfaceVariantColor,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: context.textTertiaryColor.withValues(alpha: 0.15)),
+                            ),
+                            child: Text(store,
+                              style: GoogleFonts.inter(
+                                fontSize: 11, color: context.textTertiaryColor)),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 16),
+                // Analyze button
+                GestureDetector(
+                  onTap: isWorking ? null : _startSingleAnalysis,
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFFEC4899)]),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                          blurRadius: 16, offset: const Offset(0, 6)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Text(context.l10n?.analyzeWithAi ?? 'Analyze with AI',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w700, fontSize: 15,
+                            color: Colors.white, letterSpacing: -0.3)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (quizState.error != null) ...[
+            _buildError(quizState.error!),
+            const SizedBox(height: 16),
+          ],
+          // How it works steps
+          _buildHowItWorks(),
+          const SizedBox(height: 16),
+          _buildInfoCards(),
+          SizedBox(height: AppTheme.navBarTotalClearance +
+              MediaQuery.of(context).padding.bottom + 60),
+        ],
+      ),
+    );
+  }
+
+  /// TAB 2: Compare (2-4 products)
+  Widget _buildCompareTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        children: [
+          GlassContainer(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF06B6D4), Color(0xFF6366F1)]),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Compare Products',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w800, fontSize: 16,
+                              color: context.textPrimary, letterSpacing: -0.3)),
+                          Text('Add 2-4 product links to compare',
+                            style: GoogleFonts.inter(
+                              fontSize: 12, color: context.textTertiaryColor)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // URL input fields (2-4)
+                ...List.generate(_visibleCompareFields, (i) =>
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _buildCompareUrlField(i),
+                  ),
+                ),
+                // Add product button (if less than 4)
+                if (_visibleCompareFields < 4)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: GestureDetector(
+                      onTap: () => setState(() { _visibleCompareFields++; }),
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: context.surfaceVariantColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                            style: BorderStyle.solid),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_rounded,
+                              color: const Color(0xFF6366F1), size: 20),
+                            const SizedBox(width: 6),
+                            Text('Add Product',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600, fontSize: 13,
+                                color: const Color(0xFF6366F1))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 6),
+                // Compare button
+                GestureDetector(
+                  onTap: _startCompareAnalysis,
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF06B6D4), Color(0xFF6366F1)]),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
+                          blurRadius: 16, offset: const Offset(0, 6)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Text(context.l10n?.compare ?? 'Compare Products',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w700, fontSize: 15,
+                            color: Colors.white, letterSpacing: -0.3)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          // How comparison works
+          _buildCompareInfoCards(),
+          SizedBox(height: AppTheme.navBarTotalClearance +
+              MediaQuery.of(context).padding.bottom + 60),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompareUrlField(int index) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFF06B6D4).withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36, height: 36,
+            margin: const EdgeInsets.only(left: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF6366F1).withValues(alpha: 0.8),
+                  const Color(0xFF06B6D4).withValues(alpha: 0.8),
+                ]),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text('${index + 1}',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w800, fontSize: 14,
+                  color: Colors.white)),
+            ),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _compareControllers[index],
+              focusNode: _compareFocusNodes[index],
+              style: GoogleFonts.inter(fontSize: 13, color: context.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Paste product URL ${index + 1}...',
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 13, color: context.textTertiaryColor),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 12),
+              ),
+            ),
+          ),
+          // Paste button
+          IconButton(
+            icon: Icon(Icons.content_paste_rounded,
+              color: const Color(0xFF06B6D4), size: 18),
+            onPressed: () async {
+              final data = await Clipboard.getData('text/plain');
+              if (data?.text != null) {
+                _compareControllers[index].text = data!.text!;
+              }
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
+          // Remove button (if more than 2 fields)
+          if (_visibleCompareFields > 2)
+            IconButton(
+              icon: Icon(Icons.close_rounded,
+                color: AppTheme.error.withValues(alpha: 0.7), size: 18),
+              onPressed: () {
+                setState(() {
+                  _compareControllers[index].clear();
+                  // Shift remaining controllers up
+                  for (int j = index; j < _visibleCompareFields - 1; j++) {
+                    _compareControllers[j].text = _compareControllers[j + 1].text;
+                  }
+                  _compareControllers[_visibleCompareFields - 1].clear();
+                  _visibleCompareFields--;
+                });
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompareAnalyzingView() {
+    final total = _compareControllers
+        .take(_visibleCompareFields)
+        .where((c) => c.text.trim().isNotEmpty && _isValidUrl(c.text.trim()))
+        .length;
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          width: 80, height: 80,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                blurRadius: 24, offset: const Offset(0, 8)),
+            ],
+          ),
+          child: const Icon(Icons.compare_arrows_rounded,
+              color: Colors.white, size: 40),
+        ).animate(onPlay: (c) => c.repeat(reverse: true))
+         .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1200.ms),
+        const SizedBox(height: 24),
+        Text('Analyzing $total Products...',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800, fontSize: 20,
+            color: context.textPrimary)),
+        const SizedBox(height: 8),
+        Text('AI is comparing your products side by side',
+          style: GoogleFonts.inter(fontSize: 14, color: context.textTertiaryColor)),
+        const SizedBox(height: 24),
+        // Progress bar
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: total > 0 ? _compareProgress / total : 0,
+                  backgroundColor: context.surfaceVariantColor,
+                  valueColor: const AlwaysStoppedAnimation(Color(0xFF6366F1)),
+                  minHeight: 8,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('$_compareProgress / $total completed',
+                style: GoogleFonts.inter(
+                  fontSize: 13, color: context.textTertiaryColor)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 40),
+      ],
+    );
+  }
+
+  Widget _buildHowItWorks() {
+    return GlassContainer(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('How It Works',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800, fontSize: 15,
+              color: context.textPrimary, letterSpacing: -0.3)),
+          const SizedBox(height: 12),
+          _buildStep(1, 'Paste Link', 'Drop any product URL from 100+ stores', Icons.link_rounded),
+          _buildStep(2, 'AI Quiz', 'Answer quick questions about your needs', Icons.quiz_outlined),
+          _buildStep(3, 'Match Score', 'Get personalized compatibility score', Icons.stars_rounded),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep(int num, String title, String subtitle, IconData icon) {
+    final colors = [
+      [const Color(0xFF6366F1), const Color(0xFFEC4899)],
+      [const Color(0xFFEC4899), const Color(0xFFF97316)],
+      [const Color(0xFF06B6D4), const Color(0xFF6366F1)],
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: colors[num - 1]),
+              borderRadius: BorderRadius.circular(12)),
+            child: Center(
+              child: Icon(icon, color: Colors.white, size: 20)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700, fontSize: 13,
+                  color: context.textPrimary)),
+                Text(subtitle, style: GoogleFonts.inter(
+                  fontSize: 11, color: context.textTertiaryColor)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompareInfoCards() {
+    return GlassContainer(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('How Comparison Works',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800, fontSize: 15,
+              color: context.textPrimary, letterSpacing: -0.3)),
+          const SizedBox(height: 12),
+          _buildStep(1, 'Add 2-4 Links', 'Paste product URLs you want to compare', Icons.add_link_rounded),
+          _buildStep(2, 'AI Analysis', 'All products analyzed simultaneously', Icons.auto_awesome),
+          _buildStep(3, 'Side-by-Side', 'See ranked comparison with pros & cons', Icons.compare_arrows_rounded),
         ],
       ),
     );
@@ -1353,7 +1903,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   /// Multi-link comparison view (shown after all products are analyzed)
   Widget _buildMultiLinkComparison() {
-    final sorted = List<EnhancedAnalysisResult>.from(_multiLinkResults)
+    // Use compare results if available, otherwise legacy multi-link results
+    final results = _compareResults.isNotEmpty ? _compareResults : _multiLinkResults;
+    final sorted = List<EnhancedAnalysisResult>.from(results)
       ..sort((a, b) => b.enhancedScore.compareTo(a.enhancedScore));
 
     return Column(
@@ -1393,7 +1945,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           color: context.textPrimary),
                     ),
                     Text(
-                      '${_multiLinkResults.length} products analyzed',
+                      '${results.length} products analyzed',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           color: context.textSecondary),
