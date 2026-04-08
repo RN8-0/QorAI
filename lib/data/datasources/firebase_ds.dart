@@ -179,8 +179,9 @@ class FirebaseDataSource {
 
       // Sorting strategy:
       // - trendScore: always client-sort (sparse field → server sort excludes docs)
-      // - techScore WITHOUT where: client-sort (server sort on 85k docs = 70s timeout)
+      // - techScore WITHOUT where: client-sort (server sort on 85k = too slow)
       // - techScore WITH where (category): server-sort (composite index exists)
+      // - createdAt: always server-sort (auto single-field index, fast)
       // - name with where: client-sort to avoid needing compound index
       final hasWhereClause = category != null || subcategory != null;
       final useClientSort = orderBy == 'trendScore'

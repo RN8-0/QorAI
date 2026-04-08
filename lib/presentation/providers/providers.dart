@@ -2758,11 +2758,11 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v25_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v26_${user?.uid ?? "anon"}';
 
   // Clear ALL old cache versions
   try {
-    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24']) {
+    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25']) {
       final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
       cache.delete(key);
     }
@@ -2891,12 +2891,18 @@ Future<HomeFeed> _fetchFeedFromNetwork(
     return const HomeFeed(trending: [], featured: [], byCategory: {}, newArrivals: [], all: []);
   }
 
-  _saveProductsToCache(cache, products, cacheKey);
+  debugPrint('=== COMPAIR: Building feed from ${products.length} products... ===');
+
+  // Save to cache asynchronously — don't block feed building
+  Future.microtask(() => _saveProductsToCache(cache, products, cacheKey));
+
   ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
       products.whereType<ProductModel>().toList());
+  debugPrint('=== COMPAIR: setHomeFeedProducts done, building HomeFeed... ===');
   final feed = _buildHomeFeed(products, country, user: user,
       hiddenIds: hiddenIds, disabledCats: disabledCats);
   _inMemoryFeed = feed;
+  debugPrint('=== COMPAIR: HomeFeed built — trending:${feed.trending.length} cats:${feed.byCategory.length} all:${feed.all.length} ===');
   return feed;
 }
 
@@ -2918,13 +2924,15 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   final sw = Stopwatch()..start();
 
-  // ── PHASE 1: Single bulk query (client-side techScore sort) ──────────────
-  // Uses client-side sort to avoid expensive server-side scan of 85k docs.
-  // Firestore cold start takes 27-37s but that's one roundtrip only.
-  debugPrint('=== COMPAIR: BULK fetch — single query for top 1000 products ===');
+  // ── PHASE 1: Single bulk query (by createdAt DESC for recent products) ────
+  // Using createdAt DESC instead of techScore to:
+  // 1. Use Firestore auto-index (fast, ~30s vs 70s for techScore)
+  // 2. Get RECENT products that pass year filter (vs random old products)
+  // Client-side sort by techScore after fetching.
+  debugPrint('=== COMPAIR: BULK fetch — newest 1000 products by createdAt ===');
   try {
     final bulkResult = await repo.getProducts(
-      limit: 1000, orderBy: 'techScore', descending: true,
+      limit: 1000, orderBy: 'createdAt', descending: true,
     );
     bulkResult.when(
       success: (products) {
