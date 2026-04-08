@@ -22,6 +22,7 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
 import 'package:compair/services/youtube_service.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 import 'package:compair/presentation/widgets/product_image_box.dart';
 import 'package:compair/routing/router.dart';
@@ -6856,84 +6857,53 @@ class _PremiumFeaturesSectionState
     );
   }
 
-  /// Renders AI content with rich formatting: bold headers, emoji lines styled differently
+  /// Renders AI content with full markdown support
   Widget _buildRichContent(String content, Color accentColor) {
-    final lines = content.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    final widgets = <Widget>[];
-    
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      
-      // Product name header (bold with **)
-      if (line.startsWith('**') && line.endsWith('**')) {
-        if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 12));
-        final name = line.replaceAll('**', '').trim();
-        widgets.add(Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-            border: Border(left: BorderSide(color: accentColor, width: 3)),
-          ),
-          child: Text(name, style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, fontWeight: FontWeight.w800,
-            color: context.textPrimary)),
-        ));
-      }
-      // Emoji-prefixed lines (✅, ⚠️, 💰, 🎯)
-      else if (line.startsWith('✅') || line.startsWith('⚠️') || 
-               line.startsWith('💰') || line.startsWith('🎯')) {
-        final parts = line.split(':');
-        final label = parts.first.trim();
-        final value = parts.length > 1 ? parts.sublist(1).join(':').trim() : '';
-        
-        Color lineColor;
-        if (line.startsWith('✅')) lineColor = const Color(0xFF10B981);
-        else if (line.startsWith('⚠️')) lineColor = const Color(0xFFF59E0B);
-        else if (line.startsWith('💰')) lineColor = const Color(0xFF6366F1);
-        else lineColor = const Color(0xFF3B82F6);
-        
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(left: 8, top: 4, bottom: 2),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label.substring(0, label.contains(' ') ? label.indexOf(' ') + 1 : label.length),
-                style: const TextStyle(fontSize: 13)),
-              const SizedBox(width: 4),
-              Expanded(child: RichText(
-                text: TextSpan(children: [
-                  TextSpan(
-                    text: label.contains(' ') ? '${label.substring(label.indexOf(' ')).trim()} ' : '',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: lineColor)),
-                  TextSpan(
-                    text: value,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, height: 1.5,
-                      color: context.textSecondary)),
-                ]),
-              )),
-            ],
-          ),
-        ));
-      }
-      // Regular text
-      else {
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(line, style: GoogleFonts.plusJakartaSans(
-            fontSize: 13, height: 1.6,
-            color: context.textPrimary)),
-        ));
-      }
-    }
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: widgets,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return MarkdownBody(
+      data: content,
+      selectable: true,
+      styleSheet: MarkdownStyleSheet(
+        p: GoogleFonts.plusJakartaSans(
+          fontSize: 13, height: 1.6,
+          color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
+        strong: GoogleFonts.plusJakartaSans(
+          fontSize: 13, fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : context.textPrimary),
+        em: GoogleFonts.plusJakartaSans(
+          fontSize: 13, fontStyle: FontStyle.italic,
+          color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
+        h1: GoogleFonts.plusJakartaSans(
+          fontSize: 16, fontWeight: FontWeight.w800,
+          color: isDark ? Colors.white : context.textPrimary),
+        h2: GoogleFonts.plusJakartaSans(
+          fontSize: 15, fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : context.textPrimary),
+        h3: GoogleFonts.plusJakartaSans(
+          fontSize: 14, fontWeight: FontWeight.w700,
+          color: accentColor),
+        listBullet: GoogleFonts.plusJakartaSans(
+          fontSize: 13, color: accentColor),
+        listIndent: 16,
+        blockSpacing: 8,
+        h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
+        h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
+        h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
+        pPadding: const EdgeInsets.symmetric(vertical: 2),
+        blockquoteDecoration: BoxDecoration(
+          color: accentColor.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(left: BorderSide(color: accentColor, width: 3)),
+        ),
+        blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        codeblockDecoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        code: GoogleFonts.jetBrainsMono(
+          fontSize: 12,
+          color: isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF334155)),
+      ),
     );
   }
 

@@ -17,6 +17,7 @@ import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 // ─── Design tokens (mapped to global AppTheme brand palette) ─────────────────
 const _kPrimary = AppTheme.brandBlue;
@@ -1770,10 +1771,25 @@ class _SubResultView extends StatelessWidget {
                   ),
                 ]),
                 const SizedBox(height: 16),
-                SelectableText(
-                  _readableAnalysis(analysisText, subs, winner),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, color: context.textPrimary, height: 1.6,
+                MarkdownBody(
+                  data: _readableAnalysis(analysisText, subs, winner),
+                  selectable: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: GoogleFonts.plusJakartaSans(
+                      fontSize: 14, color: context.textPrimary, height: 1.6,
+                    ),
+                    strong: GoogleFonts.plusJakartaSans(
+                      fontSize: 14, fontWeight: FontWeight.w700,
+                      color: context.textPrimary,
+                    ),
+                    em: GoogleFonts.plusJakartaSans(
+                      fontSize: 14, fontStyle: FontStyle.italic,
+                      color: context.textSecondary,
+                    ),
+                    listBullet: GoogleFonts.plusJakartaSans(
+                      fontSize: 14, color: context.textSecondary,
+                    ),
+                    blockSpacing: 8,
                   ),
                 ),
               ],

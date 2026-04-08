@@ -18,6 +18,7 @@ import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class LinkPasteScreen extends ConsumerStatefulWidget {
   const LinkPasteScreen({super.key});
@@ -3429,11 +3430,27 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                           color: context.textPrimary)),
                 ]),
                 const SizedBox(height: 14),
-                Text(result.detailedVerdict,
-                    style: GoogleFonts.plusJakartaSans(
-                        color: context.textSecondary,
-                        fontSize: 14,
-                        height: 1.7)),
+                MarkdownBody(
+                    data: result.detailedVerdict,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: GoogleFonts.plusJakartaSans(
+                          color: context.textSecondary,
+                          fontSize: 14,
+                          height: 1.7),
+                      strong: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: context.textPrimary),
+                      em: GoogleFonts.plusJakartaSans(
+                          fontStyle: FontStyle.italic,
+                          fontSize: 14,
+                          color: context.textSecondary),
+                      listBullet: GoogleFonts.plusJakartaSans(
+                          fontSize: 14, color: context.textSecondary),
+                      blockSpacing: 8,
+                    ),
+                ),
               ],
             ),
           ).animate().fadeIn(duration: 400.ms),
