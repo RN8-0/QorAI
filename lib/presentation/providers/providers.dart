@@ -2092,6 +2092,54 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 // ─── DEEP ANALYSIS CACHE ───
 // ════════════════════════════════════════════════════
 
+// ─── JSON parse helpers ───
+
+/// Safely converts dynamic value to int (handles both num and string)
+int _safeInt(dynamic v, [int fallback = 0]) {
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+/// Safely converts dynamic value to double (handles both num and string)
+double _safeDouble(dynamic v, [double fallback = 0]) {
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+/// Cleans raw API response string before JSON decoding:
+/// - Trims whitespace
+/// - Removes BOM
+/// - Strips markdown code fences (```json ... ```)
+/// - Extracts first JSON object/array if surrounded by text
+String _cleanJsonString(String raw) {
+  var s = raw.trim();
+  // Remove BOM
+  s = s.replaceAll('\uFEFF', '');
+  // Strip markdown code fences
+  s = s.replaceFirst(RegExp(r'^```\w*\s*'), '');
+  s = s.replaceFirst(RegExp(r'\s*```\s*$'), '');
+  s = s.trim();
+  // If it doesn't start with { or [, try to extract JSON
+  if (!s.startsWith('{') && !s.startsWith('[')) {
+    final match = RegExp(r'(\{[\s\S]*\})', multiLine: true).firstMatch(s);
+    if (match != null) s = match.group(1)!;
+  }
+  return s;
+}
+
+/// Decodes a cleaned JSON string into a Map, handling edge cases
+Map<String, dynamic> _decodeJsonMap(String raw) {
+  final cleaned = _cleanJsonString(raw);
+  final decoded = jsonDecode(cleaned);
+  // If Gemini returns an array, take the first element
+  if (decoded is List && decoded.isNotEmpty) {
+    return decoded[0] as Map<String, dynamic>;
+  }
+  return decoded as Map<String, dynamic>;
+}
+
 // ─── Parsed result types for rich visual rendering ───
 
 class DeepAnalysisResult {
@@ -2231,24 +2279,25 @@ class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<DeepAnalysisResult?
 
   DeepAnalysisResult _parseDeepAnalysis(String raw) {
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final json = _decodeJsonMap(raw);
       return DeepAnalysisResult(
-        overallScore: (json['overallScore'] as num?)?.toInt() ?? 0,
+        overallScore: _safeInt(json['overallScore']),
         strengths: (json['strengths'] as List? ?? []).map((s) => AnalysisAttribute(
           name: s['name']?.toString() ?? '',
-          score: (s['score'] as num?)?.toInt() ?? 0,
+          score: _safeInt(s['score']),
           detail: s['detail']?.toString() ?? '',
         )).toList(),
         weaknesses: (json['weaknesses'] as List? ?? []).map((w) => AnalysisAttribute(
           name: w['name']?.toString() ?? '',
-          score: (w['score'] as num?)?.toInt() ?? 0,
+          score: _safeInt(w['score']),
           detail: w['detail']?.toString() ?? '',
         )).toList(),
         pros: (json['pros'] as List? ?? []).map((p) => p.toString()).toList(),
         cons: (json['cons'] as List? ?? []).map((c) => c.toString()).toList(),
         verdict: json['verdict']?.toString() ?? '',
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[DeepAnalysis] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
       return DeepAnalysisResult(rawFallback: raw);
     }
   }
@@ -2306,7 +2355,7 @@ class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<AlternativesRe
 
   AlternativesResult _parseAlternatives(String raw) {
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final json = _decodeJsonMap(raw);
       final alts = (json['alternatives'] as List? ?? []).map((a) => AlternativeProduct(
         name: a['name']?.toString() ?? '',
         advantage: a['advantage']?.toString() ?? '',
@@ -2316,7 +2365,8 @@ class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<AlternativesRe
         whyBetter: a['whyBetter']?.toString() ?? '',
       )).toList();
       return AlternativesResult(alternatives: alts);
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Alternatives] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
       return AlternativesResult(rawFallback: raw);
     }
   }
@@ -2365,17 +2415,18 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
 
   AdvisorResult _parseAdvisor(String raw) {
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final json = _decodeJsonMap(raw);
       return AdvisorResult(
         whoShouldBuy: json['whoShouldBuy']?.toString() ?? '',
         whoShouldAvoid: json['whoShouldAvoid']?.toString() ?? '',
         reasonsToBuy: (json['reasonsToBuy'] as List? ?? []).map((r) => r.toString()).toList(),
         reasonsToSkip: (json['reasonsToSkip'] as List? ?? []).map((r) => r.toString()).toList(),
         proTips: (json['proTips'] as List? ?? []).map((t) => t.toString()).toList(),
-        valueRating: (json['valueRating'] as num?)?.toDouble() ?? 0,
+        valueRating: _safeDouble(json['valueRating']),
         ratingExplanation: json['ratingExplanation']?.toString() ?? '',
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Advisor] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
       return AdvisorResult(rawFallback: raw);
     }
   }
@@ -2424,16 +2475,17 @@ class _PredictionCacheNotifier extends StateNotifier<AsyncValue<PredictionResult
 
   PredictionResult _parsePrediction(String raw) {
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final json = _decodeJsonMap(raw);
       return PredictionResult(
         trend: json['trend']?.toString() ?? 'stable',
-        trendPercentage: (json['trendPercentage'] as num?)?.toInt() ?? 0,
+        trendPercentage: _safeInt(json['trendPercentage']),
         bestTimeToBuy: json['bestTimeToBuy']?.toString() ?? '',
         expectedDrop: json['expectedDrop']?.toString() ?? '',
         buyOrWait: json['buyOrWait']?.toString() ?? 'buy',
         reasoning: json['reasoning']?.toString() ?? '',
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Prediction] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
       return PredictionResult(rawFallback: raw);
     }
   }
