@@ -4169,9 +4169,38 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
 // SUPPORTING WIDGETS
 // ---------------------------------------------------------------
 
-class _FactorRow extends StatelessWidget {
+class _FactorRow extends StatefulWidget {
   final CompatibilityFactor factor;
   const _FactorRow({required this.factor});
+
+  @override
+  State<_FactorRow> createState() => _FactorRowState();
+}
+
+class _FactorRowState extends State<_FactorRow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _barAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _barAnimation = Tween<double>(
+      begin: 0,
+      end: widget.factor.score / 100,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   Color _barColor(double score) {
     if (score >= 80) return AppTheme.scoreExcellent;
@@ -4182,6 +4211,7 @@ class _FactorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final factor = widget.factor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4195,28 +4225,35 @@ class _FactorRow extends StatelessWidget {
                     fontSize: 14,
                     color: context.textPrimary)),
           ),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: _barColor(factor.score).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+          AnimatedBuilder(
+            animation: _barAnimation,
+            builder: (context, _) => Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: _barColor(factor.score).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                  '${(_barAnimation.value * 100).toStringAsFixed(0)}%',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: _barColor(factor.score))),
             ),
-            child: Text('${factor.score.toStringAsFixed(0)}%',
-                style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: _barColor(factor.score))),
           ),
         ]),
         const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: factor.score / 100,
-            backgroundColor: AppTheme.slate700,
-            color: _barColor(factor.score),
-            minHeight: 6,
+        AnimatedBuilder(
+          animation: _barAnimation,
+          builder: (context, _) => ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: _barAnimation.value,
+              backgroundColor: AppTheme.slate700,
+              color: _barColor(factor.score),
+              minHeight: 6,
+            ),
           ),
         ),
       ],

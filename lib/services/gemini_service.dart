@@ -806,24 +806,43 @@ $jsonSchema
       timeout: const Duration(seconds: 60),
     );
 
-    final factors = (response['factors'] as List<dynamic>? ?? [])
-        .map((f) => CompatibilityFactor(
-              label: f['label'] as String? ?? '',
-              score: (f['score'] as num?)?.toDouble() ?? 0.0,
-              emoji: f['emoji'] as String? ?? '📊',
-            ))
+    // Parse factors — handle both num and string scores from Gemini
+    double _parseScore(dynamic v) {
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? 0.0;
+      return 0.0;
+    }
+
+    final rawFactors = response['factors'];
+    debugPrint('[Gemini] raw factors type: ${rawFactors.runtimeType}, value: $rawFactors');
+    final factors = (rawFactors is List ? rawFactors : <dynamic>[])
+        .map((f) {
+          if (f is! Map) return null;
+          final label = (f['label'] ?? f['name'] ?? '') as String;
+          final score = _parseScore(f['score'] ?? f['value']);
+          final emoji = (f['emoji'] ?? f['icon'] ?? '📊') as String;
+          debugPrint('[Gemini]   factor: $label = $score ($emoji)');
+          return CompatibilityFactor(label: label, score: score, emoji: emoji);
+        })
+        .whereType<CompatibilityFactor>()
         .where((f) => f.label.isNotEmpty)
         .toList();
 
-    debugPrint('[Gemini] enhancedAnalysis score: ${response['enhancedScore']}, factors: ${factors.length}');
+    final enhancedScore = _parseScore(
+        response['enhancedScore'] ?? response['enhanced_score'] ?? response['score']);
+    debugPrint('[Gemini] enhancedAnalysis score: $enhancedScore, factors: ${factors.length}');
+
     return EnhancedAnalysisResult(
       baseResult: baseResult,
-      enhancedScore:
-          (response['enhancedScore'] as num?)?.toDouble() ?? baseResult.aiScore,
+      enhancedScore: enhancedScore > 0 ? enhancedScore : baseResult.aiScore,
       factors: factors,
-      detailedVerdict: response['verdict'] as String? ?? baseResult.aiAnalysis,
-      prosForUser: List<String>.from(response['prosForUser'] ?? []),
-      consForUser: List<String>.from(response['consForUser'] ?? []),
+      detailedVerdict: (response['verdict'] ?? response['detailed_verdict'] ??
+              response['analysis'] ?? baseResult.aiAnalysis)
+          as String,
+      prosForUser: List<String>.from(
+          response['prosForUser'] ?? response['pros_for_user'] ?? response['pros'] ?? []),
+      consForUser: List<String>.from(
+          response['consForUser'] ?? response['cons_for_user'] ?? response['cons'] ?? []),
       alternatives: List<String>.from(response['alternatives'] ?? []),
     );
   }
