@@ -152,17 +152,24 @@ class FirebaseDataSource {
       query = query.limit(limit);
 
       // Try Firestore local cache first for faster response, fallback to server
+      // Skip cache for large queries (cold start → cache always empty → wastes 3s)
       debugPrint('=== COMPAIR: getProducts EXECUTING query (limit=$limit, orderBy=$orderBy, cat=$category, active=$activeOnly, clientSort=$useClientSort) ===');
       final sw = Stopwatch()..start();
       QuerySnapshot snapshot;
-      try {
-        snapshot = await query.get(const GetOptions(source: Source.cache))
-            .timeout(const Duration(seconds: 3));
-        if (snapshot.docs.isEmpty) throw Exception('cache empty');
-        debugPrint('=== COMPAIR: getProducts from CACHE: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
-      } catch (_) {
-        snapshot = await query.get().timeout(const Duration(seconds: 60));
-        debugPrint('=== COMPAIR: getProducts from SERVER: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
+      if (limit <= 100) {
+        try {
+          snapshot = await query.get(const GetOptions(source: Source.cache))
+              .timeout(const Duration(seconds: 3));
+          if (snapshot.docs.isEmpty) throw Exception('cache empty');
+          debugPrint('=== COMPAIR: getProducts from CACHE: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
+        } catch (_) {
+          snapshot = await query.get().timeout(const Duration(seconds: 60));
+          debugPrint('=== COMPAIR: getProducts from SERVER: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
+        }
+      } else {
+        // Large queries: go directly to server (cache is useless for bulk fetches)
+        snapshot = await query.get().timeout(const Duration(seconds: 90));
+        debugPrint('=== COMPAIR: getProducts BULK from SERVER: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
       }
       sw.stop();
       final products = <ProductModel>[];

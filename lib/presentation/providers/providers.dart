@@ -2550,11 +2550,12 @@ Future<List<ProductEntity>> _fetchAllProducts(
   // ── PHASE 1: Single bulk query (works even on Firestore cold start) ─────
   // This is the key: ONE query instead of 40+ category queries.
   // Firestore cold start takes 27-37s but that's one roundtrip only.
+  // NO external timeout — the internal datasource has 90s for bulk queries.
   debugPrint('=== COMPAIR: BULK fetch — single query for all products ===');
   try {
     final bulkResult = await (repo as dynamic).getProducts(
-      limit: 2000, orderBy: 'name', descending: false,
-    ).timeout(const Duration(seconds: 60));
+      limit: 2000, orderBy: 'techScore', descending: true,
+    );
     (bulkResult as dynamic).when(
       success: (products) {
         addProducts(products as List<ProductEntity>);
@@ -2585,8 +2586,8 @@ Future<List<ProductEntity>> _fetchAllProducts(
         final batch = missingCats.skip(i).take(4);
         try {
           final futures = batch.map((cat) => (repo as dynamic).getProducts(
-            category: cat, limit: 30, orderBy: 'name', descending: false,
-          ).timeout(const Duration(seconds: 15)).catchError((_) =>
+            category: cat, limit: 30, orderBy: 'techScore', descending: true,
+          ).catchError((_) =>
             const Success<List<ProductEntity>>([])) as Future);
           final results = await Future.wait(futures.toList());
           for (final result in results) {
@@ -2605,8 +2606,8 @@ Future<List<ProductEntity>> _fetchAllProducts(
     for (final cat in priorityCats) {
       try {
         final result = await (repo as dynamic).getProducts(
-          category: cat, limit: 50, orderBy: 'name', descending: false,
-        ).timeout(const Duration(seconds: 60));
+          category: cat, limit: 50, orderBy: 'techScore', descending: true,
+        );
         (result as dynamic).when(
           success: (products) => addProducts(products as List<ProductEntity>),
           failure: (_) {},
