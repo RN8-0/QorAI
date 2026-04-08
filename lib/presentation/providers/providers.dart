@@ -2548,6 +2548,211 @@ class _BenchmarkCacheNotifier extends StateNotifier<AsyncValue<BenchmarkResult?>
   void reset() => state = const AsyncValue.data(null);
 }
 
+// ════════════════════════════════════════════════════
+// ─── GEMINI MATCH SCORE CACHE ───
+// ════════════════════════════════════════════════════
+
+class GeminiMatchResult {
+  final int matchScore;
+  final String reason;
+  final List<String> topMatchFactors;
+  final List<String> missingFactors;
+  final bool isFromGemini; // true = Gemini, false = local fallback
+  const GeminiMatchResult({
+    required this.matchScore,
+    this.reason = '',
+    this.topMatchFactors = const [],
+    this.missingFactors = const [],
+    this.isFromGemini = true,
+  });
+}
+
+final geminiMatchScoreProvider = StateNotifierProvider.family<
+    _GeminiMatchScoreNotifier, AsyncValue<GeminiMatchResult?>, String>((ref, productId) {
+  return _GeminiMatchScoreNotifier(ref, productId);
+});
+
+class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
+  final Ref _ref;
+  final String _productId;
+  _GeminiMatchScoreNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+
+  Future<void> fetchMatchScore({
+    required ProductEntity product,
+  }) async {
+    if (state is AsyncLoading) return;
+    if (state.valueOrNull != null) return;
+
+    final userAsync = _ref.read(userProfileProvider);
+    final user = userAsync.valueOrNull;
+    if (user == null || !user.quizCompleted) return;
+
+    state = const AsyncValue.loading();
+
+    try {
+      // 1. Check Firestore cache first (24h TTL)
+      final cached = await _checkFirestoreCache(user.uid);
+      if (cached != null) {
+        state = AsyncValue.data(cached);
+        return;
+      }
+
+      // 2. Call Gemini
+      final gemini = _ref.read(geminiServiceProvider);
+      final behaviorAsync = _ref.read(behaviorSignalsProvider);
+      final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
+
+      final profileJson = {
+        'ecosystem': user.ecosystem,
+        'budgetRange': user.budgetRange,
+        'priorities': user.priorities,
+        'currentDevices': user.currentDevices,
+        'interestCategories': user.interestCategories,
+        'primaryCategory': user.primaryCategory,
+        'usageIntent': user.usageIntent,
+        'profession': user.profession,
+        'ageRange': user.ageRange,
+        if (behavior.categoryViews.isNotEmpty)
+          'recentCategoryViews': behavior.categoryViews,
+        if (behavior.favorites.isNotEmpty)
+          'favoritedProductCount': behavior.favorites.length,
+      };
+
+      // Build concise product JSON
+      final topSpecs = <String, dynamic>{};
+      var specCount = 0;
+      for (final e in product.specs.entries) {
+        if (specCount >= 15) break;
+        final v = e.value?.toString() ?? '';
+        if (v.isNotEmpty && v != 'null' && v != '?' && v != '{}') {
+          topSpecs[e.key] = v;
+          specCount++;
+        }
+      }
+
+      final productJson = {
+        'name': product.name,
+        'brand': product.brand ?? '',
+        'category': product.category,
+        'techScore': product.techScore,
+        'specs': topSpecs,
+        if (product.pros.isNotEmpty) 'pros': product.pros.take(5).toList(),
+        if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
+      };
+
+      final langCode = user.language.isNotEmpty ? user.language : 'en';
+      final prompt = 'You are a tech product recommendation expert. '
+          'Analyze how well this product matches this specific user\'s needs and preferences.\n\n'
+          'User profile:\n${jsonEncode(profileJson)}\n\n'
+          'Product:\n${jsonEncode(productJson)}\n\n'
+          'Score this product 0-100 for this user. Be realistic and differentiate:\n'
+          '- 90-100: Perfect match (ecosystem, budget, priorities all align)\n'
+          '- 70-89: Good match with minor trade-offs\n'
+          '- 50-69: Decent but notable mismatches\n'
+          '- 30-49: Poor match (wrong ecosystem, over budget, wrong priorities)\n'
+          '- 0-29: Very poor match\n\n'
+          'Return ONLY this JSON:\n'
+          '{"matchScore": <int>, "reason": "<max 2 sentences>", '
+          '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
+          '"missingFactors": ["<missing1>", "<missing2>"]}';
+
+      final result = await gemini.jsonFreeTextQuery(prompt, language: langCode);
+      final map = _decodeJsonMap(result);
+
+      final score = _safeInt(map['matchScore'], 50).clamp(0, 100);
+      final reason = (map['reason'] as String?) ?? '';
+      final factors = (map['topMatchFactors'] as List?)
+          ?.map((e) => e.toString()).toList() ?? [];
+      final missing = (map['missingFactors'] as List?)
+          ?.map((e) => e.toString()).toList() ?? [];
+
+      final matchResult = GeminiMatchResult(
+        matchScore: score,
+        reason: reason,
+        topMatchFactors: factors,
+        missingFactors: missing,
+        isFromGemini: true,
+      );
+
+      // Save to Firestore cache
+      _saveToFirestoreCache(user.uid, matchResult);
+
+      state = AsyncValue.data(matchResult);
+
+      debugPrint('[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason');
+    } catch (e, st) {
+      debugPrint('[GeminiMatch] Gemini failed, using local fallback: $e\n$st');
+      // Fallback to local algorithm
+      _fallbackToLocal(product);
+    }
+  }
+
+  void _fallbackToLocal(ProductEntity product) {
+    final userAsync = _ref.read(userProfileProvider);
+    final user = userAsync.valueOrNull;
+    if (user == null) {
+      state = const AsyncValue.data(null);
+      return;
+    }
+    final algo = _ref.read(profileAlgorithmServiceProvider);
+    final behaviorAsync = _ref.read(behaviorSignalsProvider);
+    final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
+    final fs = algo.calculateTotalFitScore(user: user, product: product, behavior: behavior);
+    if (fs > 0) {
+      state = AsyncValue.data(GeminiMatchResult(
+        matchScore: fs.toInt(),
+        reason: '',
+        isFromGemini: false,
+      ));
+    } else {
+      state = const AsyncValue.data(null);
+    }
+  }
+
+  Future<GeminiMatchResult?> _checkFirestoreCache(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users').doc(uid)
+          .collection('matchScores').doc(_productId)
+          .get();
+      if (!doc.exists) return null;
+      final data = doc.data()!;
+      final ts = data['timestamp'] as Timestamp?;
+      if (ts == null) return null;
+      final age = DateTime.now().difference(ts.toDate());
+      if (age.inHours >= 24) return null; // expired
+      return GeminiMatchResult(
+        matchScore: _safeInt(data['matchScore'], 0),
+        reason: (data['reason'] as String?) ?? '',
+        topMatchFactors: (data['topMatchFactors'] as List?)
+            ?.map((e) => e.toString()).toList() ?? [],
+        missingFactors: (data['missingFactors'] as List?)
+            ?.map((e) => e.toString()).toList() ?? [],
+        isFromGemini: true,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveToFirestoreCache(String uid, GeminiMatchResult result) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users').doc(uid)
+          .collection('matchScores').doc(_productId)
+          .set({
+        'matchScore': result.matchScore,
+        'reason': result.reason,
+        'topMatchFactors': result.topMatchFactors,
+        'missingFactors': result.missingFactors,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
+
+  void reset() => state = const AsyncValue.data(null);
+}
+
 /// Add product to collection
 Future<Result<void>> addToCollection(WidgetRef ref, String productId) async {
   final userAsync = ref.read(userProfileProvider);
