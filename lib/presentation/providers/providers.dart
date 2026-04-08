@@ -8,6 +8,7 @@
 /// StateProvider: Simple state -> selectedCategoryProvider
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -2742,6 +2743,9 @@ void clearInMemoryFeedCache() {
 /// Flag to prevent concurrent background refreshes
 bool _isRefreshingFeed = false;
 
+/// Completer to prevent concurrent first-time network fetches
+Completer<HomeFeed>? _pendingFeedFetch;
+
 final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   ref.watch(selectedCountryProvider);
   final country = ref.read(selectedCountryProvider);
@@ -2758,11 +2762,11 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v26_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v28_${user?.uid ?? "anon"}';
 
   // Clear ALL old cache versions
   try {
-    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25']) {
+    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25', 'v26', 'v27']) {
       final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
       cache.delete(key);
     }
@@ -2810,11 +2814,25 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // 2. No cache at all — fetch from network (first-time load)
-  final config = await configFuture;
-  final feed = await _fetchFeedFromNetwork(ref, repo, cache, country, user, cacheKey,
-      config.pinnedIds, config.hiddenIds, config.disabledCats);
-  debugPrint('=== COMPAIR: homeFeed READY (network path) in ${feedSw.elapsedMilliseconds}ms ===');
-  return feed;
+  // Use Completer to prevent duplicate concurrent network fetches
+  if (_pendingFeedFetch != null) {
+    debugPrint('=== COMPAIR: homeFeed — joining existing network fetch ===');
+    return _pendingFeedFetch!.future;
+  }
+  _pendingFeedFetch = Completer<HomeFeed>();
+  try {
+    final config = await configFuture;
+    final feed = await _fetchFeedFromNetwork(ref, repo, cache, country, user, cacheKey,
+        config.pinnedIds, config.hiddenIds, config.disabledCats);
+    debugPrint('=== COMPAIR: homeFeed READY (network path) in ${feedSw.elapsedMilliseconds}ms ===');
+    _pendingFeedFetch!.complete(feed);
+    _pendingFeedFetch = null;
+    return feed;
+  } catch (e) {
+    _pendingFeedFetch!.completeError(e);
+    _pendingFeedFetch = null;
+    rethrow;
+  }
 });
 
 /// Admin feed config (fetched concurrently with product loading)
@@ -2924,46 +2942,51 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   final sw = Stopwatch()..start();
 
-  // ── PHASE 1: Single bulk query (by createdAt DESC for recent products) ────
-  // Using createdAt DESC instead of techScore to:
-  // 1. Use Firestore auto-index (fast, ~30s vs 70s for techScore)
-  // 2. Get RECENT products that pass year filter (vs random old products)
-  // Client-side sort by techScore after fetching.
-  debugPrint('=== COMPAIR: BULK fetch — newest 1000 products by createdAt ===');
-  try {
-    final bulkResult = await repo.getProducts(
-      limit: 1000, orderBy: 'createdAt', descending: true,
-    );
-    bulkResult.when(
-      success: (products) {
-        addProducts(products);
-        debugPrint('=== COMPAIR: BULK got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
-      },
-      failure: (e) => debugPrint('=== COMPAIR: BULK query failed: $e ==='),
-    );
-  } catch (e) {
-    debugPrint('=== COMPAIR: BULK query exception: $e ===');
-  }
+  // ── Multi-category parallel fetch (diverse results, composite index) ──────
+  // Fetch top products from each category in ONE parallel batch.
+  // Uses category+techScore DESC composite index → fast per-query.
+  final categories = _feedCategories.take(20).toList();
+  debugPrint('=== COMPAIR: MULTI-CAT fetch — ${categories.length} categories, 50 each ===');
 
-  // If bulk returned nothing (network error), try 4 priority categories
+  try {
+    final futures = categories.map((cat) => repo.getProducts(
+      category: cat, limit: 50, orderBy: 'techScore', descending: true,
+    ).timeout(const Duration(seconds: 45)).catchError((_) =>
+      const Success<List<ProductEntity>>([])));
+    final results = await Future.wait(futures.toList());
+    for (var j = 0; j < results.length; j++) {
+      final catName = categories[j];
+      switch (results[j]) {
+        case Success(data: final products):
+          debugPrint('=== COMPAIR: CAT $catName: ${products.length} products ===');
+          addProducts(products);
+        default:
+          debugPrint('=== COMPAIR: CAT $catName: FAILED ===');
+      }
+    }
+  } catch (e) {
+    debugPrint('=== COMPAIR: MULTI-CAT error: $e ===');
+  }
+  debugPrint('=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+
+  // If multi-cat returned nothing, try priority categories individually
   if (allProducts.isEmpty) {
-    debugPrint('=== COMPAIR: BULK empty, trying priority categories ===');
+    debugPrint('=== COMPAIR: MULTI-CAT empty, trying priority categories ===');
     for (final cat in const ['smartphones', 'laptops', 'tablets', 'headphones']) {
       try {
         final result = await repo.getProducts(
           category: cat, limit: 50, orderBy: 'techScore', descending: true,
         );
-        result.when(
-          success: (products) => addProducts(products),
-          failure: (_) {},
-        );
+        switch (result) {
+          case Success(data: final products):
+            addProducts(products);
+          default:
+            break;
+        }
       } catch (_) {}
       if (allProducts.length >= 50) break;
     }
   }
-
-  // ── (Gap-fill removed: bulk query + relaxed filters provide sufficient
-  //     category coverage. Gap-fill caused 7+ min timeout cascade on cold start.) ──
 
   sw.stop();
   debugPrint('=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
@@ -2975,10 +2998,12 @@ Future<List<ProductEntity>> _fetchAllProducts(
       try {
         final pinnedResult = await repo.getProductsByIds(missingPinned)
             .timeout(const Duration(seconds: 8));
-        pinnedResult.when(
-          success: (products) => addProducts(products),
-          failure: (_) {},
-        );
+        switch (pinnedResult) {
+          case Success(data: final products):
+            addProducts(products);
+          default:
+            break;
+        }
       } catch (_) {}
     }
   }

@@ -92,17 +92,16 @@ class ProductFilter {
     // Defunct brand — always reject
     if (defunctBrands.contains(brand)) return false;
 
-    // Year check
+    // Exact year from specs — most reliable signal
     final exactYear = getExactReleaseYear(p);
     if (exactYear != null) return exactYear >= minYear;
 
-    // No exact year — use createdAt as proxy
+    // Has createdAt/scrapedAt — if recent, accept (recently added = likely relevant)
     if (p.createdAt != null) {
-      if (p.createdAt!.isBefore(DateTime(minYear, 1, 1))) return false;
-      if (p.techScore >= 20) return true;
+      return !p.createdAt!.isBefore(DateTime(minYear, 1, 1));
     }
 
-    // No year, no createdAt — keep if reasonable techScore
+    // No date info at all — accept if reasonable techScore
     return p.techScore >= 30;
   }
 
