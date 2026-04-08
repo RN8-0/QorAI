@@ -1730,6 +1730,24 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
   /// Step 3: Submit quiz + run enhanced grounded analysis.
   Future<void> submitQuiz() async {
     _subService.recordAIQuestion();
+
+    // Save quiz answers to Firestore
+    try {
+      final authState = _ref.read(authStateProvider).valueOrNull;
+      if (authState != null) {
+        final qaPairs = state.answeredQuestions
+            .where((q) => q.selectedOption != null)
+            .map((q) => {'question': q.text, 'answer': q.selectedOption})
+            .toList();
+        _ref.read(firebaseDataSourceProvider).saveQuizHistory(authState.uid, {
+          'timestamp': DateTime.now().toIso8601String(),
+          'type': 'subscription',
+          'services': state.subscriptionNames,
+          'answers': qaPairs,
+        });
+      }
+    } catch (_) {}
+
     state = state.copyWith(phase: SubFlowPhase.analyzing);
     await _runAnalysis(state.subscriptionNames, state.answeredQuestions);
   }
