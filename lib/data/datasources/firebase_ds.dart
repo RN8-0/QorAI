@@ -177,12 +177,13 @@ class FirebaseDataSource {
       }
 
       // Sorting strategy:
-      // - trendScore and techScore: always client-sort (no reliable Firestore index)
-      //   Firestore orderBy on trendScore excludes docs without the field → 0 results
-      //   Fetch by natural doc order, sort client-side after fetching.
+      // - trendScore: always client-sort (docs without field are excluded by Firestore)
+      // - techScore with category filter: use composite index (category+techScore DESC)
+      // - techScore without filter: client-sort (single-field orderBy excludes null docs)
       // - name/createdAt with category filter: use compound index (category+field)
       final hasWhereClause = category != null || subcategory != null;
-      final useClientSort = orderBy == 'trendScore' || orderBy == 'techScore'
+      final useClientSort = orderBy == 'trendScore'
+          || (orderBy == 'techScore' && !hasWhereClause)
           || (hasWhereClause && orderBy == 'name');
 
       if (!useClientSort) {

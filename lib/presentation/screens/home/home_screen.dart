@@ -39,10 +39,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final PageController _heroPageCtrl;
   Timer? _heroAutoScroll;
   int _currentHeroPage = 0;
+  final Stopwatch _initSw = Stopwatch();
+  bool _firstDataLogged = false;
 
   @override
   void initState() {
     super.initState();
+    _initSw.start();
+    debugPrint('=== COMPAIR: HomeScreen initState ===');
     _heroCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 12),
@@ -1319,6 +1323,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: 200,
       child: ref.watch(homeFeedProvider).when(
         data: (feed) {
+          if (!_firstDataLogged) {
+            _firstDataLogged = true;
+            debugPrint('=== COMPAIR: HomeScreen first data render in ${_initSw.elapsedMilliseconds}ms (${feed.all.length} products) ===');
+          }
           final trending = feed.trending;
           if (trending.isEmpty) return Center(
             child: Column(

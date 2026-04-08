@@ -2796,11 +2796,12 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final repo = ref.read(productRepositoryProvider);
   final cache = ref.read(cacheServiceProvider);
   final user = ref.read(userProfileProvider).valueOrNull;
+  final feedSw = Stopwatch()..start();
   debugPrint('=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===');
 
   // 0. In-memory cache (instant, < 1ms) — survives tab switches
   if (_inMemoryFeed != null && _inMemoryFeed!.all.isNotEmpty) {
-    debugPrint('=== COMPAIR: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products ===');
+    debugPrint('=== COMPAIR: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products in ${feedSw.elapsedMilliseconds}ms ===');
     return _inMemoryFeed!;
   }
 
@@ -2815,21 +2816,8 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     }
   } catch (_) {}
 
-  // Read admin feed config from Firestore (non-blocking, use defaults if slow)
-  List<String> pinnedIds = [];
-  List<String> hiddenIds = [];
-  List<String> disabledCats = [];
-  try {
-    final configDoc = await FirebaseFirestore.instance
-        .collection('app_config').doc('algorithm').get()
-        .timeout(const Duration(seconds: 5));
-    if (configDoc.exists) {
-      final data = configDoc.data() ?? {};
-      pinnedIds = List<String>.from(data['pinnedProducts'] ?? []);
-      hiddenIds = List<String>.from(data['hiddenProducts'] ?? []);
-      disabledCats = List<String>.from(data['disabledCategories'] ?? []);
-    }
-  } catch (_) {}
+  // Start admin config fetch CONCURRENTLY (don't block product loading)
+  final configFuture = _fetchAdminConfig();
 
   // 1. STALE-WHILE-REVALIDATE: Show cached data instantly, even if expired
   try {
@@ -2843,17 +2831,22 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       sw.stop();
       debugPrint('=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${products.length} products in ${sw.elapsedMilliseconds}ms ===');
 
+      // Await admin config only after cache hit (fast path)
+      final config = await configFuture;
+
       ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
           products.whereType<ProductModel>().toList());
       final feed = _buildHomeFeed(products, country, user: user,
-          hiddenIds: hiddenIds, disabledCats: disabledCats);
+          hiddenIds: config.hiddenIds, disabledCats: config.disabledCats);
       _inMemoryFeed = feed;
+
+      debugPrint('=== COMPAIR: homeFeed READY (cache path) in ${feedSw.elapsedMilliseconds}ms ===');
 
       // If stale, trigger background refresh (fire-and-forget)
       if (staleResult.isStale && !_isRefreshingFeed) {
         _isRefreshingFeed = true;
         _backgroundRefreshFeed(ref, repo, cache, country, user, cacheKey,
-            pinnedIds, hiddenIds, disabledCats).whenComplete(() {
+            config.pinnedIds, config.hiddenIds, config.disabledCats).whenComplete(() {
           _isRefreshingFeed = false;
         });
       }
@@ -2865,9 +2858,37 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // 2. No cache at all — fetch from network (first-time load)
-  return _fetchFeedFromNetwork(ref, repo, cache, country, user, cacheKey,
-      pinnedIds, hiddenIds, disabledCats);
+  final config = await configFuture;
+  final feed = await _fetchFeedFromNetwork(ref, repo, cache, country, user, cacheKey,
+      config.pinnedIds, config.hiddenIds, config.disabledCats);
+  debugPrint('=== COMPAIR: homeFeed READY (network path) in ${feedSw.elapsedMilliseconds}ms ===');
+  return feed;
 });
+
+/// Admin feed config (fetched concurrently with product loading)
+class _FeedConfig {
+  final List<String> pinnedIds;
+  final List<String> hiddenIds;
+  final List<String> disabledCats;
+  const _FeedConfig({this.pinnedIds = const [], this.hiddenIds = const [], this.disabledCats = const []});
+}
+
+Future<_FeedConfig> _fetchAdminConfig() async {
+  try {
+    final configDoc = await FirebaseFirestore.instance
+        .collection('app_config').doc('algorithm').get()
+        .timeout(const Duration(seconds: 5));
+    if (configDoc.exists) {
+      final data = configDoc.data() ?? {};
+      return _FeedConfig(
+        pinnedIds: List<String>.from(data['pinnedProducts'] ?? []),
+        hiddenIds: List<String>.from(data['hiddenProducts'] ?? []),
+        disabledCats: List<String>.from(data['disabledCategories'] ?? []),
+      );
+    }
+  } catch (_) {}
+  return const _FeedConfig();
+}
 
 /// Background refresh: fetch fresh data and update cache silently
 Future<void> _backgroundRefreshFeed(
@@ -2946,13 +2967,12 @@ Future<List<ProductEntity>> _fetchAllProducts(
   final sw = Stopwatch()..start();
 
   // ── PHASE 1: Single bulk query (works even on Firestore cold start) ─────
-  // This is the key: ONE query instead of 40+ category queries.
+  // Reduced to 1000 for faster transfer & parsing (still covers all categories).
   // Firestore cold start takes 27-37s but that's one roundtrip only.
-  // NO external timeout — the internal datasource has 90s for bulk queries.
-  debugPrint('=== COMPAIR: BULK fetch — single query for all products ===');
+  debugPrint('=== COMPAIR: BULK fetch — single query for top 1000 products ===');
   try {
     final bulkResult = await repo.getProducts(
-      limit: 2000, orderBy: 'techScore', descending: true,
+      limit: 1000, orderBy: 'techScore', descending: true,
     );
     bulkResult.when(
       success: (products) {
