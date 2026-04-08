@@ -5843,6 +5843,10 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
     _barAnimController = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 1500));
     _barAnim = CurvedAnimation(parent: _barAnimController, curve: Curves.easeOutCubic);
+    // Auto-trigger benchmark fetch
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchAiBenchmarks();
+    });
   }
 
   @override
@@ -5864,6 +5868,37 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
     ref.read(benchmarkCacheProvider(widget.product.id).notifier).reset();
     setState(() { _userTriggered = true; });
     _fetchAiBenchmarks();
+  }
+
+  Widget _buildShimmerRow(_BenchmarkInfo info) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Icon(info.icon, size: 14, color: info.color.withValues(alpha: 0.4)),
+          const SizedBox(width: 6),
+          Text(info.name, style: GoogleFonts.plusJakartaSans(
+            fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary)),
+          const Spacer(),
+          Container(
+            width: 40, height: 12,
+            decoration: BoxDecoration(
+              color: context.dividerColor,
+              borderRadius: BorderRadius.circular(4)),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: null,
+            minHeight: 7,
+            backgroundColor: context.dividerColor,
+            color: info.color.withValues(alpha: 0.3),
+          ),
+        ),
+      ],
+    );
   }
 
   /// Minimal tech score bar shown before AI fetch (uses product's stored techScore 0-100).
@@ -5947,18 +5982,21 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
                 strokeWidth: 2, 
                 color: AppTheme.premiumPurple.withValues(alpha: 0.6)))
           else if (failed)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.warning_amber_rounded, size: 11, color: Colors.orange),
-                const SizedBox(width: 4),
-                Text(context.l10n?.retryAvailable ?? 'Retry available', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10, fontWeight: FontWeight.w600,
-                  color: Colors.orange)),
-              ]),
+            GestureDetector(
+              onTap: _retryFetch,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.refresh_rounded, size: 11, color: Colors.orange),
+                  const SizedBox(width: 4),
+                  Text(context.l10n?.retryAvailable ?? 'Retry', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, fontWeight: FontWeight.w600,
+                    color: Colors.orange)),
+                ]),
+              ),
             )
           else if (researched && _parsedScores.isNotEmpty)
             Container(
@@ -5977,53 +6015,12 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
         ]),
         const SizedBox(height: 12),
 
-          // ── Idle / not-yet-fetched state ──
-          if (!_userTriggered && !isLoading) ...[
-            if (widget.product.techScore > 0) ...[
-              _buildTechScoreBar(widget.product.techScore.round()),
-              const SizedBox(height: 16),
-            ],
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppTheme.premiumPurple.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.premiumPurple.withValues(alpha: 0.15)),
-              ),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.premiumPurple.withValues(alpha: 0.8)),
-                const SizedBox(width: 10),
-                Expanded(child: Text(
-                  context.l10n?.benchmarkAiInfo ??
-                    'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, color: context.textSecondary, height: 1.5),
-                )),
-              ]),
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                setState(() { _userTriggered = true; });
-                _fetchAiBenchmarks();
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.premiumPurple, AppTheme.neonPurple]),
-                  borderRadius: BorderRadius.circular(13)),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.psychology_rounded, size: 17, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(context.l10n?.loadAiBenchmarks ?? 'Load AI Benchmark Scores',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-                ]),
-              ),
-            ),
+          // ── Loading shimmer ──
+          if (isLoading && _parsedScores.isEmpty) ...[
+            ...benchmarks.map((b) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _buildShimmerRow(b),
+            )),
           ] else ...[
             // ── Scores loaded (or loading) ──
             AnimatedBuilder(
@@ -6055,27 +6052,6 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
                       fontSize: 12, color: context.textSecondary, height: 1.5),
                   )),
                 ]),
-              ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: _retryFetch,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.refresh_rounded, size: 14, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    Text(context.l10n?.retryBenchmark ?? 'Tekrar Dene',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, fontWeight: FontWeight.w600,
-                        color: Colors.orange)),
-                  ]),
-                ),
               ),
             ],
 
