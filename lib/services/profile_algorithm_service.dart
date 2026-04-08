@@ -425,35 +425,35 @@ class ProfileAlgorithmService {
     final pricePerf = pricePerformanceScore ??
         _calculatePricePerformanceScore(user, product);
 
-    // Weighted total (weights: 0.40 + 0.25 + 0.20 + 0.15 = 1.0)
-    double total = (personalFit * 0.40) +
-        (expert * 0.25) +
-        (community * 0.20) +
+    // Weighted total (weights: 0.50 + 0.20 + 0.15 + 0.15 = 1.0)
+    // Personal fit dominates to make scores user-specific
+    double total = (personalFit * 0.50) +
+        (expert * 0.20) +
+        (community * 0.15) +
         (pricePerf * 0.15);
 
-    // Recency bonus/penalty: prefer 2024+ products strongly
-    // Users want new tech — year-old products penalized, future/current boosted
+    // Recency bonus/penalty: moderate impact to avoid score clustering
     final releaseYear = _getReleaseYear(product);
     if (releaseYear != null) {
       final currentYear = DateTime.now().year;
       final yearDiff = currentYear - releaseYear;
-      if (yearDiff <= 0) total += 18;       // This year / upcoming → +18
-      else if (yearDiff == 1) total += 12;  // Last year → +12
-      else if (yearDiff == 2) total += 5;   // 2 years ago → +5
+      if (yearDiff <= 0) total += 8;        // This year / upcoming → +8
+      else if (yearDiff == 1) total += 4;   // Last year → +4
+      else if (yearDiff == 2) total += 0;   // 2 years ago → neutral
       else if (yearDiff == 3) total -= 5;   // 3 years ago → -5
       else if (yearDiff == 4) total -= 12;  // 4 years ago → -12
       else total -= 18;                     // 5+ years ago → -18
     }
 
-    // Interest category boost: products in user's interest categories get bonus
+    // Interest category boost: smaller to avoid uniform inflation
     if (user.interestCategories.contains(product.category.toLowerCase()) ||
         user.interestCategories.contains(product.category)) {
-      total += 8;
+      total += 4;
     }
     // Primary category gets extra
     if (user.primaryCategory != null &&
         product.category.toLowerCase() == user.primaryCategory!.toLowerCase()) {
-      total += 5;
+      total += 3;
     }
 
     return total.clamp(0, 100);
@@ -691,7 +691,7 @@ class ProfileAlgorithmService {
     // Get price based on user's country
     final price = product.prices[user.country] ?? product.prices['US'] ?? 0.0;
 
-    if (user.budgetRange == 'any') return 1.0;
+    if (user.budgetRange == 'any') return 0.75; // Don't give full score for unset budget
 
     final maxBudget = userBudgetRange['max'] ?? 999999;
     final minBudget = userBudgetRange['min'] ?? 0;
