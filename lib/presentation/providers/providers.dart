@@ -2921,10 +2921,10 @@ Future<List<ProductEntity>> _fetchAllProducts(
   // ── PHASE 1: Single bulk query (client-side techScore sort) ──────────────
   // Uses client-side sort to avoid expensive server-side scan of 85k docs.
   // Firestore cold start takes 27-37s but that's one roundtrip only.
-  debugPrint('=== COMPAIR: BULK fetch — single query for top 1500 products ===');
+  debugPrint('=== COMPAIR: BULK fetch — single query for top 1000 products ===');
   try {
     final bulkResult = await repo.getProducts(
-      limit: 1500, orderBy: 'techScore', descending: true,
+      limit: 1000, orderBy: 'techScore', descending: true,
     );
     bulkResult.when(
       success: (products) {
