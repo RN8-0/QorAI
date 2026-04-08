@@ -222,6 +222,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         scores: state.scores,
                         subscriptionNames: state.subscriptionNames,
                         structured: state.structured,
+                        countryCode: ref.read(selectedCountryProvider),
                       ),
 
                     SizedBox(
@@ -1431,12 +1432,14 @@ class _SubResultView extends StatelessWidget {
   final Map<String, double> scores;
   final List<String> subscriptionNames;
   final Map<String, dynamic>? structured;
+  final String countryCode;
 
   const _SubResultView({
     required this.analysisText,
     required this.scores,
     required this.subscriptionNames,
     this.structured,
+    this.countryCode = 'US',
   });
 
   Color _scoreColor(double score) {
@@ -1444,6 +1447,24 @@ class _SubResultView extends StatelessWidget {
     if (score >= 60) return const Color(0xFFF59E0B);
     if (score >= 40) return const Color(0xFFF97316);
     return AppTheme.error;
+  }
+
+  /// Format price with TL equivalent for Turkish users
+  String _formatPrice(String rawPrice) {
+    if (rawPrice.isEmpty) return rawPrice;
+    if (countryCode.toUpperCase() != 'TR') return rawPrice;
+
+    // Try to extract USD amount and convert
+    final usdMatch = RegExp(r'(\d+[.,]?\d*)').firstMatch(rawPrice);
+    if (usdMatch != null) {
+      final usdAmount = double.tryParse(usdMatch.group(1)!.replaceAll(',', '.'));
+      if (usdAmount != null) {
+        const exchangeRate = 38.5; // Approximate USD→TRY rate
+        final tryAmount = (usdAmount * exchangeRate).toStringAsFixed(2);
+        return '₺$tryAmount/ay (~$rawPrice)';
+      }
+    }
+    return rawPrice;
   }
 
   /// Build readable text from structured data when analysisText is raw JSON.
@@ -1720,7 +1741,7 @@ class _SubResultView extends StatelessWidget {
   Widget _buildServiceCard(BuildContext context, String name, Map<String, dynamic> data) {
     final score = (data['compatibility_score'] as num?)?.toDouble() ?? 0;
     final explanation = data['compatibility_explanation'] as String? ?? '';
-    final price = data['price'] as String? ?? '';
+    final price = _formatPrice(data['price'] as String? ?? '');
     final pros = List<String>.from(data['pros'] ?? []);
     final cons = List<String>.from(data['cons'] ?? []);
     final sentiment = data['community_sentiment'] as String? ?? '';
