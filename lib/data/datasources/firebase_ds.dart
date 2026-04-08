@@ -178,11 +178,13 @@ class FirebaseDataSource {
       }
 
       // Sorting strategy:
-      // - trendScore: always client-sort (docs without field are excluded by Firestore)
-      // - techScore: server-side sort (auto single-field index; null docs excluded is OK)
-      // - name with category filter: client-sort to avoid needing compound index
+      // - trendScore: always client-sort (sparse field → server sort excludes docs)
+      // - techScore WITHOUT where: client-sort (server sort on 85k docs = 70s timeout)
+      // - techScore WITH where (category): server-sort (composite index exists)
+      // - name with where: client-sort to avoid needing compound index
       final hasWhereClause = category != null || subcategory != null;
       final useClientSort = orderBy == 'trendScore'
+          || (orderBy == 'techScore' && !hasWhereClause)
           || (hasWhereClause && orderBy == 'name');
 
       if (!useClientSort) {
@@ -195,25 +197,20 @@ class FirebaseDataSource {
 
       query = query.limit(limit);
 
-      // Try Firestore local cache first for faster response, fallback to server
-      // Skip cache for large queries (cold start → cache always empty → wastes 3s)
       debugPrint('=== COMPAIR: getProducts EXECUTING query (limit=$limit, orderBy=$orderBy, cat=$category, active=$activeOnly, clientSort=$useClientSort) ===');
       final sw = Stopwatch()..start();
       QuerySnapshot snapshot;
-      if (limit <= 100) {
-        try {
-          snapshot = await query.get(const GetOptions(source: Source.cache))
-              .timeout(const Duration(seconds: 3));
-          if (snapshot.docs.isEmpty) throw Exception('cache empty');
-          debugPrint('=== COMPAIR: getProducts from CACHE: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
-        } catch (_) {
-          snapshot = await query.get().timeout(const Duration(seconds: 60));
-          debugPrint('=== COMPAIR: getProducts from SERVER: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
-        }
-      } else {
-        // Large queries: go directly to server (cache is useless for bulk fetches)
-        snapshot = await query.get().timeout(const Duration(seconds: 90));
-        debugPrint('=== COMPAIR: getProducts BULK from SERVER: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
+      // Try Firestore local cache first for ALL queries (even bulk).
+      // On subsequent opens, Firestore persistence serves data instantly.
+      try {
+        snapshot = await query.get(const GetOptions(source: Source.cache))
+            .timeout(const Duration(seconds: 3));
+        if (snapshot.docs.isEmpty) throw Exception('cache empty');
+        debugPrint('=== COMPAIR: getProducts from CACHE: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
+      } catch (_) {
+        final timeout = limit > 100 ? 90 : 60;
+        snapshot = await query.get().timeout(Duration(seconds: timeout));
+        debugPrint('=== COMPAIR: getProducts from SERVER: ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
       }
       sw.stop();
       final products = <ProductModel>[];

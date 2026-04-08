@@ -2758,11 +2758,11 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v24_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v25_${user?.uid ?? "anon"}';
 
   // Clear ALL old cache versions
   try {
-    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23']) {
+    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24']) {
       final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
       cache.delete(key);
     }
@@ -2918,13 +2918,13 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   final sw = Stopwatch()..start();
 
-  // ── PHASE 1: Single bulk query (works even on Firestore cold start) ─────
-  // Increased to 2000 for better category coverage (server-side techScore DESC).
+  // ── PHASE 1: Single bulk query (client-side techScore sort) ──────────────
+  // Uses client-side sort to avoid expensive server-side scan of 85k docs.
   // Firestore cold start takes 27-37s but that's one roundtrip only.
-  debugPrint('=== COMPAIR: BULK fetch — single query for top 2000 products ===');
+  debugPrint('=== COMPAIR: BULK fetch — single query for top 1500 products ===');
   try {
     final bulkResult = await repo.getProducts(
-      limit: 2000, orderBy: 'techScore', descending: true,
+      limit: 1500, orderBy: 'techScore', descending: true,
     );
     bulkResult.when(
       success: (products) {
@@ -2937,44 +2937,10 @@ Future<List<ProductEntity>> _fetchAllProducts(
     debugPrint('=== COMPAIR: BULK query exception: $e ===');
   }
 
-  // ── PHASE 2: Gap-fill categories with < 10 products ─────────────────────
-  if (allProducts.isNotEmpty) {
-    final catCounts = <String, int>{};
-    for (final p in allProducts) {
-      final cat = p.category.toLowerCase().trim();
-      catCounts[cat] = (catCounts[cat] ?? 0) + 1;
-    }
-
-    final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
-    final thinCats = _feedCategories
-        .where((c) => !disabledSet.contains(c) && (catCounts[c] ?? 0) < 10)
-        .toList();
-
-    if (thinCats.isNotEmpty) {
-      debugPrint('=== COMPAIR: Gap-filling ${thinCats.length} thin categories (< 10 products each) ===');
-      for (var i = 0; i < thinCats.length; i += 4) {
-        final batch = thinCats.skip(i).take(4);
-        try {
-          final futures = batch.map((cat) => repo.getProducts(
-            category: cat, limit: 50, orderBy: 'techScore', descending: true,
-          ).catchError((_) =>
-            const Success<List<ProductEntity>>([])));
-          final results = await Future.wait(futures.toList());
-          for (final result in results) {
-            result.when(
-              success: (products) => addProducts(products),
-              failure: (_) {},
-            );
-          }
-        } catch (_) {}
-      }
-      debugPrint('=== COMPAIR: After gap-fill: ${allProducts.length} products ===');
-    }
-  } else {
-    // Bulk failed completely — try individual priority categories
-    debugPrint('=== COMPAIR: BULK failed, trying individual categories ===');
-    final priorityCats = ['smartphones', 'laptops', 'tablets', 'headphones'];
-    for (final cat in priorityCats) {
+  // If bulk returned nothing (network error), try 4 priority categories
+  if (allProducts.isEmpty) {
+    debugPrint('=== COMPAIR: BULK empty, trying priority categories ===');
+    for (final cat in const ['smartphones', 'laptops', 'tablets', 'headphones']) {
       try {
         final result = await repo.getProducts(
           category: cat, limit: 50, orderBy: 'techScore', descending: true,
@@ -2984,9 +2950,12 @@ Future<List<ProductEntity>> _fetchAllProducts(
           failure: (_) {},
         );
       } catch (_) {}
-      if (allProducts.length >= 20) break;
+      if (allProducts.length >= 50) break;
     }
   }
+
+  // ── (Gap-fill removed: bulk query + relaxed filters provide sufficient
+  //     category coverage. Gap-fill caused 7+ min timeout cascade on cold start.) ──
 
   sw.stop();
   debugPrint('=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
