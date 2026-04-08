@@ -16,6 +16,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/product_filter.dart';
 import 'package:compair/config/filter_config.dart';
 import 'package:compair/presentation/models/filter_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -274,7 +275,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   List<ProductEntity> get _filteredProducts {
     if (_allProducts == null) return [];
-    var list = _allProducts!;
+    // Apply year/brand filter first
+    var list = ProductFilter.filter(_allProducts!);
 
     // Search query filter
     if (_searchQuery.isNotEmpty) {

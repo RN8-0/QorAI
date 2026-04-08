@@ -46,6 +46,7 @@ import 'package:compair/services/ip_location_service.dart';
 import 'package:compair/services/analytics_service.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/product_filter.dart';
 
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/data/models/product_model.dart';
@@ -2279,47 +2280,19 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   final deduped = deduplicateVariants(products);
   final currentYear = DateTime.now().year;
 
-  // ── Helper: extract release year from specs (STRICT) ───────────────────
-  int? getExactReleaseYear(ProductEntity p) {
-    for (final key in ['release year', 'Release Year', 'release_year',
-                       'Release Date', 'Piyasaya Çıkış Tarihi', 'Yıl', 'yıl', 'year',
-                       'Çıkış Tarihi', 'Piyasaya Sürülme', 'release date']) {
-      final val = p.specs[key];
-      if (val != null) {
-        final digits = val.toString().replaceAll(RegExp(r'[^0-9]'), '');
-        if (digits.length >= 4) {
-          final year = int.tryParse(digits.substring(0, 4));
-          if (year != null && year > 2000 && year <= currentYear + 1) return year;
-        }
-      }
-    }
-    // Also try keySpecs
-    for (final key in ['Çıkış Tarihi', 'Release Date', 'Yıl', 'year']) {
-      final val = p.keySpecs[key];
-      if (val != null) {
-        final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
-        if (digits.length >= 4) {
-          final year = int.tryParse(digits.substring(0, 4));
-          if (year != null && year > 2000 && year <= currentYear + 1) return year;
-        }
-      }
-    }
-    return null; // No reliable year found
-  }
+  // ── Helper: extract release year (delegates to ProductFilter) ────────────
+  int? getExactReleaseYear(ProductEntity p) => ProductFilter.getExactReleaseYear(p);
 
   // Relaxed year: either exact or estimated (for scoring only, NOT filtering)
   int estimateYear(ProductEntity p) {
     final exact = getExactReleaseYear(p);
     if (exact != null) return exact;
-    // For products WITHOUT a known release year, use name/model heuristics
     final name = p.name.toLowerCase();
-    // Try to extract 4-digit year from product name
     final nameYearMatch = RegExp(r'20(1[5-9]|2[0-9])').firstMatch(name);
     if (nameYearMatch != null) {
       final y = int.tryParse(nameYearMatch.group(0)!);
       if (y != null && y > 2000 && y <= currentYear + 1) return y;
     }
-    // Conservative estimate for unknowns
     final ts = p.techScore;
     if (ts >= 60) return currentYear - 1;
     if (ts >= 40) return currentYear - 3;
@@ -2327,58 +2300,25 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     return currentYear - 8;
   }
 
-  // ── Defunct brands ─────────────────────────────────────────────────────────
-  const defunctBrands = {
-    'alcatel', 'micromax', 'karbonn', 'lava', 'intex', 'xolo',
-    'coolpad', 'leeco', 'le eco', 'gionee', 'panasonic mobile',
-    'blackberry', 'htc', 'zte', 'wiko', 'meizu', 'sharp mobile',
-    'vernee', 'doogee', 'oukitel', 'umidigi', 'ulefone', 'cubot',
-    'homtom', 'bluboo', 'elephone', 'leagoo', 'maze', 'nomu',
-    'altus', 'vestel', 'casper', 'reeder', 'general mobile', 'turkcell',
-    'grundig', 'beko', 'arçelik', 'hometech', 'vorcom', 'tcl mobile',
-    'a4tech', '3plus', 'a4 tech', 'genius', 'trust', 'canyon',
-    'defender', 'sven', 'oklick', 'qumo', 'dexp', 'digma',
-    'prestigio', 'texet', 'explay', 'fly', 'irbis', 'ark',
-    '360fly', 'jawbone', 'pebble', 'nexus', 'essential',
-  };
-
   // ── Known old product name patterns ────────────────────────────────────────
   bool isKnownOldProduct(ProductEntity p) {
     final name = p.name.toLowerCase();
-    // Products with very old model numbers or known discontinued products
     if (name.contains('360fly')) return true;
     if (name.contains('3plus') || name.contains('3 plus')) return true;
-    if (RegExp(r'aspire\s*3\s*a315').hasMatch(name)) return true; // Old Acer Aspire 3
-    if (name.contains('1more s1001')) return true; // Old 1MORE speaker
+    if (RegExp(r'aspire\s*3\s*a315').hasMatch(name)) return true;
+    if (name.contains('1more s1001')) return true;
     return false;
   }
 
-  // ── HARD FILTER: no defunct brands, no known old products, prefer modern ────
-  final cutoffDate = DateTime(2018, 1, 1);
+  // ── HARD FILTER: year >= 2022, known brands, no old products ──────────────
   final hiddenSet = hiddenIds.toSet();
   var pool = deduped.where((p) {
     if (hiddenSet.contains(p.id)) return false;
-    final brand = (p.brand ?? '').toLowerCase().trim();
-    if (defunctBrands.contains(brand)) return false;
     if (isKnownOldProduct(p)) return false;
-
-    // Use createdAt if available
-    if (p.createdAt != null && p.createdAt!.isBefore(cutoffDate)) {
-      final exactYear = getExactReleaseYear(p);
-      if (exactYear == null || exactYear < 2018) return false;
-    }
-
-    // If exact year is known, filter pre-2018
-    final exactYear = getExactReleaseYear(p);
-    if (exactYear != null) return exactYear >= 2018;
-
-    // If no exact year and no createdAt, include if techScore is decent
-    final ts = p.techScore;
-    if (ts < 10) return false;
-    return true;
+    return ProductFilter.isAllowed(p);
   }).toList();
 
-  debugPrint('=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===');
+  debugPrint('=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw, filtered ${deduped.length - pool.length}) ===');
 
   // ── Brand tier boost multiplier ────────────────────────────────────────────
   const tier1Brands = {

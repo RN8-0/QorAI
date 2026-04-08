@@ -7,6 +7,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/product_filter.dart';
 import 'package:compair/data/models/user_model.dart';
 import 'package:compair/data/models/product_model.dart';
 import 'package:compair/data/models/comparison_model.dart';
@@ -565,10 +566,14 @@ class FirebaseDataSource {
         return ProductModel.fromMap(map);
       }).toList();
 
+      // Apply year/brand filter to search results
+      final filtered = ProductFilter.filter(cfResults);
+      debugPrint('SEARCH: filtered ${cfResults.length} → ${filtered.length} (year/brand)');
+
       // Cache results locally for quick re-search
       _evictSearchResultCache();
-      _searchResultCache[cacheKey] = (results: cfResults, time: DateTime.now());
-      return cfResults;
+      _searchResultCache[cacheKey] = (results: filtered, time: DateTime.now());
+      return filtered;
     } catch (e) {
       debugPrint('SEARCH: Cloud Function failed: $e');
     }
@@ -615,12 +620,14 @@ class FirebaseDataSource {
   /// Score and rank products by relevance to query
   List<ProductModel> _scoreAndRankProducts(
       List<ProductModel> products, String query, int limit) {
+    // Apply year/brand filter before scoring
+    final filtered = ProductFilter.filter(products);
     final q = query.trim().toLowerCase();
     final words = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
 
     // Score each product for relevance
     final scored = <({ProductModel product, int score})>[];
-    for (final p in products) {
+    for (final p in filtered) {
       final name = p.name.toLowerCase();
       final brand = (p.brand ?? '').toLowerCase();
       final category = p.category.toLowerCase();
