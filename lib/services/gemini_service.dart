@@ -887,6 +887,14 @@ $jsonSchema
   /// Low-level POST against the Gemini REST API with retry.
   Future<String> _rawRequest(Map<String, dynamic> body,
       {Duration receiveTimeout = const Duration(seconds: 60)}) async {
+    if (_apiKey.isEmpty) {
+      debugPrint('[Gemini] ERROR: API key is empty! '
+          'Run with --dart-define-from-file=.env or set gemini_api_key in Firebase Remote Config.');
+      throw const AIServiceException(
+        message: 'Gemini API key is not configured. Please check your .env file.',
+      );
+    }
+
     int retryCount = 0;
 
     while (retryCount < AppConstants.deepSeekMaxRetries) {

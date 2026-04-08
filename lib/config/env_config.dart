@@ -19,22 +19,19 @@ class EnvConfig {
   }
 
   /// Gemini API Key (for AI chatbot + subscription scraper)
-  /// Priority: 1) Firebase Remote Config  2) compile-time env var  3) dev hardcoded
+  /// Priority: 1) Firebase Remote Config  2) compile-time env var (--dart-define)
+  /// NEVER hardcode keys — use: flutter run --dart-define-from-file=.env
   static String get geminiApiKey {
     try {
       final rcKey = FirebaseRemoteConfig.instance.getString('gemini_api_key');
       if (rcKey.isNotEmpty) return rcKey;
     } catch (_) {}
     const envKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
-    if (envKey.isNotEmpty) return envKey;
-    if (_environment == Environment.development) {
-      return 'REMOVED_LEAKED_KEY';
-    }
-    return '';
+    return envKey;
   }
 
   /// DeepSeek API Key
-  /// Priority: 1) Firebase Remote Config  2) compile-time env var  3) dev hardcoded
+  /// Priority: 1) Firebase Remote Config  2) compile-time env var (--dart-define)
   static String get deepSeekApiKey {
     // 1. Firebase Remote Config (set in Firebase Console for production)
     try {
@@ -42,15 +39,9 @@ class EnvConfig {
       if (rcKey.isNotEmpty) return rcKey;
     } catch (_) {}
 
-    // 2. Compile-time env var (CI/CD build flag)
+    // 2. Compile-time env var (CI/CD build flag or --dart-define-from-file)
     const envKey = String.fromEnvironment('DEEPSEEK_API_KEY', defaultValue: '');
-    if (envKey.isNotEmpty) return envKey;
-
-    // 3. Development fallback
-    if (_environment == Environment.development) {
-      return 'REMOVED_LEAKED_KEY';
-    }
-    return '';
+    return envKey;
   }
 
   /// Firebase Project bilgileri

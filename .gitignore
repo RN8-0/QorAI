@@ -64,5 +64,9 @@ ui-debug.log
 service-account.json
 .env
 .env.*
+!.env.example
 *.key
 *.pem
+**/api_keys.dart
+local.properties
+secrets.properties
