@@ -281,7 +281,7 @@ final userProfileStreamProvider = StreamProvider<UserEntity?>((ref) {
   );
 });
 
-/// Updates user profile country + currency in Firestore from IP detection
+/// Updates user profile country + currency + language in Firestore from auto-detection
 final countryInitProvider = FutureProvider<void>((ref) async {
   final authState = await ref.watch(authStateProvider.future);
   if (authState == null) return;
@@ -291,10 +291,16 @@ final countryInitProvider = FutureProvider<void>((ref) async {
   try {
     final user = await ref.read(userProfileProvider.future);
     if (user != null && (user.country == 'US' || user.country.isEmpty)) {
-      await ref.read(firebaseDataSourceProvider).updateUser(authState.uid, {
+      final locale = ref.read(localeProvider);
+      final updates = <String, dynamic>{
         'country': location.countryCode,
         'currency': location.currency,
-      });
+      };
+      // Also save auto-detected language if user hasn't set one
+      if (user.language == 'en' && locale != null && locale.languageCode != 'en') {
+        updates['language'] = locale.languageCode;
+      }
+      await ref.read(firebaseDataSourceProvider).updateUser(authState.uid, updates);
     }
   } catch (_) {}
 });
@@ -377,20 +383,28 @@ class LocaleNotifier extends StateNotifier<Locale?> {
   }
 
   void _load() {
+    // 1. Check if user previously saved a language preference
     final saved = _cacheService.getLanguage();
     if (saved.isNotEmpty) {
       state = Locale(saved);
       return;
     }
-    // First install: auto-detect from device locale
+    // 2. First install: auto-detect from device locale
     try {
       final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
       final langCode = deviceLocale.languageCode;
       if (_supported.contains(langCode)) {
         state = Locale(langCode);
         _cacheService.saveLanguage(langCode);
+      } else {
+        // Device language not supported → default to English
+        state = const Locale('en');
+        _cacheService.saveLanguage('en');
       }
-    } catch (_) {}
+    } catch (_) {
+      state = const Locale('en');
+      _cacheService.saveLanguage('en');
+    }
   }
 
   void setLocale(String languageCode) {
