@@ -179,12 +179,10 @@ class FirebaseDataSource {
 
       // Sorting strategy:
       // - trendScore: always client-sort (docs without field are excluded by Firestore)
-      // - techScore with category filter: use composite index (category+techScore DESC)
-      // - techScore without filter: client-sort (single-field orderBy excludes null docs)
-      // - name/createdAt with category filter: use compound index (category+field)
+      // - techScore: server-side sort (auto single-field index; null docs excluded is OK)
+      // - name with category filter: client-sort to avoid needing compound index
       final hasWhereClause = category != null || subcategory != null;
       final useClientSort = orderBy == 'trendScore'
-          || (orderBy == 'techScore' && !hasWhereClause)
           || (hasWhereClause && orderBy == 'name');
 
       if (!useClientSort) {
@@ -254,6 +252,21 @@ class FirebaseDataSource {
       case 'brand': return p.brand?.toLowerCase() ?? '';
       case 'category': return p.category.toLowerCase();
       default: return p.name.toLowerCase();
+    }
+  }
+
+  /// Increment viewCount on a product document (fire-and-forget)
+  Future<void> incrementProductViewCount(String productId) async {
+    try {
+      await _firestore
+          .collection(AppConstants.productsCollection)
+          .doc(productId)
+          .update({
+        'viewCount': FieldValue.increment(1),
+        'lastViewedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('=== COMPAIR: incrementViewCount failed for $productId: $e ===');
     }
   }
 

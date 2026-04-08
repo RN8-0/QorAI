@@ -2318,8 +2318,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     if (isKnownOldProduct(p)) { filteredByOldProduct++; return false; }
     if (!ProductFilter.isAllowed(p)) {
       final brand = (p.brand ?? '').toLowerCase().trim();
-      if (ProductFilter.defunctBrands.contains(brand) ||
-          brand.isEmpty || !ProductFilter.allowedBrands.contains(brand)) {
+      if (ProductFilter.defunctBrands.contains(brand)) {
         filteredByBrand++;
       } else {
         filteredByYear++;
@@ -2759,11 +2758,11 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v23_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v24_${user?.uid ?? "anon"}';
 
   // Clear ALL old cache versions
   try {
-    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22']) {
+    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23']) {
       final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
       cache.delete(key);
     }
@@ -2920,12 +2919,12 @@ Future<List<ProductEntity>> _fetchAllProducts(
   final sw = Stopwatch()..start();
 
   // ── PHASE 1: Single bulk query (works even on Firestore cold start) ─────
-  // Reduced to 1000 for faster transfer & parsing (still covers all categories).
+  // Increased to 2000 for better category coverage (server-side techScore DESC).
   // Firestore cold start takes 27-37s but that's one roundtrip only.
-  debugPrint('=== COMPAIR: BULK fetch — single query for top 1000 products ===');
+  debugPrint('=== COMPAIR: BULK fetch — single query for top 2000 products ===');
   try {
     final bulkResult = await repo.getProducts(
-      limit: 1000, orderBy: 'techScore', descending: true,
+      limit: 2000, orderBy: 'techScore', descending: true,
     );
     bulkResult.when(
       success: (products) {
@@ -2938,26 +2937,26 @@ Future<List<ProductEntity>> _fetchAllProducts(
     debugPrint('=== COMPAIR: BULK query exception: $e ===');
   }
 
-  // ── PHASE 2: Gap-fill missing categories (only if bulk didn't cover them) ─
+  // ── PHASE 2: Gap-fill categories with < 10 products ─────────────────────
   if (allProducts.isNotEmpty) {
-    final gotCats = <String>{};
+    final catCounts = <String, int>{};
     for (final p in allProducts) {
-      gotCats.add(p.category.toLowerCase().trim());
+      final cat = p.category.toLowerCase().trim();
+      catCounts[cat] = (catCounts[cat] ?? 0) + 1;
     }
 
     final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
-    final missingCats = _feedCategories
-        .where((c) => !gotCats.contains(c) && !disabledSet.contains(c))
+    final thinCats = _feedCategories
+        .where((c) => !disabledSet.contains(c) && (catCounts[c] ?? 0) < 10)
         .toList();
 
-    if (missingCats.isNotEmpty) {
-      debugPrint('=== COMPAIR: Gap-filling ${missingCats.length} missing categories ===');
-      // Batch 4 at a time to avoid overwhelming Firestore
-      for (var i = 0; i < missingCats.length; i += 4) {
-        final batch = missingCats.skip(i).take(4);
+    if (thinCats.isNotEmpty) {
+      debugPrint('=== COMPAIR: Gap-filling ${thinCats.length} thin categories (< 10 products each) ===');
+      for (var i = 0; i < thinCats.length; i += 4) {
+        final batch = thinCats.skip(i).take(4);
         try {
           final futures = batch.map((cat) => repo.getProducts(
-            category: cat, limit: 30, orderBy: 'techScore', descending: true,
+            category: cat, limit: 50, orderBy: 'techScore', descending: true,
           ).catchError((_) =>
             const Success<List<ProductEntity>>([])));
           final results = await Future.wait(futures.toList());
@@ -2969,6 +2968,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
           }
         } catch (_) {}
       }
+      debugPrint('=== COMPAIR: After gap-fill: ${allProducts.length} products ===');
     }
   } else {
     // Bulk failed completely — try individual priority categories
@@ -3555,18 +3555,21 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
   try {
     await ref.read(hiveDataSourceProvider).addViewedProduct(productId);
     ref.invalidate(viewedProductsProvider);
-    // Get category from cache (no network call)
+    // Get product info from cache (no network call)
     String category = '';
+    String? brand;
     final feedAsync = ref.read(homeFeedProvider);
     final cached = feedAsync.valueOrNull;
     if (cached != null) {
-      final match = cached.trending.where((p) => p.id == productId).firstOrNull;
+      final match = cached.all.where((p) => p.id == productId).firstOrNull;
       category = match?.category ?? '';
+      brand = match?.brand;
     }
     ref.read(behaviorTrackingProvider).trackProductView(productId, category);
     ref.read(behaviorTrackingProvider).trackActiveHour();
+    // Increment Firestore viewCount (fire-and-forget, non-blocking)
+    ref.read(firebaseDataSourceProvider).incrementProductViewCount(productId);
     // Firebase Analytics
-    final brand = cached?.trending.where((p) => p.id == productId).firstOrNull?.brand;
     AnalyticsService.instance.logProductView(productId, category, brand);
   } catch (_) {}
 }

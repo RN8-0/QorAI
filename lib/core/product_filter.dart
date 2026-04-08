@@ -89,11 +89,8 @@ class ProductFilter {
   static bool isAllowed(ProductEntity p) {
     final brand = (p.brand ?? '').toLowerCase().trim();
 
-    // Defunct brand
+    // Defunct brand — always reject
     if (defunctBrands.contains(brand)) return false;
-
-    // Unknown / obscure brand
-    if (brand.isEmpty || !allowedBrands.contains(brand)) return false;
 
     // Year check
     final exactYear = getExactReleaseYear(p);
