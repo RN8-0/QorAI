@@ -720,7 +720,7 @@ function openUserDetail(uid){
   const engRate=daysSinceJoin>0?Math.min(100,Math.round(compCount/daysSinceJoin*100)):0;
 
   b.innerHTML=`
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
       <div class="user-avatar" style="width:56px;height:56px;font-size:20px">${u.photoURL?`<img src="${u.photoURL}">`:(u.displayName||'?').charAt(0).toUpperCase()}</div>
       <div style="flex:1">
         <div style="font-size:16px;font-weight:700">${u.displayName||'Anonim'}</div>
@@ -729,30 +729,233 @@ function openUserDetail(uid){
       </div>
       <div>${u.isPremium?'<span class="badge badge-premium" style="font-size:12px;padding:6px 12px">Premium</span>':'<span class="badge badge-ghost" style="font-size:12px;padding:6px 12px">Free</span>'}</div>
     </div>
-    <div class="form-grid" style="margin-bottom:16px">
-      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Kayıt Tarihi</div><div style="font-size:14px;font-weight:700;margin-top:4px">${jStr}</div></div>
-      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Son Aktivite</div><div style="font-size:14px;font-weight:700;margin-top:4px">${laStr}</div></div>
-      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ülke</div><div style="font-size:14px;font-weight:700;margin-top:4px">${u.country||'—'}</div></div>
-      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:14px;font-weight:700;margin-top:4px">${compCount}</div></div>
+    <!-- Tab Navigation -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px">
+      <button class="user-tab active" data-tab="overview" onclick="switchUserTab(this,'${uid}')">📊 Genel</button>
+      <button class="user-tab" data-tab="behavior" onclick="switchUserTab(this,'${uid}')">🎯 Davranış</button>
+      <button class="user-tab" data-tab="quizzes" onclick="switchUserTab(this,'${uid}')">🧠 Quiz</button>
     </div>
-    <div class="card" style="margin:0 0 16px;padding:14px">
-      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Kullanıcı Analizi</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-        <div><span style="color:var(--text2)">Kullanıcı Tipi:</span> <b>${userType}</b></div>
-        <div><span style="color:var(--text2)">Üyelik Süresi:</span> <b>${daysSinceJoin} gün</b></div>
-        <div><span style="color:var(--text2)">Etkileşim Oranı:</span> <b>${engRate}%</b></div>
-        <div><span style="color:var(--text2)">Favoriler:</span> <b>${favCount}</b></div>
-        ${u.deviceInfo?`<div><span style="color:var(--text2)">Cihaz:</span> <b>${u.deviceInfo}</b></div>`:''}
-        ${u.appVersion?`<div><span style="color:var(--text2)">Uygulama:</span> <b>v${u.appVersion}</b></div>`:''}
-        ${u.platform?`<div><span style="color:var(--text2)">Platform:</span> <b>${u.platform}</b></div>`:''}
-        ${u.language?`<div><span style="color:var(--text2)">Dil:</span> <b>${u.language}</b></div>`:''}
+    <!-- Overview Tab -->
+    <div class="user-tab-panel active" data-panel="overview">
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Kayıt Tarihi</div><div style="font-size:14px;font-weight:700;margin-top:4px">${jStr}</div></div>
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Son Aktivite</div><div style="font-size:14px;font-weight:700;margin-top:4px">${laStr}</div></div>
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ülke</div><div style="font-size:14px;font-weight:700;margin-top:4px">${u.country||'—'}</div></div>
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:14px;font-weight:700;margin-top:4px">${compCount}</div></div>
+      </div>
+      <div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Kullanıcı Analizi</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          <div><span style="color:var(--text2)">Kullanıcı Tipi:</span> <b>${userType}</b></div>
+          <div><span style="color:var(--text2)">Üyelik Süresi:</span> <b>${daysSinceJoin} gün</b></div>
+          <div><span style="color:var(--text2)">Etkileşim Oranı:</span> <b>${engRate}%</b></div>
+          <div><span style="color:var(--text2)">Favoriler:</span> <b>${favCount}</b></div>
+          ${u.deviceInfo?`<div><span style="color:var(--text2)">Cihaz:</span> <b>${u.deviceInfo}</b></div>`:''}
+          ${u.appVersion?`<div><span style="color:var(--text2)">Uygulama:</span> <b>v${u.appVersion}</b></div>`:''}
+          ${u.platform?`<div><span style="color:var(--text2)">Platform:</span> <b>${u.platform}</b></div>`:''}
+          ${u.language?`<div><span style="color:var(--text2)">Dil:</span> <b>${u.language}</b></div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn ${u.isPremium?'btn-ghost':'btn-primary'}" onclick="togglePremium('${u.uid}',${!u.isPremium})">${u.isPremium?'Premium Kaldır':'Premium Yap'}</button>
+        <button class="btn btn-danger" onclick="deleteUser('${u.uid}')">Sil</button>
       </div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn ${u.isPremium?'btn-ghost':'btn-primary'}" onclick="togglePremium('${u.uid}',${!u.isPremium})">${u.isPremium?'Premium Kaldır':'Premium Yap'}</button>
-      <button class="btn btn-danger" onclick="deleteUser('${u.uid}')">Sil</button>
+    <!-- Behavior Tab -->
+    <div class="user-tab-panel" data-panel="behavior" style="display:none">
+      <div id="behaviorContent" style="text-align:center;padding:30px;color:var(--text3)">
+        <div class="spinner"></div>
+        <div style="margin-top:8px">Davranış verileri yükleniyor...</div>
+      </div>
+    </div>
+    <!-- Quiz Tab -->
+    <div class="user-tab-panel" data-panel="quizzes" style="display:none">
+      <div id="quizContent" style="text-align:center;padding:30px;color:var(--text3)">
+        <div class="spinner"></div>
+        <div style="margin-top:8px">Quiz verileri yükleniyor...</div>
+      </div>
     </div>`;
   document.getElementById('userModal').style.display='flex';
+}
+
+function switchUserTab(btn, uid){
+  // Deactivate all tabs and panels
+  btn.parentElement.querySelectorAll('.user-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const panel=btn.dataset.tab;
+  const modal=btn.closest('.modal-body')||document.getElementById('userModalBody');
+  modal.querySelectorAll('.user-tab-panel').forEach(p=>{
+    p.style.display=p.dataset.panel===panel?'block':'none';
+    if(p.dataset.panel===panel)p.classList.add('active');else p.classList.remove('active');
+  });
+  // Load data on first click
+  if(panel==='behavior')loadUserBehavior(uid);
+  if(panel==='quizzes')loadUserQuizzes(uid);
+}
+
+async function loadUserBehavior(uid){
+  const el=document.getElementById('behaviorContent');
+  if(el.dataset.loaded)return;
+  try{
+    // Load behavior subcollections in parallel
+    const [prefs, views, searches, linkPastes, favorites]=await Promise.all([
+      db.collection('users').doc(uid).collection('behavior').doc('quiz_preferences').get(),
+      db.collection('users').doc(uid).collection('behavior').doc('product_views').collection('items').orderBy('at','desc').limit(20).get(),
+      db.collection('users').doc(uid).collection('behavior').doc('searches').collection('items').orderBy('at','desc').limit(20).get(),
+      db.collection('users').doc(uid).collection('behavior').doc('link_pastes').collection('items').orderBy('at','desc').limit(20).get(),
+      db.collection('users').doc(uid).collection('behavior').doc('favorites').collection('items').orderBy('at','desc').limit(20).get()
+    ]);
+
+    const prefData=prefs.exists?prefs.data():{};
+    const totalQuizzes=prefData.totalQuizzes||0;
+
+    // Extract category interests
+    const catInterests=Object.entries(prefData).filter(([k])=>k.startsWith('cat_')).map(([k,v])=>({cat:k.replace('cat_',''),count:v})).sort((a,b)=>b.count-a.count);
+
+    // Extract preference weights
+    const prefWeights=Object.entries(prefData).filter(([k])=>k.startsWith('pref_')).map(([k,v])=>({pref:k.replace('pref_','').replace(/_/g,' '),count:v})).sort((a,b)=>b.count-a.count).slice(0,10);
+
+    let html=`
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Quiz Sayısı</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:var(--primary)">${totalQuizzes}</div></div>
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ürün Görüntüleme</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#22c55e">${views.size}</div></div>
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Arama</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f59e0b">${searches.size}</div></div>
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Link Analiz</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#8b5cf6">${linkPastes.size}</div></div>
+      </div>`;
+
+    // Category Interests
+    if(catInterests.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Kategori İlgi Alanları</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      for(const ci of catInterests){
+        html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${ci.cat} (${ci.count})</span>`;
+      }
+      html+=`</div></div>`;
+    }
+
+    // Preference Weights
+    if(prefWeights.length){
+      const maxW=prefWeights[0]?.count||1;
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⚖️ Tercih Ağırlıkları</div>`;
+      for(const pw of prefWeights){
+        const pct=Math.round(pw.count/maxW*100);
+        html+=`<div style="margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${pw.pref}</span><span style="color:var(--text3)">${pw.count}</span></div>
+          <div style="background:var(--bg3);border-radius:4px;height:6px"><div style="background:var(--primary);border-radius:4px;height:6px;width:${pct}%"></div></div>
+        </div>`;
+      }
+      html+=`</div>`;
+    }
+
+    // Recent Product Views
+    if(views.size){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">👁️ Son Görüntülenen Ürünler</div>
+        <div style="max-height:200px;overflow-y:auto">`;
+      views.forEach(doc=>{
+        const d=doc.data();
+        const date=d.at?.toDate?d.at.toDate().toLocaleDateString('tr-TR'):'—';
+        html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.productName||d.productId||'—'}</span>
+          <span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    // Recent Searches
+    if(searches.size){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔍 Son Aramalar</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      searches.forEach(doc=>{
+        const d=doc.data();
+        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${d.query||'—'}</span>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    // Recent Link Pastes
+    if(linkPastes.size){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔗 Son Link Analizleri</div>
+        <div style="max-height:150px;overflow-y:auto">`;
+      linkPastes.forEach(doc=>{
+        const d=doc.data();
+        const date=d.at?.toDate?d.at.toDate().toLocaleDateString('tr-TR'):'—';
+        html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--primary)">${d.url||'—'}</span>
+          <span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    if(!catInterests.length&&!views.size&&!searches.size&&!linkPastes.size){
+      html+=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">📭</div><div>Henüz davranış verisi yok</div></div>`;
+    }
+
+    el.innerHTML=html;
+    el.dataset.loaded='1';
+  }catch(e){
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+  }
+}
+
+async function loadUserQuizzes(uid){
+  const el=document.getElementById('quizContent');
+  if(el.dataset.loaded)return;
+  try{
+    const snap=await db.collection('users').doc(uid).collection('behavior').doc('quiz_answers').collection('sessions').orderBy('at','desc').limit(30).get();
+
+    if(snap.empty){
+      el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🧠</div><div>Henüz quiz çözülmemiş</div></div>`;
+      el.dataset.loaded='1';
+      return;
+    }
+
+    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${snap.size} quiz oturumu bulundu</div>`;
+
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const date=d.at?.toDate?d.at.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      const score=d.matchScore?Math.round(d.matchScore):'—';
+      const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
+      const answers=d.answers||[];
+
+      html+=`<div class="card" style="margin:0 0 12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <div style="font-size:12px;font-weight:700">${d.category||'Genel'}</div>
+            <div style="font-size:10px;color:var(--text3)">${date}</div>
+          </div>
+          <div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div>
+        </div>`;
+
+      if(d.url){
+        html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.url}</div>`;
+      }
+
+      if(answers.length){
+        html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
+        for(const a of answers){
+          html+=`<div style="margin-bottom:4px;font-size:11px">
+            <span style="color:var(--text2)">${a.question||'—'}</span>
+            <span style="color:var(--primary);font-weight:600;margin-left:6px">${a.selectedOption||'—'}</span>
+          </div>`;
+        }
+        html+=`</div>`;
+      }
+      html+=`</div>`;
+    });
+
+    el.innerHTML=html;
+    el.dataset.loaded='1';
+  }catch(e){
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+  }
 }
 function closeUserModal(){document.getElementById('userModal').style.display='none'}
 async function togglePremium(uid,v){try{await db.collection('users').doc(uid).update({isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}

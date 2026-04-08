@@ -264,6 +264,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 answeredQuestions: quiz.questions,
                 profile: localizedUser,
               );
+              // Track quiz answers for user profile learning
+              ref.read(behaviorTrackingProvider).trackQuizAnswers(
+                url: url,
+                category: data.category,
+                answeredQuestions: quiz.questions
+                    .map((q) => {
+                          'question': q.text,
+                          'selectedOption': q.selectedOption ?? '',
+                          'options': q.options,
+                        })
+                    .toList(),
+                matchScore: enhanced.enhancedScore,
+              );
               if (mounted) setState(() { _compareProgress++; });
               return enhanced;
             } catch (_) {

@@ -1144,8 +1144,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: 200,
       child: ref.watch(personalizedRecommendationsProvider).when(
         data: (products) {
-          if (products.isEmpty) return Center(child: Text(context.l10n?.noRecommendationsYet ?? 'No recommendations yet',
-              style: GoogleFonts.plusJakartaSans(color: context.textTertiaryColor)));
+          if (products.isEmpty) return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.auto_awesome_rounded, size: 32, color: context.textTertiaryColor.withValues(alpha: 0.4)),
+                const SizedBox(height: 8),
+                Text(context.l10n?.noRecommendationsYet ?? 'No recommendations yet',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor)),
+                const SizedBox(height: 4),
+                Text('Browse products to get personalized picks',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: context.textTertiaryColor.withValues(alpha: 0.6))),
+              ],
+            ),
+          );
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1308,7 +1320,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: ref.watch(homeFeedProvider).when(
         data: (feed) {
           final trending = feed.trending;
-          if (trending.isEmpty) return const SizedBox.shrink();
+          if (trending.isEmpty) return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.local_fire_department_rounded, size: 32, color: context.textTertiaryColor.withValues(alpha: 0.4)),
+                const SizedBox(height: 8),
+                Text('No trending products yet',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor)),
+              ],
+            ),
+          );
           final display = trending.take(15).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -1345,7 +1367,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: 200,
       child: ref.watch(newArrivalsProvider).when(
         data: (products) {
-          if (products.isEmpty) return const SizedBox.shrink();
+          if (products.isEmpty) return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.fiber_new_rounded, size: 32, color: context.textTertiaryColor.withValues(alpha: 0.4)),
+                const SizedBox(height: 8),
+                Text('No new arrivals yet',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor)),
+              ],
+            ),
+          );
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1379,7 +1411,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: 200,
       child: ref.watch(discoverProductsProvider).when(
         data: (products) {
-          if (products.isEmpty) return const SizedBox.shrink();
+          if (products.isEmpty) return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.explore_rounded, size: 32, color: context.textTertiaryColor.withValues(alpha: 0.4)),
+                const SizedBox(height: 8),
+                Text('Hidden gems coming soon',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor)),
+              ],
+            ),
+          );
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),

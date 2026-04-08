@@ -298,6 +298,11 @@ textarea.input{resize:vertical}
 .log-detail{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .log-meta{font-size:10px;color:var(--text3);margin-top:1px}
 
+/* ── USER DETAIL TABS ── */
+.user-tab{background:none;border:none;color:var(--text2);padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.user-tab:hover{color:var(--text1)}
+.user-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){.stats-grid{grid-template-columns:repeat(2,1fr)}.grid-2,.grid-3{grid-template-columns:1fr}.pm-masonry{column-count:1}.pm-hero{flex-direction:column;align-items:center}.scraper-tabs{flex-wrap:wrap}}
 @media(max-width:768px){.sidebar{width:56px}.sidebar .brand-text,.sidebar .nav-link span,.sidebar .sidebar-user,.sidebar .btn-theme span:last-child{display:none}.sidebar .nav-link{padding:12px;justify-content:center}.sidebar .nav-link svg{margin:0}.main-content{margin-left:56px;padding:16px}.stats-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.user-row{grid-template-columns:40px 1fr 80px}.user-hdr{grid-template-columns:40px 1fr 80px}.scraper-tabs{flex-direction:column}}
