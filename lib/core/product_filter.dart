@@ -10,7 +10,7 @@ class ProductFilter {
 
   static const int minYear = 2020;
 
-  // ── Defunct / dead brands ──────────────────────────────────────────────
+  // ── Defunct / dead brands (always reject) ──────────────────────────────
   static const defunctBrands = {
     'alcatel', 'micromax', 'karbonn', 'lava', 'intex', 'xolo',
     'coolpad', 'leeco', 'le eco', 'gionee', 'panasonic mobile',
@@ -27,33 +27,74 @@ class ProductFilter {
 
   // ── Known / allowed brands (tier-1 + tier-2 + recognized) ─────────────
   static const allowedBrands = {
-    // Tier 1
+    // Tier 1 — global majors
     'apple', 'samsung', 'sony', 'asus', 'msi', 'lg', 'dell', 'hp',
     'lenovo', 'acer', 'google', 'microsoft', 'nvidia', 'amd', 'intel',
-    // Tier 2
+    // Tier 2 — phones / consumer electronics
     'xiaomi', 'huawei', 'oneplus', 'oppo', 'realme', 'honor', 'nothing',
-    'razer', 'logitech', 'corsair', 'bose', 'sennheiser', 'jbl', 'marshall',
-    'canon', 'nikon', 'fujifilm', 'dji', 'gopro', 'anker', 'garmin',
-    'bang & olufsen', 'dyson', 'steelseries', 'hyperx', 'benq', 'viewsonic',
+    'motorola', 'nokia', 'poco', 'iqoo', 'vivo', 'tecno', 'infinix',
+    'nubia', 'redmagic', 'red magic', 'meizu',
+    // Gaming / peripherals
+    'razer', 'logitech', 'corsair', 'steelseries', 'hyperx',
+    'cherry', 'keychron', 'ducky', 'glorious', 'wooting',
+    // Audio
+    'bose', 'sennheiser', 'jbl', 'marshall', 'beats', 'skullcandy',
+    'audio-technica', 'shure', 'beyerdynamic', 'jabra',
+    'harman kardon', 'creative', 'edifier', 'soundcore',
+    'bang & olufsen', '1more', 'tozo', 'earfun', 'moondrop', 'fiio', 'hifiman',
+    'sonos',
+    // Camera / imaging
+    'canon', 'nikon', 'fujifilm', 'dji', 'gopro',
+    // Smart home / IoT
+    'anker', 'garmin', 'ring', 'arlo', 'eufy', 'tp-link', 'netgear',
+    'philips', 'dyson',
+    // PC components
     'gigabyte', 'asrock', 'nzxt', 'cooler master', 'be quiet', 'crucial',
     'western digital', 'seagate', 'kingston', 'thermaltake', 'evga',
-    'tp-link', 'netgear', 'arlo', 'ring', 'sonos', 'philips',
-    'panasonic', 'tcl', 'hisense', 'vizio', 'roku', 'amazon',
-    // Additional well-known
-    'motorola', 'nokia', 'poco', 'iqoo', 'vivo', 'tecno', 'infinix',
-    'beats', 'skullcandy', 'audio-technica', 'shure', 'beyerdynamic',
-    'jabra', 'harman kardon', 'creative', 'edifier', 'soundcore',
-    'toshiba', 'wd', 'sandisk', 'lexar', 'sabrent',
     'fractal design', 'lian li', 'phanteks', 'deepcool', 'arctic',
     'seasonic', 'noctua', 'ekwb', 'alphacool',
-    'aoc', 'alienware', 'predator',
+    'pny', 'inno3d', 'zotac', 'palit', 'gainward', 'galax', 'colorful',
+    'sapphire', 'xfx', 'powercolor',
+    // Displays
+    'benq', 'viewsonic', 'aoc', 'alienware', 'predator',
+    // TVs / streaming
+    'panasonic', 'tcl', 'hisense', 'vizio', 'roku', 'amazon',
+    // Storage
+    'toshiba', 'wd', 'sandisk', 'lexar', 'sabrent',
+    // Streaming / content
     'wacom', 'elgato', 'blue', 'rode', 'fifine',
+    // Wearables
     'fitbit', 'amazfit', 'suunto', 'polar', 'coros',
-    'eufy', 'roborock', 'dreame', 'ecovacs', 'irobot',
+    // Robot vacuums
+    'roborock', 'dreame', 'ecovacs', 'irobot',
+    // Kitchen (kept for breadth)
     'instant pot', 'ninja', 'breville', 'kitchenaid', 'cuisinart',
-    '1more', 'tozo', 'earfun', 'moondrop', 'fiio', 'hifiman',
-    'cherry', 'keychron', 'ducky', 'glorious',
+    // Gaming laptops / Turkish-known
+    'monster', 'xpg', 'xtrfy',
+    // Consoles
+    'nintendo', 'valve', 'playstation', 'xbox',
   };
+
+  // Brand name normalization — handles Firestore typos/variants
+  static final _brandNormalization = <String, String>{
+    'gigaby': 'gigabyte',
+    'msı': 'msi',
+    'xiaom': 'xiaomi',
+    'coolermaster': 'cooler master',
+    'be quiet!': 'be quiet',
+    'audio technica': 'audio-technica',
+    'b&o': 'bang & olufsen',
+    'bang&olufsen': 'bang & olufsen',
+    'harman': 'harman kardon',
+    'harmankardon': 'harman kardon',
+    'western-digital': 'western digital',
+  };
+
+  /// Normalize brand name (handle typos, locale variants, truncations)
+  static String normalizeBrand(String brand) {
+    final lower = brand.toLowerCase().trim();
+    return _brandNormalization[lower] ?? lower;
+  }
 
   /// Extract exact release year from product specs
   static int? getExactReleaseYear(ProductEntity p) {
@@ -87,10 +128,15 @@ class ProductFilter {
 
   /// Check if a single product passes the filter
   static bool isAllowed(ProductEntity p) {
-    final brand = (p.brand ?? '').toLowerCase().trim();
+    final rawBrand = (p.brand ?? '').toLowerCase().trim();
+    if (rawBrand.isEmpty) return false; // No brand → reject
+    final brand = normalizeBrand(rawBrand);
 
     // Defunct brand — always reject
     if (defunctBrands.contains(brand)) return false;
+
+    // Brand whitelist check — unknown brands rejected
+    if (!allowedBrands.contains(brand)) return false;
 
     // Exact year from specs — most reliable signal
     final exactYear = getExactReleaseYear(p);

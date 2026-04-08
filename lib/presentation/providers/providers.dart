@@ -2314,13 +2314,17 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   // ── HARD FILTER: year >= 2020, known brands, no old products ──────────────
   final hiddenSet = hiddenIds.toSet();
   int filteredByHidden = 0, filteredByOldProduct = 0, filteredByBrand = 0, filteredByYear = 0;
+  final rejectedBrands = <String>{};
   var pool = deduped.where((p) {
     if (hiddenSet.contains(p.id)) { filteredByHidden++; return false; }
     if (isKnownOldProduct(p)) { filteredByOldProduct++; return false; }
     if (!ProductFilter.isAllowed(p)) {
-      final brand = (p.brand ?? '').toLowerCase().trim();
+      final brand = ProductFilter.normalizeBrand((p.brand ?? '').toLowerCase().trim());
       if (ProductFilter.defunctBrands.contains(brand)) {
         filteredByBrand++;
+      } else if (!ProductFilter.allowedBrands.contains(brand)) {
+        filteredByBrand++;
+        rejectedBrands.add(brand);
       } else {
         filteredByYear++;
       }
@@ -2331,6 +2335,9 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
 
   debugPrint('=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===');
   debugPrint('=== COMPAIR: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===');
+  if (rejectedBrands.isNotEmpty) {
+    debugPrint('=== COMPAIR: rejected unknown brands: ${rejectedBrands.take(30).join(", ")} ===');
+  }
 
   // ── Brand tier boost multiplier ────────────────────────────────────────────
   const tier1Brands = {
@@ -2762,11 +2769,11 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   }
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v28_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v29_${user?.uid ?? "anon"}';
 
   // Clear ALL old cache versions
   try {
-    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25', 'v26', 'v27']) {
+    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25', 'v26', 'v27', 'v28']) {
       final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
       cache.delete(key);
     }
@@ -2950,7 +2957,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   try {
     final futures = categories.map((cat) => repo.getProducts(
-      category: cat, limit: 50, orderBy: 'techScore', descending: true,
+      category: cat, limit: 80, orderBy: 'techScore', descending: true,
     ).timeout(const Duration(seconds: 45)).catchError((_) =>
       const Success<List<ProductEntity>>([])));
     final results = await Future.wait(futures.toList());
@@ -2975,7 +2982,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
     for (final cat in const ['smartphones', 'laptops', 'tablets', 'headphones']) {
       try {
         final result = await repo.getProducts(
-          category: cat, limit: 50, orderBy: 'techScore', descending: true,
+          category: cat, limit: 80, orderBy: 'techScore', descending: true,
         );
         switch (result) {
           case Success(data: final products):

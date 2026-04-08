@@ -42,6 +42,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final Stopwatch _initSw = Stopwatch();
   bool _firstDataLogged = false;
 
+  // Persist scroll position across tab switches
+  static double _savedScrollOffset = 0.0;
+  static int _savedHeroPage = 0;
+
   @override
   void initState() {
     super.initState();
@@ -51,8 +55,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 12),
     )..repeat(reverse: true);
-    _scrollCtrl = ScrollController();
-    _heroPageCtrl = PageController(viewportFraction: 0.92);
+    _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
+    _currentHeroPage = _savedHeroPage;
+    _heroPageCtrl = PageController(
+      viewportFraction: 0.92,
+      initialPage: _currentHeroPage,
+    );
     _startHeroAutoScroll();
   }
 
@@ -74,6 +82,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void dispose() {
+    // Save scroll position for when user returns
+    if (_scrollCtrl.hasClients) {
+      _savedScrollOffset = _scrollCtrl.offset;
+    }
+    _savedHeroPage = _currentHeroPage;
     _heroCtrl.dispose();
     _scrollCtrl.dispose();
     _heroPageCtrl.dispose();
