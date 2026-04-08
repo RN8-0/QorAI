@@ -45,6 +45,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   String? _compareError;
   int _compareProgress = 0; // How many completed so far
 
+  // Step-by-step progress tracking for analyzing screen
+  List<_AnalysisStep> _compareSteps = [];
+
   // === COMPARE QUIZ STATE ===
   bool _compareQuizActive = false;
   ProductQuiz? _compareQuiz;
@@ -149,6 +152,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     _compareAnalyzing = false;
     _compareError = null;
     _compareProgress = 0;
+    _compareSteps = [];
     _visibleCompareFields = 2;
     _compareQuizActive = false;
     _compareQuiz = null;
@@ -370,9 +374,24 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final aiRepo = ref.read(aiRepositoryProvider);
     final gemini = ref.read(geminiServiceProvider);
 
-    final futures = validUrls.asMap().entries.map((entry) async {
-      final i = entry.key;
-      final url = entry.value;
+    // Initialize step tracking
+    if (mounted) {
+      setState(() {
+        _compareSteps = [
+          for (int i = 0; i < validUrls.length; i++)
+            _AnalysisStep('Scanning Link ${i + 1}', Icons.link_rounded),
+          _AnalysisStep('Running AI analysis', Icons.psychology_rounded),
+          _AnalysisStep('Matching with your profile', Icons.person_rounded),
+        ];
+      });
+    }
+
+    final results = <EnhancedAnalysisResult>[];
+
+    // Scan each link sequentially for clear step-by-step feedback
+    final baseResults = <LinkAnalysisResult>[];
+    for (int i = 0; i < validUrls.length; i++) {
+      final url = validUrls[i];
       try {
         LinkAnalysisResult data;
         if (i == 0 && firstBaseResult != null) {
@@ -387,47 +406,74 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               data = d;
             case Failure<LinkAnalysisResult>(error: final err):
               debugPrint('[Compare] analyzeLink failed for $url: ${err.message}');
-              if (mounted) setState(() { _compareProgress++; });
-              return null;
+              if (mounted) setState(() {
+                _compareSteps[i] = _compareSteps[i].withError();
+                _compareProgress++;
+              });
+              continue;
           }
         }
-
-        // Enhanced analysis with shared quiz answers
-        try {
-          final enhanced = await gemini.enhancedAnalysis(
-            baseResult: data,
-            answeredQuestions: quizAnswers,
-            profile: localizedUser,
-          );
-          if (mounted) setState(() { _compareProgress++; });
-          return enhanced;
-        } catch (e) {
-          debugPrint('[Compare] Enhanced analysis fallback for $url: $e');
-          if (mounted) setState(() { _compareProgress++; });
-          return EnhancedAnalysisResult(
-            baseResult: data,
-            enhancedScore: data.aiScore,
-            factors: const [],
-            detailedVerdict: data.aiAnalysis,
-          );
-        }
+        baseResults.add(data);
+        if (mounted) setState(() {
+          _compareSteps[i] = _compareSteps[i].withDone();
+          _compareProgress++;
+        });
       } catch (e) {
         debugPrint('[Compare] Unexpected error for $url: $e');
-        if (mounted) setState(() { _compareProgress++; });
-        return null;
+        if (mounted) setState(() {
+          _compareSteps[i] = _compareSteps[i].withError();
+          _compareProgress++;
+        });
       }
-    });
+    }
 
-    final allResults = await Future.wait(futures);
-    final validResults = allResults.whereType<EnhancedAnalysisResult>().toList();
+    if (baseResults.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _compareAnalyzing = false;
+        _compareError = 'Could not analyze any of the provided links. Please check the URLs and try again.';
+      });
+      return;
+    }
+
+    // AI analysis step
+    final aiStepIdx = validUrls.length;
+    if (mounted) setState(() { _compareSteps[aiStepIdx] = _compareSteps[aiStepIdx].withActive(); });
+
+    for (final data in baseResults) {
+      try {
+        final enhanced = await gemini.enhancedAnalysis(
+          baseResult: data,
+          answeredQuestions: quizAnswers,
+          profile: localizedUser,
+        );
+        results.add(enhanced);
+      } catch (e) {
+        debugPrint('[Compare] Enhanced analysis fallback for ${data.url}: $e');
+        results.add(EnhancedAnalysisResult(
+          baseResult: data,
+          enhancedScore: data.aiScore,
+          factors: const [],
+          detailedVerdict: data.aiAnalysis,
+        ));
+      }
+    }
+
+    if (mounted) setState(() { _compareSteps[aiStepIdx] = _compareSteps[aiStepIdx].withDone(); });
+
+    // Profile matching step
+    final profileStepIdx = validUrls.length + 1;
+    if (mounted) setState(() { _compareSteps[profileStepIdx] = _compareSteps[profileStepIdx].withActive(); });
+    await Future.delayed(const Duration(milliseconds: 500)); // Brief visual feedback
+    if (mounted) setState(() { _compareSteps[profileStepIdx] = _compareSteps[profileStepIdx].withDone(); });
 
     if (!mounted) return;
-    debugPrint('[Compare] Done: ${validResults.length}/${validUrls.length} succeeded');
+    debugPrint('[Compare] Done: ${results.length}/${validUrls.length} succeeded');
     setState(() {
       _compareAnalyzing = false;
-      _compareResults = validResults;
-      if (validResults.length < 2) {
-        _compareError = validResults.isEmpty
+      _compareResults = results;
+      if (results.length < 2) {
+        _compareError = results.isEmpty
             ? 'Could not analyze any of the provided links. Please check the URLs and try again.'
             : 'Only 1 link could be analyzed — need at least 2 for comparison';
       }
@@ -1063,61 +1109,140 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildCompareAnalyzingView() {
-    final total = _compareControllers
-        .take(_visibleCompareFields)
-        .where((c) => c.text.trim().isNotEmpty && _isValidUrl(c.text.trim()))
-        .length;
+    final totalSteps = _compareSteps.length;
+    final doneSteps = _compareSteps.where((s) => s.isDone).length;
+    final progress = totalSteps > 0 ? doneSteps / totalSteps : 0.0;
+
     return Column(
       children: [
-        const SizedBox(height: 40),
+        const SizedBox(height: 24),
+        // Animated icon
         Container(
-          width: 80, height: 80,
+          width: 72, height: 72,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                blurRadius: 24, offset: const Offset(0, 8)),
+                blurRadius: 20, offset: const Offset(0, 6)),
             ],
           ),
           child: const Icon(Icons.compare_arrows_rounded,
-              color: Colors.white, size: 40),
+              color: Colors.white, size: 36),
         ).animate(onPlay: (c) => c.repeat(reverse: true))
          .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1200.ms),
-        const SizedBox(height: 24),
-        Text('Analyzing $total Products...',
+        const SizedBox(height: 20),
+        Text('Analyzing Products...',
           style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800, fontSize: 20,
+            fontWeight: FontWeight.w800, fontSize: 18,
             color: context.textPrimary)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text('AI is comparing your products side by side',
-          style: GoogleFonts.inter(fontSize: 14, color: context.textTertiaryColor)),
-        const SizedBox(height: 24),
+          style: GoogleFonts.inter(fontSize: 13, color: context.textTertiaryColor)),
+        const SizedBox(height: 20),
+
         // Progress bar
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: total > 0 ? _compareProgress / total : 0,
-                  backgroundColor: context.surfaceVariantColor,
-                  valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
-                  minHeight: 8,
-                ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
+              builder: (_, val, __) => LinearProgressIndicator(
+                value: val,
+                backgroundColor: context.surfaceVariantColor,
+                valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
+                minHeight: 6,
               ),
-              const SizedBox(height: 8),
-              Text('$_compareProgress / $total completed',
-                style: GoogleFonts.inter(
-                  fontSize: 13, color: context.textTertiaryColor)),
-            ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Step-by-step list
+        GlassContainer(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            children: _compareSteps.asMap().entries.map((entry) {
+              final i = entry.key;
+              final step = entry.value;
+              return _buildAnalysisStepRow(step, i);
+            }).toList(),
           ),
         ),
         const SizedBox(height: 40),
       ],
+    );
+  }
+
+  Widget _buildAnalysisStepRow(_AnalysisStep step, int index) {
+    final Widget icon;
+    final Color textColor;
+    if (step.isDone) {
+      icon = Container(
+        width: 28, height: 28,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(colors: [AppTheme.success, AppTheme.scoreExcellent]),
+        ),
+        child: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
+      ).animate().scale(begin: const Offset(0, 0), end: const Offset(1, 1),
+          duration: 300.ms, curve: Curves.elasticOut);
+      textColor = context.textPrimary;
+    } else if (step.hasError) {
+      icon = Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppTheme.error.withValues(alpha: 0.15),
+        ),
+        child: Icon(Icons.close_rounded, color: AppTheme.error, size: 16),
+      );
+      textColor = AppTheme.error;
+    } else if (step.isActive) {
+      icon = SizedBox(
+        width: 28, height: 28,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
+          backgroundColor: context.surfaceVariantColor,
+        ),
+      );
+      textColor = AppTheme.brandBlue;
+    } else {
+      icon = Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: context.surfaceVariantColor,
+        ),
+        child: Icon(step.icon, color: context.textTertiaryColor, size: 14),
+      );
+      textColor = context.textTertiaryColor;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          icon,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(step.label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: step.isDone || step.isActive ? FontWeight.w600 : FontWeight.w500,
+                color: textColor)),
+          ),
+          if (step.isDone)
+            Text('✓', style: TextStyle(color: AppTheme.success, fontSize: 14,
+                fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 
@@ -4964,4 +5089,23 @@ class _FeatureTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// Step state for the compare analyzing screen
+class _AnalysisStep {
+  final String label;
+  final IconData icon;
+  final bool isDone;
+  final bool isActive;
+  final bool hasError;
+
+  const _AnalysisStep(this.label, this.icon,
+      {this.isDone = false, this.isActive = false, this.hasError = false});
+
+  _AnalysisStep withDone() =>
+      _AnalysisStep(label, icon, isDone: true);
+  _AnalysisStep withActive() =>
+      _AnalysisStep(label, icon, isActive: true);
+  _AnalysisStep withError() =>
+      _AnalysisStep(label, icon, hasError: true);
 }
