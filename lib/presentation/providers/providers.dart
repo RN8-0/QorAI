@@ -3177,7 +3177,6 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
 
   // If no user yet, show cross-category trending products as "For You"
   if (user == null) {
-    // Ensure category diversity in trending
     final catCount = <String, int>{};
     final diverse = <ProductEntity>[];
     for (final p in feed.trending) {
@@ -3192,6 +3191,25 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     return diverse;
   }
 
+  // ── Load analyzed product IDs to exclude re-recommendations ──
+  final excludeIds = <String>{};
+  try {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users').doc(user.uid).get();
+    final data = userDoc.data();
+    if (data != null && data['analyzedProducts'] is List) {
+      for (final entry in (data['analyzedProducts'] as List)) {
+        if (entry is Map && entry['productId'] != null) {
+          excludeIds.add(entry['productId'].toString());
+        }
+      }
+    }
+  } catch (_) {}
+  // Also exclude heavily viewed products (user already knows them)
+  for (final entry in behavior.productViews.entries) {
+    if (entry.value >= 5) excludeIds.add(entry.key);
+  }
+
   final algorithmService = ref.read(profileAlgorithmServiceProvider);
   var allProducts = <ProductEntity>[];
   final existingIds = <String>{};
@@ -3199,28 +3217,57 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
   // Get behavior-boosted category priorities
   final priorityCats = algorithmService.getCategoryPriority(user, behavior: behavior);
 
-  // Pull products from top 12 priority categories — MAX 8 per category for diversity
+  // ── Ecosystem affinity filter ──
+  final eco = user.ecosystem.toLowerCase();
+  bool isEcoMatch(ProductEntity p) {
+    final brand = (p.brand ?? '').toLowerCase();
+    if (eco == 'apple') return brand == 'apple';
+    if (eco == 'android') {
+      return const {'samsung','xiaomi','oneplus','oppo','vivo','realme','google','motorola','huawei','honor','nothing'}
+          .contains(brand);
+    }
+    return true; // mixed = no filter
+  }
+
+  // Pull products from top 12 priority categories — MAX 8 per category
   final topCats = priorityCats.isNotEmpty
       ? priorityCats.take(12).toList()
       : user.interestCategories.take(8).toList();
+
+  // First pass: ecosystem-matched products from priority categories
   for (final cat in topCats) {
     final catLower = cat.toLowerCase().trim();
     final catProducts = feed.byCategory[catLower] ?? [];
     int added = 0;
     for (final p in catProducts) {
-      if (!existingIds.contains(p.id)) {
+      if (!existingIds.contains(p.id) && !excludeIds.contains(p.id) && isEcoMatch(p)) {
         allProducts.add(p);
         existingIds.add(p.id);
         added++;
       }
-      if (added >= 8) break;
+      if (added >= 5) break;
+    }
+  }
+
+  // Second pass: fill remaining slots from priority categories (any ecosystem)
+  for (final cat in topCats) {
+    final catLower = cat.toLowerCase().trim();
+    final catProducts = feed.byCategory[catLower] ?? [];
+    int added = 0;
+    for (final p in catProducts) {
+      if (!existingIds.contains(p.id) && !excludeIds.contains(p.id)) {
+        allProducts.add(p);
+        existingIds.add(p.id);
+        added++;
+      }
+      if (added >= 4) break;
     }
   }
 
   // Fill with cross-category trending products for discovery
   if (allProducts.length < 60) {
     for (final p in feed.trending) {
-      if (!existingIds.contains(p.id)) {
+      if (!existingIds.contains(p.id) && !excludeIds.contains(p.id)) {
         allProducts.add(p);
         existingIds.add(p.id);
       }
