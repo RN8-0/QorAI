@@ -2983,30 +2983,26 @@ class _QuizView extends StatelessWidget {
 
         const SizedBox(height: 16),
         if (_allAnswered)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: GradientButton(
-              height: 44,
-              borderRadius: BorderRadius.circular(12),
-              gradient: const LinearGradient(
-                colors: [AppTheme.premiumPurple, AppTheme.neonPurple],
-              ),
-              onPressed: onSubmit,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.insights_rounded,
-                        color: context.surfaceVariantColor, size: 18),
-                    const SizedBox(width: 8),
-                    Text(context.l10n?.seeMyMatchScore ?? 'See My Match Score',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: context.surfaceVariantColor)),
-                  ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ElevatedButton.icon(
+                onPressed: onSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.brandBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  elevation: 2,
                 ),
+                icon: const Icon(Icons.insights_rounded, size: 16),
+                label: Text(context.l10n?.seeMyMatchScore ?? 'See My Match Score',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12)),
               ),
             ),
           )
