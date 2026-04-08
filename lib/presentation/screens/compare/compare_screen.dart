@@ -37,7 +37,7 @@ const _cardShadow = [
 
 /// Premium-style indigo/violet gradient matching subscription page.
 const _accentGradient = LinearGradient(
-  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFF3B82F6)],
+  colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandBlue],
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );
@@ -392,15 +392,15 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF6366F1).withValues(alpha: 0.06),
-                Color(0xFF8B5CF6).withValues(alpha: 0.03),
+                AppTheme.brandBlue.withValues(alpha: 0.06),
+                AppTheme.brandDeepBlue.withValues(alpha: 0.03),
                 Colors.white.withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Color(0xFF6366F1).withValues(alpha: 0.12)),
+            border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.12)),
             boxShadow: [
-              BoxShadow(color: Color(0xFF6366F1).withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4)),
+              BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4)),
               const BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
             ],
           ),
@@ -419,12 +419,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFF6366F1).withValues(alpha: 0.06),
-                  Color(0xFF8B5CF6).withValues(alpha: 0.03),
+                  AppTheme.brandBlue.withValues(alpha: 0.06),
+                  AppTheme.brandDeepBlue.withValues(alpha: 0.03),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Color(0xFF6366F1).withValues(alpha: 0.12)),
+              border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.12)),
               boxShadow: _cardShadow,
             ),
             child: TextField(
@@ -489,7 +489,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF8B5CF6).withValues(alpha: 0.35),
+                      color: AppTheme.brandDeepBlue.withValues(alpha: 0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -564,10 +564,10 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: Color(0xFF6366F1).withValues(alpha: 0.25),
+                color: AppTheme.brandBlue.withValues(alpha: 0.25),
                 width: 1.5,
               ),
-              color: Color(0xFF6366F1).withValues(alpha: 0.04),
+              color: AppTheme.brandBlue.withValues(alpha: 0.04),
             ),
             child: Center(
               child: Container(
@@ -578,7 +578,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                   gradient: _accentGradient,
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF6366F1).withValues(alpha: 0.3),
+                      color: AppTheme.brandBlue.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -594,7 +594,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF6366F1).withValues(alpha: 0.7),
+              color: AppTheme.brandBlue.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -614,7 +614,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: count >= 2 ? Color(0xFF8B5CF6) : context.textTertiaryColor,
+              color: count >= 2 ? AppTheme.brandDeepBlue : context.textTertiaryColor,
             ),
           ),
           const SizedBox(width: 6),
@@ -645,7 +645,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Color(0xFF6366F1).withValues(alpha: 0.2)),
+                border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.2)),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(13),
@@ -715,11 +715,11 @@ class _EmptyCompareState extends ConsumerWidget {
               width: 80, height: 80,
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: [
-                  Color(0xFF6366F1).withValues(alpha: 0.16),
-                  Color(0xFF8B5CF6).withValues(alpha: 0.16)]),
+                  AppTheme.brandBlue.withValues(alpha: 0.16),
+                  AppTheme.brandDeepBlue.withValues(alpha: 0.16)]),
                 shape: BoxShape.circle),
               child: const Center(child: Icon(Icons.compare_arrows_rounded,
-                  size: 40, color: Color(0xFF6366F1))),
+                  size: 40, color: AppTheme.brandBlue)),
             ),
             const SizedBox(height: 16),
             Text(context.l10n?.compareProducts ?? 'Compare Products', style: GoogleFonts.plusJakartaSans(
@@ -797,11 +797,11 @@ class _EmptyCompareState extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Color(0xFF6366F1).withValues(alpha: 0.12),
+                            color: AppTheme.brandBlue.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8)),
                           child: Text('${p.techScore.toInt()}',
                               style: GoogleFonts.plusJakartaSans(fontSize: 10,
-                                  fontWeight: FontWeight.w700, color: Color(0xFF6366F1)))),
+                                  fontWeight: FontWeight.w700, color: AppTheme.brandBlue))),
                       ]),
                     ),
                   ).animate().fadeIn(delay: (60 * e.key).ms, duration: 300.ms);
@@ -914,10 +914,10 @@ class _EmptyCompareState extends ConsumerWidget {
               Container(
                 width: 32, height: 32,
                 decoration: BoxDecoration(
-                  color: Color(0xFF6366F1).withValues(alpha: 0.12),
+                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10)),
                 child: const Icon(Icons.compare_arrows_rounded,
-                    size: 16, color: Color(0xFF6366F1))),
+                    size: 16, color: AppTheme.brandBlue)),
             ]),
           ),
         ),
@@ -987,8 +987,8 @@ class _ProductSearchList extends ConsumerWidget {
                   gradient: isSelected
                       ? LinearGradient(
                           colors: [
-                            Color(0xFF6366F1).withValues(alpha: 0.12),
-                            Color(0xFF8B5CF6).withValues(alpha: 0.06),
+                            AppTheme.brandBlue.withValues(alpha: 0.12),
+                            AppTheme.brandDeepBlue.withValues(alpha: 0.06),
                           ],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
@@ -997,11 +997,11 @@ class _ProductSearchList extends ConsumerWidget {
                   color: isSelected ? null : context.surfaceVariantColor,
                   borderRadius: BorderRadius.circular(14),
                   border: isSelected
-                      ? Border.all(color: Color(0xFF8B5CF6).withValues(alpha: 0.5), width: 1.5)
+                      ? Border.all(color: AppTheme.brandDeepBlue.withValues(alpha: 0.5), width: 1.5)
                       : Border.all(color: context.dividerColor),
                   boxShadow: isSelected
                       ? [
-                          BoxShadow(color: Color(0xFF6366F1).withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 3)),
+                          BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 3)),
                           ..._cardShadow,
                         ]
                       : _cardShadow,
@@ -1053,15 +1053,15 @@ class _ProductSearchList extends ConsumerWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? Color(0xFF8B5CF6).withValues(alpha: 0.15)
-                                  : Color(0xFF6366F1).withValues(alpha: 0.12),
+                                  ? AppTheme.brandDeepBlue.withValues(alpha: 0.15)
+                                  : AppTheme.brandBlue.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               product.subcategory.replaceAll('_', ' '),
                               style: TextStyle(
                                   fontSize: 11,
-                                  color: isSelected ? Color(0xFF8B5CF6) : Color(0xFF6366F1),
+                                  color: isSelected ? AppTheme.brandDeepBlue : AppTheme.brandBlue,
                                   fontWeight: FontWeight.w500),
                             ),
                           ),
@@ -1085,7 +1085,7 @@ class _ProductSearchList extends ConsumerWidget {
           child: Text(context.l10n?.errorPrefix(error.message ?? '') ?? 'Error: ${error.message}', style: TextStyle(color: context.textPrimary)),
         ),
       ),
-      loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
+      loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.brandBlue)),
       error: (err, _) => Center(
         child: Text(context.l10n?.anErrorOccurred('$err') ?? 'An error occurred: $err', style: TextStyle(color: context.textPrimary)),
       ),
@@ -1920,9 +1920,9 @@ For each product, analyze current pricing
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Color(0xFF6366F1).withValues(alpha: 0.18)),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
         boxShadow: [
-          BoxShadow(color: Color(0xFF6366F1).withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 4)),
+          BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -1936,8 +1936,8 @@ For each product, analyze current pricing
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: [
-                  Color(0xFF6366F1).withValues(alpha: 0.11),
-                  Color(0xFF8B5CF6).withValues(alpha: 0.08),
+                  AppTheme.brandBlue.withValues(alpha: 0.11),
+                  AppTheme.brandDeepBlue.withValues(alpha: 0.08),
                 ]),
                 borderRadius: _aiExpanded
                     ? const BorderRadius.vertical(top: Radius.circular(22))
@@ -1965,7 +1965,7 @@ For each product, analyze current pricing
                   ),
                 const SizedBox(width: 8),
                 if (_aiLoading)
-                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)))
+                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue))
                 else
                   AnimatedRotation(
                     turns: _aiExpanded ? 0.5 : 0, duration: const Duration(milliseconds: 200),
@@ -2097,8 +2097,8 @@ For each product, analyze current pricing
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
-                      const Color(0xFF6366F1).withValues(alpha: 0.08),
-                      const Color(0xFFEC4899).withValues(alpha: 0.06)]),
+                      AppTheme.brandBlue.withValues(alpha: 0.08),
+                      AppTheme.brandSkyBlue.withValues(alpha: 0.06)]),
                     borderRadius: BorderRadius.circular(12)),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text('💡', style: TextStyle(fontSize: 16)),
@@ -2126,7 +2126,7 @@ For each product, analyze current pricing
                   label: Text('Load AI Analysis',
                     style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
+                    backgroundColor: AppTheme.brandBlue,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -2142,7 +2142,7 @@ For each product, analyze current pricing
   Color _aiScoreColor(double score) {
     if (score >= 80) return const Color(0xFF10B981);
     if (score >= 60) return const Color(0xFFF59E0B);
-    if (score >= 40) return const Color(0xFFF97316);
+    if (score >= 40) return AppTheme.orange500;
     return AppTheme.error;
   }
 
@@ -2220,11 +2220,11 @@ For each product, analyze current pricing
                 color: context.surfaceColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Color(0xFF6366F1).withValues(alpha: 0.12),
+                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0xFF6366F1).withValues(alpha: 0.08),
+                    color: AppTheme.brandBlue.withValues(alpha: 0.08),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -2244,7 +2244,7 @@ For each product, analyze current pricing
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Color(0xFF6366F1).withValues(alpha: 0.3),
+                                color: AppTheme.brandBlue.withValues(alpha: 0.3),
                                 blurRadius: 10,
                                 offset: const Offset(0, 3),
                               ),
@@ -2285,7 +2285,7 @@ For each product, analyze current pricing
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Color(0xFF6366F1).withValues(alpha: 0.3),
+                                        color: AppTheme.brandBlue.withValues(alpha: 0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -2380,12 +2380,12 @@ For each product, analyze current pricing
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isExpanded
-                      ? Color(0xFF6366F1).withValues(alpha: 0.18)
+                      ? AppTheme.brandBlue.withValues(alpha: 0.18)
                       : context.dividerColor,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0xFF6366F1).withValues(alpha: isExpanded ? 0.06 : 0.02),
+                    color: AppTheme.brandBlue.withValues(alpha: isExpanded ? 0.06 : 0.02),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -2409,8 +2409,8 @@ For each product, analyze current pricing
                         gradient: isExpanded
                             ? LinearGradient(
                                 colors: [
-                                  Color(0xFF6366F1).withValues(alpha: 0.1),
-                                  Color(0xFF8B5CF6).withValues(alpha: 0.06),
+                                  AppTheme.brandBlue.withValues(alpha: 0.1),
+                                  AppTheme.brandDeepBlue.withValues(alpha: 0.06),
                                 ],
                               )
                             : null,
@@ -2463,7 +2463,7 @@ For each product, analyze current pricing
                               height: 28,
                               decoration: BoxDecoration(
                                 color: isExpanded
-                                    ? Color(0xFF6366F1).withValues(alpha: 0.16)
+                                    ? AppTheme.brandBlue.withValues(alpha: 0.16)
                                     : context.dividerColor,
                                 shape: BoxShape.circle,
                               ),
@@ -2471,7 +2471,7 @@ For each product, analyze current pricing
                                 Icons.expand_more,
                                 size: 18,
                                 color: isExpanded
-                                    ? Color(0xFF6366F1)
+                                    ? AppTheme.brandBlue
                                     : context.textTertiaryColor,
                               ),
                             ),
@@ -2537,8 +2537,8 @@ For each product, analyze current pricing
                                           gradient: isBetter
                                               ? LinearGradient(
                                                   colors: [
-                                                    Color(0xFF6366F1).withValues(alpha: 0.12),
-                                                    Color(0xFF8B5CF6).withValues(alpha: 0.11),
+                                                    AppTheme.brandBlue.withValues(alpha: 0.12),
+                                                    AppTheme.brandDeepBlue.withValues(alpha: 0.11),
                                                   ],
                                                 )
                                               : null,
@@ -2546,7 +2546,7 @@ For each product, analyze current pricing
                                           borderRadius: BorderRadius.circular(12),
                                           border: isBetter
                                               ? Border.all(
-                                                  color: Color(0xFF6366F1).withValues(alpha: 0.23),
+                                                  color: AppTheme.brandBlue.withValues(alpha: 0.23),
                                                 )
                                               : null,
                                         ),
@@ -2639,10 +2639,10 @@ For each product, analyze current pricing
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
-                    color: Color(0xFF6366F1).withValues(alpha: 0.1),
+                    color: AppTheme.brandBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.grid_view_rounded, color: Color(0xFF6366F1), size: 18),
+                  child: const Icon(Icons.grid_view_rounded, color: AppTheme.brandBlue, size: 18),
                 ),
                 const SizedBox(width: 10),
                 Expanded(child: Text(
@@ -2689,7 +2689,7 @@ For each product, analyze current pricing
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
           subtitle: 'Comprehensive AI-powered comparison evaluation',
-          gradient: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          gradient: const [AppTheme.brandBlue, AppTheme.brandDeepBlue],
           isExpanded: _deepAnalysisExpanded,
           isLoading: _deepAnalysisLoading,
           content: _deepAnalysisResult,
@@ -2701,7 +2701,7 @@ For each product, analyze current pricing
           icon: Icons.auto_awesome_rounded,
           title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
           subtitle: 'AI-curated alternatives you should consider',
-          gradient: const [Color(0xFFEC4899), Color(0xFFF97316)],
+          gradient: const [AppTheme.brandSkyBlue, AppTheme.orange500],
           isExpanded: _alternativesExpanded,
           isLoading: _alternativesLoading,
           content: _alternativesResult,
@@ -2725,7 +2725,7 @@ For each product, analyze current pricing
           icon: Icons.trending_down_rounded,
           title: 'Price Prediction',
           subtitle: 'AI-powered price trend analysis & best time to buy',
-          gradient: const [Color(0xFF10B981), Color(0xFF3B82F6)],
+          gradient: const [Color(0xFF10B981), AppTheme.brandBlue],
           isExpanded: _predictionExpanded,
           isLoading: _predictionLoading,
           content: _predictionResult,
@@ -2759,7 +2759,7 @@ For each product, analyze current pricing
             Container(
               width: 38, height: 38,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)]),
+                gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
                 borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.person_search_rounded, size: 20, color: Colors.white),
             ),
@@ -2782,7 +2782,7 @@ For each product, analyze current pricing
               } catch (_) {}
             }
             final displayScore = matchScore != null ? '$matchScore%' : '--';
-            final matchColor = matchScore == null ? const Color(0xFF8B5CF6) :
+            final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
                 matchScore >= 80 ? const Color(0xFF10B981) :
                 matchScore >= 60 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444);
 
@@ -2799,7 +2799,7 @@ For each product, analyze current pricing
                   width: 46, height: 46,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [matchColor, const Color(0xFFEC4899)])),
+                    gradient: LinearGradient(colors: [matchColor, AppTheme.brandSkyBlue])),
                   child: Center(child: Text(displayScore,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white))),
@@ -2989,7 +2989,7 @@ For each product, analyze current pricing
           if (isLoading)
             const Center(child: Padding(
               padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1))))
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue)))
           else if (allReviews.isEmpty)
             Container(
               width: double.infinity,
@@ -3034,10 +3034,10 @@ For each product, analyze current pricing
           Row(children: [
             CircleAvatar(
               radius: 14,
-              backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.15),
+              backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
               child: Text(review.userId.substring(0, 1).toUpperCase(),
                   style: GoogleFonts.plusJakartaSans(fontSize: 11,
-                      fontWeight: FontWeight.w700, color: const Color(0xFF6366F1))),
+                      fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
             ),
             const SizedBox(width: 8),
             // Star rating
@@ -3092,10 +3092,10 @@ For each product, analyze current pricing
           final ratingLabels = ['😞 Poor', '😐 Fair', '🙂 Good', '😊 Very Good', '🤩 Excellent'];
           final ratingColors = [
             AppTheme.error,
-            const Color(0xFFF97316),
+            AppTheme.orange500,
             const Color(0xFFF59E0B),
             const Color(0xFF10B981),
-            const Color(0xFF6366F1),
+            AppTheme.brandBlue,
           ];
           final starIndex = selectedRating.round().clamp(1, 5) - 1;
 
@@ -3225,11 +3225,11 @@ For each product, analyze current pricing
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: Color(0xFF6366F1).withValues(alpha: 0.23),
+            color: AppTheme.brandBlue.withValues(alpha: 0.23),
           ),
           boxShadow: [
             BoxShadow(
-              color: Color(0xFF6366F1).withValues(alpha: 0.11),
+              color: AppTheme.brandBlue.withValues(alpha: 0.11),
               blurRadius: 12,
               offset: const Offset(0, 3),
             ),
@@ -3762,9 +3762,9 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
             Container(
               width: 38, height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                color: AppTheme.brandBlue.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.speed_rounded, size: 20, color: const Color(0xFF6366F1)),
+              child: const Icon(Icons.speed_rounded, size: 20, color: AppTheme.brandBlue),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -3782,7 +3782,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
                 label: Text('Load AI Benchmark Scores',
                   style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
+                  backgroundColor: AppTheme.brandBlue,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -3792,7 +3792,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
           else if (_loading)
             const Center(child: Padding(
               padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF6366F1)),
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue),
             ))
           else if (_error != null || _scores.isEmpty)
             Text(_error ?? 'No benchmark data found',
@@ -4008,12 +4008,12 @@ class _SuggestedProductsList extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                color: AppTheme.brandDeepBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('Retry',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8B5CF6))),
+                  fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.brandDeepBlue)),
             ),
           ),
         ],
@@ -4053,7 +4053,7 @@ class _SuggestedProductsList extends ConsumerWidget {
                   style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w600, color: context.textPrimary),
                   maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
                 Text('${p.techScore.toInt()}',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF8B5CF6))),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.brandDeepBlue)),
               ],
             ),
           ),
@@ -4174,7 +4174,7 @@ class _CompareSuggestedList extends ConsumerWidget {
                 if (p.techScore > 0) ...[
                   const SizedBox(height: 2),
                   Text('${p.techScore.toInt()}', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF8B5CF6))),
+                    fontSize: 9, fontWeight: FontWeight.w700, color: AppTheme.brandDeepBlue)),
                 ],
               ],
             ),
@@ -4235,10 +4235,10 @@ class _CompareDiscoverSection extends ConsumerWidget {
               Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  color: Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                  color: AppTheme.brandDeepBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.explore_rounded, color: Color(0xFF8B5CF6), size: 18),
+                child: const Icon(Icons.explore_rounded, color: AppTheme.brandDeepBlue, size: 18),
               ),
               const SizedBox(width: 10),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -4272,7 +4272,7 @@ class _CompareDiscoverSection extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8), padding: const EdgeInsets.all(4)),
                           const SizedBox(height: 4),
                           Text(p.category.replaceAll('_', ' '), style: GoogleFonts.plusJakartaSans(
-                            fontSize: 8, fontWeight: FontWeight.w600, color: Color(0xFF8B5CF6))),
+                            fontSize: 8, fontWeight: FontWeight.w600, color: AppTheme.brandDeepBlue)),
                           Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w600, color: context.textPrimary)),
@@ -4341,13 +4341,13 @@ class _FormattedAiText extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
-              const Color(0xFF6366F1).withValues(alpha: 0.12),
-              const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+              AppTheme.brandBlue.withValues(alpha: 0.12),
+              AppTheme.brandDeepBlue.withValues(alpha: 0.08),
             ]),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
-            const Icon(Icons.auto_awesome, size: 14, color: Color(0xFF8B5CF6)),
+            const Icon(Icons.auto_awesome, size: 14, color: AppTheme.brandDeepBlue),
             const SizedBox(width: 6),
             Expanded(child: Text(headerText, style: GoogleFonts.plusJakartaSans(
               fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary))),
@@ -4392,7 +4392,7 @@ class _FormattedAiText extends StatelessWidget {
               width: 6, height: 6,
               margin: const EdgeInsets.only(top: 6, right: 8),
               decoration: const BoxDecoration(
-                color: Color(0xFF8B5CF6),
+                color: AppTheme.brandDeepBlue,
                 shape: BoxShape.circle,
               ),
             ),
@@ -4412,7 +4412,7 @@ class _FormattedAiText extends StatelessWidget {
               width: 22, height: 22,
               margin: const EdgeInsets.only(right: 8, top: 1),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
+                gradient: const LinearGradient(colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue]),
                 borderRadius: BorderRadius.circular(6)),
               child: Center(child: Text(numMatch.group(1)!, style: GoogleFonts.plusJakartaSans(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
@@ -4468,9 +4468,9 @@ class _FormattedAiText extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+          color: AppTheme.brandBlue.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+          border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.2)),
         ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('💡', style: TextStyle(fontSize: 16)),

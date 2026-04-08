@@ -380,7 +380,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       if (isDark) {
                         return ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Color(0xFF6366F1), Color(0xFFEC4899), Color(0xFF06B6D4)],
+                            colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue, AppTheme.brandCyan],
                           ).createShader(bounds),
                           child: Text(titleText,
                             style: GoogleFonts.inter(
@@ -392,7 +392,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       return Text(titleText,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w800, fontSize: 17,
-                          color: const Color(0xFF6366F1), letterSpacing: -0.5),
+                          color: AppTheme.brandBlue, letterSpacing: -0.5),
                       );
                     }),
                     Text(context.l10n?.aiPoweredProductAnalysis ?? 'AI-powered product analysis',
@@ -448,12 +448,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         controller: _tabController,
         indicator: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFF06B6D4)],
+            colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandCyan],
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              color: AppTheme.brandBlue.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -508,7 +508,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             GestureDetector(
               onTap: () => setState(() { _compareError = null; }),
               child: Text('Try Again', style: GoogleFonts.inter(
-                color: const Color(0xFF6366F1), fontWeight: FontWeight.w700)),
+                color: AppTheme.brandBlue, fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -592,7 +592,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFFEC4899)]),
+                          colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue]),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Icon(Icons.link_rounded, color: Colors.white, size: 22),
@@ -621,7 +621,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     color: context.surfaceVariantColor,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                      color: AppTheme.brandBlue.withValues(alpha: 0.2)),
                   ),
                   child: TextField(
                     controller: _singleUrlController,
@@ -644,12 +644,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       suffixIcon: Container(
                         margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          color: AppTheme.brandBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: IconButton(
                           icon: Icon(Icons.content_paste_rounded,
-                            color: const Color(0xFF6366F1), size: 18),
+                            color: AppTheme.brandBlue, size: 18),
                           onPressed: () async {
                             final data = await Clipboard.getData('text/plain');
                             if (data?.text != null) {
@@ -689,11 +689,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     height: 54,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFEC4899)]),
+                        colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandSkyBlue]),
                       borderRadius: BorderRadius.circular(27),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                          color: AppTheme.brandBlue.withValues(alpha: 0.35),
                           blurRadius: 20, offset: const Offset(0, 8)),
                       ],
                     ),
@@ -746,7 +746,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF06B6D4), Color(0xFF6366F1)]),
+                          colors: [AppTheme.brandCyan, AppTheme.brandBlue]),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 22),
@@ -788,19 +788,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           color: context.surfaceVariantColor,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                            color: AppTheme.brandBlue.withValues(alpha: 0.3),
                             style: BorderStyle.solid),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add_rounded,
-                              color: const Color(0xFF6366F1), size: 20),
+                              color: AppTheme.brandBlue, size: 20),
                             const SizedBox(width: 6),
                             Text('Add Product',
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.w600, fontSize: 13,
-                                color: const Color(0xFF6366F1))),
+                                color: AppTheme.brandBlue)),
                           ],
                         ),
                       ),
@@ -814,11 +814,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     height: 54,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF06B6D4), Color(0xFF6366F1), Color(0xFF8B5CF6)]),
+                        colors: [AppTheme.brandCyan, AppTheme.brandBlue, AppTheme.brandDeepBlue]),
                       borderRadius: BorderRadius.circular(27),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF06B6D4).withValues(alpha: 0.35),
+                          color: AppTheme.brandCyan.withValues(alpha: 0.35),
                           blurRadius: 20, offset: const Offset(0, 8)),
                       ],
                     ),
@@ -854,7 +854,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: const Color(0xFF06B6D4).withValues(alpha: 0.15)),
+          color: AppTheme.brandCyan.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
@@ -864,8 +864,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF6366F1).withValues(alpha: 0.8),
-                  const Color(0xFF06B6D4).withValues(alpha: 0.8),
+                  AppTheme.brandBlue.withValues(alpha: 0.8),
+                  AppTheme.brandCyan.withValues(alpha: 0.8),
                 ]),
               borderRadius: BorderRadius.circular(17),
             ),
@@ -894,7 +894,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           // Paste button
           IconButton(
             icon: Icon(Icons.content_paste_rounded,
-              color: const Color(0xFF06B6D4), size: 18),
+              color: AppTheme.brandCyan, size: 18),
             onPressed: () async {
               final data = await Clipboard.getData('text/plain');
               if (data?.text != null) {
@@ -940,11 +940,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           width: 80, height: 80,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+              colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                color: AppTheme.brandBlue.withValues(alpha: 0.3),
                 blurRadius: 24, offset: const Offset(0, 8)),
             ],
           ),
@@ -971,7 +971,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 child: LinearProgressIndicator(
                   value: total > 0 ? _compareProgress / total : 0,
                   backgroundColor: context.surfaceVariantColor,
-                  valueColor: const AlwaysStoppedAnimation(Color(0xFF6366F1)),
+                  valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
                   minHeight: 8,
                 ),
               ),
@@ -1008,9 +1008,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   Widget _buildStep(int num, String title, String subtitle, IconData icon) {
     final colors = [
-      [const Color(0xFF6366F1), const Color(0xFFEC4899)],
-      [const Color(0xFFEC4899), const Color(0xFFF97316)],
-      [const Color(0xFF06B6D4), const Color(0xFF6366F1)],
+      [AppTheme.brandBlue, AppTheme.brandSkyBlue],
+      [AppTheme.brandSkyBlue, AppTheme.orange500],
+      [AppTheme.brandCyan, AppTheme.brandBlue],
     ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -1095,7 +1095,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF6366F1).withValues(alpha: 0.3), width: 1.5),
+          color: AppTheme.brandBlue.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Row(
         children: [
@@ -1103,7 +1103,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+                colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.compare_arrows_rounded,
@@ -1126,7 +1126,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   child: LinearProgressIndicator(
                     value: (_currentMultiLinkIndex + 1) / _multiLinkUrls.length,
                     backgroundColor: context.surfaceVariantColor,
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFF6366F1)),
+                    valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
                     minHeight: 4,
                   ),
                 ),
@@ -1568,10 +1568,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.06),
+                  color: AppTheme.brandBlue.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                    color: AppTheme.brandBlue.withValues(alpha: 0.2),
                     style: BorderStyle.solid,
                   ),
                 ),
@@ -1579,14 +1579,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.add_link_rounded,
-                        color: Color(0xFF6366F1), size: 16),
+                        color: AppTheme.brandBlue, size: 16),
                     const SizedBox(width: 8),
                     Text(
                       '+ Add link (${_urlControllers.length}/4)',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
-                        color: const Color(0xFF6366F1),
+                        color: AppTheme.brandBlue,
                       ),
                     ),
                   ],
@@ -1607,15 +1607,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: [
-                  const Color(0xFF6366F1).withValues(alpha: 0.08),
-                  const Color(0xFFEC4899).withValues(alpha: 0.05),
+                  AppTheme.brandBlue.withValues(alpha: 0.08),
+                  AppTheme.brandSkyBlue.withValues(alpha: 0.05),
                 ]),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.2)),
               ),
               child: Row(children: [
                 const Icon(Icons.content_paste_go_rounded,
-                    color: Color(0xFF6366F1), size: 16),
+                    color: AppTheme.brandBlue, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(_detectedClipboardUrl!, maxLines: 1,
@@ -1625,10 +1625,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    color: AppTheme.brandBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8)),
                   child: Text(context.l10n?.pasteLink ?? 'Paste', style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700, fontSize: 11, color: const Color(0xFF6366F1))),
+                    fontWeight: FontWeight.w700, fontSize: 11, color: AppTheme.brandBlue)),
                 ),
                 const SizedBox(width: 6),
                 GestureDetector(
@@ -1654,12 +1654,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFEC4899)],
+                      colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandSkyBlue],
                       begin: Alignment.centerLeft, end: Alignment.centerRight),
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                        color: AppTheme.brandBlue.withValues(alpha: 0.35),
                         blurRadius: 16, offset: const Offset(0, 6), spreadRadius: -4),
                     ],
                   ),
@@ -1724,17 +1724,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               gradient: SweepGradient(
                 colors: isFirst
                     ? const [
-                        Color(0xFF6366F1),
-                        Color(0xFFEC4899),
-                        Color(0xFF06B6D4),
-                        Color(0xFF8B5CF6),
-                        Color(0xFF6366F1),
+                        AppTheme.brandBlue,
+                        AppTheme.brandSkyBlue,
+                        AppTheme.brandCyan,
+                        AppTheme.brandDeepBlue,
+                        AppTheme.brandBlue,
                       ]
                     : const [
-                        Color(0xFF6366F1),
-                        Color(0xFF06B6D4),
-                        Color(0xFF8B5CF6),
-                        Color(0xFF6366F1),
+                        AppTheme.brandBlue,
+                        AppTheme.brandCyan,
+                        AppTheme.brandDeepBlue,
+                        AppTheme.brandBlue,
                       ],
                 transform:
                     GradientRotation(_orbController.value * 2 * pi),
@@ -1768,7 +1768,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: 14, right: 8),
                   child: Icon(Icons.link_rounded,
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.7),
+                      color: AppTheme.brandBlue.withValues(alpha: 0.7),
                       size: 18),
                 ),
                 prefixIconConstraints:
@@ -1809,7 +1809,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         margin: const EdgeInsets.only(left: 4, right: 6),
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          color: AppTheme.brandBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: GestureDetector(
@@ -1822,7 +1822,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             }
                           },
                           child: const Icon(Icons.content_paste_rounded,
-                              color: Color(0xFF6366F1), size: 14),
+                              color: AppTheme.brandBlue, size: 14),
                         ),
                       ),
                   ],
@@ -2123,7 +2123,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
+                        colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue],
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -2326,9 +2326,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         // Vertical flow steps with glassmorphic cards
         ...List.generate(3, (i) {
           final steps = [
-            (Icons.link_rounded, context.l10n?.pasteLink ?? 'Paste Link', context.l10n?.dropProductUrl ?? 'Drop any product URL from 100+ stores', const Color(0xFF6366F1)),
-            (Icons.psychology_rounded, context.l10n?.aiQuiz ?? 'AI Quiz', context.l10n?.answerQuickQuestions ?? 'Answer quick questions about your needs', const Color(0xFFEC4899)),
-            (Icons.diamond_rounded, context.l10n?.matchScoreLabel ?? 'Match Score', context.l10n?.getPersonalizedScore ?? 'Get personalized compatibility score', const Color(0xFF06B6D4)),
+            (Icons.link_rounded, context.l10n?.pasteLink ?? 'Paste Link', context.l10n?.dropProductUrl ?? 'Drop any product URL from 100+ stores', AppTheme.brandBlue),
+            (Icons.psychology_rounded, context.l10n?.aiQuiz ?? 'AI Quiz', context.l10n?.answerQuickQuestions ?? 'Answer quick questions about your needs', AppTheme.brandSkyBlue),
+            (Icons.diamond_rounded, context.l10n?.matchScoreLabel ?? 'Match Score', context.l10n?.getPersonalizedScore ?? 'Get personalized compatibility score', AppTheme.brandCyan),
           ];
           final (icon, title, desc, color) = steps[i];
           return Padding(
@@ -2401,16 +2401,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             scrollDirection: Axis.horizontal,
             children: [
               _PowerCard(
-                icon: Icons.memory_rounded, color: const Color(0xFF6366F1),
+                icon: Icons.memory_rounded, color: AppTheme.brandBlue,
                 title: context.l10n?.specAnalysis ?? 'Spec\nAnalysis', emoji: '🔬'),
               _PowerCard(
-                icon: Icons.swap_horiz_rounded, color: const Color(0xFFEC4899),
+                icon: Icons.swap_horiz_rounded, color: AppTheme.brandSkyBlue,
                 title: context.l10n?.smartAlternatives ?? 'Smart\nAlternatives', emoji: '🔄'),
               _PowerCard(
                 icon: Icons.star_rounded, color: const Color(0xFFF59E0B),
                 title: context.l10n?.reviewDigest ?? 'Review\nDigest', emoji: '⭐'),
               _PowerCard(
-                icon: Icons.person_rounded, color: const Color(0xFF06B6D4),
+                icon: Icons.person_rounded, color: AppTheme.brandCyan,
                 title: context.l10n?.personalMatch ?? 'Personal\nMatch', emoji: '🎯'),
               _PowerCard(
                 icon: Icons.trending_up_rounded, color: const Color(0xFF10B981),
@@ -4637,7 +4637,7 @@ class _StepArrow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Icon(Icons.arrow_forward_rounded, size: 16,
-        color: const Color(0xFF6366F1).withValues(alpha: 0.4)),
+        color: AppTheme.brandBlue.withValues(alpha: 0.4)),
     );
   }
 }
