@@ -4867,7 +4867,7 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
         'acer', 'amazon', 'blu', 'cat', 'energizer', 'fairphone',
         'gigaset', 'hisense', 'infinix', 'itel', 'lg',
         'maxwest', 'nuu', 'plum', 'positivo', 'qmobile', 'spice',
-        'symphony', 'tecno', 'walton', 'yezz', 'philips', 'benq',
+        'symphony', 'tecno', 'walton', 'yezz', 'philips',
       };
 
       final currentYear = DateTime.now().year;

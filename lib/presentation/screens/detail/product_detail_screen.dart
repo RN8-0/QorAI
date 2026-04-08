@@ -123,128 +123,7 @@ class _DetailBody extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Compare button — icon + localized label
-                      Builder(builder: (ctx) {
-                        final isInCompare = ref.watch(comparisonStateProvider).selectedProductIds.contains(product.id);
-                        return GestureDetector(
-                          onTap: () {
-                            // Require login
-                            final authState = ref.read(authStateProvider);
-                            final isLoggedIn = authState.valueOrNull != null;
-                            if (!isLoggedIn) {
-                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Row(children: [
-                                  const Icon(Icons.lock_outline, color: Colors.white, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(context.l10n?.signInToCompare ?? 'Sign in to compare products',
-                                      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                                ]),
-                                backgroundColor: AppTheme.primaryBlue,
-                                behavior: SnackBarBehavior.floating,
-                                margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                action: SnackBarAction(
-                                  label: context.l10n?.signIn ?? 'Sign In',
-                                  textColor: Colors.white,
-                                  onPressed: () => context.push(AppRoutes.login),
-                                ),
-                              ));
-                              return;
-                            }
-
-                            final currentIds = ref.read(comparisonStateProvider).selectedProductIds;
-                            final isAlreadyIn = currentIds.contains(product.id);
-
-                            // Category check when adding
-                            if (!isAlreadyIn && currentIds.isNotEmpty) {
-                              final firstProductAsync = ref.read(productDetailProvider(currentIds.first));
-                              String? firstCategory;
-                              firstProductAsync.whenData((r) => r.when(
-                                success: (p) => firstCategory = p.category,
-                                failure: (_) {},
-                              ));
-                              if (firstCategory != null && firstCategory != product.category) {
-                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text(context.l10n?.onlySameCategoryCompare(firstCategory!.replaceAll('_', ' ')) ??
-                                      'Only ${firstCategory!.replaceAll('_', ' ')} products can be compared',
-                                      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white)),
-                                  backgroundColor: Colors.redAccent,
-                                  behavior: SnackBarBehavior.floating,
-                                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                ));
-                                HapticFeedback.heavyImpact();
-                                return;
-                              }
-                            }
-
-                            ref.read(comparisonStateProvider.notifier).toggleProduct(product.id);
-                            HapticFeedback.lightImpact();
-
-                            if (!isAlreadyIn) {
-                              final newIds = ref.read(comparisonStateProvider).selectedProductIds;
-                              if (newIds.length >= 2) {
-                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                // Navigate to compare tab (don't push new instance)
-                                context.go(AppRoutes.compare);
-                              } else {
-                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Row(children: [
-                                    const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 18),
-                                    const SizedBox(width: 8),
-                                    Text('${newIds.length}/2 products selected',
-                                        style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                                  ]),
-                                  backgroundColor: AppTheme.primaryBlue,
-                                  behavior: SnackBarBehavior.floating,
-                                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                  duration: const Duration(seconds: 2),
-                                ));
-                              }
-                            }
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                            decoration: BoxDecoration(
-                              color: isInCompare
-                                  ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                  : context.surfaceVariantColor,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isInCompare
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.5)
-                                    : context.dividerColor,
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  isInCompare ? Icons.check_circle : Icons.compare_arrows_rounded,
-                                  color: isInCompare ? AppTheme.primaryBlue : context.textPrimary,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  isInCompare
-                                      ? (context.l10n?.added ?? 'Eklendi')
-                                      : (context.l10n?.compareAction ?? 'Karşılaştır'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: isInCompare ? AppTheme.primaryBlue : context.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }),
+                      _CompareTooltipButton(product: product),
                       const SizedBox(width: 8),
                       // Share button
                       Container(
@@ -3620,11 +3499,238 @@ class _SimilarProductsTab extends ConsumerWidget {
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 40),
       children: [
         _SimilarProductsSection(product: product, isDark: isDark),
-        const SizedBox(height: 24),
-        _TrendingProductsSection(currentProduct: product, isDark: isDark),
       ],
     );
   }
+}
+
+// ── Compare Tooltip Button (replaces SnackBar with positioned bubble) ──
+class _CompareTooltipButton extends ConsumerStatefulWidget {
+  final ProductEntity product;
+  const _CompareTooltipButton({required this.product});
+
+  @override
+  ConsumerState<_CompareTooltipButton> createState() => _CompareTooltipButtonState();
+}
+
+class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
+    with SingleTickerProviderStateMixin {
+  final _buttonKey = GlobalKey();
+  OverlayEntry? _tooltipEntry;
+  late AnimationController _fadeController;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _removeTooltip();
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  void _removeTooltip() {
+    _tooltipEntry?.remove();
+    _tooltipEntry = null;
+  }
+
+  void _showTooltip(String text) {
+    _removeTooltip();
+
+    final renderBox = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    _fadeController.forward(from: 0);
+
+    _tooltipEntry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        top: offset.dy + size.height + 4,
+        left: offset.dx + (size.width / 2) - 30,
+        child: FadeTransition(
+          opacity: _fadeController,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Triangle pointing up
+              CustomPaint(
+                size: const Size(12, 6),
+                painter: _TrianglePainter(color: primaryColor),
+              ),
+              // Bubble
+              Container(
+                constraints: const BoxConstraints(maxWidth: 80, maxHeight: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  text,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_tooltipEntry!);
+
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (_tooltipEntry != null && mounted) {
+        _fadeController.reverse().then((_) {
+          if (mounted) _removeTooltip();
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final product = widget.product;
+    final isInCompare = ref.watch(comparisonStateProvider).selectedProductIds.contains(product.id);
+
+    return GestureDetector(
+      key: _buttonKey,
+      onTap: () {
+        // Require login
+        final authState = ref.read(authStateProvider);
+        final isLoggedIn = authState.valueOrNull != null;
+        if (!isLoggedIn) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+              const Icon(Icons.lock_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(context.l10n?.signInToCompare ?? 'Sign in to compare products',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+            ]),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            action: SnackBarAction(
+              label: context.l10n?.signIn ?? 'Sign In',
+              textColor: Colors.white,
+              onPressed: () => context.push(AppRoutes.login),
+            ),
+          ));
+          return;
+        }
+
+        final currentIds = ref.read(comparisonStateProvider).selectedProductIds;
+        final isAlreadyIn = currentIds.contains(product.id);
+
+        // Category check when adding
+        if (!isAlreadyIn && currentIds.isNotEmpty) {
+          final firstProductAsync = ref.read(productDetailProvider(currentIds.first));
+          String? firstCategory;
+          firstProductAsync.whenData((r) => r.when(
+            success: (p) => firstCategory = p.category,
+            failure: (_) {},
+          ));
+          if (firstCategory != null && firstCategory != product.category) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(context.l10n?.onlySameCategoryCompare(firstCategory!.replaceAll('_', ' ')) ??
+                  'Only ${firstCategory!.replaceAll('_', ' ')} products can be compared',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white)),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ));
+            HapticFeedback.heavyImpact();
+            return;
+          }
+        }
+
+        ref.read(comparisonStateProvider.notifier).toggleProduct(product.id);
+        HapticFeedback.lightImpact();
+
+        if (!isAlreadyIn) {
+          final newIds = ref.read(comparisonStateProvider).selectedProductIds;
+          if (newIds.length >= 2) {
+            context.go(AppRoutes.compare);
+          } else {
+            _showTooltip('${newIds.length}/2');
+          }
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: isInCompare
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+              : context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isInCompare
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                : context.dividerColor,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isInCompare ? Icons.check_circle : Icons.compare_arrows_rounded,
+              color: isInCompare ? Theme.of(context).colorScheme.primary : context.textPrimary,
+              size: 16,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              isInCompare
+                  ? (context.l10n?.added ?? 'Added')
+                  : (context.l10n?.compareAction ?? 'Compare'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isInCompare ? Theme.of(context).colorScheme.primary : context.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Triangle painter for tooltip arrow
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path()
+      ..moveTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _QuickActionBtn extends StatelessWidget {
@@ -8258,9 +8364,37 @@ class _SimilarProductsSection extends ConsumerWidget {
 
     return similarAsync.when(
       loading: () => _SimilarShimmer(isDark: isDark),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, __) => Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 48),
+          child: Column(
+            children: [
+              Icon(Icons.widgets_outlined, size: 48,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+              const SizedBox(height: 12),
+              Text('No similar products found',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
+            ],
+          ),
+        ),
+      ),
       data: (products) {
-        if (products.isEmpty) return const SizedBox.shrink();
+        if (products.isEmpty) return Center(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 48),
+            child: Column(
+              children: [
+                Icon(Icons.widgets_outlined, size: 48,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+                const SizedBox(height: 12),
+                Text('No similar products found',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
+              ],
+            ),
+          ),
+        );
         // Flat list sorted by techScore, top 12
         final sorted = List<ProductEntity>.from(products)
           ..sort((a, b) => b.techScore.compareTo(a.techScore));
@@ -8425,93 +8559,6 @@ class _SimilarGridCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── Trending Products Section (shown after Similar Products) ──
-class _TrendingProductsSection extends ConsumerWidget {
-  final ProductEntity currentProduct;
-  final bool isDark;
-  const _TrendingProductsSection({required this.currentProduct, required this.isDark});
-
-  Color _techColor(double s) => s >= 85
-      ? const Color(0xFF10B981)
-      : s >= 70
-          ? const Color(0xFFF59E0B)
-          : s >= 50
-              ? const Color(0xFFF97316)
-              : const Color(0xFFEF4444);
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final trendingAsync = ref.watch(trendingProductsProvider);
-
-    return trendingAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (products) {
-        // Filter out current product and same-category products
-        final filtered = products
-            .where((p) => p.id != currentProduct.id &&
-                p.categoryId != currentProduct.categoryId)
-            .take(15)
-            .toList();
-
-        if (filtered.isEmpty) return const SizedBox.shrink();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Section header
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 14),
-              child: Row(children: [
-                Container(
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFF97316), Color(0xFFEF4444)]),
-                    borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.local_fire_department_rounded, size: 16, color: Colors.white),
-                ),
-                const SizedBox(width: 10),
-                Text(context.l10n?.trendingProducts ?? 'Trending Products',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16, fontWeight: FontWeight.w700,
-                    color: context.textPrimary)),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFF97316), Color(0xFFEF4444)]),
-                    borderRadius: BorderRadius.circular(8)),
-                  child: Text('🔥',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 11)),
-                ),
-              ]),
-            ),
-
-            // Horizontal scroll of trending products
-            SizedBox(
-              height: 200,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (context, i) {
-                  final p = filtered[i];
-                  return SizedBox(
-                    width: 155,
-                    child: _SimilarGridCard(product: p),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }
