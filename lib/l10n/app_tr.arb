@@ -406,6 +406,7 @@
   "preferNotToSay": "Belirtmek istemiyorum",
   "pleaseEnterEmailAndPassword": "Lütfen e-posta ve şifrenizi girin",
   "pleaseFillAllFields": "Lütfen tüm alanları doldurun (Ad, E-posta, Şifre, Doğum Tarihi ve Cinsiyet)",
+  "mustBe13OrOlder": "Compair'i kullanmak için en az 13 yaşında olmalısınız.",
   "pleaseEnterEmailToReset": "Şifrenizi sıfırlamak için e-posta adresinizi girin",
   "passwordResetEmailSent": "Şifre sıfırlama e-postası gönderildi!",
   "compairTitle": "Compair",

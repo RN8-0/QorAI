@@ -1170,6 +1170,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Lütfen tüm alanları doldurun (Ad, E-posta, Şifre, Doğum Tarihi ve Cinsiyet)';
 
   @override
+  String get mustBe13OrOlder =>
+      'Compair\'i kullanmak için en az 13 yaşında olmalısınız.';
+
+  @override
   String get pleaseEnterEmailToReset =>
       'Şifrenizi sıfırlamak için e-posta adresinizi girin';
 

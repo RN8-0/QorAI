@@ -10,6 +10,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Read local.properties for signing config
+fun localProp(key: String, default: String = ""): String {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return default
+    file.readLines().forEach { line ->
+        if (line.startsWith("$key=")) return line.substringAfter("=").trim()
+    }
+    return default
+}
+
 android {
     namespace = "com.compair.app"
     compileSdk = flutter.compileSdkVersion
@@ -26,10 +36,10 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = "compair"
-            keyPassword = "compair2024"
-            storeFile = file("compair-release.jks")
-            storePassword = "compair2024"
+            keyAlias = localProp("RELEASE_KEY_ALIAS", "compair")
+            keyPassword = localProp("RELEASE_KEY_PASSWORD")
+            storeFile = file(localProp("RELEASE_STORE_FILE", "compair-release.jks"))
+            storePassword = localProp("RELEASE_STORE_PASSWORD")
         }
     }
 

@@ -24,9 +24,10 @@ class ShimmerBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF1E293B),
-      highlightColor: const Color(0xFF334155),
+      baseColor: isDark ? AppTheme.slate800 : const Color(0xFFE2E8F0),
+      highlightColor: isDark ? AppTheme.slate700 : const Color(0xFFF1F5F9),
       child: Container(
         width: width,
         height: height,
@@ -45,9 +46,10 @@ class ProductCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF1E293B),
-      highlightColor: const Color(0xFF334155),
+      baseColor: isDark ? AppTheme.slate800 : const Color(0xFFE2E8F0),
+      highlightColor: isDark ? AppTheme.slate700 : const Color(0xFFF1F5F9),
       child: Container(
         width: 160,
         margin: const EdgeInsets.only(right: 12),
@@ -128,9 +130,10 @@ class CategoryGridSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF1E293B),
-      highlightColor: const Color(0xFF334155),
+      baseColor: isDark ? AppTheme.slate800 : const Color(0xFFE2E8F0),
+      highlightColor: isDark ? AppTheme.slate700 : const Color(0xFFF1F5F9),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -159,9 +162,10 @@ class ScoreCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF1E293B),
-      highlightColor: const Color(0xFF334155),
+      baseColor: isDark ? AppTheme.slate800 : const Color(0xFFE2E8F0),
+      highlightColor: isDark ? AppTheme.slate700 : const Color(0xFFF1F5F9),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -215,9 +219,10 @@ class ListItemSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF1E293B),
-      highlightColor: const Color(0xFF334155),
+      baseColor: isDark ? AppTheme.slate800 : const Color(0xFFE2E8F0),
+      highlightColor: isDark ? AppTheme.slate700 : const Color(0xFFF1F5F9),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         child: Row(
@@ -254,9 +259,10 @@ class DetailPageSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF1E293B),
-      highlightColor: const Color(0xFF334155),
+      baseColor: isDark ? AppTheme.slate800 : const Color(0xFFE2E8F0),
+      highlightColor: isDark ? AppTheme.slate700 : const Color(0xFFF1F5F9),
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         child: Column(

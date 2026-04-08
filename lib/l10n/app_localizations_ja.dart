@@ -1146,6 +1146,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get pleaseFillAllFields => 'すべてのフィールドを入力してください（名前、メール、パスワード、生年月日、性別）';
 
   @override
+  String get mustBe13OrOlder =>
+      'You must be at least 13 years old to use Compair.';
+
+  @override
   String get pleaseEnterEmailToReset => 'パスワードリセットのためメールアドレスを入力してください';
 
   @override

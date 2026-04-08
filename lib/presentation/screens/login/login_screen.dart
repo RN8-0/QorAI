@@ -144,6 +144,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    // COPPA compliance: users must be at least 13 years old
+    final age = DateTime.now().difference(_birthDate!).inDays ~/ 365;
+    if (age < 13) {
+      _showError(context.l10n?.mustBe13OrOlder ?? 'You must be at least 13 years old to use Compair.');
+      return;
+    }
+
     setState(() => _isLoading = true);
     final result = await ref.read(authRepositoryProvider).signUpWithEmail(
           email: _emailController.text.trim(),

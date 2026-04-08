@@ -133,7 +133,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Last updated: March 2025',
+          'Last updated: April 2026',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             height: 1.72,
@@ -143,7 +143,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Effective date: March 2025',
+          'Effective date: April 2026',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             height: 1.72,
@@ -254,7 +254,7 @@ class _TermsContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Last updated: March 2025',
+          'Last updated: April 2026',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             height: 1.72,

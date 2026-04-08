@@ -43,6 +43,7 @@ import 'package:compair/services/youtube_service.dart';
 import 'package:compair/services/google_search_service.dart';
 import 'package:compair/services/behavior_tracking_service.dart';
 import 'package:compair/services/ip_location_service.dart';
+import 'package:compair/services/analytics_service.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:compair/core/errors.dart';
 
@@ -1821,6 +1822,7 @@ final searchResultsProvider =
   if (localResults.length >= 10) {
     // Still fire Cloud Function in background for next time
     ref.read(productRepositoryProvider).searchProducts(query: query, limit: 100);
+    AnalyticsService.instance.logProductSearch(query, localResults.length);
     return Success(localResults.take(100).toList());
   }
 
@@ -3012,6 +3014,9 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
     }
     ref.read(behaviorTrackingProvider).trackProductView(productId, category);
     ref.read(behaviorTrackingProvider).trackActiveHour();
+    // Firebase Analytics
+    final brand = cached?.trending.where((p) => p.id == productId).firstOrNull?.brand;
+    AnalyticsService.instance.logProductView(productId, category, brand);
   } catch (_) {}
 }
 

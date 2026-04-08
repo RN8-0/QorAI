@@ -1164,6 +1164,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please fill in all fields (Name, Email, Password, Birth Date, & Gender)';
 
   @override
+  String get mustBe13OrOlder =>
+      'You must be at least 13 years old to use Compair.';
+
+  @override
   String get pleaseEnterEmailToReset =>
       'Please enter your email to reset password';
 

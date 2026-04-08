@@ -2338,6 +2338,12 @@ abstract class AppLocalizations {
   /// **'Please fill in all fields (Name, Email, Password, Birth Date, & Gender)'**
   String get pleaseFillAllFields;
 
+  /// No description provided for @mustBe13OrOlder.
+  ///
+  /// In en, this message translates to:
+  /// **'You must be at least 13 years old to use Compair.'**
+  String get mustBe13OrOlder;
+
   /// No description provided for @pleaseEnterEmailToReset.
   ///
   /// In en, this message translates to:

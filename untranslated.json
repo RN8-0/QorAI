@@ -1,5 +1,6 @@
 {
   "ar": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -22,6 +23,7 @@
   ],
 
   "de": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -44,6 +46,7 @@
   ],
 
   "es": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -66,6 +69,7 @@
   ],
 
   "fr": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -88,6 +92,7 @@
   ],
 
   "it": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -110,6 +115,7 @@
   ],
 
   "ja": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -132,6 +138,7 @@
   ],
 
   "nl": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -154,6 +161,7 @@
   ],
 
   "pl": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -176,6 +184,7 @@
   ],
 
   "pt": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",
@@ -198,6 +207,7 @@
   ],
 
   "sv": [
+    "mustBe13OrOlder",
     "added",
     "benchmarkAiInfo",
     "loadAiBenchmarks",

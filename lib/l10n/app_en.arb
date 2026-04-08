@@ -427,6 +427,7 @@
   "preferNotToSay": "Prefer not to say",
   "pleaseEnterEmailAndPassword": "Please enter email and password",
   "pleaseFillAllFields": "Please fill in all fields (Name, Email, Password, Birth Date, & Gender)",
+  "mustBe13OrOlder": "You must be at least 13 years old to use Compair.",
   "pleaseEnterEmailToReset": "Please enter your email to reset password",
   "passwordResetEmailSent": "Password reset email sent!",
   "compairTitle": "Compair",
