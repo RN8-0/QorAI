@@ -256,10 +256,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String? _getPersonalizationSubtitle(AsyncValue userProfile) {
     return userProfile.when(
       data: (user) {
-        if (user == null) return null;
-        if (!user.quizCompleted) return context.l10n?.completeProfileSuggestion ?? 'Complete your profile for better suggestions';
+        if (user == null) return 'Trending picks • most popular this week';
+        if (!user.quizCompleted) return context.l10n?.completeProfileSuggestion ?? 'Complete your profile for better picks';
         final parts = <String>[];
-        // Show profession if set
+
+        // Part 1: Audience descriptor
         if (user.profession != null && user.profession != 'other') {
           final labels = {
             'engineer': context.l10n?.engineers ?? 'Engineers',
@@ -270,19 +271,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'teacher': context.l10n?.teachers ?? 'Teachers',
             'finance': context.l10n?.financePros ?? 'Finance pros',
           };
-          parts.add(context.l10n?.topPicksFor(labels[user.profession] ?? 'you') ?? 'Top picks for ${labels[user.profession] ?? 'you'}');
+          final label = labels[user.profession] ?? 'you';
+          final eco = user.ecosystem == 'apple' ? 'Apple '
+              : user.ecosystem == 'android' ? 'Android ' : '';
+          parts.add('Picks for $eco$label');
         } else {
           final ecosystem = user.ecosystem == 'apple' ? 'Apple'
-              : user.ecosystem == 'android' ? 'Android' : 'All';
-          parts.add(context.l10n?.curatedFor(ecosystem) ?? 'Curated for $ecosystem users');
+              : user.ecosystem == 'android' ? 'Android' : null;
+          if (ecosystem != null) {
+            parts.add('Curated for $ecosystem users');
+          } else {
+            parts.add('Personalized for you');
+          }
         }
-        // Add budget hint
-        if (user.budgetRange == 'high') parts.add(context.l10n?.premiumPicks ?? 'premium picks');
-        else if (user.budgetRange == 'low') parts.add(context.l10n?.budgetFriendly ?? 'budget-friendly');
+
+        // Part 2: Budget or activity hint
+        final budget = user.budgetRange;
+        if (budget == 'premium' || budget == 'high') {
+          parts.add('premium picks');
+        } else if (budget == 'low') {
+          parts.add('budget-friendly');
+        } else if (budget == 'mid') {
+          parts.add('mid-range picks');
+        } else {
+          parts.add('based on your activity');
+        }
+
         return parts.join(' • ');
       },
       loading: () => null,
-      error: (_, __) => null,
+      error: (_, __) => 'Trending picks • most popular this week',
     );
   }
 
