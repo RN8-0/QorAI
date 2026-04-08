@@ -830,7 +830,8 @@ $jsonSchema
 
     final enhancedScore = _parseScore(
         response['enhancedScore'] ?? response['enhanced_score'] ?? response['score']);
-    debugPrint('[Gemini] enhancedAnalysis score: $enhancedScore, factors: ${factors.length}');
+    debugPrint('[Gemini] enhancedAnalysis for "${baseResult.metadata.title}": score=$enhancedScore, factors=${factors.length}, '
+        'factorScores=[${factors.map((f) => '${f.label}:${f.score}').join(', ')}]');
 
     return EnhancedAnalysisResult(
       baseResult: baseResult,
@@ -1102,9 +1103,17 @@ analyze the product and compute a personalized compatibility score.
 
 LANGUAGE: You MUST write the "analysis" field in $langName.
 
+SCORING RULES:
+- Score reflects how well this product fits the user's profile and needs
+- Consider the user's ecosystem, budget, priorities, and country
+- Budget phones for a budget-conscious user = higher score
+- Premium phones for a budget-conscious user = lower score
+- Score range: 20-95 (never 0 or 100, be realistic)
+- Extract the actual product name, price, and category from the URL content
+
 Return valid JSON:
 {
-  "score": 0-100,
+  "score": 20-95,
   "analysis": "Detailed analysis in $langName of how this product fits the user",
   "category": "product category (e.g., smartphones, laptops)",
   "title": "Product name/title",
@@ -1188,6 +1197,18 @@ You are Compair's deep compatibility analyzer. Given a product, the user's quiz
 answers, and their full profile, produce a comprehensive personalized match report.
 
 LANGUAGE: Write ALL text (verdict, pros, cons, alternatives) in $langName.
+
+CRITICAL SCORING RULES:
+- Analyze the SPECIFIC product's specs, features, price, and category
+- Score must reflect how well THIS SPECIFIC product matches THIS SPECIFIC user
+- A budget phone should score LOW on Future-proofing but potentially HIGH on Budget Match
+- A flagship phone should score differently from a mid-range phone
+- enhancedScore is the weighted average of all factor scores
+- Scores MUST be realistic and differentiated: do NOT default to the same score for every product
+- Consider the product's actual market position, specs, and price tier when scoring
+- If the product doesn't match the user's needs, scores should be LOW (20-40)
+- If it's a perfect match, scores should be HIGH (80-95)
+- NEVER give the same score to products with different specs/prices
 
 Return valid JSON:
 {

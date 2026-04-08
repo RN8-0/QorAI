@@ -447,6 +447,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           answeredQuestions: quizAnswers,
           profile: localizedUser,
         );
+        debugPrint('[Compare] Score for "${data.metadata.title}": initial=${data.aiScore}, enhanced=${enhanced.enhancedScore}');
         results.add(enhanced);
       } catch (e) {
         debugPrint('[Compare] Enhanced analysis fallback for ${data.url}: $e');
