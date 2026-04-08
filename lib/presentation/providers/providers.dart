@@ -1994,6 +1994,101 @@ final pcBuilderAiProvider = StateProvider<String?>((ref) => null);
 final linkAnalysisNotifierProvider = linkAnalysisProvider;
 
 // ════════════════════════════════════════════════════
+// ─── AI REVIEW SUMMARY CACHE ───
+// ════════════════════════════════════════════════════
+
+class AIReviewResult {
+  final String summary;
+  final int satisfaction;
+  final List<String> praised;
+  final List<String> criticized;
+  final bool failed;
+  const AIReviewResult({
+    this.summary = '',
+    this.satisfaction = 0,
+    this.praised = const [],
+    this.criticized = const [],
+    this.failed = false,
+  });
+}
+
+final aiReviewCacheProvider = StateNotifierProvider.family<
+    _AIReviewNotifier, AsyncValue<AIReviewResult?>, String>((ref, productId) {
+  return _AIReviewNotifier(ref, productId);
+});
+
+class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
+  final Ref _ref;
+  final String _productId;
+  _AIReviewNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+
+  Future<void> startAnalysis(String productName, String language) async {
+    if (state is AsyncLoading) return;
+    if (state.valueOrNull != null) return;
+    state = const AsyncValue.loading();
+    try {
+      final gemini = _ref.read(geminiServiceProvider);
+      final langName = _getLanguageName(language);
+      final response = await gemini.jsonFreeTextQuery(
+        'You are a product sentiment analyst. Based on your knowledge of publicly available '
+        'user reviews, Reddit threads, forum discussions, YouTube comments, and tech community '
+        'feedback for "$productName", provide a consumer sentiment analysis.\n\n'
+        'Focus on real user opinions from Reddit, tech forums, review sites, and general consumer feedback.\n\n'
+        'IMPORTANT: ALL text must be written in $langName language.\n\n'
+        'Return a JSON object with these fields:\n'
+        '"summary": A 2-3 sentence overview of what users think. Write in $langName.\n'
+        '"satisfaction": Integer 0-100 representing overall user satisfaction percentage\n'
+        '"praised": Array of 3-4 specific features/aspects users consistently praise. Write in $langName.\n'
+        '"criticized": Array of 2-3 specific issues users consistently criticize. Write in $langName.',
+        language: language,
+      );
+      if (response.isNotEmpty) {
+        try {
+          final start = response.indexOf('{');
+          final end = response.lastIndexOf('}');
+          if (start == -1 || end == -1 || end <= start) throw const FormatException('No JSON');
+          final data = Map<String, dynamic>.from(jsonDecode(response.substring(start, end + 1)) as Map);
+          state = AsyncValue.data(AIReviewResult(
+            summary: data['summary']?.toString() ?? '',
+            satisfaction: data['satisfaction'] is num
+                ? (data['satisfaction'] as num).toInt().clamp(0, 100)
+                : int.tryParse(data['satisfaction']?.toString() ?? '') ?? 0,
+            praised: (data['praised'] is List) ? (data['praised'] as List).map((e) => e.toString()).toList() : [],
+            criticized: (data['criticized'] is List) ? (data['criticized'] as List).map((e) => e.toString()).toList() : [],
+          ));
+        } catch (_) {
+          state = const AsyncValue.data(AIReviewResult(summary: 'Analysis failed. Please try again.', failed: true));
+        }
+      } else {
+        state = const AsyncValue.data(AIReviewResult(failed: true));
+      }
+    } catch (e) {
+      state = const AsyncValue.data(AIReviewResult(failed: true));
+    }
+  }
+
+  void reset() => state = const AsyncValue.data(null);
+
+  static String _getLanguageName(String code) {
+    switch (code) {
+      case 'tr': return 'Turkish';
+      case 'de': return 'German';
+      case 'fr': return 'French';
+      case 'es': return 'Spanish';
+      case 'pt': return 'Portuguese';
+      case 'it': return 'Italian';
+      case 'ja': return 'Japanese';
+      case 'ko': return 'Korean';
+      case 'zh': return 'Chinese';
+      case 'ru': return 'Russian';
+      case 'ar': return 'Arabic';
+      case 'hi': return 'Hindi';
+      default: return 'English';
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
 // ─── DEEP ANALYSIS CACHE ───
 // ════════════════════════════════════════════════════
 
@@ -2172,8 +2267,59 @@ class _PredictionCacheNotifier extends StateNotifier<AsyncValue<String?>> {
 }
 
 // ════════════════════════════════════════════════════
-// ─── COLLECTION / OWNED PRODUCTS ───
+// ─── BENCHMARK SCORES CACHE ───
 // ════════════════════════════════════════════════════
+
+class BenchmarkResult {
+  final String rawScoresResponse;
+  final String? rawVerdictResponse;
+  final bool failed;
+  const BenchmarkResult({this.rawScoresResponse = '', this.rawVerdictResponse, this.failed = false});
+}
+
+final benchmarkCacheProvider = StateNotifierProvider.family<
+    _BenchmarkCacheNotifier, AsyncValue<BenchmarkResult?>, String>((ref, productId) {
+  return _BenchmarkCacheNotifier(ref, productId);
+});
+
+class _BenchmarkCacheNotifier extends StateNotifier<AsyncValue<BenchmarkResult?>> {
+  final Ref _ref;
+  final String _productId;
+  _BenchmarkCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+
+  Future<void> fetchBenchmarks(String prompt) async {
+    if (state is AsyncLoading) return;
+    if (state.valueOrNull != null) return;
+    state = const AsyncValue.loading();
+    try {
+      final gemini = _ref.read(geminiServiceProvider);
+      final result = await gemini.groundedQuery(prompt);
+      if (result.isNotEmpty) {
+        state = AsyncValue.data(BenchmarkResult(rawScoresResponse: result));
+      } else {
+        state = const AsyncValue.data(BenchmarkResult(failed: true));
+      }
+    } catch (e) {
+      state = const AsyncValue.data(BenchmarkResult(failed: true));
+    }
+  }
+
+  Future<void> fetchVerdict(String prompt) async {
+    final current = state.valueOrNull;
+    if (current == null || current.rawVerdictResponse != null) return;
+    try {
+      final gemini = _ref.read(geminiServiceProvider);
+      final result = await gemini.jsonFreeTextQuery(prompt);
+      state = AsyncValue.data(BenchmarkResult(
+        rawScoresResponse: current.rawScoresResponse,
+        rawVerdictResponse: result,
+        failed: current.failed,
+      ));
+    } catch (_) {}
+  }
+
+  void reset() => state = const AsyncValue.data(null);
+}
 
 /// Add product to collection
 Future<Result<void>> addToCollection(WidgetRef ref, String productId) async {

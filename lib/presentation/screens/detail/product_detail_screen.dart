@@ -4583,112 +4583,40 @@ class _AIReviewAnalysisCard extends ConsumerStatefulWidget {
 }
 
 class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
-  bool _loading = false;
-  bool _loaded = false;
   bool _expanded = false;
-  // Parsed result fields
-  String _summary = '';
-  int _satisfaction = 0;
-  List<String> _praised = [];
-  List<String> _criticized = [];
 
   Future<void> _handleTap() async {
-    if (_loading) return;
-    if (_loaded) {
+    final reviewAsync = ref.read(aiReviewCacheProvider(widget.product.id));
+    final hasResult = reviewAsync.valueOrNull != null;
+    final isLoading = reviewAsync is AsyncLoading;
+
+    if (isLoading) return;
+    if (hasResult) {
       setState(() => _expanded = !_expanded);
       return;
     }
     setState(() => _expanded = true);
-    await _analyzeReviews();
-  }
-
-  Future<void> _analyzeReviews() async {
-    setState(() => _loading = true);
-    try {
-      final gemini = ref.read(geminiServiceProvider);
-      final locale = Localizations.localeOf(context).languageCode;
-      final langName = _getLanguageName(locale);
-      final productName = widget.product.name;
-
-      final response = await gemini.jsonFreeTextQuery(
-        'You are a product sentiment analyst. Based on your knowledge of publicly available '
-        'user reviews, Reddit threads, forum discussions, YouTube comments, and tech community '
-        'feedback for "$productName", provide a consumer sentiment analysis.\n\n'
-        'Focus on real user opinions from Reddit, tech forums, review sites, and general consumer feedback.\n\n'
-        'IMPORTANT: ALL text must be written in $langName language.\n\n'
-        'Return a JSON object with these fields:\n'
-        '"summary": A 2-3 sentence overview of what users think. Write in $langName.\n'
-        '"satisfaction": Integer 0-100 representing overall user satisfaction percentage\n'
-        '"praised": Array of 3-4 specific features/aspects users consistently praise. Write in $langName.\n'
-        '"criticized": Array of 2-3 specific issues users consistently criticize. Write in $langName.',
-        language: locale,
-      );
-
-      debugPrint('=== COMPAIR: AI review raw response (${response.length} chars): ${response.substring(0, response.length.clamp(0, 200))} ===');
-      if (response.isNotEmpty && mounted) {
-        try {
-          // Extract the outermost JSON object
-          final start = response.indexOf('{');
-          final end = response.lastIndexOf('}');
-          if (start == -1 || end == -1 || end <= start) throw FormatException('No JSON object found');
-          final jsonStr = response.substring(start, end + 1);
-          final decoded = jsonDecode(jsonStr);
-          if (decoded is! Map) throw FormatException('Expected JSON object');
-          final data = Map<String, dynamic>.from(decoded);
-          setState(() {
-            _summary = data['summary']?.toString() ?? '';
-            _satisfaction = data['satisfaction'] is num
-                ? (data['satisfaction'] as num).toInt().clamp(0, 100)
-                : int.tryParse(data['satisfaction']?.toString() ?? '') ?? 0;
-            _praised = (data['praised'] is List)
-                ? (data['praised'] as List).map((e) => e.toString()).toList()
-                : [];
-            _criticized = (data['criticized'] is List)
-                ? (data['criticized'] as List).map((e) => e.toString()).toList()
-                : [];
-            _loaded = true;
-            _loading = false;
-          });
-          debugPrint('=== COMPAIR: AI review parsed OK — summary: ${_summary.substring(0, _summary.length.clamp(0, 80))} ===');
-        } catch (parseErr) {
-          debugPrint('=== COMPAIR: AI review JSON parse FAILED: $parseErr ===');
-          // Show user-friendly error rather than raw JSON
-          if (mounted) setState(() {
-            _summary = 'Analysis failed. Please try again.';
-            _loaded = true;
-            _loading = false;
-          });
-        }
-      } else if (mounted) {
-        setState(() { _loaded = true; _loading = false; });
-      }
-    } catch (e) {
-      debugPrint('=== COMPAIR: AI review analysis error: $e ===');
-      if (mounted) setState(() { _loaded = true; _loading = false; });
-    }
-  }
-
-  String _getLanguageName(String code) {
-    switch (code) {
-      case 'tr': return 'Turkish';
-      case 'de': return 'German';
-      case 'fr': return 'French';
-      case 'es': return 'Spanish';
-      case 'pt': return 'Portuguese';
-      case 'it': return 'Italian';
-      case 'ja': return 'Japanese';
-      case 'ko': return 'Korean';
-      case 'zh': return 'Chinese';
-      case 'ru': return 'Russian';
-      case 'ar': return 'Arabic';
-      case 'hi': return 'Hindi';
-      default: return 'English';
-    }
+    final lang = Localizations.localeOf(context).languageCode;
+    ref.read(aiReviewCacheProvider(widget.product.id).notifier)
+        .startAnalysis(widget.product.name, lang);
   }
 
   @override
   Widget build(BuildContext context) {
     const gradient = [AppTheme.accentTeal, Color(0xFF14B8A6)];
+
+    final reviewAsync = ref.watch(aiReviewCacheProvider(widget.product.id));
+    final result = reviewAsync.valueOrNull;
+    final isLoading = reviewAsync is AsyncLoading;
+    final loaded = result != null;
+
+    // Auto-expand when result arrives
+    if (loaded && !_expanded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _expanded = true);
+      });
+    }
+
     return GestureDetector(
       onTap: _handleTap,
       child: AnimatedContainer(
@@ -4727,16 +4655,16 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12, color: context.textSecondary)),
                 ])),
-              if (_loading)
+              if (isLoading)
                 const SizedBox(width: 20, height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2))
               else
-                Icon(_expanded && _loaded
+                Icon(_expanded && loaded
                     ? Icons.expand_less_rounded
                     : Icons.expand_more_rounded,
                   color: AppTheme.accentTeal),
             ]),
-            if (_expanded && _loaded) ...[
+            if (_expanded && loaded) ...[
               const SizedBox(height: 14),
               Container(
                 width: double.infinity,
@@ -4745,11 +4673,11 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                   color: AppTheme.accentTeal.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.accentTeal.withValues(alpha: 0.1))),
-                child: _summary.isEmpty && _praised.isEmpty
+                child: result.summary.isEmpty && result.praised.isEmpty
                     ? Text(context.l10n?.noReviewsYet ?? 'No community reviews found for this product.',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13, color: context.textSecondary))
-                    : _buildResult(),
+                    : _buildResult(result),
               ),
             ],
           ],
@@ -4758,10 +4686,10 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
     );
   }
 
-  Widget _buildResult() {
-    final satColor = _satisfaction >= 75
+  Widget _buildResult(AIReviewResult result) {
+    final satColor = result.satisfaction >= 75
         ? AppTheme.success
-        : _satisfaction >= 50
+        : result.satisfaction >= 50
             ? AppTheme.warning
             : AppTheme.error;
 
@@ -4769,7 +4697,7 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Satisfaction gauge row
-        if (_satisfaction > 0) ...[
+        if (result.satisfaction > 0) ...[
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -4779,20 +4707,19 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
             ),
             child: Row(
               children: [
-                // Circular gauge
                 SizedBox(
                   width: 64, height: 64,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       CircularProgressIndicator(
-                        value: _satisfaction / 100,
+                        value: result.satisfaction / 100,
                         strokeWidth: 5,
                         backgroundColor: satColor.withValues(alpha: 0.12),
                         valueColor: AlwaysStoppedAnimation<Color>(satColor),
                       ),
                       Text(
-                        '$_satisfaction%',
+                        '${result.satisfaction}%',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: satColor),
                       ),
                     ],
@@ -4809,9 +4736,9 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _satisfaction >= 80 ? (context.l10n?.highlyRecommended ?? 'Highly recommended') :
-                        _satisfaction >= 65 ? (context.l10n?.generallyPositive ?? 'Generally positive') :
-                        _satisfaction >= 45 ? (context.l10n?.mixedOpinions ?? 'Mixed opinions') : (context.l10n?.notableConcerns ?? 'Notable concerns'),
+                        result.satisfaction >= 80 ? (context.l10n?.highlyRecommended ?? 'Highly recommended') :
+                        result.satisfaction >= 65 ? (context.l10n?.generallyPositive ?? 'Generally positive') :
+                        result.satisfaction >= 45 ? (context.l10n?.mixedOpinions ?? 'Mixed opinions') : (context.l10n?.notableConcerns ?? 'Notable concerns'),
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: satColor),
                       ),
                       const SizedBox(height: 4),
@@ -4828,24 +4755,24 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
           const SizedBox(height: 10),
         ],
         // Summary text
-        if (_summary.isNotEmpty) ...[
+        if (result.summary.isNotEmpty) ...[
           Text(
-            _summary,
+            result.summary,
             style: TextStyle(
               fontSize: 13,
               height: 1.6,
-              color: widget.isDark ? context.textPrimary : context.textPrimary,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
         ],
         // Praised chips
-        if (_praised.isNotEmpty) ...[
+        if (result.praised.isNotEmpty) ...[
           Text('👍 ${context.l10n?.praised ?? 'Praised'}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.slate500)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6, runSpacing: 6,
-            children: _praised.map((p) => Container(
+            children: result.praised.map((p) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: AppTheme.success.withValues(alpha: 0.1),
@@ -4858,12 +4785,12 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
           const SizedBox(height: 10),
         ],
         // Criticized chips
-        if (_criticized.isNotEmpty) ...[
+        if (result.criticized.isNotEmpty) ...[
           Text('👎 ${context.l10n?.criticized ?? 'Criticized'}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.slate500)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6, runSpacing: 6,
-            children: _criticized.map((c) => Container(
+            children: result.criticized.map((c) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: AppTheme.error.withValues(alpha: 0.1),
@@ -4874,7 +4801,7 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
             )).toList(),
           ),
         ],
-        // AI disclosure label — Apple Guideline 1.4
+        // AI disclosure label
         const SizedBox(height: 14),
         Row(
           children: [
@@ -4908,29 +4835,21 @@ class _BenchmarkScoresCard extends ConsumerStatefulWidget {
 
 class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
     with TickerProviderStateMixin {
-  // ── Session-level cache (survives widget rebuilds) ──
-  static final Map<String, Map<String, double>> _scoreCache = {};
-  static final Map<String, Map<String, List<Map<String, dynamic>>>> _competitorCache = {};
-  static final Map<String, Map<String, dynamic>> _verdictCache = {};
 
-  bool _loadingAi = false;  // false = user hasn't triggered yet
-  bool _researched = false;
-  bool _failed = false;
-  bool _userTriggered = false; // tracks if user has ever tapped Load Benchmark
+  bool _userTriggered = false;
   late AnimationController _barAnimController;
   late Animation<double> _barAnim;
-  // Parsed benchmark values from AI: { 'AnTuTu': 1850000.0, ... }
   final Map<String, double> _parsedScores = {};
-  // Segment competitors: { 'AnTuTu': [{'name':'Galaxy S24','score':1600000.0}, ...] }
   final Map<String, List<Map<String, dynamic>>> _competitors = {};
 
   // AI Verdict fields
-  bool _loadingVerdict = false;
   String _aiVerdict = '';
   String _targetAudience = '';
   List<String> _strengths = [];
   List<String> _weaknesses = [];
   double _pricePerformance = 0;
+
+  bool _animStarted = false;
 
   @override
   void initState() {
@@ -4938,7 +4857,6 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
     _barAnimController = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 1500));
     _barAnim = CurvedAnimation(parent: _barAnimController, curve: Curves.easeOutCubic);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromCacheOrFetch());
   }
 
   @override
@@ -4947,38 +4865,8 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
     super.dispose();
   }
 
-  /// Restores cached results instantly; does NOT auto-fetch AI (user must trigger).
-  void _loadFromCacheOrFetch() {
-    final pid = widget.product.id;
-    if (_scoreCache.containsKey(pid)) {
-      _parsedScores.addAll(_scoreCache[pid]!);
-      if (_competitorCache.containsKey(pid)) {
-        _competitors.addAll(_competitorCache[pid]!);
-      }
-      if (_verdictCache.containsKey(pid)) {
-        final v = _verdictCache[pid]!;
-        _aiVerdict = v['verdict'] as String? ?? '';
-        _targetAudience = v['targetAudience'] as String? ?? '';
-        _strengths = List<String>.from(v['strengths'] as List? ?? []);
-        _weaknesses = List<String>.from(v['weaknesses'] as List? ?? []);
-        _pricePerformance = (v['pricePerformance'] as num?)?.toDouble() ?? 0;
-      }
-      setState(() {
-        _loadingAi = false;
-        _researched = true;
-        _userTriggered = true;
-      });
-      _barAnimController.forward(from: 0);
-      if (!_verdictCache.containsKey(pid) && _parsedScores.isNotEmpty) {
-        _fetchAiVerdict();
-      }
-    }
-    // No cache: stay in idle state — user will tap the button to fetch
-  }
-
   /// Clears state + cache for this product and re-fetches everything.
   void _retryFetch() {
-    if (_loadingAi) return;
     _parsedScores.clear();
     _competitors.clear();
     _aiVerdict = '';
@@ -4986,15 +4874,9 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
     _strengths = [];
     _weaknesses = [];
     _pricePerformance = 0;
-    final pid = widget.product.id;
-    _scoreCache.remove(pid);
-    _competitorCache.remove(pid);
-    _verdictCache.remove(pid);
-    setState(() {
-      _failed = false;
-      _researched = false;
-      _userTriggered = true;
-    });
+    _animStarted = false;
+    ref.read(benchmarkCacheProvider(widget.product.id).notifier).reset();
+    setState(() { _userTriggered = true; });
     _fetchAiBenchmarks();
   }
 
@@ -5031,17 +4913,54 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
   Widget build(BuildContext context) {
     final benchmarks = _getBenchmarksForCategory(widget.product);
 
+    // Watch the benchmark cache provider
+    final benchmarkAsync = ref.watch(benchmarkCacheProvider(widget.product.id));
+    final benchmarkResult = benchmarkAsync.valueOrNull;
+    final isLoading = benchmarkAsync is AsyncLoading;
+    final failed = benchmarkResult?.failed == true;
+    final researched = benchmarkResult != null && !failed && benchmarkResult.rawScoresResponse.isNotEmpty;
+
+    // Parse scores from provider result when available
+    if (researched && _parsedScores.isEmpty) {
+      _parseResponse(benchmarkResult.rawScoresResponse, benchmarks);
+      if (_parsedScores.isNotEmpty && !_animStarted) {
+        _animStarted = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _barAnimController.forward(from: 0);
+            // Auto-trigger verdict if not yet done
+            if (benchmarkResult.rawVerdictResponse == null) {
+              _fetchAiVerdict();
+            }
+          }
+        });
+      }
+    }
+
+    // Parse verdict from provider when available
+    if (benchmarkResult?.rawVerdictResponse != null && _aiVerdict.isEmpty) {
+      _parseVerdictResponse(benchmarkResult!.rawVerdictResponse!);
+    }
+
+    final loadingVerdict = researched && _parsedScores.isNotEmpty && 
+        benchmarkResult?.rawVerdictResponse == null;
+
+    // Auto-set userTriggered when provider has data
+    if (researched || isLoading || failed) {
+      _userTriggered = true;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Status badge row
         Row(children: [
-          if (_loadingAi)
+          if (isLoading)
             SizedBox(width: 18, height: 18,
               child: CircularProgressIndicator(
                 strokeWidth: 2, 
                 color: AppTheme.premiumPurple.withValues(alpha: 0.6)))
-          else if (_failed)
+          else if (failed)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -5055,7 +4974,7 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
                   color: Colors.orange)),
               ]),
             )
-          else if (_researched)
+          else if (researched && _parsedScores.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -5073,13 +4992,11 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
         const SizedBox(height: 12),
 
           // ── Idle / not-yet-fetched state ──
-          if (!_userTriggered && !_loadingAi) ...[
-            // Show product's built-in tech score if available
+          if (!_userTriggered && !isLoading) ...[
             if (widget.product.techScore > 0) ...[
               _buildTechScoreBar(widget.product.techScore.round()),
               const SizedBox(height: 16),
             ],
-            // Info card explaining what AI benchmarks are
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -5099,7 +5016,6 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
               ]),
             ),
             const SizedBox(height: 12),
-            // Load Benchmark button
             GestureDetector(
               onTap: () {
                 setState(() { _userTriggered = true; });
@@ -5135,7 +5051,7 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
             ),
 
             // Retry button when AI failed or returned no parseable data
-            if (_failed && !_loadingAi) ...[
+            if (failed && !isLoading) ...[
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -5178,7 +5094,7 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
             ],
 
             // No data found explanation
-            if (_researched && _parsedScores.isEmpty && !_failed) ...[
+            if (researched && _parsedScores.isEmpty && !failed) ...[
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -5201,118 +5117,83 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
             ],
 
             // AI Verdict section (shown after successful benchmark fetch)
-            if (_researched && _parsedScores.isNotEmpty)
-              _buildVerdictSection(),
+            if (researched && _parsedScores.isNotEmpty)
+              _buildVerdictSection(loadingVerdict),
           ],
         ],
       );
   }
 
   Future<void> _fetchAiBenchmarks() async {
-    if (_researched) return;
-    setState(() => _loadingAi = true);
-    try {
-      final gemini = ref.read(geminiServiceProvider);
-      final benchmarks = _getBenchmarksForCategory(widget.product);
-      final benchmarkNames = benchmarks.map((b) => b.name).join(', ');
-      final brand = widget.product.brand ?? '';
-      final name = widget.product.name;
-      final cat = widget.product.categoryId.toLowerCase();
+    // Provider handles duplicate-request prevention
 
-      final subcat = widget.product.subcategory;
-      // Build a very specific prompt with Google Search grounding
-      final prompt = StringBuffer();
-      prompt.writeln('You are a tech benchmark database expert.');
-      prompt.writeln('Find the REAL, VERIFIED benchmark scores for "$brand $name".');
-      prompt.writeln('Product category: $cat${subcat.isNotEmpty ? ', subcategory: $subcat' : ''}.');
-      prompt.writeln('Search benchmark databases and tech review sites for actual tested scores.');
-      prompt.writeln('');
-      prompt.writeln('I need these benchmarks: $benchmarkNames');
-      prompt.writeln('');
+    final benchmarks = _getBenchmarksForCategory(widget.product);
+    final benchmarkNames = benchmarks.map((b) => b.name).join(', ');
+    final brand = widget.product.brand ?? '';
+    final name = widget.product.name;
+    final cat = widget.product.categoryId.toLowerCase();
+    final subcat = widget.product.subcategory;
 
-      // Category-specific instructions
-      if (cat.contains('phone') || cat.contains('mobile') || cat.contains('smartphone')) {
-        if (brand.toLowerCase().contains('apple') || brand.toLowerCase().contains('iphone')) {
-          prompt.writeln('NOTE: Apple iPhones do NOT have AnTuTu scores. Skip AnTuTu for Apple devices.');
-          prompt.writeln('For iPhones, focus on Geekbench scores from browser.geekbench.com and DxOMark from dxomark.com.');
-        } else {
-          prompt.writeln('Search AnTuTu scores from nanoreview.net or antutu.com ranking pages.');
-        }
-        prompt.writeln('Search DxOMark camera scores from dxomark.com.');
-        prompt.writeln('Search Geekbench scores from browser.geekbench.com.');
-      } else if (cat.contains('laptop') || cat.contains('notebook')) {
-        prompt.writeln('Search Cinebench R23 multi-core scores from notebookcheck.net.');
-        prompt.writeln('Search PCMark 10 scores from ul benchmarks.');
-        prompt.writeln('Search 3DMark Time Spy scores from notebookcheck.net.');
-      } else if (cat.contains('monitor') || cat.contains('display') || cat.contains('tv')) {
-        prompt.writeln('Search Rtings.com overall score (0-10 scale) for this monitor/display.');
-        prompt.writeln('Search Color Accuracy in Delta E (ΔE) from rtings.com or displayspecifications.com.');
-        prompt.writeln('Use decimal values (e.g. Rtings Score: 7.2, Color Accuracy (ΔE): 1.4).');
+    final prompt = StringBuffer();
+    prompt.writeln('You are a tech benchmark database expert.');
+    prompt.writeln('Find the REAL, VERIFIED benchmark scores for "$brand $name".');
+    prompt.writeln('Product category: $cat${subcat.isNotEmpty ? ', subcategory: $subcat' : ''}.');
+    prompt.writeln('Search benchmark databases and tech review sites for actual tested scores.');
+    prompt.writeln('');
+    prompt.writeln('I need these benchmarks: $benchmarkNames');
+    prompt.writeln('');
+
+    if (cat.contains('phone') || cat.contains('mobile') || cat.contains('smartphone')) {
+      if (brand.toLowerCase().contains('apple') || brand.toLowerCase().contains('iphone')) {
+        prompt.writeln('NOTE: Apple iPhones do NOT have AnTuTu scores. Skip AnTuTu for Apple devices.');
+        prompt.writeln('For iPhones, focus on Geekbench scores from browser.geekbench.com and DxOMark from dxomark.com.');
+      } else {
+        prompt.writeln('Search AnTuTu scores from nanoreview.net or antutu.com ranking pages.');
       }
-
-      prompt.writeln('');
-      prompt.writeln('Also find 2-3 competitor products in the same segment with their scores for comparison.');
-      prompt.writeln('');
-      prompt.writeln('RESPOND IN THIS EXACT FORMAT (one per line):');
-      prompt.writeln('SCORES:');
-      prompt.writeln('BenchmarkName: NumericScore');
-      prompt.writeln('');
-      prompt.writeln('COMPETITORS:');
-      prompt.writeln('BenchmarkName|ProductName|Score');
-      prompt.writeln('');
-      prompt.writeln('Example:');
-      prompt.writeln('SCORES:');
-      prompt.writeln('Geekbench Multi: 7200');
-      prompt.writeln('DxOMark Camera: 157');
-      prompt.writeln('Rtings Score: 7.2');
-      prompt.writeln('Color Accuracy (ΔE): 1.4');
-      prompt.writeln('');
-      prompt.writeln('COMPETITORS:');
-      prompt.writeln('Geekbench Multi|Samsung Galaxy S24|5800');
-      prompt.writeln('Geekbench Multi|Google Pixel 9|6100');
-      prompt.writeln('DxOMark Camera|Samsung Galaxy S24|150');
-      prompt.writeln('');
-      prompt.writeln('Rules:');
-      prompt.writeln('- Only REAL scores from actual benchmark databases — DO NOT estimate or fabricate');
-      prompt.writeln('- If a benchmark score cannot be found, write: BenchmarkName: N/A');
-      prompt.writeln('- Numeric values only (decimals allowed, e.g. 7.2)');
-      prompt.writeln('- Competitors should be same-generation, same price segment products');
-      prompt.writeln('- Double-check scores against known ranges for this product category');
-
-      final result = await gemini.groundedQuery(prompt.toString());
-      debugPrint('=== COMPAIR: Benchmark raw response (${result.length} chars): ${result.substring(0, result.length.clamp(0, 500))} ===');
-      if (mounted) {
-        _parseResponse(result, benchmarks);
-        debugPrint('=== COMPAIR: Benchmark parsed scores: $_parsedScores ===');
-        if (_parsedScores.isEmpty) {
-          // AI returned text but no parseable scores — allow retry
-          setState(() {
-            _loadingAi = false;
-            _failed = true;
-          });
-          return;
-        }
-        // Cache results for session persistence
-        final pid = widget.product.id;
-        _scoreCache[pid] = Map.of(_parsedScores);
-        _competitorCache[pid] = Map.of(_competitors);
-        setState(() {
-          _loadingAi = false;
-          _researched = true;
-        });
-        _barAnimController.forward(from: 0);
-        // Trigger AI verdict analysis
-        _fetchAiVerdict();
-      }
-    } catch (e) {
-      debugPrint('=== COMPAIR: Benchmark error: $e ===');
-      if (mounted) {
-        setState(() {
-          _loadingAi = false;
-          _failed = true;
-        });
-      }
+      prompt.writeln('Search DxOMark camera scores from dxomark.com.');
+      prompt.writeln('Search Geekbench scores from browser.geekbench.com.');
+    } else if (cat.contains('laptop') || cat.contains('notebook')) {
+      prompt.writeln('Search Cinebench R23 multi-core scores from notebookcheck.net.');
+      prompt.writeln('Search PCMark 10 scores from ul benchmarks.');
+      prompt.writeln('Search 3DMark Time Spy scores from notebookcheck.net.');
+    } else if (cat.contains('monitor') || cat.contains('display') || cat.contains('tv')) {
+      prompt.writeln('Search Rtings.com overall score (0-10 scale) for this monitor/display.');
+      prompt.writeln('Search Color Accuracy in Delta E (ΔE) from rtings.com or displayspecifications.com.');
+      prompt.writeln('Use decimal values (e.g. Rtings Score: 7.2, Color Accuracy (ΔE): 1.4).');
     }
+
+    prompt.writeln('');
+    prompt.writeln('Also find 2-3 competitor products in the same segment with their scores for comparison.');
+    prompt.writeln('');
+    prompt.writeln('RESPOND IN THIS EXACT FORMAT (one per line):');
+    prompt.writeln('SCORES:');
+    prompt.writeln('BenchmarkName: NumericScore');
+    prompt.writeln('');
+    prompt.writeln('COMPETITORS:');
+    prompt.writeln('BenchmarkName|ProductName|Score');
+    prompt.writeln('');
+    prompt.writeln('Example:');
+    prompt.writeln('SCORES:');
+    prompt.writeln('Geekbench Multi: 7200');
+    prompt.writeln('DxOMark Camera: 157');
+    prompt.writeln('Rtings Score: 7.2');
+    prompt.writeln('Color Accuracy (ΔE): 1.4');
+    prompt.writeln('');
+    prompt.writeln('COMPETITORS:');
+    prompt.writeln('Geekbench Multi|Samsung Galaxy S24|5800');
+    prompt.writeln('Geekbench Multi|Google Pixel 9|6100');
+    prompt.writeln('DxOMark Camera|Samsung Galaxy S24|150');
+    prompt.writeln('');
+    prompt.writeln('Rules:');
+    prompt.writeln('- Only REAL scores from actual benchmark databases — DO NOT estimate or fabricate');
+    prompt.writeln('- If a benchmark score cannot be found, write: BenchmarkName: N/A');
+    prompt.writeln('- Numeric values only (decimals allowed, e.g. 7.2)');
+    prompt.writeln('- Competitors should be same-generation, same price segment products');
+    prompt.writeln('- Double-check scores against known ranges for this product category');
+
+    // Delegate API call to provider (survives navigation)
+    await ref.read(benchmarkCacheProvider(widget.product.id).notifier)
+        .fetchBenchmarks(prompt.toString());
   }
 
   void _parseResponse(String response, List<_BenchmarkInfo> benchmarks) {
@@ -5366,22 +5247,20 @@ class _BenchmarkScoresCardState extends ConsumerState<_BenchmarkScoresCard>
   }
 
   Future<void> _fetchAiVerdict() async {
-    if (!mounted || _parsedScores.isEmpty) return;
-    setState(() => _loadingVerdict = true);
-    try {
-      final gemini = ref.read(geminiServiceProvider);
-      final brand = widget.product.brand ?? '';
-      final name = widget.product.name;
-      final cat = widget.product.category;
-      final priceMap = widget.product.prices;
-      final priceStr = priceMap.isNotEmpty
-          ? priceMap.entries.map((e) => '${e.key}: ${e.value}').join(', ')
-          : 'unknown';
-      final scoresStr = _parsedScores.entries
-          .map((e) => '${e.key}: ${_formatScore(e.value)}')
-          .join(', ');
+    if (_parsedScores.isEmpty) return;
 
-      final prompt = '''Analyze "$brand $name" ($cat category).
+    final brand = widget.product.brand ?? '';
+    final name = widget.product.name;
+    final cat = widget.product.category;
+    final priceMap = widget.product.prices;
+    final priceStr = priceMap.isNotEmpty
+        ? priceMap.entries.map((e) => '${e.key}: ${e.value}').join(', ')
+        : 'unknown';
+    final scoresStr = _parsedScores.entries
+        .map((e) => '${e.key}: ${_formatScore(e.value)}')
+        .join(', ');
+
+    final prompt = '''Analyze "$brand $name" ($cat category).
 Benchmark scores: $scoresStr
 Price: $priceStr
 
@@ -5401,24 +5280,9 @@ Rules:
 - verdict should be 2-3 sentences max
 - Base analysis on the benchmark scores provided and general knowledge of the product''';
 
-      final result = await gemini.jsonFreeTextQuery(prompt);
-      if (!mounted) return;
-      _parseVerdictResponse(result);
-
-      // Cache the verdict
-      _verdictCache[widget.product.id] = {
-        'verdict': _aiVerdict,
-        'targetAudience': _targetAudience,
-        'strengths': _strengths,
-        'weaknesses': _weaknesses,
-        'pricePerformance': _pricePerformance,
-      };
-
-      setState(() => _loadingVerdict = false);
-    } catch (e) {
-      debugPrint('=== COMPAIR: Verdict error: $e ===');
-      if (mounted) setState(() => _loadingVerdict = false);
-    }
+    // Delegate to provider (survives navigation)
+    await ref.read(benchmarkCacheProvider(widget.product.id).notifier)
+        .fetchVerdict(prompt);
   }
 
   void _parseVerdictResponse(String response) {
@@ -5434,8 +5298,8 @@ Rules:
     }
   }
 
-  Widget _buildVerdictSection() {
-    if (_loadingVerdict) {
+  Widget _buildVerdictSection(bool loadingVerdict) {
+    if (loadingVerdict) {
       return Padding(
         padding: const EdgeInsets.only(top: 20),
         child: Row(
@@ -5654,11 +5518,12 @@ Rules:
   Widget _buildBenchmarkRow(_BenchmarkInfo info, double animProgress) {
     final score = _parsedScores[info.name];
     final hasScore = score != null && score > 0;
+    final hasData = _parsedScores.isNotEmpty;
     final maxScore = info.maxScore;
     final targetRatio = hasScore ? (score / maxScore).clamp(0.0, 1.0) : 0.0;
-    final ratio = _researched ? targetRatio * animProgress : 0.0;
+    final ratio = hasData ? targetRatio * animProgress : 0.0;
     final animScore = hasScore ? score * animProgress : 0.0;
-    final displayScore = hasScore && _researched ? _formatScore(animScore) : (_researched ? 'N/A' : '--');
+    final displayScore = hasScore && hasData ? _formatScore(animScore) : (hasData ? 'N/A' : '--');
     final comps = _competitors[info.name] ?? [];
 
     return Column(
@@ -5691,7 +5556,7 @@ Rules:
                     Text(displayScore,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13, fontWeight: FontWeight.w800,
-                        color: hasScore && _researched ? info.color : context.dividerColor)),
+                        color: hasScore && hasData ? info.color : context.dividerColor)),
                   ],
                 ),
                 const SizedBox(height: 5),
@@ -5722,7 +5587,7 @@ Rules:
           ),
         ]),
         // Competitor comparison bars (smaller)
-        if (comps.isNotEmpty && _researched) ...[
+        if (comps.isNotEmpty && hasData) ...[
           const SizedBox(height: 6),
           ...comps.map((comp) {
             final compScore = (comp['score'] as num).toDouble();
