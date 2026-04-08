@@ -1659,8 +1659,7 @@ class _SubResultView extends StatelessWidget {
           ).animate().fadeIn(duration: 500.ms, delay: 200.ms),
         ],
 
-        // ── Time Saved by Compair ──
-        _buildTimeSavedCard(context),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -1971,92 +1970,6 @@ class _SubResultView extends StatelessWidget {
     ).animate().fadeIn(duration: 500.ms, delay: 200.ms);
   }
 
-  Widget _buildTimeSavedCard(BuildContext context) {
-    final subCount = subscriptionNames.length;
-
-    // Compute analysis depth from actual AI output
-    int dataPoints = 0;
-    final subs = (structured?['subscriptions'] as Map<String, dynamic>?) ?? {};
-    for (final entry in subs.values) {
-      final d = entry as Map<String, dynamic>? ?? {};
-      final pros = (d['pros'] as List?)?.length ?? 0;
-      final cons = (d['cons'] as List?)?.length ?? 0;
-      final factors = (d['factors'] as Map?)?.length ?? 0;
-      dataPoints += pros + cons + factors;
-      if (d['community_sentiment'] != null) dataPoints += 3;
-      if (d['price'] != null) dataPoints += 2;
-    }
-    if (structured?['detailed_comparison'] != null) dataPoints += 5;
-    if (structured?['winner'] != null) dataPoints += 3;
-
-    // Base: research depth from AI data, not a hardcoded formula
-    // Each data point ≈ 1-2 min of manual research
-    final estimatedManualMinutes = dataPoints > 0
-        ? (dataPoints * 1.5).round().clamp(15, 300)
-        : (subCount <= 1 ? 15 : 20 + subCount * 10);
-
-    final sourcesAnalyzed = subs.length;
-    final factorsChecked = subs.values.fold<int>(0, (sum, v) {
-      final f = ((v as Map<String, dynamic>?)?['factors'] as Map?)?.length ?? 0;
-      return sum + f;
-    });
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: GlassContainer(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.success.withValues(alpha: 0.15),
-                    _kAccent.withValues(alpha: 0.10),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.timer_rounded, color: AppTheme.success, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dataPoints > 0
-                        ? '~$estimatedManualMinutes min research condensed'
-                        : '$subCount ${subCount > 1 ? "services" : "service"} analyzed',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: AppTheme.success,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    dataPoints > 0
-                        ? '$dataPoints data points from $sourcesAnalyzed ${sourcesAnalyzed > 1 ? "services" : "service"}, '
-                          '$factorsChecked compatibility factors. '
-                          'AI-powered analysis in seconds.'
-                        : 'Compair analyzed ${subCount > 1 ? "$subCount services" : "this service"} for you.',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      color: context.textSecondary,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 600.ms, delay: 400.ms);
-  }
 }
 
 // ── Comparison Section Helper ────────────────────────────────────────────────
