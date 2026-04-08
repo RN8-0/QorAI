@@ -137,6 +137,22 @@ class CacheService {
     return null;
   }
 
+  /// Stale-While-Revalidate: Return cached data even if expired.
+  /// Returns (data, isExpired) tuple. Caller should refresh in background if expired.
+  ({T? data, bool isStale}) getLocalStale<T>(String key) {
+    if (!_localBox.isOpen) return (data: null, isStale: true);
+    final localData = _localBox.get(key);
+    if (localData == null) return (data: null, isStale: true);
+    try {
+      final cached = jsonDecode(localData) as Map<String, dynamic>;
+      final expiresAt = DateTime.parse(cached['expiresAt']);
+      final data = cached['data'] as T?;
+      final isStale = DateTime.now().isAfter(expiresAt);
+      return (data: data, isStale: isStale);
+    } catch (_) {}
+    return (data: null, isStale: true);
+  }
+
   /// Save value to local Hive cache only (no Firestore)
   Future<void> setLocal<T>(
     String key,

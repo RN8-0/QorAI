@@ -13,6 +13,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
 import 'package:compair/config/env_config.dart';
 import 'package:compair/data/datasources/firebase_ds.dart';
@@ -1780,8 +1781,69 @@ final searchResultsProvider =
     return ref.read(productRepositoryProvider).getProducts(limit: 200);
   }
 
-  // Always do full search (Cloud Function searches ALL products in Firestore)
-  return ref.read(productRepositoryProvider).searchProducts(query: query, limit: 100);
+  // INSTANT LOCAL SEARCH: search homeFeed cache first (< 5ms)
+  final normalizedQuery = query.toLowerCase().trim();
+  final queryWords = normalizedQuery.split(RegExp(r'\s+'));
+  List<ProductEntity> localResults = [];
+
+  final feedAsync = ref.read(homeFeedProvider);
+  final cached = feedAsync.valueOrNull;
+  if (cached != null && cached.all.isNotEmpty) {
+    localResults = cached.all.where((p) {
+      final name = p.name.toLowerCase();
+      final brand = (p.brand ?? '').toLowerCase();
+      final category = p.category.toLowerCase();
+      final searchable = '$name $brand $category';
+      // All query words must match
+      return queryWords.every((w) => searchable.contains(w));
+    }).toList();
+
+    // Score local results by relevance
+    localResults.sort((a, b) {
+      int scoreA = 0, scoreB = 0;
+      final nameA = a.name.toLowerCase();
+      final nameB = b.name.toLowerCase();
+      // Exact name match bonus
+      if (nameA.contains(normalizedQuery)) scoreA += 100;
+      if (nameB.contains(normalizedQuery)) scoreB += 100;
+      // Brand match bonus
+      if ((a.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreA += 50;
+      if ((b.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreB += 50;
+      // TrendScore tiebreaker
+      scoreA += (a.trendScore * 10).toInt();
+      scoreB += (b.trendScore * 10).toInt();
+      return scoreB.compareTo(scoreA);
+    });
+  }
+
+  // If local results are sufficient (>= 10), return immediately
+  // and let Cloud Function results be merged on next query change
+  if (localResults.length >= 10) {
+    // Still fire Cloud Function in background for next time
+    ref.read(productRepositoryProvider).searchProducts(query: query, limit: 100);
+    return Success(localResults.take(100).toList());
+  }
+
+  // Cloud Function search (for queries not in local cache)
+  try {
+    final cloudResult = await ref.read(productRepositoryProvider)
+        .searchProducts(query: query, limit: 100)
+        .timeout(const Duration(seconds: 8));
+    // Merge: local results first, then cloud results (deduplicated)
+    if (localResults.isNotEmpty) {
+      final seenIds = localResults.map((p) => p.id).toSet();
+      final cloudProducts = cloudResult.when(
+        success: (products) => products.where((p) => !seenIds.contains(p.id)).toList(),
+        failure: (_) => <ProductEntity>[],
+      );
+      return Success([...localResults, ...cloudProducts].take(100).toList());
+    }
+    return cloudResult;
+  } catch (_) {
+    // Timeout — return local results if any
+    if (localResults.isNotEmpty) return Success(localResults.take(100).toList());
+    return const Success(<ProductEntity>[]);
+  }
 });
 
 // ════════════════════════════════════════════════════
@@ -1798,6 +1860,8 @@ class HomeFeed {
   final List<ProductEntity> newArrivals;
   final List<ProductEntity> discover;
   final List<ProductEntity> all;
+  /// Categories ordered by user interest (strongest first)
+  final List<String> priorityCategories;
 
   const HomeFeed({
     required this.trending,
@@ -1806,6 +1870,7 @@ class HomeFeed {
     required this.newArrivals,
     this.discover = const [],
     required this.all,
+    this.priorityCategories = const [],
   });
 }
 
@@ -1938,12 +2003,54 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   }
 
   // ── USER PROFILE PERSONALIZATION BOOST ─────────────────────────────────────
+  // Calculate behavior-based category & brand affinities from Hive viewed products
+  final viewedCategoryScores = <String, double>{};
+  final viewedBrandScores = <String, double>{};
+  try {
+    final box = Hive.box('user_data');
+    final viewedRaw = box.get('viewed_products') as List<dynamic>? ?? [];
+    for (var i = 0; i < viewedRaw.length; i++) {
+      final item = viewedRaw[i];
+      if (item is Map) {
+        final cat = (item['category'] as String? ?? '').toLowerCase().trim();
+        final brand = (item['brand'] as String? ?? '').toLowerCase().trim();
+        // Recency weight: more recent views = stronger signal (exponential decay)
+        final recencyWeight = 1.0 / (1 + i * 0.1);
+        if (cat.isNotEmpty) {
+          viewedCategoryScores[cat] = (viewedCategoryScores[cat] ?? 0) + recencyWeight;
+        }
+        if (brand.isNotEmpty) {
+          viewedBrandScores[brand] = (viewedBrandScores[brand] ?? 0) + recencyWeight;
+        }
+      }
+    }
+  } catch (_) {}
+
+  // Normalize scores to 0-1 range
+  final maxCatScore = viewedCategoryScores.values.fold(1.0, (a, b) => a > b ? a : b);
+  final maxBrandScore = viewedBrandScores.values.fold(1.0, (a, b) => a > b ? a : b);
+  viewedCategoryScores.updateAll((k, v) => v / maxCatScore);
+  viewedBrandScores.updateAll((k, v) => v / maxBrandScore);
+
   double userBoost(ProductEntity p) {
     if (user == null) return 1.0;
     double boost = 1.0;
     final cat = p.category.toLowerCase().trim();
     final brand = (p.brand ?? '').toLowerCase().trim();
 
+    // ── BEHAVIOR-BASED BOOST (strongest signal) ──────────────────────────
+    // Recently viewed categories get significant boost
+    final viewedCatScore = viewedCategoryScores[cat] ?? 0.0;
+    if (viewedCatScore > 0) {
+      boost *= 1.0 + (viewedCatScore * 0.5); // Up to 1.5× for most viewed category
+    }
+    // Recently viewed brands get boost
+    final viewedBrandScore = viewedBrandScores[brand] ?? 0.0;
+    if (viewedBrandScore > 0) {
+      boost *= 1.0 + (viewedBrandScore * 0.3); // Up to 1.3× for most viewed brand
+    }
+
+    // ── PROFILE-BASED BOOST ──────────────────────────────────────────────
     // Boost products in user's interest categories
     for (final interest in user.interestCategories) {
       if (cat == interest.toLowerCase() || cat.contains(interest.toLowerCase())) {
@@ -2216,6 +2323,37 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     if (discover.length >= 30) break;
   }
 
+  // Build priority category list based on behavior + profile
+  final priorityCats = <String>[];
+  // First: categories from behavior (most viewed first)
+  final sortedViewedCats = viewedCategoryScores.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  for (final e in sortedViewedCats) {
+    if (byCategory.containsKey(e.key) && !priorityCats.contains(e.key)) {
+      priorityCats.add(e.key);
+    }
+  }
+  // Then: user's interest categories
+  if (user != null) {
+    for (final interest in user.interestCategories) {
+      final cat = interest.toLowerCase().trim();
+      if (byCategory.containsKey(cat) && !priorityCats.contains(cat)) {
+        priorityCats.add(cat);
+      }
+    }
+    // Primary category
+    if (user.primaryCategory != null) {
+      final primary = user.primaryCategory!.toLowerCase().trim();
+      if (byCategory.containsKey(primary) && !priorityCats.contains(primary)) {
+        priorityCats.insert(0, primary);
+      }
+    }
+  }
+  // Finally: remaining categories by product count
+  for (final cat in byCategory.keys) {
+    if (!priorityCats.contains(cat)) priorityCats.add(cat);
+  }
+
   debugPrint('=== COMPAIR: homeFeed built — cats:${byCategory.keys.join(",")} '
              'newArrivals:${newArrivals.length} trending:${trending.length} discover:${discover.length} ===');
 
@@ -2226,6 +2364,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     newArrivals: newArrivals,
     discover: discover,
     all: pool,
+    priorityCategories: priorityCats,
   );
 }
 
@@ -2240,6 +2379,17 @@ const _feedCategories = [
   'projectors', 'gimbals', 'tripods', 'lenses',
 ];
 
+/// In-memory feed cache for instant access across providers
+HomeFeed? _inMemoryFeed;
+
+/// Clear in-memory feed cache (called from pull-to-refresh)
+void clearInMemoryFeedCache() {
+  _inMemoryFeed = null;
+}
+
+/// Flag to prevent concurrent background refreshes
+bool _isRefreshingFeed = false;
+
 final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   ref.watch(selectedCountryProvider);
   final country = ref.read(selectedCountryProvider);
@@ -2248,13 +2398,31 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final user = ref.read(userProfileProvider).valueOrNull;
   debugPrint('=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===');
 
-  // Read admin feed config from Firestore
+  // 0. In-memory cache (instant, < 1ms) — survives tab switches
+  if (_inMemoryFeed != null && _inMemoryFeed!.all.isNotEmpty) {
+    debugPrint('=== COMPAIR: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products ===');
+    return _inMemoryFeed!;
+  }
+
+  // Cache key includes user UID for personalized feeds
+  final cacheKey = 'home_feed_v23_${user?.uid ?? "anon"}';
+
+  // Clear ALL old cache versions
+  try {
+    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22']) {
+      final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
+      cache.delete(key);
+    }
+  } catch (_) {}
+
+  // Read admin feed config from Firestore (non-blocking, use defaults if slow)
   List<String> pinnedIds = [];
   List<String> hiddenIds = [];
   List<String> disabledCats = [];
   try {
     final configDoc = await FirebaseFirestore.instance
-        .collection('app_config').doc('algorithm').get();
+        .collection('app_config').doc('algorithm').get()
+        .timeout(const Duration(seconds: 5));
     if (configDoc.exists) {
       final data = configDoc.data() ?? {};
       pinnedIds = List<String>.from(data['pinnedProducts'] ?? []);
@@ -2263,45 +2431,109 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     }
   } catch (_) {}
 
-  // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v22_${user?.uid ?? "anon"}';
-
-  // Clear ALL old cache versions
+  // 1. STALE-WHILE-REVALIDATE: Show cached data instantly, even if expired
   try {
-    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21']) {
-      final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
-      cache.delete(key);
-    }
-  } catch (_) {}
-
-  // 1. Try Hive cache first (synchronous, < 5ms)
-  try {
-    final cached = cache.getLocal<List<dynamic>>(cacheKey);
-    if (cached != null && cached.isNotEmpty) {
+    final staleResult = cache.getLocalStale<List<dynamic>>(cacheKey);
+    if (staleResult.data != null && (staleResult.data as List).isNotEmpty) {
       final sw = Stopwatch()..start();
-      final products = cached
+      final products = (staleResult.data as List)
           .map((item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)))
           .cast<ProductEntity>()
           .toList();
       sw.stop();
-      debugPrint('=== COMPAIR: homeFeed from HIVE cache: ${products.length} products in ${sw.elapsedMilliseconds}ms ===');
+      debugPrint('=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${products.length} products in ${sw.elapsedMilliseconds}ms ===');
+
       ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
           products.whereType<ProductModel>().toList());
-      return _buildHomeFeed(products, country, user: user,
+      final feed = _buildHomeFeed(products, country, user: user,
           hiddenIds: hiddenIds, disabledCats: disabledCats);
+      _inMemoryFeed = feed;
+
+      // If stale, trigger background refresh (fire-and-forget)
+      if (staleResult.isStale && !_isRefreshingFeed) {
+        _isRefreshingFeed = true;
+        _backgroundRefreshFeed(ref, repo, cache, country, user, cacheKey,
+            pinnedIds, hiddenIds, disabledCats).whenComplete(() {
+          _isRefreshingFeed = false;
+        });
+      }
+
+      return feed;
     }
   } catch (e) {
     debugPrint('=== COMPAIR: Hive cache read error: $e ===');
   }
 
-  // 2. No cache — CATEGORY-FIRST strategy
-  // IMPORTANT: Bulk queries by techScore/trendScore are CLIENT-SORTED,
-  // meaning Firestore returns docs in document-ID order (alphabetical).
-  // This gives us only A-brand products (A4Tech, Acer, Afox...).
-  // Instead, query EACH category separately — category filter uses Firestore index,
-  // giving us products from every category.
-  debugPrint('=== COMPAIR: homeFeed — category-first strategy ===');
+  // 2. No cache at all — fetch from network (first-time load)
+  return _fetchFeedFromNetwork(ref, repo, cache, country, user, cacheKey,
+      pinnedIds, hiddenIds, disabledCats);
+});
 
+/// Background refresh: fetch fresh data and update cache silently
+Future<void> _backgroundRefreshFeed(
+  Ref ref,
+  dynamic repo,
+  CacheService cache,
+  String country,
+  dynamic user,
+  String cacheKey,
+  List<String> pinnedIds,
+  List<String> hiddenIds,
+  List<String> disabledCats,
+) async {
+  debugPrint('=== COMPAIR: Background feed refresh started ===');
+  try {
+    final products = await _fetchAllProducts(repo, user, disabledCats, pinnedIds);
+    if (products.isNotEmpty && products.length > (_inMemoryFeed?.all.length ?? 0) * 0.5) {
+      _saveProductsToCache(cache, products, cacheKey);
+      ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
+          products.whereType<ProductModel>().toList());
+      _inMemoryFeed = _buildHomeFeed(products, country, user: user,
+          hiddenIds: hiddenIds, disabledCats: disabledCats);
+      debugPrint('=== COMPAIR: Background refresh done: ${products.length} products ===');
+    }
+  } catch (e) {
+    debugPrint('=== COMPAIR: Background refresh error: $e ===');
+  }
+}
+
+/// First-time network fetch with progressive loading
+Future<HomeFeed> _fetchFeedFromNetwork(
+  Ref ref,
+  dynamic repo,
+  CacheService cache,
+  String country,
+  dynamic user,
+  String cacheKey,
+  List<String> pinnedIds,
+  List<String> hiddenIds,
+  List<String> disabledCats,
+) async {
+  debugPrint('=== COMPAIR: homeFeed — first-time network fetch ===');
+
+  final products = await _fetchAllProducts(repo, user, disabledCats, pinnedIds);
+
+  if (products.isEmpty) {
+    debugPrint('=== COMPAIR: homeFeed EMPTY — all queries returned 0 docs ===');
+    return const HomeFeed(trending: [], featured: [], byCategory: {}, newArrivals: [], all: []);
+  }
+
+  _saveProductsToCache(cache, products, cacheKey);
+  ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
+      products.whereType<ProductModel>().toList());
+  final feed = _buildHomeFeed(products, country, user: user,
+      hiddenIds: hiddenIds, disabledCats: disabledCats);
+  _inMemoryFeed = feed;
+  return feed;
+}
+
+/// Core product fetching: parallel category queries with priority ordering
+Future<List<ProductEntity>> _fetchAllProducts(
+  dynamic repo,
+  dynamic user,
+  List<String> disabledCats,
+  List<String> pinnedIds,
+) async {
   final allProducts = <ProductEntity>[];
   final seenIds = <String>{};
 
@@ -2313,98 +2545,93 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   final sw = Stopwatch()..start();
 
-  // ALL categories to query (35+ categories)
-  final userInterests = user?.interestCategories
-      .map((c) => c.toLowerCase().trim())
-      .toList() ?? [];
+  // User interests first (higher priority → faster perceived load)
+  final userInterests = (user as dynamic)?.interestCategories
+      ?.map((c) => (c as String).toLowerCase().trim())
+      ?.toList()?.cast<String>() ?? <String>[];
 
-  final allCategories = <String>[
-    // User interests first (higher priority)
+  // Priority order: user interests → popular categories → niche categories
+  final priorityCategories = <String>[
     ...userInterests,
-    // Then all standard categories
     'smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
-    'gpus', 'monitors', 'keyboards', 'mice', 'cameras', 'speakers',
-    'tvs', 'gamepads', 'desktops', 'consoles', 'earphones', 'drones',
-    'printers', 'routers', 'webcams', 'action-cameras', 'soundbars',
-    'microphones', 'projectors', 'robot-vacuums', 'smart-rings',
-    'vr-headsets', 'dashcams', 'cpus', 'motherboards', 'ram', 'ssd',
-    'psu', 'cases', 'coolers', 'e-readers', 'gimbals', 'tripods',
-    'lenses', 'media-players',
+    'gpus', 'monitors', 'cameras',
   ];
-  // Deduplicate (user interests may overlap with standard list)
-  // Also remove admin-disabled categories from Firestore queries
-  final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
-  final categoriesToFetch = allCategories.toSet()
-      .where((c) => !disabledSet.contains(c)).toList();
+  final nicheCategories = <String>[
+    'keyboards', 'mice', 'speakers', 'tvs', 'gamepads', 'desktops',
+    'consoles', 'earphones', 'drones', 'printers', 'routers', 'webcams',
+    'action-cameras', 'soundbars', 'microphones', 'projectors',
+    'robot-vacuums', 'smart-rings', 'vr-headsets', 'dashcams', 'cpus',
+    'motherboards', 'ram', 'ssd', 'psu', 'cases', 'coolers', 'e-readers',
+    'gimbals', 'tripods', 'lenses', 'media-players',
+  ];
 
-  // Phase 1: Fetch ALL categories in parallel batches of 8
-  debugPrint('=== COMPAIR: Phase 1 — fetching ${categoriesToFetch.length} categories ===');
+  final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
+
+  // Deduplicate and filter disabled
+  final allCats = <String>{};
+  final orderedCategories = <String>[];
+  for (final cat in [...priorityCategories, ...nicheCategories]) {
+    if (allCats.add(cat) && !disabledSet.contains(cat)) {
+      orderedCategories.add(cat);
+    }
+  }
+
+  // Fetch ALL categories in parallel batches of 12 (increased from 8)
+  debugPrint('=== COMPAIR: Fetching ${orderedCategories.length} categories ===');
   try {
-    for (var i = 0; i < categoriesToFetch.length; i += 8) {
-      final batch = categoriesToFetch.skip(i).take(8);
-      final futures = batch.map((cat) => repo.getProducts(
-        category: cat, limit: 40, orderBy: 'techScore', descending: true,
-      ).timeout(const Duration(seconds: 12)).catchError((_) =>
-        const Success<List<ProductEntity>>([])));
-      final results = await Future.wait(futures);
+    for (var i = 0; i < orderedCategories.length; i += 12) {
+      final batch = orderedCategories.skip(i).take(12);
+      final futures = batch.map((cat) => (repo as dynamic).getProducts(
+        category: cat, limit: 50, orderBy: 'techScore', descending: true,
+      ).timeout(const Duration(seconds: 10)).catchError((_) =>
+        const Success<List<ProductEntity>>([])) as Future);
+      final results = await Future.wait(futures.toList());
       for (final result in results) {
-        result.when(
-          success: (products) => addProducts(products),
+        (result as dynamic).when(
+          success: (products) => addProducts(products as List<ProductEntity>),
           failure: (_) {},
         );
       }
     }
-    debugPrint('=== COMPAIR: Phase 1 category queries done: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+    debugPrint('=== COMPAIR: Category queries done: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
   } catch (e) {
-    debugPrint('=== COMPAIR: Phase 1 error: $e ===');
+    debugPrint('=== COMPAIR: Category fetch error: $e ===');
   }
 
-  // Phase 2: If still very low, fetch a bulk batch as fallback
-  if (allProducts.length < 100) {
-    debugPrint('=== COMPAIR: Phase 2 — bulk fallback (only ${allProducts.length} products) ===');
+  // Phase 2: Bulk fallback only if critically low
+  if (allProducts.length < 50) {
+    debugPrint('=== COMPAIR: Bulk fallback (only ${allProducts.length} products) ===');
     try {
-      final bulkResult = await repo.getProducts(
-        limit: 500,
-        orderBy: 'name',
-        descending: false,
-      ).timeout(const Duration(seconds: 20));
-      bulkResult.when(
-        success: (products) => addProducts(products),
+      final bulkResult = await (repo as dynamic).getProducts(
+        limit: 500, orderBy: 'name', descending: false,
+      ).timeout(const Duration(seconds: 15));
+      (bulkResult as dynamic).when(
+        success: (products) => addProducts(products as List<ProductEntity>),
         failure: (_) {},
       );
-      debugPrint('=== COMPAIR: Phase 2 bulk fallback total: ${allProducts.length} in ${sw.elapsedMilliseconds}ms ===');
     } catch (_) {}
   }
 
   sw.stop();
-  debugPrint('=== COMPAIR: homeFeed total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+  debugPrint('=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
 
-  // Also fetch pinned products by ID if they're not already in the pool
+  // Fetch pinned products
   if (pinnedIds.isNotEmpty) {
     final missingPinned = pinnedIds.where((id) => !seenIds.contains(id)).toList();
     if (missingPinned.isNotEmpty) {
       try {
-        final pinnedResult = await repo.getProductsByIds(missingPinned)
-            .timeout(const Duration(seconds: 10));
-        pinnedResult.when(
-          success: (products) => addProducts(products),
+        final pinnedResult = await (repo as dynamic).getProductsByIds(missingPinned)
+            .timeout(const Duration(seconds: 8));
+        (pinnedResult as dynamic).when(
+          success: (products) => addProducts(products as List<ProductEntity>),
           failure: (_) {},
         );
       } catch (_) {}
     }
   }
 
-  if (allProducts.isEmpty) {
-    debugPrint('=== COMPAIR: homeFeed EMPTY — all queries returned 0 docs ===');
-    return const HomeFeed(trending: [], featured: [], byCategory: {}, newArrivals: [], all: []);
-  }
-
-  _saveProductsToCache(cache, allProducts, cacheKey);
-  ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
-      allProducts.whereType<ProductModel>().toList());
-  return _buildHomeFeed(allProducts, country, user: user,
-      hiddenIds: hiddenIds, disabledCats: disabledCats);
-});
+  return allProducts;
+}
 
 void _saveProductsToCache(CacheService cache, List<ProductEntity> products, String cacheKey) {
   try {
@@ -2418,7 +2645,7 @@ void _saveProductsToCache(CacheService cache, List<ProductEntity> products, Stri
       }
       return m;
     }).toList();
-    cache.setLocal(cacheKey, maps, duration: const Duration(hours: 4));
+    cache.setLocal(cacheKey, maps, duration: const Duration(hours: 12));
   } catch (_) {}
 }
 

@@ -149,6 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         color: AppTheme.primaryBlue,
         onRefresh: () async {
           HapticFeedback.mediumImpact();
+          clearInMemoryFeedCache();
           ref.invalidate(homeFeedProvider);
           ref.invalidate(categoriesProvider);
           ref.invalidate(personalizedRecommendationsProvider);
@@ -185,16 +186,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildPersonalizedSection()),
 
-            // Smartphones (conditionally shown)
-            ..._buildCategoryBlock(
-              title: context.l10n?.smartphones ?? 'Smartphones',
-              categoryId: 'smartphones',
-              icon: Icons.smartphone_rounded,
-              iconColor: const Color(0xFF3B82F6),
-              wide: true,
-            ),
+            // ── RECENTLY VIEWED SECTION ─────────────────────────────────────
+            ..._buildRecentlyViewedSection(),
 
-            // Trending
+            // ── TRENDING ────────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: _SectionHeader(
                 title: context.l10n?.trendingToday ?? 'Trending Today',
@@ -205,16 +200,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildTrendsSection()),
 
-            // Laptops
-            ..._buildCategoryBlock(
-              title: context.l10n?.laptops ?? 'Laptops',
-              categoryId: 'laptops',
-              icon: Icons.laptop_rounded,
-              iconColor: const Color(0xFF6366F1),
-              wide: true,
-            ),
-
-            // New Arrivals
+            // ── NEW ARRIVALS ────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: _SectionHeader(
                 title: context.l10n?.newArrivals ?? 'New Arrivals',
@@ -226,106 +212,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildNewArrivalsSection()),
 
-            // Tablets
-            ..._buildCategoryBlock(
-              title: context.l10n?.tablets ?? 'Tablets',
-              categoryId: 'tablets',
-              icon: Icons.tablet_mac_rounded,
-              iconColor: const Color(0xFF3B82F6),
-              wide: true,
-            ),
+            // ── DYNAMIC PRIORITY CATEGORIES ─────────────────────────────────
+            // Categories are ordered by user behavior & profile (no more hardcoded!)
+            ..._buildPriorityCategorySections(),
 
-            // Headphones
-            ..._buildCategoryBlock(
-              title: context.l10n?.headphones ?? 'Headphones',
-              categoryId: 'headphones',
-              icon: Icons.headphones_rounded,
-              iconColor: const Color(0xFFEC4899),
-              wide: true,
-            ),
-
-            // Monitors
-            ..._buildCategoryBlock(
-              title: context.l10n?.monitors ?? 'Monitors',
-              categoryId: 'monitors',
-              icon: Icons.monitor_rounded,
-              iconColor: const Color(0xFF10B981),
-              wide: true,
-            ),
-
-            // TVs
-            ..._buildCategoryBlock(
-              title: context.l10n?.tvsAndDisplays ?? 'TVs & Displays',
-              categoryId: 'tvs',
-              icon: Icons.tv_rounded,
-              iconColor: const Color(0xFF0EA5E9),
-              wide: false,
-            ),
-
-            // Processors
-            ..._buildCategoryBlock(
-              title: context.l10n?.processors ?? 'Processors',
-              categoryId: 'cpus',
-              icon: Icons.developer_board_rounded,
-              iconColor: const Color(0xFF06B6D4),
-              wide: false,
-            ),
-
-            // Graphics Cards
-            ..._buildCategoryBlock(
-              title: context.l10n?.graphicsCards ?? 'Graphics Cards',
-              categoryId: 'gpus',
-              icon: Icons.videogame_asset_rounded,
-              iconColor: const Color(0xFF8B5CF6),
-              wide: false,
-            ),
-
-            // Smartwatches
-            ..._buildCategoryBlock(
-              title: context.l10n?.smartwatches ?? 'Smartwatches',
-              categoryId: 'smartwatches',
-              icon: Icons.watch_rounded,
-              iconColor: const Color(0xFF14B8A6),
-              wide: true,
-            ),
-
-            // Keyboards
-            ..._buildCategoryBlock(
-              title: context.l10n?.catKeyboards ?? 'Keyboards',
-              categoryId: 'keyboards',
-              icon: Icons.keyboard_rounded,
-              iconColor: const Color(0xFF64748B),
-              wide: false,
-            ),
-
-            // Mice
-            ..._buildCategoryBlock(
-              title: context.l10n?.catMice ?? 'Mice',
-              categoryId: 'mice',
-              icon: Icons.mouse_rounded,
-              iconColor: const Color(0xFF78716C),
-              wide: false,
-            ),
-
-            // Desktops
-            ..._buildCategoryBlock(
-              title: context.l10n?.catDesktops ?? 'Desktops',
-              categoryId: 'desktops',
-              icon: Icons.desktop_windows_rounded,
-              iconColor: const Color(0xFF6366F1),
-              wide: false,
-            ),
-
-            // Cameras
-            ..._buildCategoryBlock(
-              title: context.l10n?.catCameras ?? 'Cameras',
-              categoryId: 'cameras',
-              icon: Icons.camera_alt_rounded,
-              iconColor: const Color(0xFFF97316),
-              wide: false,
-            ),
-
-            // Discover — hidden gems, shuffled for variety
+            // ── DISCOVER ────────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: _SectionHeader(
                 title: context.l10n?.exploreProducts ?? 'Discover',
@@ -336,234 +227,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
             SliverToBoxAdapter(child: _buildDiscoverSection()),
-
-            // Speakers
-            ..._buildCategoryBlock(
-              title: context.l10n?.catSpeakers ?? 'Speakers',
-              categoryId: 'speakers',
-              icon: Icons.speaker_rounded,
-              iconColor: const Color(0xFFEF4444),
-              wide: false,
-            ),
-
-            // Gaming Consoles
-            ..._buildCategoryBlock(
-              title: context.l10n?.catConsoles ?? 'Consoles',
-              categoryId: 'consoles',
-              icon: Icons.gamepad_rounded,
-              iconColor: const Color(0xFF8B5CF6),
-              wide: false,
-            ),
-
-            // Routers
-            ..._buildCategoryBlock(
-              title: context.l10n?.catRouters ?? 'Networking',
-              categoryId: 'routers',
-              icon: Icons.router_rounded,
-              iconColor: const Color(0xFF22C55E),
-              wide: false,
-            ),
-
-            // Gamepads
-            ..._buildCategoryBlock(
-              title: context.l10n?.catGamepads ?? 'Gamepads',
-              categoryId: 'gamepads',
-              icon: Icons.sports_esports_rounded,
-              iconColor: const Color(0xFFA855F7),
-              wide: false,
-            ),
-
-            // Webcams
-            ..._buildCategoryBlock(
-              title: context.l10n?.catWebcams ?? 'Webcams',
-              categoryId: 'webcams',
-              icon: Icons.videocam_rounded,
-              iconColor: const Color(0xFF0EA5E9),
-              wide: false,
-            ),
-
-            // Dashcams
-            ..._buildCategoryBlock(
-              title: context.l10n?.catDashcams ?? 'Dashcams',
-              categoryId: 'dashcams',
-              icon: Icons.directions_car_rounded,
-              iconColor: const Color(0xFFD97706),
-              wide: false,
-            ),
-
-            // Media Players
-            ..._buildCategoryBlock(
-              title: context.l10n?.catMediaPlayers ?? 'Media Players',
-              categoryId: 'media-players',
-              icon: Icons.live_tv_rounded,
-              iconColor: const Color(0xFF7C3AED),
-              wide: false,
-            ),
-
-            // Cases
-            ..._buildCategoryBlock(
-              title: context.l10n?.catCases ?? 'Cases',
-              categoryId: 'cases',
-              icon: Icons.inventory_2_rounded,
-              iconColor: const Color(0xFF475569),
-              wide: false,
-            ),
-
-            // Drones
-            ..._buildCategoryBlock(
-              title: context.l10n?.catDrones ?? 'Drones',
-              categoryId: 'drones',
-              icon: Icons.flight_rounded,
-              iconColor: const Color(0xFF0EA5E9),
-              wide: false,
-            ),
-
-            // Robot Vacuums
-            ..._buildCategoryBlock(
-              title: context.l10n?.catRobotVacuums ?? 'Robot Vacuums',
-              categoryId: 'robot-vacuums',
-              icon: Icons.smart_toy_rounded,
-              iconColor: const Color(0xFF06B6D4),
-              wide: false,
-            ),
-
-            // Soundbars
-            ..._buildCategoryBlock(
-              title: 'Soundbars',
-              categoryId: 'soundbars',
-              icon: Icons.surround_sound_rounded,
-              iconColor: const Color(0xFFE11D48),
-              wide: false,
-            ),
-
-            // Microphones
-            ..._buildCategoryBlock(
-              title: 'Microphones',
-              categoryId: 'microphones',
-              icon: Icons.mic_rounded,
-              iconColor: const Color(0xFF7C3AED),
-              wide: false,
-            ),
-
-            // Smart Rings
-            ..._buildCategoryBlock(
-              title: 'Smart Rings',
-              categoryId: 'smart-rings',
-              icon: Icons.ring_volume_rounded,
-              iconColor: const Color(0xFFD946EF),
-              wide: false,
-            ),
-
-            // E-Readers
-            ..._buildCategoryBlock(
-              title: 'E-Readers',
-              categoryId: 'e-readers',
-              icon: Icons.menu_book_rounded,
-              iconColor: const Color(0xFF059669),
-              wide: false,
-            ),
-
-            // VR Headsets
-            ..._buildCategoryBlock(
-              title: 'VR Headsets',
-              categoryId: 'vr-headsets',
-              icon: Icons.vrpano_rounded,
-              iconColor: const Color(0xFF6366F1),
-              wide: false,
-            ),
-
-            // Motherboards
-            ..._buildCategoryBlock(
-              title: 'Motherboards',
-              categoryId: 'motherboards',
-              icon: Icons.memory_rounded,
-              iconColor: const Color(0xFF0D9488),
-              wide: false,
-            ),
-
-            // RAM
-            ..._buildCategoryBlock(
-              title: 'RAM',
-              categoryId: 'ram',
-              icon: Icons.storage_rounded,
-              iconColor: const Color(0xFF2563EB),
-              wide: false,
-            ),
-
-            // SSD / Storage
-            ..._buildCategoryBlock(
-              title: 'SSD & Storage',
-              categoryId: 'ssd',
-              icon: Icons.sd_storage_rounded,
-              iconColor: const Color(0xFF7C3AED),
-              wide: false,
-            ),
-
-            // Power Supplies
-            ..._buildCategoryBlock(
-              title: 'Power Supplies',
-              categoryId: 'psu',
-              icon: Icons.power_rounded,
-              iconColor: const Color(0xFFEA580C),
-              wide: false,
-            ),
-
-            // Coolers
-            ..._buildCategoryBlock(
-              title: 'Coolers',
-              categoryId: 'coolers',
-              icon: Icons.ac_unit_rounded,
-              iconColor: const Color(0xFF0284C7),
-              wide: false,
-            ),
-
-            // Printers
-            ..._buildCategoryBlock(
-              title: 'Printers',
-              categoryId: 'printers',
-              icon: Icons.print_rounded,
-              iconColor: const Color(0xFF475569),
-              wide: false,
-            ),
-
-            // Projectors
-            ..._buildCategoryBlock(
-              title: 'Projectors',
-              categoryId: 'projectors',
-              icon: Icons.videocam_rounded,
-              iconColor: const Color(0xFFCA8A04),
-              wide: false,
-            ),
-
-            // Gimbals
-            ..._buildCategoryBlock(
-              title: 'Gimbals',
-              categoryId: 'gimbals',
-              icon: Icons.control_camera_rounded,
-              iconColor: const Color(0xFF0891B2),
-              wide: false,
-            ),
-
-            // Tripods
-            ..._buildCategoryBlock(
-              title: 'Tripods',
-              categoryId: 'tripods',
-              icon: Icons.filter_center_focus_rounded,
-              iconColor: const Color(0xFF65A30D),
-              wide: false,
-            ),
-
-            // Lenses
-            ..._buildCategoryBlock(
-              title: 'Lenses',
-              categoryId: 'lenses',
-              icon: Icons.camera_rounded,
-              iconColor: const Color(0xFFDB2777),
-              wide: false,
-            ),
-
-            // Dynamic user-interest sections
-            ..._buildDynamicSections(userProfile),
 
             const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
@@ -1816,48 +1479,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === DYNAMIC USER SECTIONS =================================================
 
-  static const _alreadyFeatured = {
-    'smartphones', 'laptops', 'monitors', 'cpus', 'tablets',
-    'headphones', 'tvs', 'gpus', 'smartwatches',
-    'keyboards', 'mice', 'desktops', 'cameras', 'speakers',
-    'consoles', 'routers', 'gamepads', 'webcams', 'dashcams',
-    'media-players', 'cases', 'drones', 'robot-vacuums',
-  };
+  /// Recently Viewed section — shows products user has recently viewed from Hive
+  List<Widget> _buildRecentlyViewedSection() {
+    final viewedIds = ref.watch(viewedProductsProvider);
+    if (viewedIds.isEmpty) return [];
 
-  List<Widget> _buildDynamicSections(AsyncValue userProfile) {
-    final priorityAsync = ref.watch(userCategoryPriorityProvider);
-    final priority = priorityAsync.valueOrNull ??
-        ['smartphones', 'laptops', 'tablets', 'gpus'];
-    final filtered = priority
-        .where((c) => !_alreadyFeatured.contains(c))
-        .where((c) => !{'tech', 'subscription', 'gaming', 'travel', 'productivity', 'entertainment'}.contains(c))
-        .take(5);
+    // Match viewed product IDs with full product data from homeFeed cache
+    final feed = ref.watch(homeFeedProvider);
+    final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
+    if (allProducts.isEmpty) return [];
 
+    final productMap = {for (final p in allProducts) p.id: p};
+    final recentProducts = <ProductEntity>[];
+    for (final id in viewedIds.take(20)) {
+      if (id.isNotEmpty && productMap.containsKey(id)) {
+        recentProducts.add(productMap[id]!);
+      }
+    }
+    if (recentProducts.isEmpty) return [];
+
+    return [
+      SliverToBoxAdapter(
+        child: _SectionHeader(
+          title: context.l10n?.recentlyViewed ?? 'Recently Viewed',
+          icon: Icons.history_rounded,
+          iconColor: const Color(0xFF6366F1),
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: SizedBox(
+          height: 200,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: min(15, recentProducts.length),
+            itemBuilder: (context, index) {
+              final p = recentProducts[index];
+              final price = p.getPriceForCountry(
+                  ref.read(selectedCountryProvider)) ?? 0;
+              return _WideProductCard(
+                product: p, price: price,
+                onTap: () => context.push('/product/${p.id}'),
+              ).animate().fadeIn(delay: (50 * index).ms, duration: 300.ms);
+            },
+          ),
+        ),
+      ),
+    ];
+  }
+
+  /// Dynamic category sections — ordered by user behavior & profile priority
+  List<Widget> _buildPriorityCategorySections() {
     final feed = ref.watch(homeFeedProvider);
     final sections = <Widget>[];
-    for (final category in filtered) {
-      // Skip categories with fewer than 3 products
+
+    final priorityCategories = feed.whenOrNull(
+      data: (f) => f.priorityCategories,
+    ) ?? [];
+
+    // Use priority order from feed; show first 6 as wide, rest as compact
+    final categoriesToShow = priorityCategories.isNotEmpty
+        ? priorityCategories
+        : ['smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches', 'gpus'];
+
+    int shown = 0;
+    for (final category in categoriesToShow) {
       final productCount = feed.whenOrNull(
         data: (f) => f.byCategory[category]?.length ?? 0,
       ) ?? 0;
       final isLoading = feed.isLoading;
-      if (!isLoading && productCount < 3) continue;
+      if (!isLoading && productCount < 1) continue;
 
       final info = _categoryMeta(category);
-      sections.add(
-        SliverToBoxAdapter(
-          child: Column(children: [
-            _SectionHeader(
-              title: info['title'] as String,
-              icon: info['icon'] as IconData,
-              iconColor: info['color'] as Color,
-              onSeeAll: () => context.push(
-                '${AppRoutes.browse}?id=$category&name=${Uri.encodeComponent(category)}'),
-            ),
-            _buildCategoryProductsRow(category),
-          ]),
-        ),
-      );
+      final isWide = shown < 6; // First 6 categories are wide cards
+      sections.addAll(_buildCategoryBlock(
+        title: info['title'] as String,
+        categoryId: category,
+        icon: info['icon'] as IconData,
+        iconColor: info['color'] as Color,
+        wide: isWide,
+      ));
+      shown++;
     }
     return sections;
   }
@@ -1865,18 +1568,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Map<String, dynamic> _categoryMeta(String cat) {
     final l = context.l10n;
     final meta = <String, Map<String, dynamic>>{
+      'smartphones': {'title': l?.smartphones ?? 'Smartphones', 'icon': Icons.smartphone_rounded, 'color': const Color(0xFF3B82F6)},
+      'laptops': {'title': l?.laptops ?? 'Laptops', 'icon': Icons.laptop_rounded, 'color': const Color(0xFF6366F1)},
       'tablets': {'title': l?.catTablets ?? 'Tablets', 'icon': Icons.tablet_mac_rounded, 'color': const Color(0xFF3B82F6)},
       'gpus': {'title': l?.catGpus ?? 'Graphics Cards', 'icon': Icons.videogame_asset_rounded, 'color': const Color(0xFF8B5CF6)},
       'desktops': {'title': l?.catDesktops ?? 'Desktops', 'icon': Icons.desktop_windows_rounded, 'color': const Color(0xFF6366F1)},
       'headphones': {'title': l?.catHeadphones ?? 'Headphones', 'icon': Icons.headphones_rounded, 'color': const Color(0xFFEC4899)},
-      'tvs': {'title': l?.catTvs ?? 'TVs & Displays', 'icon': Icons.tv_rounded, 'color': const Color(0xFF10B981)},
+      'tvs': {'title': l?.catTvs ?? 'TVs & Displays', 'icon': Icons.tv_rounded, 'color': const Color(0xFF0EA5E9)},
+      'monitors': {'title': l?.monitors ?? 'Monitors', 'icon': Icons.monitor_rounded, 'color': const Color(0xFF10B981)},
       'smartwatches': {'title': l?.catSmartwatches ?? 'Smartwatches', 'icon': Icons.watch_rounded, 'color': const Color(0xFF14B8A6)},
       'cameras': {'title': l?.catCameras ?? 'Cameras', 'icon': Icons.camera_alt_rounded, 'color': const Color(0xFFF97316)},
-      'consoles': {'title': l?.catConsoles ?? 'Gaming', 'icon': Icons.gamepad_rounded, 'color': const Color(0xFF8B5CF6)},
+      'consoles': {'title': l?.catConsoles ?? 'Consoles', 'icon': Icons.gamepad_rounded, 'color': const Color(0xFF8B5CF6)},
       'speakers': {'title': l?.catSpeakers ?? 'Speakers', 'icon': Icons.speaker_rounded, 'color': const Color(0xFFEF4444)},
-      'routers': {'title': l?.catGroupNetworking ?? 'Networking', 'icon': Icons.router_rounded, 'color': const Color(0xFF22C55E)},
+      'routers': {'title': l?.catRouters ?? 'Networking', 'icon': Icons.router_rounded, 'color': const Color(0xFF22C55E)},
       'drones': {'title': l?.catDrones ?? 'Drones', 'icon': Icons.flight_rounded, 'color': const Color(0xFF0EA5E9)},
-      'robot-vacuums': {'title': l?.catGroupSmartHome ?? 'Smart Home', 'icon': Icons.smart_toy_rounded, 'color': const Color(0xFF06B6D4)},
+      'robot-vacuums': {'title': l?.catRobotVacuums ?? 'Robot Vacuums', 'icon': Icons.smart_toy_rounded, 'color': const Color(0xFF06B6D4)},
+      'keyboards': {'title': l?.catKeyboards ?? 'Keyboards', 'icon': Icons.keyboard_rounded, 'color': const Color(0xFF64748B)},
+      'mice': {'title': l?.catMice ?? 'Mice', 'icon': Icons.mouse_rounded, 'color': const Color(0xFF78716C)},
+      'cpus': {'title': l?.processors ?? 'Processors', 'icon': Icons.developer_board_rounded, 'color': const Color(0xFF06B6D4)},
+      'gamepads': {'title': l?.catGamepads ?? 'Gamepads', 'icon': Icons.sports_esports_rounded, 'color': const Color(0xFFA855F7)},
+      'webcams': {'title': l?.catWebcams ?? 'Webcams', 'icon': Icons.videocam_rounded, 'color': const Color(0xFF0EA5E9)},
+      'dashcams': {'title': l?.catDashcams ?? 'Dashcams', 'icon': Icons.directions_car_rounded, 'color': const Color(0xFFD97706)},
+      'media-players': {'title': l?.catMediaPlayers ?? 'Media Players', 'icon': Icons.live_tv_rounded, 'color': const Color(0xFF7C3AED)},
+      'cases': {'title': l?.catCases ?? 'Cases', 'icon': Icons.inventory_2_rounded, 'color': const Color(0xFF475569)},
+      'soundbars': {'title': 'Soundbars', 'icon': Icons.surround_sound_rounded, 'color': const Color(0xFFE11D48)},
+      'microphones': {'title': 'Microphones', 'icon': Icons.mic_rounded, 'color': const Color(0xFF7C3AED)},
+      'smart-rings': {'title': 'Smart Rings', 'icon': Icons.ring_volume_rounded, 'color': const Color(0xFFD946EF)},
+      'e-readers': {'title': 'E-Readers', 'icon': Icons.menu_book_rounded, 'color': const Color(0xFF059669)},
+      'vr-headsets': {'title': 'VR Headsets', 'icon': Icons.vrpano_rounded, 'color': const Color(0xFF6366F1)},
+      'motherboards': {'title': 'Motherboards', 'icon': Icons.memory_rounded, 'color': const Color(0xFF0D9488)},
+      'ram': {'title': 'RAM', 'icon': Icons.storage_rounded, 'color': const Color(0xFF2563EB)},
+      'ssd': {'title': 'SSD & Storage', 'icon': Icons.sd_storage_rounded, 'color': const Color(0xFF7C3AED)},
+      'psu': {'title': 'Power Supplies', 'icon': Icons.power_rounded, 'color': const Color(0xFFEA580C)},
+      'coolers': {'title': 'Coolers', 'icon': Icons.ac_unit_rounded, 'color': const Color(0xFF0284C7)},
+      'printers': {'title': 'Printers', 'icon': Icons.print_rounded, 'color': const Color(0xFF475569)},
+      'projectors': {'title': 'Projectors', 'icon': Icons.videocam_rounded, 'color': const Color(0xFFCA8A04)},
+      'gimbals': {'title': 'Gimbals', 'icon': Icons.control_camera_rounded, 'color': const Color(0xFF0891B2)},
+      'tripods': {'title': 'Tripods', 'icon': Icons.filter_center_focus_rounded, 'color': const Color(0xFF65A30D)},
+      'lenses': {'title': 'Lenses', 'icon': Icons.camera_rounded, 'color': const Color(0xFFDB2777)},
+      'earphones': {'title': 'Earphones', 'icon': Icons.earbuds_rounded, 'color': const Color(0xFFEC4899)},
     };
     return meta[cat] ?? {'title': cat.replaceAll('-', ' ').replaceAll('_', ' '), 'icon': Icons.devices_rounded, 'color': context.textTertiaryColor};
   }
