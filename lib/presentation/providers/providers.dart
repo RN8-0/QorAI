@@ -2511,11 +2511,11 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     for (final p in all) {
       final brand = (p.brand ?? '').toLowerCase().trim();
       final count = brandCount[brand] ?? 0;
-      if (count < 3) {
+      if (count < 4) {
         diverse.add(p);
         brandCount[brand] = count + 1;
       }
-      if (diverse.length >= 60) break;
+      if (diverse.length >= 80) break;
     }
     byCategory[cat] = diverse;
   }
@@ -2533,15 +2533,15 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     final cat = s.product.category.toLowerCase().trim();
     final brand = (s.product.brand ?? '').toLowerCase().trim();
     const nicheCategories = {'dashcams', 'gimbals', 'tripods', 'lenses', 'soundbars'};
-    if (nicheCategories.contains(cat) && trending.length > 20) continue;
+    if (nicheCategories.contains(cat) && trending.length > 40) continue;
     final catCount = trendingCatCount[cat] ?? 0;
     final brandCnt = trendingBrandCount[brand] ?? 0;
-    if (catCount < 3 && brandCnt < 2) {
+    if (catCount < 5 && brandCnt < 3) {
       trending.add(s.product);
       trendingCatCount[cat] = catCount + 1;
       trendingBrandCount[brand] = brandCnt + 1;
     }
-    if (trending.length >= 70) break;
+    if (trending.length >= 100) break;
   }
 
   // ── FEATURED: Best product per mainstream category (unique brands) ────────
@@ -2625,7 +2625,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
       arrivalsCatCount[cat] = catCount + 1;
       arrivalsBrandCount[brand] = brandCnt + 1;
     }
-    if (newArrivals.length >= 35) break;
+    if (newArrivals.length >= 50) break;
   }
 
   // ── DISCOVER: High-quality hidden gems — products NOT in trending/featured ──
@@ -3187,7 +3187,7 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
         diverse.add(p);
         catCount[cat] = cnt + 1;
       }
-      if (diverse.length >= 25) break;
+      if (diverse.length >= 50) break;
     }
     return diverse;
   }
@@ -3199,10 +3199,10 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
   // Get behavior-boosted category priorities
   final priorityCats = algorithmService.getCategoryPriority(user, behavior: behavior);
 
-  // Pull products from top 10 priority categories — MAX 5 per category for diversity
+  // Pull products from top 12 priority categories — MAX 8 per category for diversity
   final topCats = priorityCats.isNotEmpty
-      ? priorityCats.take(10).toList()
-      : user.interestCategories.take(6).toList();
+      ? priorityCats.take(12).toList()
+      : user.interestCategories.take(8).toList();
   for (final cat in topCats) {
     final catLower = cat.toLowerCase().trim();
     final catProducts = feed.byCategory[catLower] ?? [];
@@ -3213,18 +3213,18 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
         existingIds.add(p.id);
         added++;
       }
-      if (added >= 5) break;
+      if (added >= 8) break;
     }
   }
 
   // Fill with cross-category trending products for discovery
-  if (allProducts.length < 40) {
+  if (allProducts.length < 60) {
     for (final p in feed.trending) {
       if (!existingIds.contains(p.id)) {
         allProducts.add(p);
         existingIds.add(p.id);
       }
-      if (allProducts.length >= 60) break;
+      if (allProducts.length >= 80) break;
     }
   }
 
@@ -3235,17 +3235,17 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     behavior: behavior,
   );
 
-  // Final diversity check: max 4 per category in output
+  // Final diversity check: max 6 per category in output
   final outputCatCount = <String, int>{};
   final result = <ProductEntity>[];
   for (final p in sortedProducts) {
     final cat = p.category.toLowerCase();
     final cnt = outputCatCount[cat] ?? 0;
-    if (cnt < 4) {
+    if (cnt < 6) {
       result.add(p);
       outputCatCount[cat] = cnt + 1;
     }
-    if (result.length >= 25) break;
+    if (result.length >= 50) break;
   }
   return result;
 });

@@ -1162,20 +1162,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ],
             ),
           );
+          final display = products.take(30).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             physics: const BouncingScrollPhysics(),
-            itemCount: products.length,
+            itemCount: display.length,
             itemBuilder: (context, index) {
-              final product = products[index];
+              final product = display[index];
               final price = product.getPriceForCountry(
                       ref.read(selectedCountryProvider)) ?? 0;
               return _WideProductCard(
                 product: product, price: price,
                 onTap: () => context.push('/product/${product.id}'),
               ).animate()
-               .fadeIn(delay: (60 * index).ms, duration: 350.ms)
+               .fadeIn(delay: (60 * min(index, 5)).ms, duration: 350.ms)
                .slideX(begin: 0.05, duration: 350.ms);
             },
           );
@@ -1249,7 +1250,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             physics: const BouncingScrollPhysics(),
-            itemCount: min(25, products.length),
+            itemCount: min(30, products.length),
             itemBuilder: (context, index) {
               final p = products[index];
               final price = p.getPriceForCountry(
@@ -1260,7 +1261,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   product: p, price: price,
                   onTap: () => context.push('/product/${p.id}'),
                 ).animate()
-                 .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+                 .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
                  .slideX(begin: 0.06, duration: 300.ms),
               );
             },
@@ -1291,7 +1292,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 user: user, products: products, behavior: behavior);
           }
 
-          final display = products.take(25).toList();
+          final display = products.take(30).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1305,7 +1306,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 product: p, price: price,
                 onTap: () => context.push('/product/${p.id}'),
               ).animate()
-               .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+               .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
                .slideX(begin: 0.06, duration: 300.ms);
             },
           );
@@ -1339,7 +1340,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ],
             ),
           );
-          final display = trending.take(15).toList();
+          final display = trending.take(30).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1355,7 +1356,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 price: price,
                 onTap: () => p.id.isNotEmpty ? context.push('/product/${p.id}') : null,
               ).animate()
-               .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+               .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
                .slideX(begin: 0.06, duration: 300.ms);
             },
           );
@@ -1399,7 +1400,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   product: p, price: price, showNewBadge: true,
                   onTap: () => context.push('/product/${p.id}'),
                 ).animate()
-                 .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+                 .fadeIn(delay: (60 * min(index, 5)).ms, duration: 300.ms)
                  .slideX(begin: 0.06, duration: 300.ms);
             },
           );
@@ -1443,7 +1444,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   product: p, price: price, showNewBadge: false,
                   onTap: () => context.push('/product/${p.id}'),
                 ).animate()
-                 .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+                 .fadeIn(delay: (60 * min(index, 5)).ms, duration: 300.ms)
                  .slideX(begin: 0.06, duration: 300.ms);
             },
           );
@@ -1483,7 +1484,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   context.push(AppRoutes.compare);
                 },
               ).animate()
-               .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+               .fadeIn(delay: (60 * min(index, 5)).ms, duration: 300.ms)
                .slideX(begin: 0.05, duration: 300.ms);
             },
           );
