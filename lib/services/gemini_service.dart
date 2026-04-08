@@ -775,6 +775,9 @@ $jsonSchema
     required UserEntity profile,
   }) async {
     debugPrint('[Gemini] enhancedAnalysis for: ${baseResult.metadata.title}');
+    debugPrint('[Gemini] quiz answers count: ${answeredQuestions.where((q) => q.selectedOption != null).length}');
+    debugPrint('[Gemini] user profile: ecosystem=${profile.ecosystem}, budget=${profile.budgetRange}, '
+        'devices=${profile.currentDevices}, priorities=${profile.priorities}');
     final qaPairs = answeredQuestions
         .where((q) => q.selectedOption != null)
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
