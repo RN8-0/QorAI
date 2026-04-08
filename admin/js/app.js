@@ -734,6 +734,8 @@ function openUserDetail(uid){
       <button class="user-tab active" data-tab="overview" onclick="switchUserTab(this,'${uid}')">📊 Genel</button>
       <button class="user-tab" data-tab="behavior" onclick="switchUserTab(this,'${uid}')">🎯 Davranış</button>
       <button class="user-tab" data-tab="quizzes" onclick="switchUserTab(this,'${uid}')">🧠 Quiz</button>
+      <button class="user-tab" data-tab="analysis" onclick="switchUserTab(this,'${uid}')">🤖 AI Analiz</button>
+      <button class="user-tab" data-tab="profile" onclick="switchUserTab(this,'${uid}')">👤 Profil</button>
     </div>
     <!-- Overview Tab -->
     <div class="user-tab-panel active" data-panel="overview">
@@ -774,6 +776,20 @@ function openUserDetail(uid){
         <div class="spinner"></div>
         <div style="margin-top:8px">Quiz verileri yükleniyor...</div>
       </div>
+    </div>
+    <!-- Analysis Tab -->
+    <div class="user-tab-panel" data-panel="analysis" style="display:none">
+      <div id="analysisContent" style="text-align:center;padding:30px;color:var(--text3)">
+        <div class="spinner"></div>
+        <div style="margin-top:8px">Analiz geçmişi yükleniyor...</div>
+      </div>
+    </div>
+    <!-- Profile Tab -->
+    <div class="user-tab-panel" data-panel="profile" style="display:none">
+      <div id="profileContent" style="text-align:center;padding:30px;color:var(--text3)">
+        <div class="spinner"></div>
+        <div style="margin-top:8px">Profil verisi yükleniyor...</div>
+      </div>
     </div>`;
   document.getElementById('userModal').style.display='flex';
 }
@@ -791,6 +807,8 @@ function switchUserTab(btn, uid){
   // Load data on first click
   if(panel==='behavior')loadUserBehavior(uid);
   if(panel==='quizzes')loadUserQuizzes(uid);
+  if(panel==='analysis')loadUserAnalysis(uid);
+  if(panel==='profile')loadUserProfile(uid);
 }
 
 async function loadUserBehavior(uid){
@@ -908,16 +926,66 @@ async function loadUserQuizzes(uid){
   const el=document.getElementById('quizContent');
   if(el.dataset.loaded)return;
   try{
-    const snap=await db.collection('users').doc(uid).collection('behavior').doc('quiz_answers').collection('sessions').orderBy('at','desc').limit(30).get();
+    // Load from both old subcollection and new user-doc field
+    const [snap, userDoc]=await Promise.all([
+      db.collection('users').doc(uid).collection('behavior').doc('quiz_answers').collection('sessions').orderBy('at','desc').limit(30).get(),
+      db.collection('users').doc(uid).get()
+    ]);
+    const userData=userDoc.data()||{};
+    const newQuizHistory=userData.quizHistory||[];
 
-    if(snap.empty){
+    if(snap.empty&&!newQuizHistory.length){
       el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🧠</div><div>Henüz quiz çözülmemiş</div></div>`;
       el.dataset.loaded='1';
       return;
     }
 
-    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${snap.size} quiz oturumu bulundu</div>`;
+    const totalCount=snap.size+newQuizHistory.length;
+    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${totalCount} quiz oturumu bulundu</div>`;
 
+    // New quiz history entries (from user doc)
+    if(newQuizHistory.length){
+      newQuizHistory.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+      for(const d of newQuizHistory){
+        const date=d.timestamp?new Date(d.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+        const score=d.score?Math.round(d.score):'—';
+        const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
+        const answers=d.answers||[];
+        const mode=d.mode==='compare'?'🔀 Compare':'🔍 Single';
+
+        html+=`<div class="card" style="margin:0 0 12px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+              <div style="font-size:12px;font-weight:700">${d.category||'AI Analiz'} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode}</span></div>
+              <div style="font-size:10px;color:var(--text3)">${date}</div>
+            </div>
+            <div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div>
+          </div>`;
+
+        if(d.productUrl){
+          html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.productUrl}</div>`;
+        }
+        if(d.productUrls&&d.productUrls.length){
+          for(const url of d.productUrls){
+            html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</div>`;
+          }
+        }
+
+        if(answers.length){
+          html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
+          for(const a of answers){
+            html+=`<div style="margin-bottom:4px;font-size:11px">
+              <span style="color:var(--text2)">${a.question||'—'}</span>
+              <span style="color:var(--primary);font-weight:600;margin-left:6px">${a.answer||a.selectedOption||'—'}</span>
+            </div>`;
+          }
+          html+=`</div>`;
+        }
+        html+=`</div>`;
+      }
+    }
+
+    // Old behavior subcollection entries
     snap.forEach(doc=>{
       const d=doc.data();
       const date=d.at?.toDate?d.at.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -958,6 +1026,129 @@ async function loadUserQuizzes(uid){
   }
 }
 function closeUserModal(){document.getElementById('userModal').style.display='none'}
+
+async function loadUserAnalysis(uid){
+  const el=document.getElementById('analysisContent');
+  if(el.dataset.loaded)return;
+  try{
+    const userDoc=await db.collection('users').doc(uid).get();
+    const data=userDoc.data()||{};
+    const analyzedProducts=data.analyzedProducts||[];
+    const quizHistory=data.quizHistory||[];
+
+    if(!analyzedProducts.length){
+      el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>Henüz AI analiz yapılmamış</div></div>`;
+      el.dataset.loaded='1';
+      return;
+    }
+
+    // Sort by timestamp descending
+    analyzedProducts.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+
+    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${analyzedProducts.length} ürün analiz edilmiş</div>`;
+
+    for(const p of analyzedProducts){
+      const date=p.timestamp?new Date(p.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      const score=p.score?Math.round(p.score):'—';
+      const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
+      const mode=p.mode==='compare'?'🔀 Karşılaştırma':'🔍 Tekil Analiz';
+
+      html+=`<div class="card" style="margin:0 0 12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.title||'Bilinmeyen Ürün'}</div>
+            <div style="font-size:10px;color:var(--text3)">${date} · ${mode}</div>
+          </div>
+          <div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div>
+        </div>
+        ${p.category?`<span style="background:var(--bg3);padding:2px 8px;border-radius:8px;font-size:10px">${p.category}</span>`:''}
+        ${p.url?`<div style="font-size:10px;color:var(--primary);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.url}</div>`:''}
+        ${p.verdict?`<div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.4">${p.verdict.substring(0,150)}${p.verdict.length>150?'...':''}</div>`:''}
+      </div>`;
+    }
+
+    el.innerHTML=html;
+    el.dataset.loaded='1';
+  }catch(e){
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+  }
+}
+
+async function loadUserProfile(uid){
+  const el=document.getElementById('profileContent');
+  if(el.dataset.loaded)return;
+  try{
+    const u=allUsers.find(x=>x.uid===uid);
+    if(!u){el.innerHTML='Kullanıcı bulunamadı';return;}
+
+    let html=`<div class="card" style="margin:0 0 16px;padding:14px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">👤 Profil Özeti</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+        <div><span style="color:var(--text2)">Ekosistem:</span> <b>${u.ecosystem||'Belirtilmemiş'}</b></div>
+        <div><span style="color:var(--text2)">Bütçe:</span> <b>${u.budgetRange||'Belirtilmemiş'}</b></div>
+        <div><span style="color:var(--text2)">Yaş Aralığı:</span> <b>${u.ageRange||'Belirtilmemiş'}</b></div>
+        <div><span style="color:var(--text2)">Meslek:</span> <b>${u.profession||'Belirtilmemiş'}</b></div>
+        <div><span style="color:var(--text2)">Cinsiyet:</span> <b>${u.gender||'Belirtilmemiş'}</b></div>
+        <div><span style="color:var(--text2)">Dil:</span> <b>${u.language||'—'}</b></div>
+        <div><span style="color:var(--text2)">Ülke:</span> <b>${u.country||'—'}</b></div>
+        <div><span style="color:var(--text2)">Kullanım:</span> <b>${u.usageIntent||'Belirtilmemiş'}</b></div>
+      </div>
+    </div>`;
+
+    // Priorities
+    const priorities=u.priorities||[];
+    if(priorities.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Öncelikler</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      for(const p of priorities){
+        html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${p}</span>`;
+      }
+      html+=`</div></div>`;
+    }
+
+    // Current Devices
+    const devices=u.currentDevices||[];
+    if(devices.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📱 Mevcut Cihazlar</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      for(const d of devices){
+        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${d}</span>`;
+      }
+      html+=`</div></div>`;
+    }
+
+    // Interest Categories
+    const interests=u.interestCategories||[];
+    if(interests.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📂 İlgi Kategorileri</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      for(const c of interests){
+        html+=`<span style="background:#8b5cf620;color:#8b5cf6;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${c}</span>`;
+      }
+      html+=`</div></div>`;
+    }
+
+    // Subscriptions
+    const subs=u.subscriptions||[];
+    if(subs.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔔 Abonelikler</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      for(const s of subs){
+        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${s}</span>`;
+      }
+      html+=`</div></div>`;
+    }
+
+    el.innerHTML=html;
+    el.dataset.loaded='1';
+  }catch(e){
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+  }
+}
 async function togglePremium(uid,v){try{await db.collection('users').doc(uid).update({isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
 async function deleteUser(uid){
   if(!confirm('Delete this user? This will remove their account from both Firestore and Firebase Authentication.'))return;
