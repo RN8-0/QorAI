@@ -2529,7 +2529,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   return feed;
 }
 
-/// Core product fetching: parallel category queries with priority ordering
+/// Core product fetching: BULK-FIRST strategy (single query, fast cold start)
 Future<List<ProductEntity>> _fetchAllProducts(
   dynamic repo,
   dynamic user,
@@ -2547,71 +2547,73 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   final sw = Stopwatch()..start();
 
-  // User interests first (higher priority → faster perceived load)
-  final userInterests = (user as dynamic)?.interestCategories
-      ?.map((c) => (c as String).toLowerCase().trim())
-      ?.toList()?.cast<String>() ?? <String>[];
-
-  // Priority order: user interests → popular categories → niche categories
-  final priorityCategories = <String>[
-    ...userInterests,
-    'smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
-    'gpus', 'monitors', 'cameras',
-  ];
-  final nicheCategories = <String>[
-    'keyboards', 'mice', 'speakers', 'tvs', 'gamepads', 'desktops',
-    'consoles', 'earphones', 'drones', 'printers', 'routers', 'webcams',
-    'action-cameras', 'soundbars', 'microphones', 'projectors',
-    'robot-vacuums', 'smart-rings', 'vr-headsets', 'dashcams', 'cpus',
-    'motherboards', 'ram', 'ssd', 'psu', 'cases', 'coolers', 'e-readers',
-    'gimbals', 'tripods', 'lenses', 'media-players',
-  ];
-
-  final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
-
-  // Deduplicate and filter disabled
-  final allCats = <String>{};
-  final orderedCategories = <String>[];
-  for (final cat in [...priorityCategories, ...nicheCategories]) {
-    if (allCats.add(cat) && !disabledSet.contains(cat)) {
-      orderedCategories.add(cat);
-    }
+  // ── PHASE 1: Single bulk query (works even on Firestore cold start) ─────
+  // This is the key: ONE query instead of 40+ category queries.
+  // Firestore cold start takes 27-37s but that's one roundtrip only.
+  debugPrint('=== COMPAIR: BULK fetch — single query for all products ===');
+  try {
+    final bulkResult = await (repo as dynamic).getProducts(
+      limit: 2000, orderBy: 'name', descending: false,
+    ).timeout(const Duration(seconds: 60));
+    (bulkResult as dynamic).when(
+      success: (products) {
+        addProducts(products as List<ProductEntity>);
+        debugPrint('=== COMPAIR: BULK got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+      },
+      failure: (e) => debugPrint('=== COMPAIR: BULK query failed: $e ==='),
+    );
+  } catch (e) {
+    debugPrint('=== COMPAIR: BULK query exception: $e ===');
   }
 
-  // Fetch ALL categories in parallel batches of 12 (increased from 8)
-  debugPrint('=== COMPAIR: Fetching ${orderedCategories.length} categories ===');
-  try {
-    for (var i = 0; i < orderedCategories.length; i += 12) {
-      final batch = orderedCategories.skip(i).take(12);
-      final futures = batch.map((cat) => (repo as dynamic).getProducts(
-        category: cat, limit: 50, orderBy: 'techScore', descending: true,
-      ).timeout(const Duration(seconds: 10)).catchError((_) =>
-        const Success<List<ProductEntity>>([])) as Future);
-      final results = await Future.wait(futures.toList());
-      for (final result in results) {
+  // ── PHASE 2: Gap-fill missing categories (only if bulk didn't cover them) ─
+  if (allProducts.isNotEmpty) {
+    final gotCats = <String>{};
+    for (final p in allProducts) {
+      gotCats.add(p.category.toLowerCase().trim());
+    }
+
+    final disabledSet = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
+    final missingCats = _feedCategories
+        .where((c) => !gotCats.contains(c) && !disabledSet.contains(c))
+        .toList();
+
+    if (missingCats.isNotEmpty) {
+      debugPrint('=== COMPAIR: Gap-filling ${missingCats.length} missing categories ===');
+      // Batch 4 at a time to avoid overwhelming Firestore
+      for (var i = 0; i < missingCats.length; i += 4) {
+        final batch = missingCats.skip(i).take(4);
+        try {
+          final futures = batch.map((cat) => (repo as dynamic).getProducts(
+            category: cat, limit: 30, orderBy: 'name', descending: false,
+          ).timeout(const Duration(seconds: 15)).catchError((_) =>
+            const Success<List<ProductEntity>>([])) as Future);
+          final results = await Future.wait(futures.toList());
+          for (final result in results) {
+            (result as dynamic).when(
+              success: (products) => addProducts(products as List<ProductEntity>),
+              failure: (_) {},
+            );
+          }
+        } catch (_) {}
+      }
+    }
+  } else {
+    // Bulk failed completely — try individual priority categories
+    debugPrint('=== COMPAIR: BULK failed, trying individual categories ===');
+    final priorityCats = ['smartphones', 'laptops', 'tablets', 'headphones'];
+    for (final cat in priorityCats) {
+      try {
+        final result = await (repo as dynamic).getProducts(
+          category: cat, limit: 50, orderBy: 'name', descending: false,
+        ).timeout(const Duration(seconds: 60));
         (result as dynamic).when(
           success: (products) => addProducts(products as List<ProductEntity>),
           failure: (_) {},
         );
-      }
+      } catch (_) {}
+      if (allProducts.length >= 20) break;
     }
-    debugPrint('=== COMPAIR: Category queries done: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
-  } catch (e) {
-    debugPrint('=== COMPAIR: Category fetch error: $e ===');
-  }
-
-  // Phase 2: Bulk fallback only if critically low
-  if (allProducts.length < 50) {
-    debugPrint('=== COMPAIR: Bulk fallback (only ${allProducts.length} products) ===');
-    try {
-      final bulkResult = await (repo as dynamic).getProducts(
-        limit: 500, orderBy: 'name', descending: false,
-      ).timeout(const Duration(seconds: 15));
-      (bulkResult as dynamic).when(
-        success: (products) => addProducts(products as List<ProductEntity>),
-        failure: (_) {},
-      );
-    } catch (_) {}
   }
 
   sw.stop();

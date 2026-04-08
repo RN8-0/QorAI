@@ -27,7 +27,9 @@ class EnvConfig {
     } catch (_) {}
     const envKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
     if (envKey.isNotEmpty) return envKey;
-    // Development: set GEMINI_API_KEY env var or configure in Firebase Remote Config
+    if (_environment == Environment.development) {
+      return 'REMOVED_LEAKED_KEY';
+    }
     return '';
   }
 
@@ -44,8 +46,10 @@ class EnvConfig {
     const envKey = String.fromEnvironment('DEEPSEEK_API_KEY', defaultValue: '');
     if (envKey.isNotEmpty) return envKey;
 
-    // 3. Development fallback — NEVER ship this to production without Remote Config set
-    // Development: set DEEPSEEK_API_KEY env var or configure in Firebase Remote Config
+    // 3. Development fallback
+    if (_environment == Environment.development) {
+      return 'REMOVED_LEAKED_KEY';
+    }
     return '';
   }
 
