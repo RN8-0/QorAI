@@ -158,6 +158,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ref.invalidate(categoriesProvider);
           ref.invalidate(personalizedRecommendationsProvider);
           ref.invalidate(userCategoryPriorityProvider);
+          ref.invalidate(topInCategoryProvider);
+          ref.invalidate(recentlyAnalyzedProvider);
+          ref.invalidate(valuePicsProvider);
         },
         child: CustomScrollView(
           controller: _scrollCtrl,
@@ -190,8 +193,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildPersonalizedSection()),
 
+            // ── TOP IN CATEGORY (dynamic) ───────────────────────────────────
+            ..._buildTopInCategorySection(),
+
             // ── RECENTLY VIEWED SECTION ─────────────────────────────────────
             ..._buildRecentlyViewedSection(),
+
+            // ── RECENTLY ANALYZED ───────────────────────────────────────────
+            ..._buildRecentlyAnalyzedSection(),
 
             // ── TRENDING ────────────────────────────────────────────────────
             SliverToBoxAdapter(
@@ -219,6 +228,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // ── DYNAMIC PRIORITY CATEGORIES ─────────────────────────────────
             // Categories are ordered by user behavior & profile (no more hardcoded!)
             ..._buildPriorityCategorySections(),
+
+            // ── VALUE PICKS ──────────────────────────────────────────────
+            ..._buildValuePicksSection(),
 
             // ── DISCOVER ────────────────────────────────────────────────────
             SliverToBoxAdapter(
@@ -1454,6 +1466,142 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           onRetry: () => ref.invalidate(discoverProductsProvider),
         ),
       ),
+    );
+  }
+
+  // === TOP IN CATEGORY (dynamic) =============================================
+
+  List<Widget> _buildTopInCategorySection() {
+    return ref.watch(topInCategoryProvider).when(
+      data: (data) {
+        if (data.category.isEmpty || data.products.isEmpty) return [];
+        final catName = data.category[0].toUpperCase() + data.category.substring(1);
+        return [
+          SliverToBoxAdapter(
+            child: _SectionHeader(
+              title: 'Top in $catName',
+              icon: Icons.star_rounded,
+              iconColor: AppTheme.gold,
+              subtitle: 'Based on your browsing',
+              onSeeAll: () => context.push(
+                '${AppRoutes.browse}?id=${data.category}&name=$catName'),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                physics: const BouncingScrollPhysics(),
+                itemCount: data.products.length,
+                itemBuilder: (context, index) {
+                  final p = data.products[index];
+                  final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+                  return _WideProductCard(
+                    product: p, price: price,
+                    onTap: () => context.push('/product/${p.id}'),
+                  ).animate()
+                   .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
+                   .slideX(begin: 0.06, duration: 300.ms);
+                },
+              ),
+            ),
+          ),
+        ];
+      },
+      loading: () => [],
+      error: (_, __) => [],
+    );
+  }
+
+  // === RECENTLY ANALYZED =====================================================
+
+  List<Widget> _buildRecentlyAnalyzedSection() {
+    return ref.watch(recentlyAnalyzedProvider).when(
+      data: (products) {
+        if (products.isEmpty) return [];
+        return [
+          SliverToBoxAdapter(
+            child: _SectionHeader(
+              title: context.l10n?.recentlyViewed ?? 'Recently Analyzed',
+              icon: Icons.psychology_rounded,
+              iconColor: AppTheme.brandCyan,
+              subtitle: 'Products you analyzed with AI',
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                physics: const BouncingScrollPhysics(),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final p = products[index];
+                  final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+                  return _WideProductCard(
+                    product: p, price: price,
+                    onTap: () => context.push('/product/${p.id}'),
+                  ).animate()
+                   .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
+                   .slideX(begin: 0.06, duration: 300.ms);
+                },
+              ),
+            ),
+          ),
+        ];
+      },
+      loading: () => [],
+      error: (_, __) => [],
+    );
+  }
+
+  // === VALUE PICKS ===========================================================
+
+  List<Widget> _buildValuePicksSection() {
+    return ref.watch(valuePicsProvider).when(
+      data: (products) {
+        if (products.isEmpty) return [];
+        return [
+          SliverToBoxAdapter(
+            child: _SectionHeader(
+              title: 'Best Value',
+              icon: Icons.trending_up_rounded,
+              iconColor: const Color(0xFF10B981),
+              subtitle: 'High performance, great price',
+              onSeeAll: () => context.push(AppRoutes.search),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                physics: const BouncingScrollPhysics(),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final p = products[index];
+                  final price = p.getPriceForCountry(
+                      ref.read(selectedCountryProvider)) ?? 0;
+                  return _WideProductCard(
+                    product: p, price: price,
+                    onTap: () => context.push('/product/${p.id}'),
+                  ).animate()
+                   .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
+                   .slideX(begin: 0.06, duration: 300.ms);
+                },
+              ),
+            ),
+          ),
+        ];
+      },
+      loading: () => [],
+      error: (_, __) => [],
     );
   }
 

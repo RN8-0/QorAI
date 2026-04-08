@@ -3311,6 +3311,136 @@ final userCategoryPriorityProvider = FutureProvider<List<String>>((ref) async {
   return algorithmService.getCategoryPriority(user, behavior: behavior);
 });
 
+// ════════════════════════════════════════════════════
+// ─── DYNAMIC HOME SECTIONS ───
+// ════════════════════════════════════════════════════
+
+/// "Top in [Category]" — products from user's most viewed category
+final topInCategoryProvider = FutureProvider<({String category, List<ProductEntity> products})>((ref) async {
+  final behavior = await ref.watch(behaviorSignalsProvider.future);
+  final feed = await ref.watch(homeFeedProvider.future);
+
+  // Find the most viewed category
+  String topCat = '';
+  int maxViews = 0;
+  for (final entry in behavior.categoryViews.entries) {
+    if (entry.value > maxViews) {
+      maxViews = entry.value;
+      topCat = entry.key.toLowerCase().trim();
+    }
+  }
+
+  if (topCat.isEmpty || maxViews < 2) {
+    return (category: '', products: <ProductEntity>[]);
+  }
+
+  final catProducts = feed.byCategory[topCat] ?? [];
+  if (catProducts.isEmpty) return (category: '', products: <ProductEntity>[]);
+
+  // Return top products, exclude first few they've likely already seen
+  final viewedIds = behavior.productViews.keys.toSet();
+  final fresh = catProducts.where((p) => !viewedIds.contains(p.id)).take(30).toList();
+  if (fresh.length < 5) {
+    // Not enough fresh products, show top ones
+    return (category: topCat, products: catProducts.take(30).toList());
+  }
+  return (category: topCat, products: fresh);
+});
+
+/// "Recently Analyzed" — products user has analyzed with AI
+final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((ref) async {
+  final userAsync = ref.watch(userProfileProvider);
+  final user = userAsync.valueOrNull;
+  if (user == null) return [];
+
+  try {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users').doc(user.uid).get();
+    final data = userDoc.data();
+    if (data == null || data['analyzedProducts'] is! List) return [];
+
+    final analyzed = (data['analyzedProducts'] as List).cast<Map<String, dynamic>>();
+    if (analyzed.isEmpty) return [];
+
+    // Get product IDs from analyzed history (most recent first)
+    final productIds = analyzed
+        .where((e) => e['productId'] != null)
+        .map((e) => e['productId'].toString())
+        .toSet()
+        .take(10)
+        .toList();
+
+    if (productIds.isEmpty) return [];
+
+    // Try to find these products in the home feed cache first
+    final feed = await ref.watch(homeFeedProvider.future);
+    final feedMap = {for (final p in feed.all) p.id: p};
+    final result = <ProductEntity>[];
+    for (final id in productIds) {
+      if (feedMap.containsKey(id)) {
+        result.add(feedMap[id]!);
+      }
+    }
+
+    // If not enough in cache, fetch from Firestore
+    if (result.length < productIds.length) {
+      final missingIds = productIds.where((id) => !feedMap.containsKey(id)).toList();
+      for (final id in missingIds.take(5)) {
+        try {
+          final pResult = await ref.read(productRepositoryProvider).getProduct(id);
+          pResult.when(
+            success: (p) => result.add(p),
+            failure: (_) {},
+          );
+        } catch (_) {}
+      }
+    }
+
+    return result;
+  } catch (e) {
+    debugPrint('[recentlyAnalyzed] Error: $e');
+    return [];
+  }
+});
+
+/// "Price Drop" / Value Picks — high techScore at lower price tiers
+final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
+  final feed = await ref.watch(homeFeedProvider.future);
+  final user = ref.read(userProfileProvider).valueOrNull;
+  final country = ref.read(selectedCountryProvider);
+
+  // Find products with high techScore but relatively low price
+  final candidates = feed.all.where((p) {
+    final score = p.techScore ?? 0;
+    final price = p.getPriceForCountry(country) ?? 0;
+    // Good value: high score, reasonable price
+    return score >= 60 && price > 0 && price < 2000;
+  }).toList();
+
+  // Sort by value ratio (techScore / price)
+  candidates.sort((a, b) {
+    final priceA = a.getPriceForCountry(country) ?? 1;
+    final priceB = b.getPriceForCountry(country) ?? 1;
+    final ratioA = (a.techScore ?? 0) / priceA;
+    final ratioB = (b.techScore ?? 0) / priceB;
+    return ratioB.compareTo(ratioA);
+  });
+
+  // Ensure diversity
+  final catCount = <String, int>{};
+  final result = <ProductEntity>[];
+  for (final p in candidates) {
+    final cat = p.category.toLowerCase();
+    final cnt = catCount[cat] ?? 0;
+    if (cnt < 4) {
+      result.add(p);
+      catCount[cat] = cnt + 1;
+    }
+    if (result.length >= 30) break;
+  }
+  return result;
+});
+
 /// Calculate fit score for a specific product
 final productFitScoreProvider = FutureProvider.family<double, String>((ref, productId) async {
   final userAsync = ref.watch(userProfileProvider);
