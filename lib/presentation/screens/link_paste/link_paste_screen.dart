@@ -2018,12 +2018,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    colors: [AppTheme.gold, AppTheme.goldOrange],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                      color: AppTheme.gold.withValues(alpha: 0.3),
                       blurRadius: 12, offset: const Offset(0, 4)),
                   ],
                 ),
@@ -2067,7 +2067,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        colors: [AppTheme.gold, AppTheme.goldOrange],
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -2097,11 +2097,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isBest
-                        ? const Color(0xFFFFD700).withValues(alpha: 0.06)
+                        ? AppTheme.gold.withValues(alpha: 0.06)
                         : context.surfaceVariantColor,
                     borderRadius: BorderRadius.circular(14),
                     border: isBest
-                        ? Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3))
+                        ? Border.all(color: AppTheme.gold.withValues(alpha: 0.3))
                         : null,
                   ),
                   child: Row(
@@ -2571,13 +2571,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 icon: Icons.swap_horiz_rounded, color: AppTheme.brandSkyBlue,
                 title: context.l10n?.smartAlternatives ?? 'Smart\nAlternatives', emoji: '🔄'),
               _PowerCard(
-                icon: Icons.star_rounded, color: const Color(0xFFF59E0B),
+                icon: Icons.star_rounded, color: AppTheme.scoreAverage,
                 title: context.l10n?.reviewDigest ?? 'Review\nDigest', emoji: '⭐'),
               _PowerCard(
                 icon: Icons.person_rounded, color: AppTheme.brandCyan,
                 title: context.l10n?.personalMatch ?? 'Personal\nMatch', emoji: '🎯'),
               _PowerCard(
-                icon: Icons.trending_up_rounded, color: const Color(0xFF10B981),
+                icon: Icons.trending_up_rounded, color: AppTheme.scoreExcellent,
                 title: context.l10n?.priceHistory ?? 'Price\nHistory', emoji: '📈'),
             ],
           ),
@@ -4062,7 +4062,7 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isBest
-                    ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
+                    ? [AppTheme.gold, AppTheme.goldOrange]
                     : [AppTheme.primaryBlue.withValues(alpha: 0.15), AppTheme.primaryBlue.withValues(alpha: 0.05)],
               ),
               borderRadius: BorderRadius.circular(12),
@@ -4084,7 +4084,7 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        colors: [AppTheme.gold, AppTheme.goldOrange],
                       ),
                       borderRadius: BorderRadius.circular(6),
                     ),
@@ -4193,7 +4193,7 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        colors: [AppTheme.gold, AppTheme.goldOrange],
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -4223,11 +4223,11 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isBest
-                        ? const Color(0xFFFFD700).withValues(alpha: 0.06)
+                        ? AppTheme.gold.withValues(alpha: 0.06)
                         : context.surfaceVariantColor,
                     borderRadius: BorderRadius.circular(14),
                     border: isBest
-                        ? Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3))
+                        ? Border.all(color: AppTheme.gold.withValues(alpha: 0.3))
                         : null,
                   ),
                   child: Row(

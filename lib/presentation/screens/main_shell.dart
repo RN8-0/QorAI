@@ -252,7 +252,7 @@ class _FloatingNavBar extends StatelessWidget {
           padding: EdgeInsets.only(bottom: bottomPadding),
           decoration: BoxDecoration(
             color: isDark
-                ? const Color(0xD9101820)
+                ? AppTheme.brandDark.withValues(alpha: 0.85)
                 : context.surfaceElevatedColor.withValues(alpha: 0.95),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             border: Border(

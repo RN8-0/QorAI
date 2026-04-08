@@ -349,11 +349,11 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               padding: const EdgeInsets.only(right: 8),
               child: TextButton.icon(
                 onPressed: _resetComparison,
-                icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFFEF4444)),
+                icon: const Icon(Icons.refresh_rounded, size: 16, color: AppTheme.error),
                 label: Text(
                   'Clear',
                   style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFFEF4444),
+                    color: AppTheme.error,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -664,7 +664,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                 child: Container(
                   width: 20, height: 20,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
+                    color: AppTheme.error,
                     shape: BoxShape.circle,
                     border: Border.all(color: context.backgroundColor, width: 2),
                   ),
@@ -1958,10 +1958,10 @@ For each product, analyze current pricing
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8)),
                     child: Text('🏆 ${_aiStructured!['winner']}',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF10B981))),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.scoreExcellent)),
                   ),
                 const SizedBox(width: 8),
                 if (_aiLoading)
@@ -2140,8 +2140,8 @@ For each product, analyze current pricing
   }
 
   Color _aiScoreColor(double score) {
-    if (score >= 80) return const Color(0xFF10B981);
-    if (score >= 60) return const Color(0xFFF59E0B);
+    if (score >= 80) return AppTheme.scoreExcellent;
+    if (score >= 60) return AppTheme.scoreAverage;
     if (score >= 40) return AppTheme.orange500;
     return AppTheme.error;
   }
@@ -2713,7 +2713,7 @@ For each product, analyze current pricing
           icon: Icons.support_agent_rounded,
           title: 'AI Product Advisor',
           subtitle: 'Personalized buying advice for your comparison',
-          gradient: const [Color(0xFFF59E0B), Color(0xFFEF4444)],
+          gradient: const [AppTheme.scoreAverage, AppTheme.error],
           isExpanded: _advisorExpanded,
           isLoading: _advisorLoading,
           content: _advisorResult,
@@ -2725,7 +2725,7 @@ For each product, analyze current pricing
           icon: Icons.trending_down_rounded,
           title: 'Price Prediction',
           subtitle: 'AI-powered price trend analysis & best time to buy',
-          gradient: const [Color(0xFF10B981), AppTheme.brandBlue],
+          gradient: const [AppTheme.scoreExcellent, AppTheme.brandBlue],
           isExpanded: _predictionExpanded,
           isLoading: _predictionLoading,
           content: _predictionResult,
@@ -2783,8 +2783,8 @@ For each product, analyze current pricing
             }
             final displayScore = matchScore != null ? '$matchScore%' : '--';
             final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
-                matchScore >= 80 ? const Color(0xFF10B981) :
-                matchScore >= 60 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444);
+                matchScore >= 80 ? AppTheme.scoreExcellent :
+                matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -2923,7 +2923,7 @@ For each product, analyze current pricing
         border: Border.all(color: context.dividerColor),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF9500).withValues(alpha: 0.04),
+            color: AppTheme.amber500.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -2936,10 +2936,10 @@ For each product, analyze current pricing
           Row(children: [
             Container(width: 44, height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+                color: AppTheme.amber500.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14)),
               child: const Icon(Icons.forum_rounded,
-                  size: 22, color: Color(0xFFFF9500))),
+                  size: 22, color: AppTheme.amber500)),
             const SizedBox(width: 14),
             Expanded(child: Text(context.l10n?.userReviews ?? 'User Reviews',
                 style: GoogleFonts.plusJakartaSans(fontSize: 16,
@@ -2949,15 +2949,15 @@ For each product, analyze current pricing
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+                  color: AppTheme.amber500.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFF9500)),
+                  const Icon(Icons.star_rounded, size: 14, color: AppTheme.amber500),
                   const SizedBox(width: 3),
                   Text(avgRating.toStringAsFixed(1),
                       style: GoogleFonts.plusJakartaSans(fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFFFF9500))),
+                          color: AppTheme.amber500)),
                   Text(' (${allReviews.length})',
                       style: GoogleFonts.plusJakartaSans(fontSize: 11,
                           color: context.textTertiaryColor)),
@@ -3018,8 +3018,8 @@ For each product, analyze current pricing
 
   Widget _buildReviewItem(ReviewModel review) {
     final rating = review.rating.round().clamp(1, 5);
-    final ratingColor = rating >= 4 ? const Color(0xFF10B981)
-        : rating >= 3 ? const Color(0xFFF59E0B) : AppTheme.error;
+    final ratingColor = rating >= 4 ? AppTheme.scoreExcellent
+        : rating >= 3 ? AppTheme.scoreAverage : AppTheme.error;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -3093,8 +3093,8 @@ For each product, analyze current pricing
           final ratingColors = [
             AppTheme.error,
             AppTheme.orange500,
-            const Color(0xFFF59E0B),
-            const Color(0xFF10B981),
+            AppTheme.scoreAverage,
+            AppTheme.scoreExcellent,
             AppTheme.brandBlue,
           ];
           final starIndex = selectedRating.round().clamp(1, 5) - 1;
@@ -3295,10 +3295,10 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
   _ProductChipHeaderDelegate(this.products);
 
   static const _chipColors = [
-    Color(0xFF0099FF),
-    Color(0xFFFFAA00),
-    Color(0xFF9B59B6),
-    Color(0xFF27AE60),
+    AppTheme.brandBlue,
+    AppTheme.scoreAverage,
+    AppTheme.premiumPurpleLight,
+    AppTheme.scoreExcellent,
   ];
 
   @override
@@ -3451,9 +3451,9 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
             Container(
               width: 38, height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF0000).withValues(alpha: 0.1),
+                color: AppTheme.youtube.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.play_circle_fill, size: 20, color: Color(0xFFFF0000)),
+              child: const Icon(Icons.play_circle_fill, size: 20, color: AppTheme.youtube),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -3465,7 +3465,7 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
           if (_loading)
             const Center(child: Padding(
               padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF0000)),
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.youtube),
             ))
           else if (_videos == null || _videos!.isEmpty)
             Text(_error != null ? 'Could not load videos' : 'No comparison videos found',
@@ -3834,7 +3834,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
-                            color: isBest ? const Color(0xFF34C759) : context.textPrimary,
+                            color: isBest ? AppTheme.green500 : context.textPrimary,
                           ),
                         ),
                       );
@@ -4443,7 +4443,7 @@ class _FormattedAiText extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
+          gradient: const LinearGradient(colors: [AppTheme.scoreExcellent, AppTheme.scoreExcellent]),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(children: [

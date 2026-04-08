@@ -115,6 +115,9 @@ class AppTheme {
   static const Color green500   = Color(0xFF34C759);
   static const Color emerald500 = Color(0xFF30D158);
   static const Color orange500  = Color(0xFFFF6B00);
+  static const Color gold       = Color(0xFFFFD700);
+  static const Color goldOrange = Color(0xFFFFA500);
+  static const Color youtube    = Color(0xFFFF0000);
 
   // ─────────────────────────────────────────────────────────────────────────
   // LEGACY / COMPAT ALIASES
