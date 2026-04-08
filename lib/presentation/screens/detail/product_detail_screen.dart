@@ -3892,64 +3892,210 @@ class _KeySpecsGrid extends StatelessWidget {
   final ProductEntity product;
   const _KeySpecsGrid({required this.product});
 
-  // Category-based key spec names (order = display priority)
-  static const _categoryKeys = <String, List<String>>{
-    'smartphones': ['Screen Size', 'RAM', 'Storage', 'Battery', 'Camera', 'Processor', 'OS', '5G',
-      'Display Size', 'Internal Storage', 'Main Camera', 'Battery Capacity', 'Chipset', 'Operating System',
-      'Ekran Boyutu', 'Dahili Depolama', 'Pil', 'İşlemci', 'Kamera', 'RAM Kapasitesi', 'Ağ'],
-    'tablets': ['Screen Size', 'RAM', 'Storage', 'Battery', 'Processor', 'OS', '5G', 'Weight',
-      'Display Size', 'Internal Storage', 'Battery Capacity', 'Chipset', 'Operating System',
-      'Ekran Boyutu', 'Dahili Depolama', 'Pil', 'İşlemci', 'Ağırlık'],
-    'laptops': ['Screen Size', 'RAM', 'Storage', 'Processor', 'GPU', 'Battery', 'OS', 'Weight',
-      'Display Size', 'SSD', 'HDD', 'Graphics Card', 'Battery Life',
-      'Ekran Boyutu', 'İşlemci', 'Ekran Kartı', 'Ağırlık'],
-    'monitors': ['Screen Size', 'Resolution', 'Panel Type', 'Refresh Rate', 'Response Time',
-      'HDR', 'Connectivity', 'Aspect Ratio', 'Display Size',
-      'Ekran Boyutu', 'Çözünürlük', 'Panel Tipi', 'Yenileme Hızı'],
-    'tvs': ['Screen Size', 'Resolution', 'Panel Type', 'Smart TV', 'HDR',
-      'Refresh Rate', 'HDMI', 'OS', 'Display Size',
-      'Ekran Boyutu', 'Çözünürlük', 'İşletim Sistemi'],
-    'headphones': ['Type', 'Driver', 'Frequency Response', 'Impedance', 'Noise Cancelling',
-      'Connectivity', 'Battery', 'Weight', 'ANC', 'Battery Life',
-      'Bağlantı', 'Pil Ömrü', 'Ağırlık', 'Sürücü Boyutu'],
-    'keyboards': ['Switch Type', 'Layout', 'Connectivity', 'Backlighting', 'Battery Life',
-      'Compatibility', 'Dimensions', 'Weight',
-      'Anahtar Tipi', 'Bağlantı', 'Ağırlık'],
-    'mice': ['DPI', 'Connectivity', 'Buttons', 'Battery', 'Sensor', 'Weight',
-      'Polling Rate', 'Compatibility',
-      'Bağlantı', 'Ağırlık', 'Sensör'],
-    'cameras': ['Sensor Size', 'Megapixels', 'Video Resolution', 'ISO', 'Shutter Speed',
-      'Autofocus', 'Connectivity', 'Battery', 'Sensor',
-      'Sensör Boyutu', 'Çözünürlük', 'Video'],
-    'printers': ['Print Technology', 'Max Resolution', 'Print Speed', 'Connectivity',
-      'Paper Size', 'Color Print', 'Duplex', 'Cartridge Type',
-      'Baskı Teknolojisi', 'Bağlantı'],
-    'routers': ['WiFi Standard', 'Frequency', 'Speed', 'Ports', 'Coverage',
-      'MU-MIMO', 'Beamforming', 'Security',
-      'Hız', 'Bağlantı'],
-    'ssds': ['Capacity', 'Interface', 'Read Speed', 'Write Speed', 'Form Factor',
-      'NAND Type', 'Warranty', 'TBW',
-      'Kapasite', 'Okuma Hızı', 'Yazma Hızı'],
-    'hdds': ['Capacity', 'RPM', 'Interface', 'Cache Size', 'Form Factor',
-      'Read Speed', 'Write Speed', 'Warranty',
-      'Kapasite', 'Devir'],
-    'ram': ['Capacity', 'Type', 'Speed', 'Latency', 'Voltage', 'Form Factor', 'ECC', 'Warranty',
-      'Kapasite', 'Hız', 'Tip'],
-    'gpus': ['VRAM', 'Architecture', 'TDP', 'Core Clock', 'Boost Clock',
-      'Memory Bandwidth', 'Ports', 'Cooling',
-      'Bellek', 'Mimari', 'Güç Tüketimi'],
-    'cpus': ['Cores', 'Threads', 'Base Clock', 'Boost Clock', 'TDP',
-      'Socket', 'Cache', 'Architecture',
-      'Çekirdek', 'İş Parçacığı', 'Soket'],
-    'smartwatches': ['Screen Size', 'Battery', 'OS', 'Heart Rate', 'GPS',
-      'Water Resistance', 'Connectivity', 'Weight', 'Display Size',
-      'Ekran Boyutu', 'Pil Ömrü', 'Su Direnci', 'Ağırlık'],
-    'powerbanks': ['Capacity', 'Output Power', 'Input Power', 'Ports',
-      'Wireless', 'Weight', 'Pass-Through', 'Warranty',
-      'Kapasite', 'Çıkış Gücü', 'Ağırlık'],
+  // Category-based key spec names — priority ordered, at least 9 per category.
+  // Each entry is a list of ALIASES that match the same concept; first match wins.
+  // This way "Screen Size", "Display Size", "Ekran Boyutu" all resolve to one slot.
+  static const _categoryKeys = <String, List<List<String>>>{
+    'smartphones': [
+      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['RAM', 'Memory (RAM)', 'RAM Kapasitesi'],
+      ['Storage', 'Internal Storage', 'Dahili Depolama', 'ROM'],
+      ['Battery', 'Battery Capacity', 'Pil', 'Pil Kapasitesi'],
+      ['Camera', 'Main Camera', 'Kamera', 'Camera Çözünürlük'],
+      ['Processor', 'Chipset', 'İşlemci', 'Processor Model', 'CPU'],
+      ['OS', 'Operating System', 'İşletim Sistemi'],
+      ['5G', 'Network', 'Ağ', '4.5G', 'Cellular'],
+      ['Weight', 'Ağırlık'],
+    ],
+    'tablets': [
+      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['RAM', 'Memory (RAM)', 'RAM Kapasitesi'],
+      ['Storage', 'Internal Storage', 'Dahili Depolama'],
+      ['Battery', 'Battery Capacity', 'Pil'],
+      ['Processor', 'Chipset', 'İşlemci', 'Processor Model'],
+      ['OS', 'Operating System', 'İşletim Sistemi'],
+      ['5G', 'Network', 'Ağ', 'Cellular'],
+      ['Display Technology', 'Panel', 'Ekran Teknolojisi'],
+      ['Weight', 'Ağırlık'],
+    ],
+    'laptops': [
+      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['RAM', 'Memory (RAM)', 'RAM Kapasitesi'],
+      ['Storage', 'SSD', 'Internal Storage', 'Dahili Depolama', 'Hard Disk (SSD)'],
+      ['Processor', 'CPU', 'İşlemci', 'Processor Model'],
+      ['GPU', 'Graphics Card', 'Ekran Kartı', 'GPU Model', 'Video Card'],
+      ['Battery', 'Battery Life', 'Pil'],
+      ['OS', 'Operating System', 'İşletim Sistemi'],
+      ['Weight', 'Ağırlık'],
+      ['Display Technology', 'Panel', 'Refresh Rate', 'Yenileme Hızı'],
+    ],
+    'monitors': [
+      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Resolution', 'Çözünürlük'],
+      ['Panel Type', 'Panel', 'Panel Tipi'],
+      ['Refresh Rate', 'Yenileme Hızı'],
+      ['Response Time', 'Tepki Süresi'],
+      ['HDR', 'HDR Support', 'HDR Desteği'],
+      ['Connectivity', 'Bağlantı', 'Ports'],
+      ['Aspect Ratio', 'En Boy Oranı'],
+      ['Weight', 'Ağırlık'],
+    ],
+    'tvs': [
+      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Resolution', 'Çözünürlük'],
+      ['Panel Type', 'Panel', 'Panel Tipi'],
+      ['Smart TV', 'Akıllı TV'],
+      ['HDR', 'HDR Support'],
+      ['Refresh Rate', 'Yenileme Hızı'],
+      ['HDMI', 'HDMI Ports', 'HDMI Girişi'],
+      ['OS', 'Operating System', 'İşletim Sistemi'],
+      ['Weight', 'Ağırlık'],
+    ],
+    'headphones': [
+      ['Type', 'Tip', 'Form'],
+      ['Driver', 'Driver Size', 'Sürücü Boyutu'],
+      ['Frequency Response', 'Frekans'],
+      ['Impedance', 'Empedans'],
+      ['Noise Cancelling', 'ANC', 'Gürültü Engelleme'],
+      ['Connectivity', 'Bağlantı', 'Connection'],
+      ['Battery', 'Battery Life', 'Pil Ömrü'],
+      ['Weight', 'Ağırlık'],
+      ['Microphone', 'Mikrofon'],
+    ],
+    'keyboards': [
+      ['Switch Type', 'Switch', 'Anahtar Tipi'],
+      ['Layout', 'Düzen'],
+      ['Connectivity', 'Bağlantı', 'Connection'],
+      ['Backlighting', 'RGB', 'Aydınlatma'],
+      ['Battery Life', 'Battery', 'Pil Ömrü'],
+      ['Compatibility', 'Uyumluluk'],
+      ['Numpad', 'Number Pad'],
+      ['Dimensions', 'Boyutlar'],
+      ['Weight', 'Ağırlık'],
+    ],
+    'mice': [
+      ['DPI', 'Sensitivity', 'Hassasiyet'],
+      ['Connectivity', 'Bağlantı', 'Connection'],
+      ['Buttons', 'Button Count', 'Tuş Sayısı'],
+      ['Battery', 'Battery Life', 'Pil'],
+      ['Sensor', 'Sensör'],
+      ['Weight', 'Ağırlık'],
+      ['Polling Rate', 'Yoklama Hızı'],
+      ['Compatibility', 'Uyumluluk'],
+      ['RGB', 'Lighting'],
+    ],
+    'cameras': [
+      ['Sensor Size', 'Sensör Boyutu', 'Sensor'],
+      ['Megapixels', 'Resolution', 'Çözünürlük'],
+      ['Video Resolution', 'Video', '4K'],
+      ['ISO', 'ISO Range'],
+      ['Shutter Speed', 'Enstantane'],
+      ['Autofocus', 'AF', 'Otomatik Odak'],
+      ['Connectivity', 'Bağlantı'],
+      ['Battery', 'Pil'],
+      ['Weight', 'Ağırlık'],
+    ],
+    'printers': [
+      ['Print Technology', 'Baskı Teknolojisi', 'Type'],
+      ['Max Resolution', 'Resolution', 'Çözünürlük'],
+      ['Print Speed', 'Speed', 'Baskı Hızı'],
+      ['Connectivity', 'Bağlantı'],
+      ['Paper Size', 'Kağıt Boyutu'],
+      ['Color Print', 'Color', 'Renkli'],
+      ['Duplex', 'Çift Taraflı'],
+      ['Cartridge Type', 'Kartuş'],
+      ['Weight', 'Ağırlık'],
+    ],
+    'routers': [
+      ['WiFi Standard', 'WiFi', 'Wi-Fi'],
+      ['Frequency', 'Band', 'Frekans'],
+      ['Speed', 'Max Speed', 'Hız'],
+      ['Ports', 'LAN Ports', 'Port'],
+      ['Coverage', 'Range', 'Kapsama'],
+      ['MU-MIMO', 'MIMO'],
+      ['Beamforming', 'Beam'],
+      ['Security', 'Güvenlik'],
+      ['Antennas', 'Antenna', 'Anten'],
+    ],
+    'ssds': [
+      ['Capacity', 'Kapasite', 'Size'],
+      ['Interface', 'Arayüz', 'Connection'],
+      ['Read Speed', 'Okuma Hızı', 'Sequential Read'],
+      ['Write Speed', 'Yazma Hızı', 'Sequential Write'],
+      ['Form Factor', 'Form'],
+      ['NAND Type', 'NAND', 'Flash Type'],
+      ['TBW', 'Endurance'],
+      ['Warranty', 'Garanti'],
+      ['Encryption', 'Şifreleme'],
+    ],
+    'hdds': [
+      ['Capacity', 'Kapasite', 'Size'],
+      ['RPM', 'Devir', 'Rotation Speed'],
+      ['Interface', 'Arayüz'],
+      ['Cache Size', 'Cache', 'Buffer', 'Önbellek'],
+      ['Form Factor', 'Form'],
+      ['Read Speed', 'Okuma Hızı'],
+      ['Write Speed', 'Yazma Hızı'],
+      ['Warranty', 'Garanti'],
+      ['Shock Resistance', 'Darbe Dayanımı'],
+    ],
+    'ram': [
+      ['Capacity', 'Kapasite', 'Size'],
+      ['Type', 'DDR', 'Tip'],
+      ['Speed', 'Clock', 'Hız'],
+      ['Latency', 'CAS', 'CL', 'Gecikme'],
+      ['Voltage', 'Voltaj'],
+      ['Form Factor', 'Form'],
+      ['ECC', 'Error Correction'],
+      ['Warranty', 'Garanti'],
+      ['Heat Spreader', 'Heatsink', 'Soğutucu'],
+    ],
+    'gpus': [
+      ['VRAM', 'Memory', 'Bellek', 'Video Memory'],
+      ['Architecture', 'Mimari', 'GPU Chip'],
+      ['TDP', 'Power', 'Güç Tüketimi', 'Watt'],
+      ['Core Clock', 'Base Clock', 'Temel Saat'],
+      ['Boost Clock', 'Turbo Clock'],
+      ['Memory Bandwidth', 'Bant Genişliği'],
+      ['Ports', 'Display Outputs', 'Çıkış'],
+      ['Cooling', 'Fan', 'Soğutma'],
+      ['Length', 'Uzunluk', 'Dimensions'],
+    ],
+    'cpus': [
+      ['Cores', 'Core Count', 'Çekirdek'],
+      ['Threads', 'Thread Count', 'İş Parçacığı'],
+      ['Base Clock', 'Base Frequency', 'Temel Frekans'],
+      ['Boost Clock', 'Turbo', 'Max Frequency'],
+      ['TDP', 'Power', 'Güç Tüketimi', 'Watt'],
+      ['Socket', 'Soket'],
+      ['Cache', 'L3 Cache', 'Önbellek'],
+      ['Architecture', 'Mimari', 'Process'],
+      ['Integrated GPU', 'iGPU', 'Dahili GPU'],
+    ],
+    'smartwatches': [
+      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Battery', 'Battery Life', 'Pil Ömrü'],
+      ['OS', 'Operating System', 'İşletim Sistemi'],
+      ['Heart Rate', 'Kalp Atış', 'HR'],
+      ['GPS', 'Location'],
+      ['Water Resistance', 'Su Direnci', 'ATM', 'IP'],
+      ['Connectivity', 'Bağlantı'],
+      ['Weight', 'Ağırlık'],
+      ['NFC', 'Payment'],
+    ],
+    'powerbanks': [
+      ['Capacity', 'Kapasite', 'mAh'],
+      ['Output Power', 'Output', 'Çıkış Gücü', 'Max Output'],
+      ['Input Power', 'Input', 'Giriş Gücü'],
+      ['Ports', 'Port', 'USB'],
+      ['Wireless', 'Wireless Charging', 'Kablosuz'],
+      ['Weight', 'Ağırlık'],
+      ['Pass-Through', 'Pass Through'],
+      ['Warranty', 'Garanti'],
+      ['Fast Charge', 'Quick Charge', 'PD', 'Hızlı Şarj'],
+    ],
   };
 
-  // Category aliases for partial/Turkish matching
   static const _categoryAliases = <String, String>{
     'phone': 'smartphones', 'telefon': 'smartphones', 'akıllı telefon': 'smartphones',
     'smartphone': 'smartphones', 'cep telefonu': 'smartphones',
@@ -3973,129 +4119,172 @@ class _KeySpecsGrid extends StatelessWidget {
     'powerbank': 'powerbanks', 'power bank': 'powerbanks', 'taşınabilir şarj': 'powerbanks',
   };
 
-  // Icon mapping for spec keys (case-insensitive partial match)
   static IconData _iconForSpec(String key) {
     final k = key.toLowerCase();
-    if (k.contains('screen') || k.contains('display') || k.contains('ekran') || k.contains('resolution') || k.contains('çözünürlük')) return Icons.monitor_rounded;
+    if (k.contains('screen') || k.contains('display') || k.contains('ekran') || k.contains('çözünürlük')) return Icons.monitor_rounded;
     if (k.contains('battery') || k.contains('pil')) return Icons.battery_full_rounded;
     if (k.contains('ram') || k.contains('memory') || k.contains('bellek')) return Icons.memory_rounded;
-    if (k.contains('processor') || k.contains('cpu') || k.contains('chip') || k.contains('işlemci') || k.contains('core') || k.contains('çekirdek')) return Icons.developer_board_rounded;
+    if (k.contains('processor') || k.contains('cpu') || k.contains('chip') || k.contains('işlemci')) return Icons.developer_board_rounded;
     if (k.contains('camera') || k.contains('kamera') || k.contains('megapixel')) return Icons.camera_alt_rounded;
-    if (k.contains('storage') || k.contains('ssd') || k.contains('hdd') || k.contains('depolama') || k.contains('kapasite') || k.contains('capacity')) return Icons.storage_rounded;
+    if (k.contains('storage') || k.contains('ssd') || k.contains('hdd') || k.contains('depolama') || k.contains('kapasite') || k.contains('capacity') || k.contains('hard disk')) return Icons.storage_rounded;
     if (k.contains('weight') || k.contains('ağırlık')) return Icons.scale_rounded;
-    if (k.contains('5g') || k.contains('network') || k.contains('wifi') || k.contains('ağ') || k.contains('bağlantı') || k.contains('connectivity')) return Icons.signal_cellular_alt_rounded;
+    if (k.contains('5g') || k.contains('4.5g') || k.contains('network') || k.contains('wifi') || k.contains('ağ') || k.contains('bağlantı') || k.contains('connectivity') || k.contains('cellular')) return Icons.signal_cellular_alt_rounded;
     if (k.contains('gpu') || k.contains('graphic') || k.contains('ekran kartı') || k.contains('vram')) return Icons.videogame_asset_rounded;
     if (k.contains('os') || k.contains('operating') || k.contains('işletim')) return Icons.phone_android_rounded;
     if (k.contains('refresh') || k.contains('yenileme')) return Icons.speed_rounded;
+    if (k.contains('resolution')) return Icons.high_quality_rounded;
     if (k.contains('panel')) return Icons.grid_view_rounded;
     if (k.contains('hdr')) return Icons.hdr_on_rounded;
     if (k.contains('noise') || k.contains('anc')) return Icons.noise_aware_rounded;
     if (k.contains('heart') || k.contains('kalp')) return Icons.favorite_rounded;
     if (k.contains('gps')) return Icons.location_on_rounded;
-    if (k.contains('water') || k.contains('su')) return Icons.water_drop_rounded;
+    if (k.contains('water') || k.contains('su') || k.contains('ip6') || k.contains('atm')) return Icons.water_drop_rounded;
     if (k.contains('sensor') || k.contains('sensör')) return Icons.sensors_rounded;
     if (k.contains('dpi')) return Icons.mouse_rounded;
     if (k.contains('switch') || k.contains('anahtar')) return Icons.keyboard_rounded;
     if (k.contains('port') || k.contains('hdmi') || k.contains('usb')) return Icons.settings_input_hdmi_rounded;
-    if (k.contains('speed') || k.contains('hız') || k.contains('clock')) return Icons.speed_rounded;
+    if (k.contains('speed') || k.contains('hız') || k.contains('clock') || k.contains('frequency') || k.contains('frekans')) return Icons.speed_rounded;
     if (k.contains('type') || k.contains('tip')) return Icons.category_rounded;
     if (k.contains('thread') || k.contains('iş parçacığı')) return Icons.hub_rounded;
+    if (k.contains('core') || k.contains('çekirdek')) return Icons.developer_board_rounded;
     if (k.contains('socket') || k.contains('soket')) return Icons.electrical_services_rounded;
     if (k.contains('cache') || k.contains('önbellek')) return Icons.cached_rounded;
     if (k.contains('tdp') || k.contains('güç') || k.contains('power') || k.contains('watt')) return Icons.bolt_rounded;
-    if (k.contains('cool') || k.contains('soğut')) return Icons.ac_unit_rounded;
+    if (k.contains('cool') || k.contains('soğut') || k.contains('fan')) return Icons.ac_unit_rounded;
     if (k.contains('warranty') || k.contains('garanti')) return Icons.verified_rounded;
+    if (k.contains('nfc') || k.contains('payment')) return Icons.contactless_rounded;
+    if (k.contains('microphone') || k.contains('mikrofon')) return Icons.mic_rounded;
+    if (k.contains('rgb') || k.contains('backlight') || k.contains('aydınlatma')) return Icons.lightbulb_rounded;
     return Icons.info_outline_rounded;
   }
 
   String _resolveCategory() {
     final cat = product.category.toLowerCase().trim();
-    // Direct match
     if (_categoryKeys.containsKey(cat)) return cat;
-    // Alias match
     for (final alias in _categoryAliases.entries) {
       if (cat.contains(alias.key) || alias.key.contains(cat)) return alias.value;
     }
     return '';
   }
 
-  /// Collect key specs to display, respecting category priority order.
-  List<MapEntry<String, String>> _collectKeySpecs() {
-    final allSpecs = <String, String>{};
-    // Primary: keySpecs (from epey.com grid)
-    allSpecs.addAll(product.keySpecs);
-    // Secondary: flat specs (for products without keySpecs)
-    if (allSpecs.isEmpty) {
-      for (final e in product.specs.entries) {
-        if (e.value != null && e.value.toString().isNotEmpty && e.value is! Map) {
-          allSpecs[e.key] = e.value.toString();
-        }
+  /// Build a merged pool of all available specs from keySpecs + specs + specSections.
+  Map<String, String> _buildSpecPool() {
+    final pool = <String, String>{};
+    // Primary: keySpecs
+    for (final e in product.keySpecs.entries) {
+      final v = e.value.trim();
+      if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
+    }
+    // Secondary: flat specs
+    for (final e in product.specs.entries) {
+      if (pool.containsKey(e.key)) continue;
+      if (e.value != null && e.value is! Map) {
+        final v = e.value.toString().trim();
+        if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
       }
     }
-    // Tertiary: extract from specSections
-    if (allSpecs.isEmpty) {
-      for (final section in product.specSections.entries) {
-        if (section.value is Map) {
-          for (final spec in (section.value as Map).entries) {
-            if (spec.value != null && spec.value.toString().isNotEmpty) {
-              allSpecs[spec.key.toString()] = spec.value.toString();
-            }
+    // Tertiary: specSections (flattened)
+    for (final section in product.specSections.entries) {
+      if (section.value is Map) {
+        for (final spec in (section.value as Map).entries) {
+          final k = spec.key.toString();
+          if (pool.containsKey(k)) continue;
+          if (spec.value != null) {
+            final v = spec.value.toString().trim();
+            if (v.isNotEmpty && v != '-' && v != 'N/A') pool[k] = v;
           }
         }
       }
     }
-    if (allSpecs.isEmpty) return [];
+    return pool;
+  }
+
+  /// Try to find a spec in the pool matching any of the given aliases.
+  MapEntry<String, String>? _findSpec(Map<String, String> pool, List<String> aliases, Set<String> used) {
+    for (final alias in aliases) {
+      final aLower = alias.toLowerCase();
+      for (final e in pool.entries) {
+        if (used.contains(e.key)) continue;
+        final eLower = e.key.toLowerCase();
+        if (eLower == aLower || eLower.contains(aLower) || aLower.contains(eLower)) {
+          return e;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Collect specs: always returns a multiple of 3 (6 or 9).
+  List<MapEntry<String, String>> _collectKeySpecs() {
+    final pool = _buildSpecPool();
+    if (pool.isEmpty) return [];
+
+    final result = <MapEntry<String, String>>[];
+    final used = <String>{};
 
     final cat = _resolveCategory();
-    final priorityKeys = _categoryKeys[cat];
+    final prioritySlots = _categoryKeys[cat];
 
-    if (priorityKeys != null) {
-      // Match by case-insensitive partial key match
-      final result = <MapEntry<String, String>>[];
-      final used = <String>{};
-      for (final pk in priorityKeys) {
-        final pkLower = pk.toLowerCase();
-        for (final e in allSpecs.entries) {
-          if (used.contains(e.key)) continue;
-          final eLower = e.key.toLowerCase();
-          if (eLower == pkLower || eLower.contains(pkLower) || pkLower.contains(eLower)) {
-            final v = e.value.trim();
-            if (v.isNotEmpty && v != '-' && v != 'N/A') {
-              result.add(e);
-              used.add(e.key);
-            }
-            break;
-          }
+    if (prioritySlots != null) {
+      for (final slotAliases in prioritySlots) {
+        final found = _findSpec(pool, slotAliases, used);
+        if (found != null) {
+          result.add(found);
+          used.add(found.key);
         }
         if (result.length >= 9) break;
       }
-      return result;
     }
 
-    // Fallback: first 6 non-null specs
-    return allSpecs.entries
-        .where((e) => e.value.trim().isNotEmpty && e.value.trim() != '-' && e.value.trim() != 'N/A')
-        .take(6)
-        .toList();
+    // If we don't have enough from category mapping, fill from pool
+    if (result.length < 6) {
+      for (final e in pool.entries) {
+        if (used.contains(e.key)) continue;
+        result.add(e);
+        used.add(e.key);
+        if (result.length >= 6) break;
+      }
+    }
+
+    // Ensure multiple of 3: round up to 6 or 9
+    if (result.length > 6 && result.length < 9) {
+      // Need to fill to 9
+      for (final e in pool.entries) {
+        if (used.contains(e.key)) continue;
+        result.add(e);
+        used.add(e.key);
+        if (result.length >= 9) break;
+      }
+    }
+
+    // Final trim to nearest multiple of 3
+    final target = result.length >= 7 ? 9 : (result.length >= 4 ? 6 : 3);
+    if (result.length > target) {
+      return result.sublist(0, target);
+    }
+    // If still not a multiple of 3, trim down
+    final remainder = result.length % 3;
+    if (remainder != 0 && result.length > 3) {
+      return result.sublist(0, result.length - remainder);
+    }
+    return result;
   }
 
-  /// Format boolean values as checkmark/close
   Widget _buildValue(BuildContext context, String value) {
     final v = value.toLowerCase().trim();
     final theme = Theme.of(context);
-    // Boolean handling
     if (v == 'true' || v == 'yes' || v == 'var' || v == 'evet' || v == '✓') {
       return Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary, size: 20);
     }
     if (v == 'false' || v == 'no' || v == 'yok' || v == 'hayır' || v == '✗') {
       return Icon(Icons.cancel_rounded, color: theme.colorScheme.error, size: 20);
     }
-    // Truncate long values
-    final display = value.length > 20 ? '${value.substring(0, 18)}…' : value;
+    // Auto-size: try 13sp, fall back to 11sp for long text
+    final fontSize = value.length > 16 ? 11.0 : 13.0;
     return Text(
-      display,
+      value,
       style: GoogleFonts.plusJakartaSans(
-        fontSize: 13,
+        fontSize: fontSize,
         fontWeight: FontWeight.w700,
         color: theme.colorScheme.onSurface,
       ),
@@ -4111,6 +4300,8 @@ class _KeySpecsGrid extends StatelessWidget {
     if (specs.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
+    final rows = (specs.length / 3).ceil();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
@@ -4137,52 +4328,60 @@ class _KeySpecsGrid extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 1.1,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: specs.length,
-            itemBuilder: (context, i) {
-              final entry = specs[i];
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _iconForSpec(entry.key),
-                      size: 18,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(height: 4),
-                    Flexible(child: _buildValue(context, entry.value)),
-                    const SizedBox(height: 2),
-                    Text(
-                      entry.key,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          // Build rows with IntrinsicHeight for equal cell heights
+          for (int row = 0; row < rows; row++) ...[
+            if (row > 0) const SizedBox(height: 8),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (int col = 0; col < 3; col++) ...[
+                    if (col > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: () {
+                        final idx = row * 3 + col;
+                        if (idx >= specs.length) return const SizedBox.shrink();
+                        final entry = specs[idx];
+                        return Container(
+                          constraints: const BoxConstraints(minHeight: 80, maxHeight: 100),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _iconForSpec(entry.key),
+                                size: 18,
+                                color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                              ),
+                              const SizedBox(height: 4),
+                              Flexible(child: _buildValue(context, entry.value)),
+                              const SizedBox(height: 2),
+                              Text(
+                                entry.key,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        );
+                      }(),
                     ),
                   ],
-                ),
-              );
-            },
-          ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
