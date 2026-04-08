@@ -2507,9 +2507,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               Expanded(
                                 child: Text(p,
                                     style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12, color: context.textSecondary, height: 1.4),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis),
+                                        fontSize: 12, color: context.textSecondary, height: 1.4)),
                               ),
                             ],
                           ),
@@ -2533,9 +2531,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               Expanded(
                                 child: Text(c,
                                     style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12, color: context.textSecondary, height: 1.4),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis),
+                                        fontSize: 12, color: context.textSecondary, height: 1.4)),
                               ),
                             ],
                           ),
