@@ -616,11 +616,13 @@ ${unknownForAnalysis.isNotEmpty ? 'NOTE: The following service(s) may not be wel
 
 CRITICAL RULES:
 - ALL text values MUST be in $langName language
+- The "subscriptions" object MUST contain exactly ${subscriptionNames.length} entries, one for each service: ${subscriptionNames.map((n) => '"$n"').join(', ')}
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have at least 5 items, cons at least 3 items
+- pros must have exactly 5 items, cons exactly 3 items — keep each item concise (max 15 words)
 - factors are 0-100 integers
 - Be specific and personalized, not generic
 - Include real pricing for ${profile.country}
+- community_sentiment should be max 2 sentences
 
 Return ONLY valid JSON matching this exact schema:
 $jsonSchema
@@ -637,9 +639,9 @@ $jsonSchema
       'generationConfig': {
         'responseMimeType': 'application/json',
         'temperature': 0.3,
-        'maxOutputTokens': 4096,
+        'maxOutputTokens': 8192,
       },
-    }, receiveTimeout: const Duration(seconds: 90));
+    }, receiveTimeout: const Duration(seconds: 120));
 
     // Parse JSON response — responseMimeType should guarantee valid JSON
     Map<String, dynamic>? parsed;
@@ -691,8 +693,8 @@ $jsonSchema
       }
     }
 
-    // Generate readable analysis text from structured data (don't show raw JSON)
-    String analysisText = text;
+    // Generate readable analysis text from structured data (NEVER show raw JSON)
+    String analysisText = '';
     if (parsed != null && parsed.containsKey('subscriptions')) {
       final buf = StringBuffer();
       final subs = parsed['subscriptions'] as Map<String, dynamic>? ?? {};
@@ -717,6 +719,12 @@ $jsonSchema
       final rec = parsed['recommendation'] as String?;
       if (rec != null) buf.writeln(rec);
       analysisText = buf.toString().trim();
+    }
+    // If parsing failed or produced empty text, never show raw JSON
+    if (analysisText.isEmpty) {
+      analysisText = parsed != null
+          ? 'Analysis complete. See the detailed results above.'
+          : 'Analysis could not be fully parsed. Please try again.';
     }
 
     return {

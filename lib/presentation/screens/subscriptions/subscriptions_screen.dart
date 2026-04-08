@@ -1576,48 +1576,52 @@ class _SubResultView extends StatelessWidget {
     return rawPrice;
   }
 
-  /// Build readable text from structured data when analysisText is raw JSON.
+  /// Build readable text from structured data — NEVER show raw JSON.
   String _readableAnalysis(
     String raw,
     Map<String, dynamic> subs,
     Map<String, dynamic> winner,
   ) {
-    if (!raw.trim().startsWith('{')) return raw;
-    // Structured data available – generate readable summary from it
-    if (subs.isNotEmpty) {
-      final buf = StringBuffer();
-      for (final entry in subs.entries) {
-        final d = entry.value as Map<String, dynamic>? ?? {};
-        buf.writeln('${entry.key} (${d['compatibility_score'] ?? '?'}%)');
-        if (d['compatibility_explanation'] != null) {
-          buf.writeln(d['compatibility_explanation']);
+    // If text looks like JSON, never show it raw
+    if (raw.trim().startsWith('{') || raw.trim().startsWith('[')) {
+      // Structured data available – generate readable summary from it
+      if (subs.isNotEmpty) {
+        final buf = StringBuffer();
+        for (final entry in subs.entries) {
+          final d = entry.value as Map<String, dynamic>? ?? {};
+          buf.writeln('${entry.key} (${d['compatibility_score'] ?? '?'}%)');
+          if (d['compatibility_explanation'] != null) {
+            buf.writeln(d['compatibility_explanation']);
+          }
+          final pros = (d['pros'] as List?)?.cast<String>() ?? [];
+          if (pros.isNotEmpty) buf.writeln('\n✅ ${pros.join('\n✅ ')}');
+          final cons = (d['cons'] as List?)?.cast<String>() ?? [];
+          if (cons.isNotEmpty) buf.writeln('\n❌ ${cons.join('\n❌ ')}');
+          buf.writeln();
         }
-        final pros = (d['pros'] as List?)?.cast<String>() ?? [];
-        if (pros.isNotEmpty) buf.writeln('\n✅ ${pros.join('\n✅ ')}');
-        final cons = (d['cons'] as List?)?.cast<String>() ?? [];
-        if (cons.isNotEmpty) buf.writeln('\n❌ ${cons.join('\n❌ ')}');
-        buf.writeln();
+        if (winner['recommendation'] != null) {
+          buf.writeln(winner['recommendation']);
+        }
+        return buf.toString().trim();
       }
-      if (winner['recommendation'] != null) {
-        buf.writeln(winner['recommendation']);
-      }
-      return buf.toString().trim();
+      // No structured data but text is JSON — try to extract readable fields
+      try {
+        var clean = raw.trim();
+        if (clean.startsWith('```')) {
+          clean = clean.replaceFirst(RegExp(r'^```\w*\n?'), '')
+              .replaceFirst(RegExp(r'\n?```$'), '');
+        }
+        final parsed = jsonDecode(clean) as Map<String, dynamic>?;
+        if (parsed != null) {
+          return parsed['analysis'] as String? ??
+              parsed['summary'] as String? ??
+              parsed['recommendation'] as String? ??
+              'Analysis complete. See the detailed results above.';
+        }
+      } catch (_) {}
+      // Absolute fallback — never show JSON
+      return 'Analysis complete. See the detailed results above.';
     }
-    // No structured data – try one more parse attempt
-    try {
-      var clean = raw.trim();
-      if (clean.startsWith('```')) {
-        clean = clean.replaceFirst(RegExp(r'^```\w*\n?'), '')
-            .replaceFirst(RegExp(r'\n?```$'), '');
-      }
-      final parsed = jsonDecode(clean) as Map<String, dynamic>?;
-      if (parsed != null) {
-        return parsed['analysis'] as String? ??
-            parsed['summary'] as String? ??
-            parsed['recommendation'] as String? ??
-            raw;
-      }
-    } catch (_) {}
     return raw;
   }
 

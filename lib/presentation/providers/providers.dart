@@ -1781,7 +1781,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         subscriptionNames: names,
         answeredQuestions: answered,
         profile: profile.copyWith(language: _appLang),
-      ).timeout(const Duration(seconds: 90));
+      ).timeout(const Duration(seconds: 120));
 
       state = state.copyWith(
         phase: SubFlowPhase.result,
