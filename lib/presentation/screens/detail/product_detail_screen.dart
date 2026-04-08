@@ -8251,56 +8251,29 @@ class _BenchmarkCollapsibleCardState extends State<_BenchmarkCollapsibleCard> {
   }
 }
 
-// ── Similar Products Section (Brand-by-Brand Layout) ──
+// ── Similar Products Section (2-Column Grid) ──
 class _SimilarProductsSection extends ConsumerWidget {
   final ProductEntity product;
   final bool isDark;
   const _SimilarProductsSection({required this.product, required this.isDark});
 
-  Color _techColor(double s) => s >= 85
-      ? const Color(0xFF10B981)
-      : s >= 70
-          ? const Color(0xFFF59E0B)
-          : s >= 50
-              ? const Color(0xFFF97316)
-              : const Color(0xFFEF4444);
-
-  /// Group products by brand, sorted by product count (most first).
-  /// Brands with only 1 product that aren't well-known get grouped into "Other Brands".
-  Map<String, List<ProductEntity>> _groupByBrand(List<ProductEntity> products) {
-    final groups = <String, List<ProductEntity>>{};
-    final brandDisplayName = <String, String>{};
-    for (final p in products) {
-      final rawBrand = (p.brand != null && p.brand!.isNotEmpty) ? p.brand! : 'Other Brands';
-      final key = rawBrand.toLowerCase().trim();
-      brandDisplayName.putIfAbsent(key, () => rawBrand);
-      groups.putIfAbsent(key, () => []).add(p);
-    }
-    // Sort by product count descending, use display name as key
-    final sorted = <String, List<ProductEntity>>{};
-    final entries = groups.entries.toList()..sort((a, b) => b.value.length.compareTo(a.value.length));
-    for (final e in entries) {
-      sorted[brandDisplayName[e.key] ?? e.key] = e.value;
-    }
-    return sorted;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final similarAsync = ref.watch(similarProductsProvider(product));
-    final imageBg = isDark ? Colors.white : Colors.white;
 
     return similarAsync.when(
       loading: () => _SimilarShimmer(isDark: isDark),
       error: (_, __) => const SizedBox.shrink(),
       data: (products) {
         if (products.isEmpty) return const SizedBox.shrink();
-        final brandGroups = _groupByBrand(products);
+        // Flat list sorted by techScore, top 12
+        final sorted = List<ProductEntity>.from(products)
+          ..sort((a, b) => b.techScore.compareTo(a.techScore));
+        final top = sorted.take(12).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section header
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 14),
               child: Row(children: [
@@ -8319,56 +8292,19 @@ class _SimilarProductsSection extends ConsumerWidget {
                     color: context.textPrimary)),
               ]),
             ),
-
-            // Brand-by-brand rows
-            ...brandGroups.entries.map((entry) {
-              final brandName = entry.key;
-              final brandProducts = entry.value;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Brand header
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 8),
-                      child: Row(children: [
-                        Text('🏷️', style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-                        const SizedBox(width: 6),
-                        Text(brandName,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13, fontWeight: FontWeight.w700,
-                            color: AppTheme.brandCyan,
-                            letterSpacing: 0.3)),
-                        const SizedBox(width: 6),
-                        Text('(${brandProducts.length})',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11, fontWeight: FontWeight.w500,
-                            color: context.textTertiaryColor)),
-                      ]),
-                    ),
-                    // Horizontal scroll row for this brand
-                    SizedBox(
-                      height: 200,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: brandProducts.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 14),
-                        itemBuilder: (context, i) {
-                          final p = brandProducts[i];
-                          return _SimilarProductCard(
-                            product: p,
-                            imageBg: imageBg,
-                            isDark: isDark,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+            // 2-column grid
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.62,
+              ),
+              itemCount: top.length,
+              itemBuilder: (context, i) => _SimilarGridCard(product: top[i]),
+            ),
           ],
         );
       },
@@ -8376,169 +8312,112 @@ class _SimilarProductsSection extends ConsumerWidget {
   }
 }
 
-/// Wide product card matching home screen design for similar products.
-class _SimilarProductCard extends ConsumerWidget {
+/// Grid card matching home screen _WideProductCard design.
+class _SimilarGridCard extends StatelessWidget {
   final ProductEntity product;
-  final Color imageBg;
-  final bool isDark;
-
-  const _SimilarProductCard({
-    required this.product,
-    required this.imageBg,
-    required this.isDark,
-  });
-
-  Color _techColor(double s) => s >= 85
-      ? const Color(0xFF10B981)
-      : s >= 70
-          ? const Color(0xFFF59E0B)
-          : s >= 50
-              ? const Color(0xFFF97316)
-              : const Color(0xFFEF4444);
+  const _SimilarGridCard({required this.product});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isSelected = ref.watch(
-      comparisonStateProvider.select(
-        (s) => s.selectedProductIds.contains(product.id)),
-    );
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
 
     return GestureDetector(
       onTap: () => context.push('/product/${product.id}'),
       child: Container(
-        width: 260,
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? AppTheme.brandCyan.withValues(alpha: 0.5)
-                : AppTheme.brandCyan.withValues(alpha: 0.12),
-            width: isSelected ? 1.4 : 0.8,
+            color: AppTheme.brandCyan.withValues(alpha: 0.12),
+            width: 0.8,
           ),
           boxShadow: [
             BoxShadow(
               color: AppTheme.brandCyan.withValues(alpha: 0.06),
-              blurRadius: 12,
+              blurRadius: 10,
               spreadRadius: -2,
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Image section
-            Stack(
-              children: [
-                Container(
-                  width: 110,
-                  height: 200,
+            Stack(children: [
+              Container(
+                height: 105, width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: imageBg,
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16))),
+                child: ProductImageBox(
+                  imageUrl: product.imageUrl,
+                  height: 89,
+                  borderRadius: BorderRadius.circular(10),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+              if (product.techScore > 0)
+                Positioned(top: 7, right: 7, child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: imageBg,
-                    borderRadius: const BorderRadius.horizontal(
-                        left: Radius.circular(20)),
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: ProductImageBox(
-                    imageUrl: product.imageUrl,
-                    height: 180,
-                    borderRadius: BorderRadius.circular(12),
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-                // Quick compare badge
-                Positioned(
-                  top: 8,
-                  right: 6,
-                  child: _QuickCompareButton(
-                    productId: product.id,
-                    isSelected: isSelected,
-                  ),
-                ),
-              ],
-            ),
-            // Details section
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (product.brand != null && product.brand!.isNotEmpty)
-                      Text(
-                        product.brand!.toUpperCase(),
+                    color: AppTheme.accentCyan.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.accentCyan.withValues(alpha: 0.3),
+                      width: 0.5)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.local_fire_department_rounded,
+                        size: 10, color: AppTheme.accentCyan),
+                    const SizedBox(width: 2),
+                    Text('${product.techScore.toInt()}',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.accentCyan,
-                          letterSpacing: 0.8,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      product.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                            fontSize: 10, fontWeight: FontWeight.w700,
+                            color: AppTheme.accentCyan)),
+                  ]),
+                )),
+            ]),
+            // Details section
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (product.brand != null && product.brand!.isNotEmpty)
+                    Text(product.brand!.toUpperCase(),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9, fontWeight: FontWeight.w600,
+                            color: AppTheme.accentCyan,
+                            letterSpacing: 0.6),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Text(product.name,
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (product.techScore > 0)
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _techColor(product.techScore)
-                                  .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.local_fire_department_rounded,
-                                    size: 12,
-                                    color: _techColor(product.techScore)),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '${product.techScore.toInt()}',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: _techColor(product.techScore),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
+                          fontSize: 12, fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                          height: 1.15)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       decoration: BoxDecoration(
                         gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                        borderRadius: BorderRadius.circular(12)),
                       child: Text(
-                        context.l10n?.viewDetails ?? 'View Details',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                          context.l10n?.viewDetails ?? 'View Details',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10, fontWeight: FontWeight.w600,
+                              color: Colors.white)),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -8621,10 +8500,9 @@ class _TrendingProductsSection extends ConsumerWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: 14),
                 itemBuilder: (context, i) {
                   final p = filtered[i];
-                  return _SimilarProductCard(
-                    product: p,
-                    imageBg: Colors.white,
-                    isDark: isDark,
+                  return SizedBox(
+                    width: 155,
+                    child: _SimilarGridCard(product: p),
                   );
                 },
               ),
