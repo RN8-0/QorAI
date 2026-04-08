@@ -18,11 +18,11 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const _kPurple = Color(0xFF6366F1);
-const _kPink = Color(0xFFEC4899);
-const _kCyan = Color(0xFF06B6D4);
-const _kViolet = Color(0xFF8B5CF6);
+// ─── Design tokens (mapped to global AppTheme brand palette) ─────────────────
+const _kPrimary = AppTheme.brandBlue;
+const _kSecondary = AppTheme.brandSkyBlue;
+const _kAccent = AppTheme.brandCyan;
+const _kDeep = AppTheme.brandDeepBlue;
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
@@ -273,7 +273,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             if (isDark) {
               return ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
-                  colors: [_kPurple, _kPink, _kCyan],
+                  colors: [_kPrimary, _kSecondary, _kAccent],
                 ).createShader(bounds),
                 child: Text(
                   title,
@@ -291,7 +291,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
-                color: _kPurple,
+                color: _kPrimary,
                 letterSpacing: -0.5,
               ),
             );
@@ -382,9 +382,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(colors: [
-                      _kPurple.withValues(
+                      _kPrimary.withValues(
                           alpha: _orbOpacityAnimation.value * 0.3),
-                      _kPurple.withValues(alpha: 0.0),
+                      _kPrimary.withValues(alpha: 0.0),
                     ]),
                   ),
                 ),
@@ -401,8 +401,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(colors: [
-                _kCyan.withValues(alpha: 0.15),
-                _kCyan.withValues(alpha: 0.0),
+                _kAccent.withValues(alpha: 0.15),
+                _kAccent.withValues(alpha: 0.0),
               ]),
             ),
           ),
@@ -454,7 +454,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 gradient:
-                    const LinearGradient(colors: [_kPurple, _kViolet]),
+                    const LinearGradient(colors: [_kPrimary, _kDeep]),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(Icons.auto_awesome,
@@ -476,7 +476,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 gradient:
-                    const LinearGradient(colors: [_kPurple, _kViolet]),
+                    const LinearGradient(colors: [_kPrimary, _kDeep]),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -495,7 +495,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             child: LinearProgressIndicator(
               value: doneCount / steps.length,
               backgroundColor: AppTheme.slate700,
-              color: _kPurple,
+              color: _kPrimary,
               minHeight: 4,
             ),
           ),
@@ -549,11 +549,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: const LinearGradient(
-                                    colors: [_kPurple, _kViolet],
+                                    colors: [_kPrimary, _kDeep],
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: _kPurple.withValues(
+                                      color: _kPrimary.withValues(
                                           alpha: 0.3 +
                                               _pulseController.value * 0.3),
                                       blurRadius:
@@ -617,7 +617,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   color: step.isDone
                       ? AppTheme.success
                       : step.isActive
-                          ? _kPurple
+                          ? _kPrimary
                           : AppTheme.slate400,
                 ),
               ),
@@ -668,7 +668,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                             ])
                           : active
                               ? const LinearGradient(
-                                  colors: [_kPurple, _kViolet])
+                                  colors: [_kPrimary, _kDeep])
                               : null,
                       color: (!done && !active)
                           ? context.surfaceVariantColor
@@ -676,7 +676,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       boxShadow: active
                           ? [
                               BoxShadow(
-                                color: _kPurple.withValues(alpha: 0.3),
+                                color: _kPrimary.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),
@@ -710,7 +710,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         color: done
                             ? AppTheme.success
                             : active
-                                ? _kPurple
+                                ? _kPrimary
                                 : AppTheme.slate400,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -759,7 +759,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 gradient: SweepGradient(
-                  colors: const [_kPurple, _kPink, _kCyan, _kViolet, _kPurple],
+                  colors: const [_kPrimary, _kSecondary, _kAccent, _kDeep, _kPrimary],
                   transform:
                       GradientRotation(_orbController.value * 2 * pi),
                 ),
@@ -788,14 +788,14 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                               style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: _kPurple)),
+                                  color: _kPrimary)),
                           deleteIcon: const Icon(Icons.close_rounded,
-                              size: 16, color: _kPurple),
+                              size: 16, color: _kPrimary),
                           onDeleted: () => _removeChip(c),
                           backgroundColor:
-                              _kPurple.withValues(alpha: 0.08),
+                              _kPrimary.withValues(alpha: 0.08),
                           side: BorderSide(
-                              color: _kPurple.withValues(alpha: 0.3)),
+                              color: _kPrimary.withValues(alpha: 0.3)),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                         );
@@ -826,7 +826,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     prefixIcon: Padding(
                       padding: const EdgeInsets.only(left: 14, right: 8),
                       child: Icon(Icons.subscriptions_rounded,
-                          color: _kPurple.withValues(alpha: 0.7),
+                          color: _kPrimary.withValues(alpha: 0.7),
                           size: 18),
                     ),
                     prefixIconConstraints:
@@ -838,11 +838,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                               margin: const EdgeInsets.only(right: 8),
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: _kPurple.withValues(alpha: 0.1),
+                                color: _kPrimary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(Icons.add_rounded,
-                                  color: _kPurple, size: 16),
+                                  color: _kPrimary, size: 16),
                             ),
                           )
                         : null,
@@ -881,12 +881,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: isAdded
-                        ? _kPurple.withValues(alpha: 0.15)
+                        ? _kPrimary.withValues(alpha: 0.15)
                         : context.surfaceElevatedColor,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isAdded
-                          ? _kPurple
+                          ? _kPrimary
                           : context.textTertiaryColor.withValues(alpha: 0.2),
                     ),
                   ),
@@ -896,7 +896,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       fontSize: 12,
                       fontWeight:
                           isAdded ? FontWeight.w700 : FontWeight.w500,
-                      color: isAdded ? _kPurple : context.textSecondary,
+                      color: isAdded ? _kPrimary : context.textSecondary,
                     ),
                   ),
                 ),
@@ -917,12 +917,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   height: 56,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [_kPurple, _kViolet, _kPink],
+                      colors: [_kPrimary, _kDeep, _kSecondary],
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: _kPurple.withValues(alpha: 0.4),
+                        color: _kPrimary.withValues(alpha: 0.4),
                         blurRadius: 20,
                         offset: const Offset(0, 6),
                       ),
@@ -959,8 +959,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
           height: 56,
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
-              _kPurple.withValues(alpha: 0.6 + _pulseController.value * 0.4),
-              _kViolet.withValues(alpha: 0.6 + _pulseController.value * 0.4),
+              _kPrimary.withValues(alpha: 0.6 + _pulseController.value * 0.4),
+              _kDeep.withValues(alpha: 0.6 + _pulseController.value * 0.4),
             ]),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -1013,21 +1013,21 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     final items = [
       _InfoItem(
         icon: Icons.search_rounded,
-        gradient: const [_kPurple, _kViolet],
+        gradient: const [_kPrimary, _kDeep],
         title: context.l10n?.webPoweredInsights ?? 'Web-Powered Insights',
         subtitle: context.l10n?.webPoweredInsightsDesc ??
             'Real-time pricing, Reddit & forum opinions',
       ),
       _InfoItem(
         icon: Icons.quiz_outlined,
-        gradient: const [_kPink, Color(0xFFF97316)],
+        gradient: const [_kSecondary, Color(0xFFF97316)],
         title: context.l10n?.personalizedQuiz ?? 'Personalized Quiz',
         subtitle: context.l10n?.personalizedQuizDesc ??
             'AI tailors questions to your usage patterns',
       ),
       _InfoItem(
         icon: Icons.psychology_outlined,
-        gradient: const [_kCyan, Color(0xFF10B981)],
+        gradient: const [_kAccent, Color(0xFF10B981)],
         title: context.l10n?.smartCompatibility ?? 'Smart Compatibility',
         subtitle: context.l10n?.smartCompatibilityDesc ??
             'Match score based on your profile & answers',
@@ -1150,7 +1150,7 @@ class _SubQuizView extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _kPurple.withValues(alpha: 0.1),
+                color: _kPrimary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -1199,7 +1199,7 @@ class _SubQuizView extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: answeredCount / answeredQuestions.length,
                 backgroundColor: AppTheme.slate700,
-                color: _kPurple,
+                color: _kPrimary,
                 minHeight: 6,
               ),
             ),
@@ -1249,7 +1249,7 @@ class _SubQuizView extends StatelessWidget {
               height: 38,
               borderRadius: BorderRadius.circular(10),
               gradient: const LinearGradient(
-                colors: [_kPurple, _kViolet],
+                colors: [_kPrimary, _kDeep],
               ),
               onPressed: onSubmit,
               child: Padding(
@@ -1324,7 +1324,7 @@ class _SubQuestionCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isAnswered
                     ? AppTheme.success
-                    : _kPurple.withValues(alpha: 0.1),
+                    : _kPrimary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -1336,7 +1336,7 @@ class _SubQuestionCard extends StatelessWidget {
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
-                          color: _kPurple,
+                          color: _kPrimary,
                         ),
                       ),
               ),
@@ -1369,11 +1369,11 @@ class _SubQuestionCard extends StatelessWidget {
                         horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? _kPurple.withValues(alpha: 0.08)
+                          ? _kPrimary.withValues(alpha: 0.08)
                           : context.textPrimary.withValues(alpha: 0.03),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? _kPurple : AppTheme.slate700,
+                        color: isSelected ? _kPrimary : AppTheme.slate700,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -1385,9 +1385,9 @@ class _SubQuestionCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color:
-                              isSelected ? _kPurple : Colors.transparent,
+                              isSelected ? _kPrimary : Colors.transparent,
                           border: Border.all(
-                            color: isSelected ? _kPurple : AppTheme.slate400,
+                            color: isSelected ? _kPrimary : AppTheme.slate400,
                             width: 2,
                           ),
                         ),
@@ -1407,7 +1407,7 @@ class _SubQuestionCard extends StatelessWidget {
                                 : FontWeight.w500,
                             fontSize: 14,
                             color: isSelected
-                                ? _kPurple
+                                ? _kPrimary
                                 : context.textPrimary,
                           ),
                         ),
@@ -1631,7 +1631,7 @@ class _SubResultView extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [_kPurple, _kViolet]),
+                      gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.insights_rounded, color: Colors.white, size: 16),
@@ -1745,7 +1745,7 @@ class _SubResultView extends StatelessWidget {
                     if (price.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(price, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13, color: _kCyan, fontWeight: FontWeight.w600,
+                        fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600,
                       )),
                     ],
                   ],
@@ -1896,7 +1896,7 @@ class _SubResultView extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [_kPurple, _kPink]),
+                  gradient: const LinearGradient(colors: [_kPrimary, _kSecondary]),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
@@ -2014,7 +2014,7 @@ class _SubResultView extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: [
                     AppTheme.success.withValues(alpha: 0.15),
-                    _kCyan.withValues(alpha: 0.10),
+                    _kAccent.withValues(alpha: 0.10),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
