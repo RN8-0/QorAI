@@ -4798,105 +4798,104 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
   (ref, product) async {
     try {
       final catKey = product.category.toLowerCase().trim();
-      final productYear = product.lastUpdated.year;
 
-      // 1) Instant: in-memory cache (no waiting if not ready)
+      // 1) Build product pool from multiple sources
       List<ProductEntity> pool = [];
       final ds = ref.read(firebaseDataSourceProvider);
       
-      // Only use cache if already ready - no waiting
       try {
         if (ds.isCacheReady) {
           final cached = await ds.getAllCachedProducts();
-          pool = cached.where((p) => p.category.toLowerCase().trim() == catKey)
-              .cast<ProductEntity>().toList();
+          pool = cached.cast<ProductEntity>().toList();
         }
       } catch (_) {}
       
-      // 2) Parallel: homeFeed cache + Firestore query simultaneously
-      if (pool.length < 15) {
-        final futures = <Future>[];
-        
-        // homeFeed - fast timeout
-        futures.add((() async {
-          try {
-            final feed = await ref.read(homeFeedProvider.future)
-                .timeout(const Duration(seconds: 3));
-            final feedProducts = feed.all
-                .where((p) => p.category.toLowerCase().trim() == catKey)
-                .toList();
-            final ids = pool.map((p) => p.id).toSet();
-            for (final p in feedProducts) {
-              if (!ids.contains(p.id)) pool.add(p);
-            }
-          } catch (_) {}
-        })());
+      // 2) Parallel: homeFeed cache + Firestore query
+      final futures = <Future>[];
+      
+      futures.add((() async {
+        try {
+          final feed = await ref.read(homeFeedProvider.future)
+              .timeout(const Duration(seconds: 3));
+          final ids = pool.map((p) => p.id).toSet();
+          for (final p in feed.all) {
+            if (!ids.contains(p.id)) pool.add(p);
+          }
+        } catch (_) {}
+      })());
 
-        // Firestore query - always fire, fast timeout
-        futures.add((() async {
-          try {
-            final result = await ref.read(productRepositoryProvider)
-                .getProducts(category: product.category, limit: 60)
-                .timeout(const Duration(seconds: 5));
-            result.when(
-              success: (products) {
-                final ids = pool.map((p) => p.id).toSet();
-                for (final p in products) {
-                  if (!ids.contains(p.id)) pool.add(p);
-                }
-              },
-              failure: (_) {},
-            );
-          } catch (_) {}
-        })());
+      futures.add((() async {
+        try {
+          final result = await ref.read(productRepositoryProvider)
+              .getProducts(category: product.category, limit: 80)
+              .timeout(const Duration(seconds: 8));
+          result.when(
+            success: (products) {
+              final ids = pool.map((p) => p.id).toSet();
+              for (final p in products) {
+                if (!ids.contains(p.id)) pool.add(p);
+              }
+            },
+            failure: (_) {},
+          );
+        } catch (_) {}
+      })());
 
-        await Future.wait(futures);
-      }
+      await Future.wait(futures);
 
       if (pool.isEmpty) return [];
 
-      // Filter: same category, recent products only, exclude self & defunct brands
-      const defunctBrands = {
-        'alcatel', 'micromax', 'karbonn', 'lava', 'intex', 'xolo',
-        'coolpad', 'leeco', 'le eco', 'gionee', 'panasonic mobile',
-        'blackberry', 'htc', 'zte', 'wiko', 'meizu', 'sharp mobile',
-        'vernee', 'doogee', 'oukitel', 'umidigi', 'ulefone', 'cubot',
-        'homtom', 'bluboo', 'elephone', 'leagoo', 'maze', 'nomu',
-        'altus', 'vestel', 'casper', 'reeder', 'general mobile', 'turkcell',
-        'grundig', 'beko', 'arçelik', 'hometech', 'vorcom', 'tcl mobile',
-        'acer', 'amazon', 'blu', 'cat', 'energizer', 'fairphone',
-        'gigaset', 'hisense', 'infinix', 'itel', 'lg',
-        'maxwest', 'nuu', 'plum', 'positivo', 'qmobile', 'spice',
-        'symphony', 'tecno', 'walton', 'yezz', 'philips',
-      };
+      // Remove self from pool
+      pool.removeWhere((p) => p.id == product.id);
 
-      final currentYear = DateTime.now().year;
-      final candidates = pool.where((p) {
-        if (p.id == product.id) return false;
-        if (p.category.toLowerCase().trim() != catKey) return false;
-        final brand = (p.brand ?? '').toLowerCase().trim();
-        if (defunctBrands.contains(brand)) return false;
-        // Only 2024+ products (or same year as product)
-        final pYear = p.lastUpdated.year;
-        if (pYear < 2024 && pYear < productYear) return false;
-        // Minimum tech score of 30 to exclude junk
-        if (p.techScore < 30) return false;
-        return true;
-      }).toList();
+      // Separate same-category products
+      final sameCat = pool.where((p) =>
+          p.category.toLowerCase().trim() == catKey).toList();
+
+      // Graduated expansion to find at least 4 results
+      List<ProductEntity> candidates = [];
+      final techScore = product.techScore;
+
+      // Step 1: same category + techScore ±20
+      if (candidates.length < 4) {
+        final step = sameCat.where((p) =>
+            (p.techScore - techScore).abs() <= 20 && p.techScore > 0).toList();
+        _addUnique(candidates, step);
+      }
+
+      // Step 2: same category + techScore ±40
+      if (candidates.length < 4) {
+        final step = sameCat.where((p) =>
+            (p.techScore - techScore).abs() <= 40 && p.techScore > 0).toList();
+        _addUnique(candidates, step);
+      }
+
+      // Step 3: same category, no techScore filter
+      if (candidates.length < 4) {
+        _addUnique(candidates, sameCat);
+      }
+
+      // Step 4: parent category match (peripherals grouping)
+      if (candidates.length < 4) {
+        final parentCats = _getRelatedCategories(catKey);
+        if (parentCats.isNotEmpty) {
+          final related = pool.where((p) {
+            final pCat = p.category.toLowerCase().trim();
+            return parentCats.contains(pCat) && pCat != catKey;
+          }).toList();
+          _addUnique(candidates, related);
+        }
+      }
 
       if (candidates.isEmpty) return [];
 
       // Score candidates by similarity
       List<MapEntry<ProductEntity, double>> scored = candidates.map((p) {
         double score = 0;
-        // Year proximity bonus
-        final yearDiff = (p.lastUpdated.year - productYear).abs();
-        if (yearDiff == 0) score += 20;
-        else if (yearDiff == 1) score += 15;
-        else if (yearDiff == 2) score += 8;
-        else score += 3;
+        // Category match bonus
+        if (p.category.toLowerCase().trim() == catKey) score += 20;
         // Tech score similarity (most important)
-        final techDiff = (p.techScore - product.techScore).abs();
+        final techDiff = (p.techScore - techScore).abs();
         if (techDiff <= 5) score += 30;
         else if (techDiff <= 10) score += 22;
         else if (techDiff <= 15) score += 15;
@@ -4925,6 +4924,7 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
 
       scored.sort((a, b) => b.value.compareTo(a.value));
 
+      // Take top results with brand diversity (max 6 per brand)
       final result = <ProductEntity>[];
       final brandCount = <String, int>{};
       for (final entry in scored) {
@@ -4932,7 +4932,7 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
         if ((brandCount[brand] ?? 0) >= 6) continue;
         brandCount[brand] = (brandCount[brand] ?? 0) + 1;
         result.add(entry.key);
-        if (result.length >= 50) break;
+        if (result.length >= 12) break;
       }
 
       return result;
@@ -4941,3 +4941,61 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
     }
   },
 );
+
+/// Add unique products to candidates list (by id)
+void _addUnique(List<ProductEntity> target, List<ProductEntity> source) {
+  final ids = target.map((p) => p.id).toSet();
+  for (final p in source) {
+    if (!ids.contains(p.id)) {
+      target.add(p);
+      ids.add(p.id);
+    }
+  }
+}
+
+/// Map categories to related parent groups for fallback matching
+Set<String> _getRelatedCategories(String category) {
+  const groups = <Set<String>>[
+    // Peripherals
+    {'mouse', 'mice', 'fare', 'keyboard', 'klavye', 'keyboards',
+     'mousepad', 'webcam', 'headset'},
+    // Mobile
+    {'smartphone', 'smartphones', 'akıllı telefon', 'phone', 'telefon',
+     'tablet', 'tablets'},
+    // Computing
+    {'laptop', 'laptops', 'dizüstü', 'notebook', 'chromebook',
+     'desktop', 'masaüstü'},
+    // Display
+    {'monitor', 'monitors', 'monitör', 'tv', 'tvs', 'televizyon',
+     'television'},
+    // Audio
+    {'headphone', 'headphones', 'kulaklık', 'earbuds', 'earphone',
+     'speaker', 'speakers', 'hoparlör', 'soundbar'},
+    // Storage
+    {'ssd', 'ssds', 'hdd', 'hdds', 'hard disk', 'external storage',
+     'usb flash', 'nas'},
+    // Components
+    {'gpu', 'gpus', 'ekran kartı', 'graphics card',
+     'cpu', 'cpus', 'işlemci', 'processor',
+     'ram', 'memory', 'motherboard', 'anakart',
+     'psu', 'power supply', 'case', 'kasa'},
+    // Wearables
+    {'smartwatch', 'smartwatches', 'akıllı saat', 'fitness tracker',
+     'wearable'},
+    // Cameras
+    {'camera', 'cameras', 'fotoğraf makinesi', 'action camera',
+     'drone'},
+    // Networking
+    {'router', 'routers', 'modem', 'mesh', 'access point',
+     'network switch'},
+    // Power
+    {'power bank', 'power banks', 'charger', 'şarj cihazı'},
+  ];
+
+  for (final group in groups) {
+    if (group.any((g) => category.contains(g) || g.contains(category))) {
+      return group;
+    }
+  }
+  return {};
+}
