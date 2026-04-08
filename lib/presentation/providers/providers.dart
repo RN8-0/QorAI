@@ -2010,14 +2010,19 @@ class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<String?>> {
 
   _DeepAnalysisNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
 
-  Future<void> startAnalysis(String productName, String language) async {
+  Future<void> startAnalysis(String productName, String language, {String category = '', String? brand, int? year}) async {
     if (state is AsyncLoading) return; // Already running
     if (state.valueOrNull != null) return; // Already completed
     state = const AsyncValue.loading();
     try {
       final gemini = _ref.read(geminiServiceProvider);
+      final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
+      final brandInfo = (brand != null && brand.isNotEmpty) ? ' by $brand' : '';
+      final yearInfo = (year != null && year > 0) ? ', released around $year' : '';
       final result = await gemini.freeTextQuery(
-        'You are a senior tech product analyst. Provide a deep, comprehensive analysis of "$productName" covering:\n'
+        'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
+        'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
+        'Provide a deep, comprehensive analysis covering:\n'
         '1. Build quality & design philosophy\n'
         '2. Performance in real-world scenarios\n'
         '3. Value proposition vs competitors\n'
@@ -2025,7 +2030,7 @@ class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<String?>> {
         '5. Potential deal-breakers\n'
         '6. Best use case scenarios\n'
         '7. Long-term reliability prediction\n'
-        'Keep it concise but insightful (max 250 words). Use plain text, no markdown.',
+        'Keep it concise but insightful (max 250 words). Use markdown formatting for readability.',
         language: language,
       );
       state = AsyncValue.data(result.isNotEmpty ? result : 'Unable to generate analysis at this time.');
@@ -2062,7 +2067,8 @@ class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<String?>> {
       final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
       final result = await gemini.freeTextQuery(
-        'For someone considering "$productName" ($cat), suggest 5 smart alternative products.\n'
+        'The product name is exactly "$productName" ($cat). Do NOT assume any typo in the name.\n\n'
+        'For someone considering this product, suggest 5 smart alternative products.\n'
         'For EACH alternative provide exactly this format:\n'
         '**[Product Name]**\n'
         '✅ Advantage: [One clear advantage over $productName]\n'
@@ -2100,8 +2106,8 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<String?>> {
       final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
       final result = await gemini.freeTextQuery(
-        'As an expert tech advisor, analyze "$productName" ($cat, $price) for a potential buyer.\n\n'
-        'Provide:\n'
+        'As an expert tech advisor, the product name is exactly "$productName" ($cat, $price). Do NOT assume any typo in the name.\n\n'
+        'Analyze for a potential buyer and provide:\n'
         '**🎯 Who Should Buy This**\n'
         'Describe the ideal buyer in 2 sentences.\n\n'
         '**✅ Top 3 Reasons to Buy**\n'
@@ -2143,8 +2149,8 @@ class _PredictionCacheNotifier extends StateNotifier<AsyncValue<String?>> {
       final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
       final result = await gemini.freeTextQuery(
-        'Analyze the price trends for "$productName" ($cat, current price: $price).\n\n'
-        'Provide:\n'
+        'The product name is exactly "$productName" ($cat, current price: $price). Do NOT assume any typo in the name.\n\n'
+        'Analyze the price trends and provide:\n'
         '**📉 Price Trend**\n'
         'Is the price likely to go up, down, or stay stable in the next 1-3 months? Why?\n\n'
         '**🕐 Best Time to Buy**\n'

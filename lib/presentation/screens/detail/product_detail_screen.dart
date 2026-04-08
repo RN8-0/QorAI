@@ -6971,7 +6971,12 @@ class _PremiumFeaturesSectionState
     });
     final lang = Localizations.localeOf(context).languageCode;
     ref.read(deepAnalysisCacheProvider(widget.product.id).notifier)
-        .startAnalysis(widget.product.name, lang);
+        .startAnalysis(
+          widget.product.name, 
+          lang, 
+          category: widget.product.category,
+          brand: widget.product.brand,
+        );
   }
 
   void _showPriceHistory(BuildContext context) {
