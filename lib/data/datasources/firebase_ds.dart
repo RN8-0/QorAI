@@ -89,6 +89,50 @@ class FirebaseDataSource {
     return !isFav; // returns new state
   }
 
+  // ─── User Activity Tracking ───
+
+  /// Save a quiz entry to user's quizHistory array (max 50 entries)
+  Future<void> saveQuizHistory(String uid, Map<String, dynamic> entry) async {
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(uid);
+      await docRef.set({
+        'quizHistory': FieldValue.arrayUnion([entry]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('[Firestore] Saved quiz history for $uid');
+    } catch (e) {
+      debugPrint('[Firestore] Failed to save quiz history: $e');
+    }
+  }
+
+  /// Save an analyzed product entry (max 100 entries)
+  Future<void> saveAnalyzedProduct(String uid, Map<String, dynamic> entry) async {
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(uid);
+      await docRef.set({
+        'analyzedProducts': FieldValue.arrayUnion([entry]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('[Firestore] Saved analyzed product for $uid');
+    } catch (e) {
+      debugPrint('[Firestore] Failed to save analyzed product: $e');
+    }
+  }
+
+  /// Save a search history entry (max 30 entries)
+  Future<void> saveSearchHistory(String uid, Map<String, dynamic> entry) async {
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(uid);
+      await docRef.set({
+        'searchHistory': FieldValue.arrayUnion([entry]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('[Firestore] Saved search history for $uid');
+    } catch (e) {
+      debugPrint('[Firestore] Failed to save search history: $e');
+    }
+  }
+
   // ─── Products ─── Section 4.2
 
   Future<ProductModel?> getProduct(String id) async {

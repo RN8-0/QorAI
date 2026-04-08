@@ -988,6 +988,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   final GeminiService _gemini;
   final SubscriptionService _subscriptionService;
   final BehaviorTrackingService _behaviorTracking;
+  final FirebaseDataSource _firebaseDs;
   final Ref _ref;
 
   LinkQuizNotifier({
@@ -995,11 +996,13 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     required GeminiService gemini,
     required SubscriptionService subscriptionService,
     required BehaviorTrackingService behaviorTracking,
+    required FirebaseDataSource firebaseDs,
     required Ref ref,
   })  : _aiRepo = aiRepo,
         _gemini = gemini,
         _subscriptionService = subscriptionService,
         _behaviorTracking = behaviorTracking,
+        _firebaseDs = firebaseDs,
         _ref = ref,
         super(const LinkQuizState());
 
@@ -1118,6 +1121,9 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
 
       debugPrint('[LinkQuiz] Enhanced analysis done: score=${enhanced.enhancedScore}');
 
+      // Save to Firestore
+      _saveAnalysisToFirestore(user, enhanced);
+
       // Persist quiz answers for algorithm training
       if (state.baseResult != null) {
         _behaviorTracking.trackQuizAnswers(
@@ -1173,6 +1179,40 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         detailedVerdict: state.baseResult!.aiAnalysis,
       ),
     );
+  }
+
+  /// Save analysis data to Firestore for user activity tracking
+  void _saveAnalysisToFirestore(UserEntity user, EnhancedAnalysisResult enhanced) {
+    final base = state.baseResult;
+    if (base == null) return;
+
+    // Save quiz history
+    final quizData = state.answeredQuestions
+        .where((q) => q.selectedOption != null)
+        .map((q) => {'question': q.text, 'answer': q.selectedOption})
+        .toList();
+    if (quizData.isNotEmpty) {
+      _firebaseDs.saveQuizHistory(user.uid, {
+        'timestamp': DateTime.now().toIso8601String(),
+        'productUrl': base.url,
+        'productTitle': base.metadata.title,
+        'category': base.category,
+        'answers': quizData,
+        'score': enhanced.enhancedScore,
+      });
+    }
+
+    // Save analyzed product
+    _firebaseDs.saveAnalyzedProduct(user.uid, {
+      'timestamp': DateTime.now().toIso8601String(),
+      'url': base.url,
+      'title': base.metadata.title,
+      'category': base.category,
+      'score': enhanced.enhancedScore,
+      'verdict': enhanced.detailedVerdict?.substring(
+          0, (enhanced.detailedVerdict?.length ?? 0).clamp(0, 200)),
+      'factorCount': enhanced.factors.length,
+    });
   }
 
   /// Search Compair product database for similar/matching products.
@@ -1231,6 +1271,7 @@ final linkQuizProvider =
     gemini: ref.read(geminiServiceProvider),
     subscriptionService: ref.read(subscriptionServiceProvider),
     behaviorTracking: ref.read(behaviorTrackingProvider),
+    firebaseDs: ref.read(firebaseDataSourceProvider),
     ref: ref,
   );
 });
@@ -1316,14 +1357,17 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   final AIRepository _aiRepo;
   final GeminiService _gemini;
   final BehaviorTrackingService _behaviorTracking;
+  final FirebaseDataSource _firebaseDs;
 
   CompareAnalysisNotifier({
     required AIRepository aiRepo,
     required GeminiService gemini,
     required BehaviorTrackingService behaviorTracking,
+    required FirebaseDataSource firebaseDs,
   })  : _aiRepo = aiRepo,
         _gemini = gemini,
         _behaviorTracking = behaviorTracking,
+        _firebaseDs = firebaseDs,
         super(const CompareAnalysisState());
 
   /// Phase 1: Analyze first URL → generate quiz
@@ -1499,6 +1543,36 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     _updateStep(profileIdx, (s) => s.withDone());
 
     debugPrint('[Compare] Done: ${results.length}/${urls.length} succeeded');
+
+    // Save each analyzed product to Firestore
+    for (final r in results) {
+      _firebaseDs.saveAnalyzedProduct(user.uid, {
+        'timestamp': DateTime.now().toIso8601String(),
+        'url': r.baseResult.url,
+        'title': r.baseResult.metadata.title,
+        'category': r.baseResult.category,
+        'score': r.enhancedScore,
+        'verdict': r.detailedVerdict?.substring(
+            0, (r.detailedVerdict?.length ?? 0).clamp(0, 200)),
+        'mode': 'compare',
+      });
+    }
+
+    // Save quiz history if answered
+    final answeredQs = quizAnswers
+        .where((q) => q.selectedOption != null)
+        .map((q) => {'question': q.text, 'answer': q.selectedOption})
+        .toList();
+    if (answeredQs.isNotEmpty) {
+      _firebaseDs.saveQuizHistory(user.uid, {
+        'timestamp': DateTime.now().toIso8601String(),
+        'productUrls': urls,
+        'mode': 'compare',
+        'answers': answeredQs,
+        'scores': results.map((r) => r.enhancedScore).toList(),
+      });
+    }
+
     state = state.copyWith(
       phase: ComparePhase.done,
       results: results,
@@ -1531,6 +1605,7 @@ final compareAnalysisProvider =
     aiRepo: ref.read(aiRepositoryProvider),
     gemini: ref.read(geminiServiceProvider),
     behaviorTracking: ref.read(behaviorTrackingProvider),
+    firebaseDs: ref.read(firebaseDataSourceProvider),
   );
 });
 
