@@ -247,14 +247,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final futures = validUrls.map((url) async {
       try {
         ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
+        debugPrint('[Compare] Analyzing: $url');
         final Result<LinkAnalysisResult> result = await aiRepo.analyzeLink(url: url, user: localizedUser);
         
         // Use pattern matching instead of extension .when() to avoid dynamic type issues
         final LinkAnalysisResult? data;
         switch (result) {
           case Success<LinkAnalysisResult>(data: final d):
+            debugPrint('[Compare] analyzeLink success for $url: score=${d.aiScore}');
             data = d;
-          case Failure<LinkAnalysisResult>():
+          case Failure<LinkAnalysisResult>(error: final err):
+            debugPrint('[Compare] analyzeLink failed for $url: ${err.message}');
             if (mounted) setState(() { _compareProgress++; });
             return null;
         }
@@ -287,7 +290,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           );
           if (mounted) setState(() { _compareProgress++; });
           return enhanced;
-        } catch (_) {
+        } catch (e) {
+          debugPrint('[Compare] Quiz/analysis fallback for $url: $e');
           if (mounted) setState(() { _compareProgress++; });
           return EnhancedAnalysisResult(
             baseResult: data,
@@ -296,7 +300,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             detailedVerdict: data.aiAnalysis,
           );
         }
-      } catch (_) {
+      } catch (e) {
+        debugPrint('[Compare] Unexpected error for $url: $e');
         if (mounted) setState(() { _compareProgress++; });
         return null;
       }
@@ -306,12 +311,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final validResults = allResults.whereType<EnhancedAnalysisResult>().toList();
 
     if (!mounted) return;
+    debugPrint('[Compare] Done: ${validResults.length}/${validUrls.length} succeeded');
     setState(() {
       _compareAnalyzing = false;
       _compareResults = validResults;
       if (validResults.length < 2) {
         _compareError = validResults.isEmpty
-            ? 'Could not analyze any of the provided links'
+            ? 'Could not analyze any of the provided links. Please check the URLs and try again.'
             : 'Only 1 link could be analyzed — need at least 2 for comparison';
       }
     });

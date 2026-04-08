@@ -91,6 +91,7 @@ class GeminiService implements AIService {
   @override
   Future<LinkAnalysisResult> analyzeLink(
       String url, UserEntity profile) async {
+    debugPrint('[Gemini] analyzeLink called for: $url');
     final response = await _jsonRequest(
       system: _linkAnalysisSystemPrompt(profile.language),
       user: jsonEncode({
@@ -102,7 +103,10 @@ class GeminiService implements AIService {
           'country': profile.country,
         },
       }),
+      thinkingBudget: 1024,
+      timeout: const Duration(seconds: 60),
     );
+    debugPrint('[Gemini] analyzeLink response keys: ${response.keys}');
 
     return LinkAnalysisResult(
       url: url,
@@ -730,6 +734,7 @@ $jsonSchema
     required String url,
     String language = 'en',
   }) async {
+    debugPrint('[Gemini] generateQuiz for: $productTitle ($category)');
     final response = await _jsonRequest(
       system: _quizGenerationPrompt(language),
       user: jsonEncode({
@@ -737,6 +742,8 @@ $jsonSchema
         'productTitle': productTitle,
         'url': url,
       }),
+      thinkingBudget: 512,
+      timeout: const Duration(seconds: 45),
     );
 
     final questions = (response['questions'] as List<dynamic>? ?? [])
@@ -750,6 +757,7 @@ $jsonSchema
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
         .toList();
 
+    debugPrint('[Gemini] generateQuiz got ${questions.length} questions');
     return ProductQuiz(
       id: '${category}_${DateTime.now().millisecondsSinceEpoch}',
       category: category,
@@ -766,6 +774,7 @@ $jsonSchema
     required List<QuizQuestion> answeredQuestions,
     required UserEntity profile,
   }) async {
+    debugPrint('[Gemini] enhancedAnalysis for: ${baseResult.metadata.title}');
     final qaPairs = answeredQuestions
         .where((q) => q.selectedOption != null)
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
@@ -793,6 +802,8 @@ $jsonSchema
           'currentDevices': profile.currentDevices,
         },
       }),
+      thinkingBudget: 2048,
+      timeout: const Duration(seconds: 60),
     );
 
     final factors = (response['factors'] as List<dynamic>? ?? [])
@@ -804,6 +815,7 @@ $jsonSchema
         .where((f) => f.label.isNotEmpty)
         .toList();
 
+    debugPrint('[Gemini] enhancedAnalysis score: ${response['enhancedScore']}, factors: ${factors.length}');
     return EnhancedAnalysisResult(
       baseResult: baseResult,
       enhancedScore:
@@ -824,8 +836,10 @@ $jsonSchema
   Future<Map<String, dynamic>> _jsonRequest({
     required String system,
     required String user,
+    int? thinkingBudget,
+    Duration? timeout,
   }) async {
-    final body = {
+    final body = <String, dynamic>{
       'contents': [
         {
           'parts': [
@@ -845,15 +859,26 @@ $jsonSchema
       },
     };
 
-    final text = await _rawRequest(body);
+    // Control thinking budget to optimise latency
+    if (thinkingBudget != null) {
+      body['generationConfig'] = {
+        ...(body['generationConfig'] as Map<String, dynamic>),
+        'thinkingConfig': {'thinkingBudget': thinkingBudget},
+      };
+    }
+
+    final text = await _rawRequest(body, receiveTimeout: timeout ?? const Duration(seconds: 60));
 
     try {
       return jsonDecode(text) as Map<String, dynamic>;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Gemini] JSON parse error: $e — raw text: ${text.length > 500 ? text.substring(0, 500) : text}');
       // Try to extract JSON from the response
       final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
       if (match != null) {
-        return jsonDecode(match.group(0)!) as Map<String, dynamic>;
+        try {
+          return jsonDecode(match.group(0)!) as Map<String, dynamic>;
+        } catch (_) {}
       }
       return {'message': text, 'options': <String>[]};
     }
@@ -861,7 +886,7 @@ $jsonSchema
 
   /// Low-level POST against the Gemini REST API with retry.
   Future<String> _rawRequest(Map<String, dynamic> body,
-      {Duration receiveTimeout = const Duration(seconds: 30)}) async {
+      {Duration receiveTimeout = const Duration(seconds: 60)}) async {
     int retryCount = 0;
 
     while (retryCount < AppConstants.deepSeekMaxRetries) {
@@ -876,15 +901,43 @@ $jsonSchema
           ),
         );
 
+        // Check for prompt feedback / safety blocks first
+        final promptFeedback = response.data['promptFeedback'] as Map<String, dynamic>?;
+        if (promptFeedback != null) {
+          final blockReason = promptFeedback['blockReason'] as String?;
+          if (blockReason != null) {
+            debugPrint('[Gemini] Request blocked: $blockReason');
+            throw AIServiceException(
+              message: 'Content was blocked by safety filter ($blockReason).',
+            );
+          }
+        }
+
         final candidates = response.data['candidates'] as List?;
         if (candidates == null || candidates.isEmpty) {
+          debugPrint('[Gemini] Empty candidates. Full response: ${response.data}');
           throw const AIServiceException(
               message: 'AI returned an empty response.');
         }
 
+        // Check for finish reason that indicates issues
+        final finishReason = candidates[0]['finishReason'] as String?;
+        if (finishReason == 'SAFETY') {
+          debugPrint('[Gemini] Response blocked by safety filter');
+          throw const AIServiceException(
+            message: 'Response was blocked by safety filter.',
+          );
+        }
+
         final content = candidates[0]['content'];
+        if (content == null) {
+          debugPrint('[Gemini] No content in candidate. Finish reason: $finishReason');
+          throw const AIServiceException(
+              message: 'AI returned no content.');
+        }
         final parts = content['parts'] as List?;
         if (parts == null || parts.isEmpty) {
+          debugPrint('[Gemini] No parts in content. Candidate: ${candidates[0]}');
           throw const AIServiceException(
               message: 'AI returned no content.');
         }
@@ -892,14 +945,39 @@ $jsonSchema
         return parts[0]['text'] as String? ?? '';
       } on DioException catch (e) {
         retryCount++;
+        final statusCode = e.response?.statusCode;
+        final responseBody = e.response?.data;
+        debugPrint('[Gemini] DioException (attempt $retryCount/${ AppConstants.deepSeekMaxRetries}): '
+            'status=$statusCode, type=${e.type}, '
+            'message=${e.message}, '
+            'body=${responseBody is String ? (responseBody.length > 300 ? responseBody.substring(0, 300) : responseBody) : responseBody}');
 
-        if (e.response?.statusCode == 429) {
+        if (statusCode == 429) {
           throw const AIServiceException(
             message: 'AI is busy right now. Please try again shortly.',
             isRateLimited: true,
           );
         }
 
+        // Don't retry on 400 (bad request) or 403 (forbidden) — they won't succeed
+        if (statusCode == 400 || statusCode == 403) {
+          String detail = 'AI request failed (HTTP $statusCode).';
+          if (responseBody is Map) {
+            final errorMsg = responseBody['error']?['message'] as String?;
+            if (errorMsg != null) detail = errorMsg;
+          }
+          debugPrint('[Gemini] Non-retryable error: $detail');
+          throw AIServiceException(message: detail);
+        }
+
+        if (retryCount < AppConstants.deepSeekMaxRetries) {
+          await Future.delayed(AppConstants.retryDelays[retryCount - 1]);
+        }
+      } on AIServiceException {
+        rethrow; // Don't retry AI-level errors (safety blocks, etc.)
+      } catch (e) {
+        retryCount++;
+        debugPrint('[Gemini] Unexpected error (attempt $retryCount/${AppConstants.deepSeekMaxRetries}): $e');
         if (retryCount < AppConstants.deepSeekMaxRetries) {
           await Future.delayed(AppConstants.retryDelays[retryCount - 1]);
         }

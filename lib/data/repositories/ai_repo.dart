@@ -1,6 +1,7 @@
 /// Compair - AI Repository (including Link Analysis)
 /// Blueprint Section 7, 9
 
+import 'package:flutter/foundation.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/data/datasources/firebase_ds.dart';
 import 'package:compair/data/models/other_models.dart';
@@ -64,13 +65,16 @@ class AIRepository {
       if (_metadataService != null) {
         try {
           metadata = await _metadataService!.fetchMetadataForSite(url);
+          debugPrint('[AIRepo] Metadata fetched for $url: title=${metadata.title}');
         } catch (e) {
-          // Continue if metadata fetch fails
+          debugPrint('[AIRepo] Metadata fetch failed for $url: $e — continuing');
         }
       }
 
       // Step 2: AI analysis (enriched with metadata)
+      debugPrint('[AIRepo] Starting AI analysis for: $url');
       final result = await _aiService.analyzeLink(url, user);
+      debugPrint('[AIRepo] AI analysis done: score=${result.aiScore}, category=${result.category}');
 
       // Merge metadata with AI result (fill in info AI didn't return from metadata)
       final enrichedResult = LinkAnalysisResult(
@@ -109,8 +113,10 @@ class AIRepository {
 
       return Success(enrichedResult);
     } on AIServiceException catch (e) {
+      debugPrint('[AIRepo] analyzeLink AIServiceException: ${e.message}');
       return Failure(e);
     } catch (e) {
+      debugPrint('[AIRepo] analyzeLink unexpected error: $e');
       return Failure(ServerException(message: e.toString()));
     }
   }

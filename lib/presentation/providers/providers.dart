@@ -1021,12 +1021,15 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
 
     // Analyze link
     final localizedUser = user.copyWith(language: _appLang);
+    debugPrint('[LinkQuiz] Starting link analysis for: $url');
     final result = await _aiRepo.analyzeLink(url: url, user: localizedUser);
     final LinkAnalysisResult? baseResult;
     switch (result) {
       case Success<LinkAnalysisResult>(data: final data):
+        debugPrint('[LinkQuiz] Analysis succeeded: score=${data.aiScore}, category=${data.category}');
         baseResult = data;
       case Failure<LinkAnalysisResult>(error: final error):
+        debugPrint('[LinkQuiz] Analysis failed: ${error.message}');
         state = state.copyWith(
           phase: LinkFlowPhase.idle,
           error: error.message,
@@ -1049,6 +1052,21 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         language: _appLang,
       );
 
+      if (quiz.questions.isEmpty) {
+        debugPrint('[LinkQuiz] Quiz had no questions, showing base result');
+        state = state.copyWith(
+          phase: LinkFlowPhase.result,
+          enhancedResult: EnhancedAnalysisResult(
+            baseResult: baseResult,
+            enhancedScore: baseResult.aiScore,
+            factors: const [],
+            detailedVerdict: baseResult.aiAnalysis,
+          ),
+        );
+        return;
+      }
+
+      debugPrint('[LinkQuiz] Quiz generated: ${quiz.questions.length} questions');
       state = state.copyWith(
         phase: LinkFlowPhase.quiz,
         quiz: quiz,
@@ -1056,6 +1074,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         currentQuestionIndex: 0,
       );
     } catch (e) {
+      debugPrint('[LinkQuiz] Quiz generation failed: $e — showing base result');
       // If quiz generation fails, show base result directly
       state = state.copyWith(
         phase: LinkFlowPhase.result,
@@ -1088,6 +1107,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   Future<void> submitQuiz(UserEntity user) async {
     if (state.baseResult == null) return;
     state = state.copyWith(phase: LinkFlowPhase.computing);
+    debugPrint('[LinkQuiz] submitQuiz — computing enhanced analysis');
 
     try {
       final enhanced = await _gemini.enhancedAnalysis(
@@ -1095,6 +1115,8 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         answeredQuestions: state.answeredQuestions,
         profile: user.copyWith(language: _appLang),
       );
+
+      debugPrint('[LinkQuiz] Enhanced analysis done: score=${enhanced.enhancedScore}');
 
       // Persist quiz answers for algorithm training
       if (state.baseResult != null) {
@@ -1117,6 +1139,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         enhancedResult: enhanced,
       );
     } catch (e) {
+      debugPrint('[LinkQuiz] submitQuiz failed: $e — falling back to base result');
       // Fallback to base result (guard against null)
       final base = state.baseResult;
       if (base != null) {
