@@ -247,53 +247,55 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final futures = validUrls.map((url) async {
       try {
         ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
-        final result = await aiRepo.analyzeLink(url: url, user: localizedUser);
-        return result.when(
-          success: (data) async {
-            // Generate quiz questions for profile learning
-            try {
-              final quiz = await gemini.generateQuiz(
-                category: data.category ?? 'general',
-                productTitle: data.metadata.title ?? 'Product',
-                url: url,
-                language: lang,
-              );
-              // Auto-answer quiz based on user profile for enhanced analysis
-              final enhanced = await gemini.enhancedAnalysis(
-                baseResult: data,
-                answeredQuestions: quiz.questions,
-                profile: localizedUser,
-              );
-              // Track quiz answers for user profile learning
-              ref.read(behaviorTrackingProvider).trackQuizAnswers(
-                url: url,
-                category: data.category,
-                answeredQuestions: quiz.questions
-                    .map((q) => {
-                          'question': q.text,
-                          'selectedOption': q.selectedOption ?? '',
-                          'options': q.options,
-                        })
-                    .toList(),
-                matchScore: enhanced.enhancedScore,
-              );
-              if (mounted) setState(() { _compareProgress++; });
-              return enhanced;
-            } catch (_) {
-              if (mounted) setState(() { _compareProgress++; });
-              return EnhancedAnalysisResult(
-                baseResult: data,
-                enhancedScore: data.aiScore,
-                factors: const [],
-                detailedVerdict: data.aiAnalysis,
-              );
-            }
-          },
-          failure: (_) {
+        final Result<LinkAnalysisResult> result = await aiRepo.analyzeLink(url: url, user: localizedUser);
+        
+        // Use pattern matching instead of extension .when() to avoid dynamic type issues
+        final LinkAnalysisResult? data;
+        switch (result) {
+          case Success<LinkAnalysisResult>(data: final d):
+            data = d;
+          case Failure<LinkAnalysisResult>():
             if (mounted) setState(() { _compareProgress++; });
             return null;
-          },
-        );
+        }
+        
+        // Generate quiz and enhanced analysis
+        try {
+          final quiz = await gemini.generateQuiz(
+            category: data.category ?? 'general',
+            productTitle: data.metadata.title ?? 'Product',
+            url: url,
+            language: lang,
+          );
+          final enhanced = await gemini.enhancedAnalysis(
+            baseResult: data,
+            answeredQuestions: quiz.questions,
+            profile: localizedUser,
+          );
+          // Track quiz answers for user profile learning
+          ref.read(behaviorTrackingProvider).trackQuizAnswers(
+            url: url,
+            category: data.category,
+            answeredQuestions: quiz.questions
+                .map((q) => {
+                      'question': q.text,
+                      'selectedOption': q.selectedOption ?? '',
+                      'options': q.options,
+                    })
+                .toList(),
+            matchScore: enhanced.enhancedScore,
+          );
+          if (mounted) setState(() { _compareProgress++; });
+          return enhanced;
+        } catch (_) {
+          if (mounted) setState(() { _compareProgress++; });
+          return EnhancedAnalysisResult(
+            baseResult: data,
+            enhancedScore: data.aiScore,
+            factors: const [],
+            detailedVerdict: data.aiAnalysis,
+          );
+        }
       } catch (_) {
         if (mounted) setState(() { _compareProgress++; });
         return null;
@@ -427,18 +429,29 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   Widget _buildTabBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(14),
+        color: context.surfaceVariantColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: context.textTertiaryColor.withValues(alpha: 0.1),
+        ),
       ),
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
+            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFF06B6D4)],
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         labelColor: Colors.white,
@@ -446,7 +459,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
         unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
         dividerColor: Colors.transparent,
-        padding: const EdgeInsets.all(3),
+        splashBorderRadius: BorderRadius.circular(24),
         tabs: const [
           Tab(text: '🔍  Single Analysis'),
           Tab(text: '⚡  Compare'),
@@ -600,7 +613,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 Container(
                   decoration: BoxDecoration(
                     color: context.surfaceVariantColor,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
                   ),
@@ -616,17 +629,28 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
-                      prefixIcon: Icon(Icons.link_rounded,
-                        color: context.textTertiaryColor, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.content_paste_rounded,
-                          color: const Color(0xFF6366F1), size: 20),
-                        onPressed: () async {
-                          final data = await Clipboard.getData('text/plain');
-                          if (data?.text != null) {
-                            _singleUrlController.text = data!.text!;
-                          }
-                        },
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 14, right: 8),
+                        child: Icon(Icons.link_rounded,
+                          color: context.textTertiaryColor, size: 20),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 40),
+                      suffixIcon: Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.content_paste_rounded,
+                            color: const Color(0xFF6366F1), size: 18),
+                          onPressed: () async {
+                            final data = await Clipboard.getData('text/plain');
+                            if (data?.text != null) {
+                              _singleUrlController.text = data!.text!;
+                            }
+                          },
+                        ),
                       ),
                     ),
                     onSubmitted: (_) => _startSingleAnalysis(),
@@ -638,12 +662,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   spacing: 6, runSpacing: 6,
                   children: ['Amazon', 'eBay', 'Best Buy', 'Trendyol', 'AliExpress', '100+']
                       .map((store) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: context.surfaceVariantColor,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: context.textTertiaryColor.withValues(alpha: 0.15)),
+                                color: context.textTertiaryColor.withValues(alpha: 0.12)),
                             ),
                             child: Text(store,
                               style: GoogleFonts.inter(
@@ -656,15 +680,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 GestureDetector(
                   onTap: isWorking ? null : _startSingleAnalysis,
                   child: Container(
-                    height: 52,
+                    height: 54,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFFEC4899)]),
-                      borderRadius: BorderRadius.circular(16),
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFEC4899)]),
+                      borderRadius: BorderRadius.circular(27),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                          blurRadius: 16, offset: const Offset(0, 6)),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                          blurRadius: 20, offset: const Offset(0, 8)),
                       ],
                     ),
                     child: Row(
@@ -756,7 +780,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         height: 48,
                         decoration: BoxDecoration(
                           color: context.surfaceVariantColor,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(24),
                           border: Border.all(
                             color: const Color(0xFF6366F1).withValues(alpha: 0.3),
                             style: BorderStyle.solid),
@@ -781,15 +805,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 GestureDetector(
                   onTap: _startCompareAnalysis,
                   child: Container(
-                    height: 52,
+                    height: 54,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF06B6D4), Color(0xFF6366F1)]),
-                      borderRadius: BorderRadius.circular(16),
+                        colors: [Color(0xFF06B6D4), Color(0xFF6366F1), Color(0xFF8B5CF6)]),
+                      borderRadius: BorderRadius.circular(27),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
-                          blurRadius: 16, offset: const Offset(0, 6)),
+                          color: const Color(0xFF06B6D4).withValues(alpha: 0.35),
+                          blurRadius: 20, offset: const Offset(0, 8)),
                       ],
                     ),
                     child: Row(
@@ -797,7 +821,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       children: [
                         const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 20),
                         const SizedBox(width: 8),
-                        Text(context.l10n?.compare ?? 'Compare Products',
+                        Text(context.l10n?.compare ?? 'Compare',
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w700, fontSize: 15,
                             color: Colors.white, letterSpacing: -0.3)),
@@ -822,14 +846,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return Container(
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: const Color(0xFF06B6D4).withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Container(
-            width: 36, height: 36,
+            width: 34, height: 34,
             margin: const EdgeInsets.only(left: 10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -837,12 +861,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   const Color(0xFF6366F1).withValues(alpha: 0.8),
                   const Color(0xFF06B6D4).withValues(alpha: 0.8),
                 ]),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(17),
             ),
             child: Center(
               child: Text('${index + 1}',
                 style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w800, fontSize: 14,
+                  fontWeight: FontWeight.w800, fontSize: 13,
                   color: Colors.white)),
             ),
           ),

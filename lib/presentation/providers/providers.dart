@@ -1022,16 +1022,17 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     // Analyze link
     final localizedUser = user.copyWith(language: _appLang);
     final result = await _aiRepo.analyzeLink(url: url, user: localizedUser);
-    final baseResult = result.when(
-      success: (data) => data,
-      failure: (error) {
+    final LinkAnalysisResult? baseResult;
+    switch (result) {
+      case Success<LinkAnalysisResult>(data: final data):
+        baseResult = data;
+      case Failure<LinkAnalysisResult>(error: final error):
         state = state.copyWith(
           phase: LinkFlowPhase.idle,
           error: error.message,
         );
-        return null;
-      },
-    );
+        baseResult = null;
+    }
     if (baseResult == null) return;
 
     state = state.copyWith(
