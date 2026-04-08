@@ -6563,54 +6563,58 @@ class _PremiumFeaturesSectionState
         ),
 
         // AI Deep Analysis
-        _buildPremiumCard(
+        _buildCollapsibleHeader(
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
           subtitle: context.l10n?.aiDeepAnalysisDesc ?? 'Comprehensive AI-powered product evaluation',
           gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
           isExpanded: _deepAnalysisExpanded,
           isLoading: isLoadingAnalysis,
-          content: deepAnalysis,
+          hasContent: deepAnalysis != null,
           onTap: _toggleDeepAnalysis,
+          expandedChild: deepAnalysis != null ? _buildDeepAnalysisVisual(deepAnalysis) : null,
         ),
         const SizedBox(height: 10),
 
         // Smart Alternatives
-        _buildPremiumCard(
+        _buildCollapsibleHeader(
           icon: Icons.swap_horizontal_circle_rounded,
           title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
           subtitle: context.l10n?.smartAlternativesDesc ?? 'AI-curated similar products you might prefer',
           gradient: const [AppTheme.warning, Color(0xFFF97316)],
           isExpanded: _alternativesExpanded,
           isLoading: isLoadingAlternatives,
-          content: alternatives,
+          hasContent: alternatives != null,
           onTap: _toggleAlternatives,
+          expandedChild: alternatives != null ? _buildAlternativesVisual(alternatives) : null,
         ),
         const SizedBox(height: 10),
 
         // AI Product Advisor
-        _buildPremiumCard(
+        _buildCollapsibleHeader(
           icon: Icons.support_agent_rounded,
           title: 'AI Product Advisor',
           subtitle: 'Personalized buying advice based on your needs',
           gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
           isExpanded: _advisorExpanded,
           isLoading: isLoadingAdvisor,
-          content: advisorResult,
+          hasContent: advisorResult != null,
           onTap: _toggleAdvisor,
+          expandedChild: advisorResult != null ? _buildAdvisorVisual(advisorResult) : null,
         ),
         const SizedBox(height: 10),
 
         // Price Prediction
-        _buildPremiumCard(
+        _buildCollapsibleHeader(
           icon: Icons.trending_down_rounded,
           title: 'Price Prediction',
           subtitle: 'AI-powered price trend analysis and best time to buy',
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
           isExpanded: _predictionExpanded,
           isLoading: isLoadingPrediction,
-          content: predictionResult,
+          hasContent: predictionResult != null,
           onTap: _togglePrediction,
+          expandedChild: predictionResult != null ? _buildPredictionVisual(predictionResult) : null,
         ),
 
         // Benchmark Scores (only for supported categories)
@@ -6633,16 +6637,16 @@ class _PremiumFeaturesSectionState
            cat.contains('camera');
   }
 
-  Widget _buildPremiumCard({
+  Widget _buildCollapsibleHeader({
     required IconData icon,
     required String title,
     required String subtitle,
     required List<Color> gradient,
     required bool isExpanded,
     required bool isLoading,
-    required String? content,
+    required bool hasContent,
     required VoidCallback onTap,
-    bool showChevron = false,
+    Widget? expandedChild,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -6682,31 +6686,604 @@ class _PremiumFeaturesSectionState
               if (isLoading)
                 const SizedBox(width: 20, height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              else if (showChevron)
-                Icon(Icons.chevron_right_rounded,
-                  color: context.textSecondary)
               else
                 Icon(isExpanded
                     ? Icons.expand_less_rounded
                     : Icons.expand_more_rounded,
                   color: gradient[0]),
             ]),
-            if (isExpanded && content != null) ...[
+            if (isExpanded && expandedChild != null) ...[
               const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: gradient[0].withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: gradient[0].withValues(alpha: 0.1))),
-                child: _buildRichContent(content, gradient[0]),
-              ),
+              expandedChild,
             ],
           ],
         ),
       ),
+    );
+  }
+
+  // ─── AI Deep Analysis Visual ───
+  Widget _buildDeepAnalysisVisual(DeepAnalysisResult r) {
+    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, AppTheme.premiumPurple);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Overall score circular indicator
+        if (r.overallScore > 0) ...[
+          Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: r.overallScore / 100),
+              duration: const Duration(milliseconds: 1200),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) {
+                final score = (value * 100).round();
+                final scoreColor = score >= 80 ? AppTheme.green500
+                    : score >= 60 ? AppTheme.amber500
+                    : AppTheme.rose500;
+                return SizedBox(
+                  width: 100, height: 100,
+                  child: Stack(alignment: Alignment.center, children: [
+                    SizedBox(
+                      width: 100, height: 100,
+                      child: CircularProgressIndicator(
+                        value: value,
+                        strokeWidth: 8,
+                        backgroundColor: scoreColor.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation(scoreColor),
+                        strokeCap: StrokeCap.round,
+                      ),
+                    ),
+                    Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text('$score', style: GoogleFonts.plusJakartaSans(
+                        fontSize: 28, fontWeight: FontWeight.w800, color: scoreColor)),
+                      Text('/ 100', style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11, fontWeight: FontWeight.w500, color: context.textSecondary)),
+                    ]),
+                  ]),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Strengths
+        if (r.strengths.isNotEmpty) ...[
+          _buildSectionLabel(Icons.trending_up_rounded, 'Strengths', AppTheme.green500),
+          const SizedBox(height: 8),
+          ...r.strengths.map((s) => _buildAttributeBar(s, AppTheme.green500)),
+          const SizedBox(height: 14),
+        ],
+
+        // Weaknesses
+        if (r.weaknesses.isNotEmpty) ...[
+          _buildSectionLabel(Icons.trending_down_rounded, 'Weaknesses', AppTheme.rose500),
+          const SizedBox(height: 8),
+          ...r.weaknesses.map((w) => _buildAttributeBar(w, AppTheme.rose500)),
+          const SizedBox(height: 14),
+        ],
+
+        // Pros & Cons side by side
+        if (r.pros.isNotEmpty || r.cons.isNotEmpty)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (r.pros.isNotEmpty)
+                Expanded(child: _buildProConCard(
+                  icon: Icons.check_circle_rounded,
+                  title: 'Pros',
+                  items: r.pros,
+                  color: AppTheme.green500,
+                )),
+              if (r.pros.isNotEmpty && r.cons.isNotEmpty) const SizedBox(width: 8),
+              if (r.cons.isNotEmpty)
+                Expanded(child: _buildProConCard(
+                  icon: Icons.cancel_rounded,
+                  title: 'Cons',
+                  items: r.cons,
+                  color: AppTheme.rose500,
+                )),
+            ],
+          ),
+
+        // Verdict
+        if (r.verdict.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.premiumPurple.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.premiumPurple.withValues(alpha: 0.15)),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('💡', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(r.verdict,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12.5, fontWeight: FontWeight.w500,
+                  color: context.textPrimary, height: 1.5,
+                  fontStyle: FontStyle.italic))),
+            ]),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSectionLabel(IconData icon, String label, Color color) {
+    return Row(children: [
+      Icon(icon, size: 16, color: color),
+      const SizedBox(width: 6),
+      Text(label, style: GoogleFonts.plusJakartaSans(
+        fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+    ]);
+  }
+
+  Widget _buildAttributeBar(AnalysisAttribute attr, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(child: Text(attr.name,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary))),
+            Text('${attr.score}', style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+          ]),
+          const SizedBox(height: 4),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: (attr.score / 100).clamp(0, 1)),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, __) => ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(height: 6, child: Stack(children: [
+                Container(color: color.withValues(alpha: 0.1)),
+                FractionallySizedBox(widthFactor: v,
+                  child: Container(decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [color.withValues(alpha: 0.5), color]),
+                    borderRadius: BorderRadius.circular(4)))),
+              ])),
+            ),
+          ),
+          if (attr.detail.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(attr.detail, style: GoogleFonts.plusJakartaSans(
+              fontSize: 11, color: context.textSecondary, height: 1.3)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProConCard({
+    required IconData icon,
+    required String title,
+    required List<String> items,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(title, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+          ]),
+          const SizedBox(height: 6),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('•', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
+              const SizedBox(width: 4),
+              Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+                fontSize: 11, color: context.textPrimary, height: 1.3))),
+            ]),
+          )),
+        ],
+      ),
+    );
+  }
+
+  // ─── Smart Alternatives Visual ───
+  Widget _buildAlternativesVisual(AlternativesResult r) {
+    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, AppTheme.warning);
+    if (r.alternatives.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 195,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: r.alternatives.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final alt = r.alternatives[i];
+          final priceColor = alt.priceComparison.toLowerCase().contains('cheap')
+              ? AppTheme.green500
+              : alt.priceComparison.toLowerCase().contains('pric')
+                  ? AppTheme.rose500
+                  : AppTheme.amber500;
+          final priceIcon = alt.priceComparison.toLowerCase().contains('cheap')
+              ? Icons.arrow_downward_rounded
+              : alt.priceComparison.toLowerCase().contains('pric')
+                  ? Icons.arrow_upward_rounded
+                  : Icons.remove_rounded;
+
+          return Container(
+            width: 220,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: context.surfaceVariantColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.warning.withValues(alpha: 0.2)),
+              boxShadow: [BoxShadow(
+                color: AppTheme.warning.withValues(alpha: 0.06),
+                blurRadius: 8, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name + price badge
+                Row(children: [
+                  Expanded(child: Text(alt.name,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5, fontWeight: FontWeight.w700,
+                      color: context.textPrimary, height: 1.3))),
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: priceColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(priceIcon, size: 10, color: priceColor),
+                      const SizedBox(width: 2),
+                      Text(alt.priceComparison, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9, fontWeight: FontWeight.w700, color: priceColor)),
+                    ]),
+                  ),
+                ]),
+                const SizedBox(height: 8),
+
+                // Advantage
+                if (alt.advantage.isNotEmpty)
+                  _buildAltInfoRow(Icons.check_circle_outline_rounded, alt.advantage, AppTheme.green500),
+                const SizedBox(height: 4),
+
+                // Trade-off
+                if (alt.tradeoff.isNotEmpty)
+                  _buildAltInfoRow(Icons.warning_amber_rounded, alt.tradeoff, AppTheme.amber500),
+                const Spacer(),
+
+                // Why better badge
+                if (alt.whyBetter.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        AppTheme.warning.withValues(alpha: 0.1),
+                        const Color(0xFFF97316).withValues(alpha: 0.06),
+                      ]),
+                      borderRadius: BorderRadius.circular(6)),
+                    child: Text('⭐ ${alt.whyBetter}',
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10, fontWeight: FontWeight.w600,
+                        color: context.textPrimary, height: 1.3)),
+                  ),
+
+                // Best for
+                if (alt.bestFor.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('🎯 ${alt.bestFor}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10, color: context.textSecondary, fontWeight: FontWeight.w500)),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAltInfoRow(IconData icon, String text, Color color) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, size: 13, color: color),
+      const SizedBox(width: 4),
+      Expanded(child: Text(text,
+        maxLines: 2, overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11, color: context.textPrimary, height: 1.3))),
+    ]);
+  }
+
+  // ─── AI Product Advisor Visual ───
+  Widget _buildAdvisorVisual(AdvisorResult r) {
+    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, const Color(0xFF3B82F6));
+
+    final ratingColor = r.valueRating >= 7 ? AppTheme.green500
+        : r.valueRating >= 5 ? AppTheme.amber500 : AppTheme.rose500;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Value rating gauge
+        if (r.valueRating > 0) ...[
+          Center(
+            child: Column(children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: r.valueRating / 10),
+                duration: const Duration(milliseconds: 1000),
+                curve: Curves.easeOutCubic,
+                builder: (_, v, __) {
+                  final stars = (v * 10).clamp(0, 10);
+                  return Row(mainAxisSize: MainAxisSize.min, children: [
+                    ...List.generate(5, (i) {
+                      final starVal = stars - (i * 2);
+                      if (starVal >= 2) return Icon(Icons.star_rounded, size: 24, color: ratingColor);
+                      if (starVal >= 1) return Icon(Icons.star_half_rounded, size: 24, color: ratingColor);
+                      return Icon(Icons.star_outline_rounded, size: 24, color: ratingColor.withValues(alpha: 0.3));
+                    }),
+                    const SizedBox(width: 8),
+                    Text('${r.valueRating.toStringAsFixed(1)}/10', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16, fontWeight: FontWeight.w800, color: ratingColor)),
+                  ]);
+                },
+              ),
+              if (r.ratingExplanation.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(r.ratingExplanation, textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, color: context.textSecondary, fontStyle: FontStyle.italic)),
+              ],
+            ]),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // Who Should Buy
+        if (r.whoShouldBuy.isNotEmpty)
+          _buildAdvisorBox(
+            icon: Icons.person_add_rounded,
+            title: 'Who Should Buy This',
+            text: r.whoShouldBuy,
+            color: AppTheme.green500,
+          ),
+
+        if (r.whoShouldBuy.isNotEmpty && r.whoShouldAvoid.isNotEmpty)
+          const SizedBox(height: 10),
+
+        // Who Should Avoid
+        if (r.whoShouldAvoid.isNotEmpty)
+          _buildAdvisorBox(
+            icon: Icons.person_off_rounded,
+            title: 'Who Should Avoid',
+            text: r.whoShouldAvoid,
+            color: AppTheme.rose500,
+          ),
+
+        // Reasons to Buy
+        if (r.reasonsToBuy.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildSectionLabel(Icons.thumb_up_rounded, 'Reasons to Buy', AppTheme.green500),
+          const SizedBox(height: 6),
+          ...r.reasonsToBuy.map((reason) => _buildReasonItem(reason, AppTheme.green500, Icons.add_circle_rounded)),
+        ],
+
+        // Reasons to Skip
+        if (r.reasonsToSkip.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildSectionLabel(Icons.thumb_down_rounded, 'Reasons to Skip', AppTheme.rose500),
+          const SizedBox(height: 6),
+          ...r.reasonsToSkip.map((reason) => _buildReasonItem(reason, AppTheme.rose500, Icons.remove_circle_rounded)),
+        ],
+
+        // Pro Tips
+        if (r.proTips.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildSectionLabel(Icons.lightbulb_rounded, 'Pro Tips', AppTheme.amber500),
+          const SizedBox(height: 6),
+          ...r.proTips.map((tip) => _buildReasonItem(tip, AppTheme.amber500, Icons.auto_awesome_rounded)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAdvisorBox({
+    required IconData icon,
+    required String title,
+    required String text,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(title, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+          ]),
+          const SizedBox(height: 6),
+          Text(text, style: GoogleFonts.plusJakartaSans(
+            fontSize: 12, color: context.textPrimary, height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReasonItem(String text, Color color, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Expanded(child: Text(text, style: GoogleFonts.plusJakartaSans(
+          fontSize: 12, color: context.textPrimary, height: 1.3))),
+      ]),
+    );
+  }
+
+  // ─── Price Prediction Visual ───
+  Widget _buildPredictionVisual(PredictionResult r) {
+    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, const Color(0xFF10B981));
+
+    final trendLower = r.trend.toLowerCase();
+    final trendColor = trendLower == 'down' ? AppTheme.green500
+        : trendLower == 'up' ? AppTheme.rose500 : AppTheme.amber500;
+    final trendIcon = trendLower == 'down' ? Icons.trending_down_rounded
+        : trendLower == 'up' ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
+    final trendLabel = trendLower == 'down' ? 'Price Dropping'
+        : trendLower == 'up' ? 'Price Rising'
+        : 'Price Stable';
+
+    final isBuy = r.buyOrWait.toLowerCase().contains('buy');
+    final decisionColor = isBuy ? AppTheme.green500 : AppTheme.amber500;
+    final decisionIcon = isBuy ? Icons.shopping_cart_rounded : Icons.hourglass_top_rounded;
+    final decisionLabel = isBuy ? 'Buy Now' : 'Wait';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Trend indicator + Buy/Wait badge row
+        Row(children: [
+          // Trend card
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: trendColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: trendColor.withValues(alpha: 0.2)),
+              ),
+              child: Column(children: [
+                Icon(trendIcon, size: 28, color: trendColor),
+                const SizedBox(height: 4),
+                Text(trendLabel, textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12, fontWeight: FontWeight.w700, color: trendColor)),
+                if (r.trendPercentage > 0) ...[
+                  const SizedBox(height: 2),
+                  Text('${trendLower == 'down' ? '-' : trendLower == 'up' ? '+' : '~'}${r.trendPercentage}%',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18, fontWeight: FontWeight.w800, color: trendColor)),
+                ],
+              ]),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Buy/Wait decision
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [
+                  decisionColor.withValues(alpha: 0.12),
+                  decisionColor.withValues(alpha: 0.06),
+                ]),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: decisionColor.withValues(alpha: 0.3)),
+              ),
+              child: Column(children: [
+                Icon(decisionIcon, size: 28, color: decisionColor),
+                const SizedBox(height: 4),
+                Text(decisionLabel,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w800, color: decisionColor)),
+              ]),
+            ),
+          ),
+        ]),
+
+        // Expected change progress bar
+        if (r.trendPercentage > 0) ...[
+          const SizedBox(height: 14),
+          Text('Expected Change',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary)),
+          const SizedBox(height: 6),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: (r.trendPercentage / 50).clamp(0, 1)),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, __) => ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: SizedBox(height: 8, child: Stack(children: [
+                Container(color: trendColor.withValues(alpha: 0.1)),
+                FractionallySizedBox(widthFactor: v,
+                  child: Container(decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [trendColor.withValues(alpha: 0.4), trendColor]),
+                    borderRadius: BorderRadius.circular(5)))),
+              ])),
+            ),
+          ),
+        ],
+
+        // Expected drop description
+        if (r.expectedDrop.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: trendColor.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('💰', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Expanded(child: Text(r.expectedDrop,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, color: context.textPrimary, height: 1.4))),
+            ]),
+          ),
+        ],
+
+        // Best time to buy
+        if (r.bestTimeToBuy.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.schedule_rounded, size: 14, color: const Color(0xFF06B6D4)),
+            const SizedBox(width: 6),
+            Expanded(child: Text(r.bestTimeToBuy,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, color: context.textPrimary, height: 1.3))),
+          ]),
+        ],
+
+        // Reasoning
+        if (r.reasoning.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(r.reasoning,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5, color: context.textSecondary,
+              height: 1.4, fontStyle: FontStyle.italic)),
+        ],
+      ],
     );
   }
 

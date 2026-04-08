@@ -2092,45 +2092,164 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 // ─── DEEP ANALYSIS CACHE ───
 // ════════════════════════════════════════════════════
 
+// ─── Parsed result types for rich visual rendering ───
+
+class DeepAnalysisResult {
+  final int overallScore;
+  final List<AnalysisAttribute> strengths;
+  final List<AnalysisAttribute> weaknesses;
+  final List<String> pros;
+  final List<String> cons;
+  final String verdict;
+  final String? rawFallback; // fallback markdown if JSON parse fails
+  const DeepAnalysisResult({
+    this.overallScore = 0,
+    this.strengths = const [],
+    this.weaknesses = const [],
+    this.pros = const [],
+    this.cons = const [],
+    this.verdict = '',
+    this.rawFallback,
+  });
+}
+
+class AnalysisAttribute {
+  final String name;
+  final int score;
+  final String detail;
+  const AnalysisAttribute({required this.name, required this.score, required this.detail});
+}
+
+class AlternativesResult {
+  final List<AlternativeProduct> alternatives;
+  final String? rawFallback;
+  const AlternativesResult({this.alternatives = const [], this.rawFallback});
+}
+
+class AlternativeProduct {
+  final String name;
+  final String advantage;
+  final String tradeoff;
+  final String priceComparison;
+  final String bestFor;
+  final String whyBetter;
+  const AlternativeProduct({
+    required this.name,
+    this.advantage = '',
+    this.tradeoff = '',
+    this.priceComparison = '',
+    this.bestFor = '',
+    this.whyBetter = '',
+  });
+}
+
+class AdvisorResult {
+  final String whoShouldBuy;
+  final String whoShouldAvoid;
+  final List<String> reasonsToBuy;
+  final List<String> reasonsToSkip;
+  final List<String> proTips;
+  final double valueRating;
+  final String ratingExplanation;
+  final String? rawFallback;
+  const AdvisorResult({
+    this.whoShouldBuy = '',
+    this.whoShouldAvoid = '',
+    this.reasonsToBuy = const [],
+    this.reasonsToSkip = const [],
+    this.proTips = const [],
+    this.valueRating = 0,
+    this.ratingExplanation = '',
+    this.rawFallback,
+  });
+}
+
+class PredictionResult {
+  final String trend; // "up", "down", "stable"
+  final int trendPercentage;
+  final String bestTimeToBuy;
+  final String expectedDrop;
+  final String buyOrWait; // "buy", "wait"
+  final String reasoning;
+  final String? rawFallback;
+  const PredictionResult({
+    this.trend = 'stable',
+    this.trendPercentage = 0,
+    this.bestTimeToBuy = '',
+    this.expectedDrop = '',
+    this.buyOrWait = 'buy',
+    this.reasoning = '',
+    this.rawFallback,
+  });
+}
+
 /// Caches AI deep analysis results per product ID so they survive navigation.
-/// The analysis runs in the provider (not the widget), so switching tabs won't cancel it.
 final deepAnalysisCacheProvider = StateNotifierProvider.family<
-    _DeepAnalysisNotifier, AsyncValue<String?>, String>((ref, productId) {
+    _DeepAnalysisNotifier, AsyncValue<DeepAnalysisResult?>, String>((ref, productId) {
   return _DeepAnalysisNotifier(ref, productId);
 });
 
-class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<String?>> {
+class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<DeepAnalysisResult?>> {
   final Ref _ref;
   final String _productId;
 
   _DeepAnalysisNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
 
   Future<void> startAnalysis(String productName, String language, {String category = '', String? brand, int? year}) async {
-    if (state is AsyncLoading) return; // Already running
-    if (state.valueOrNull != null) return; // Already completed
+    if (state is AsyncLoading) return;
+    if (state.valueOrNull != null) return;
     state = const AsyncValue.loading();
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
       final brandInfo = (brand != null && brand.isNotEmpty) ? ' by $brand' : '';
       final yearInfo = (year != null && year > 0) ? ', released around $year' : '';
-      final result = await gemini.freeTextQuery(
+      final result = await gemini.jsonFreeTextQuery(
         'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
         'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
-        'Provide a deep, comprehensive analysis covering:\n'
-        '1. Build quality & design philosophy\n'
-        '2. Performance in real-world scenarios\n'
-        '3. Value proposition vs competitors\n'
-        '4. Hidden strengths most reviewers miss\n'
-        '5. Potential deal-breakers\n'
-        '6. Best use case scenarios\n'
-        '7. Long-term reliability prediction\n'
-        'Keep it concise but insightful (max 250 words). Use markdown formatting for readability.',
+        'Return a JSON object with this EXACT structure:\n'
+        '{\n'
+        '  "overallScore": <number 0-100>,\n'
+        '  "strengths": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
+        '  "weaknesses": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
+        '  "pros": ["<pro1>", "<pro2>", "<pro3>"],\n'
+        '  "cons": ["<con1>", "<con2>", "<con3>"],\n'
+        '  "verdict": "<2-3 sentence final verdict>"\n'
+        '}\n\n'
+        'Rules:\n'
+        '- Provide 3-5 strengths and 2-4 weaknesses\n'
+        '- Scores should be realistic and varied (not all 80-90)\n'
+        '- Pros/cons should be concise (max 10 words each)\n'
+        '- Be honest and specific, not generic praise',
         language: language,
       );
-      state = AsyncValue.data(result.isNotEmpty ? result : 'Unable to generate analysis at this time.');
+      state = AsyncValue.data(_parseDeepAnalysis(result));
     } catch (e) {
-      state = AsyncValue.data('Unable to generate analysis at this time. Please try again later.');
+      state = AsyncValue.data(DeepAnalysisResult(rawFallback: 'Unable to generate analysis at this time.'));
+    }
+  }
+
+  DeepAnalysisResult _parseDeepAnalysis(String raw) {
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return DeepAnalysisResult(
+        overallScore: (json['overallScore'] as num?)?.toInt() ?? 0,
+        strengths: (json['strengths'] as List? ?? []).map((s) => AnalysisAttribute(
+          name: s['name']?.toString() ?? '',
+          score: (s['score'] as num?)?.toInt() ?? 0,
+          detail: s['detail']?.toString() ?? '',
+        )).toList(),
+        weaknesses: (json['weaknesses'] as List? ?? []).map((w) => AnalysisAttribute(
+          name: w['name']?.toString() ?? '',
+          score: (w['score'] as num?)?.toInt() ?? 0,
+          detail: w['detail']?.toString() ?? '',
+        )).toList(),
+        pros: (json['pros'] as List? ?? []).map((p) => p.toString()).toList(),
+        cons: (json['cons'] as List? ?? []).map((c) => c.toString()).toList(),
+        verdict: json['verdict']?.toString() ?? '',
+      );
+    } catch (_) {
+      return DeepAnalysisResult(rawFallback: raw);
     }
   }
 
@@ -2145,11 +2264,11 @@ class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<String?>> {
 
 /// Alternatives cache — survives tab switches
 final alternativesCacheProvider = StateNotifierProvider.family<
-    _AlternativesCacheNotifier, AsyncValue<String?>, String>((ref, productId) {
+    _AlternativesCacheNotifier, AsyncValue<AlternativesResult?>, String>((ref, productId) {
   return _AlternativesCacheNotifier(ref, productId);
 });
 
-class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<String?>> {
+class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<AlternativesResult?>> {
   final Ref _ref;
   final String _productId;
   _AlternativesCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
@@ -2161,21 +2280,44 @@ class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<String?>> {
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
-      final result = await gemini.freeTextQuery(
+      final result = await gemini.jsonFreeTextQuery(
         'The product name is exactly "$productName" ($cat). Do NOT assume any typo in the name.\n\n'
-        'For someone considering this product, suggest 5 smart alternative products.\n'
-        'For EACH alternative provide exactly this format:\n'
-        '**[Product Name]**\n'
-        '✅ Advantage: [One clear advantage over $productName]\n'
-        '⚠️ Trade-off: [One disadvantage or compromise]\n'
-        '💰 Price: [cheaper/similar/pricier] - [brief price context]\n'
-        '🎯 Best for: [Target user in 5 words max]\n\n'
-        'Be specific with real products. Max 350 words.',
+        'Return a JSON object with this EXACT structure:\n'
+        '{\n'
+        '  "alternatives": [\n'
+        '    {\n'
+        '      "name": "<full product name>",\n'
+        '      "advantage": "<one clear advantage over $productName>",\n'
+        '      "tradeoff": "<one disadvantage or compromise>",\n'
+        '      "priceComparison": "<cheaper/similar/pricier>",\n'
+        '      "bestFor": "<target user in 5 words max>",\n'
+        '      "whyBetter": "<brief reason this might be preferred>"\n'
+        '    }\n'
+        '  ]\n'
+        '}\n\n'
+        'Provide exactly 5 real alternative products. Be specific with actual product names.',
         language: language,
       );
-      state = AsyncValue.data(result.isNotEmpty ? result : 'Unable to find alternatives at this time.');
+      state = AsyncValue.data(_parseAlternatives(result));
     } catch (e) {
-      state = AsyncValue.data('Unable to find alternatives at this time. Please try again.');
+      state = AsyncValue.data(AlternativesResult(rawFallback: 'Unable to find alternatives at this time.'));
+    }
+  }
+
+  AlternativesResult _parseAlternatives(String raw) {
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final alts = (json['alternatives'] as List? ?? []).map((a) => AlternativeProduct(
+        name: a['name']?.toString() ?? '',
+        advantage: a['advantage']?.toString() ?? '',
+        tradeoff: a['tradeoff']?.toString() ?? '',
+        priceComparison: a['priceComparison']?.toString() ?? '',
+        bestFor: a['bestFor']?.toString() ?? '',
+        whyBetter: a['whyBetter']?.toString() ?? '',
+      )).toList();
+      return AlternativesResult(alternatives: alts);
+    } catch (_) {
+      return AlternativesResult(rawFallback: raw);
     }
   }
 
@@ -2184,11 +2326,11 @@ class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<String?>> {
 
 /// AI Advisor cache — survives tab switches
 final advisorCacheProvider = StateNotifierProvider.family<
-    _AdvisorCacheNotifier, AsyncValue<String?>, String>((ref, productId) {
+    _AdvisorCacheNotifier, AsyncValue<AdvisorResult?>, String>((ref, productId) {
   return _AdvisorCacheNotifier(ref, productId);
 });
 
-class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<String?>> {
+class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
   final Ref _ref;
   final String _productId;
   _AdvisorCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
@@ -2200,25 +2342,41 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<String?>> {
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
-      final result = await gemini.freeTextQuery(
+      final result = await gemini.jsonFreeTextQuery(
         'As an expert tech advisor, the product name is exactly "$productName" ($cat, $price). Do NOT assume any typo in the name.\n\n'
-        'Analyze for a potential buyer and provide:\n'
-        '**🎯 Who Should Buy This**\n'
-        'Describe the ideal buyer in 2 sentences.\n\n'
-        '**✅ Top 3 Reasons to Buy**\n'
-        'List 3 compelling reasons.\n\n'
-        '**⚠️ Top 3 Reasons to Skip**\n'
-        'List 3 honest concerns.\n\n'
-        '**💡 Pro Tips**\n'
-        '2 insider tips for getting the best value.\n\n'
-        '**📊 Value Rating: X/10**\n'
-        'Overall value assessment in 1 sentence.\n\n'
-        'Be specific and honest. Max 400 words.',
+        'Return a JSON object with this EXACT structure:\n'
+        '{\n'
+        '  "whoShouldBuy": "<2 sentence description of the ideal buyer>",\n'
+        '  "whoShouldAvoid": "<2 sentence description of who should skip this>",\n'
+        '  "reasonsToBuy": ["<reason1>", "<reason2>", "<reason3>"],\n'
+        '  "reasonsToSkip": ["<reason1>", "<reason2>", "<reason3>"],\n'
+        '  "proTips": ["<tip1>", "<tip2>"],\n'
+        '  "valueRating": <number 1-10>,\n'
+        '  "ratingExplanation": "<1 sentence explaining the rating>"\n'
+        '}\n\n'
+        'Be specific and honest. Reasons should be concise (max 15 words each).',
         language: language,
       );
-      state = AsyncValue.data(result.isNotEmpty ? result : 'Unable to generate advice.');
+      state = AsyncValue.data(_parseAdvisor(result));
     } catch (e) {
-      state = AsyncValue.data('Unable to generate advice. Please try again.');
+      state = AsyncValue.data(AdvisorResult(rawFallback: 'Unable to generate advice.'));
+    }
+  }
+
+  AdvisorResult _parseAdvisor(String raw) {
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return AdvisorResult(
+        whoShouldBuy: json['whoShouldBuy']?.toString() ?? '',
+        whoShouldAvoid: json['whoShouldAvoid']?.toString() ?? '',
+        reasonsToBuy: (json['reasonsToBuy'] as List? ?? []).map((r) => r.toString()).toList(),
+        reasonsToSkip: (json['reasonsToSkip'] as List? ?? []).map((r) => r.toString()).toList(),
+        proTips: (json['proTips'] as List? ?? []).map((t) => t.toString()).toList(),
+        valueRating: (json['valueRating'] as num?)?.toDouble() ?? 0,
+        ratingExplanation: json['ratingExplanation']?.toString() ?? '',
+      );
+    } catch (_) {
+      return AdvisorResult(rawFallback: raw);
     }
   }
 
@@ -2227,11 +2385,11 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<String?>> {
 
 /// Price Prediction cache — survives tab switches
 final predictionCacheProvider = StateNotifierProvider.family<
-    _PredictionCacheNotifier, AsyncValue<String?>, String>((ref, productId) {
+    _PredictionCacheNotifier, AsyncValue<PredictionResult?>, String>((ref, productId) {
   return _PredictionCacheNotifier(ref, productId);
 });
 
-class _PredictionCacheNotifier extends StateNotifier<AsyncValue<String?>> {
+class _PredictionCacheNotifier extends StateNotifier<AsyncValue<PredictionResult?>> {
   final Ref _ref;
   final String _productId;
   _PredictionCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
@@ -2243,23 +2401,40 @@ class _PredictionCacheNotifier extends StateNotifier<AsyncValue<String?>> {
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
-      final result = await gemini.freeTextQuery(
+      final result = await gemini.jsonFreeTextQuery(
         'The product name is exactly "$productName" ($cat, current price: $price). Do NOT assume any typo in the name.\n\n'
-        'Analyze the price trends and provide:\n'
-        '**📉 Price Trend**\n'
-        'Is the price likely to go up, down, or stay stable in the next 1-3 months? Why?\n\n'
-        '**🕐 Best Time to Buy**\n'
-        'When is the best time to purchase this product?\n\n'
-        '**💰 Expected Price Drop**\n'
-        'Estimate the potential savings if waiting (percentage and approximate amount).\n\n'
-        '**⚡ Buy Now or Wait?**\n'
-        'Clear recommendation with reasoning.\n\n'
-        'Base analysis on typical tech product lifecycle and market patterns. Max 300 words.',
+        'Return a JSON object with this EXACT structure:\n'
+        '{\n'
+        '  "trend": "<up/down/stable>",\n'
+        '  "trendPercentage": <number 0-100>,\n'
+        '  "bestTimeToBuy": "<when to buy, 1-2 sentences>",\n'
+        '  "expectedDrop": "<expected price change description>",\n'
+        '  "buyOrWait": "<buy/wait>",\n'
+        '  "reasoning": "<2-3 sentence explanation of the prediction>"\n'
+        '}\n\n'
+        'Base analysis on typical tech product lifecycle and market patterns. '
+        'trendPercentage is the expected price change amount in percent.',
         language: language,
       );
-      state = AsyncValue.data(result.isNotEmpty ? result : 'Unable to predict prices.');
+      state = AsyncValue.data(_parsePrediction(result));
     } catch (e) {
-      state = AsyncValue.data('Unable to predict prices. Please try again.');
+      state = AsyncValue.data(PredictionResult(rawFallback: 'Unable to predict prices.'));
+    }
+  }
+
+  PredictionResult _parsePrediction(String raw) {
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return PredictionResult(
+        trend: json['trend']?.toString() ?? 'stable',
+        trendPercentage: (json['trendPercentage'] as num?)?.toInt() ?? 0,
+        bestTimeToBuy: json['bestTimeToBuy']?.toString() ?? '',
+        expectedDrop: json['expectedDrop']?.toString() ?? '',
+        buyOrWait: json['buyOrWait']?.toString() ?? 'buy',
+        reasoning: json['reasoning']?.toString() ?? '',
+      );
+    } catch (_) {
+      return PredictionResult(rawFallback: raw);
     }
   }
 
