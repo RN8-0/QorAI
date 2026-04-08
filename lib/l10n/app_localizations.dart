@@ -1543,7 +1543,7 @@ abstract class AppLocalizations {
   /// No description provided for @specsTab.
   ///
   /// In en, this message translates to:
-  /// **'Specifications'**
+  /// **'Specs'**
   String get specsTab;
 
   /// No description provided for @reviewsTab.

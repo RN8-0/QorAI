@@ -2334,9 +2334,10 @@ class _SpecRow extends StatelessWidget {
                 flex: 4,
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: AppTheme.slate500,
+                    fontWeight: FontWeight.w400,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -2414,7 +2415,7 @@ class _SpecRow extends StatelessWidget {
             '• $p',
             style: TextStyle(
               fontSize: 12.5,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: context.textPrimary,
               height: 1.4,
             ),
@@ -2429,7 +2430,7 @@ class _SpecRow extends StatelessWidget {
       val,
       style: TextStyle(
         fontSize: 13,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: context.textPrimary,
       ),
       textAlign: TextAlign.end,
@@ -5113,8 +5114,8 @@ class _YouTubeReviewsCardState extends ConsumerState<_YouTubeReviewsCard> {
                 icon: const Icon(Icons.play_arrow),
                 label: Text(context.l10n?.loadReviewVideos ?? 'Load Review Videos'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.error,
-                  side: const BorderSide(color: AppTheme.error),
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                  side: BorderSide(color: Theme.of(context).colorScheme.primary),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -7261,15 +7262,6 @@ class _PremiumFeaturesSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section header
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text(context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15, fontWeight: FontWeight.w700,
-              color: context.textSecondary, letterSpacing: 0.3)),
-        ),
-
         // AI Deep Analysis
         _buildCollapsibleHeader(
           icon: Icons.psychology_rounded,
@@ -8415,7 +8407,6 @@ class _SimilarProductCard extends ConsumerWidget {
       onTap: () => context.push('/product/${product.id}'),
       child: Container(
         width: 260,
-        height: 200,
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(20),

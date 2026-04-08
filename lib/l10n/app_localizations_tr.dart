@@ -739,7 +739,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get overviewTab => 'Genel Bakış';
 
   @override
-  String get specsTab => 'Özellikler';
+  String get specsTab => 'Özellik';
 
   @override
   String get reviewsTab => 'Yorumlar';

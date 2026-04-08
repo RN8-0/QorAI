@@ -736,7 +736,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get overviewTab => 'Overview';
 
   @override
-  String get specsTab => 'Specifications';
+  String get specsTab => 'Specs';
 
   @override
   String get reviewsTab => 'Reviews';
