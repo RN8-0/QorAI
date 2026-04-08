@@ -2310,15 +2310,27 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     return false;
   }
 
-  // ── HARD FILTER: year >= 2022, known brands, no old products ──────────────
+  // ── HARD FILTER: year >= 2020, known brands, no old products ──────────────
   final hiddenSet = hiddenIds.toSet();
+  int filteredByHidden = 0, filteredByOldProduct = 0, filteredByBrand = 0, filteredByYear = 0;
   var pool = deduped.where((p) {
-    if (hiddenSet.contains(p.id)) return false;
-    if (isKnownOldProduct(p)) return false;
-    return ProductFilter.isAllowed(p);
+    if (hiddenSet.contains(p.id)) { filteredByHidden++; return false; }
+    if (isKnownOldProduct(p)) { filteredByOldProduct++; return false; }
+    if (!ProductFilter.isAllowed(p)) {
+      final brand = (p.brand ?? '').toLowerCase().trim();
+      if (ProductFilter.defunctBrands.contains(brand) ||
+          brand.isEmpty || !ProductFilter.allowedBrands.contains(brand)) {
+        filteredByBrand++;
+      } else {
+        filteredByYear++;
+      }
+      return false;
+    }
+    return true;
   }).toList();
 
-  debugPrint('=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw, filtered ${deduped.length - pool.length}) ===');
+  debugPrint('=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===');
+  debugPrint('=== COMPAIR: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===');
 
   // ── Brand tier boost multiplier ────────────────────────────────────────────
   const tier1Brands = {
@@ -2501,7 +2513,7 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     byCategory.removeWhere((key, _) => disabledSet.contains(key));
   }
 
-  // Sort by score and enforce brand diversity (max 3 per brand per category)
+  // Sort by score and enforce brand diversity (max 6 per brand per category)
   for (final cat in byCategory.keys.toList()) {
     final all = byCategory[cat]!;
     all.sort((a, b) => youtubeScore(b).compareTo(youtubeScore(a)));
@@ -2511,12 +2523,13 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     for (final p in all) {
       final brand = (p.brand ?? '').toLowerCase().trim();
       final count = brandCount[brand] ?? 0;
-      if (count < 4) {
+      if (count < 6) {
         diverse.add(p);
         brandCount[brand] = count + 1;
       }
       if (diverse.length >= 80) break;
     }
+    debugPrint('=== COMPAIR:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===');
     byCategory[cat] = diverse;
   }
 

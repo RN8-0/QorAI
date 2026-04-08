@@ -4,11 +4,11 @@ library;
 
 import 'package:compair/domain/entities/product_entity.dart';
 
-/// Centralized product filter: year >= 2022, known brands only
+/// Centralized product filter: year >= 2020, known brands only
 class ProductFilter {
   ProductFilter._();
 
-  static const int minYear = 2022;
+  static const int minYear = 2020;
 
   // ── Defunct / dead brands ──────────────────────────────────────────────
   static const defunctBrands = {
@@ -102,11 +102,11 @@ class ProductFilter {
     // No exact year — use createdAt as proxy
     if (p.createdAt != null) {
       if (p.createdAt!.isBefore(DateTime(minYear, 1, 1))) return false;
-      if (p.techScore >= 30) return true;
+      if (p.techScore >= 20) return true;
     }
 
-    // No year, no createdAt — only keep very high techScore
-    return p.techScore >= 50;
+    // No year, no createdAt — keep if reasonable techScore
+    return p.techScore >= 30;
   }
 
   /// Filter a list of products
