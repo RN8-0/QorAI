@@ -445,12 +445,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 return Material(color: Colors.transparent, child: InkWell(
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    ref.read(selectedCountryProvider.notifier).state = entry.key;
+                    ref.read(selectedCountryProvider.notifier).setCountry(entry.key);
                     // Auto-switch language to match the country's official language
                     final langCode = entry.value.language;
                     if (_languageNames.containsKey(langCode)) {
                       ref.read(localeProvider.notifier).setLocale(langCode);
                     }
+                    // Save to Firestore if logged in
+                    _updateFirestoreCountry(ref, entry.key, entry.value.currency);
                     Navigator.pop(context);
                   },
                   child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -498,6 +500,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () {
                     HapticFeedback.selectionClick();
                     ref.read(localeProvider.notifier).setLocale(entry.key);
+                    // Save language to Firestore if logged in
+                    _updateFirestoreLanguage(ref, entry.key);
                     Navigator.pop(context);
                   },
                   child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -514,6 +518,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ]),
       ),
     );
+  }
+
+  void _updateFirestoreCountry(WidgetRef ref, String countryCode, String currency) {
+    final authState = ref.read(authStateProvider).valueOrNull;
+    if (authState != null) {
+      ref.read(firebaseDataSourceProvider).updateUser(authState.uid, {
+        'country': countryCode,
+        'currency': currency,
+      });
+    }
+  }
+
+  void _updateFirestoreLanguage(WidgetRef ref, String languageCode) {
+    final authState = ref.read(authStateProvider).valueOrNull;
+    if (authState != null) {
+      ref.read(firebaseDataSourceProvider).updateUser(authState.uid, {
+        'language': languageCode,
+      });
+    }
   }
 
   void _showSignOutDialog(BuildContext context, WidgetRef ref) {

@@ -48,6 +48,7 @@ import 'package:compair/services/analytics_service.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/product_filter.dart';
+import 'package:compair/core/constants.dart';
 
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/data/models/product_model.dart';
@@ -280,17 +281,20 @@ final userProfileStreamProvider = StreamProvider<UserEntity?>((ref) {
   );
 });
 
-/// Updates user profile country in Firestore from IP detection when not already set
+/// Updates user profile country + currency in Firestore from IP detection
 final countryInitProvider = FutureProvider<void>((ref) async {
   final authState = await ref.watch(authStateProvider.future);
   if (authState == null) return;
-  final detectedCountry = await ref.watch(detectedCountryProvider.future);
-  if (detectedCountry.isEmpty || detectedCountry == 'US') return;
+  final location = await ref.watch(detectedLocationProvider.future);
+  if (location.countryCode.isEmpty) return;
 
   try {
     final user = await ref.read(userProfileProvider.future);
     if (user != null && (user.country == 'US' || user.country.isEmpty)) {
-      await ref.read(firebaseDataSourceProvider).updateUser(authState.uid, {'country': detectedCountry});
+      await ref.read(firebaseDataSourceProvider).updateUser(authState.uid, {
+        'country': location.countryCode,
+        'currency': location.currency,
+      });
     }
   } catch (_) {}
 });
@@ -302,18 +306,59 @@ final countryInitProvider = FutureProvider<void>((ref) async {
 /// Selected category - Section 3.3
 final selectedCategoryProvider = StateProvider<String?>((ref) => null);
 
-/// Selected country — auto-detected via IP on first use, can be overridden
-final selectedCountryProvider = StateProvider<String>((ref) {
-  // Kick off IP detection; update state when result arrives
-  ref.listen(detectedCountryProvider, (_, next) {
-    next.whenData((country) {
-      if (country.isNotEmpty && country != 'US') {
-        // Only override default; user-set values are handled separately
-        ref.controller.state = country;
-      }
+/// Selected country — auto-detected via IP on first use, persisted in CacheService
+final selectedCountryProvider = StateNotifierProvider<CountryNotifier, String>((ref) {
+  return CountryNotifier(ref.read(cacheServiceProvider), ref);
+});
+
+class CountryNotifier extends StateNotifier<String> {
+  final CacheService _cacheService;
+  final Ref _ref;
+
+  CountryNotifier(this._cacheService, this._ref) : super('US') {
+    _load();
+  }
+
+  void _load() {
+    // 1. Check if user manually set a country
+    final saved = _cacheService.getCountry();
+    if (saved.isNotEmpty) {
+      state = saved;
+      return;
+    }
+    // 2. Kick off IP detection in background
+    _ref.listen(detectedLocationProvider, (_, next) {
+      next.whenData((location) {
+        // Only auto-set if user hasn't manually chosen
+        if (!_cacheService.isCountryManuallySet() && location.countryCode.isNotEmpty) {
+          state = location.countryCode;
+          _cacheService.saveCountry(location.countryCode);
+          _cacheService.saveCurrency(location.currency);
+        }
+      });
     });
-  });
-  return 'US'; // initial default; updated async by IP detection
+  }
+
+  void setCountry(String countryCode) {
+    state = countryCode;
+    _cacheService.saveCountry(countryCode);
+    _cacheService.setCountryManuallySet(true);
+    // Also update currency from SupportedCountries
+    final info = SupportedCountries.countries[countryCode];
+    if (info != null) {
+      _cacheService.saveCurrency(info.currency);
+    }
+  }
+}
+
+/// Currency derived from selected country
+final currencyProvider = Provider<String>((ref) {
+  final country = ref.watch(selectedCountryProvider);
+  final info = SupportedCountries.countries[country];
+  if (info != null) return info.currency;
+  // Fallback: check CacheService
+  final cached = ref.read(cacheServiceProvider).getCurrency();
+  return cached.isNotEmpty ? cached : 'USD';
 });
 
 /// Language / Locale manager — persisted in CacheService

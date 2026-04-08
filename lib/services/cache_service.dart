@@ -50,6 +50,33 @@ class CacheService {
     return _settingsBox.get('language_code', defaultValue: '') as String;
   }
 
+  // ─── Country Settings ───
+  void saveCountry(String countryCode) {
+    _settingsBox.put('country_code', countryCode);
+  }
+
+  String getCountry() {
+    return _settingsBox.get('country_code', defaultValue: '') as String;
+  }
+
+  // ─── Currency Settings ───
+  void saveCurrency(String currencyCode) {
+    _settingsBox.put('currency_code', currencyCode);
+  }
+
+  String getCurrency() {
+    return _settingsBox.get('currency_code', defaultValue: '') as String;
+  }
+
+  /// Whether country was manually set by user (overrides IP detection)
+  void setCountryManuallySet(bool value) {
+    _settingsBox.put('country_manually_set', value);
+  }
+
+  bool isCountryManuallySet() {
+    return _settingsBox.get('country_manually_set', defaultValue: false) as bool;
+  }
+
   /// Get value (local first, then server) - Section 7.4
   Future<T?> get<T>(String key) async {
     // 1. Check Hive local cache

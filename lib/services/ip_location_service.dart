@@ -1,19 +1,33 @@
-/// IP-based user location detection using ip-api.com (free, no key required)
+/// IP-based user location detection using ip-api.com + ipapi.co
 library;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 const _boxName = 'compair_local_cache';
-const _cacheKey = 'ip_location_country';
+const _cacheKey = 'ip_location_data';
 const _cacheTtlMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/// Result of IP-based location detection
+class IpLocationResult {
+  final String countryCode;
+  final String currency;
+  final String countryName;
+
+  const IpLocationResult({
+    this.countryCode = 'US',
+    this.currency = 'USD',
+    this.countryName = 'United States',
+  });
+}
 
 class IpLocationService {
   final Dio _dio;
   IpLocationService(this._dio);
 
-  Future<String> detectCountry() async {
+  Future<IpLocationResult> detectLocation() async {
     // 1) Check Hive cache (7-day TTL)
     try {
       final box = await Hive.openBox(_boxName);
@@ -21,16 +35,43 @@ class IpLocationService {
       if (raw is Map) {
         final ts = (raw['ts'] as int?) ?? 0;
         if (DateTime.now().millisecondsSinceEpoch - ts < _cacheTtlMs) {
-          return (raw['country'] as String?) ?? 'US';
+          return IpLocationResult(
+            countryCode: (raw['country'] as String?) ?? 'US',
+            currency: (raw['currency'] as String?) ?? 'USD',
+            countryName: (raw['countryName'] as String?) ?? 'United States',
+          );
         }
       }
     } catch (_) {}
 
-    // 2) Primary: ip-api.com (free, no API key, ~50ms)
+    // 2) Primary: ipapi.co/json/ (returns country, currency, country_name)
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        'https://ipapi.co/json/',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 5),
+          sendTimeout: const Duration(seconds: 5),
+        ),
+      );
+      final data = res.data;
+      if (data != null && data['country_code'] != null) {
+        final result = IpLocationResult(
+          countryCode: (data['country_code'] as String?) ?? 'US',
+          currency: (data['currency'] as String?) ?? 'USD',
+          countryName: (data['country_name'] as String?) ?? 'United States',
+        );
+        await _saveToCache(result);
+        return result;
+      }
+    } catch (e) {
+      debugPrint('=== COMPAIR: ipapi.co failed: $e ===');
+    }
+
+    // 3) Fallback: ip-api.com (no currency field, map from country)
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         'http://ip-api.com/json/',
-        queryParameters: {'fields': 'countryCode,status'},
+        queryParameters: {'fields': 'countryCode,country,status'},
         options: Options(
           receiveTimeout: const Duration(seconds: 5),
           sendTimeout: const Duration(seconds: 5),
@@ -38,39 +79,48 @@ class IpLocationService {
       );
       final data = res.data;
       if (data != null && data['status'] == 'success') {
-        final country = (data['countryCode'] as String?) ?? 'US';
-        await _saveToCache(country);
-        return country;
+        final cc = (data['countryCode'] as String?) ?? 'US';
+        final result = IpLocationResult(
+          countryCode: cc,
+          currency: _currencyFromCountry(cc),
+          countryName: (data['country'] as String?) ?? 'United States',
+        );
+        await _saveToCache(result);
+        return result;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('=== COMPAIR: ip-api.com failed: $e ===');
+    }
 
-    // 3) Fallback: ipapi.co
-    try {
-      final res = await _dio.get<String>(
-        'https://ipapi.co/country_code/',
-        options: Options(
-          receiveTimeout: const Duration(seconds: 5),
-          sendTimeout: const Duration(seconds: 5),
-        ),
-      );
-      final body = (res.data ?? '').trim();
-      if (body.length == 2 && RegExp(r'^[A-Z]{2}$').hasMatch(body)) {
-        await _saveToCache(body);
-        return body;
-      }
-    } catch (_) {}
-
-    return 'US';
+    return const IpLocationResult();
   }
 
-  Future<void> _saveToCache(String country) async {
+  /// Legacy helper for backward compatibility
+  Future<String> detectCountry() async {
+    final result = await detectLocation();
+    return result.countryCode;
+  }
+
+  Future<void> _saveToCache(IpLocationResult result) async {
     try {
       final box = await Hive.openBox(_boxName);
       await box.put(_cacheKey, {
-        'country': country,
+        'country': result.countryCode,
+        'currency': result.currency,
+        'countryName': result.countryName,
         'ts': DateTime.now().millisecondsSinceEpoch,
       });
     } catch (_) {}
+  }
+
+  static String _currencyFromCountry(String countryCode) {
+    const map = {
+      'US': 'USD', 'GB': 'GBP', 'DE': 'EUR', 'FR': 'EUR', 'IT': 'EUR',
+      'ES': 'EUR', 'NL': 'EUR', 'CA': 'CAD', 'AU': 'AUD', 'JP': 'JPY',
+      'IN': 'INR', 'TR': 'TRY', 'SE': 'SEK', 'PL': 'PLN', 'MX': 'MXN',
+      'BR': 'BRL', 'SG': 'SGD', 'AE': 'AED', 'SA': 'SAR',
+    };
+    return map[countryCode] ?? 'USD';
   }
 }
 
@@ -79,5 +129,10 @@ final ipLocationServiceProvider = Provider<IpLocationService>((ref) {
 });
 
 final detectedCountryProvider = FutureProvider<String>((ref) async {
-  return ref.read(ipLocationServiceProvider).detectCountry();
+  final result = await ref.read(ipLocationServiceProvider).detectLocation();
+  return result.countryCode;
+});
+
+final detectedLocationProvider = FutureProvider<IpLocationResult>((ref) async {
+  return ref.read(ipLocationServiceProvider).detectLocation();
 });
