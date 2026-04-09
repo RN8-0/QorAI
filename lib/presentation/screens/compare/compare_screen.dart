@@ -296,6 +296,22 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     setState(() {});
   }
 
+  void _removeProductFromComparison(String productId) {
+    final session = ref.read(compareSessionProvider);
+    final newIds = List<String>.from(session.selectedProductIds)..remove(productId);
+    final newProducts = session.comparedProducts?.where((p) => p.id != productId).toList();
+    if (newIds.length < 2) {
+      // Not enough products for comparison, reset
+      _resetComparison();
+      return;
+    }
+    ref.read(compareSessionProvider.notifier).state = CompareSessionData(
+      selectedProductIds: newIds,
+      comparedProducts: newProducts,
+    );
+    setState(() {});
+  }
+
   /// Directly start comparison with full ProductEntity objects (bypasses provider cache)
   void _directCompare(List<ProductEntity> products) {
     if (products.length < 2) return;
@@ -359,7 +375,11 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           // Content
           Expanded(
             child: _products != null
-                ? _SpecComparisonView(products: _products, onReset: _resetComparison)
+                ? _SpecComparisonView(
+                    products: _products,
+                    onReset: _resetComparison,
+                    onRemoveProduct: _removeProductFromComparison,
+                  )
                 : _buildSelectionView(),
           ),
         ],

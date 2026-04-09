@@ -3,7 +3,8 @@ part of '../compare_screen.dart';
 class _SpecComparisonView extends ConsumerStatefulWidget {
   final List<ProductEntity> products;
   final VoidCallback onReset;
-  const _SpecComparisonView({required this.products, required this.onReset});
+  final void Function(String productId)? onRemoveProduct;
+  const _SpecComparisonView({required this.products, required this.onReset, this.onRemoveProduct});
 
   @override
   ConsumerState<_SpecComparisonView> createState() => _SpecComparisonViewState();
@@ -16,6 +17,11 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   Map<String, dynamic>? _aiStructured;
   bool _aiLoading = false;
   bool _aiExpanded = true;
+
+  // Quick Verdict state
+  bool _quickVerdictExpanded = false;
+  bool _quickVerdictLoading = false;
+  String? _quickVerdictResult;
 
   // Deep Analysis state
   bool _deepAnalysisExpanded = false;
@@ -155,6 +161,46 @@ Return ONLY valid JSON:
       }
     } catch (_) {
       if (mounted) setState(() => _aiLoading = false);
+    }
+  }
+
+  Future<void> _toggleQuickVerdict() async {
+    if (_quickVerdictExpanded && _quickVerdictResult != null) {
+      setState(() => _quickVerdictExpanded = false);
+      return;
+    }
+    setState(() {
+      _quickVerdictExpanded = true;
+      if (_quickVerdictResult != null) return;
+      _quickVerdictLoading = true;
+    });
+    if (_quickVerdictResult != null) return;
+    try {
+      final gemini = ref.read(geminiServiceProvider);
+      final lang = Localizations.localeOf(context).languageCode;
+      final langName = lang == 'tr' ? 'Turkish' : 'English';
+      final productNames = widget.products.map((p) => p.name).join(' vs ');
+
+      final result = await gemini.groundedQuery(
+        '''You are a decisive tech advisor. Address the user directly using "you/your" (2nd person).
+Compare "$productNames" and give a CLEAR, CONCISE buying recommendation.
+
+Answer in $langName in EXACTLY 2-3 sentences:
+1. Which product you should buy and the #1 reason why
+2. When the other product(s) might be better for you
+Keep it punchy and actionable. No hedging.''',
+      );
+      if (mounted) {
+        setState(() {
+          _quickVerdictResult = result.isNotEmpty ? result : 'Unable to generate verdict.';
+          _quickVerdictLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() {
+        _quickVerdictResult = 'Unable to generate verdict. Please try again.';
+        _quickVerdictLoading = false;
+      });
     }
   }
 
@@ -859,15 +905,21 @@ For each product, analyze current pricing and what it means for you
                 Expanded(child: Text(
                   context.l10n?.aiAnalysis ?? 'AI Analysis',
                   style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
                 )),
                 if (hasStructured && _aiStructured!['winner'] != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.scoreExcellent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8)),
-                    child: Text('🏆 ${_aiStructured!['winner']}',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.scoreExcellent)),
+                  Flexible(
+                    flex: 0,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 100),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.scoreExcellent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Text('🏆 ${_aiStructured!['winner']}',
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.scoreExcellent)),
+                    ),
                   ),
                 const SizedBox(width: 8),
                 if (_aiLoading)
@@ -1070,25 +1122,36 @@ For each product, analyze current pricing and what it means for you
                 fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
           ]),
         ),
-        // Per-product grids side by side
+        // Per-product grids: side by side for 2, stacked for 3-4
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: widget.products.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final product = entry.value;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    left: idx > 0 ? 4 : 0,
-                    right: idx < widget.products.length - 1 ? 4 : 0,
-                  ),
-                  child: _buildProductKeySpecsGrid(product, theme),
-                ),
-              );
-            }).toList(),
-          ),
+          child: widget.products.length <= 2
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: widget.products.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final product = entry.value;
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: idx > 0 ? 4 : 0,
+                        right: idx < widget.products.length - 1 ? 4 : 0,
+                      ),
+                      child: _buildProductKeySpecsGrid(product, theme),
+                    ),
+                  );
+                }).toList(),
+              )
+            : Column(
+                children: widget.products.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final product = entry.value;
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: idx < widget.products.length - 1 ? 8 : 0),
+                    child: _buildProductKeySpecsGrid(product, theme),
+                  );
+                }).toList(),
+              ),
         ),
         const SizedBox(height: 12),
         // Comparison table below
@@ -1150,7 +1213,7 @@ For each product, analyze current pricing and what it means for you
                                   : null,
                             ),
                             child: Text(
-                              _localizedSpecValue(context, val),
+                              '${isBetter ? '🏆 ' : ''}${_localizedSpecValue(context, val)}',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 11,
                                 fontWeight: isBetter ? FontWeight.w700 : FontWeight.w500,
@@ -1282,6 +1345,33 @@ For each product, analyze current pricing and what it means for you
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _showRemoveProductDialog(ProductEntity product) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove Product', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Remove "${product.name}" from comparison?',
+          style: GoogleFonts.plusJakartaSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              widget.onRemoveProduct?.call(product.id);
+            },
+            child: Text('Remove', style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w600, color: AppTheme.error)),
+          ),
         ],
       ),
     );
@@ -1454,114 +1544,75 @@ For each product, analyze current pricing and what it means for you
 
   // ─── Visual Builders ───
 
-  Widget _buildProductColumn(ProductEntity product) {
-    final userProfile = ref.watch(userProfileProvider);
-    final user = userProfile.valueOrNull;
-    int? matchScore;
-    if (user != null) {
-      try {
-        final algo = ref.read(profileAlgorithmServiceProvider);
-        final behavior = ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
-        final fs = algo.calculateTotalFitScore(user: user, product: product, behavior: behavior);
-        if (fs > 0) matchScore = fs.toInt();
-      } catch (_) {}
-    }
+  Widget _buildProductColumn(ProductEntity product, {bool compact = false}) {
     final scoreColor = product.techScore >= 80 ? AppTheme.scoreExcellent
         : product.techScore >= 60 ? AppTheme.scoreAverage
         : product.techScore >= 40 ? AppTheme.orange500
         : AppTheme.error;
-    final matchColor = matchScore == null ? null
-        : matchScore >= 80 ? AppTheme.scoreExcellent
-        : matchScore >= 60 ? AppTheme.scoreAverage
-        : AppTheme.orange500;
+    final imgSize = compact ? 70.0 : 100.0;
+    final maxNameLines = compact ? 1 : 2;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final imgSize = (constraints.maxWidth * 0.7).clamp(60.0, 120.0);
-        return Column(
-          children: [
-            // Product image — clean, no badges on top
-            ProductImageBox(
-              imageUrl: product.imageUrl,
-              width: imgSize,
-              height: imgSize,
-              borderRadius: BorderRadius.circular(18),
-              padding: const EdgeInsets.all(8),
-            ),
-            const SizedBox(height: 8),
-            // Badges row below image
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (product.techScore > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: scoreColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.memory_outlined, size: 10, color: scoreColor),
-                      const SizedBox(width: 3),
-                      Text(product.techScore.toInt().toString(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10, fontWeight: FontWeight.w800, color: scoreColor)),
-                    ]),
-                  ),
-                if (product.techScore > 0 && matchScore != null) const SizedBox(width: 4),
-                if (matchScore != null && matchColor != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: matchColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: matchColor.withValues(alpha: 0.3), width: 0.5),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.person_outline, size: 10, color: matchColor),
-                      const SizedBox(width: 3),
-                      Text('$matchScore%',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10, fontWeight: FontWeight.w800, color: matchColor)),
-                    ]),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            // Product name
-            SizedBox(
-              height: 36,
-              child: Text(
-                product.name,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: context.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onTap: () => context.push('${AppRoutes.productDetail}/${product.id}'),
+      onLongPress: widget.onRemoveProduct != null && widget.products.length > 2
+          ? () => _showRemoveProductDialog(product)
+          : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Product image
+          ProductImageBox(
+            imageUrl: product.imageUrl,
+            width: imgSize,
+            height: imgSize,
+            borderRadius: BorderRadius.circular(compact ? 14 : 18),
+            padding: EdgeInsets.all(compact ? 6 : 8),
+          ),
+          const SizedBox(height: 6),
+          // TechScore badge only
+          if (product.techScore > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: scoreColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
               ),
-            ),
-            // Brand
-            if (product.brand != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  product.brand!.toUpperCase(),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.memory_outlined, size: 10, color: scoreColor),
+                const SizedBox(width: 3),
+                Text(product.techScore.toInt().toString(),
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
-                    color: context.textTertiaryColor,
-                  ),
-                ),
+                    fontSize: 10, fontWeight: FontWeight.w800, color: scoreColor)),
+              ]),
+            ),
+          const SizedBox(height: 4),
+          // Product name
+          Text(
+            product.name,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: compact ? 11 : 12,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: maxNameLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+          // Brand
+          if (product.brand != null)
+            Text(
+              product.brand!.toUpperCase(),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.6,
+                color: context.textTertiaryColor,
               ),
-          ],
-        );
-      },
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+            ),
+        ],
+      ),
     );
   }
 
@@ -1603,29 +1654,24 @@ For each product, analyze current pricing and what it means for you
                     children: [
                       Expanded(child: _buildProductColumn(widget.products[0])),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 24),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 24),
                         child: Container(
-                          width: 36, height: 36,
+                          width: 32, height: 32,
                           decoration: BoxDecoration(
                             gradient: _accentGradient,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
                                 color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
                           child: Center(
-                            child: Text(
-                              'VS',
+                            child: Text('VS',
                               style: GoogleFonts.plusJakartaSans(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+                                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
                           ),
                         ).animate(onPlay: (c) => c.repeat(reverse: true))
                           .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1500.ms, curve: Curves.easeInOut),
@@ -1633,49 +1679,43 @@ For each product, analyze current pricing and what it means for you
                       Expanded(child: _buildProductColumn(widget.products[1])),
                     ],
                   )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: widget.products.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final product = entry.value;
-                      return Expanded(
-                        child: Row(
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: widget.products.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final product = entry.value;
+                        final screenWidth = MediaQuery.of(context).size.width;
+                        final cardWidth = (screenWidth - 72) / 2.5; // show 2.5 cards
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: _buildProductColumn(product)),
+                            SizedBox(
+                              width: cardWidth,
+                              child: _buildProductColumn(product, compact: true),
+                            ),
                             if (idx < widget.products.length - 1)
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 24),
+                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 20),
                                 child: Container(
-                                  width: 30, height: 30,
+                                  width: 24, height: 24,
                                   decoration: BoxDecoration(
                                     gradient: _accentGradient,
                                     shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
                                   ),
                                   child: Center(
-                                    child: Text(
-                                      'VS',
+                                    child: Text('VS',
                                       style: GoogleFonts.plusJakartaSans(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
+                                        color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
                                   ),
-                                ).animate(onPlay: (c) => c.repeat(reverse: true))
-                                  .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1500.ms, curve: Curves.easeInOut),
+                                ),
                               ),
                           ],
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                   ),
           ),
         ),
@@ -2026,18 +2066,19 @@ For each product, analyze current pricing and what it means for you
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product.name,
+                        product.brand != null
+                          ? '${product.brand!} ${product.name.split(' ').take(2).join(' ')}'
+                          : product.name,
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
                       ),
-                      if (product.brand != null)
-                        Text(
-                          product.brand!.toUpperCase(),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10, fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5, color: context.textTertiaryColor),
-                        ),
+                      Text(
+                        'Similar Products',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10, fontWeight: FontWeight.w500,
+                          color: context.textTertiaryColor),
+                      ),
                     ],
                   )),
                   if (product.techScore > 0)
@@ -2072,6 +2113,18 @@ For each product, analyze current pricing and what it means for you
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
+        // Quick Verdict — "Hangisini Almalıyım?"
+        _buildExpandableCard(
+          icon: Icons.gavel_rounded,
+          title: 'Which One Should You Buy?',
+          subtitle: 'Quick AI verdict for your comparison',
+          gradient: const [Color(0xFFEC4899), Color(0xFFF43F5E)],
+          isExpanded: _quickVerdictExpanded,
+          isLoading: _quickVerdictLoading,
+          content: _quickVerdictResult,
+          onTap: _toggleQuickVerdict,
+        ),
+        const SizedBox(height: 14),
         // User Compatibility Match
         _buildMatchScoreSection(),
         const SizedBox(height: 14),
@@ -2300,7 +2353,8 @@ For each product, analyze current pricing and what it means for you
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.plusJakartaSans(
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
                     fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
                   const SizedBox(height: 2),
                   Text(subtitle, style: GoogleFonts.plusJakartaSans(
@@ -2788,8 +2842,8 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
           final idx = entry.key;
           final product = entry.value;
           final chipColor = _chipColors[idx % 4];
-          final name = product.name.length > 12
-              ? '${product.name.substring(0, 12)}…'
+          final name = product.name.length > 8
+              ? '${product.name.substring(0, 8)}…'
               : product.name;
           return Expanded(
             child: Row(
