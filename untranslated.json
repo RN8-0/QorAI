@@ -31,7 +31,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "de": [
@@ -66,7 +67,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "es": [
@@ -101,7 +103,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "fr": [
@@ -136,7 +139,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "it": [
@@ -171,7 +175,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "ja": [
@@ -206,7 +211,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "nl": [
@@ -241,7 +247,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "pl": [
@@ -276,7 +283,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "pt": [
@@ -311,7 +319,8 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ],
 
   "sv": [
@@ -346,6 +355,7 @@
     "aiCompatibilityAnalysis",
     "completeQuiz",
     "basedOnYourPreferences",
-    "comparisonVideos"
+    "comparisonVideos",
+    "tapToLoadVideos"
   ]
 }

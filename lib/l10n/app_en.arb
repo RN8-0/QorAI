@@ -1393,5 +1393,6 @@
   "aiCompatibilityAnalysis": "AI-powered compatibility analysis",
   "completeQuiz": "Complete Quiz",
   "basedOnYourPreferences": "Based on your preferences and usage habits",
-  "comparisonVideos": "Comparison Videos"
+  "comparisonVideos": "Comparison Videos",
+  "tapToLoadVideos": "Tap to load comparison videos"
 }

@@ -6855,6 +6855,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Comparison Videos'**
   String get comparisonVideos;
+
+  /// No description provided for @tapToLoadVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to load comparison videos'**
+  String get tapToLoadVideos;
 }
 
 class _AppLocalizationsDelegate

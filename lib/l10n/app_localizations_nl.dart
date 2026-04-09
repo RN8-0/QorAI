@@ -3533,4 +3533,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get comparisonVideos => 'Comparison Videos';
+
+  @override
+  String get tapToLoadVideos => 'Tap to load comparison videos';
 }

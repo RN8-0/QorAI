@@ -2010,7 +2010,7 @@ Return ONLY valid JSON:
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 40),
       children: [
-        // Single YouTube section with comparison query
+        // Single YouTube section with comparison query (collapsible)
         Padding(
           padding: const EdgeInsets.only(bottom: 14),
           child: SharedYouTubeReviewsCard(
@@ -2019,6 +2019,7 @@ Return ONLY valid JSON:
             cardBg: context.surfaceVariantColor,
             searchQuery: vsQuery,
             titleOverride: context.l10n?.comparisonVideos ?? 'Comparison Videos',
+            collapsible: true,
           ),
         ),
 

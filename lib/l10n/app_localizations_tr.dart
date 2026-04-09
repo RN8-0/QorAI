@@ -3537,4 +3537,8 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get comparisonVideos => 'Karşılaştırma Videoları';
+
+  @override
+  String get tapToLoadVideos =>
+      'Karşılaştırma videolarını yüklemek için dokunun';
 }

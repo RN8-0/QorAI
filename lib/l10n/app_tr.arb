@@ -1336,5 +1336,6 @@
   "aiCompatibilityAnalysis": "AI destekli uyumluluk analizi",
   "completeQuiz": "Quiz'i Tamamla",
   "basedOnYourPreferences": "Tercihleriniz ve kullanım alışkanlıklarınıza göre",
-  "comparisonVideos": "Karşılaştırma Videoları"
+  "comparisonVideos": "Karşılaştırma Videoları",
+  "tapToLoadVideos": "Karşılaştırma videolarını yüklemek için dokunun"
 }
