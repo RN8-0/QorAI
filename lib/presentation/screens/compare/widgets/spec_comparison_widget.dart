@@ -1607,64 +1607,6 @@ Return ONLY valid JSON:
 
   // ─── Visual Builders ───
 
-  Widget _buildProductColumn(ProductEntity product, {bool compact = false}) {
-    final scoreColor = product.techScore >= 80 ? AppTheme.scoreExcellent
-        : product.techScore >= 60 ? AppTheme.scoreAverage
-        : product.techScore >= 40 ? AppTheme.orange500
-        : AppTheme.error;
-    final imgSize = compact ? 70.0 : 100.0;
-
-    return GestureDetector(
-      onTap: () => context.push('/product/${product.id}'),
-      onLongPress: widget.onRemoveProduct != null && widget.products.length > 2
-          ? () => _showRemoveProductDialog(product)
-          : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Product image
-          ProductImageBox(
-            imageUrl: product.imageUrl,
-            width: imgSize,
-            height: imgSize,
-            borderRadius: BorderRadius.circular(compact ? 14 : 18),
-            padding: EdgeInsets.all(compact ? 6 : 8),
-          ),
-          const SizedBox(height: 4),
-          // TechScore badge
-          if (product.techScore > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: scoreColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.memory_outlined, size: 10, color: scoreColor),
-                const SizedBox(width: 3),
-                Text(product.techScore.toInt().toString(),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10, fontWeight: FontWeight.w800, color: scoreColor)),
-              ]),
-            ),
-          const SizedBox(height: 3),
-          // Product name — single location, below badge
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              product.name,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11, fontWeight: FontWeight.w600, color: context.textPrimary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1674,19 +1616,12 @@ Return ONLY valid JSON:
       length: 4,
       child: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // Sticky product header with images + VS badge
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _StickyProductHeaderDelegate(
-              products: widget.products,
-              onProductTap: (product) => context.push('/product/${product.id}'),
-              onRemoveProduct: widget.onRemoveProduct != null && widget.products.length > 2
-                  ? (product) => _showRemoveProductDialog(product)
-                  : null,
-            ),
+          // Product header — non-pinned SliverToBoxAdapter (scrolls away)
+          SliverToBoxAdapter(
+            child: _buildProductHeader(context),
           ),
 
-          // Pill-style tab bar — clean without colored backgrounds
+          // Pill-style tab bar — pinned (stays visible on scroll)
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarDelegate(
@@ -1719,18 +1654,122 @@ Return ONLY valid JSON:
         ],
         body: TabBarView(
           children: [
-            // ─── Specs Tab ────────────────────────────────────────────
             _buildSpecsTab(),
-            // ─── Reviews Tab ──────────────────────────────────────────
             _buildReviewsTab(),
-            // ─── Similar Tab ──────────────────────────────────────────
             _buildSimilarTab(),
-            // ─── PRO (AI Analysis) Tab ────────────────────────────────
             _buildProTab(),
           ],
         ),
       ),
     );
+  }
+
+  /// Product header: images + VS badge + names (non-pinned, scrolls away)
+  Widget _buildProductHeader(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceElevatedColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.12)),
+        boxShadow: [
+          BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4)),
+          const BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _buildHeaderProductWidgets(context),
+      ),
+    );
+  }
+
+  List<Widget> _buildHeaderProductWidgets(BuildContext context) {
+    final widgets = <Widget>[];
+    for (int idx = 0; idx < widget.products.length; idx++) {
+      final product = widget.products[idx];
+      final scoreColor = product.techScore >= 80
+          ? AppTheme.scoreExcellent
+          : product.techScore >= 60
+              ? AppTheme.scoreAverage
+              : product.techScore >= 40
+                  ? AppTheme.orange500
+                  : AppTheme.error;
+
+      if (idx > 0) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 24),
+            child: Container(
+              width: 32, height: 32,
+              decoration: const BoxDecoration(
+                gradient: _accentGradient,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text('VS',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+        );
+      }
+
+      widgets.add(
+        Expanded(
+          child: GestureDetector(
+            onTap: () => context.push('/product/${product.id}'),
+            onLongPress: widget.onRemoveProduct != null && widget.products.length > 2
+                ? () => _showRemoveProductDialog(product)
+                : null,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ProductImageBox(
+                  imageUrl: product.imageUrl,
+                  width: 80,
+                  height: 80,
+                  borderRadius: BorderRadius.circular(16),
+                  padding: const EdgeInsets.all(6),
+                ),
+                const SizedBox(height: 6),
+                if (product.techScore > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: scoreColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.memory_outlined, size: 10, color: scoreColor),
+                      const SizedBox(width: 3),
+                      Text(product.techScore.toInt().toString(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11, fontWeight: FontWeight.w800, color: scoreColor)),
+                    ]),
+                  ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    product.name,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, fontWeight: FontWeight.w600, color: context.textPrimary),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return widgets;
   }
 
   Widget _buildSpecsTab() {
@@ -2843,131 +2882,5 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
 }
 
-/// Sticky header showing product images + VS badge + names (pinned at top)
-class _StickyProductHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final List<ProductEntity> products;
-  final void Function(ProductEntity) onProductTap;
-  final void Function(ProductEntity)? onRemoveProduct;
-
-  _StickyProductHeaderDelegate({
-    required this.products,
-    required this.onProductTap,
-    this.onRemoveProduct,
-  });
-
-  @override
-  double get minExtent => 100;
-  @override
-  double get maxExtent => 160;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
-    final imgSize = 80.0 - (36.0 * t); // 80 → 44
-    final vsBadgeSize = 28.0 - (8.0 * t); // 28 → 20
-    final fontSize = 10.0 - (1.0 * t); // 10 → 9
-    final vPad = 12.0 - (6.0 * t); // 12 → 6
-
-    return Container(
-      color: context.backgroundColor,
-      padding: EdgeInsets.fromLTRB(12, vPad, 12, 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: _buildProductWidgets(context, imgSize, vsBadgeSize, fontSize),
-      ),
-    );
-  }
-
-  List<Widget> _buildProductWidgets(BuildContext context, double imgSize, double vsBadgeSize, double fontSize) {
-    final widgets = <Widget>[];
-    for (int idx = 0; idx < products.length; idx++) {
-      final product = products[idx];
-      final scoreColor = product.techScore >= 80
-          ? AppTheme.scoreExcellent
-          : product.techScore >= 60
-              ? AppTheme.scoreAverage
-              : product.techScore >= 40
-                  ? AppTheme.orange500
-                  : AppTheme.error;
-
-      if (idx > 0) {
-        widgets.add(
-          Container(
-            width: vsBadgeSize,
-            height: vsBadgeSize,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: const BoxDecoration(
-              gradient: _accentGradient,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text('VS',
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: vsBadgeSize * 0.35,
-                  fontWeight: FontWeight.w900,
-                )),
-            ),
-          ),
-        );
-      }
-
-      widgets.add(
-        Expanded(
-          child: GestureDetector(
-            onTap: () => onProductTap(product),
-            onLongPress: onRemoveProduct != null ? () => onRemoveProduct!(product) : null,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ProductImageBox(
-                  imageUrl: product.imageUrl,
-                  width: imgSize,
-                  height: imgSize,
-                  borderRadius: BorderRadius.circular(imgSize * 0.2),
-                  padding: EdgeInsets.all(imgSize * 0.08),
-                ),
-                const SizedBox(height: 3),
-                if (product.techScore > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: scoreColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.memory_outlined, size: 8, color: scoreColor),
-                      const SizedBox(width: 2),
-                      Text(product.techScore.toInt().toString(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9, fontWeight: FontWeight.w800, color: scoreColor)),
-                    ]),
-                  ),
-                const SizedBox(height: 2),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Text(
-                    product.name,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: fontSize, fontWeight: FontWeight.w600, color: context.textPrimary),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return widgets;
-  }
-
-  @override
-  bool shouldRebuild(_StickyProductHeaderDelegate oldDelegate) =>
-      oldDelegate.products != products;
-}
 
 // ─── In-App YouTube Comparison Videos (uses YouTubeService) ───
