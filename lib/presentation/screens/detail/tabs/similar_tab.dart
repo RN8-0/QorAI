@@ -63,10 +63,8 @@ class _SimilarProductsSection extends ConsumerWidget {
             ),
           ),
         );
-        // Flat list sorted by techScore, top 12
-        final sorted = List<ProductEntity>.from(products)
-          ..sort((a, b) => b.techScore.compareTo(a.techScore));
-        final top = sorted.take(12).toList();
+        // Use provider's persona-aware ordering (already scored)
+        final top = products.take(12).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

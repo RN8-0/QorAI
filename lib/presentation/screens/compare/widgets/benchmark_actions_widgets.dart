@@ -333,10 +333,11 @@ class _SuggestedProductsList extends ConsumerWidget {
             // Score and sort by user relevance
             double scoreProduct(ProductEntity p) {
               double score = p.techScore;
-              if (viewedIds.contains(p.id)) score += 200;
+              // Small boost for viewed products (not dominating)
+              if (viewedIds.contains(p.id)) score += 8;
               final nameLower = p.name.toLowerCase();
               for (final s in searches) {
-                if (nameLower.contains(s.toLowerCase())) { score += 100; break; }
+                if (nameLower.contains(s.toLowerCase())) { score += 10; break; }
               }
               return score;
             }
@@ -467,10 +468,11 @@ class _CompareSuggestedList extends ConsumerWidget {
   /// Score a product for the user: viewed > searched > trending > techScore
   double _scoreForUser(ProductEntity p, List<String> viewedIds, List<String> searches) {
     double score = p.techScore;
-    if (viewedIds.contains(p.id)) score += 200;
+    // Small boost for viewed products — not dominating the ranking
+    if (viewedIds.contains(p.id)) score += 8;
     final nameLower = p.name.toLowerCase();
     for (final s in searches) {
-      if (nameLower.contains(s.toLowerCase())) { score += 100; break; }
+      if (nameLower.contains(s.toLowerCase())) { score += 10; break; }
     }
     return score;
   }
@@ -496,7 +498,18 @@ class _CompareSuggestedList extends ConsumerWidget {
         .compareTo(_scoreForUser(a, viewedIds, searches)));
     otherProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
         .compareTo(_scoreForUser(a, viewedIds, searches)));
-    return [...globalProducts, ...otherProducts].take(12).toList();
+    final merged = [...globalProducts, ...otherProducts];
+    // Brand diversity: max 3 per brand
+    final brandCount = <String, int>{};
+    final result = <ProductEntity>[];
+    for (final p in merged) {
+      final brand = (p.brand ?? '').toLowerCase().trim();
+      if ((brandCount[brand] ?? 0) >= 3) continue;
+      brandCount[brand] = (brandCount[brand] ?? 0) + 1;
+      result.add(p);
+      if (result.length >= 12) break;
+    }
+    return result;
   }
 
   @override
@@ -589,10 +602,11 @@ class _CompareSimilarGrid extends ConsumerWidget {
 
   double _scoreForUser(ProductEntity p, List<String> viewedIds, List<String> searches) {
     double score = p.techScore;
-    if (viewedIds.contains(p.id)) score += 200;
+    // Small boost for viewed products — not dominating the ranking
+    if (viewedIds.contains(p.id)) score += 8;
     final nameLower = p.name.toLowerCase();
     for (final s in searches) {
-      if (nameLower.contains(s.toLowerCase())) { score += 100; break; }
+      if (nameLower.contains(s.toLowerCase())) { score += 10; break; }
     }
     return score;
   }
@@ -621,7 +635,7 @@ class _CompareSimilarGrid extends ConsumerWidget {
     }
 
     // Kademeli genişleme: first ±20, then ±40, then unlimited
-    List<ProductEntity> result = [];
+    List<ProductEntity> scored = [];
     for (final range in [20.0, 40.0, double.infinity]) {
       final inRange = nameDeduped.where((p) =>
         range == double.infinity || (p.techScore - refScore).abs() <= range
@@ -640,10 +654,20 @@ class _CompareSimilarGrid extends ConsumerWidget {
           .compareTo(_scoreForUser(a, viewedIds, searches)));
       otherProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
           .compareTo(_scoreForUser(a, viewedIds, searches)));
-      result = [...globalProducts, ...otherProducts];
+      scored = [...globalProducts, ...otherProducts];
+      if (scored.length >= 12) break;
+    }
+    // Brand diversity: max 3 per brand
+    final brandCount = <String, int>{};
+    final result = <ProductEntity>[];
+    for (final p in scored) {
+      final brand = (p.brand ?? '').toLowerCase().trim();
+      if ((brandCount[brand] ?? 0) >= 3) continue;
+      brandCount[brand] = (brandCount[brand] ?? 0) + 1;
+      result.add(p);
       if (result.length >= 12) break;
     }
-    return result.take(12).toList();
+    return result;
   }
 
   @override

@@ -1687,12 +1687,29 @@ final productVariantsProvider = FutureProvider.family<List<ProductEntity>, Produ
 // ─── SIMILAR PRODUCTS PROVIDER ───
 // ════════════════════════════════════════════════════
 
-/// Finds truly similar products: same category, ±1 year release date,
-/// grouped by brand. Uses homeFeed cache only for speed (~6ms).
+/// Finds truly similar products: same category, persona-aware scoring,
+/// variant exclusion, brand diversity. Uses homeFeed cache + Firestore.
 final similarProductsProvider = FutureProvider.family<List<ProductEntity>, ProductEntity>(
   (ref, product) async {
     try {
       final catKey = product.category.toLowerCase().trim();
+
+      // Load user profile + behavior for persona-aware scoring
+      final userAsync = ref.read(userProfileProvider);
+      final user = userAsync.valueOrNull;
+      BehaviorSignals behavior = BehaviorSignals.empty;
+      ProfileAlgorithmService? algorithmService;
+      if (user != null) {
+        try {
+          behavior = await ref.read(behaviorSignalsProvider.future)
+              .timeout(const Duration(seconds: 4), onTimeout: () => BehaviorSignals.empty);
+        } catch (_) {}
+        algorithmService = ref.read(profileAlgorithmServiceProvider);
+      }
+
+      // Recently viewed product IDs for boosting/awareness
+      final viewedIds = ref.read(viewedProductsProvider);
+      final recentViewedSet = viewedIds.take(10).toSet();
 
       // 1) Build product pool from multiple sources
       List<ProductEntity> pool = [];
@@ -1743,8 +1760,65 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
       // Remove self from pool
       pool.removeWhere((p) => p.id == product.id);
 
+      // ── Variant exclusion: remove same variantGroup and similar names ──
+      final selfVariantGroup = product.variantGroup;
+      final selfNormName = normalizeProductName(product.name);
+      pool.removeWhere((p) {
+        // Exclude same variant group
+        if (selfVariantGroup.isNotEmpty && p.variantGroup.isNotEmpty &&
+            p.variantGroup == selfVariantGroup) {
+          return true;
+        }
+        // Exclude products with same normalized name (storage/RAM variants)
+        if (normalizeProductName(p.name) == selfNormName) {
+          return true;
+        }
+        return false;
+      });
+
+      // Deduplicate remaining pool by variantGroup (keep best techScore representative)
+      final variantBest = <String, ProductEntity>{};
+      final nameBest = <String, ProductEntity>{};
+      final deduped = <ProductEntity>[];
+      final dedupeIds = <String>{};
+      for (final p in pool) {
+        bool dominated = false;
+        if (p.variantGroup.isNotEmpty) {
+          final existing = variantBest[p.variantGroup];
+          if (existing != null) {
+            dominated = true;
+            // Keep the one with higher techScore
+            if (p.techScore > existing.techScore) {
+              dedupeIds.remove(existing.id);
+              deduped.removeWhere((x) => x.id == existing.id);
+              variantBest[p.variantGroup] = p;
+            } else {
+              continue;
+            }
+          } else {
+            variantBest[p.variantGroup] = p;
+          }
+        }
+        if (!dominated) {
+          final normName = normalizeProductName(p.name);
+          if (nameBest.containsKey(normName)) {
+            final existing = nameBest[normName]!;
+            if (p.techScore > existing.techScore) {
+              dedupeIds.remove(existing.id);
+              deduped.removeWhere((x) => x.id == existing.id);
+              nameBest[normName] = p;
+            } else {
+              continue;
+            }
+          } else {
+            nameBest[normName] = p;
+          }
+        }
+        if (dedupeIds.add(p.id)) deduped.add(p);
+      }
+
       // Separate same-category products
-      final sameCat = pool.where((p) =>
+      final sameCat = deduped.where((p) =>
           p.category.toLowerCase().trim() == catKey).toList();
 
       // Graduated expansion to find at least 4 results
@@ -1774,7 +1848,7 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
       if (candidates.length < 4) {
         final parentCats = _getRelatedCategories(catKey);
         if (parentCats.isNotEmpty) {
-          final related = pool.where((p) {
+          final related = deduped.where((p) {
             final pCat = p.category.toLowerCase().trim();
             return parentCats.contains(pCat) && pCat != catKey;
           }).toList();
@@ -1784,47 +1858,73 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
 
       if (candidates.isEmpty) return [];
 
-      // Score candidates by similarity
+      // ── Score candidates with persona-aware algorithm ──
       List<MapEntry<ProductEntity, double>> scored = candidates.map((p) {
         double score = 0;
-        // Category match bonus
-        if (p.category.toLowerCase().trim() == catKey) score += 20;
-        // Tech score similarity (most important)
-        final techDiff = (p.techScore - techScore).abs();
-        if (techDiff <= 5) score += 30;
-        else if (techDiff <= 10) score += 22;
-        else if (techDiff <= 15) score += 15;
-        else if (techDiff <= 25) score += 8;
-        else score += 2;
-        // Brand diversity bonus
-        if (p.brand?.toLowerCase() != product.brand?.toLowerCase()) {
-          score += 10;
-        } else {
-          score += 3;
+
+        // Persona fit score (0-100 range, weighted to 0-35)
+        if (user != null && algorithmService != null) {
+          final fitScore = algorithmService.calculateTotalFitScore(
+            user: user, product: p, behavior: behavior);
+          score += fitScore * 0.35;
         }
+
+        // Category match bonus
+        if (p.category.toLowerCase().trim() == catKey) score += 15;
+
+        // Tech score similarity (important for "similar" products)
+        final techDiff = (p.techScore - techScore).abs();
+        if (techDiff <= 5) score += 20;
+        else if (techDiff <= 10) score += 15;
+        else if (techDiff <= 15) score += 10;
+        else if (techDiff <= 25) score += 5;
+        else score += 1;
+
+        // Brand diversity bonus — strongly prefer different brands
+        if (p.brand?.toLowerCase() != product.brand?.toLowerCase()) {
+          score += 12;
+        }
+
+        // Recently viewed category boost (user is interested in this type)
+        if (recentViewedSet.isNotEmpty) {
+          final viewedCats = <String>{};
+          final feed = ref.read(homeFeedProvider).valueOrNull;
+          if (feed != null) {
+            for (final vid in recentViewedSet) {
+              final vp = feed.all.where((x) => x.id == vid).firstOrNull;
+              if (vp != null) viewedCats.add(vp.category.toLowerCase().trim());
+            }
+          }
+          if (viewedCats.contains(p.category.toLowerCase().trim())) {
+            score += 5;
+          }
+        }
+
         // Trend score bonus
-        if (p.trendScore > 75) score += 5;
-        else if (p.trendScore > 50) score += 3;
+        if (p.trendScore > 75) score += 4;
+        else if (p.trendScore > 50) score += 2;
+
         // Price proximity bonus
         final pAnyPrice = p.prices.values.isNotEmpty ? p.prices.values.first : 0.0;
         final prodAnyPrice = product.prices.values.isNotEmpty ? product.prices.values.first : 0.0;
         if (pAnyPrice > 0 && prodAnyPrice > 0) {
           final priceDiff = ((pAnyPrice - prodAnyPrice) / prodAnyPrice).abs();
-          if (priceDiff <= 0.15) score += 12;
-          else if (priceDiff <= 0.3) score += 8;
-          else if (priceDiff <= 0.5) score += 4;
+          if (priceDiff <= 0.15) score += 8;
+          else if (priceDiff <= 0.3) score += 5;
+          else if (priceDiff <= 0.5) score += 2;
         }
+
         return MapEntry(p, score);
       }).toList();
 
       scored.sort((a, b) => b.value.compareTo(a.value));
 
-      // Take top results with brand diversity (max 6 per brand)
+      // Take top results with strict brand diversity (max 3 per brand)
       final result = <ProductEntity>[];
       final brandCount = <String, int>{};
       for (final entry in scored) {
         final brand = entry.key.brand?.toLowerCase() ?? 'unknown';
-        if ((brandCount[brand] ?? 0) >= 6) continue;
+        if ((brandCount[brand] ?? 0) >= 3) continue;
         brandCount[brand] = (brandCount[brand] ?? 0) + 1;
         result.add(entry.key);
         if (result.length >= 12) break;
