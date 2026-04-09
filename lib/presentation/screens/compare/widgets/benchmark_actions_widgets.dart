@@ -539,7 +539,7 @@ class _CompareSuggestedList extends ConsumerWidget {
       itemBuilder: (context, i) {
         final p = products[i];
         return GestureDetector(
-          onTap: () => context.push('${AppRoutes.productDetail}/${p.id}'),
+          onTap: () => context.push('/product/${p.id}'),
           child: Container(
             width: 100,
             padding: const EdgeInsets.all(8),
@@ -579,10 +579,12 @@ class _CompareSimilarGrid extends ConsumerWidget {
   final String category;
   final Set<String> excludeIds;
   final Set<String> excludeVariantGroups;
+  final double refScore; // average techScore of compared products for range expansion
   const _CompareSimilarGrid({
     required this.category,
     required this.excludeIds,
     this.excludeVariantGroups = const {},
+    this.refScore = 50,
   });
 
   double _scoreForUser(ProductEntity p, List<String> viewedIds, List<String> searches) {
@@ -607,21 +609,31 @@ class _CompareSimilarGrid extends ConsumerWidget {
     for (final p in filtered) {
       if (seen.add(p.id)) unique.add(p);
     }
-    final globalProducts = <ProductEntity>[];
-    final otherProducts = <ProductEntity>[];
-    for (final p in unique) {
-      final brand = (p.brand ?? '').toLowerCase().trim();
-      if (_SuggestedProductsList._globalBrands.contains(brand)) {
-        globalProducts.add(p);
-      } else {
-        otherProducts.add(p);
+
+    // Kademeli genişleme: first ±20, then ±40, then unlimited
+    List<ProductEntity> result = [];
+    for (final range in [20.0, 40.0, double.infinity]) {
+      final inRange = unique.where((p) =>
+        range == double.infinity || (p.techScore - refScore).abs() <= range
+      ).toList();
+      final globalProducts = <ProductEntity>[];
+      final otherProducts = <ProductEntity>[];
+      for (final p in inRange) {
+        final brand = (p.brand ?? '').toLowerCase().trim();
+        if (_SuggestedProductsList._globalBrands.contains(brand)) {
+          globalProducts.add(p);
+        } else {
+          otherProducts.add(p);
+        }
       }
+      globalProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
+          .compareTo(_scoreForUser(a, viewedIds, searches)));
+      otherProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
+          .compareTo(_scoreForUser(a, viewedIds, searches)));
+      result = [...globalProducts, ...otherProducts];
+      if (result.length >= 12) break;
     }
-    globalProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
-        .compareTo(_scoreForUser(a, viewedIds, searches)));
-    otherProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
-        .compareTo(_scoreForUser(a, viewedIds, searches)));
-    return [...globalProducts, ...otherProducts].take(12).toList();
+    return result.take(12).toList();
   }
 
   @override
@@ -677,7 +689,7 @@ class _CompareSimilarGrid extends ConsumerWidget {
             : p.techScore >= 40 ? AppTheme.orange500
             : AppTheme.error;
         return GestureDetector(
-          onTap: () => context.push('${AppRoutes.productDetail}/${p.id}'),
+          onTap: () => context.push('/product/${p.id}'),
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -833,7 +845,7 @@ class _CompareDiscoverSection extends ConsumerWidget {
                 itemBuilder: (context, i) {
                   final p = discoverProducts[i];
                   return GestureDetector(
-                    onTap: () => context.push('${AppRoutes.productDetail}/${p.id}'),
+                    onTap: () => context.push('/product/${p.id}'),
                     child: Container(
                       width: 100,
                       padding: const EdgeInsets.all(8),

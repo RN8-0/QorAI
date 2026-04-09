@@ -48,6 +48,7 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -62,9 +63,9 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
             Container(
               width: 38, height: 38,
               decoration: BoxDecoration(
-                color: AppTheme.youtube.withValues(alpha: 0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.play_circle_fill, size: 20, color: AppTheme.youtube),
+              child: Icon(Icons.play_circle_fill, size: 20, color: theme.colorScheme.primary),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -74,26 +75,57 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
           ]),
           const SizedBox(height: 14),
           if (!_didSearch && !_loading)
-            // Lazy load button
             Center(
               child: FilledButton.icon(
                 onPressed: _searchVideos,
-                icon: const Icon(Icons.play_circle_outline, size: 20),
-                label: Text('Load Review Videos',
+                icon: const Text('📺', style: TextStyle(fontSize: 18)),
+                label: Text('Review Videolarını Yükle',
                   style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.youtube,
-                  foregroundColor: Colors.white,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             )
           else if (_loading)
-            const Center(child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.youtube),
-            ))
+            // Shimmer skeleton while loading
+            Column(children: List.generate(3, (i) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                height: 68,
+                decoration: BoxDecoration(
+                  color: context.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(children: [
+                  Container(
+                    width: 120, height: 68,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(height: 12, width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(4))),
+                      const SizedBox(height: 6),
+                      Container(height: 10, width: 100,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(4))),
+                    ],
+                  )),
+                ]),
+              ).animate(onPlay: (c) => c.repeat())
+                .shimmer(duration: 1200.ms, color: theme.colorScheme.primary.withValues(alpha: 0.06)),
+            )))
           else if (_videos == null || _videos!.isEmpty)
             Text(_error != null ? 'Could not load videos' : 'No comparison videos found',
               style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor))
