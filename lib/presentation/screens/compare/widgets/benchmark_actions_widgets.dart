@@ -641,7 +641,7 @@ class _CompareSimilarGrid extends ConsumerWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.78,
+        childAspectRatio: 0.68,
       ),
       itemCount: products.length,
       itemBuilder: (context, i) {
@@ -713,8 +713,22 @@ class _CompareSimilarGrid extends ConsumerWidget {
                 Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, fontWeight: FontWeight.w700,
+                    fontSize: 11, fontWeight: FontWeight.w600,
                     color: context.textPrimary, height: 1.15)),
+                const SizedBox(height: 6),
+                // View Details button
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandBlue]),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('View Details',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
               ],
             ),
           ),

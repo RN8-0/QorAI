@@ -1054,124 +1054,258 @@ For each product, analyze current pricing and what it means for you
     }
     if (allKeys.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.brandBlue.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    final theme = Theme.of(context);
+
+    // Per-product Key Specs grids (like detail page)
+    return Column(
+      children: [
+        // Header
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(children: [
+            Icon(Icons.auto_awesome_rounded, size: 16, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(context.l10n?.specsTab ?? 'Key Specs',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
+          ]),
+        ),
+        // Per-product grids side by side
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: widget.products.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final product = entry.value;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: idx > 0 ? 4 : 0,
+                    right: idx < widget.products.length - 1 ? 4 : 0,
+                  ),
+                  child: _buildProductKeySpecsGrid(product, theme),
+                ),
+              );
+            }).toList(),
           ),
-        ],
+        ),
+        const SizedBox(height: 12),
+        // Comparison table below
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.dividerColor),
+          ),
+          child: Column(
+            children: allKeys.take(8).map((key) {
+              final values = widget.products
+                  .map((p) => p.keySpecs[key]?.toString() ?? '—')
+                  .toList();
+              final allSame = values.toSet().length == 1;
+              final betterIndex = allSame ? -1 : _findBetterIndex(key, values);
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                decoration: BoxDecoration(
+                  color: context.surfaceColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      _localizedSpecName(context, key).toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9, letterSpacing: 0.5,
+                        color: context.textTertiaryColor, fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: values.asMap().entries.map((e) {
+                        final i = e.key;
+                        final val = e.value;
+                        final isMissing = val == '—';
+                        final isBetter = betterIndex == i;
+                        final isWorse = betterIndex >= 0 && betterIndex != i && !isMissing;
+
+                        return Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isBetter
+                                  ? AppTheme.scoreExcellent.withValues(alpha: 0.12)
+                                  : isWorse
+                                      ? AppTheme.error.withValues(alpha: 0.06)
+                                      : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: isBetter
+                                  ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.3))
+                                  : null,
+                            ),
+                            child: Text(
+                              _localizedSpecValue(context, val),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: isBetter ? FontWeight.w700 : FontWeight.w500,
+                                color: isBetter ? AppTheme.scoreExcellent
+                                    : isWorse ? AppTheme.error.withValues(alpha: 0.7)
+                                    : isMissing ? context.textTertiaryColor
+                                    : context.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2, overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductKeySpecsGrid(ProductEntity product, ThemeData theme) {
+    // Build spec pool same as detail page
+    final pool = <String, String>{};
+    for (final e in product.keySpecs.entries) {
+      final v = e.value.trim();
+      if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
+    }
+    for (final e in product.specs.entries) {
+      if (pool.containsKey(e.key)) continue;
+      if (e.value != null && e.value is! Map) {
+        final v = e.value.toString().trim();
+        if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
+      }
+    }
+    for (final section in product.specSections.entries) {
+      if (section.value is Map) {
+        for (final spec in (section.value as Map).entries) {
+          final k = spec.key.toString();
+          if (pool.containsKey(k)) continue;
+          if (spec.value != null) {
+            final v = spec.value.toString().trim();
+            if (v.isNotEmpty && v != '-' && v != 'N/A') pool[k] = v;
+          }
+        }
+      }
+    }
+
+    final specs = pool.entries.take(6).toList();
+    if (specs.isEmpty) return const SizedBox.shrink();
+
+    // Ensure multiple of 3
+    final target = specs.length >= 4 ? 6 : 3;
+    final displaySpecs = specs.take(target).toList();
+    final rows = (displaySpecs.length / 3).ceil();
+    final isCompact = widget.products.length > 2;
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
         children: [
-          Row(children: [
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                gradient: _accentGradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.bolt_rounded, size: 18, color: Colors.white),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '⚡ ${context.l10n?.specsTab ?? 'Key Specs'}',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: context.textPrimary,
-                ),
-              ),
-            ),
-          ]),
-          const SizedBox(height: 14),
-          ...allKeys.take(8).map((key) {
-            final values = widget.products
-                .map((p) => p.keySpecs[key]?.toString() ?? '—')
-                .toList();
-            final allSame = values.toSet().length == 1;
-            final betterIndex = allSame ? -1 : _findBetterIndex(key, values);
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-              decoration: BoxDecoration(
-                color: context.surfaceColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: context.dividerColor),
-              ),
-              child: Column(
+          // Product name chip
+          Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10, fontWeight: FontWeight.w600, color: context.textSecondary)),
+          const SizedBox(height: 6),
+          for (int row = 0; row < rows; row++) ...[
+            if (row > 0) const SizedBox(height: 4),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    _localizedSpecName(context, key).toUpperCase(),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      letterSpacing: 0.5,
-                      color: context.textTertiaryColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: values.asMap().entries.map((e) {
-                      final idx = e.key;
-                      final val = e.value;
-                      final isMissing = val == '—';
-                      final isBetter = betterIndex == idx;
-                      final isWorse = betterIndex >= 0 && betterIndex != idx && !isMissing;
-
-                      return Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  for (int col = 0; col < 3; col++) ...[
+                    if (col > 0) const SizedBox(width: 4),
+                    Expanded(
+                      child: () {
+                        final i = row * 3 + col;
+                        if (i >= displaySpecs.length) return const SizedBox.shrink();
+                        final entry = displaySpecs[i];
+                        return Container(
+                          constraints: BoxConstraints(
+                            minHeight: isCompact ? 56 : 64,
+                            maxHeight: isCompact ? 72 : 80),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isBetter
-                                ? AppTheme.scoreExcellent.withValues(alpha: 0.12)
-                                : isWorse
-                                    ? AppTheme.error.withValues(alpha: 0.06)
-                                    : Colors.transparent,
+                            color: theme.colorScheme.surface,
                             borderRadius: BorderRadius.circular(10),
-                            border: isBetter
-                                ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.3))
-                                : null,
+                            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
                           ),
-                          child: Text(
-                            _localizedSpecValue(context, val),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: isBetter ? FontWeight.w700 : FontWeight.w500,
-                              color: isBetter
-                                  ? AppTheme.scoreExcellent
-                                  : isWorse
-                                      ? AppTheme.error.withValues(alpha: 0.7)
-                                      : isMissing
-                                          ? context.textTertiaryColor
-                                          : context.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(_compareIconForSpec(entry.key),
+                                size: isCompact ? 14 : 16,
+                                color: theme.colorScheme.primary.withValues(alpha: 0.7)),
+                              const SizedBox(height: 2),
+                              Flexible(child: Text(
+                                entry.value,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: isCompact ? 10 : 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.colorScheme.onSurface),
+                                textAlign: TextAlign.center,
+                                maxLines: 2, overflow: TextOverflow.ellipsis)),
+                              const SizedBox(height: 1),
+                              Text(entry.key,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: isCompact ? 7 : 8,
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                                textAlign: TextAlign.center,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ],
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                        );
+                      }(),
+                    ),
+                  ],
                 ],
               ),
-            );
-          }),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  static IconData _compareIconForSpec(String key) {
+    final k = key.toLowerCase();
+    if (k.contains('screen') || k.contains('display') || k.contains('ekran') || k.contains('çözünürlük')) return Icons.monitor_rounded;
+    if (k.contains('battery') || k.contains('pil')) return Icons.battery_full_rounded;
+    if (k.contains('ram') || k.contains('memory') || k.contains('bellek')) return Icons.memory_rounded;
+    if (k.contains('processor') || k.contains('cpu') || k.contains('chip') || k.contains('işlemci')) return Icons.developer_board_rounded;
+    if (k.contains('camera') || k.contains('kamera') || k.contains('megapixel')) return Icons.camera_alt_rounded;
+    if (k.contains('storage') || k.contains('ssd') || k.contains('hdd') || k.contains('depolama') || k.contains('kapasite') || k.contains('capacity')) return Icons.storage_rounded;
+    if (k.contains('weight') || k.contains('ağırlık')) return Icons.scale_rounded;
+    if (k.contains('5g') || k.contains('network') || k.contains('wifi') || k.contains('ağ') || k.contains('bağlantı') || k.contains('connectivity')) return Icons.signal_cellular_alt_rounded;
+    if (k.contains('gpu') || k.contains('graphic') || k.contains('ekran kartı') || k.contains('vram')) return Icons.videogame_asset_rounded;
+    if (k.contains('os') || k.contains('operating') || k.contains('işletim')) return Icons.phone_android_rounded;
+    if (k.contains('refresh') || k.contains('yenileme')) return Icons.speed_rounded;
+    if (k.contains('resolution')) return Icons.high_quality_rounded;
+    if (k.contains('noise') || k.contains('anc')) return Icons.noise_aware_rounded;
+    if (k.contains('bluetooth')) return Icons.bluetooth_rounded;
+    if (k.contains('core') || k.contains('çekirdek')) return Icons.developer_board_rounded;
+    if (k.contains('speed') || k.contains('hız') || k.contains('clock') || k.contains('frequency')) return Icons.speed_rounded;
+    return Icons.info_outline_rounded;
   }
 
   // ─── Expert Scores Comparison ───
@@ -1346,81 +1480,57 @@ For each product, analyze current pricing and what it means for you
         final imgSize = (constraints.maxWidth * 0.7).clamp(60.0, 120.0);
         return Column(
           children: [
-            // Product image with badges
-            Stack(
-              clipBehavior: Clip.none,
+            // Product image — clean, no badges on top
+            ProductImageBox(
+              imageUrl: product.imageUrl,
+              width: imgSize,
+              height: imgSize,
+              borderRadius: BorderRadius.circular(18),
+              padding: const EdgeInsets.all(8),
+            ),
+            const SizedBox(height: 8),
+            // Badges row below image
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                ProductImageBox(
-                  imageUrl: product.imageUrl,
-                  width: imgSize,
-                  height: imgSize,
-                  borderRadius: BorderRadius.circular(18),
-                  padding: const EdgeInsets.all(8),
-                ),
-                // TechScore badge — top left
                 if (product.techScore > 0)
-                  Positioned(
-                    top: -6, left: -6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: scoreColor,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: scoreColor.withValues(alpha: 0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        product.techScore.toInt().toString(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: scoreColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.memory_outlined, size: 10, color: scoreColor),
+                      const SizedBox(width: 3),
+                      Text(product.techScore.toInt().toString(),
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                          fontSize: 10, fontWeight: FontWeight.w800, color: scoreColor)),
+                    ]),
                   ),
-                // Match score badge — top right
+                if (product.techScore > 0 && matchScore != null) const SizedBox(width: 4),
                 if (matchScore != null && matchColor != null)
-                  Positioned(
-                    top: -6, right: -6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: matchColor,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: matchColor.withValues(alpha: 0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.favorite_rounded, size: 9, color: Colors.white),
-                          const SizedBox(width: 2),
-                          Text(
-                            '$matchScore%',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: matchColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: matchColor.withValues(alpha: 0.3), width: 0.5),
                     ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.person_outline, size: 10, color: matchColor),
+                      const SizedBox(width: 3),
+                      Text('$matchScore%',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10, fontWeight: FontWeight.w800, color: matchColor)),
+                    ]),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
+            // Product name
             SizedBox(
               height: 36,
               child: Text(
@@ -1435,6 +1545,7 @@ For each product, analyze current pricing and what it means for you
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            // Brand
             if (product.brand != null)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
@@ -1697,7 +1808,7 @@ For each product, analyze current pricing and what it means for you
                                   _localizedGroupName(context, groupName),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 15,
+                                    fontSize: 13,
                                     color: context.textPrimary,
                                   ),
                                   textAlign: TextAlign.center,
@@ -1810,7 +1921,7 @@ For each product, analyze current pricing and what it means for you
                                         child: Text(
                                           _localizedSpecValue(context, val),
                                           style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 13,
+                                            fontSize: 12,
                                             fontWeight: isBetter ? FontWeight.w700 : (isMissing ? FontWeight.w400 : FontWeight.w500),
                                             color: isBetter
                                                 ? AppTheme.scoreExcellent
@@ -1972,7 +2083,7 @@ For each product, analyze current pricing and what it means for you
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
           subtitle: 'Comprehensive AI-powered comparison evaluation',
-          gradient: const [AppTheme.brandBlue, AppTheme.brandDeepBlue],
+          gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
           isExpanded: _deepAnalysisExpanded,
           isLoading: _deepAnalysisLoading,
           content: _deepAnalysisResult,
@@ -1981,10 +2092,10 @@ For each product, analyze current pricing and what it means for you
         const SizedBox(height: 14),
         // Smart Alternatives
         _buildExpandableCard(
-          icon: Icons.auto_awesome_rounded,
+          icon: Icons.swap_horizontal_circle_rounded,
           title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
           subtitle: 'AI-curated alternatives you should consider',
-          gradient: const [AppTheme.brandSkyBlue, AppTheme.orange500],
+          gradient: const [AppTheme.warning, Color(0xFFF97316)],
           isExpanded: _alternativesExpanded,
           isLoading: _alternativesLoading,
           content: _alternativesResult,
@@ -1996,7 +2107,7 @@ For each product, analyze current pricing and what it means for you
           icon: Icons.support_agent_rounded,
           title: 'AI Product Advisor',
           subtitle: 'Personalized buying advice for your comparison',
-          gradient: const [AppTheme.scoreAverage, AppTheme.error],
+          gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
           isExpanded: _advisorExpanded,
           isLoading: _advisorLoading,
           content: _advisorResult,
@@ -2008,7 +2119,7 @@ For each product, analyze current pricing and what it means for you
           icon: Icons.trending_down_rounded,
           title: 'Price Prediction',
           subtitle: 'AI-powered price trend analysis & best time to buy',
-          gradient: const [AppTheme.scoreExcellent, AppTheme.brandBlue],
+          gradient: const [Color(0xFF10B981), Color(0xFF059669)],
           isExpanded: _predictionExpanded,
           isLoading: _predictionLoading,
           content: _predictionResult,
@@ -2160,6 +2271,7 @@ For each product, analyze current pricing and what it means for you
     required String? content,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -2183,7 +2295,7 @@ For each product, analyze current pricing and what it means for you
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: gradient),
                   borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: Colors.white, size: 20)),
+                child: Icon(icon, color: context.surfaceVariantColor, size: 20)),
               const SizedBox(width: 12),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2203,14 +2315,43 @@ For each product, analyze current pricing and what it means for you
             ]),
             if (isExpanded && content != null) ...[
               const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: gradient[0].withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: gradient[0].withValues(alpha: 0.1))),
-                child: _FormattedAiText(text: content),
+              MarkdownBody(
+                data: content,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, height: 1.6,
+                    color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
+                  strong: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  em: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontStyle: FontStyle.italic,
+                    color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
+                  h1: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  h2: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  h3: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w700,
+                    color: gradient[0]),
+                  listBullet: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, color: gradient[0]),
+                  listIndent: 16,
+                  blockSpacing: 8,
+                  h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
+                  pPadding: const EdgeInsets.symmetric(vertical: 2),
+                  blockquoteDecoration: BoxDecoration(
+                    color: gradient[0].withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: gradient[0], width: 3)),
+                  ),
+                  blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
               ),
             ],
           ],

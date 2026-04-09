@@ -42,7 +42,7 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
       final videos = await youtubeService.searchReviewVideos(
         productName: '$names comparison',
         languageCode: locale,
-        maxResults: 3,
+        maxResults: 6,
       );
       _videoCache[cacheKey] = videos;
       if (mounted) setState(() { _videos = videos; _loading = false; });
@@ -73,7 +73,7 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(context.l10n?.youtubeComparisons ?? 'YouTube Comparisons',
+              child: Text(context.l10n?.youtubeReviews ?? 'YouTube Reviews',
                 style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
             ),
           ]),
@@ -113,55 +113,66 @@ class _CompareVideoTile extends StatelessWidget {
           border: Border.all(color: context.dividerColor),
         ),
         child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Image.network(
+          // Thumbnail with duration badge
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
                   video.thumbnailUrl.isNotEmpty
                       ? video.thumbnailUrl
                       : 'https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg',
                   width: 120, height: 68, fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     width: 120, height: 68, color: Colors.grey[800],
-                    child: const Icon(Icons.play_circle, color: Colors.white54),
+                    child: const Icon(Icons.play_circle_outline, color: AppTheme.youtube),
                   ),
                 ),
-                Container(
-                  width: 32, height: 32,
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
+              ),
+              if (video.duration.isNotEmpty)
+                Positioned(
+                  bottom: 4, right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(video.duration,
+                      style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
                   ),
-                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 18),
                 ),
-              ],
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(video.title,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: context.textPrimary),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
                 if (video.channelTitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(video.channelTitle,
                     style: GoogleFonts.plusJakartaSans(fontSize: 11, color: context.textTertiaryColor),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
                 if (video.viewCount.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(video.viewCount,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor)),
+                  Row(children: [
+                    Text(video.viewCount,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor)),
+                    if (video.qualityBadge.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Text(video.qualityBadge, style: const TextStyle(fontSize: 10)),
+                    ],
+                  ]),
                 ],
               ],
             ),
           ),
+          const Icon(Icons.play_circle_filled, size: 16, color: AppTheme.youtube),
         ]),
       ),
     );
