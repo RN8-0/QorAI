@@ -280,6 +280,7 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   double _dx = -1;
   double _dy = -1;
   bool _positionSet = false;
+  bool _hidden = false; // hidden during fullscreen
   VideoPlayerController? _vpc;
   ChewieController? _chewie;
   bool _loading = true;
@@ -323,9 +324,10 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   void _openFullscreen(BuildContext context) {
     final pos = _vpc?.value.position ?? Duration.zero;
     final url = _streamUrl;
+    // Pause and hide mini player (don't destroy it)
     _vpc?.pause();
-    widget.onClose();
-    Navigator.of(context).push(PageRouteBuilder(
+    setState(() => _hidden = true);
+    Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
       fullscreenDialog: true,
       transitionDuration: const Duration(milliseconds: 200),
       reverseTransitionDuration: const Duration(milliseconds: 150),
@@ -337,11 +339,18 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
       transitionsBuilder: (_, anim, __, child) {
         return FadeTransition(opacity: anim, child: child);
       },
-    ));
+    )).then((_) {
+      // Fullscreen closed — show mini player and resume
+      if (mounted) {
+        setState(() => _hidden = false);
+        _vpc?.play();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_hidden) return const SizedBox.shrink();
     final size = MediaQuery.of(context).size;
     const playerW = 280.0;
     const playerH = 158.0;
