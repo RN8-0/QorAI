@@ -13,20 +13,15 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
   static final Map<String, List<YouTubeVideo>> _videoCache = {};
 
   List<YouTubeVideo>? _videos;
-  bool _loading = true;
+  bool _loading = false;
   String? _error;
   bool _didSearch = false;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_didSearch) {
-      _didSearch = true;
-      _searchVideos();
-    }
-  }
-
   Future<void> _searchVideos() async {
+    if (_didSearch) return;
+    _didSearch = true;
+    setState(() => _loading = true);
+
     final ids = widget.products.map((p) => p.id).toList()..sort();
     final cacheKey = ids.join('|');
 
@@ -78,7 +73,23 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
             ),
           ]),
           const SizedBox(height: 14),
-          if (_loading)
+          if (!_didSearch && !_loading)
+            // Lazy load button
+            Center(
+              child: FilledButton.icon(
+                onPressed: _searchVideos,
+                icon: const Icon(Icons.play_circle_outline, size: 20),
+                label: Text('Load Review Videos',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.youtube,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            )
+          else if (_loading)
             const Center(child: Padding(
               padding: EdgeInsets.all(16),
               child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.youtube),

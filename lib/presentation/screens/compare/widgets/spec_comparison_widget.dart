@@ -16,7 +16,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   String? _aiAnalysis;
   Map<String, dynamic>? _aiStructured;
   bool _aiLoading = false;
-  bool _aiExpanded = true;
+  bool _aiExpanded = false;
 
   // Quick Verdict state
   bool _quickVerdictExpanded = false;
@@ -42,6 +42,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _predictionExpanded = false;
   bool _predictionLoading = false;
   String? _predictionResult;
+
+  // Personalized Match state
+  bool _matchScoreExpanded = false;
+  bool _matchScoreFetched = false;
 
 
   @override
@@ -1550,7 +1554,6 @@ For each product, analyze current pricing and what it means for you
         : product.techScore >= 40 ? AppTheme.orange500
         : AppTheme.error;
     final imgSize = compact ? 70.0 : 100.0;
-    final maxNameLines = compact ? 1 : 2;
 
     return GestureDetector(
       onTap: () => context.push('${AppRoutes.productDetail}/${product.id}'),
@@ -1568,8 +1571,8 @@ For each product, analyze current pricing and what it means for you
             borderRadius: BorderRadius.circular(compact ? 14 : 18),
             padding: EdgeInsets.all(compact ? 6 : 8),
           ),
-          const SizedBox(height: 6),
-          // TechScore badge only
+          const SizedBox(height: 4),
+          // TechScore badge only — no product name here (shown in tab bar)
           if (product.techScore > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1585,31 +1588,6 @@ For each product, analyze current pricing and what it means for you
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10, fontWeight: FontWeight.w800, color: scoreColor)),
               ]),
-            ),
-          const SizedBox(height: 4),
-          // Product name
-          Text(
-            product.name,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: compact ? 11 : 12,
-              fontWeight: FontWeight.w700,
-              color: context.textPrimary,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: maxNameLines,
-            overflow: TextOverflow.ellipsis,
-          ),
-          // Brand
-          if (product.brand != null)
-            Text(
-              product.brand!.toUpperCase(),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.6,
-                color: context.textTertiaryColor,
-              ),
-              maxLines: 1, overflow: TextOverflow.ellipsis,
             ),
         ],
       ),
@@ -2066,15 +2044,18 @@ For each product, analyze current pricing and what it means for you
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product.brand != null
-                          ? '${product.brand!} ${product.name.split(' ').take(2).join(' ')}'
-                          : product.name,
+                        () {
+                          final shortName = product.brand != null
+                            ? '${product.brand!} ${product.name.split(' ').skip(1).take(2).join(' ')}'
+                            : product.name;
+                          return shortName.length > 20 ? '${shortName.substring(0, 20)}…' : shortName;
+                        }(),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
                       ),
                       Text(
-                        'Similar Products',
+                        context.l10n?.similarProducts ?? 'Similar Products',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10, fontWeight: FontWeight.w500,
                           color: context.textTertiaryColor),
@@ -2189,127 +2170,146 @@ For each product, analyze current pricing and what it means for you
     final userProfile = ref.watch(userProfileProvider);
     final user = userProfile.valueOrNull;
 
-    // Trigger fetch for each product
-    for (final product in widget.products) {
-      final notifier = ref.read(geminiMatchScoreProvider(product.id).notifier);
-      notifier.fetchMatchScore(product: product);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.brandBlue.withValues(alpha: 0.08),
-            blurRadius: 12, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Container(
-              width: 38, height: 38,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
-                borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.person_search_rounded, size: 20, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(
-              context.l10n?.personalizedMatch ?? 'Personalized Match',
-              style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
-            )),
-          ]),
-          const SizedBox(height: 14),
-          ...widget.products.map((product) {
-            final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
-            final matchResult = matchAsync.valueOrNull;
-            final matchScore = matchResult?.matchScore;
-            final reason = matchResult?.reason;
-            final isLoading = matchAsync is AsyncLoading;
-
-            final displayScore = matchScore != null ? '$matchScore%' : '--';
-            final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
-                matchScore >= 80 ? AppTheme.scoreExcellent :
-                matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: matchColor.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: matchColor.withValues(alpha: 0.15)),
+    return GestureDetector(
+      onTap: () {
+        setState(() => _matchScoreExpanded = !_matchScoreExpanded);
+        if (_matchScoreExpanded && !_matchScoreFetched) {
+          _matchScoreFetched = true;
+          for (final product in widget.products) {
+            final notifier = ref.read(geminiMatchScoreProvider(product.id).notifier);
+            notifier.fetchMatchScore(product: product);
+          }
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.brandBlue.withValues(alpha: 0.08),
+              blurRadius: 12, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
+                  borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.person_search_rounded, size: 20, color: Colors.white),
               ),
-              child: Column(
+              const SizedBox(width: 12),
+              Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    if (isLoading)
-                      Container(
-                        width: 46, height: 46,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: matchColor.withValues(alpha: 0.1)),
-                        child: Center(child: SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2, color: matchColor))),
-                      )
-                    else
-                      Container(
-                        width: 46, height: 46,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: [matchColor, AppTheme.brandSkyBlue])),
-                        child: Center(child: Text(displayScore,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white))),
-                      ),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(product.name, style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 2),
-                        Text(
-                          isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
-                              : user == null || !(user.quizCompleted)
-                                  ? (context.l10n?.takeQuiz ?? 'Take the quiz to see your match')
-                                  : 'Based on your preferences & behavior',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11, color: context.textTertiaryColor)),
-                      ],
-                    )),
-                  ]),
-                  // Gemini reason text
-                  if (reason != null && reason.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.auto_awesome, size: 12,
-                            color: matchColor.withValues(alpha: 0.7)),
-                        const SizedBox(width: 6),
-                        Expanded(child: Text(reason,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11, fontStyle: FontStyle.italic,
-                            color: context.textSecondary, height: 1.3),
-                          maxLines: 3, overflow: TextOverflow.ellipsis)),
-                      ],
-                    ),
-                  ],
+                  Text(
+                    context.l10n?.personalizedMatch ?? 'Personalized Match',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text('AI-powered compatibility analysis',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
                 ],
-              ),
-            );
-          }),
-        ],
+              )),
+              Icon(_matchScoreExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                color: AppTheme.brandBlue),
+            ]),
+            if (_matchScoreExpanded) ...[
+              const SizedBox(height: 14),
+              ...widget.products.map((product) {
+                final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
+                final matchResult = matchAsync.valueOrNull;
+                final matchScore = matchResult?.matchScore;
+                final reason = matchResult?.reason;
+                final isLoading = matchAsync is AsyncLoading;
+
+                final displayScore = matchScore != null ? '$matchScore%' : '--';
+                final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
+                    matchScore >= 80 ? AppTheme.scoreExcellent :
+                    matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: matchColor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: matchColor.withValues(alpha: 0.15)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        if (isLoading)
+                          Container(
+                            width: 46, height: 46,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: matchColor.withValues(alpha: 0.1)),
+                            child: Center(child: SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: matchColor))),
+                          )
+                        else
+                          Container(
+                            width: 46, height: 46,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(colors: [matchColor, AppTheme.brandSkyBlue])),
+                            child: Center(child: Text(displayScore,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white))),
+                          ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(product.name, style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                              maxLines: 2, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 2),
+                            Text(
+                              isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
+                                  : user == null || !(user.quizCompleted)
+                                      ? (context.l10n?.takeQuiz ?? 'Take the quiz to see your match')
+                                      : 'Based on your preferences & behavior',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11, color: context.textTertiaryColor)),
+                          ],
+                        )),
+                      ]),
+                      if (reason != null && reason.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.auto_awesome, size: 12,
+                                color: matchColor.withValues(alpha: 0.7)),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(reason,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11, fontStyle: FontStyle.italic,
+                                color: context.textSecondary, height: 1.3),
+                              maxLines: 3, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -2842,8 +2842,8 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
           final idx = entry.key;
           final product = entry.value;
           final chipColor = _chipColors[idx % 4];
-          final name = product.name.length > 8
-              ? '${product.name.substring(0, 8)}…'
+          final name = product.name.length > 10
+              ? '${product.name.substring(0, 10)}…'
               : product.name;
           return Expanded(
             child: Row(

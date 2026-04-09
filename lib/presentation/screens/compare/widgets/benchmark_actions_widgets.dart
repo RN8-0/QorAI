@@ -579,11 +579,17 @@ class _CompareSimilarGrid extends ConsumerWidget {
       List<ProductEntity> all, List<String> viewedIds, List<String> searches) {
     final filtered = all
         .where((p) => !excludeIds.contains(p.id))
-        .where((p) => !excludeVariantGroups.contains(p.variantGroup))
+        .where((p) => excludeVariantGroups.isEmpty || !excludeVariantGroups.contains(p.variantGroup))
         .toList();
+    // Deduplicate by product ID
+    final seen = <String>{};
+    final unique = <ProductEntity>[];
+    for (final p in filtered) {
+      if (seen.add(p.id)) unique.add(p);
+    }
     final globalProducts = <ProductEntity>[];
     final otherProducts = <ProductEntity>[];
-    for (final p in filtered) {
+    for (final p in unique) {
       final brand = (p.brand ?? '').toLowerCase().trim();
       if (_SuggestedProductsList._globalBrands.contains(brand)) {
         globalProducts.add(p);
