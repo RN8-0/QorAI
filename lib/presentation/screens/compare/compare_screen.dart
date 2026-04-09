@@ -177,24 +177,10 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     productAsync.whenData((result) {
       result.when(
         success: (product) {
-          if (_lockedCategory != null && product.category != _lockedCategory) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(context.l10n?.onlySameCategoryCompare(_lockedCategory!.replaceAll('_', ' ')) ?? 'Only ${_lockedCategory!.replaceAll('_', ' ')} products can be compared together'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-            return;
-          }
-
           if (mounted) {
             final newIds = List<String>.from(_selectedProductIds)..add(productId);
             ref.read(compareSessionProvider.notifier).state = ref.read(compareSessionProvider).copyWith(
               selectedProductIds: newIds,
-              lockedCategory: _lockedCategory ?? product.category,
-              lockedSubcategory: _lockedSubcategory ?? product.subcategory,
             );
             setState(() {});
           }
@@ -315,8 +301,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     ref.read(compareSessionProvider.notifier).state = CompareSessionData(
       selectedProductIds: products.map((p) => p.id).toList(),
       comparedProducts: products,
-      lockedCategory: products.first.category,
-      lockedSubcategory: products.first.subcategory,
     );
     setState(() {});
     ref.read(behaviorTrackingProvider)
@@ -440,9 +424,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               onChanged: _onSearchChanged,
               style: TextStyle(color: context.textPrimary, fontSize: 14),
               decoration: InputDecoration(
-                hintText: _lockedSubcategory != null
-                    ? (context.l10n?.searchCategoryProductsHint(_lockedSubcategory!.replaceAll('_', ' ')) ?? 'Search ${_lockedSubcategory!.replaceAll('_', ' ')} products...')
-                    : (context.l10n?.searchCompareHint ?? 'Search products to compare...'),
+                hintText: context.l10n?.searchCompareHint ?? 'Search products to compare...',
                 hintStyle: TextStyle(color: context.textTertiaryColor, fontSize: 14),
                 prefixIcon: ShaderMask(
                   shaderCallback: (bounds) => _accentGradient.createShader(bounds),
@@ -468,8 +450,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                 )
               : _ProductSearchList(
                   selectedIds: _selectedProductIds,
-                  lockedCategory: _lockedCategory,
-                  lockedSubcategory: _lockedSubcategory,
                   onSelect: _addProduct,
                   onRemove: _removeProduct,
                 ),

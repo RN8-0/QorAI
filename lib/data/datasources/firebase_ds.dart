@@ -615,9 +615,9 @@ class FirebaseDataSource {
         return ProductModel.fromMap(map);
       }).toList();
 
-      // Apply year/brand filter to search results
-      final filtered = ProductFilter.filter(cfResults);
-      debugPrint('SEARCH: filtered ${cfResults.length} → ${filtered.length} (year/brand)');
+      // Relaxed filter: only remove defunct brands (no year/whitelist restriction)
+      final filtered = ProductFilter.filterRelaxed(cfResults);
+      debugPrint('SEARCH: filtered ${cfResults.length} → ${filtered.length} (defunct-only)');
 
       // Cache results locally for quick re-search
       _evictSearchResultCache();

@@ -155,4 +155,17 @@ class ProductFilter {
   static List<T> filter<T extends ProductEntity>(List<T> products) {
     return products.where(isAllowed).toList();
   }
+
+  /// Relaxed check: only reject defunct brands (no year/whitelist filter)
+  static bool isAllowedRelaxed(ProductEntity p) {
+    final rawBrand = (p.brand ?? '').toLowerCase().trim();
+    if (rawBrand.isEmpty) return false;
+    final brand = normalizeBrand(rawBrand);
+    return !defunctBrands.contains(brand);
+  }
+
+  /// Relaxed filter for compare search — only removes defunct brands
+  static List<T> filterRelaxed<T extends ProductEntity>(List<T> products) {
+    return products.where(isAllowedRelaxed).toList();
+  }
 }

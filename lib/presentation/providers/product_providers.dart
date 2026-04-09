@@ -207,35 +207,13 @@ final searchResultsProvider =
       final products = cached.all.toList();
 
       if (user != null) {
-        // Score each product by user affinity
-        final userCategories = {
-          if (user.primaryCategory != null) user.primaryCategory!.toLowerCase(): 20,
-          for (final cat in user.interestCategories ?? <String>[])
-            cat.toLowerCase(): 10,
-        };
-        final userEco = user.ecosystem.toLowerCase();
-
+        final algo = ref.read(profileAlgorithmServiceProvider);
+        final behavior = ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
         products.sort((a, b) {
-          double scoreA = a.trendScore * 0.3;
-          double scoreB = b.trendScore * 0.3;
-
-          // Boost user's preferred categories
-          scoreA += userCategories[a.category.toLowerCase()] ?? 0;
-          scoreB += userCategories[b.category.toLowerCase()] ?? 0;
-
-          // Ecosystem boost
-          final aEco = (a.specs['Platform']?.toLowerCase() ?? a.specs['OS']?.toLowerCase() ?? '');
-          final bEco = (b.specs['Platform']?.toLowerCase() ?? b.specs['OS']?.toLowerCase() ?? '');
-          if (userEco == 'apple' && aEco.contains('ios')) scoreA += 8;
-          if (userEco == 'apple' && bEco.contains('ios')) scoreB += 8;
-          if (userEco == 'android' && aEco.contains('android')) scoreA += 8;
-          if (userEco == 'android' && bEco.contains('android')) scoreB += 8;
-
-          // Deterministic per-user shuffle using uid hash to avoid always same order
-          final seed = user.uid.hashCode;
-          scoreA += (a.id.hashCode ^ seed) % 15 / 15.0 * 5;
-          scoreB += (b.id.hashCode ^ seed) % 15 / 15.0 * 5;
-
+          final scoreA = algo.calculateTotalFitScore(
+              user: user, product: a, behavior: behavior);
+          final scoreB = algo.calculateTotalFitScore(
+              user: user, product: b, behavior: behavior);
           return scoreB.compareTo(scoreA);
         });
       }
@@ -244,6 +222,9 @@ final searchResultsProvider =
     }
     return ref.read(productRepositoryProvider).getProducts(limit: 200);
   }
+
+  // Require at least 2 characters for search
+  if (query.trim().length < 2) return const Success(<ProductEntity>[]);
 
   // INSTANT LOCAL SEARCH: search homeFeed cache first (< 5ms)
   final normalizedQuery = query.toLowerCase().trim();
@@ -258,52 +239,69 @@ final searchResultsProvider =
       final brand = (p.brand ?? '').toLowerCase();
       final category = p.category.toLowerCase();
       final searchable = '$name $brand $category';
-      // All query words must match
       return queryWords.every((w) => searchable.contains(w));
     }).toList();
-
-    // Score local results by relevance
-    localResults.sort((a, b) {
-      int scoreA = 0, scoreB = 0;
-      final nameA = a.name.toLowerCase();
-      final nameB = b.name.toLowerCase();
-      // Exact name match bonus
-      if (nameA.contains(normalizedQuery)) scoreA += 100;
-      if (nameB.contains(normalizedQuery)) scoreB += 100;
-      // Brand match bonus
-      if ((a.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreA += 50;
-      if ((b.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreB += 50;
-      // TrendScore tiebreaker
-      scoreA += (a.trendScore * 10).toInt();
-      scoreB += (b.trendScore * 10).toInt();
-      return scoreB.compareTo(scoreA);
-    });
   }
 
-  // If local results are sufficient (>= 10), return immediately
-  // and let Cloud Function results be merged on next query change
-  if (localResults.length >= 10) {
-    // Still fire Cloud Function in background for next time
-    ref.read(productRepositoryProvider).searchProducts(query: query, limit: 100);
-    AnalyticsService.instance.logProductSearch(query, localResults.length);
-    return Success(localResults.take(100).toList());
-  }
-
-  // Cloud Function search (for queries not in local cache)
+  // ALWAYS call Cloud Function — don't short-circuit on local results
   try {
     final cloudResult = await ref.read(productRepositoryProvider)
         .searchProducts(query: query, limit: 100)
-        .timeout(const Duration(seconds: 8));
-    // Merge: local results first, then cloud results (deduplicated)
-    if (localResults.isNotEmpty) {
-      final seenIds = localResults.map((p) => p.id).toSet();
-      final cloudProducts = cloudResult.when(
-        success: (products) => products.where((p) => !seenIds.contains(p.id)).toList(),
-        failure: (_) => <ProductEntity>[],
-      );
-      return Success([...localResults, ...cloudProducts].take(100).toList());
+        .timeout(const Duration(seconds: 10));
+    // Merge: deduplicate local + cloud
+    final localIds = localResults.map((p) => p.id).toSet();
+    final cloudProducts = cloudResult.when(
+      success: (products) => products.where((p) => !localIds.contains(p.id)).toList(),
+      failure: (_) => <ProductEntity>[],
+    );
+    final merged = [...localResults, ...cloudProducts];
+
+    // Personalize results using match score
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user != null && merged.isNotEmpty) {
+      final algo = ref.read(profileAlgorithmServiceProvider);
+      final behavior = ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
+      // Blend relevance + personalization
+      merged.sort((a, b) {
+        final nameA = a.name.toLowerCase();
+        final nameB = b.name.toLowerCase();
+        double relA = 0, relB = 0;
+        // Relevance scoring
+        if (nameA.contains(normalizedQuery)) relA += 100;
+        if (nameB.contains(normalizedQuery)) relB += 100;
+        if (nameA.startsWith(normalizedQuery)) relA += 30;
+        if (nameB.startsWith(normalizedQuery)) relB += 30;
+        if ((a.brand ?? '').toLowerCase().contains(normalizedQuery)) relA += 50;
+        if ((b.brand ?? '').toLowerCase().contains(normalizedQuery)) relB += 50;
+        relA += a.trendScore * 5;
+        relB += b.trendScore * 5;
+        // Personalization scoring (0-100 scale, blended at 40%)
+        final matchA = algo.calculateTotalFitScore(
+            user: user, product: a, behavior: behavior);
+        final matchB = algo.calculateTotalFitScore(
+            user: user, product: b, behavior: behavior);
+        final finalA = relA * 0.6 + matchA * 0.4;
+        final finalB = relB * 0.6 + matchB * 0.4;
+        return finalB.compareTo(finalA);
+      });
+    } else {
+      // No user profile — sort by relevance only
+      merged.sort((a, b) {
+        final nameA = a.name.toLowerCase();
+        final nameB = b.name.toLowerCase();
+        int scoreA = 0, scoreB = 0;
+        if (nameA.contains(normalizedQuery)) scoreA += 100;
+        if (nameB.contains(normalizedQuery)) scoreB += 100;
+        if ((a.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreA += 50;
+        if ((b.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreB += 50;
+        scoreA += (a.trendScore * 10).toInt();
+        scoreB += (b.trendScore * 10).toInt();
+        return scoreB.compareTo(scoreA);
+      });
     }
-    return cloudResult;
+
+    AnalyticsService.instance.logProductSearch(query, merged.length);
+    return Success(merged.take(100).toList());
   } catch (_) {
     // Timeout — return local results if any
     if (localResults.isNotEmpty) return Success(localResults.take(100).toList());

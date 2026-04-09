@@ -239,19 +239,15 @@ class _EmptyCompareState extends ConsumerWidget {
   }
 }
 
-// ─── Product Search List with Category Filter ───
+// ─── Product Search List (no category lock, with match badge) ───
 
 class _ProductSearchList extends ConsumerWidget {
   final List<String> selectedIds;
-  final String? lockedCategory;
-  final String? lockedSubcategory;
   final Function(String) onSelect;
   final Function(String) onRemove;
 
   const _ProductSearchList({
     required this.selectedIds,
-    this.lockedCategory,
-    this.lockedSubcategory,
     required this.onSelect,
     required this.onRemove,
   });
@@ -260,18 +256,14 @@ class _ProductSearchList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final query = ref.watch(searchQueryProvider);
     final resultsAsync = ref.watch(searchResultsProvider(query));
+    final user = ref.watch(userProfileProvider).valueOrNull;
+    final algo = ref.read(profileAlgorithmServiceProvider);
+    final behavior = ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
 
     return resultsAsync.when(
       data: (result) => result.when(
         success: (products) {
-          // Filter by locked category
-          var filtered = products.where((p) {
-            if (lockedSubcategory != null && p.subcategory != lockedSubcategory) return false;
-            if (lockedSubcategory == null && lockedCategory != null && p.category != lockedCategory) return false;
-            return true;
-          }).toList();
-
-          if (filtered.isEmpty) {
+          if (products.isEmpty) {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -288,107 +280,20 @@ class _ProductSearchList extends ConsumerWidget {
           }
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: filtered.length,
+            itemCount: products.length,
             itemBuilder: (context, index) {
-              final product = filtered[index];
+              final product = products[index];
               final isSelected = selectedIds.contains(product.id);
-              return Container(
-                height: 72,
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: isSelected
-                      ? LinearGradient(
-                          colors: [
-                            AppTheme.brandBlue.withValues(alpha: 0.12),
-                            AppTheme.brandDeepBlue.withValues(alpha: 0.06),
-                          ],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        )
-                      : null,
-                  color: isSelected ? null : context.surfaceVariantColor,
-                  borderRadius: BorderRadius.circular(14),
-                  border: isSelected
-                      ? Border.all(color: AppTheme.brandDeepBlue.withValues(alpha: 0.5), width: 1.5)
-                      : Border.all(color: context.dividerColor),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 3)),
-                          ..._cardShadow,
-                        ]
-                      : _cardShadow,
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => isSelected ? onRemove(product.id) : onSelect(product.id),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: ProductImageBox(
-                              imageUrl: product.imageUrl,
-                              width: 48, height: 48,
-                              borderRadius: BorderRadius.circular(10),
-                              padding: const EdgeInsets.all(4),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  product.name,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected ? context.textPrimary : context.textPrimary,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  product.brand ?? product.subcategory,
-                                  style: TextStyle(fontSize: 13, color: context.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppTheme.brandDeepBlue.withValues(alpha: 0.15)
-                                  : AppTheme.brandBlue.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              product.subcategory.replaceAll('_', ' '),
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: isSelected ? AppTheme.brandDeepBlue : AppTheme.brandBlue,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          isSelected
-                              ? ShaderMask(
-                                  shaderCallback: (bounds) => _accentGradient.createShader(bounds),
-                                  child: const Icon(Icons.check_circle, color: Colors.white, size: 24),
-                                )
-                              : Icon(Icons.add_circle_outline, color: context.textTertiaryColor, size: 22),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              // Calculate match score if user profile exists
+              final matchScore = user != null
+                  ? algo.calculateTotalFitScore(
+                      user: user, product: product, behavior: behavior)
+                  : null;
+              return _SearchProductTile(
+                product: product,
+                isSelected: isSelected,
+                matchScore: matchScore,
+                onTap: () => isSelected ? onRemove(product.id) : onSelect(product.id),
               );
             },
           );
@@ -400,6 +305,158 @@ class _ProductSearchList extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.brandBlue)),
       error: (err, _) => Center(
         child: Text(context.l10n?.anErrorOccurred('$err') ?? 'An error occurred: $err', style: TextStyle(color: context.textPrimary)),
+      ),
+    );
+  }
+}
+
+/// Individual search result tile with optional match score badge
+class _SearchProductTile extends StatelessWidget {
+  final ProductEntity product;
+  final bool isSelected;
+  final double? matchScore;
+  final VoidCallback onTap;
+
+  const _SearchProductTile({
+    required this.product,
+    required this.isSelected,
+    this.matchScore,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final matchPct = matchScore != null ? matchScore!.round().clamp(0, 100) : null;
+    return Container(
+      height: 72,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        gradient: isSelected
+            ? LinearGradient(
+                colors: [
+                  AppTheme.brandBlue.withValues(alpha: 0.12),
+                  AppTheme.brandDeepBlue.withValues(alpha: 0.06),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              )
+            : null,
+        color: isSelected ? null : context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(14),
+        border: isSelected
+            ? Border.all(color: AppTheme.brandDeepBlue.withValues(alpha: 0.5), width: 1.5)
+            : Border.all(color: context.dividerColor),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 3)),
+                ..._cardShadow,
+              ]
+            : _cardShadow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                // Product image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: ProductImageBox(
+                    imageUrl: product.imageUrl,
+                    width: 48, height: 48,
+                    borderRadius: BorderRadius.circular(10),
+                    padding: const EdgeInsets.all(4),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Name + brand
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: context.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        product.brand ?? product.subcategory,
+                        style: TextStyle(fontSize: 13, color: context.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                // Match score badge
+                if (matchPct != null) ...[
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: matchPct >= 70
+                            ? [const Color(0xFF22C55E), const Color(0xFF16A34A)]
+                            : matchPct >= 40
+                                ? [const Color(0xFFF59E0B), const Color(0xFFD97706)]
+                                : [const Color(0xFFEF4444), const Color(0xFFDC2626)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$matchPct',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                // TechScore badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppTheme.brandDeepBlue.withValues(alpha: 0.15)
+                        : AppTheme.brandBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${product.techScore.round()}',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: isSelected ? AppTheme.brandDeepBlue : AppTheme.brandBlue,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Select/deselect icon
+                isSelected
+                    ? ShaderMask(
+                        shaderCallback: (bounds) => _accentGradient.createShader(bounds),
+                        child: const Icon(Icons.check_circle, color: Colors.white, size: 24),
+                      )
+                    : Icon(Icons.add_circle_outline, color: context.textTertiaryColor, size: 22),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
