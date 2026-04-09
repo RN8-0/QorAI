@@ -2928,7 +2928,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get product2 => 'Produto 2';
 
   @override
-  String get compareAction => 'Comparar!';
+  String get compareAction => 'Comparar';
 
   @override
   String get perfectMatch => 'Combinação perfeita! 🎯';

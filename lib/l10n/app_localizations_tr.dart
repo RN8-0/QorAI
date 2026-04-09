@@ -2932,7 +2932,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get product2 => 'Ürün 2';
 
   @override
-  String get compareAction => 'Karşılaştır!';
+  String get compareAction => 'Karşılaştır';
 
   @override
   String get perfectMatch => 'Mükemmel Eşleşme! 🎯';

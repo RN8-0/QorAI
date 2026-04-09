@@ -2732,8 +2732,13 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
           '- 50-69: Decent but notable mismatches\n'
           '- 30-49: Poor match (wrong ecosystem, over budget, wrong priorities)\n'
           '- 0-29: Very poor match\n\n'
+          'IMPORTANT for the "reason" field: Write the explanation addressing the user directly in second person. '
+          'Do NOT use third person phrases like "the user", "user\'s", "their". '
+          'Use "you", "your", "yours" instead. '
+          'Example: "Your Apple ecosystem preference and high budget make this a perfect fit for you." '
+          'NOT: "The user\'s Apple ecosystem preference makes this a good match."\n\n'
           'Return ONLY this JSON:\n'
-          '{"matchScore": <int>, "reason": "<max 2 sentences>", '
+          '{"matchScore": <int>, "reason": "<max 2 sentences, second person>", '
           '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
           '"missingFactors": ["<missing1>", "<missing2>"]}';
 

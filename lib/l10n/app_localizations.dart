@@ -5695,7 +5695,7 @@ abstract class AppLocalizations {
   /// No description provided for @compareAction.
   ///
   /// In en, this message translates to:
-  /// **'Compare!'**
+  /// **'Compare'**
   String get compareAction;
 
   /// No description provided for @perfectMatch.

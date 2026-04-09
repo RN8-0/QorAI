@@ -2881,7 +2881,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get product2 => '製品2';
 
   @override
-  String get compareAction => '比較！';
+  String get compareAction => '比較';
 
   @override
   String get perfectMatch => 'パーフェクトマッチ！🎯';

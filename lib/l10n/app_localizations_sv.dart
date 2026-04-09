@@ -2920,7 +2920,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get product2 => 'Produkt 2';
 
   @override
-  String get compareAction => 'Jämför!';
+  String get compareAction => 'Jämför';
 
   @override
   String get perfectMatch => 'Perfekt matchning! 🎯';

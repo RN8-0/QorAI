@@ -2904,7 +2904,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get product2 => 'المنتج 2';
 
   @override
-  String get compareAction => 'قارن!';
+  String get compareAction => 'قارن';
 
   @override
   String get perfectMatch => 'تطابق مثالي! 🎯';

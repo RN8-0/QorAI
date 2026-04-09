@@ -325,13 +325,16 @@ And this product:
 $productText
 
 Rate the match on a scale of 0-100 considering:
-1. How well product specs align with user's stated priorities
-2. Price vs user's apparent budget
-3. Category relevance to user's browsing history
+1. How well product specs align with the stated priorities
+2. Price vs apparent budget
+3. Category relevance to browsing history
 4. Brand/ecosystem compatibility
-5. Technical quality relative to user's performance needs
+5. Technical quality relative to performance needs
 
-Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max 15 words>"}''';
+IMPORTANT for the "reason" field: Address the user directly in second person. Use "you/your" NOT "the user/user's/their".
+Example: "Your budget and ecosystem preference make this an excellent fit."
+
+Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max 15 words, second person>"}''';
 
       final dio = Dio();
       final response = await dio.post(

@@ -2930,7 +2930,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get product2 => 'Product 2';
 
   @override
-  String get compareAction => 'Vergelijk!';
+  String get compareAction => 'Vergelijk';
 
   @override
   String get perfectMatch => 'Perfecte match! 🎯';
