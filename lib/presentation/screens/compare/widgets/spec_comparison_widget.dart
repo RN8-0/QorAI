@@ -13,35 +13,34 @@ class _SpecComparisonView extends ConsumerStatefulWidget {
 class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   late Map<String, bool> _expandedGroups;
   late Map<String, Map<String, List<String>>> _groupedSpecs;
-  String? _aiAnalysis;
-  Map<String, dynamic>? _aiStructured;
-  bool _aiLoading = false;
-  bool _aiExpanded = false;
-
   // Quick Verdict state
   bool _quickVerdictExpanded = false;
   bool _quickVerdictLoading = false;
   String? _quickVerdictResult;
 
-  // Deep Analysis state
+  // Deep Analysis state (merged with AI Analysis structured)
   bool _deepAnalysisExpanded = false;
   bool _deepAnalysisLoading = false;
   String? _deepAnalysisResult;
+  Map<String, dynamic>? _deepAnalysisStructured;
 
-  // Smart Alternatives state (comparison)
+  // Smart Alternatives state
   bool _alternativesExpanded = false;
   bool _alternativesLoading = false;
   String? _alternativesResult;
+  Map<String, dynamic>? _alternativesStructured;
 
-  // AI Advisor state (comparison buying advice)
+  // AI Advisor state
   bool _advisorExpanded = false;
   bool _advisorLoading = false;
   String? _advisorResult;
+  Map<String, dynamic>? _advisorStructured;
 
   // Price Prediction state
   bool _predictionExpanded = false;
   bool _predictionLoading = false;
   String? _predictionResult;
+  Map<String, dynamic>? _predictionStructured;
 
   // Personalized Match state
   bool _matchScoreExpanded = false;
@@ -66,11 +65,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     final sessionIds = session.selectedProductIds.toSet();
     final currentIds = widget.products.map((p) => p.id).toSet();
     if (sessionIds.isNotEmpty && sessionIds.difference(currentIds).isEmpty && currentIds.difference(sessionIds).isEmpty) {
-      if (session.aiAnalysis != null) {
-        _aiAnalysis = session.aiAnalysis;
-        _aiStructured = session.aiStructured;
-      }
       if (session.deepAnalysisResult != null) _deepAnalysisResult = session.deepAnalysisResult;
+      if (session.aiStructured != null) _deepAnalysisStructured = session.aiStructured;
       if (session.alternativesResult != null) _alternativesResult = session.alternativesResult;
       if (session.advisorResult != null) _advisorResult = session.advisorResult;
       if (session.predictionResult != null) _predictionResult = session.predictionResult;
@@ -80,8 +76,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   /// Save AI analysis results to session
   void _saveToSession() {
     ref.read(compareSessionProvider.notifier).update((state) => state.copyWith(
-      aiAnalysis: _aiAnalysis,
-      aiStructured: _aiStructured,
+      aiStructured: _deepAnalysisStructured,
       deepAnalysisResult: _deepAnalysisResult,
       alternativesResult: _alternativesResult,
       advisorResult: _advisorResult,
@@ -89,20 +84,28 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     ));
   }
 
-  Future<void> _loadAiAnalysis() async {
-    setState(() => _aiLoading = true);
+  Future<void> _toggleDeepAnalysis() async {
+    if (_deepAnalysisExpanded && (_deepAnalysisResult != null || _deepAnalysisStructured != null)) {
+      setState(() => _deepAnalysisExpanded = false);
+      return;
+    }
+    setState(() {
+      _deepAnalysisExpanded = true;
+      if (_deepAnalysisResult != null || _deepAnalysisStructured != null) return;
+      _deepAnalysisLoading = true;
+    });
+    if (_deepAnalysisResult != null || _deepAnalysisStructured != null) return;
     try {
       final gemini = ref.read(geminiServiceProvider);
+      final lang = Localizations.localeOf(context).languageCode;
+      final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) => p.name).join(' vs ');
       final specSummary = widget.products.map((p) {
         final keySpecs = p.keySpecs.entries.take(10).map((e) => '${e.key}: ${e.value}').join(', ');
         return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
       }).join('\n');
 
-      final lang = Localizations.localeOf(context).languageCode;
-      final langName = lang == 'tr' ? 'Turkish' : 'English';
-
-      final prompt = '''Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
+      final prompt = '''You are a senior tech analyst. Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
 $productNames
 
 Specs:
@@ -111,60 +114,51 @@ $specSummary
 Return ONLY valid JSON:
 {
   "winner": "product name",
-  "winner_score": 0-100,
+  "verdict": "1 sentence verdict addressing you directly",
   "products": {
     "<product_name>": {
-      "compatibility_score": 0-100,
+      "score": 0-100,
       "strengths": ["str1", "str2", "str3"],
       "weaknesses": ["weak1", "weak2"],
       "best_for": "ideal use case for you"
     }
   },
-  "factors": {
-    "performance": {"scores": {"<name1>": 0-100, "<name2>": 0-100}},
-    "value": {"scores": {"<name1>": 0-100, "<name2>": 0-100}},
-    "features": {"scores": {"<name1>": 0-100, "<name2>": 0-100}},
-    "build_quality": {"scores": {"<name1>": 0-100, "<name2>": 0-100}},
-    "user_experience": {"scores": {"<name1>": 0-100, "<name2>": 0-100}}
+  "categories": {
+    "Performance": {"<name1>": 85, "<name2>": 70},
+    "Display": {"<name1>": 90, "<name2>": 80},
+    "Build Quality": {"<name1>": 75, "<name2>": 85},
+    "Value": {"<name1>": 80, "<name2>": 65},
+    "Features": {"<name1>": 70, "<name2>": 90}
   },
-  "recommendation": "3-4 sentence personalized recommendation addressing the user directly",
-  "verdict": "one sentence verdict addressing the user directly"
+  "recommendation": "3-4 sentence personalized recommendation addressing you directly"
 }''';
 
-      // Use jsonFreeTextQuery for guaranteed JSON response format
       final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
       if (mounted) {
-        // Parse JSON response - jsonFreeTextQuery enforces JSON format
         Map<String, dynamic>? parsed;
         try {
           var clean = result.trim();
-          // Strip markdown code fences if present (shouldn't be with responseMimeType)
           final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
-          if (codeBlockMatch != null) {
-            clean = codeBlockMatch.group(1)!.trim();
-          }
-          // Try to find JSON object in the response
+          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
           final jsonStart = clean.indexOf('{');
           final jsonEnd = clean.lastIndexOf('}');
-          if (jsonStart >= 0 && jsonEnd > jsonStart) {
-            clean = clean.substring(jsonStart, jsonEnd + 1);
-          }
+          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
           parsed = jsonDecode(clean) as Map<String, dynamic>?;
         } catch (_) {
-          debugPrint('=== COMPAIR: Compare AI JSON parse failed ===');
+          debugPrint('=== COMPAIR: Deep Analysis JSON parse failed ===');
         }
-
         setState(() {
-          _aiAnalysis = result;
-          _aiStructured = parsed;
-          _aiLoading = false;
-          _aiExpanded = true;
+          _deepAnalysisResult = result;
+          _deepAnalysisStructured = parsed;
+          _deepAnalysisLoading = false;
         });
-        // Save to session for persistence across navigation
         _saveToSession();
       }
     } catch (_) {
-      if (mounted) setState(() => _aiLoading = false);
+      if (mounted) setState(() {
+        _deepAnalysisResult = 'Unable to generate analysis. Please try again.';
+        _deepAnalysisLoading = false;
+      });
     }
   }
 
@@ -208,106 +202,57 @@ Keep it punchy and actionable. No hedging.''',
     }
   }
 
-  Future<void> _toggleDeepAnalysis() async {
-    if (_deepAnalysisExpanded && _deepAnalysisResult != null) {
-      setState(() => _deepAnalysisExpanded = false);
-      return;
-    }
-    setState(() {
-      _deepAnalysisExpanded = true;
-      if (_deepAnalysisResult != null) return;
-      _deepAnalysisLoading = true;
-    });
-    if (_deepAnalysisResult != null) return;
-    try {
-      final gemini = ref.read(geminiServiceProvider);
-      final lang = Localizations.localeOf(context).languageCode;
-      final langName = lang == 'tr' ? 'Turkish' : 'English';
-      final productNames = widget.products.map((p) => p.name).join(' vs ');
-
-      final result = await gemini.groundedQuery(
-        '''You are a senior tech product analyst helping a user decide between products. Address the user directly using "you/your".
-Analyze "$productNames" with web research.
-
-INSTRUCTIONS:
-1. Search Reddit, tech forums, and community discussions for real user experiences
-2. Find actual user complaints and praise from r/technology, r/gadgets, product-specific subreddits
-3. Look for common issues reported by real users
-
-Provide analysis in $langName covering:
-
-## Expert Analysis
-- Build quality & design philosophy differences
-- Real-world performance (not just benchmarks)
-- Value proposition of each product for you
-- Hidden strengths most reviewers miss
-- Potential deal-breakers you should know about
-
-## Community Insights (Reddit/Forums)
-- What real users love about each product
-- Common complaints and issues reported
-- Long-term reliability reports from actual owners
-- Community consensus on which is better and why
-
-## Verdict
-- Best use case for each product based on your needs
-- Overall recommendation with clear reasoning
-
-Keep it comprehensive but readable. Use bullet points for clarity. Always address the user directly.''',
-      );
-      if (mounted) {
-        setState(() {
-          _deepAnalysisResult = result.isNotEmpty ? result : 'Unable to generate analysis.';
-          _deepAnalysisLoading = false;
-        });
-        // Save to session for persistence across navigation
-        _saveToSession();
-      }
-    } catch (_) {
-      if (mounted) setState(() {
-        _deepAnalysisResult = 'Unable to generate analysis. Please try again.';
-        _deepAnalysisLoading = false;
-      });
-    }
-  }
-
   Future<void> _toggleAlternatives() async {
-    if (_alternativesExpanded && _alternativesResult != null) {
+    if (_alternativesExpanded && (_alternativesResult != null || _alternativesStructured != null)) {
       setState(() => _alternativesExpanded = false);
       return;
     }
     setState(() {
       _alternativesExpanded = true;
-      if (_alternativesResult != null) return;
+      if (_alternativesResult != null || _alternativesStructured != null) return;
       _alternativesLoading = true;
     });
-    if (_alternativesResult != null) return;
+    if (_alternativesResult != null || _alternativesStructured != null) return;
     try {
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) => '${p.name} (${p.brand ?? "Unknown"})').join(' vs ');
       final category = widget.products.first.category;
-      final result = await gemini.groundedQuery(
-        '''You are a tech product expert helping a user find alternatives. Address the user directly using "you/your".
-You are comparing: $productNames in category "$category".
-Suggest 3-5 alternative products they should also consider, in $langName.
 
-For each alternative:
-🔷 **Product Name** — Brand
-- Why it's worth considering for you (1-2 sentences)
-- Key advantage over the products you're comparing
-- Price range estimate
+      final prompt = '''You are a tech expert. The user is comparing: $productNames in category "$category".
+Suggest 3-5 alternative products they should also consider. Address the user directly using "you/your". ALL text in $langName.
 
-Also briefly explain:
-## 🎯 Which Alternative Fits You Best?
-- For budget users: ...
-- For performance seekers: ...
-- For best value: ...''',
-      );
+Return ONLY valid JSON:
+{
+  "alternatives": [
+    {
+      "name": "Product Name",
+      "brand": "Brand",
+      "why_better": "1 sentence why this is worth considering for you",
+      "price_range": "approx price range",
+      "score": 0-100
+    }
+  ]
+}''';
+
+      final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
       if (mounted) {
+        Map<String, dynamic>? parsed;
+        try {
+          var clean = result.trim();
+          final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
+          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
+          final jsonStart = clean.indexOf('{');
+          final jsonEnd = clean.lastIndexOf('}');
+          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
+          parsed = jsonDecode(clean) as Map<String, dynamic>?;
+        } catch (_) {
+          debugPrint('=== COMPAIR: Alternatives JSON parse failed ===');
+        }
         setState(() {
-          _alternativesResult = result.isNotEmpty ? result : 'Unable to generate alternatives.';
+          _alternativesResult = result;
+          _alternativesStructured = parsed;
           _alternativesLoading = false;
         });
         _saveToSession();
@@ -321,16 +266,16 @@ Also briefly explain:
   }
 
   Future<void> _toggleAdvisor() async {
-    if (_advisorExpanded && _advisorResult != null) {
+    if (_advisorExpanded && (_advisorResult != null || _advisorStructured != null)) {
       setState(() => _advisorExpanded = false);
       return;
     }
     setState(() {
       _advisorExpanded = true;
-      if (_advisorResult != null) return;
+      if (_advisorResult != null || _advisorStructured != null) return;
       _advisorLoading = true;
     });
-    if (_advisorResult != null) return;
+    if (_advisorResult != null || _advisorStructured != null) return;
     try {
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
@@ -340,37 +285,44 @@ Also briefly explain:
         final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
         return '${p.name} (Score: ${p.techScore}, Price: $price, Specs: $specs)';
       }).join('\n');
-      final result = await gemini.groundedQuery(
-        '''You are a personal shopping advisor helping the user decide. Address the user directly using "you/your". Respond in $langName.
 
-Products you are comparing:
+      final prompt = '''You are a personal tech shopping advisor. Address the user directly using "you/your". ALL text in $langName.
+
+Products:
 $productDetails
 
-Provide personalized buying advice:
+Return ONLY valid JSON:
+{
+  "best_for": "1 sentence summary - which product is best for most users and why",
+  "buy_if": ["reason 1 to buy the winner", "reason 2", "reason 3"],
+  "avoid_if": ["scenario where this is NOT the right choice", "another scenario"],
+  "per_product": [
+    {
+      "name": "product name",
+      "ideal_user": "who should buy this",
+      "rating": 1-5
+    }
+  ],
+  "final_verdict": "2 sentence clear recommendation addressing you directly"
+}''';
 
-## 🏆 Winner Summary
-- Overall winner and runner-up — explain why this is the best choice for you
-
-## 👤 Which One Should You Buy?
-- **${widget.products.first.name}** is best for you if: ...
-${widget.products.length > 1 ? '- **${widget.products[1].name}** is best for you if: ...' : ''}
-${widget.products.length > 2 ? '- **${widget.products[2].name}** is best for you if: ...' : ''}
-
-## 💡 Key Decision Factors
-- If you prioritize camera: choose...
-- If you prioritize performance: choose...
-- If you prioritize battery: choose...
-- If you prioritize value: choose...
-
-## ⚠️ Things You Should Watch Out For
-- Potential downsides of each product that may affect you
-
-## 🎯 Final Verdict
-Clear, actionable recommendation for you.''',
-      );
+      final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
       if (mounted) {
+        Map<String, dynamic>? parsed;
+        try {
+          var clean = result.trim();
+          final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
+          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
+          final jsonStart = clean.indexOf('{');
+          final jsonEnd = clean.lastIndexOf('}');
+          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
+          parsed = jsonDecode(clean) as Map<String, dynamic>?;
+        } catch (_) {
+          debugPrint('=== COMPAIR: Advisor JSON parse failed ===');
+        }
         setState(() {
-          _advisorResult = result.isNotEmpty ? result : 'Unable to generate advice.';
+          _advisorResult = result;
+          _advisorStructured = parsed;
           _advisorLoading = false;
         });
         _saveToSession();
@@ -384,16 +336,16 @@ Clear, actionable recommendation for you.''',
   }
 
   Future<void> _togglePrediction() async {
-    if (_predictionExpanded && _predictionResult != null) {
+    if (_predictionExpanded && (_predictionResult != null || _predictionStructured != null)) {
       setState(() => _predictionExpanded = false);
       return;
     }
     setState(() {
       _predictionExpanded = true;
-      if (_predictionResult != null) return;
+      if (_predictionResult != null || _predictionStructured != null) return;
       _predictionLoading = true;
     });
-    if (_predictionResult != null) return;
+    if (_predictionResult != null || _predictionStructured != null) return;
     try {
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
@@ -402,28 +354,42 @@ Clear, actionable recommendation for you.''',
         final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
         return '${p.name} (current price: $price)';
       }).join(', ');
-      final result = await gemini.groundedQuery(
-        '''Analyze price trends for: $productNames. Address the user directly using "you/your". Respond in $langName.
 
-## 📊 Current Price Analysis
-For each product, analyze current pricing and what it means for you
+      final prompt = '''You are a price analyst. These products may be real or hypothetical. Make reasonable predictions based on market trends. Address the user directly using "you/your". ALL text in $langName.
 
-## 📉 Price Trend Prediction
-- Expected price movement in next 1-3 months
-- Best time for you to buy each product
-- Any upcoming sales events or price drops you should wait for
+Products: $productNames
 
-## 🛒 When Should You Buy?
-- Buy now vs wait recommendation for each product
-- Which product offers you the best value RIGHT NOW
+Return ONLY valid JSON:
+{
+  "products": [
+    {
+      "name": "product name",
+      "trend": "up" or "down" or "stable",
+      "change_percent": -5,
+      "buy_now": true,
+      "reason": "1 sentence why",
+      "best_time": "when to buy"
+    }
+  ]
+}''';
 
-## 💰 Value Comparison
-- Price-to-performance ratio comparison for your budget
-- Hidden costs you should consider (accessories, subscriptions)''',
-      );
+      final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
       if (mounted) {
+        Map<String, dynamic>? parsed;
+        try {
+          var clean = result.trim();
+          final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
+          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
+          final jsonStart = clean.indexOf('{');
+          final jsonEnd = clean.lastIndexOf('}');
+          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
+          parsed = jsonDecode(clean) as Map<String, dynamic>?;
+        } catch (_) {
+          debugPrint('=== COMPAIR: Prediction JSON parse failed ===');
+        }
         setState(() {
-          _predictionResult = result.isNotEmpty ? result : 'Unable to predict prices.';
+          _predictionResult = result;
+          _predictionStructured = parsed;
           _predictionLoading = false;
         });
         _saveToSession();
@@ -870,235 +836,426 @@ For each product, analyze current pricing and what it means for you
     return -1;
   }
 
-  Widget _buildAiAnalysisCard() {
-    final hasStructured = _aiStructured != null;
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          InkWell(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-            onTap: () => setState(() => _aiExpanded = !_aiExpanded),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  AppTheme.brandBlue.withValues(alpha: 0.11),
-                  AppTheme.brandDeepBlue.withValues(alpha: 0.08),
-                ]),
-                borderRadius: _aiExpanded
-                    ? const BorderRadius.vertical(top: Radius.circular(22))
-                    : BorderRadius.circular(22),
-              ),
-              child: Row(children: [
-                Container(
-                  width: 32, height: 32,
-                  decoration: const BoxDecoration(gradient: _accentGradient, shape: BoxShape.circle),
-                  child: const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: Text(
-                  context.l10n?.aiAnalysis ?? 'AI Analysis',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                )),
-                if (hasStructured && _aiStructured!['winner'] != null)
-                  Flexible(
-                    flex: 0,
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 100),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.scoreExcellent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8)),
-                      child: Text('🏆 ${_aiStructured!['winner']}',
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.scoreExcellent)),
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                if (_aiLoading)
-                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue))
-                else
-                  AnimatedRotation(
-                    turns: _aiExpanded ? 0.5 : 0, duration: const Duration(milliseconds: 200),
-                    child: Icon(Icons.expand_more, size: 22, color: context.textTertiaryColor)),
-              ]),
-            ),
-          ),
-          // Structured content
-          if (_aiExpanded && hasStructured) ...[
-            // Per-product compatibility scores
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Column(
-                children: (_aiStructured!['products'] as Map<String, dynamic>? ?? {}).entries.map((e) {
-                  final data = e.value as Map<String, dynamic>? ?? {};
-                  final score = (data['compatibility_score'] as num?)?.toDouble() ?? 0;
-                  final strengths = List<String>.from(data['strengths'] ?? []);
-                  final weaknesses = List<String>.from(data['weaknesses'] ?? []);
-                  final bestFor = data['best_for'] as String? ?? '';
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: context.surfaceElevatedColor,
-                      borderRadius: BorderRadius.circular(14)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Expanded(child: Text(e.key, style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary))),
-                        Container(
-                          width: 48, height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(colors: [
-                              _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
-                          child: Center(child: Text('${score.toInt()}%',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white))),
-                        ),
-                      ]),
-                      if (bestFor.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12, color: context.textSecondary, fontStyle: FontStyle.italic)),
-                      ],
-                      if (strengths.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        ...strengths.take(3).map((s) => Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
-                          child: Row(children: [
-                            const Text('✅ ', style: TextStyle(fontSize: 11)),
-                            Expanded(child: Text(s, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary))),
-                          ]),
-                        )),
-                      ],
-                      if (weaknesses.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        ...weaknesses.take(2).map((w) => Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
-                          child: Row(children: [
-                            const Text('⚠️ ', style: TextStyle(fontSize: 11)),
-                            Expanded(child: Text(w, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor))),
-                          ]),
-                        )),
-                      ],
-                    ]),
-                  );
-                }).toList(),
-              ),
-            ),
-            // Factor comparison bars
-            if ((_aiStructured!['factors'] as Map<String, dynamic>?)?.isNotEmpty == true)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: context.surfaceElevatedColor,
-                    borderRadius: BorderRadius.circular(14)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Factor Comparison', style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
-                      const SizedBox(height: 10),
-                      ...(_aiStructured!['factors'] as Map<String, dynamic>).entries.map((factor) {
-                        final fData = factor.value as Map<String, dynamic>? ?? {};
-                        final scores = (fData['scores'] as Map<String, dynamic>?) ?? {};
-                        final label = factor.key.replaceAll('_', ' ').split(' ')
-                            .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(label, style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11, fontWeight: FontWeight.w500, color: context.textTertiaryColor)),
-                            const SizedBox(height: 4),
-                            ...scores.entries.map((s) {
-                              final val = (s.value as num?)?.toDouble() ?? 0;
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 3),
-                                child: Row(children: [
-                                  SizedBox(width: 70, child: Text(s.key.split(' ').last,
-                                      style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
-                                      maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                  Expanded(child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: LinearProgressIndicator(
-                                        value: val / 100, minHeight: 6,
-                                        backgroundColor: context.surfaceVariantColor,
-                                        color: _aiScoreColor(val)))),
-                                  const SizedBox(width: 6),
-                                  SizedBox(width: 26, child: Text('${val.toInt()}',
-                                      textAlign: TextAlign.right,
-                                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: _aiScoreColor(val)))),
-                                ]),
-                              );
-                            }),
-                          ]),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ),
-            // Recommendation
-            if (_aiStructured!['recommendation'] != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      AppTheme.brandBlue.withValues(alpha: 0.08),
-                      AppTheme.brandSkyBlue.withValues(alpha: 0.06)]),
-                    borderRadius: BorderRadius.circular(12)),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('💡', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_aiStructured!['recommendation'] as String,
-                        style: GoogleFonts.plusJakartaSans(fontSize: 13, height: 1.5, color: context.textPrimary))),
-                  ]),
-                ),
-              ),
-          ],
-          // Fallback: formatted text (strip code fences and format)
-          if (_aiExpanded && !hasStructured && _aiAnalysis != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: _FormattedAiText(text: _aiAnalysis!),
-            ),
-          if (_aiExpanded && _aiAnalysis == null && !_aiLoading)
-            Builder(builder: (_) {
-              // Auto-load AI analysis when section is expanded
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (_aiAnalysis == null && !_aiLoading) _loadAiAnalysis();
-              });
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Center(child: SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue))),
-              );
-            }),
-        ],
-      ),
-    ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
-  }
 
   Color _aiScoreColor(double score) {
     if (score >= 80) return AppTheme.scoreExcellent;
     if (score >= 60) return AppTheme.scoreAverage;
     if (score >= 40) return AppTheme.orange500;
     return AppTheme.error;
+  }
+
+  // ─── Structured Visual Builders for Premium AI Sections ───
+
+  Widget _buildDeepAnalysisVisual() {
+    final data = _deepAnalysisStructured!;
+    final winner = data['winner'] as String?;
+    final verdict = data['verdict'] as String?;
+    final products = data['products'] as Map<String, dynamic>? ?? {};
+    final categories = data['categories'] as Map<String, dynamic>? ?? {};
+    final recommendation = data['recommendation'] as String?;
+    final categoryIcons = {
+      'Performance': '⚡', 'Display': '🖥️', 'Build Quality': '🔨',
+      'Value': '💰', 'Features': '✨', 'Camera': '📷', 'Battery': '🔋',
+      'Software': '📱', 'Audio': '🔊', 'Design': '🎨',
+    };
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Winner card
+      if (winner != null)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              const Color(0xFFFFD700).withValues(alpha: 0.15),
+              const Color(0xFFFFA500).withValues(alpha: 0.08)]),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.4), width: 1.5)),
+          child: Column(children: [
+            const Text('🏆', style: TextStyle(fontSize: 24)),
+            const SizedBox(height: 4),
+            Text(winner, style: GoogleFonts.plusJakartaSans(
+              fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+              maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+            if (verdict != null) ...[
+              const SizedBox(height: 6),
+              Text(verdict, style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, color: context.textSecondary, height: 1.4),
+                textAlign: TextAlign.center),
+            ],
+          ]),
+        ),
+      // Per-product scores with strengths/weaknesses
+      if (products.isNotEmpty) ...[
+        const SizedBox(height: 14),
+        ...products.entries.map((e) {
+          final pData = e.value as Map<String, dynamic>? ?? {};
+          final score = (pData['score'] as num?)?.toDouble() ?? 0;
+          final strengths = List<String>.from(pData['strengths'] ?? []);
+          final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
+          final bestFor = pData['best_for'] as String? ?? '';
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor,
+              borderRadius: BorderRadius.circular(12)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(e.key, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Container(
+                  width: 42, height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [
+                      _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
+                  child: Center(child: Text('${score.toInt()}',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white))),
+                ),
+              ]),
+              if (bestFor.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11, color: context.textSecondary, fontStyle: FontStyle.italic)),
+              ],
+              if (strengths.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                ...strengths.take(3).map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(children: [
+                    const Text('✅ ', style: TextStyle(fontSize: 10)),
+                    Expanded(child: Text(s, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textSecondary))),
+                  ]),
+                )),
+              ],
+              if (weaknesses.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                ...weaknesses.take(2).map((w) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(children: [
+                    const Text('⚠️ ', style: TextStyle(fontSize: 10)),
+                    Expanded(child: Text(w, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textTertiaryColor))),
+                  ]),
+                )),
+              ],
+            ]),
+          );
+        }),
+      ],
+      // Category comparison bars
+      if (categories.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: context.surfaceElevatedColor,
+            borderRadius: BorderRadius.circular(12)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Category Comparison', style: GoogleFonts.plusJakartaSans(
+              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
+            const SizedBox(height: 10),
+            ...categories.entries.map((cat) {
+              final scores = cat.value as Map<String, dynamic>? ?? {};
+              final icon = categoryIcons[cat.key] ?? '📊';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('$icon ${cat.key}', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary)),
+                  const SizedBox(height: 4),
+                  ...scores.entries.map((s) {
+                    final val = (s.value as num?)?.toDouble() ?? 0;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Row(children: [
+                        SizedBox(width: 60, child: Text(s.key.length > 10 ? '${s.key.substring(0, 10)}…' : s.key,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        Expanded(child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: val / 100, minHeight: 6,
+                            backgroundColor: context.surfaceVariantColor,
+                            color: _aiScoreColor(val)))),
+                        const SizedBox(width: 6),
+                        SizedBox(width: 24, child: Text('${val.toInt()}',
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: _aiScoreColor(val)))),
+                      ]),
+                    );
+                  }),
+                ]),
+              );
+            }),
+          ]),
+        ),
+      ],
+      // Recommendation
+      if (recommendation != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              AppTheme.brandBlue.withValues(alpha: 0.08),
+              AppTheme.brandSkyBlue.withValues(alpha: 0.06)]),
+            borderRadius: BorderRadius.circular(12)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('💡', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(recommendation, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, height: 1.5, color: context.textPrimary))),
+          ]),
+        ),
+      ],
+    ]);
+  }
+
+  Widget _buildAlternativesVisual() {
+    final data = _alternativesStructured!;
+    final alternatives = List<Map<String, dynamic>>.from(
+      (data['alternatives'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
+    if (alternatives.isEmpty) {
+      return Text(_alternativesResult ?? 'No alternatives found.',
+        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textSecondary));
+    }
+    return SizedBox(
+      height: 150,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: alternatives.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final alt = alternatives[i];
+          final score = (alt['score'] as num?)?.toDouble() ?? 0;
+          return Container(
+            width: 200,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _aiScoreColor(score).withValues(alpha: 0.2))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(alt['name'] as String? ?? '',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _aiScoreColor(score).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6)),
+                  child: Text('${score.toInt()}', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, fontWeight: FontWeight.w800, color: _aiScoreColor(score))),
+                ),
+              ]),
+              if (alt['brand'] != null) ...[
+                const SizedBox(height: 2),
+                Text((alt['brand'] as String).toUpperCase(), style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10, fontWeight: FontWeight.w600, color: context.textTertiaryColor, letterSpacing: 0.5)),
+              ],
+              const Spacer(),
+              if (alt['why_better'] != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppTheme.scoreExcellent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6)),
+                  child: Text(alt['why_better'] as String, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, color: AppTheme.scoreExcellent), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
+              if (alt['price_range'] != null) ...[
+                const SizedBox(height: 4),
+                Text('💰 ${alt['price_range']}', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10, color: context.textSecondary)),
+              ],
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAdvisorVisual() {
+    final data = _advisorStructured!;
+    final bestFor = data['best_for'] as String?;
+    final buyIf = List<String>.from(data['buy_if'] ?? []);
+    final avoidIf = List<String>.from(data['avoid_if'] ?? []);
+    final perProduct = List<Map<String, dynamic>>.from(
+      (data['per_product'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
+    final finalVerdict = data['final_verdict'] as String?;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Best For card
+      if (bestFor != null)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              const Color(0xFF3B82F6).withValues(alpha: 0.12),
+              const Color(0xFF06B6D4).withValues(alpha: 0.08)]),
+            borderRadius: BorderRadius.circular(12)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('🎯', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(bestFor, style: GoogleFonts.plusJakartaSans(
+              fontSize: 13, fontWeight: FontWeight.w600, color: context.textPrimary, height: 1.4))),
+          ]),
+        ),
+      // Buy If
+      if (buyIf.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        ...buyIf.map((item) => Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            const Text('✅', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, color: context.textPrimary))),
+          ]),
+        )),
+      ],
+      // Avoid If
+      if (avoidIf.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        ...avoidIf.map((item) => Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            const Text('⚠️', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, color: context.textPrimary))),
+          ]),
+        )),
+      ],
+      // Per-product ratings
+      if (perProduct.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        ...perProduct.map((p) {
+          final rating = (p['rating'] as num?)?.toInt() ?? 3;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor,
+              borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(p['name'] as String? ?? '', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (p['ideal_user'] != null) ...[
+                  const SizedBox(height: 2),
+                  Text(p['ideal_user'] as String, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, color: context.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+              ])),
+              const SizedBox(width: 8),
+              Row(children: List.generate(5, (i) => Icon(
+                i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: 16, color: i < rating ? const Color(0xFFFFD700) : context.textTertiaryColor))),
+            ]),
+          );
+        }),
+      ],
+      // Final verdict
+      if (finalVerdict != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              const Color(0xFF3B82F6).withValues(alpha: 0.08),
+              const Color(0xFF06B6D4).withValues(alpha: 0.06)]),
+            borderRadius: BorderRadius.circular(10)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('💡', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(finalVerdict, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, height: 1.5, color: context.textPrimary))),
+          ]),
+        ),
+      ],
+    ]);
+  }
+
+  Widget _buildPredictionVisual() {
+    final data = _predictionStructured!;
+    final products = List<Map<String, dynamic>>.from(
+      (data['products'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
+    if (products.isEmpty) {
+      return Text(_predictionResult ?? 'No prediction available.',
+        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textSecondary));
+    }
+
+    return Column(children: products.map((p) {
+      final trend = (p['trend'] as String? ?? 'stable').toLowerCase();
+      final changePercent = (p['change_percent'] as num?)?.toDouble() ?? 0;
+      final buyNow = p['buy_now'] as bool? ?? true;
+      final reason = p['reason'] as String? ?? '';
+      final bestTime = p['best_time'] as String? ?? '';
+      final name = p['name'] as String? ?? '';
+
+      final trendIcon = trend == 'down' ? Icons.trending_down_rounded
+          : trend == 'up' ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
+      final trendColor = trend == 'down' ? AppTheme.scoreExcellent
+          : trend == 'up' ? AppTheme.error : AppTheme.warning;
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.surfaceElevatedColor,
+          borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(name, style: GoogleFonts.plusJakartaSans(
+              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+              maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Icon(trendIcon, color: trendColor, size: 24),
+            const SizedBox(width: 4),
+            Text('${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: trendColor)),
+          ]),
+          const SizedBox(height: 8),
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: buyNow ? AppTheme.scoreExcellent.withValues(alpha: 0.15) : AppTheme.warning.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8)),
+              child: Text(buyNow ? '🛒 Buy Now' : '⏳ Wait',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w700,
+                  color: buyNow ? AppTheme.scoreExcellent : AppTheme.warning)),
+            ),
+            if (bestTime.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Expanded(child: Text('📅 $bestTime', style: GoogleFonts.plusJakartaSans(
+                fontSize: 11, color: context.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ],
+          ]),
+          if (reason.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(reason, style: GoogleFonts.plusJakartaSans(
+              fontSize: 11, color: context.textSecondary, height: 1.4)),
+          ],
+        ]),
+      );
+    }).toList());
   }
 
   // ─── Key Specs Summary ───
@@ -2094,7 +2251,7 @@ For each product, analyze current pricing and what it means for you
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
-        // Quick Verdict — "Hangisini Almalıyım?"
+        // 1. Quick Verdict — "Hangisini Almalıyım?"
         _buildExpandableCard(
           icon: Icons.gavel_rounded,
           title: 'Which One Should You Buy?',
@@ -2106,13 +2263,10 @@ For each product, analyze current pricing and what it means for you
           onTap: _toggleQuickVerdict,
         ),
         const SizedBox(height: 14),
-        // User Compatibility Match
+        // 2. Personalized Match
         _buildMatchScoreSection(),
         const SizedBox(height: 14),
-        // AI Comparison Analysis (review summary)
-        _buildAiAnalysisCard(),
-        const SizedBox(height: 14),
-        // AI Deep Analysis
+        // 3. AI Deep Analysis
         _buildExpandableCard(
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
@@ -2121,10 +2275,11 @@ For each product, analyze current pricing and what it means for you
           isExpanded: _deepAnalysisExpanded,
           isLoading: _deepAnalysisLoading,
           content: _deepAnalysisResult,
+          contentWidget: _deepAnalysisStructured != null ? _buildDeepAnalysisVisual() : null,
           onTap: _toggleDeepAnalysis,
         ),
         const SizedBox(height: 14),
-        // Smart Alternatives
+        // 4. Smart Alternatives
         _buildExpandableCard(
           icon: Icons.swap_horizontal_circle_rounded,
           title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
@@ -2133,10 +2288,11 @@ For each product, analyze current pricing and what it means for you
           isExpanded: _alternativesExpanded,
           isLoading: _alternativesLoading,
           content: _alternativesResult,
+          contentWidget: _alternativesStructured != null ? _buildAlternativesVisual() : null,
           onTap: _toggleAlternatives,
         ),
         const SizedBox(height: 14),
-        // AI Product Advisor
+        // 5. AI Product Advisor
         _buildExpandableCard(
           icon: Icons.support_agent_rounded,
           title: 'AI Product Advisor',
@@ -2145,10 +2301,11 @@ For each product, analyze current pricing and what it means for you
           isExpanded: _advisorExpanded,
           isLoading: _advisorLoading,
           content: _advisorResult,
+          contentWidget: _advisorStructured != null ? _buildAdvisorVisual() : null,
           onTap: _toggleAdvisor,
         ),
         const SizedBox(height: 14),
-        // Price Prediction
+        // 6. Price Prediction
         _buildExpandableCard(
           icon: Icons.trending_down_rounded,
           title: 'Price Prediction',
@@ -2157,10 +2314,11 @@ For each product, analyze current pricing and what it means for you
           isExpanded: _predictionExpanded,
           isLoading: _predictionLoading,
           content: _predictionResult,
+          contentWidget: _predictionStructured != null ? _buildPredictionVisual() : null,
           onTap: _togglePrediction,
         ),
         const SizedBox(height: 14),
-        // Benchmark comparison
+        // 7. Benchmark comparison
         _CompareBenchmarkSection(products: widget.products),
       ],
     );
@@ -2323,6 +2481,7 @@ For each product, analyze current pricing and what it means for you
     required bool isLoading,
     required String? content,
     required VoidCallback onTap,
+    Widget? contentWidget,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
@@ -2367,7 +2526,11 @@ For each product, analyze current pricing and what it means for you
                 Icon(isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                   color: gradient[0]),
             ]),
-            if (isExpanded && content != null) ...[
+            // Prefer structured contentWidget over markdown fallback
+            if (isExpanded && contentWidget != null) ...[
+              const SizedBox(height: 14),
+              contentWidget,
+            ] else if (isExpanded && content != null) ...[
               const SizedBox(height: 14),
               MarkdownBody(
                 data: content,

@@ -9,12 +9,12 @@ class _CompareBenchmarkSection extends ConsumerStatefulWidget {
 }
 
 class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSection> {
-  // benchmarkName -> {productDisplayName: score}
   final Map<String, Map<String, int>> _scores = {};
   List<String> _benchmarkNames = [];
   String _source = '';
   bool _loading = false;
   bool _loaded = false;
+  bool _expanded = false;
   String? _error;
 
   @override
@@ -114,106 +114,126 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
   @override
   Widget build(BuildContext context) {
     final labels = widget.products.map((p) => p.name).toList();
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Container(
-              width: 38, height: 38,
-              decoration: BoxDecoration(
-                color: AppTheme.brandBlue.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.speed_rounded, size: 20, color: AppTheme.brandBlue),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(context.l10n?.benchmarkScores ?? 'Benchmark Scores',
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
-            ),
-          ]),
-          const SizedBox(height: 14),
-          if (!_loaded && !_loading)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _fetchScores,
-                icon: const Icon(Icons.speed_rounded, size: 18),
-                label: Text('Load AI Benchmark Scores',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.brandBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
+    return GestureDetector(
+      onTap: () {
+        setState(() => _expanded = !_expanded);
+        if (_expanded && !_loaded && !_loading) _fetchScores();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
+          boxShadow: [BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.08),
+            blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.brandBlue, Color(0xFF1E40AF)]),
+                  borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.speed_rounded, color: context.surfaceVariantColor, size: 20),
               ),
-            )
-          else if (_loading)
-            const Center(child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue),
-            ))
-          else if (_error != null || _scores.isEmpty)
-            Text(_error ?? 'No benchmark data found',
-              style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor))
-          else ...[
-            // Table header
-            Row(
-              children: [
-                Expanded(flex: 3, child: Text('Benchmark',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: context.textSecondary))),
-                ...labels.map((l) => Expanded(flex: 2, child: Text(l,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: context.textSecondary),
-                  textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis))),
-              ],
-            ),
-            const Divider(height: 16),
-            // Table rows
-            ..._benchmarkNames.where((b) => _scores.containsKey(b)).map((bench) {
-              final scores = _scores[bench]!;
-              // Find best score for highlighting
-              int bestScore = 0;
-              for (final s in scores.values) {
-                if (s > bestScore) bestScore = s;
-              }
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(context.l10n?.benchmarkScores ?? 'Benchmark Scores',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text('AI-powered benchmark comparison',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
+                ],
+              )),
+              if (_loading)
+                const SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue))
+              else
+                Icon(_expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: AppTheme.brandBlue),
+            ]),
+            if (_expanded) ...[
+              const SizedBox(height: 14),
+              if (_loading)
+                const Center(child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue),
+                ))
+              else if (_error != null || (_loaded && _scores.isEmpty))
+                Text(_error ?? 'No benchmark data found',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor))
+              else if (_loaded) ...[
+                Row(
                   children: [
-                    Expanded(flex: 3, child: Text(bench,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary))),
-                    ...labels.map((l) {
-                      final s = scores[l];
-                      final isBest = s != null && s == bestScore && scores.values.where((v) => v == bestScore).length == 1;
-                      return Expanded(
-                        flex: 2,
-                        child: Text(
-                          s != null ? _fmt(s) : '—',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
-                            color: isBest ? AppTheme.green500 : context.textPrimary,
-                          ),
-                        ),
-                      );
-                    }),
+                    Expanded(flex: 3, child: Text('Benchmark',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: context.textSecondary))),
+                    ...labels.map((l) => Expanded(flex: 2, child: Text(l,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: context.textSecondary),
+                      textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis))),
                   ],
                 ),
-              );
-            }),
-            const SizedBox(height: 8),
-            Text('Source: $_source',
-              style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor)),
+                const Divider(height: 16),
+                ..._benchmarkNames.where((b) => _scores.containsKey(b)).map((bench) {
+                  final scores = _scores[bench]!;
+                  int bestScore = 0;
+                  for (final s in scores.values) {
+                    if (s > bestScore) bestScore = s;
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(bench, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary)),
+                      const SizedBox(height: 6),
+                      ...labels.map((l) {
+                        final s = scores[l];
+                        final isBest = s != null && s == bestScore && scores.values.where((v) => v == bestScore).length == 1;
+                        final maxVal = scores.values.fold<int>(1, (a, b) => a > b ? a : b);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(children: [
+                            SizedBox(width: 60, child: Text(
+                              l.length > 10 ? '${l.substring(0, 10)}…' : l,
+                              style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            Expanded(child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: LinearProgressIndicator(
+                                value: s != null ? s / maxVal : 0,
+                                minHeight: 8,
+                                backgroundColor: context.surfaceElevatedColor,
+                                color: isBest ? AppTheme.scoreExcellent : AppTheme.brandBlue),
+                            )),
+                            const SizedBox(width: 8),
+                            SizedBox(width: 40, child: Text(
+                              s != null ? _fmt(s) : '—',
+                              textAlign: TextAlign.right,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
+                                color: isBest ? AppTheme.scoreExcellent : context.textPrimary),
+                            )),
+                          ]),
+                        );
+                      }),
+                    ]),
+                  );
+                }),
+                const SizedBox(height: 4),
+                Text('Source: $_source',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor)),
+              ],
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
