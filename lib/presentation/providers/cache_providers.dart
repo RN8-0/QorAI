@@ -1,6 +1,37 @@
 part of 'providers.dart';
 
 // ════════════════════════════════════════════════════
+// ─── GEMINI CACHE NOTIFIER MIXIN (DRY base) ───
+// ════════════════════════════════════════════════════
+
+/// Shared mixin for Gemini AI cache notifiers.
+/// Provides: loading guard, error handling, reset, gemini access.
+mixin GeminiCacheNotifierMixin<T> on StateNotifier<AsyncValue<T?>> {
+  Ref get cacheRef;
+
+  GeminiService get gemini => cacheRef.read(geminiServiceProvider);
+
+  /// Resets cached state to null.
+  void reset() => state = const AsyncValue.data(null);
+
+  /// Runs query with loading guard: skips if already loading or has cached data.
+  Future<void> guardedQuery(
+    Future<T?> Function() queryFn, {
+    T? Function()? onError,
+  }) async {
+    if (state is AsyncLoading) return;
+    if (state.valueOrNull != null) return;
+    state = const AsyncValue.loading();
+    try {
+      state = AsyncValue.data(await queryFn());
+    } catch (e) {
+      state = AsyncValue.data(onError?.call());
+    }
+  }
+}
+
+
+// ════════════════════════════════════════════════════
 // ─── AI REVIEW SUMMARY CACHE ───
 // ════════════════════════════════════════════════════
 
