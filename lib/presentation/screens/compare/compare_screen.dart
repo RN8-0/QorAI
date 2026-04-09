@@ -33,6 +33,8 @@ import 'package:compair/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_premium_section.dart';
 import 'package:compair/presentation/widgets/shared/shared_benchmark_card.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';

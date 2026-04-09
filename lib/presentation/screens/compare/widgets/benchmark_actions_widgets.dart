@@ -1,5 +1,16 @@
 part of '../compare_screen.dart';
 
+// ─── Benchmark cache TTL: 30 days ───
+const _benchmarkCacheTtl = Duration(days: 30);
+
+/// Generates a stable cache key for a set of product IDs + benchmarks
+String _benchmarkCacheKey(List<String> productIds, List<String> benchmarkNames) {
+  final raw = [...productIds]..sort();
+  raw.addAll(benchmarkNames);
+  final bytes = utf8.encode(raw.join('|'));
+  return md5.convert(bytes).toString();
+}
+
 class _CompareBenchmarkSection extends ConsumerStatefulWidget {
   final List<ProductEntity> products;
   const _CompareBenchmarkSection({required this.products});
@@ -8,7 +19,9 @@ class _CompareBenchmarkSection extends ConsumerStatefulWidget {
   ConsumerState<_CompareBenchmarkSection> createState() => _CompareBenchmarkSectionState();
 }
 
-class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSection> {
+class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSection>
+    with SingleTickerProviderStateMixin {
+  /// productName → { benchmarkName → score }
   final Map<String, Map<String, int>> _scores = {};
   List<String> _benchmarkNames = [];
   String _source = '';
@@ -17,88 +30,248 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
   bool _expanded = false;
   String? _error;
 
+  late AnimationController _barAnimCtrl;
+
   @override
   void initState() {
     super.initState();
+    _barAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
   }
 
-  Future<void> _fetchScores() async {
-    setState(() => _loading = true);
-    try {
-      final gemini = ref.read(geminiServiceProvider);
-      final cat = (widget.products.first.category ?? '').toLowerCase();
-      final brand = (widget.products.first.brand ?? '').toLowerCase();
-      final isApple = brand.contains('apple');
-      final productLabels = widget.products.map((p) => p.name).toList();
+  @override
+  void dispose() {
+    _barAnimCtrl.dispose();
+    super.dispose();
+  }
 
-      // Category-specific benchmarks
-      if (cat.contains('phone') || cat.contains('smartphone')) {
-        if (isApple) {
-          _benchmarkNames = ['Geekbench Single', 'Geekbench Multi', 'DxOMark'];
-          _source = 'geekbench.com, dxomark.com';
-        } else {
-          _benchmarkNames = ['AnTuTu', 'Geekbench Multi', 'DxOMark'];
-          _source = 'antutu.com, geekbench.com, dxomark.com';
-        }
-      } else if (cat.contains('laptop') || cat.contains('notebook')) {
-        _benchmarkNames = ['Cinebench R23', 'PCMark 10', '3DMark'];
-        _source = 'cinebench, pcmark, 3dmark';
-      } else if (cat.contains('tablet')) {
-        _benchmarkNames = ['Geekbench Single', 'Geekbench Multi'];
-        _source = 'geekbench.com';
-      } else {
-        _benchmarkNames = ['Performance Score'];
-        _source = 'Various';
+  /// Determine which benchmarks to fetch based on category
+  void _selectBenchmarks() {
+    final cat = (widget.products.first.category).toLowerCase();
+    final brands = widget.products.map((p) => (p.brand ?? '').toLowerCase()).toSet();
+    final hasApple = brands.any((b) => b.contains('apple'));
+
+    if (cat.contains('phone') || cat.contains('smartphone')) {
+      _benchmarkNames = ['Geekbench Single-Core', 'Geekbench Multi-Core', 'AnTuTu', 'DxOMark Camera'];
+      _source = 'geekbench.com, antutu.com, dxomark.com';
+    } else if (cat.contains('laptop') || cat.contains('notebook')) {
+      _benchmarkNames = ['Geekbench Single-Core', 'Geekbench Multi-Core', 'Cinebench R23 Multi', '3DMark Time Spy'];
+      _source = 'geekbench.com, cinebench, 3dmark.com';
+    } else if (cat.contains('tablet')) {
+      _benchmarkNames = ['Geekbench Single-Core', 'Geekbench Multi-Core', 'AnTuTu'];
+      _source = 'geekbench.com, antutu.com';
+    } else if (cat.contains('cpu') || cat.contains('processor') || cat.contains('işlemci')) {
+      _benchmarkNames = ['Cinebench R23 Single', 'Cinebench R23 Multi', 'Geekbench Single-Core', 'PassMark CPU'];
+      _source = 'cinebench, geekbench.com, passmark.com';
+    } else if (cat.contains('gpu') || cat.contains('ekran kartı') || cat.contains('graphics')) {
+      _benchmarkNames = ['3DMark Time Spy', '3DMark Fire Strike', 'PassMark GPU'];
+      _source = '3dmark.com, passmark.com';
+    } else if (cat.contains('monitor') || cat.contains('tv') || cat.contains('televizyon')) {
+      _benchmarkNames = ['Rtings Overall', 'Color Accuracy DeltaE'];
+      _source = 'rtings.com';
+    } else {
+      _benchmarkNames = ['Geekbench Single-Core', 'Geekbench Multi-Core'];
+      _source = 'geekbench.com';
+    }
+  }
+
+  /// Try reading cached benchmarks from Firestore
+  Future<bool> _readFirestoreCache() async {
+    try {
+      final db = FirebaseFirestore.instance;
+      final productIds = widget.products.map((p) => p.id).toList();
+      final cacheKey = _benchmarkCacheKey(productIds, _benchmarkNames);
+
+      // Check first product's subcollection for the comparison cache doc
+      final cacheDoc = await db
+          .collection('products')
+          .doc(productIds.first)
+          .collection('benchmarkCache')
+          .doc(cacheKey)
+          .get()
+          .timeout(const Duration(seconds: 8));
+
+      if (!cacheDoc.exists) return false;
+
+      final data = cacheDoc.data();
+      if (data == null) return false;
+
+      // Check TTL
+      final cachedAt = data['cachedAt'];
+      if (cachedAt is Timestamp) {
+        final age = DateTime.now().difference(cachedAt.toDate());
+        if (age > _benchmarkCacheTtl) return false;
       }
 
-      final names = widget.products.map((p) => '${p.brand ?? ''} ${p.name}'.trim()).toList();
-      final benchStr = _benchmarkNames.join(', ');
+      // Parse cached scores
+      final scoresMap = data['scores'];
+      if (scoresMap is! Map) return false;
 
-      final prompt = StringBuffer()
-        ..writeln('Find REAL benchmark scores for these products:')
-        ..writeln(names.map((n) => '- $n').join('\n'))
-        ..writeln('')
-        ..writeln('Benchmarks: $benchStr')
-        ..writeln('')
-        ..writeln('Return ONLY lines in format: ProductName|BenchmarkName|NumericScore')
-        ..writeln('Example: iPhone 16 Pro|Geekbench Single|3300')
-        ..writeln('')
-        ..writeln('Only verified scores. Skip if not available.');
-
-      final result = await gemini.groundedQuery(prompt.toString());
-
-      for (final line in result.split('\n')) {
-        final parts = line.split('|');
-        if (parts.length < 3) continue;
-        final pRaw = parts[0].trim();
-        final bRaw = parts[1].trim();
-        final sStr = parts[2].trim().replaceAll(RegExp(r'[^0-9.]'), '');
-        final score = double.tryParse(sStr)?.toInt();
-        if (score == null || score <= 0) continue;
-
-        // Fuzzy match benchmark
-        final matchedBench = _benchmarkNames.cast<String?>().firstWhere(
-          (b) => bRaw.toLowerCase().contains(b!.split(' ').first.toLowerCase()),
-          orElse: () => null,
-        );
-        if (matchedBench == null) continue;
-
-        // Fuzzy match product
-        String? matchedLabel;
-        for (int i = 0; i < names.length; i++) {
-          if (pRaw.toLowerCase().contains(names[i].toLowerCase().split(' ').take(2).join(' ')) ||
-              names[i].toLowerCase().contains(pRaw.toLowerCase().split(' ').take(2).join(' '))) {
-            matchedLabel = productLabels[i];
-            break;
+      for (final benchEntry in scoresMap.entries) {
+        final benchName = benchEntry.key as String;
+        final products = benchEntry.value;
+        if (products is! Map) continue;
+        _scores[benchName] = {};
+        for (final prodEntry in products.entries) {
+          final score = prodEntry.value;
+          if (score is num && score > 0) {
+            _scores[benchName]![prodEntry.key as String] = score.toInt();
           }
         }
-        if (matchedLabel == null) continue;
+      }
+      return _scores.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
 
-        _scores.putIfAbsent(matchedBench, () => {});
-        _scores[matchedBench]![matchedLabel] = score;
+  /// Save fetched benchmarks to Firestore for future use
+  Future<void> _writeFirestoreCache() async {
+    try {
+      final db = FirebaseFirestore.instance;
+      final productIds = widget.products.map((p) => p.id).toList();
+      final cacheKey = _benchmarkCacheKey(productIds, _benchmarkNames);
+
+      final scoresMap = <String, Map<String, int>>{};
+      for (final entry in _scores.entries) {
+        scoresMap[entry.key] = Map<String, int>.from(entry.value);
       }
 
-      if (mounted) setState(() { _loading = false; _loaded = true; });
+      // Store under first product's subcollection
+      await db
+          .collection('products')
+          .doc(productIds.first)
+          .collection('benchmarkCache')
+          .doc(cacheKey)
+          .set({
+        'scores': scoresMap,
+        'benchmarkNames': _benchmarkNames,
+        'productIds': productIds,
+        'productNames': widget.products.map((p) => p.name).toList(),
+        'cachedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Also store under each individual product for per-product cache access
+      for (final product in widget.products) {
+        final perProductScores = <String, int>{};
+        for (final bench in _benchmarkNames) {
+          final s = _scores[bench]?[product.name];
+          if (s != null && s > 0) perProductScores[bench] = s;
+        }
+        if (perProductScores.isNotEmpty) {
+          await db
+              .collection('products')
+              .doc(product.id)
+              .collection('benchmarkCache')
+              .doc('latest')
+              .set({
+            'scores': perProductScores,
+            'cachedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      }
+    } catch (_) {
+      // Cache write failure is non-critical
+    }
+  }
+
+  /// Fetch benchmark scores via Gemini grounded query
+  Future<void> _fetchFromGemini() async {
+    final gemini = ref.read(geminiServiceProvider);
+    final names = widget.products.map((p) => '${p.brand ?? ''} ${p.name}'.trim()).toList();
+    final labels = widget.products.map((p) => p.name).toList();
+    final benchStr = _benchmarkNames.join(', ');
+
+    final prompt = StringBuffer()
+      ..writeln('Find REAL published benchmark scores for these products:')
+      ..writeln(names.map((n) => '- $n').join('\n'))
+      ..writeln('')
+      ..writeln('Benchmarks needed: $benchStr')
+      ..writeln('')
+      ..writeln('RULES:')
+      ..writeln('- Only report real verified scores from official benchmark databases')
+      ..writeln('- Return ONLY lines in this exact format: ProductName|BenchmarkName|NumericScore')
+      ..writeln('- Example: iPhone 16 Pro|Geekbench Single-Core|3400')
+      ..writeln('- Example: Samsung Galaxy S25 Ultra|AnTuTu|2150000')
+      ..writeln('- If a score is not available for a product, skip that line entirely')
+      ..writeln('- No text, no explanations, just data lines')
+      ..writeln('- ProductName must match one of the products listed above');
+
+    final result = await gemini.groundedQuery(prompt.toString());
+
+    for (final line in result.split('\n')) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty || !trimmed.contains('|')) continue;
+      final parts = trimmed.split('|');
+      if (parts.length < 3) continue;
+
+      final pRaw = parts[0].trim();
+      final bRaw = parts[1].trim();
+      final sStr = parts[2].trim().replaceAll(RegExp(r'[^0-9.]'), '');
+      final score = double.tryParse(sStr)?.toInt();
+      if (score == null || score <= 0) continue;
+
+      // Fuzzy match benchmark name
+      final matchedBench = _benchmarkNames.cast<String?>().firstWhere(
+        (b) {
+          final bLow = bRaw.toLowerCase();
+          final benchLow = b!.toLowerCase();
+          // Check if main keywords match
+          final benchWords = benchLow.split(RegExp(r'[\s\-]+')).where((w) => w.length > 2).toList();
+          return benchWords.every((w) => bLow.contains(w)) || bLow.contains(benchLow);
+        },
+        orElse: () => null,
+      );
+      if (matchedBench == null) continue;
+
+      // Fuzzy match product name
+      String? matchedLabel;
+      for (int i = 0; i < names.length; i++) {
+        final nameParts = names[i].toLowerCase().split(' ').where((w) => w.length > 1).take(3).toList();
+        final pLow = pRaw.toLowerCase();
+        final matchCount = nameParts.where((w) => pLow.contains(w)).length;
+        if (matchCount >= 2 || pLow.contains(labels[i].toLowerCase().split(' ').take(2).join(' '))) {
+          matchedLabel = labels[i];
+          break;
+        }
+      }
+      if (matchedLabel == null) continue;
+
+      _scores.putIfAbsent(matchedBench, () => {});
+      _scores[matchedBench]![matchedLabel] = score;
+    }
+  }
+
+  /// Main fetch: cache first, then Gemini fallback
+  Future<void> _fetchScores() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      _selectBenchmarks();
+
+      // 1. Try Firestore cache
+      final cached = await _readFirestoreCache();
+      if (cached && _scores.isNotEmpty) {
+        if (mounted) {
+          setState(() { _loading = false; _loaded = true; });
+          _barAnimCtrl.forward();
+        }
+        return;
+      }
+
+      // 2. Fetch from Gemini
+      await _fetchFromGemini();
+
+      // 3. Cache results to Firestore (fire and forget)
+      if (_scores.isNotEmpty) {
+        _writeFirestoreCache();
+      }
+
+      if (mounted) {
+        setState(() { _loading = false; _loaded = true; });
+        _barAnimCtrl.forward();
+      }
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load benchmarks'; _loading = false; _loaded = true; });
     }
@@ -114,6 +287,8 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
   @override
   Widget build(BuildContext context) {
     final labels = widget.products.map((p) => p.name).toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () {
         setState(() => _expanded = !_expanded);
@@ -133,6 +308,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Header row ──
             Row(children: [
               Container(
                 padding: const EdgeInsets.all(10),
@@ -150,91 +326,247 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
                     style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
                   const SizedBox(height: 2),
                   Text('AI-powered benchmark comparison',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: context.textSecondary)),
                 ],
               )),
               if (_loading)
                 const SizedBox(width: 20, height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue))
               else
-                Icon(_expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                  color: AppTheme.brandBlue),
-            ]),
-            if (_expanded) ...[
-              const SizedBox(height: 14),
-              if (_loading)
-                const Center(child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue),
-                ))
-              else if (_error != null || (_loaded && _scores.isEmpty))
-                Text(_error ?? 'No benchmark data found',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor))
-              else if (_loaded) ...[
-                Row(
-                  children: [
-                    Expanded(flex: 3, child: Text('Benchmark',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: context.textSecondary))),
-                    ...labels.map((l) => Expanded(flex: 2, child: Text(l,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: context.textSecondary),
-                      textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis))),
-                  ],
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 250),
+                  child: const Icon(Icons.expand_more_rounded, color: AppTheme.brandBlue),
                 ),
-                const Divider(height: 16),
-                ..._benchmarkNames.where((b) => _scores.containsKey(b)).map((bench) {
-                  final scores = _scores[bench]!;
-                  int bestScore = 0;
-                  for (final s in scores.values) {
-                    if (s > bestScore) bestScore = s;
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(bench, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary)),
-                      const SizedBox(height: 6),
-                      ...labels.map((l) {
-                        final s = scores[l];
-                        final isBest = s != null && s == bestScore && scores.values.where((v) => v == bestScore).length == 1;
-                        final maxVal = scores.values.fold<int>(1, (a, b) => a > b ? a : b);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(children: [
-                            SizedBox(width: 60, child: Text(
-                              l.length > 10 ? '${l.substring(0, 10)}…' : l,
-                              style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
-                              maxLines: 1, overflow: TextOverflow.ellipsis)),
-                            Expanded(child: ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: s != null ? s / maxVal : 0,
-                                minHeight: 8,
-                                backgroundColor: context.surfaceElevatedColor,
-                                color: isBest ? AppTheme.scoreExcellent : AppTheme.brandBlue),
-                            )),
-                            const SizedBox(width: 8),
-                            SizedBox(width: 40, child: Text(
-                              s != null ? _fmt(s) : '—',
-                              textAlign: TextAlign.right,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
-                                color: isBest ? AppTheme.scoreExcellent : context.textPrimary),
-                            )),
-                          ]),
-                        );
-                      }),
-                    ]),
-                  );
-                }),
-                const SizedBox(height: 4),
-                Text('Source: $_source',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor)),
-              ],
+            ]),
+
+            // ── Expanded content ──
+            if (_expanded) ...[
+              const SizedBox(height: 16),
+              if (_loading)
+                _buildShimmer(isDark)
+              else if (_error != null || (_loaded && _scores.isEmpty))
+                _buildEmptyState()
+              else if (_loaded)
+                _buildScoresTable(labels, isDark),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildShimmer(bool isDark) {
+    final base = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06);
+    return Column(
+      children: List.generate(3, (i) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(width: 120, height: 14, decoration: BoxDecoration(
+            color: base, borderRadius: BorderRadius.circular(4))),
+          const SizedBox(height: 8),
+          ...List.generate(widget.products.length, (_) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(children: [
+              Container(width: 50, height: 10, decoration: BoxDecoration(
+                color: base, borderRadius: BorderRadius.circular(3))),
+              const SizedBox(width: 8),
+              Expanded(child: Container(height: 10, decoration: BoxDecoration(
+                color: base, borderRadius: BorderRadius.circular(3)))),
+              const SizedBox(width: 8),
+              Container(width: 36, height: 10, decoration: BoxDecoration(
+                color: base, borderRadius: BorderRadius.circular(3))),
+            ]),
+          )),
+        ]),
+      )),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(children: [
+        Icon(Icons.info_outline_rounded, size: 32,
+          color: context.textTertiaryColor),
+        const SizedBox(height: 8),
+        Text(_error ?? (context.l10n?.benchmarkNotFound ?? 'No benchmark data found'),
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor)),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: () {
+            _scores.clear();
+            _loaded = false;
+            _error = null;
+            _barAnimCtrl.reset();
+            _fetchScores();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.brandBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8)),
+            child: Text(context.l10n?.retryBenchmark ?? 'Retry',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.brandBlue)),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildScoresTable(List<String> labels, bool isDark) {
+    // Product colors for bars
+    final barColors = [
+      AppTheme.brandBlue,
+      AppTheme.brandCyan,
+      const Color(0xFF7C3AED),
+      const Color(0xFFF59E0B),
+    ];
+
+    return AnimatedBuilder(
+      animation: _barAnimCtrl,
+      builder: (context, _) {
+        final animVal = Curves.easeOutCubic.transform(_barAnimCtrl.value);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Product legend ──
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Wrap(
+                spacing: 16, runSpacing: 6,
+                children: List.generate(labels.length, (i) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10, height: 10,
+                      decoration: BoxDecoration(
+                        color: barColors[i % barColors.length],
+                        borderRadius: BorderRadius.circular(3)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(labels[i].length > 22 ? '${labels[i].substring(0, 22)}…' : labels[i],
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary)),
+                  ],
+                )),
+              ),
+            ),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            // ── Benchmark rows ──
+            ..._benchmarkNames.map((bench) {
+              final benchScores = _scores[bench] ?? {};
+              // Find max score for this benchmark to scale bars
+              int maxVal = 1;
+              for (final s in benchScores.values) {
+                if (s > maxVal) maxVal = s;
+              }
+              // If no scores at all for this benchmark, still show it with N/A
+              final bestScore = benchScores.values.isEmpty ? 0
+                  : benchScores.values.reduce((a, b) => a > b ? a : b);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Benchmark name
+                    Text(bench,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary)),
+                    const SizedBox(height: 8),
+                    // One bar per product
+                    ...List.generate(labels.length, (i) {
+                      final label = labels[i];
+                      final score = benchScores[label];
+                      final isBest = score != null && score == bestScore &&
+                          benchScores.values.where((v) => v == bestScore).length == 1;
+                      final barColor = barColors[i % barColors.length];
+                      final ratio = score != null ? (score / maxVal) * animVal : 0.0;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Row(
+                          children: [
+                            // Product short label
+                            SizedBox(
+                              width: 52,
+                              child: Text(
+                                label.length > 8 ? '${label.substring(0, 8)}…' : label,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10, color: context.textTertiaryColor),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ),
+                            const SizedBox(width: 6),
+                            // Animated bar
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  // Background
+                                  Container(
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : Colors.black.withValues(alpha: 0.06),
+                                      borderRadius: BorderRadius.circular(5)),
+                                  ),
+                                  // Filled bar
+                                  FractionallySizedBox(
+                                    widthFactor: ratio.clamp(0.0, 1.0),
+                                    child: Container(
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: isBest
+                                              ? [barColor, AppTheme.scoreExcellent]
+                                              : [barColor.withValues(alpha: 0.7), barColor],
+                                        ),
+                                        borderRadius: BorderRadius.circular(5)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Score value or N/A
+                            SizedBox(
+                              width: 44,
+                              child: Text(
+                                score != null ? _fmt(score) : 'N/A',
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
+                                  color: score == null
+                                      ? context.textTertiaryColor
+                                      : (isBest ? AppTheme.scoreExcellent : context.textPrimary)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              );
+            }),
+
+            // ── Source attribution ──
+            const SizedBox(height: 4),
+            Row(children: [
+              Icon(Icons.verified_outlined, size: 12, color: context.textTertiaryColor),
+              const SizedBox(width: 4),
+              Expanded(child: Text('Source: $_source',
+                style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor))),
+            ]),
+          ],
+        );
+      },
     );
   }
 }
