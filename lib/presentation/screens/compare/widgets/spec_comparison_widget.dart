@@ -92,7 +92,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
 
-      final prompt = '''Compare these products in detail. ALL text in $langName.
+      final prompt = '''Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
 $productNames
 
 Specs:
@@ -107,7 +107,7 @@ Return ONLY valid JSON:
       "compatibility_score": 0-100,
       "strengths": ["str1", "str2", "str3"],
       "weaknesses": ["weak1", "weak2"],
-      "best_for": "ideal use case"
+      "best_for": "ideal use case for you"
     }
   },
   "factors": {
@@ -117,8 +117,8 @@ Return ONLY valid JSON:
     "build_quality": {"scores": {"<name1>": 0-100, "<name2>": 0-100}},
     "user_experience": {"scores": {"<name1>": 0-100, "<name2>": 0-100}}
   },
-  "recommendation": "3-4 sentence personalized recommendation",
-  "verdict": "one sentence summary"
+  "recommendation": "3-4 sentence personalized recommendation addressing the user directly",
+  "verdict": "one sentence verdict addressing the user directly"
 }''';
 
       // Use jsonFreeTextQuery for guaranteed JSON response format
@@ -175,9 +175,9 @@ Return ONLY valid JSON:
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) => p.name).join(' vs ');
 
-      // Use grounded query to search Reddit/forums and get real user opinions
       final result = await gemini.groundedQuery(
-        '''You are a senior tech product analyst. Analyze "$productNames" with web research.
+        '''You are a senior tech product analyst helping a user decide between products. Address the user directly using "you/your".
+Analyze "$productNames" with web research.
 
 INSTRUCTIONS:
 1. Search Reddit, tech forums, and community discussions for real user experiences
@@ -189,9 +189,9 @@ Provide analysis in $langName covering:
 ## Expert Analysis
 - Build quality & design philosophy differences
 - Real-world performance (not just benchmarks)
-- Value proposition of each product
+- Value proposition of each product for you
 - Hidden strengths most reviewers miss
-- Potential deal-breakers
+- Potential deal-breakers you should know about
 
 ## Community Insights (Reddit/Forums)
 - What real users love about each product
@@ -200,10 +200,10 @@ Provide analysis in $langName covering:
 - Community consensus on which is better and why
 
 ## Verdict
-- Best use case for each product
-- Overall recommendation with reasoning
+- Best use case for each product based on your needs
+- Overall recommendation with clear reasoning
 
-Keep it comprehensive but readable. Use bullet points for clarity.''',
+Keep it comprehensive but readable. Use bullet points for clarity. Always address the user directly.''',
       );
       if (mounted) {
         setState(() {
@@ -239,17 +239,18 @@ Keep it comprehensive but readable. Use bullet points for clarity.''',
       final productNames = widget.products.map((p) => '${p.name} (${p.brand ?? "Unknown"})').join(' vs ');
       final category = widget.products.first.category;
       final result = await gemini.groundedQuery(
-        '''You are a tech product expert. The user is comparing: $productNames in category "$category".
+        '''You are a tech product expert helping a user find alternatives. Address the user directly using "you/your".
+You are comparing: $productNames in category "$category".
 Suggest 3-5 alternative products they should also consider, in $langName.
 
 For each alternative:
 🔷 **Product Name** — Brand
-- Why it's worth considering (1-2 sentences)
-- Key advantage over the compared products
+- Why it's worth considering for you (1-2 sentences)
+- Key advantage over the products you're comparing
 - Price range estimate
 
 Also briefly explain:
-## 🎯 Which Alternative Fits Best?
+## 🎯 Which Alternative Fits You Best?
 - For budget users: ...
 - For performance seekers: ...
 - For best value: ...''',
@@ -290,20 +291,20 @@ Also briefly explain:
         return '${p.name} (Score: ${p.techScore}, Price: $price, Specs: $specs)';
       }).join('\n');
       final result = await gemini.groundedQuery(
-        '''You are a personal shopping advisor. Help the user decide between these products. Respond in $langName.
+        '''You are a personal shopping advisor helping the user decide. Address the user directly using "you/your". Respond in $langName.
 
-Products being compared:
+Products you are comparing:
 $productDetails
 
 Provide personalized buying advice:
 
 ## 🏆 Winner Summary
-- Overall winner and runner-up with reasoning
+- Overall winner and runner-up — explain why this is the best choice for you
 
-## 👤 Who Should Buy What?
-- **${widget.products.first.name}** is best for: ...
-${widget.products.length > 1 ? '- **${widget.products[1].name}** is best for: ...' : ''}
-${widget.products.length > 2 ? '- **${widget.products[2].name}** is best for: ...' : ''}
+## 👤 Which One Should You Buy?
+- **${widget.products.first.name}** is best for you if: ...
+${widget.products.length > 1 ? '- **${widget.products[1].name}** is best for you if: ...' : ''}
+${widget.products.length > 2 ? '- **${widget.products[2].name}** is best for you if: ...' : ''}
 
 ## 💡 Key Decision Factors
 - If you prioritize camera: choose...
@@ -311,11 +312,11 @@ ${widget.products.length > 2 ? '- **${widget.products[2].name}** is best for: ..
 - If you prioritize battery: choose...
 - If you prioritize value: choose...
 
-## ⚠️ Things to Watch Out For
-- Potential downsides of each product
+## ⚠️ Things You Should Watch Out For
+- Potential downsides of each product that may affect you
 
 ## 🎯 Final Verdict
-Clear, actionable recommendation.''',
+Clear, actionable recommendation for you.''',
       );
       if (mounted) {
         setState(() {
@@ -352,23 +353,23 @@ Clear, actionable recommendation.''',
         return '${p.name} (current price: $price)';
       }).join(', ');
       final result = await gemini.groundedQuery(
-        '''Analyze price trends for: $productNames. Respond in $langName.
+        '''Analyze price trends for: $productNames. Address the user directly using "you/your". Respond in $langName.
 
 ## 📊 Current Price Analysis
-For each product, analyze current pricing
+For each product, analyze current pricing and what it means for you
 
 ## 📉 Price Trend Prediction
 - Expected price movement in next 1-3 months
-- Best time to buy each product
-- Any upcoming sales events or price drops
+- Best time for you to buy each product
+- Any upcoming sales events or price drops you should wait for
 
-## 🛒 Buying Timing Advice
+## 🛒 When Should You Buy?
 - Buy now vs wait recommendation for each product
-- Which product offers the best value RIGHT NOW
+- Which product offers you the best value RIGHT NOW
 
 ## 💰 Value Comparison
-- Price-to-performance ratio comparison
-- Hidden costs to consider (accessories, subscriptions)''',
+- Price-to-performance ratio comparison for your budget
+- Hidden costs you should consider (accessories, subscriptions)''',
       );
       if (mounted) {
         setState(() {
