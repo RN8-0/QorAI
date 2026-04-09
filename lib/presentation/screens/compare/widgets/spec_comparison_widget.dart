@@ -1790,54 +1790,101 @@ For each product, analyze current pricing
 
   Widget _buildSimilarTab() {
     final excludeIds = widget.products.map((p) => p.id).toSet();
-    // Also exclude same variant groups to prevent showing same model variants
     final excludeVariantGroups = widget.products
         .where((p) => p.variantGroup.isNotEmpty)
         .map((p) => p.variantGroup)
         .toSet();
+    final chipColors = [
+      AppTheme.brandBlue,
+      AppTheme.scoreAverage,
+      AppTheme.premiumPurpleLight,
+      AppTheme.scoreExcellent,
+    ];
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
-        // Similar products for each compared product
-        ...widget.products.map((product) => Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+        ...widget.products.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final product = entry.value;
+          final chipColor = chipColors[idx % 4];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: context.surfaceVariantColor,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: chipColor.withValues(alpha: 0.15)),
+              boxShadow: [
+                BoxShadow(
+                  color: chipColor.withValues(alpha: 0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: chipColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.grid_view_rounded, color: chipColor, size: 18),
                   ),
-                  child: const Icon(Icons.grid_view_rounded, color: AppTheme.brandBlue, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                      ),
+                      if (product.brand != null)
+                        Text(
+                          product.brand!.toUpperCase(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10, fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5, color: context.textTertiaryColor),
+                        ),
+                    ],
+                  )),
+                  if (product.techScore > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: chipColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        product.techScore.toInt().toString(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12, fontWeight: FontWeight.w800, color: chipColor),
+                      ),
+                    ),
+                ]),
+                const SizedBox(height: 6),
+                Text(
+                  context.l10n?.similarProducts ?? 'Similar Products',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor),
                 ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(
-                  product.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                )),
-              ]),
-              const SizedBox(height: 8),
-              Text(
-                context.l10n?.similarProducts ?? 'Similar Products',
-                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 140,
-                child: _CompareSuggestedList(
-                  category: product.category,
-                  excludeIds: excludeIds,
-                  excludeVariantGroups: excludeVariantGroups,
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 140,
+                  child: _CompareSuggestedList(
+                    category: product.category,
+                    excludeIds: excludeIds,
+                    excludeVariantGroups: excludeVariantGroups,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        )),
-        // Popular products from different categories
+              ],
+            ),
+          );
+        }),
         _CompareDiscoverSection(excludeIds: excludeIds),
       ],
     );
