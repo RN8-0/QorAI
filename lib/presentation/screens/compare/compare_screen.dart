@@ -28,6 +28,11 @@ import 'package:compair/services/youtube_service.dart';
 import 'package:compair/services/gemini_service.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:compair/presentation/widgets/shared/shared_key_specs_grid.dart';
+import 'package:compair/presentation/widgets/shared/shared_youtube_card.dart';
+import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
+import 'package:compair/presentation/widgets/shared/shared_premium_section.dart';
+import 'package:compair/presentation/widgets/shared/shared_benchmark_card.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';

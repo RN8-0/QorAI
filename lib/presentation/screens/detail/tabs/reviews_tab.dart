@@ -34,6 +34,7 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
 // YOUTUBE REVIEWS CARD (YouTube Data API v3)
 // ═══════════════════════════════════════════════════════════
 
+/// Delegates to SharedYouTubeReviewsCard, adds floating player on tap.
 class _YouTubeReviewsCard extends ConsumerStatefulWidget {
   final ProductEntity product;
   final bool isDark;
@@ -45,197 +46,6 @@ class _YouTubeReviewsCard extends ConsumerStatefulWidget {
 }
 
 class _YouTubeReviewsCardState extends ConsumerState<_YouTubeReviewsCard> {
-  bool _loading = false;
-  bool _loaded = false;
-  List<YouTubeVideo> _videos = [];
-
-  Future<void> _fetchVideos() async {
-    setState(() => _loading = true);
-    try {
-      final youtubeService = ref.read(youtubeServiceProvider);
-      final locale = Localizations.localeOf(context).languageCode;
-
-      final videos = await youtubeService.searchReviewVideos(
-        productName: widget.product.name,
-        languageCode: locale,
-        maxResults: 6,
-      );
-
-      if (mounted) {
-        setState(() {
-          _videos = videos;
-          _loaded = true;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loaded = true);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: widget.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.04), blurRadius: 8)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.play_circle_fill, color: AppTheme.error, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  context.l10n?.youtubeReviews ?? 'YouTube Reviews',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (!_loaded && !_loading)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _fetchVideos,
-                icon: const Icon(Icons.play_arrow),
-                label: Text(context.l10n?.loadReviewVideos ?? 'Load Review Videos'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          if (_loaded && _videos.isEmpty)
-            Text(
-              'No review videos found',
-              style: TextStyle(fontSize: 13, color: AppTheme.slate500),
-            ),
-          if (_loaded && _videos.isNotEmpty)
-            ..._videos.map((video) => GestureDetector(
-                  onTap: () => _launchUrl(video.watchUrl, video.title, video.thumbnailUrl),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: widget.isDark ? context.surfaceVariantColor : context.surfaceVariantColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        // Thumbnail with duration overlay
-                        Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: video.thumbnailUrl.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: video.thumbnailUrl,
-                                      width: 120,
-                                      height: 68,
-                                      fit: BoxFit.cover,
-                                      placeholder: (_, __) => Container(
-                                        width: 120, height: 68,
-                                        color: widget.isDark ? AppTheme.slate800 : context.textTertiaryColor,
-                                        child: const Icon(Icons.play_circle_outline, color: AppTheme.error),
-                                      ),
-                                      errorWidget: (_, __, ___) => Container(
-                                        width: 120, height: 68,
-                                        color: widget.isDark ? AppTheme.slate800 : context.textTertiaryColor,
-                                        child: const Icon(Icons.play_circle_outline, color: AppTheme.error),
-                                      ),
-                                    )
-                                  : Container(
-                                      width: 120, height: 68,
-                                      color: widget.isDark ? AppTheme.slate800 : context.textTertiaryColor,
-                                      child: const Icon(Icons.play_circle_outline, color: AppTheme.error, size: 32),
-                                    ),
-                            ),
-                            // Duration badge
-                            if (video.duration.isNotEmpty)
-                              Positioned(
-                                bottom: 4, right: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.8),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    video.duration,
-                                    style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                video.title,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                video.channelTitle,
-                                style: TextStyle(fontSize: 11, color: AppTheme.slate500),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (video.viewCount.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    Text(
-                                      video.viewCount,
-                                      style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
-                                    ),
-                                    if (video.qualityBadge.isNotEmpty) ...[
-                                      const SizedBox(width: 4),
-                                      Text(video.qualityBadge, style: const TextStyle(fontSize: 10)),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.play_circle_filled, size: 16, color: AppTheme.error),
-                      ],
-                    ),
-                  ),
-                )),
-        ],
-      ),
-    );
-  }
-
   OverlayEntry? _pipOverlayEntry;
 
   void _closePiP() {
@@ -243,37 +53,42 @@ class _YouTubeReviewsCardState extends ConsumerState<_YouTubeReviewsCard> {
     _pipOverlayEntry = null;
   }
 
-  Future<void> _launchUrl(String url, [String title = '', String thumbnailUrl = '']) async {
-    // Extract YouTube video ID
+  Future<void> _launchUrl(String url, String title, String thumbnailUrl) async {
     final ytRegex = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]+)');
     final match = ytRegex.firstMatch(url);
     if (match != null) {
       final videoId = match.group(1)!;
       if (!mounted) return;
-
-      // Remove any existing PiP player
       _closePiP();
-
-      // Create draggable floating mini player with Invidious WebView
       _pipOverlayEntry = OverlayEntry(
         builder: (overlayCtx) => _FloatingYouTubePlayer(
           videoId: videoId,
           title: title,
-          thumbnailUrl: thumbnailUrl.isNotEmpty ? thumbnailUrl : 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+          thumbnailUrl: thumbnailUrl.isNotEmpty
+              ? thumbnailUrl
+              : 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
           onClose: _closePiP,
         ),
       );
-      // Use the main context for proper navigator access in fullscreen
       Overlay.of(context).insert(_pipOverlayEntry!);
       return;
     }
-    // Non-YouTube URL: open in browser
     final uri = Uri.parse(url);
     try {
       await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
     } catch (_) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SharedYouTubeReviewsCard(
+      product: widget.product,
+      isDark: widget.isDark,
+      cardBg: widget.cardBg,
+      onVideoTap: _launchUrl,
+    );
   }
 }
 
