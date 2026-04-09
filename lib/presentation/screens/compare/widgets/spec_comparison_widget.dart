@@ -46,8 +46,40 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _matchScoreExpanded = false;
   bool _matchScoreFetched = false;
 
+  // Floating YouTube player overlay
+  OverlayEntry? _pipOverlay;
+
+  void _closePiP() {
+    _pipOverlay?.remove();
+    _pipOverlay = null;
+  }
+
+  void _onVideoTap(String url, String title, String thumbnailUrl) {
+    final ytRegex = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]+)');
+    final match = ytRegex.firstMatch(url);
+    if (match != null) {
+      final videoId = match.group(1)!;
+      if (!mounted) return;
+      _closePiP();
+      _pipOverlay = OverlayEntry(
+        builder: (_) => _CompareFloatingPlayer(
+          videoId: videoId,
+          title: title,
+          thumbnailUrl: thumbnailUrl.isNotEmpty
+              ? thumbnailUrl
+              : 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+          onClose: _closePiP,
+        ),
+      );
+      Overlay.of(context).insert(_pipOverlay!);
+    }
+  }
 
   @override
+  void dispose() {
+    _closePiP();
+    super.dispose();
+  }
   void initState() {
     super.initState();
     _groupedSpecs = _buildGroupedSpecs();
@@ -2020,6 +2052,7 @@ Return ONLY valid JSON:
             searchQuery: vsQuery,
             titleOverride: context.l10n?.comparisonVideos ?? 'Comparison Videos',
             collapsible: true,
+            onVideoTap: _onVideoTap,
           ),
         ),
 
