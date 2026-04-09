@@ -256,9 +256,6 @@ class _ProductSearchList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final query = ref.watch(searchQueryProvider);
     final resultsAsync = ref.watch(searchResultsProvider(query));
-    final user = ref.watch(userProfileProvider).valueOrNull;
-    final algo = ref.read(profileAlgorithmServiceProvider);
-    final behavior = ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
 
     return resultsAsync.when(
       data: (result) => result.when(
@@ -284,15 +281,9 @@ class _ProductSearchList extends ConsumerWidget {
             itemBuilder: (context, index) {
               final product = products[index];
               final isSelected = selectedIds.contains(product.id);
-              // Calculate match score if user profile exists
-              final matchScore = user != null
-                  ? algo.calculateTotalFitScore(
-                      user: user, product: product, behavior: behavior)
-                  : null;
               return _SearchProductTile(
                 product: product,
                 isSelected: isSelected,
-                matchScore: matchScore,
                 onTap: () => isSelected ? onRemove(product.id) : onSelect(product.id),
               );
             },
@@ -310,23 +301,20 @@ class _ProductSearchList extends ConsumerWidget {
   }
 }
 
-/// Individual search result tile with optional match score badge
+/// Individual search result tile with TechScore badge
 class _SearchProductTile extends StatelessWidget {
   final ProductEntity product;
   final bool isSelected;
-  final double? matchScore;
   final VoidCallback onTap;
 
   const _SearchProductTile({
     required this.product,
     required this.isSelected,
-    this.matchScore,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final matchPct = matchScore != null ? matchScore!.round().clamp(0, 100) : null;
     return Container(
       height: 72,
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -398,36 +386,6 @@ class _SearchProductTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Match score badge
-                if (matchPct != null) ...[
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: matchPct >= 70
-                            ? [const Color(0xFF22C55E), const Color(0xFF16A34A)]
-                            : matchPct >= 40
-                                ? [const Color(0xFFF59E0B), const Color(0xFFD97706)]
-                                : [const Color(0xFFEF4444), const Color(0xFFDC2626)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$matchPct',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
                 // TechScore badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
