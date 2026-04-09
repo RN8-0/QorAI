@@ -610,10 +610,20 @@ class _CompareSimilarGrid extends ConsumerWidget {
       if (seen.add(p.id)) unique.add(p);
     }
 
+    // Also deduplicate by normalized name to avoid near-identical products
+    final seenNames = <String>{};
+    final nameDeduped = <ProductEntity>[];
+    for (final p in unique) {
+      final normName = p.name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+      // Use first 30 chars as key to catch variants
+      final nameKey = normName.length > 30 ? normName.substring(0, 30) : normName;
+      if (seenNames.add(nameKey)) nameDeduped.add(p);
+    }
+
     // Kademeli genişleme: first ±20, then ±40, then unlimited
     List<ProductEntity> result = [];
     for (final range in [20.0, 40.0, double.infinity]) {
-      final inRange = unique.where((p) =>
+      final inRange = nameDeduped.where((p) =>
         range == double.infinity || (p.techScore - refScore).abs() <= range
       ).toList();
       final globalProducts = <ProductEntity>[];

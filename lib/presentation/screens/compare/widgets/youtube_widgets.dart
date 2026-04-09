@@ -16,6 +16,7 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
   bool _loading = false;
   String? _error;
   bool _didSearch = false;
+  bool _expanded = false;
 
   Future<void> _searchVideos() async {
     if (_didSearch) return;
@@ -46,95 +47,101 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
     }
   }
 
+  void _toggleExpand() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded && !_didSearch) {
+      _searchVideos();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Container(
-              width: 38, height: 38,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.play_circle_fill, size: 20, color: theme.colorScheme.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(context.l10n?.youtubeReviews ?? 'YouTube Reviews',
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
-            ),
-          ]),
-          const SizedBox(height: 14),
-          if (!_didSearch && !_loading)
-            Center(
-              child: FilledButton.icon(
-                onPressed: _searchVideos,
-                icon: const Text('📺', style: TextStyle(fontSize: 18)),
-                label: Text('Review Videolarını Yükle',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: theme.colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return GestureDetector(
+      onTap: _toggleExpand,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.dividerColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row — always visible
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.play_circle_fill, color: AppTheme.error, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.l10n?.youtubeReviews ?? 'YouTube İncelemeleri',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
                 ),
               ),
-            )
-          else if (_loading)
-            // Shimmer skeleton while loading
-            Column(children: List.generate(3, (i) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                height: 68,
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(children: [
-                  Container(
-                    width: 120, height: 68,
+              Icon(
+                _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                color: theme.colorScheme.primary,
+              ),
+            ]),
+            // Expandable content
+            if (_expanded) ...[
+              const SizedBox(height: 12),
+              if (_loading)
+                Column(children: List.generate(3, (i) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    height: 68,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8)),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(height: 12, width: double.infinity,
+                      color: context.surfaceColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 120, height: 68,
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(4))),
-                      const SizedBox(height: 6),
-                      Container(height: 10, width: 100,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(4))),
-                    ],
-                  )),
-                ]),
-              ).animate(onPlay: (c) => c.repeat())
-                .shimmer(duration: 1200.ms, color: theme.colorScheme.primary.withValues(alpha: 0.06)),
-            )))
-          else if (_videos == null || _videos!.isEmpty)
-            Text(_error != null ? 'Could not load videos' : 'No comparison videos found',
-              style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor))
-          else
-            ...(_videos!.map((video) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _CompareVideoTile(video: video),
-            ))),
-        ],
+                          borderRadius: BorderRadius.circular(8)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(height: 12, width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(4))),
+                          const SizedBox(height: 6),
+                          Container(height: 10, width: 100,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(4))),
+                        ],
+                      )),
+                    ]),
+                  ).animate(onPlay: (c) => c.repeat())
+                    .shimmer(duration: 1200.ms, color: theme.colorScheme.primary.withValues(alpha: 0.06)),
+                )))
+              else if (_videos == null || _videos!.isEmpty)
+                Text(_error != null ? 'Video yüklenemedi' : 'Karşılaştırma videosu bulunamadı',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor))
+              else
+                ...(_videos!.map((video) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _CompareVideoTile(video: video),
+                ))),
+            ],
+          ],
+        ),
       ),
     );
   }

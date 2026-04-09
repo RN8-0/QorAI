@@ -1874,20 +1874,23 @@ Return ONLY valid JSON:
             delegate: _ProductChipHeaderDelegate(widget.products),
           ),
 
-          // Pill-style tab bar — matches detail page style
+          // Pill-style tab bar — clean without colored backgrounds
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarDelegate(
               TabBar(
-                labelColor: context.surfaceVariantColor,
-                unselectedLabelColor: AppTheme.slate500,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: context.textTertiaryColor,
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 indicator: BoxDecoration(
-                  color: AppTheme.primaryBlue,
-                  borderRadius: BorderRadius.circular(24),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2.5,
+                    ),
+                  ),
                 ),
-                splashBorderRadius: BorderRadius.circular(24),
                 labelStyle: const TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w700),
                 unselectedLabelStyle: const TextStyle(
@@ -2169,33 +2172,24 @@ Return ONLY valid JSON:
         .where((p) => p.variantGroup.isNotEmpty)
         .map((p) => p.variantGroup)
         .toSet();
-    final chipColors = [
-      AppTheme.brandBlue,
-      AppTheme.scoreAverage,
-      AppTheme.premiumPurpleLight,
-      AppTheme.scoreExcellent,
-    ];
+    // Also exclude by name prefix to catch variants
+    final excludeNamePrefixes = widget.products.map((p) {
+      final norm = p.name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+      return norm.length > 30 ? norm.substring(0, 30) : norm;
+    }).toSet();
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
         ...widget.products.asMap().entries.map((entry) {
-          final idx = entry.key;
           final product = entry.value;
-          final chipColor = chipColors[idx % 4];
+          final primaryColor = Theme.of(context).colorScheme.primary;
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: context.surfaceVariantColor,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: chipColor.withValues(alpha: 0.15)),
-              boxShadow: [
-                BoxShadow(
-                  color: chipColor.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              border: Border.all(color: context.dividerColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2204,10 +2198,10 @@ Return ONLY valid JSON:
                   Container(
                     width: 36, height: 36,
                     decoration: BoxDecoration(
-                      color: chipColor.withValues(alpha: 0.12),
+                      color: primaryColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.grid_view_rounded, color: chipColor, size: 18),
+                    child: Icon(Icons.grid_view_rounded, color: primaryColor, size: 18),
                   ),
                   const SizedBox(width: 10),
                   Expanded(child: Column(
@@ -2225,7 +2219,7 @@ Return ONLY valid JSON:
                           fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
                       ),
                       Text(
-                        context.l10n?.similarProducts ?? 'Similar Products',
+                        context.l10n?.similarProducts ?? 'Benzer Ürünler',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10, fontWeight: FontWeight.w500,
                           color: context.textTertiaryColor),
@@ -2236,13 +2230,13 @@ Return ONLY valid JSON:
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: chipColor.withValues(alpha: 0.15),
+                        color: primaryColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         product.techScore.toInt().toString(),
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12, fontWeight: FontWeight.w800, color: chipColor),
+                          fontSize: 12, fontWeight: FontWeight.w800, color: primaryColor),
                       ),
                     ),
                 ]),
@@ -2268,8 +2262,8 @@ Return ONLY valid JSON:
         // 1. Quick Verdict — "Hangisini Almalıyım?"
         _buildExpandableCard(
           icon: Icons.gavel_rounded,
-          title: 'Which One Should You Buy?',
-          subtitle: 'Quick AI verdict for your comparison',
+          title: 'Hangisini Almalıyım?',
+          subtitle: 'Hızlı AI karşılaştırma sonucu',
           gradient: const [Color(0xFFEC4899), Color(0xFFF43F5E)],
           isExpanded: _quickVerdictExpanded,
           isLoading: _quickVerdictLoading,
@@ -2283,8 +2277,8 @@ Return ONLY valid JSON:
         // 3. AI Deep Analysis
         _buildExpandableCard(
           icon: Icons.psychology_rounded,
-          title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
-          subtitle: 'Comprehensive AI-powered comparison evaluation',
+          title: context.l10n?.aiDeepAnalysis ?? 'AI Derin Analizi',
+          subtitle: 'Kapsamlı AI destekli karşılaştırma değerlendirmesi',
           gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
           isExpanded: _deepAnalysisExpanded,
           isLoading: _deepAnalysisLoading,
@@ -2296,8 +2290,8 @@ Return ONLY valid JSON:
         // 4. Smart Alternatives
         _buildExpandableCard(
           icon: Icons.swap_horizontal_circle_rounded,
-          title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
-          subtitle: 'AI-curated alternatives you should consider',
+          title: context.l10n?.smartAlternatives ?? 'Akıllı Alternatifler',
+          subtitle: 'AI destekli değerlendirmeniz gereken alternatifler',
           gradient: const [AppTheme.warning, Color(0xFFF97316)],
           isExpanded: _alternativesExpanded,
           isLoading: _alternativesLoading,
@@ -2309,8 +2303,8 @@ Return ONLY valid JSON:
         // 5. AI Product Advisor
         _buildExpandableCard(
           icon: Icons.support_agent_rounded,
-          title: 'AI Product Advisor',
-          subtitle: 'Personalized buying advice for your comparison',
+          title: 'AI Ürün Danışmanı',
+          subtitle: 'Kişiselleştirilmiş karşılaştırma satın alma tavsiyesi',
           gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
           isExpanded: _advisorExpanded,
           isLoading: _advisorLoading,
@@ -2322,8 +2316,8 @@ Return ONLY valid JSON:
         // 6. Price Prediction
         _buildExpandableCard(
           icon: Icons.trending_down_rounded,
-          title: 'Price Prediction',
-          subtitle: 'AI-powered price trend analysis & best time to buy',
+          title: 'Fiyat Tahmini',
+          subtitle: 'AI destekli fiyat trendi analizi ve en iyi alım zamanı',
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
           isExpanded: _predictionExpanded,
           isLoading: _predictionLoading,
@@ -2388,7 +2382,7 @@ Return ONLY valid JSON:
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text('AI-powered compatibility analysis',
+                  Text('AI destekli uyumluluk analizi',
                     style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
                 ],
               )),
@@ -2492,7 +2486,7 @@ Return ONLY valid JSON:
                               const SizedBox(height: 2),
                               Text(
                                 isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
-                                    : 'Based on your preferences & behavior',
+                                    : 'Tercihleriniz ve kullanım alışkanlıklarınıza göre',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11, color: context.textTertiaryColor)),
                             ],
@@ -3035,13 +3029,6 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
   final List<ProductEntity> products;
   _ProductChipHeaderDelegate(this.products);
 
-  static const _chipColors = [
-    AppTheme.brandBlue,
-    AppTheme.scoreAverage,
-    AppTheme.premiumPurpleLight,
-    AppTheme.scoreExcellent,
-  ];
-
   @override
   double get minExtent => 44;
   @override
@@ -3049,7 +3036,6 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: context.backgroundColor,
       height: 44,
@@ -3057,9 +3043,8 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
         children: products.asMap().entries.map((entry) {
           final idx = entry.key;
           final product = entry.value;
-          final chipColor = _chipColors[idx % 4];
-          final name = product.name.length > 10
-              ? '${product.name.substring(0, 10)}…'
+          final name = product.name.length > 12
+              ? '${product.name.substring(0, 12)}…'
               : product.name;
           return Expanded(
             child: Row(
@@ -3072,7 +3057,6 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ),
                 Expanded(
                   child: Container(
-                    color: chipColor.withValues(alpha: isDark ? 0.08 : 0.05),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Row(
@@ -3084,26 +3068,19 @@ class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: chipColor,
+                              color: context.textSecondary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (product.techScore > 0) ...[
                           const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: chipColor.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              product.techScore.toInt().toString(),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: chipColor,
-                              ),
+                          Text(
+                            product.techScore.toInt().toString(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ],
