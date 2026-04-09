@@ -46,6 +46,34 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _matchScoreExpanded = false;
   bool _matchScoreFetched = false;
 
+  // PiP floating player overlay for YouTube reviews
+  OverlayEntry? _pipOverlayEntry;
+
+  void _closePiP() {
+    _pipOverlayEntry?.remove();
+    _pipOverlayEntry = null;
+  }
+
+  void _launchVideoInPiP(String url, String title, String thumbnailUrl) {
+    final ytRegex = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]+)');
+    final match = ytRegex.firstMatch(url);
+    if (match != null) {
+      final videoId = match.group(1)!;
+      if (!mounted) return;
+      _closePiP();
+      _pipOverlayEntry = OverlayEntry(
+        builder: (overlayCtx) => _CompareFloatingPlayer(
+          videoId: videoId,
+          title: title,
+          thumbnailUrl: thumbnailUrl.isNotEmpty
+              ? thumbnailUrl
+              : 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+          onClose: _closePiP,
+        ),
+      );
+      Overlay.of(context).insert(_pipOverlayEntry!);
+    }
+  }
 
   @override
   void initState() {
@@ -57,6 +85,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     };
     // Restore AI analysis from session if available
     _restoreFromSession();
+  }
+
+  @override
+  void dispose() {
+    _closePiP();
+    super.dispose();
   }
 
   /// Restore AI analysis results from session (survives navigation)
@@ -1269,7 +1303,7 @@ Return ONLY valid JSON:
 
     final theme = Theme.of(context);
 
-    // Per-product Key Specs grids (like detail page)
+    // Per-product Key Specs grids — always stacked vertically for breathing room
     return Column(
       children: [
         // Header
@@ -1283,119 +1317,21 @@ Return ONLY valid JSON:
                 fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
           ]),
         ),
-        // Per-product grids: side by side for 2, stacked for 3-4
+        // Per-product grids: always stacked vertically
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: widget.products.length <= 2
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: widget.products.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final product = entry.value;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: idx > 0 ? 4 : 0,
-                        right: idx < widget.products.length - 1 ? 4 : 0,
-                      ),
-                      child: _buildProductKeySpecsGrid(product, theme),
-                    ),
-                  );
-                }).toList(),
-              )
-            : Column(
-                children: widget.products.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final product = entry.value;
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: idx < widget.products.length - 1 ? 8 : 0),
-                    child: _buildProductKeySpecsGrid(product, theme),
-                  );
-                }).toList(),
-              ),
-        ),
-        const SizedBox(height: 12),
-        // Comparison table below
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: theme.dividerColor),
-          ),
           child: Column(
-            children: allKeys.take(8).map((key) {
-              final values = widget.products
-                  .map((p) => p.keySpecs[key]?.toString() ?? '—')
-                  .toList();
-              final allSame = values.toSet().length == 1;
-              final betterIndex = allSame ? -1 : _findBetterIndex(key, values);
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      _localizedSpecName(context, key).toUpperCase(),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9, letterSpacing: 0.5,
-                        color: context.textTertiaryColor, fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: values.asMap().entries.map((e) {
-                        final i = e.key;
-                        final val = e.value;
-                        final isMissing = val == '—';
-                        final isBetter = betterIndex == i;
-                        final isWorse = betterIndex >= 0 && betterIndex != i && !isMissing;
-
-                        return Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isBetter
-                                  ? AppTheme.scoreExcellent.withValues(alpha: 0.12)
-                                  : isWorse
-                                      ? AppTheme.error.withValues(alpha: 0.06)
-                                      : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                              border: isBetter
-                                  ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.3))
-                                  : null,
-                            ),
-                            child: Text(
-                              '${isBetter ? '🏆 ' : ''}${_localizedSpecValue(context, val)}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: isBetter ? FontWeight.w700 : FontWeight.w500,
-                                color: isBetter ? AppTheme.scoreExcellent
-                                    : isWorse ? AppTheme.error.withValues(alpha: 0.7)
-                                    : isMissing ? context.textTertiaryColor
-                                    : context.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2, overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
+            children: widget.products.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final product = entry.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: idx < widget.products.length - 1 ? 10 : 0),
+                child: _buildProductKeySpecsGrid(product, theme),
               );
             }).toList(),
           ),
         ),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -1434,13 +1370,12 @@ Return ONLY valid JSON:
     final target = specs.length >= 4 ? 6 : 3;
     final displaySpecs = specs.take(target).toList();
     final rows = (displaySpecs.length / 3).ceil();
-    final isCompact = widget.products.length > 2;
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
@@ -1448,50 +1383,48 @@ Return ONLY valid JSON:
           // Product name chip
           Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 10, fontWeight: FontWeight.w600, color: context.textSecondary)),
-          const SizedBox(height: 6),
+              fontSize: 11, fontWeight: FontWeight.w700, color: context.textSecondary)),
+          const SizedBox(height: 8),
           for (int row = 0; row < rows; row++) ...[
-            if (row > 0) const SizedBox(height: 4),
+            if (row > 0) const SizedBox(height: 6),
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (int col = 0; col < 3; col++) ...[
-                    if (col > 0) const SizedBox(width: 4),
+                    if (col > 0) const SizedBox(width: 6),
                     Expanded(
                       child: () {
                         final i = row * 3 + col;
                         if (i >= displaySpecs.length) return const SizedBox.shrink();
                         final entry = displaySpecs[i];
                         return Container(
-                          constraints: BoxConstraints(
-                            minHeight: isCompact ? 56 : 64,
-                            maxHeight: isCompact ? 72 : 80),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                          constraints: const BoxConstraints(minHeight: 68, maxHeight: 84),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(_compareIconForSpec(entry.key),
-                                size: isCompact ? 14 : 16,
+                                size: 18,
                                 color: theme.colorScheme.primary.withValues(alpha: 0.7)),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 3),
                               Flexible(child: Text(
                                 entry.value,
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: isCompact ? 10 : 11,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: theme.colorScheme.onSurface),
                                 textAlign: TextAlign.center,
                                 maxLines: 2, overflow: TextOverflow.ellipsis)),
-                              const SizedBox(height: 1),
+                              const SizedBox(height: 2),
                               Text(entry.key,
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: isCompact ? 7 : 8,
+                                  fontSize: 9,
                                   fontWeight: FontWeight.w500,
                                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
                                 textAlign: TextAlign.center,
@@ -1705,65 +1638,6 @@ Return ONLY valid JSON:
 
   // ─── Visual Builders ───
 
-  Widget _buildProductColumn(ProductEntity product, {bool compact = false}) {
-    final scoreColor = product.techScore >= 80 ? AppTheme.scoreExcellent
-        : product.techScore >= 60 ? AppTheme.scoreAverage
-        : product.techScore >= 40 ? AppTheme.orange500
-        : AppTheme.error;
-    final imgSize = compact ? 70.0 : 100.0;
-
-    return GestureDetector(
-      onTap: () => context.push('/product/${product.id}'),
-      onLongPress: widget.onRemoveProduct != null && widget.products.length > 2
-          ? () => _showRemoveProductDialog(product)
-          : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Product image
-          ProductImageBox(
-            imageUrl: product.imageUrl,
-            width: imgSize,
-            height: imgSize,
-            borderRadius: BorderRadius.circular(compact ? 14 : 18),
-            padding: EdgeInsets.all(compact ? 6 : 8),
-          ),
-          const SizedBox(height: 4),
-          // TechScore badge
-          if (product.techScore > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: scoreColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.memory_outlined, size: 10, color: scoreColor),
-                const SizedBox(width: 3),
-                Text(product.techScore.toInt().toString(),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10, fontWeight: FontWeight.w800, color: scoreColor)),
-              ]),
-            ),
-          const SizedBox(height: 3),
-          // Product name — single location, below badge
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              product.name,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11, fontWeight: FontWeight.w600, color: context.textPrimary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.watch(specDirectionServiceProvider);
@@ -1772,106 +1646,16 @@ Return ONLY valid JSON:
       length: 4,
       child: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // Product header with frosted glass background
-          SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: context.surfaceElevatedColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: widget.products.length == 2
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildProductColumn(widget.products[0])),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 24),
-                        child: Container(
-                          width: 32, height: 32,
-                          decoration: BoxDecoration(
-                            gradient: _accentGradient,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text('VS',
-                              style: GoogleFonts.plusJakartaSans(
-                                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
-                          ),
-                        ).animate(onPlay: (c) => c.repeat(reverse: true))
-                          .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1500.ms, curve: Curves.easeInOut),
-                      ),
-                      Expanded(child: _buildProductColumn(widget.products[1])),
-                    ],
-                  )
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: widget.products.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final product = entry.value;
-                        final screenWidth = MediaQuery.of(context).size.width;
-                        final cardWidth = (screenWidth - 72) / 2.5; // show 2.5 cards
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: cardWidth,
-                              child: _buildProductColumn(product, compact: true),
-                            ),
-                            if (idx < widget.products.length - 1)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 20),
-                                child: Container(
-                                  width: 24, height: 24,
-                                  decoration: BoxDecoration(
-                                    gradient: _accentGradient,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text('VS',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ),
-          ),
-        ),
-
-          // Sticky compact product name chips
+          // Sticky product header with images + VS badge
           SliverPersistentHeader(
             pinned: true,
-            delegate: _ProductChipHeaderDelegate(widget.products),
+            delegate: _StickyProductHeaderDelegate(
+              products: widget.products,
+              onProductTap: (product) => context.push('/product/${product.id}'),
+              onRemoveProduct: widget.onRemoveProduct != null && widget.products.length > 2
+                  ? (product) => _showRemoveProductDialog(product)
+                  : null,
+            ),
           ),
 
           // Pill-style tab bar — clean without colored backgrounds
@@ -2153,15 +1937,32 @@ Return ONLY valid JSON:
   }
 
   Widget _buildReviewsTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = context.surfaceVariantColor;
+
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 40),
       children: [
-        // YouTube comparison videos (in-app native player using YouTubeService)
-        _CompareYouTubeSection(products: widget.products),
-        const SizedBox(height: 14),
+        // Per-product YouTube Reviews using SharedYouTubeReviewsCard
+        ...widget.products.map((product) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SharedYouTubeReviewsCard(
+            product: product,
+            isDark: isDark,
+            cardBg: cardBg,
+            searchQuery: widget.products.length > 1
+                ? '${widget.products.map((p) => p.name).join(' vs ')} comparison review'
+                : null,
+            onVideoTap: _launchVideoInPiP,
+          ),
+        )),
+        const SizedBox(height: 2),
 
-        // User reviews section
-        _buildUserReviewsSection(),
+        // Per-product User Reviews matching detail screen style
+        ...widget.products.map((product) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildUserReviewsCard(product, isDark, cardBg),
+        )),
       ],
     );
   }
@@ -2172,75 +1973,49 @@ Return ONLY valid JSON:
         .where((p) => p.variantGroup.isNotEmpty)
         .map((p) => p.variantGroup)
         .toSet();
-    // Also exclude by name prefix to catch variants
-    final excludeNamePrefixes = widget.products.map((p) {
-      final norm = p.name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-      return norm.length > 30 ? norm.substring(0, 30) : norm;
-    }).toSet();
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
         ...widget.products.asMap().entries.map((entry) {
           final product = entry.value;
-          final primaryColor = Theme.of(context).colorScheme.primary;
           return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: context.surfaceVariantColor,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: context.dividerColor),
-            ),
+            margin: const EdgeInsets.only(bottom: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.grid_view_rounded, color: primaryColor, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        () {
-                          final shortName = product.brand != null
-                            ? '${product.brand!} ${product.name.split(' ').skip(1).take(2).join(' ')}'
-                            : product.name;
-                          return shortName.length > 20 ? '${shortName.substring(0, 20)}…' : shortName;
-                        }(),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                      ),
-                      Text(
-                        context.l10n?.similarProducts ?? 'Benzer Ürünler',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10, fontWeight: FontWeight.w500,
-                          color: context.textTertiaryColor),
-                      ),
-                    ],
-                  )),
-                  if (product.techScore > 0)
+                // Header matching detail screen style
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 14),
+                  child: Row(children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      width: 30, height: 30,
                       decoration: BoxDecoration(
-                        color: primaryColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        product.techScore.toInt().toString(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12, fontWeight: FontWeight.w800, color: primaryColor),
+                        gradient: const LinearGradient(
+                          colors: [AppTheme.primaryBlue, Color(0xFF7C3AED)]),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: const Icon(Icons.widgets_rounded, size: 16, color: Colors.white),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(context.l10n?.similarProducts ?? 'Similar Products',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16, fontWeight: FontWeight.w700,
+                              color: context.textPrimary)),
+                          Text(
+                            product.name,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11, color: context.textTertiaryColor),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                ]),
-                const SizedBox(height: 10),
+                  ]),
+                ),
+                // Grid matching detail screen
                 _CompareSimilarGrid(
                   category: product.category,
                   excludeIds: excludeIds,
@@ -2624,178 +2399,260 @@ Return ONLY valid JSON:
     );
   }
 
-  Widget _buildUserReviewsSection() {
-    // Aggregate reviews from all compared products
-    final allReviewFutures = widget.products.map(
-        (p) => ref.watch(productReviewsProvider(p.id)));
+  /// Per-product user reviews card matching detail screen's _UserReviewsCard style.
+  Widget _buildUserReviewsCard(ProductEntity product, bool isDark, Color cardBg) {
+    final reviewsAsync = ref.watch(productReviewsProvider(product.id));
+    final authState = ref.watch(authStateProvider);
+    final currentUser = authState.valueOrNull;
 
-    final allReviews = <ReviewModel>[];
-    bool isLoading = false;
-    for (final asyncVal in allReviewFutures) {
-      asyncVal.when(
-        data: (reviews) => allReviews.addAll(reviews),
-        loading: () => isLoading = true,
-        error: (_, __) {},
-      );
-    }
-    allReviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    final avgRating = allReviews.isEmpty ? 0.0
-        : allReviews.map((r) => r.rating).reduce((a, b) => a + b) / allReviews.length;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.amber500.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-          const BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Container(width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: AppTheme.amber500.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14)),
-              child: const Icon(Icons.forum_rounded,
-                  size: 22, color: AppTheme.amber500)),
-            const SizedBox(width: 14),
-            Expanded(child: Text(context.l10n?.userReviews ?? 'User Reviews',
-                style: GoogleFonts.plusJakartaSans(fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimary))),
-            if (allReviews.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppTheme.amber500.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.star_rounded, size: 14, color: AppTheme.amber500),
-                  const SizedBox(width: 3),
-                  Text(avgRating.toStringAsFixed(1),
-                      style: GoogleFonts.plusJakartaSans(fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.amber500)),
-                  Text(' (${allReviews.length})',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11,
-                          color: context.textTertiaryColor)),
-                ]),
-              ),
-          ]),
-          const SizedBox(height: 14),
-
-          // Write review button
-          GestureDetector(
-            onTap: () => _showWriteReviewSheet(context),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                gradient: _accentGradient,
-                borderRadius: BorderRadius.circular(16)),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.edit_note_rounded, size: 18, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(context.l10n?.writeAReview ?? 'Write a Review',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
-                        fontWeight: FontWeight.w600, color: Colors.white)),
-              ]),
+    return Card(
+      color: cardBg,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.amber500.withValues(alpha: 0.1) : AppTheme.warning,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.rate_review_rounded,
+                      color: AppTheme.warning, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n?.userReviews ?? 'User Reviews',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      Text(
+                        product.name,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11, color: context.textTertiaryColor),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
-          if (isLoading)
-            const Center(child: Padding(
-              padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue)))
-          else if (allReviews.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(12)),
-              child: Column(children: [
-                Icon(Icons.rate_review_outlined, size: 32, color: context.textTertiaryColor),
-                const SizedBox(height: 8),
-                Text(context.l10n?.noReviewsYet ?? 'No reviews yet',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
-                        fontWeight: FontWeight.w600, color: context.textPrimary)),
-                const SizedBox(height: 4),
-                Text(context.l10n?.beFirstToReview ?? 'Be the first to share your thoughts!',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12,
-                        color: context.textTertiaryColor)),
-              ]),
-            )
-          else
-            ...allReviews.take(5).map((review) => _buildReviewItem(review)),
-        ],
+            // Reviews content
+            reviewsAsync.when(
+              data: (reviews) {
+                if (reviews.isEmpty) {
+                  return _buildEmptyReviewState(currentUser != null, product);
+                }
+                return _buildReviewsList(reviews, product);
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+              error: (_, __) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(context.l10n?.couldNotLoadReviews ?? 'Could not load reviews'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildReviewItem(ReviewModel review) {
-    final rating = review.rating.round().clamp(1, 5);
-    final ratingColor = rating >= 4 ? AppTheme.scoreExcellent
-        : rating >= 3 ? AppTheme.scoreAverage : AppTheme.error;
+  Widget _buildEmptyReviewState(bool isLoggedIn, ProductEntity product) {
+    final theme = Theme.of(context);
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.dividerColor),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      width: double.infinity,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
-              child: Text(review.userId.substring(0, 1).toUpperCase(),
-                  style: GoogleFonts.plusJakartaSans(fontSize: 11,
-                      fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16)),
+            child: Icon(Icons.rate_review_rounded,
+                size: 32, color: theme.colorScheme.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            context.l10n?.noReviewsYet ?? 'No reviews yet',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.slate500,
             ),
-            const SizedBox(width: 8),
-            // Star rating
-            ...List.generate(5, (i) => Icon(
-              i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-              size: 14, color: i < rating ? ratingColor : context.textTertiaryColor,
-            )),
-            const Spacer(),
-            Text(_timeAgo(review.createdAt),
-                style: GoogleFonts.plusJakartaSans(fontSize: 11,
-                    color: context.textTertiaryColor)),
-          ]),
-          if (review.text.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(review.text,
-              maxLines: 4, overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(fontSize: 13,
-                  height: 1.5, color: context.textSecondary)),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isLoggedIn
+                ? (context.l10n?.beFirstToReview ?? 'Be the first to share your experience!')
+                : (context.l10n?.signInToReview ?? 'Sign in to write a review'),
+            style: const TextStyle(fontSize: 13, color: AppTheme.slate400),
+          ),
+          if (isLoggedIn) ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () => _showWriteReviewSheet(context),
+              icon: const Icon(Icons.edit_rounded, size: 16),
+              label: Text(context.l10n?.writeAReview ?? 'Write a Review'),
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
           ],
         ],
       ),
     );
   }
 
-  String _timeAgo(DateTime date) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inDays > 30) return '${(diff.inDays / 30).floor()}mo ago';
-    if (diff.inDays > 0) return '${diff.inDays}d ago';
-    if (diff.inHours > 0) return '${diff.inHours}h ago';
-    return '${diff.inMinutes}m ago';
+  Widget _buildReviewsList(List<ReviewModel> reviews, ProductEntity product) {
+    return Column(
+      children: [
+        // Review count summary
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryBlue.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.rate_review_rounded, size: 24, color: AppTheme.primaryBlue),
+              const SizedBox(width: 10),
+              Text(
+                '${reviews.length} ${context.l10n?.reviews ?? 'Reviews'}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: context.textPrimary),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Individual reviews
+        ...reviews.take(5).map((review) => _buildReviewItemStyled(review)),
+
+        if (reviews.length > 5)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              '+ ${reviews.length - 5} more reviews',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.slate500,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildReviewItemStyled(ReviewModel review) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final timeDiff = DateTime.now().difference(review.createdAt);
+    String timeAgo;
+    if (timeDiff.inDays > 365) {
+      timeAgo = '${timeDiff.inDays ~/ 365}y ago';
+    } else if (timeDiff.inDays > 30) {
+      timeAgo = '${timeDiff.inDays ~/ 30}mo ago';
+    } else if (timeDiff.inDays > 0) {
+      timeAgo = '${timeDiff.inDays}d ago';
+    } else if (timeDiff.inHours > 0) {
+      timeAgo = '${timeDiff.inHours}h ago';
+    } else {
+      timeAgo = 'Just now';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? context.surfaceVariantColor : context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryBlue, AppTheme.neonCyan]),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(child: Text(
+                  review.userId.isNotEmpty
+                      ? review.userId[0].toUpperCase()
+                      : '?',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                )),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'User',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      timeAgo,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: AppTheme.slate500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (review.text.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              review.text,
+              style: const TextStyle(fontSize: 14, height: 1.4),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
 
@@ -3025,80 +2882,307 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
 }
 
-class _ProductChipHeaderDelegate extends SliverPersistentHeaderDelegate {
+class _StickyProductHeaderDelegate extends SliverPersistentHeaderDelegate {
   final List<ProductEntity> products;
-  _ProductChipHeaderDelegate(this.products);
+  final void Function(ProductEntity) onProductTap;
+  final void Function(ProductEntity)? onRemoveProduct;
+
+  _StickyProductHeaderDelegate({
+    required this.products,
+    required this.onProductTap,
+    this.onRemoveProduct,
+  });
 
   @override
-  double get minExtent => 44;
+  double get minExtent => 100;
   @override
-  double get maxExtent => 44;
+  double get maxExtent => 160;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+    final imgSize = _lerpD(80.0, 44.0, t);
+    final vsBadgeSize = _lerpD(28.0, 20.0, t);
+    final fontSize = _lerpD(10.0, 9.0, t);
+    final vPad = _lerpD(12.0, 6.0, t);
+
     return Container(
       color: context.backgroundColor,
-      height: 44,
+      padding: EdgeInsets.fromLTRB(12, vPad, 12, 4),
       child: Row(
-        children: products.asMap().entries.map((entry) {
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: products.asMap().entries.expand((entry) {
           final idx = entry.key;
           final product = entry.value;
-          final name = product.name.length > 12
-              ? '${product.name.substring(0, 12)}…'
-              : product.name;
-          return Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (idx > 0)
-                  Container(
-                    width: 1,
-                    color: context.dividerColor,
-                  ),
-                Expanded(
-                  child: Container(
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            name,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: context.textSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (product.techScore > 0) ...[
-                          const SizedBox(width: 4),
-                          Text(
-                            product.techScore.toInt().toString(),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+          final scoreColor = product.techScore >= 80
+              ? AppTheme.scoreExcellent
+              : product.techScore >= 60
+                  ? AppTheme.scoreAverage
+                  : product.techScore >= 40
+                      ? AppTheme.orange500
+                      : AppTheme.error;
+          final widgets = <Widget>[];
+          if (idx > 0) {
+            widgets.add(
+              Container(
+                width: vsBadgeSize,
+                height: vsBadgeSize,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: const BoxDecoration(
+                  gradient: _accentGradient,
+                  shape: BoxShape.circle,
                 ),
-              ],
+                child: Center(
+                  child: Text('VS',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: vsBadgeSize * 0.35,
+                      fontWeight: FontWeight.w900,
+                    )),
+                ),
+              ),
+            );
+          }
+          widgets.add(
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onProductTap(product),
+                onLongPress: onRemoveProduct != null ? () => onRemoveProduct!(product) : null,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ProductImageBox(
+                      imageUrl: product.imageUrl,
+                      width: imgSize,
+                      height: imgSize,
+                      borderRadius: BorderRadius.circular(imgSize * 0.2),
+                      padding: EdgeInsets.all(imgSize * 0.08),
+                    ),
+                    const SizedBox(height: 3),
+                    if (product.techScore > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: scoreColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.memory_outlined, size: 8, color: scoreColor),
+                          const SizedBox(width: 2),
+                          Text(product.techScore.toInt().toString(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9, fontWeight: FontWeight.w800, color: scoreColor)),
+                        ]),
+                      ),
+                    const SizedBox(height: 2),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(
+                        product.name,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: fontSize, fontWeight: FontWeight.w600, color: context.textPrimary),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
+          return widgets;
         }).toList(),
       ),
     );
   }
 
   @override
-  bool shouldRebuild(_ProductChipHeaderDelegate oldDelegate) =>
+  bool shouldRebuild(_StickyProductHeaderDelegate oldDelegate) =>
       oldDelegate.products != products;
+}
+
+double _lerpD(double a, double b, double t) => a + (b - a) * t;
+
+// ═══════════════════════════════════════════════════════════
+// FLOATING YOUTUBE PLAYER FOR COMPARE SCREEN (mini draggable PiP)
+// ═══════════════════════════════════════════════════════════
+
+class _CompareFloatingPlayer extends StatefulWidget {
+  final String videoId;
+  final String title;
+  final String thumbnailUrl;
+  final VoidCallback onClose;
+  const _CompareFloatingPlayer({
+    required this.videoId,
+    required this.title,
+    required this.thumbnailUrl,
+    required this.onClose,
+  });
+
+  @override
+  State<_CompareFloatingPlayer> createState() => _CompareFloatingPlayerState();
+}
+
+class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
+  double _dx = -1;
+  double _dy = -1;
+  bool _positionSet = false;
+  VideoPlayerController? _vpc;
+  ChewieController? _chewie;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final yt = YoutubeExplode();
+      final manifest = await yt.videos.streamsClient.getManifest(widget.videoId);
+      yt.close();
+      final muxed = manifest.muxed.sortByVideoQuality();
+      if (muxed.isEmpty) {
+        if (mounted) setState(() { _loading = false; _error = 'No streams'; });
+        return;
+      }
+      _vpc = VideoPlayerController.networkUrl(muxed.first.url);
+      await _vpc!.initialize();
+      if (!mounted) return;
+      _chewie = ChewieController(
+        videoPlayerController: _vpc!,
+        autoPlay: true,
+        showControls: true,
+        allowFullScreen: false,
+        allowMuting: true,
+      );
+      setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = 'Yüklenemedi'; });
+    }
+  }
+
+  @override
+  void dispose() {
+    _chewie?.dispose();
+    _vpc?.dispose();
+    super.dispose();
+  }
+
+  void _openFullscreen(BuildContext context) {
+    _vpc?.pause();
+    widget.onClose();
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _NativeCompareVideoPlayer(videoId: widget.videoId, title: widget.title),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    const playerW = 280.0;
+    const playerH = 158.0;
+
+    if (!_positionSet) {
+      _dx = size.width - playerW - 12;
+      _dy = size.height - playerH - 100;
+      _positionSet = true;
+    }
+
+    final thumb = widget.thumbnailUrl.isNotEmpty
+        ? widget.thumbnailUrl
+        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
+
+    return Positioned(
+      left: _dx, top: _dy,
+      child: Material(
+        color: Colors.transparent,
+        child: GestureDetector(
+          onPanUpdate: (d) {
+            setState(() {
+              _dx = (_dx + d.delta.dx).clamp(0.0, size.width - playerW);
+              _dy = (_dy + d.delta.dy).clamp(0.0, size.height - playerH);
+            });
+          },
+          child: Container(
+            width: playerW, height: playerH,
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 6))],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(children: [
+                if (_chewie != null && !_loading)
+                  Positioned.fill(child: Chewie(controller: _chewie!))
+                else if (_error != null)
+                  Positioned.fill(child: Container(
+                    color: Colors.black,
+                    child: Center(child: Text(_error!, style: const TextStyle(color: Colors.white70, fontSize: 11))),
+                  ))
+                else
+                  Stack(children: [
+                    Positioned.fill(child: CachedNetworkImage(
+                      imageUrl: thumb, fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(color: Colors.black))),
+                    Positioned.fill(child: Container(color: Colors.black.withValues(alpha: 0.5))),
+                    const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                  ]),
+                // Top bar: drag handle + fullscreen + close
+                Positioned(top: 0, left: 0, right: 0,
+                  child: Container(
+                    height: 36,
+                    decoration: BoxDecoration(gradient: LinearGradient(
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+                    )),
+                    child: Row(children: [
+                      const SizedBox(width: 8),
+                      Container(width: 28, height: 3,
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => _openFullscreen(context),
+                        child: Container(
+                          width: 28, height: 28,
+                          margin: const EdgeInsets.only(right: 4),
+                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+                          child: const Icon(Icons.fullscreen, size: 16, color: Colors.white),
+                        )),
+                      GestureDetector(
+                        onTap: widget.onClose,
+                        child: Container(
+                          width: 28, height: 28,
+                          margin: const EdgeInsets.only(right: 6),
+                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+                          child: const Icon(Icons.close, size: 14, color: Colors.white),
+                        )),
+                    ]),
+                  )),
+                // Bottom title
+                Positioned(bottom: 0, left: 0, right: 0,
+                  child: IgnorePointer(child: Container(
+                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+                    decoration: BoxDecoration(gradient: LinearGradient(
+                      begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                      colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                    )),
+                    child: Text(widget.title,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ))),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─── In-App YouTube Comparison Videos (uses YouTubeService) ───
