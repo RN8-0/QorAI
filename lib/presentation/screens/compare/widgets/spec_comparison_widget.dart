@@ -1022,24 +1022,17 @@ For each product, analyze current pricing and what it means for you
               child: _FormattedAiText(text: _aiAnalysis!),
             ),
           if (_aiExpanded && _aiAnalysis == null && !_aiLoading)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _loadAiAnalysis,
-                  icon: const Icon(Icons.auto_awesome, size: 18),
-                  label: Text('Load AI Analysis',
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.brandBlue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
-              ),
-            ),
+            Builder(builder: (_) {
+              // Auto-load AI analysis when section is expanded
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_aiAnalysis == null && !_aiLoading) _loadAiAnalysis();
+              });
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Center(child: SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue))),
+              );
+            }),
         ],
       ),
     ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
@@ -1090,7 +1083,7 @@ For each product, analyze current pricing and what it means for you
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '⚡ ${context.l10n?.specs ?? 'Key Specs'}',
+                '⚡ ${context.l10n?.specsTab ?? 'Key Specs'}',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -1357,27 +1350,12 @@ For each product, analyze current pricing and what it means for you
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Container(
+                ProductImageBox(
+                  imageUrl: product.imageUrl,
                   width: imgSize,
                   height: imgSize,
-                  decoration: BoxDecoration(
-                    color: context.surfaceElevatedColor,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: context.dividerColor),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: ProductImageBox(
-                    imageUrl: product.imageUrl,
-                    height: imgSize - 4,
-                    borderRadius: BorderRadius.circular(18),
-                    padding: const EdgeInsets.all(8),
-                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  padding: const EdgeInsets.all(8),
                 ),
                 // TechScore badge — top left
                 if (product.techScore > 0)
@@ -1616,7 +1594,7 @@ For each product, analyze current pricing and what it means for you
                 unselectedLabelStyle: const TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w500),
                 tabs: [
-                  Tab(text: context.l10n?.specs ?? 'Specs'),
+                  Tab(text: context.l10n?.specsTab ?? 'Specs'),
                   Tab(text: context.l10n?.reviews ?? 'Reviews'),
                   Tab(text: context.l10n?.similarTab ?? 'Similar'),
                   Tab(text: context.l10n?.proTab ?? 'Premium'),
@@ -1876,10 +1854,6 @@ For each product, analyze current pricing and what it means for you
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 40),
       children: [
-        // Expert Scores Comparison
-        _buildExpertScoresComparison(),
-        const SizedBox(height: 14),
-
         // YouTube comparison videos (in-app native player using YouTubeService)
         _CompareYouTubeSection(products: widget.products),
         const SizedBox(height: 14),
@@ -1969,25 +1943,16 @@ For each product, analyze current pricing and what it means for you
                       ),
                     ),
                 ]),
-                const SizedBox(height: 6),
-                Text(
-                  context.l10n?.similarProducts ?? 'Similar Products',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor),
-                ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  height: 140,
-                  child: _CompareSuggestedList(
-                    category: product.category,
-                    excludeIds: excludeIds,
-                    excludeVariantGroups: excludeVariantGroups,
-                  ),
+                _CompareSimilarGrid(
+                  category: product.category,
+                  excludeIds: excludeIds,
+                  excludeVariantGroups: excludeVariantGroups,
                 ),
               ],
             ),
           );
         }),
-        _CompareDiscoverSection(excludeIds: excludeIds),
       ],
     );
   }
@@ -2060,14 +2025,22 @@ For each product, analyze current pricing and what it means for you
     final userProfile = ref.watch(userProfileProvider);
     final user = userProfile.valueOrNull;
 
+    // Trigger fetch for each product
+    for (final product in widget.products) {
+      final notifier = ref.read(geminiMatchScoreProvider(product.id).notifier);
+      notifier.fetchMatchScore(product: product);
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: context.dividerColor),
-        boxShadow: const [
-          BoxShadow(color: Color(0x086366F1), blurRadius: 12, offset: Offset(0, 4)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.08),
+            blurRadius: 12, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -2089,16 +2062,12 @@ For each product, analyze current pricing and what it means for you
           ]),
           const SizedBox(height: 14),
           ...widget.products.map((product) {
-            int? matchScore;
-            if (user != null) {
-              try {
-                final algo = ref.read(profileAlgorithmServiceProvider);
-                final behavior = ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
-                final fs = algo.calculateTotalFitScore(
-                  user: user, product: product, behavior: behavior);
-                if (fs > 0) matchScore = fs.toInt();
-              } catch (_) {}
-            }
+            final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
+            final matchResult = matchAsync.valueOrNull;
+            final matchScore = matchResult?.matchScore;
+            final reason = matchResult?.reason;
+            final isLoading = matchAsync is AsyncLoading;
+
             final displayScore = matchScore != null ? '$matchScore%' : '--';
             final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
                 matchScore >= 80 ? AppTheme.scoreExcellent :
@@ -2112,32 +2081,68 @@ For each product, analyze current pricing and what it means for you
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: matchColor.withValues(alpha: 0.15)),
               ),
-              child: Row(children: [
-                Container(
-                  width: 46, height: 46,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [matchColor, AppTheme.brandSkyBlue])),
-                  child: Center(child: Text(displayScore,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white))),
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(product.name, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Text(matchScore != null
-                      ? 'Based on your preferences & behavior'
-                      : 'Sign in to see your match',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11, color: context.textTertiaryColor)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    if (isLoading)
+                      Container(
+                        width: 46, height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: matchColor.withValues(alpha: 0.1)),
+                        child: Center(child: SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2, color: matchColor))),
+                      )
+                    else
+                      Container(
+                        width: 46, height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(colors: [matchColor, AppTheme.brandSkyBlue])),
+                        child: Center(child: Text(displayScore,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white))),
+                      ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(product.name, style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text(
+                          isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
+                              : user == null || !(user.quizCompleted)
+                                  ? (context.l10n?.takeQuiz ?? 'Take the quiz to see your match')
+                                  : 'Based on your preferences & behavior',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11, color: context.textTertiaryColor)),
+                      ],
+                    )),
+                  ]),
+                  // Gemini reason text
+                  if (reason != null && reason.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.auto_awesome, size: 12,
+                            color: matchColor.withValues(alpha: 0.7)),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(reason,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11, fontStyle: FontStyle.italic,
+                            color: context.textSecondary, height: 1.3),
+                          maxLines: 3, overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
                   ],
-                )),
-              ]),
+                ],
+              ),
             );
           }),
         ],

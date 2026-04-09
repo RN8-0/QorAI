@@ -552,7 +552,178 @@ class _CompareSuggestedList extends ConsumerWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-// SIMILAR TAB — Discover popular products from other categories
+// SIMILAR TAB — 2-column grid (matches detail page similar_tab.dart)
+// ═══════════════════════════════════════════════════════════
+
+class _CompareSimilarGrid extends ConsumerWidget {
+  final String category;
+  final Set<String> excludeIds;
+  final Set<String> excludeVariantGroups;
+  const _CompareSimilarGrid({
+    required this.category,
+    required this.excludeIds,
+    this.excludeVariantGroups = const {},
+  });
+
+  double _scoreForUser(ProductEntity p, List<String> viewedIds, List<String> searches) {
+    double score = p.techScore;
+    if (viewedIds.contains(p.id)) score += 200;
+    final nameLower = p.name.toLowerCase();
+    for (final s in searches) {
+      if (nameLower.contains(s.toLowerCase())) { score += 100; break; }
+    }
+    return score;
+  }
+
+  List<ProductEntity> _rankProducts(
+      List<ProductEntity> all, List<String> viewedIds, List<String> searches) {
+    final filtered = all
+        .where((p) => !excludeIds.contains(p.id))
+        .where((p) => !excludeVariantGroups.contains(p.variantGroup))
+        .toList();
+    final globalProducts = <ProductEntity>[];
+    final otherProducts = <ProductEntity>[];
+    for (final p in filtered) {
+      final brand = (p.brand ?? '').toLowerCase().trim();
+      if (_SuggestedProductsList._globalBrands.contains(brand)) {
+        globalProducts.add(p);
+      } else {
+        otherProducts.add(p);
+      }
+    }
+    globalProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
+        .compareTo(_scoreForUser(a, viewedIds, searches)));
+    otherProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
+        .compareTo(_scoreForUser(a, viewedIds, searches)));
+    return [...globalProducts, ...otherProducts].take(12).toList();
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final viewedIds = ref.watch(viewedProductsProvider);
+    final searches = ref.watch(recentSearchesProvider);
+    final feed = ref.watch(homeFeedProvider).valueOrNull;
+    List<ProductEntity> products = [];
+
+    if (feed != null) {
+      final catProducts = feed.byCategory[category] ?? [];
+      products = _rankProducts(catProducts, viewedIds, searches);
+    }
+
+    if (products.isEmpty) {
+      final async = ref.watch(productsByCategoryProvider(category));
+      return async.when(
+        data: (result) => result.when(
+          success: (all) {
+            final ranked = _rankProducts(all, viewedIds, searches);
+            return ranked.isEmpty
+                ? Center(child: Text('No similar products found',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor)))
+                : _buildGrid(context, ranked);
+          },
+          failure: (_) => Center(child: Text('Could not load',
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor))),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        error: (_, __) => Center(child: Text('Error',
+            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor))),
+      );
+    }
+
+    return _buildGrid(context, products);
+  }
+
+  Widget _buildGrid(BuildContext context, List<ProductEntity> products) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 0.78,
+      ),
+      itemCount: products.length,
+      itemBuilder: (context, i) {
+        final p = products[i];
+        final scoreColor = p.techScore >= 80 ? AppTheme.scoreExcellent
+            : p.techScore >= 60 ? AppTheme.scoreAverage
+            : p.techScore >= 40 ? AppTheme.orange500
+            : AppTheme.error;
+        return GestureDetector(
+          onTap: () => context.push('${AppRoutes.productDetail}/${p.id}'),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: context.surfaceVariantColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.dividerColor),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Image with score badge
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Center(child: ProductImageBox(
+                        imageUrl: p.imageUrl,
+                        width: double.infinity,
+                        height: double.infinity,
+                        borderRadius: BorderRadius.circular(10),
+                        padding: const EdgeInsets.all(6),
+                      )),
+                      if (p.techScore > 0)
+                        Positioned(
+                          top: 4, right: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: scoreColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 0.5),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.local_fire_department_rounded, size: 10, color: scoreColor),
+                              const SizedBox(width: 2),
+                              Text('${p.techScore.toInt()}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10, fontWeight: FontWeight.w700, color: scoreColor)),
+                            ]),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Brand
+                if (p.brand != null)
+                  Text(p.brand!.toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9, fontWeight: FontWeight.w600,
+                      color: AppTheme.brandBlue, letterSpacing: 0.6),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                // Name
+                Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, fontWeight: FontWeight.w700,
+                    color: context.textPrimary, height: 1.15)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 
 class _CompareDiscoverSection extends ConsumerWidget {
