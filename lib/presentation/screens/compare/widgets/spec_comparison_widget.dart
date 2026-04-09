@@ -1597,24 +1597,24 @@ For each product, analyze current pricing and what it means for you
             delegate: _ProductChipHeaderDelegate(widget.products),
           ),
 
-          // Pill-style tab bar
+          // Pill-style tab bar — matches detail page style
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarDelegate(
               TabBar(
-                labelColor: Colors.white,
-                unselectedLabelColor: context.textSecondary,
+                labelColor: context.surfaceVariantColor,
+                unselectedLabelColor: AppTheme.slate500,
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 indicator: BoxDecoration(
-                  gradient: _accentGradient,
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppTheme.primaryBlue,
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                splashBorderRadius: BorderRadius.circular(14),
-                labelStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w700),
-                unselectedLabelStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w500),
+                splashBorderRadius: BorderRadius.circular(24),
+                labelStyle: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700),
+                unselectedLabelStyle: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w500),
                 tabs: [
                   Tab(text: context.l10n?.specs ?? 'Specs'),
                   Tab(text: context.l10n?.reviews ?? 'Reviews'),
@@ -2584,20 +2584,27 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   _TabBarDelegate(this.tabBar);
 
   @override
-  double get minExtent => tabBar.preferredSize.height + 16;
+  double get minExtent => 64;
   @override
-  double get maxExtent => tabBar.preferredSize.height + 16;
+  double get maxExtent => 64;
 
   @override
   Widget build(BuildContext context, double shrinkOffset,
       bool overlapsContent) {
     return Container(
       color: context.backgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Container(
         decoration: BoxDecoration(
-          color: context.dividerColor,
-          borderRadius: BorderRadius.circular(16),
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.1),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: tabBar,
       ),
