@@ -1328,26 +1328,119 @@ For each product, analyze current pricing and what it means for you
   // ─── Visual Builders ───
 
   Widget _buildProductColumn(ProductEntity product) {
+    final userProfile = ref.watch(userProfileProvider);
+    final user = userProfile.valueOrNull;
+    int? matchScore;
+    if (user != null) {
+      try {
+        final algo = ref.read(profileAlgorithmServiceProvider);
+        final behavior = ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
+        final fs = algo.calculateTotalFitScore(user: user, product: product, behavior: behavior);
+        if (fs > 0) matchScore = fs.toInt();
+      } catch (_) {}
+    }
+    final scoreColor = product.techScore >= 80 ? AppTheme.scoreExcellent
+        : product.techScore >= 60 ? AppTheme.scoreAverage
+        : product.techScore >= 40 ? AppTheme.orange500
+        : AppTheme.error;
+    final matchColor = matchScore == null ? null
+        : matchScore >= 80 ? AppTheme.scoreExcellent
+        : matchScore >= 60 ? AppTheme.scoreAverage
+        : AppTheme.orange500;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final imgSize = (constraints.maxWidth * 0.7).clamp(60.0, 120.0);
         return Column(
           children: [
-            SizedBox(
-              width: imgSize,
-              height: imgSize,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  borderRadius: BorderRadius.circular(16),
+            // Product image with badges
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: imgSize,
+                  height: imgSize,
+                  decoration: BoxDecoration(
+                    color: context.surfaceElevatedColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: context.dividerColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ProductImageBox(
+                    imageUrl: product.imageUrl,
+                    height: imgSize - 4,
+                    borderRadius: BorderRadius.circular(18),
+                    padding: const EdgeInsets.all(8),
+                  ),
                 ),
-                child: ProductImageBox(
-                  imageUrl: product.imageUrl,
-                  height: imgSize - 4,
-                  borderRadius: BorderRadius.circular(16),
-                  padding: const EdgeInsets.all(8),
-                ),
-              ),
+                // TechScore badge — top left
+                if (product.techScore > 0)
+                  Positioned(
+                    top: -6, left: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: scoreColor,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: scoreColor.withValues(alpha: 0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        product.techScore.toInt().toString(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Match score badge — top right
+                if (matchScore != null && matchColor != null)
+                  Positioned(
+                    top: -6, right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: matchColor,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: matchColor.withValues(alpha: 0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.favorite_rounded, size: 9, color: Colors.white),
+                          const SizedBox(width: 2),
+                          Text(
+                            '$matchScore%',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -1368,10 +1461,11 @@ For each product, analyze current pricing and what it means for you
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
-                  product.brand!,
+                  product.brand!.toUpperCase(),
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
                     color: context.textTertiaryColor,
                   ),
                 ),
@@ -1396,7 +1490,7 @@ For each product, analyze current pricing and what it means for you
               margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: context.surfaceColor,
+                color: context.surfaceElevatedColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: AppTheme.brandBlue.withValues(alpha: 0.12),
@@ -1406,6 +1500,11 @@ For each product, analyze current pricing and what it means for you
                     color: AppTheme.brandBlue.withValues(alpha: 0.08),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -1439,7 +1538,8 @@ For each product, analyze current pricing and what it means for you
                               ),
                             ),
                           ),
-                        ),
+                        ).animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1500.ms, curve: Curves.easeInOut),
                       ),
                       Expanded(child: _buildProductColumn(widget.products[1])),
                     ],
@@ -1480,7 +1580,8 @@ For each product, analyze current pricing and what it means for you
                                       ),
                                     ),
                                   ),
-                                ),
+                                ).animate(onPlay: (c) => c.repeat(reverse: true))
+                                  .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1500.ms, curve: Curves.easeInOut),
                               ),
                           ],
                         ),
