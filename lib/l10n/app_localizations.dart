@@ -6783,6 +6783,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Popular products from every category'**
   String get discoverPopular;
+
+  /// No description provided for @whichShouldIBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Which Should I Buy?'**
+  String get whichShouldIBuy;
+
+  /// No description provided for @quickAiComparisonResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick AI comparison result'**
+  String get quickAiComparisonResult;
+
+  /// No description provided for @comprehensiveAiComparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Comprehensive AI-powered comparison evaluation'**
+  String get comprehensiveAiComparison;
+
+  /// No description provided for @aiAlternativesToConsider.
+  ///
+  /// In en, this message translates to:
+  /// **'AI-curated alternatives you should consider'**
+  String get aiAlternativesToConsider;
+
+  /// No description provided for @aiProductAdvisor.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Product Advisor'**
+  String get aiProductAdvisor;
+
+  /// No description provided for @personalizedPurchaseAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'Personalized comparison purchase advice'**
+  String get personalizedPurchaseAdvice;
+
+  /// No description provided for @pricePrediction.
+  ///
+  /// In en, this message translates to:
+  /// **'Price Prediction'**
+  String get pricePrediction;
+
+  /// No description provided for @aiPriceTrendAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'AI-powered price trend analysis & best time to buy'**
+  String get aiPriceTrendAnalysis;
+
+  /// No description provided for @aiCompatibilityAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'AI-powered compatibility analysis'**
+  String get aiCompatibilityAnalysis;
+
+  /// No description provided for @completeQuiz.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Quiz'**
+  String get completeQuiz;
+
+  /// No description provided for @basedOnYourPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on your preferences and usage habits'**
+  String get basedOnYourPreferences;
+
+  /// No description provided for @comparisonVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'Comparison Videos'**
+  String get comparisonVideos;
 }
 
 class _AppLocalizationsDelegate

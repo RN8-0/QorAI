@@ -3491,4 +3491,45 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get discoverPopular => 'Popular products from every category';
+
+  @override
+  String get whichShouldIBuy => 'Which Should I Buy?';
+
+  @override
+  String get quickAiComparisonResult => 'Quick AI comparison result';
+
+  @override
+  String get comprehensiveAiComparison =>
+      'Comprehensive AI-powered comparison evaluation';
+
+  @override
+  String get aiAlternativesToConsider =>
+      'AI-curated alternatives you should consider';
+
+  @override
+  String get aiProductAdvisor => 'AI Product Advisor';
+
+  @override
+  String get personalizedPurchaseAdvice =>
+      'Personalized comparison purchase advice';
+
+  @override
+  String get pricePrediction => 'Price Prediction';
+
+  @override
+  String get aiPriceTrendAnalysis =>
+      'AI-powered price trend analysis & best time to buy';
+
+  @override
+  String get aiCompatibilityAnalysis => 'AI-powered compatibility analysis';
+
+  @override
+  String get completeQuiz => 'Complete Quiz';
+
+  @override
+  String get basedOnYourPreferences =>
+      'Based on your preferences and usage habits';
+
+  @override
+  String get comparisonVideos => 'Comparison Videos';
 }

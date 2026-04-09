@@ -20,6 +20,9 @@ class SharedYouTubeReviewsCard extends ConsumerStatefulWidget {
   /// If null, no action is taken on tap.
   final void Function(String url, String title, String thumbnailUrl)? onVideoTap;
 
+  /// Optional title override (e.g. "Comparison Videos")
+  final String? titleOverride;
+
   const SharedYouTubeReviewsCard({
     super.key,
     required this.product,
@@ -27,6 +30,7 @@ class SharedYouTubeReviewsCard extends ConsumerStatefulWidget {
     required this.cardBg,
     this.searchQuery,
     this.onVideoTap,
+    this.titleOverride,
   });
 
   @override
@@ -90,7 +94,7 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  context.l10n?.youtubeReviews ?? 'YouTube Reviews',
+                  widget.titleOverride ?? context.l10n?.youtubeReviews ?? 'YouTube Reviews',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -103,7 +107,7 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
               child: FilledButton.icon(
                 onPressed: _fetchVideos,
                 icon: const Icon(Icons.play_arrow),
-                label: Text(context.l10n?.loadReviewVideos ?? '📺 Review Videolarını Yükle'),
+                label: Text(context.l10n?.loadReviewVideos ?? 'Load Review Videos'),
                 style: FilledButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: theme.colorScheme.onPrimary,

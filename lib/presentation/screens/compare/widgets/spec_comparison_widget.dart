@@ -1614,52 +1614,52 @@ Return ONLY valid JSON:
 
     return DefaultTabController(
       length: 4,
-      child: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // Product header — non-pinned SliverToBoxAdapter (scrolls away)
-          SliverToBoxAdapter(
-            child: _buildProductHeader(context),
-          ),
+      child: Column(
+        children: [
+          // Sticky product header (always visible)
+          _buildProductHeader(context),
 
-          // Pill-style tab bar — pinned (stays visible on scroll)
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _TabBarDelegate(
-              TabBar(
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: context.textTertiaryColor,
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                indicator: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2.5,
-                    ),
+          // Pill-style tab bar (always visible)
+          Container(
+            color: context.surfaceColor,
+            child: TabBar(
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: context.textTertiaryColor,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2.5,
                   ),
                 ),
-                labelStyle: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700),
-                unselectedLabelStyle: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500),
-                tabs: [
-                  Tab(text: context.l10n?.specsTab ?? 'Specs'),
-                  Tab(text: context.l10n?.reviews ?? 'Reviews'),
-                  Tab(text: context.l10n?.similarTab ?? 'Similar'),
-                  Tab(text: context.l10n?.proTab ?? 'Premium'),
-                ],
               ),
+              labelStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700),
+              unselectedLabelStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w500),
+              tabs: [
+                Tab(text: context.l10n?.specsTab ?? 'Specs'),
+                Tab(text: context.l10n?.reviews ?? 'Reviews'),
+                Tab(text: context.l10n?.similarTab ?? 'Similar'),
+                Tab(text: context.l10n?.proTab ?? 'Premium'),
+              ],
+            ),
+          ),
+
+          // Tab content (scrollable)
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildSpecsTab(),
+                _buildReviewsTab(),
+                _buildSimilarTab(),
+                _buildProTab(),
+              ],
             ),
           ),
         ],
-        body: TabBarView(
-          children: [
-            _buildSpecsTab(),
-            _buildReviewsTab(),
-            _buildSimilarTab(),
-            _buildProTab(),
-          ],
-        ),
       ),
     );
   }
@@ -2004,18 +2004,23 @@ Return ONLY valid JSON:
   }
 
   Widget _buildReviewsTab() {
+    // Build "product1 vs product2" search query for comparison videos
+    final vsQuery = widget.products.map((p) => p.name).join(' vs ');
+
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 40),
       children: [
-        // Per-product YouTube review cards (matching detail screen)
-        ...widget.products.map((product) => Padding(
+        // Single YouTube section with comparison query
+        Padding(
           padding: const EdgeInsets.only(bottom: 14),
           child: SharedYouTubeReviewsCard(
-            product: product,
+            product: widget.products.first,
             isDark: Theme.of(context).brightness == Brightness.dark,
             cardBg: context.surfaceVariantColor,
+            searchQuery: vsQuery,
+            titleOverride: context.l10n?.comparisonVideos ?? 'Comparison Videos',
           ),
-        )),
+        ),
 
         // User reviews section
         _buildUserReviewsSection(),
@@ -2029,85 +2034,57 @@ Return ONLY valid JSON:
         .where((p) => p.variantGroup.isNotEmpty)
         .map((p) => p.variantGroup)
         .toSet();
-    // Also exclude by name prefix to catch variants
-    final excludeNamePrefixes = widget.products.map((p) {
-      final norm = p.name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-      return norm.length > 30 ? norm.substring(0, 30) : norm;
-    }).toSet();
+    // Use first product's category (all compared products share category)
+    final category = widget.products.first.category.isNotEmpty
+        ? widget.products.first.category
+        : widget.products.first.subcategory;
+    final avgScore = widget.products.map((p) => p.techScore).reduce((a, b) => a + b) / widget.products.length;
+
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
-        ...widget.products.asMap().entries.map((entry) {
-          final product = entry.value;
-          final primaryColor = Theme.of(context).colorScheme.primary;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: context.surfaceVariantColor,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: context.dividerColor),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      gradient: _accentGradient,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 18),
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: context.dividerColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    gradient: _accentGradient,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        () {
-                          final shortName = product.brand != null
-                            ? '${product.brand!} ${product.name.split(' ').skip(1).take(2).join(' ')}'
-                            : product.name;
-                          return shortName.length > 20 ? '${shortName.substring(0, 20)}…' : shortName;
-                        }(),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                      ),
-                      Text(
-                        context.l10n?.similarProducts ?? 'Benzer Ürünler',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10, fontWeight: FontWeight.w500,
-                          color: context.textTertiaryColor),
-                      ),
-                    ],
-                  )),
-                  if (product.techScore > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        product.techScore.toInt().toString(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12, fontWeight: FontWeight.w800, color: primaryColor),
-                      ),
-                    ),
-                ]),
-                const SizedBox(height: 10),
-                _CompareSimilarGrid(
-                  category: product.category,
-                  excludeIds: excludeIds,
-                  excludeVariantGroups: excludeVariantGroups,
-                  refScore: product.techScore,
+                  child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 18),
                 ),
-              ],
-            ),
-          );
-        }),
+                const SizedBox(width: 10),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n?.similarProducts ?? 'Similar Products',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                    ),
+                  ],
+                )),
+              ]),
+              const SizedBox(height: 10),
+              _CompareSimilarGrid(
+                category: category,
+                excludeIds: excludeIds,
+                excludeVariantGroups: excludeVariantGroups,
+                refScore: avgScore,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -2116,11 +2093,11 @@ Return ONLY valid JSON:
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
-        // 1. Quick Verdict — "Hangisini Almalıyım?"
+        // 1. Quick Verdict
         _buildExpandableCard(
           icon: Icons.gavel_rounded,
-          title: 'Hangisini Almalıyım?',
-          subtitle: 'Hızlı AI karşılaştırma sonucu',
+          title: context.l10n?.whichShouldIBuy ?? 'Which Should I Buy?',
+          subtitle: context.l10n?.quickAiComparisonResult ?? 'Quick AI comparison result',
           gradient: const [Color(0xFFEC4899), Color(0xFFF43F5E)],
           isExpanded: _quickVerdictExpanded,
           isLoading: _quickVerdictLoading,
@@ -2134,8 +2111,8 @@ Return ONLY valid JSON:
         // 3. AI Deep Analysis
         _buildExpandableCard(
           icon: Icons.psychology_rounded,
-          title: context.l10n?.aiDeepAnalysis ?? 'AI Derin Analizi',
-          subtitle: 'Kapsamlı AI destekli karşılaştırma değerlendirmesi',
+          title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
+          subtitle: context.l10n?.comprehensiveAiComparison ?? 'Comprehensive AI-powered comparison evaluation',
           gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
           isExpanded: _deepAnalysisExpanded,
           isLoading: _deepAnalysisLoading,
@@ -2147,8 +2124,8 @@ Return ONLY valid JSON:
         // 4. Smart Alternatives
         _buildExpandableCard(
           icon: Icons.swap_horizontal_circle_rounded,
-          title: context.l10n?.smartAlternatives ?? 'Akıllı Alternatifler',
-          subtitle: 'AI destekli değerlendirmeniz gereken alternatifler',
+          title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
+          subtitle: context.l10n?.aiAlternativesToConsider ?? 'AI-curated alternatives you should consider',
           gradient: const [AppTheme.warning, Color(0xFFF97316)],
           isExpanded: _alternativesExpanded,
           isLoading: _alternativesLoading,
@@ -2160,8 +2137,8 @@ Return ONLY valid JSON:
         // 5. AI Product Advisor
         _buildExpandableCard(
           icon: Icons.support_agent_rounded,
-          title: 'AI Ürün Danışmanı',
-          subtitle: 'Kişiselleştirilmiş karşılaştırma satın alma tavsiyesi',
+          title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
+          subtitle: context.l10n?.personalizedPurchaseAdvice ?? 'Personalized comparison purchase advice',
           gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
           isExpanded: _advisorExpanded,
           isLoading: _advisorLoading,
@@ -2173,8 +2150,8 @@ Return ONLY valid JSON:
         // 6. Price Prediction
         _buildExpandableCard(
           icon: Icons.trending_down_rounded,
-          title: 'Fiyat Tahmini',
-          subtitle: 'AI destekli fiyat trendi analizi ve en iyi alım zamanı',
+          title: context.l10n?.pricePrediction ?? 'Price Prediction',
+          subtitle: context.l10n?.aiPriceTrendAnalysis ?? 'AI-powered price trend analysis & best time to buy',
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
           isExpanded: _predictionExpanded,
           isLoading: _predictionLoading,
@@ -2239,7 +2216,7 @@ Return ONLY valid JSON:
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text('AI destekli uyumluluk analizi',
+                  Text(context.l10n?.aiCompatibilityAnalysis ?? 'AI-powered compatibility analysis',
                     style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
                 ],
               )),
@@ -2264,7 +2241,7 @@ Return ONLY valid JSON:
                       children: [
                         const Icon(Icons.quiz_rounded, size: 18, color: Colors.white),
                         const SizedBox(width: 8),
-                        Text("Quiz'i Tamamla",
+                        Text(context.l10n?.completeQuiz ?? "Complete Quiz",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                       ],
@@ -2343,7 +2320,7 @@ Return ONLY valid JSON:
                               const SizedBox(height: 2),
                               Text(
                                 isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
-                                    : 'Tercihleriniz ve kullanım alışkanlıklarınıza göre',
+                                    : context.l10n?.basedOnYourPreferences ?? 'Based on your preferences and usage habits',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11, color: context.textTertiaryColor)),
                             ],
@@ -2846,41 +2823,6 @@ Return ONLY valid JSON:
 
 // ─── Tab Bar Delegate ─────────────────────────────────────────────────────────
 
-class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-  _TabBarDelegate(this.tabBar);
-
-  @override
-  double get minExtent => 64;
-  @override
-  double get maxExtent => 64;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset,
-      bool overlapsContent) {
-    return Container(
-      color: context.backgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: tabBar,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
-}
 
 
 // ─── In-App YouTube Comparison Videos (uses YouTubeService) ───

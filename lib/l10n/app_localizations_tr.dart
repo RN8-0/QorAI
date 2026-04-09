@@ -3496,4 +3496,45 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get discoverPopular => 'Her kategoriden popüler ürünler';
+
+  @override
+  String get whichShouldIBuy => 'Hangisini Almalıyım?';
+
+  @override
+  String get quickAiComparisonResult => 'Hızlı AI karşılaştırma sonucu';
+
+  @override
+  String get comprehensiveAiComparison =>
+      'Kapsamlı AI destekli karşılaştırma değerlendirmesi';
+
+  @override
+  String get aiAlternativesToConsider =>
+      'AI destekli değerlendirmeniz gereken alternatifler';
+
+  @override
+  String get aiProductAdvisor => 'AI Ürün Danışmanı';
+
+  @override
+  String get personalizedPurchaseAdvice =>
+      'Kişiselleştirilmiş karşılaştırma satın alma tavsiyesi';
+
+  @override
+  String get pricePrediction => 'Fiyat Tahmini';
+
+  @override
+  String get aiPriceTrendAnalysis =>
+      'AI destekli fiyat trendi analizi ve en iyi alım zamanı';
+
+  @override
+  String get aiCompatibilityAnalysis => 'AI destekli uyumluluk analizi';
+
+  @override
+  String get completeQuiz => 'Quiz\'i Tamamla';
+
+  @override
+  String get basedOnYourPreferences =>
+      'Tercihleriniz ve kullanım alışkanlıklarınıza göre';
+
+  @override
+  String get comparisonVideos => 'Karşılaştırma Videoları';
 }

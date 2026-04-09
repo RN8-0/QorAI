@@ -698,6 +698,11 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
     const fabBottom = _kNavBarHeight + 10.0;
     const fabRight = 14.0;
 
+    // Hide on compare page
+    if (widget.currentRoute.contains('compare')) {
+      return const SizedBox.shrink();
+    }
+
     final bubbleBg = isDark ? Colors.black : Colors.white;
     final bubbleShadow = isDark
         ? Colors.black.withValues(alpha: 0.55)

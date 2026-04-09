@@ -1324,5 +1324,17 @@
   "typeLabel": "Yaz",
   "webPoweredInsights": "Web Destekli İçgörüler",
   "webPoweredInsightsDesc": "Gerçek zamanlı fiyatlandırma, Reddit ve forum yorumları",
-  "discoverPopular": "Her kategoriden popüler ürünler"
+  "discoverPopular": "Her kategoriden popüler ürünler",
+  "whichShouldIBuy": "Hangisini Almalıyım?",
+  "quickAiComparisonResult": "Hızlı AI karşılaştırma sonucu",
+  "comprehensiveAiComparison": "Kapsamlı AI destekli karşılaştırma değerlendirmesi",
+  "aiAlternativesToConsider": "AI destekli değerlendirmeniz gereken alternatifler",
+  "aiProductAdvisor": "AI Ürün Danışmanı",
+  "personalizedPurchaseAdvice": "Kişiselleştirilmiş karşılaştırma satın alma tavsiyesi",
+  "pricePrediction": "Fiyat Tahmini",
+  "aiPriceTrendAnalysis": "AI destekli fiyat trendi analizi ve en iyi alım zamanı",
+  "aiCompatibilityAnalysis": "AI destekli uyumluluk analizi",
+  "completeQuiz": "Quiz'i Tamamla",
+  "basedOnYourPreferences": "Tercihleriniz ve kullanım alışkanlıklarınıza göre",
+  "comparisonVideos": "Karşılaştırma Videoları"
 }

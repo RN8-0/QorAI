@@ -19,7 +19,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "de": [
@@ -42,7 +54,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "es": [
@@ -65,7 +89,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "fr": [
@@ -88,7 +124,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "it": [
@@ -111,7 +159,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "ja": [
@@ -134,7 +194,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "nl": [
@@ -157,7 +229,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "pl": [
@@ -180,7 +264,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "pt": [
@@ -203,7 +299,19 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ],
 
   "sv": [
@@ -226,6 +334,18 @@
     "compatibilityScore",
     "singleAnalysis",
     "compareMode",
-    "discoverPopular"
+    "discoverPopular",
+    "whichShouldIBuy",
+    "quickAiComparisonResult",
+    "comprehensiveAiComparison",
+    "aiAlternativesToConsider",
+    "aiProductAdvisor",
+    "personalizedPurchaseAdvice",
+    "pricePrediction",
+    "aiPriceTrendAnalysis",
+    "aiCompatibilityAnalysis",
+    "completeQuiz",
+    "basedOnYourPreferences",
+    "comparisonVideos"
   ]
 }

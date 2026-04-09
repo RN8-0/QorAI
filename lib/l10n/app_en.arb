@@ -1381,5 +1381,17 @@
   "typeLabel": "Type",
   "webPoweredInsights": "Web-Powered Insights",
   "webPoweredInsightsDesc": "Real-time pricing, Reddit & forum opinions",
-  "discoverPopular": "Popular products from every category"
+  "discoverPopular": "Popular products from every category",
+  "whichShouldIBuy": "Which Should I Buy?",
+  "quickAiComparisonResult": "Quick AI comparison result",
+  "comprehensiveAiComparison": "Comprehensive AI-powered comparison evaluation",
+  "aiAlternativesToConsider": "AI-curated alternatives you should consider",
+  "aiProductAdvisor": "AI Product Advisor",
+  "personalizedPurchaseAdvice": "Personalized comparison purchase advice",
+  "pricePrediction": "Price Prediction",
+  "aiPriceTrendAnalysis": "AI-powered price trend analysis & best time to buy",
+  "aiCompatibilityAnalysis": "AI-powered compatibility analysis",
+  "completeQuiz": "Complete Quiz",
+  "basedOnYourPreferences": "Based on your preferences and usage habits",
+  "comparisonVideos": "Comparison Videos"
 }
