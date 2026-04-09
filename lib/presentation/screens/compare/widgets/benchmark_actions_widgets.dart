@@ -585,14 +585,14 @@ class _CompareSuggestedList extends ConsumerWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-// SIMILAR TAB — 2-column grid (matches detail page similar_tab.dart)
+// SIMILAR TAB — 2-column grid (matches detail page similar_tab.dart exactly)
 // ═══════════════════════════════════════════════════════════
 
 class _CompareSimilarGrid extends ConsumerWidget {
   final String category;
   final Set<String> excludeIds;
   final Set<String> excludeVariantGroups;
-  final double refScore; // average techScore of compared products for range expansion
+  final double refScore;
   const _CompareSimilarGrid({
     required this.category,
     required this.excludeIds,
@@ -602,7 +602,6 @@ class _CompareSimilarGrid extends ConsumerWidget {
 
   double _scoreForUser(ProductEntity p, List<String> viewedIds, List<String> searches) {
     double score = p.techScore;
-    // Small boost for viewed products — not dominating the ranking
     if (viewedIds.contains(p.id)) score += 8;
     final nameLower = p.name.toLowerCase();
     for (final s in searches) {
@@ -611,62 +610,52 @@ class _CompareSimilarGrid extends ConsumerWidget {
     return score;
   }
 
-  List<ProductEntity> _rankProducts(
-      List<ProductEntity> all, List<String> viewedIds, List<String> searches) {
-    final filtered = all
-        .where((p) => !excludeIds.contains(p.id))
-        .where((p) => excludeVariantGroups.isEmpty || !excludeVariantGroups.contains(p.variantGroup))
-        .toList();
-    // Deduplicate by product ID
+  List<ProductEntity> _rankAndFill(
+    List<ProductEntity> primary,
+    List<ProductEntity> fallback,
+    List<String> viewedIds,
+    List<String> searches,
+  ) {
+    // Merge primary + fallback, filter excluded IDs and variant groups
+    final allCandidates = <ProductEntity>[...primary, ...fallback];
     final seen = <String>{};
-    final unique = <ProductEntity>[];
-    for (final p in filtered) {
-      if (seen.add(p.id)) unique.add(p);
-    }
-
-    // Also deduplicate by normalized name to avoid near-identical products
     final seenNames = <String>{};
-    final nameDeduped = <ProductEntity>[];
-    for (final p in unique) {
+    final deduped = <ProductEntity>[];
+    for (final p in allCandidates) {
+      if (excludeIds.contains(p.id)) continue;
+      if (excludeVariantGroups.isNotEmpty && excludeVariantGroups.contains(p.variantGroup)) continue;
+      if (!seen.add(p.id)) continue;
       final normName = p.name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-      // Use first 30 chars as key to catch variants
       final nameKey = normName.length > 30 ? normName.substring(0, 30) : normName;
-      if (seenNames.add(nameKey)) nameDeduped.add(p);
+      if (!seenNames.add(nameKey)) continue;
+      deduped.add(p);
     }
 
-    // Kademeli genişleme: first ±20, then ±40, then unlimited
-    List<ProductEntity> scored = [];
-    for (final range in [20.0, 40.0, double.infinity]) {
-      final inRange = nameDeduped.where((p) =>
-        range == double.infinity || (p.techScore - refScore).abs() <= range
-      ).toList();
-      final globalProducts = <ProductEntity>[];
-      final otherProducts = <ProductEntity>[];
-      for (final p in inRange) {
-        final brand = (p.brand ?? '').toLowerCase().trim();
-        if (_SuggestedProductsList._globalBrands.contains(brand)) {
-          globalProducts.add(p);
-        } else {
-          otherProducts.add(p);
-        }
-      }
-      globalProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
-          .compareTo(_scoreForUser(a, viewedIds, searches)));
-      otherProducts.sort((a, b) => _scoreForUser(b, viewedIds, searches)
-          .compareTo(_scoreForUser(a, viewedIds, searches)));
-      scored = [...globalProducts, ...otherProducts];
-      if (scored.length >= 12) break;
-    }
-    // Brand diversity: max 3 per brand
+    // Score all candidates
+    deduped.sort((a, b) => _scoreForUser(b, viewedIds, searches)
+        .compareTo(_scoreForUser(a, viewedIds, searches)));
+
+    // Brand diversity: max 3 per brand, take exactly 12
     final brandCount = <String, int>{};
     final result = <ProductEntity>[];
-    for (final p in scored) {
+    for (final p in deduped) {
       final brand = (p.brand ?? '').toLowerCase().trim();
       if ((brandCount[brand] ?? 0) >= 3) continue;
       brandCount[brand] = (brandCount[brand] ?? 0) + 1;
       result.add(p);
       if (result.length >= 12) break;
     }
+
+    // If still < 12 after brand filter, relax and fill from remaining
+    if (result.length < 12) {
+      final resultIds = result.map((p) => p.id).toSet();
+      for (final p in deduped) {
+        if (resultIds.contains(p.id)) continue;
+        result.add(p);
+        if (result.length >= 12) break;
+      }
+    }
+
     return result;
   }
 
@@ -674,35 +663,43 @@ class _CompareSimilarGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final viewedIds = ref.watch(viewedProductsProvider);
     final searches = ref.watch(recentSearchesProvider);
+
+    // Primary source: homeFeed cache (fast)
     final feed = ref.watch(homeFeedProvider).valueOrNull;
-    List<ProductEntity> products = [];
+    final primaryPool = feed?.byCategory[category] ?? <ProductEntity>[];
 
-    if (feed != null) {
-      final catProducts = feed.byCategory[category] ?? [];
-      products = _rankProducts(catProducts, viewedIds, searches);
+    // Secondary source: Firestore category query (ensures 12 products)
+    final categoryAsync = ref.watch(productsByCategoryProvider(category));
+
+    List<ProductEntity> fallbackPool = [];
+    bool fallbackLoading = false;
+    bool fallbackError = false;
+
+    categoryAsync.when(
+      data: (result) {
+        switch (result) {
+          case Success(data: final products):
+            fallbackPool = products;
+          case Failure():
+            fallbackError = true;
+        }
+      },
+      loading: () => fallbackLoading = true,
+      error: (_, __) => fallbackError = true,
+    );
+
+    final ranked = _rankAndFill(primaryPool, fallbackPool, viewedIds, searches);
+
+    if (ranked.isEmpty && fallbackLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
 
-    if (products.isEmpty) {
-      final async = ref.watch(productsByCategoryProvider(category));
-      return async.when(
-        data: (result) => result.when(
-          success: (all) {
-            final ranked = _rankProducts(all, viewedIds, searches);
-            return ranked.isEmpty
-                ? Center(child: Text('No similar products found',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor)))
-                : _buildGrid(context, ranked);
-          },
-          failure: (_) => Center(child: Text('Could not load',
-              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor))),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        error: (_, __) => Center(child: Text('Error',
-            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor))),
-      );
+    if (ranked.isEmpty) {
+      return Center(child: Text('No similar products found',
+          style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor)));
     }
 
-    return _buildGrid(context, products);
+    return _buildGrid(context, ranked);
   }
 
   Widget _buildGrid(BuildContext context, List<ProductEntity> products) {
@@ -711,9 +708,9 @@ class _CompareSimilarGrid extends ConsumerWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 0.68,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.72,
       ),
       itemCount: products.length,
       itemBuilder: (context, i) => SharedSimilarGridCard(product: products[i]),
