@@ -1051,6 +1051,135 @@ For each product, analyze current pricing
     return AppTheme.error;
   }
 
+  // ─── Key Specs Summary ───
+
+  Widget _buildKeySpecsSummary() {
+    final allKeys = <String>{};
+    for (final p in widget.products) {
+      allKeys.addAll(p.keySpecs.keys);
+    }
+    if (allKeys.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                gradient: _accentGradient,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.bolt_rounded, size: 18, color: Colors.white),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '⚡ ${context.l10n?.specs ?? 'Key Specs'}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          ...allKeys.take(8).map((key) {
+            final values = widget.products
+                .map((p) => p.keySpecs[key]?.toString() ?? '—')
+                .toList();
+            final allSame = values.toSet().length == 1;
+            final betterIndex = allSame ? -1 : _findBetterIndex(key, values);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              decoration: BoxDecoration(
+                color: context.surfaceColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: context.dividerColor),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    _localizedSpecName(context, key).toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      letterSpacing: 0.5,
+                      color: context.textTertiaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: values.asMap().entries.map((e) {
+                      final idx = e.key;
+                      final val = e.value;
+                      final isMissing = val == '—';
+                      final isBetter = betterIndex == idx;
+                      final isWorse = betterIndex >= 0 && betterIndex != idx && !isMissing;
+
+                      return Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isBetter
+                                ? AppTheme.scoreExcellent.withValues(alpha: 0.12)
+                                : isWorse
+                                    ? AppTheme.error.withValues(alpha: 0.06)
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            border: isBetter
+                                ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.3))
+                                : null,
+                          ),
+                          child: Text(
+                            _localizedSpecValue(context, val),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: isBetter ? FontWeight.w700 : FontWeight.w500,
+                              color: isBetter
+                                  ? AppTheme.scoreExcellent
+                                  : isWorse
+                                      ? AppTheme.error.withValues(alpha: 0.7)
+                                      : isMissing
+                                          ? context.textTertiaryColor
+                                          : context.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   // ─── Visual Builders ───
 
   Widget _buildProductColumn(ProductEntity product) {
@@ -1270,6 +1399,8 @@ For each product, analyze current pricing
     int specGroupIndex = 0;
     return CustomScrollView(
       slivers: [
+        // Key Specs Summary at top
+        SliverToBoxAdapter(child: _buildKeySpecsSummary()),
         // Grouped spec comparison
         ..._groupedSpecs.entries.map((groupEntry) {
           final groupName = groupEntry.key;
@@ -1433,57 +1564,42 @@ For each product, analyze current pricing
                                     final val = valEntry.value;
                                     final isMissing = val == '—';
                                     final isBetter = betterIndex == idx;
+                                    final isWorse = betterIndex >= 0 && betterIndex != idx && !isMissing;
 
                                     return Expanded(
                                       child: Container(
                                         margin: const EdgeInsets.symmetric(horizontal: 3),
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                         decoration: BoxDecoration(
-                                          gradient: isBetter
-                                              ? LinearGradient(
-                                                  colors: [
-                                                    AppTheme.brandBlue.withValues(alpha: 0.12),
-                                                    AppTheme.brandDeepBlue.withValues(alpha: 0.11),
-                                                  ],
-                                                )
-                                              : null,
-                                          color: isBetter ? null : Colors.transparent,
+                                          color: isBetter
+                                              ? AppTheme.scoreExcellent.withValues(alpha: 0.12)
+                                              : isWorse
+                                                  ? AppTheme.error.withValues(alpha: 0.06)
+                                                  : Colors.transparent,
                                           borderRadius: BorderRadius.circular(12),
                                           border: isBetter
                                               ? Border.all(
-                                                  color: AppTheme.brandBlue.withValues(alpha: 0.23),
+                                                  color: AppTheme.scoreExcellent.withValues(alpha: 0.3),
                                                 )
                                               : null,
                                         ),
-                                        child: isBetter
-                                            ? ShaderMask(
-                                                shaderCallback: (bounds) =>
-                                                    _accentGradient.createShader(bounds),
-                                                child: Text(
-                                                  _localizedSpecValue(context, val),
-                                                  style: GoogleFonts.plusJakartaSans(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 3,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              )
-                                            : Text(
-                                                _localizedSpecValue(context, val),
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  fontSize: 13,
-                                                  fontWeight: isMissing ? FontWeight.w400 : FontWeight.w500,
-                                                  color: isMissing
-                                                      ? context.textTertiaryColor
-                                                      : context.textSecondary,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                                maxLines: 3,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
+                                        child: Text(
+                                          _localizedSpecValue(context, val),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: isBetter ? FontWeight.w700 : (isMissing ? FontWeight.w400 : FontWeight.w500),
+                                            color: isBetter
+                                                ? AppTheme.scoreExcellent
+                                                : isWorse
+                                                    ? AppTheme.error.withValues(alpha: 0.7)
+                                                    : isMissing
+                                                        ? context.textTertiaryColor
+                                                        : context.textSecondary,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     );
                                   }).toList(),
