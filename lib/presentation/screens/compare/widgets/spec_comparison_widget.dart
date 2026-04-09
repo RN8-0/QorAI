@@ -1180,6 +1180,150 @@ For each product, analyze current pricing
     );
   }
 
+  // ─── Expert Scores Comparison ───
+
+  Widget _buildExpertScoresComparison() {
+    final scores = widget.products.map((p) => p.techScore).toList();
+    final maxScore = scores.reduce((a, b) => a > b ? a : b);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                gradient: _accentGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.analytics_rounded, size: 20, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(
+              'TechScore',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
+            )),
+          ]),
+          const SizedBox(height: 16),
+          ...widget.products.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final product = entry.value;
+            final score = product.techScore;
+            final isBest = score == maxScore && scores.where((s) => s == maxScore).length == 1;
+            final scoreColor = score >= 80 ? AppTheme.scoreExcellent
+                : score >= 60 ? AppTheme.scoreAverage
+                : score >= 40 ? AppTheme.orange500
+                : AppTheme.error;
+            final chipColors = [
+              AppTheme.brandBlue,
+              AppTheme.scoreAverage,
+              AppTheme.premiumPurpleLight,
+              AppTheme.scoreExcellent,
+            ];
+            final chipColor = chipColors[idx % 4];
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isBest
+                    ? AppTheme.scoreExcellent.withValues(alpha: 0.06)
+                    : context.surfaceColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isBest
+                      ? AppTheme.scoreExcellent.withValues(alpha: 0.2)
+                      : context.dividerColor,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(
+                        color: chipColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(
+                      product.name,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )),
+                    if (isBest)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.scoreExcellent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('🏆',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11)),
+                      ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 42, height: 42,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [scoreColor.withValues(alpha: 0.8), scoreColor],
+                        ),
+                      ),
+                      child: Center(child: Text(
+                        score.toInt().toString(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      )),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: score / 100,
+                      minHeight: 6,
+                      backgroundColor: context.dividerColor,
+                      color: scoreColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   // ─── Visual Builders ───
 
   Widget _buildProductColumn(ProductEntity product) {
@@ -1630,6 +1774,10 @@ For each product, analyze current pricing
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 40),
       children: [
+        // Expert Scores Comparison
+        _buildExpertScoresComparison(),
+        const SizedBox(height: 14),
+
         // YouTube comparison videos (in-app native player using YouTubeService)
         _CompareYouTubeSection(products: widget.products),
         const SizedBox(height: 14),
