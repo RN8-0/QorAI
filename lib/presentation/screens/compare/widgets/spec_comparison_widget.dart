@@ -1232,9 +1232,8 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
               borderRadius: BorderRadius.circular(12)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: ExpandableText(e.key, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                  maxLines: 1)),
+                Expanded(child: Text(e.key, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary))),
                 Container(
                   width: 42, height: 42,
                   decoration: BoxDecoration(
@@ -1276,7 +1275,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           );
         }),
       ],
-      // Category comparison bar chart using fl_chart
+      // Category comparison — compact preview + full screen button
       if (categories.isNotEmpty) ...[
         const SizedBox(height: 14),
         Container(
@@ -1285,69 +1284,62 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             color: context.surfaceElevatedColor,
             borderRadius: BorderRadius.circular(14)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
+            Text('📊 Kategori Karşılaştırma', style: GoogleFonts.plusJakartaSans(
               fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
-            const SizedBox(height: 4),
-            // Legend
-            Wrap(spacing: 12, runSpacing: 4, children: [
-              for (int i = 0; i < productNames.length && i < barColors.length; i++)
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 10, height: 10, decoration: BoxDecoration(
-                    color: barColors[i], borderRadius: BorderRadius.circular(2))),
-                  const SizedBox(width: 4),
-                  Flexible(child: Text(productNames[i],
-                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textSecondary))),
-                ]),
-            ]),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: categories.length * 48.0 + 20,
-              child: BarChart(BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 100,
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final pName = productNames.length > rodIndex ? productNames[rodIndex] : '';
-                      return BarTooltipItem('$pName\n${rod.toY.toInt()}',
-                        GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white));
-                    },
+            const SizedBox(height: 10),
+            // Compact score summary per category
+            ...categories.entries.take(5).map((cat) {
+              final catData = cat.value;
+              Map<String, dynamic> scores = {};
+              if (catData is Map<String, dynamic>) {
+                if (catData.containsKey('scores')) {
+                  scores = Map<String, dynamic>.from(catData['scores'] as Map);
+                } else {
+                  scores = Map.fromEntries(catData.entries.where((e) => e.value is num));
+                }
+              }
+              final avgScore = scores.values.isEmpty ? 0.0
+                : scores.values.fold<double>(0, (a, b) => a + (b as num).toDouble()) / scores.values.length;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Text('${_categoryIcon(cat.key)} ', style: const TextStyle(fontSize: 14)),
+                  Expanded(child: Text(cat.key, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary))),
+                  Container(
+                    width: 36, height: 22,
+                    decoration: BoxDecoration(
+                      color: _aiScoreColor(avgScore).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6)),
+                    child: Center(child: Text('${avgScore.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800,
+                        color: _aiScoreColor(avgScore)))),
                   ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(sideTitles: SideTitles(
-                    showTitles: true, reservedSize: 32,
-                    getTitlesWidget: (value, meta) {
-                      final idx = value.toInt();
-                      if (idx < 0 || idx >= categories.length) return const SizedBox.shrink();
-                      final catName = categories.keys.elementAt(idx);
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(catName.length > 8 ? '${catName.substring(0, 8)}…' : catName,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor),
-                          textAlign: TextAlign.center),
-                      );
-                    },
-                  )),
-                  leftTitles: AxisTitles(sideTitles: SideTitles(
-                    showTitles: true, reservedSize: 28,
-                    getTitlesWidget: (value, meta) => Text('${value.toInt()}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor)),
-                  )),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 25,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: context.dividerColor, strokeWidth: 0.5),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: _buildCategoryBarGroups(categories, productNames, barColors),
-              )),
+                ]),
+              );
+            }),
+            const SizedBox(height: 10),
+            // Full screen chart button
+            GestureDetector(
+              onTap: () => _showFullScreenChart(categories, productNames, barColors),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    AppTheme.brandBlue.withValues(alpha: 0.15),
+                    AppTheme.brandSkyBlue.withValues(alpha: 0.10)]),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.3))),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.bar_chart_rounded, size: 20, color: AppTheme.brandBlue),
+                  const SizedBox(width: 8),
+                  Text('Grafiği Gör', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
+                  const SizedBox(width: 4),
+                  Icon(Icons.open_in_full_rounded, size: 14, color: AppTheme.brandBlue),
+                ]),
+              ),
             ),
             // Expandable explanations per category
             const SizedBox(height: 12),
@@ -1402,6 +1394,183 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       'Software': '📱', 'Audio': '🔊', 'Design': '🎨',
     };
     return icons[category] ?? '📊';
+  }
+
+  void _showFullScreenChart(Map<String, dynamic> categories, List<String> productNames, List<Color> barColors) {
+    // Create short labels for products (first meaningful word + model)
+    final shortNames = productNames.map((n) {
+      final parts = n.split(' ');
+      if (parts.length > 3) return '${parts.take(3).join(' ')}…';
+      return n;
+    }).toList();
+
+    showDialog(
+      context: context,
+      useSafeArea: false,
+      builder: (ctx) => Scaffold(
+        backgroundColor: Theme.of(ctx).scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: Text('📊 Kategori Karşılaştırma', style: GoogleFonts.plusJakartaSans(
+            fontSize: 16, fontWeight: FontWeight.w700)),
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () => Navigator.of(ctx).pop()),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Legend with full names
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Ürünler', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w700,
+                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6))),
+                const SizedBox(height: 8),
+                ...List.generate(productNames.length.clamp(0, barColors.length), (i) =>
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      Container(width: 14, height: 14, decoration: BoxDecoration(
+                        color: barColors[i], borderRadius: BorderRadius.circular(3))),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(productNames[i],
+                        style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                          color: Theme.of(ctx).colorScheme.onSurface))),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 20),
+            // Full bar chart
+            SizedBox(
+              height: categories.length * 64.0 + 60,
+              child: BarChart(BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: 100,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final pName = shortNames.length > rodIndex ? shortNames[rodIndex] : '';
+                      return BarTooltipItem('$pName\n${rod.toY.toInt()}',
+                        GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white));
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(sideTitles: SideTitles(
+                    showTitles: true, reservedSize: 48,
+                    getTitlesWidget: (value, meta) {
+                      final idx = value.toInt();
+                      if (idx < 0 || idx >= categories.length) return const SizedBox.shrink();
+                      final catName = categories.keys.elementAt(idx);
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(catName,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7)),
+                          textAlign: TextAlign.center),
+                      );
+                    },
+                  )),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(
+                    showTitles: true, reservedSize: 32,
+                    getTitlesWidget: (value, meta) => Text('${value.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10,
+                        color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))),
+                  )),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 25,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Theme.of(ctx).dividerColor.withValues(alpha: 0.3), strokeWidth: 0.5),
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: _buildCategoryBarGroups(categories, productNames, barColors),
+              )),
+            ),
+            // Detailed category explanations
+            const SizedBox(height: 20),
+            ...categories.entries.map((cat) {
+              final catData = cat.value;
+              String? explanation;
+              Map<String, dynamic> scores = {};
+              if (catData is Map<String, dynamic>) {
+                explanation = catData['explanation'] as String?;
+                if (catData.containsKey('scores')) {
+                  scores = Map<String, dynamic>.from(catData['scores'] as Map);
+                } else {
+                  scores = Map.fromEntries(catData.entries.where((e) => e.value is num));
+                }
+              }
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('${_categoryIcon(cat.key)} ', style: const TextStyle(fontSize: 16)),
+                    Expanded(child: Text(cat.key, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                      color: Theme.of(ctx).colorScheme.onSurface))),
+                  ]),
+                  if (scores.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    ...scores.entries.map((se) {
+                      final sVal = (se.value as num).toDouble();
+                      // Find matching product name
+                      String displayName = se.key;
+                      for (final pn in productNames) {
+                        if (pn.toLowerCase().contains(se.key.toLowerCase()) ||
+                            se.key.toLowerCase().contains(pn.toLowerCase())) {
+                          displayName = pn;
+                          break;
+                        }
+                      }
+                      final pIdx = productNames.indexOf(displayName);
+                      final color = pIdx >= 0 && pIdx < barColors.length ? barColors[pIdx] : _aiScoreColor(sVal);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(children: [
+                          Container(width: 8, height: 8, decoration: BoxDecoration(
+                            color: color, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(displayName.length > 30 ? '${displayName.substring(0, 30)}…' : displayName,
+                            style: GoogleFonts.plusJakartaSans(fontSize: 11,
+                              color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7)))),
+                          Text('${sVal.toInt()}', style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12, fontWeight: FontWeight.w800, color: _aiScoreColor(sVal))),
+                        ]),
+                      );
+                    }),
+                  ],
+                  if (explanation != null) ...[
+                    const SizedBox(height: 6),
+                    Text(explanation, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6),
+                      height: 1.4)),
+                  ],
+                ]),
+              );
+            }),
+          ]),
+        ),
+      ),
+    );
   }
 
   List<BarChartGroupData> _buildCategoryBarGroups(
