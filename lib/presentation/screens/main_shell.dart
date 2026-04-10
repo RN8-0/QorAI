@@ -139,6 +139,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     final isLinkAiAnalyzing = ref.watch(compareAnalysisProvider).isWorking ||
         ref.watch(linkQuizProvider).phase == LinkFlowPhase.analyzing ||
         ref.watch(linkQuizProvider).phase == LinkFlowPhase.computing;
+    final hideNavBar = ref.watch(hideNavBarProvider);
 
     return Stack(
       children: [
@@ -150,16 +151,17 @@ class _MainShellState extends ConsumerState<MainShell> {
             ],
           ),
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _FloatingNavBar(
-            currentIndex: currentIndex,
-            onTap: _onNavTap,
-            isLinkAiAnalyzing: isLinkAiAnalyzing,
+        if (!hideNavBar)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _FloatingNavBar(
+              currentIndex: currentIndex,
+              onTap: _onNavTap,
+              isLinkAiAnalyzing: isLinkAiAnalyzing,
+            ),
           ),
-        ),
         // Floating AI chat bubble (top of stack, above nav bar)
         Positioned.fill(
           child: _FloatingAiOverlay(currentRoute: location),

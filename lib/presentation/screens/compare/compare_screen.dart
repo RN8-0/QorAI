@@ -164,6 +164,10 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
   @override
   void dispose() {
+    // Restore nav bar when leaving compare screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(hideNavBarProvider.notifier).state = false;
+    });
     _debounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -300,6 +304,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
   void _resetComparison() {
     ref.read(compareSessionProvider.notifier).state = const CompareSessionData();
+    ref.read(hideNavBarProvider.notifier).state = false;
     setState(() {});
   }
 
@@ -337,6 +342,15 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     final session = ref.watch(compareSessionProvider);
     final _selectedIds = session.selectedProductIds;
     final _products = session.comparedProducts;
+
+    // Hide/show nav bar based on comparison state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final shouldHide = _products != null && _products.length >= 2;
+      if (ref.read(hideNavBarProvider) != shouldHide) {
+        ref.read(hideNavBarProvider.notifier).state = shouldHide;
+      }
+    });
+
     return Scaffold(
       backgroundColor: context.surfaceColor,
       appBar: AppBar(

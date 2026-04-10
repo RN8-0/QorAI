@@ -2215,67 +2215,92 @@ Return ONLY valid JSON:
 
   Widget _buildSimilarTab() {
     final excludeIds = widget.products.map((p) => p.id).toSet();
-    final excludeVariantGroups = widget.products
-        .where((p) => p.variantGroup.isNotEmpty)
-        .map((p) => p.variantGroup)
-        .toSet();
-    // Use first product's category (all compared products share category)
-    final category = widget.products.first.category.isNotEmpty
-        ? widget.products.first.category
-        : widget.products.first.subcategory;
-    final avgScore = widget.products.map((p) => p.techScore).reduce((a, b) => a + b) / widget.products.length;
+    // Use similarProductsProvider with first product as reference
+    final similarAsync = ref.watch(similarProductsProvider(widget.products.first));
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 16),
       children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: context.dividerColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    gradient: _accentGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n?.similarProducts ?? 'Similar Products',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+        similarAsync.when(
+          loading: () => _buildSimilarShimmer(),
+          error: (_, __) => _buildSimilarEmpty(),
+          data: (products) {
+            // Filter out compared products and take top 12
+            final filtered = products
+                .where((p) => !excludeIds.contains(p.id))
+                .take(12)
+                .toList();
+            if (filtered.isEmpty) return _buildSimilarEmpty();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 14),
+                  child: Row(children: [
+                    Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        gradient: _accentGradient,
+                        borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 18),
                     ),
-                  ],
-                )),
-              ]),
-              const SizedBox(height: 10),
-              // Similar products grid placeholder
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'No similar products found',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, color: context.textTertiaryColor),
-                  ),
+                    const SizedBox(width: 10),
+                    Text(context.l10n?.similarProducts ?? 'Similar Products',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16, fontWeight: FontWeight.w700,
+                        color: context.textPrimary)),
+                  ]),
                 ),
-              ),
-            ],
-          ),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.72,
+                  ),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, i) => SharedSimilarGridCard(product: filtered[i]),
+                ),
+              ],
+            );
+          },
         ),
       ],
+    );
+  }
+
+  Widget _buildSimilarEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 48),
+        child: Column(children: [
+          Icon(Icons.widgets_outlined, size: 48,
+              color: context.textTertiaryColor?.withValues(alpha: 0.5)),
+          const SizedBox(height: 12),
+          Text('No similar products found',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14, color: context.textTertiaryColor)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildSimilarShimmer() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.72),
+      itemCount: 4,
+      itemBuilder: (_, __) => Container(
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(16)),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
     );
   }
 
@@ -2741,7 +2766,7 @@ Return ONLY valid JSON:
               return Column(
                 children: docs.map((doc) {
                   final data = doc.data() as Map<String, dynamic>;
-                  return _buildComparisonReviewItem(data);
+                  return _buildComparisonReviewItem(data, doc.id);
                 }).toList(),
               );
             },
@@ -2772,12 +2797,29 @@ Return ONLY valid JSON:
     );
   }
 
-  Widget _buildComparisonReviewItem(Map<String, dynamic> data) {
+  Widget _buildComparisonReviewItem(Map<String, dynamic> data, String docId) {
     final userId = data['userId'] as String? ?? 'anonymous';
+    final displayName = data['displayName'] as String? ?? '';
     final reviewText = data['reviewText'] as String? ?? '';
     final timestamp = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
     final isAnonymous = userId == 'anonymous';
-    final displayChar = isAnonymous ? 'A' : userId.substring(0, 1).toUpperCase();
+
+    // Resolve display name: displayName → email prefix → Anonymous
+    String resolvedName;
+    if (displayName.isNotEmpty) {
+      resolvedName = displayName;
+    } else if (!isAnonymous && userId.contains('@')) {
+      resolvedName = userId.split('@').first;
+    } else if (isAnonymous) {
+      resolvedName = 'Anonymous';
+    } else {
+      resolvedName = 'User';
+    }
+    final displayChar = resolvedName.substring(0, 1).toUpperCase();
+
+    // Check if current user owns this review
+    final currentUser = ref.read(userProfileProvider).valueOrNull;
+    final isOwner = currentUser != null && currentUser.uid == userId;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -2799,13 +2841,21 @@ Return ONLY valid JSON:
                       fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
             ),
             const SizedBox(width: 8),
-            Text(isAnonymous ? 'Anonymous' : userId.length > 10 ? '${userId.substring(0, 10)}…' : userId,
+            Expanded(child: Text(resolvedName,
                 style: GoogleFonts.plusJakartaSans(fontSize: 12,
-                    fontWeight: FontWeight.w600, color: context.textPrimary)),
-            const Spacer(),
+                    fontWeight: FontWeight.w600, color: context.textPrimary),
+                maxLines: 1, overflow: TextOverflow.ellipsis)),
             Text(_timeAgo(timestamp),
                 style: GoogleFonts.plusJakartaSans(fontSize: 11,
                     color: context.textTertiaryColor)),
+            if (isOwner) ...[
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () => _confirmDeleteReview(docId),
+                child: Icon(Icons.delete_outline_rounded,
+                    size: 18, color: AppTheme.error.withValues(alpha: 0.7)),
+              ),
+            ],
           ]),
           if (reviewText.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -2813,6 +2863,52 @@ Return ONLY valid JSON:
               style: GoogleFonts.plusJakartaSans(fontSize: 13,
                   height: 1.5, color: context.textSecondary)),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteReview(String docId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Yorumu Sil',
+            style: GoogleFonts.plusJakartaSans(fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(ctx).colorScheme.onSurface)),
+        content: Text('Bu yorumu silmek istiyor musun?',
+            style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('İptal',
+                style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await FirebaseFirestore.instance
+                    .collection('comparison_reviews')
+                    .doc(docId)
+                    .delete();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Silinemedi: $e'),
+                    behavior: SnackBarBehavior.floating));
+                }
+              }
+            },
+            child: Text('Sil',
+                style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700, color: AppTheme.error)),
+          ),
         ],
       ),
     );
@@ -2830,6 +2926,15 @@ Return ONLY valid JSON:
   void _showWriteReviewSheet(BuildContext ctx) {
     final user = ref.read(userProfileProvider).valueOrNull;
     final userId = user?.uid ?? 'anonymous';
+    // Resolve display name: displayName → email prefix → Anonymous
+    String resolvedDisplayName;
+    if (user != null && user.displayName.isNotEmpty) {
+      resolvedDisplayName = user.displayName;
+    } else if (user != null && user.email.isNotEmpty) {
+      resolvedDisplayName = user.email.split('@').first;
+    } else {
+      resolvedDisplayName = 'Anonymous';
+    }
     final textController = TextEditingController();
 
     showDialog(
@@ -2908,6 +3013,7 @@ Return ONLY valid JSON:
                               .add({
                             'docKey': docKey,
                             'userId': userId,
+                            'displayName': resolvedDisplayName,
                             'reviewText': textController.text.trim(),
                             'timestamp': FieldValue.serverTimestamp(),
                             'productIds': productIds,

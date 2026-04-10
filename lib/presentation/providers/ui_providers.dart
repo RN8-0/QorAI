@@ -119,6 +119,9 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 /// Home page selected tab index
 final bottomNavIndexProvider = StateProvider<int>((ref) => 1);
 
+/// Hide bottom nav bar (e.g. when Compare result screen is active)
+final hideNavBarProvider = StateProvider<bool>((ref) => false);
+
 /// Current page context for the floating AI chat bubble.
 /// Updated by screens when they load (product name, category, etc.)
 final aiPageContextProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
