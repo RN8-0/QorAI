@@ -1290,52 +1290,10 @@ Return ONLY valid JSON:
     }).toList());
   }
 
-  // ─── Key Specs Summary ───
+  // ─── Key Specs Side-by-Side Comparison ───
 
-  Widget _buildKeySpecsSummary() {
-    final allKeys = <String>{};
-    for (final p in widget.products) {
-      allKeys.addAll(p.keySpecs.keys);
-    }
-    if (allKeys.isEmpty) return const SizedBox.shrink();
-
-    final theme = Theme.of(context);
-
-    // Per-product Key Specs grids (like detail page)
-    return Column(
-      children: [
-        // Header
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(children: [
-            Icon(Icons.auto_awesome_rounded, size: 16, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
-            Text(context.l10n?.specsTab ?? 'Key Specs',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
-          ]),
-        ),
-        // Per-product grids: always stacked vertically for breathing room
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: widget.products.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final product = entry.value;
-              return Padding(
-                padding: EdgeInsets.only(bottom: idx < widget.products.length - 1 ? 8 : 0),
-                child: _buildProductKeySpecsGrid(product, theme),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  Widget _buildProductKeySpecsGrid(ProductEntity product, ThemeData theme) {
-    // Build spec pool same as detail page
+  /// Build a merged spec pool for a product (keySpecs + specs + specSections).
+  Map<String, String> _buildSpecPool(ProductEntity product) {
     final pool = <String, String>{};
     for (final e in product.keySpecs.entries) {
       final v = e.value.trim();
@@ -1360,86 +1318,280 @@ Return ONLY valid JSON:
         }
       }
     }
+    return pool;
+  }
 
-    final specs = pool.entries.take(6).toList();
+  /// Find a spec value from the pool given a list of aliases.
+  MapEntry<String, String>? _findSpecInPool(
+      Map<String, String> pool, List<String> aliases, Set<String> used) {
+    for (final alias in aliases) {
+      final aLower = alias.toLowerCase();
+      for (final e in pool.entries) {
+        if (used.contains(e.key)) continue;
+        final eLower = e.key.toLowerCase();
+        if (eLower == aLower || eLower.contains(aLower) || aLower.contains(eLower)) {
+          return e;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Collect 6 category-aware key specs across all products for comparison.
+  /// Returns list of (specLabel, [val_product0, val_product1, ...]).
+  List<_CompareSpecRow> _collectCompareKeySpecs() {
+    final products = widget.products;
+    final pools = products.map(_buildSpecPool).toList();
+
+    // Resolve category
+    final cat = keySpecs.resolveCategory(
+      products.first.category.isNotEmpty ? products.first.category : products.first.subcategory,
+    );
+    final prioritySlots = keySpecs.categoryKeySpecAliases[cat];
+
+    final result = <_CompareSpecRow>[];
+    final usedPerProduct = List.generate(products.length, (_) => <String>{});
+
+    // Phase 1: category-priority specs
+    if (prioritySlots != null) {
+      for (final slotAliases in prioritySlots) {
+        final values = <String>[];
+        String? label;
+        for (int i = 0; i < products.length; i++) {
+          final found = _findSpecInPool(pools[i], slotAliases, usedPerProduct[i]);
+          if (found != null) {
+            values.add(found.value);
+            usedPerProduct[i].add(found.key);
+            label ??= found.key;
+          } else {
+            values.add('—');
+          }
+        }
+        label ??= slotAliases.first;
+        // Only include if at least one product has a value
+        if (values.any((v) => v != '—')) {
+          result.add(_CompareSpecRow(label: label, values: values));
+        }
+        if (result.length >= 6) break;
+      }
+    }
+
+    // Phase 2: fill remaining slots from pools
+    if (result.length < 6) {
+      // Gather all remaining keys (priority: from first product's pool)
+      final remainingKeys = <String>[];
+      for (int i = 0; i < products.length; i++) {
+        for (final key in pools[i].keys) {
+          if (usedPerProduct[i].contains(key)) continue;
+          if (!remainingKeys.contains(key)) remainingKeys.add(key);
+        }
+      }
+      for (final key in remainingKeys) {
+        final values = <String>[];
+        for (int i = 0; i < products.length; i++) {
+          values.add(pools[i][key] ?? '—');
+          usedPerProduct[i].add(key);
+        }
+        if (values.any((v) => v != '—')) {
+          result.add(_CompareSpecRow(label: key, values: values));
+        }
+        if (result.length >= 6) break;
+      }
+    }
+
+    return result;
+  }
+
+  /// Determine winner index for a compare spec row.
+  int _findCompareWinner(String label, List<String> values) {
+    if (values.length < 2) return -1;
+    final nonMissing = values.where((v) => v != '—').toList();
+    if (nonMissing.length < 2) return -1;
+    if (nonMissing.toSet().length == 1) return -1; // all same → no winner
+
+    // Delegate to the existing specDirection service
+    return _findBetterIndex(label, values);
+  }
+
+  /// Color + weight for a cell based on comparison result.
+  ({Color color, FontWeight weight}) _cellStyle({
+    required String value,
+    required int index,
+    required int winnerIndex,
+    required ThemeData theme,
+  }) {
+    final isMissing = value == '—';
+    if (isMissing) {
+      return (color: context.textTertiaryColor, weight: FontWeight.w400);
+    }
+
+    // Boolean values: green for yes, red for no (independent of winner)
+    final vLower = value.toLowerCase().trim();
+    if (vLower == 'yes' || vLower == 'true' || vLower == 'var' || vLower == 'evet' || vLower == '✓') {
+      return (color: AppTheme.scoreExcellent, weight: FontWeight.w700);
+    }
+    if (vLower == 'no' || vLower == 'false' || vLower == 'yok' || vLower == 'hayır' || vLower == '✗') {
+      return (color: AppTheme.error.withValues(alpha: 0.7), weight: FontWeight.w600);
+    }
+
+    if (winnerIndex < 0) {
+      // No winner → neutral
+      return (color: theme.colorScheme.onSurface, weight: FontWeight.w700);
+    }
+    if (index == winnerIndex) {
+      return (color: AppTheme.scoreExcellent, weight: FontWeight.w800);
+    }
+    // Loser
+    return (color: AppTheme.error.withValues(alpha: 0.65), weight: FontWeight.w600);
+  }
+
+  Widget _buildKeySpecsSummary() {
+    final specs = _collectCompareKeySpecs();
     if (specs.isEmpty) return const SizedBox.shrink();
 
-    // Ensure multiple of 3
-    final target = specs.length >= 4 ? 6 : 3;
-    final displaySpecs = specs.take(target).toList();
-    final rows = (displaySpecs.length / 3).ceil();
-    final isCompact = widget.products.length > 2;
+    final theme = Theme.of(context);
+    final productCount = widget.products.length;
+    // For ≤2 products: 3 rows, 2 spec-pairs per row
+    // For >2 products: 6 rows, 1 spec per row (N product cells)
+    final pairMode = productCount <= 2;
+    final specRows = pairMode ? (specs.length / 2).ceil() : specs.length;
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
         children: [
-          // Product name chip
-          Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10, fontWeight: FontWeight.w600, color: context.textSecondary)),
-          const SizedBox(height: 6),
-          for (int row = 0; row < rows; row++) ...[
-            if (row > 0) const SizedBox(height: 4),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (int col = 0; col < 3; col++) ...[
-                    if (col > 0) const SizedBox(width: 4),
-                    Expanded(
-                      child: () {
-                        final i = row * 3 + col;
-                        if (i >= displaySpecs.length) return const SizedBox.shrink();
-                        final entry = displaySpecs[i];
-                        return Container(
-                          constraints: BoxConstraints(
-                            minHeight: isCompact ? 56 : 64,
-                            maxHeight: isCompact ? 72 : 80),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(_compareIconForSpec(entry.key),
-                                size: isCompact ? 14 : 16,
-                                color: theme.colorScheme.primary.withValues(alpha: 0.7)),
-                              const SizedBox(height: 2),
-                              Flexible(child: Text(
-                                entry.value,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: isCompact ? 10 : 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.colorScheme.onSurface),
-                                textAlign: TextAlign.center,
-                                maxLines: 2, overflow: TextOverflow.ellipsis)),
-                              const SizedBox(height: 1),
-                              Text(entry.key,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: isCompact ? 7 : 8,
-                                  fontWeight: FontWeight.w500,
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-                                textAlign: TextAlign.center,
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        );
-                      }(),
-                    ),
-                  ],
-                ],
+          // Centered header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 16,
+                color: theme.colorScheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Key Specs',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Spec comparison grid
+          for (int row = 0; row < specRows; row++) ...[
+            if (row > 0) const SizedBox(height: 6),
+            if (pairMode)
+              _buildPairRow(specs, row, theme)
+            else
+              _buildSingleSpecRow(specs[row], theme),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Build a row containing 2 spec comparisons side-by-side (for ≤2 products).
+  Widget _buildPairRow(List<_CompareSpecRow> specs, int rowIndex, ThemeData theme) {
+    final leftIdx = rowIndex * 2;
+    final rightIdx = leftIdx + 1;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildSingleSpecRow(specs[leftIdx], theme)),
+          if (rightIdx < specs.length) ...[
+            const SizedBox(width: 6),
+            Expanded(child: _buildSingleSpecRow(specs[rightIdx], theme)),
+          ] else
+            const Expanded(child: SizedBox.shrink()),
+        ],
+      ),
+    );
+  }
+
+  /// Build a single spec comparison block: spec label + product cells.
+  Widget _buildSingleSpecRow(_CompareSpecRow spec, ThemeData theme) {
+    final winnerIdx = _findCompareWinner(spec.label, spec.values);
+    final productCount = widget.products.length;
+    final isCompact = productCount > 2;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        children: [
+          // Spec label centered above cells
+          Text(
+            _localizedSpecName(context, spec.label),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9, fontWeight: FontWeight.w600,
+              color: context.textTertiaryColor, letterSpacing: 0.3),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          // Product cells
+          Row(
+            children: List.generate(productCount, (i) {
+              final val = i < spec.values.length ? spec.values[i] : '—';
+              final isMissing = val == '—';
+              final style = _cellStyle(
+                value: val, index: i, winnerIndex: winnerIdx, theme: theme);
+
+              return Expanded(
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: isCompact ? 1.5 : 2),
+                  constraints: BoxConstraints(minHeight: isCompact ? 52 : 58),
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
+                        ? AppTheme.scoreExcellent.withValues(alpha: 0.08)
+                        : (winnerIdx >= 0 && i != winnerIdx && !isMissing)
+                            ? AppTheme.error.withValues(alpha: 0.04)
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
+                        ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.25))
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        keySpecs.iconForSpecKey(spec.label),
+                        size: isCompact ? 14 : 16,
+                        color: isMissing
+                            ? context.textTertiaryColor
+                            : theme.colorScheme.primary.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _localizedSpecValue(context, val),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: isCompact ? 10 : 11,
+                          fontWeight: style.weight,
+                          color: style.color,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
         ],
       ),
     );
@@ -1470,27 +1622,6 @@ Return ONLY valid JSON:
         ],
       ),
     );
-  }
-
-  static IconData _compareIconForSpec(String key) {
-    final k = key.toLowerCase();
-    if (k.contains('screen') || k.contains('display') || k.contains('ekran') || k.contains('çözünürlük')) return Icons.monitor_rounded;
-    if (k.contains('battery') || k.contains('pil')) return Icons.battery_full_rounded;
-    if (k.contains('ram') || k.contains('memory') || k.contains('bellek')) return Icons.memory_rounded;
-    if (k.contains('processor') || k.contains('cpu') || k.contains('chip') || k.contains('işlemci')) return Icons.developer_board_rounded;
-    if (k.contains('camera') || k.contains('kamera') || k.contains('megapixel')) return Icons.camera_alt_rounded;
-    if (k.contains('storage') || k.contains('ssd') || k.contains('hdd') || k.contains('depolama') || k.contains('kapasite') || k.contains('capacity')) return Icons.storage_rounded;
-    if (k.contains('weight') || k.contains('ağırlık')) return Icons.scale_rounded;
-    if (k.contains('5g') || k.contains('network') || k.contains('wifi') || k.contains('ağ') || k.contains('bağlantı') || k.contains('connectivity')) return Icons.signal_cellular_alt_rounded;
-    if (k.contains('gpu') || k.contains('graphic') || k.contains('ekran kartı') || k.contains('vram')) return Icons.videogame_asset_rounded;
-    if (k.contains('os') || k.contains('operating') || k.contains('işletim')) return Icons.phone_android_rounded;
-    if (k.contains('refresh') || k.contains('yenileme')) return Icons.speed_rounded;
-    if (k.contains('resolution')) return Icons.high_quality_rounded;
-    if (k.contains('noise') || k.contains('anc')) return Icons.noise_aware_rounded;
-    if (k.contains('bluetooth')) return Icons.bluetooth_rounded;
-    if (k.contains('core') || k.contains('çekirdek')) return Icons.developer_board_rounded;
-    if (k.contains('speed') || k.contains('hız') || k.contains('clock') || k.contains('frequency')) return Icons.speed_rounded;
-    return Icons.info_outline_rounded;
   }
 
   // ─── Expert Scores Comparison ───
@@ -2853,6 +2984,13 @@ Return ONLY valid JSON:
       ),
     );
   }
+}
+
+/// Data class for a single spec comparison row.
+class _CompareSpecRow {
+  final String label;
+  final List<String> values;
+  const _CompareSpecRow({required this.label, required this.values});
 }
 
 // ─── Tab Bar Delegate ─────────────────────────────────────────────────────────

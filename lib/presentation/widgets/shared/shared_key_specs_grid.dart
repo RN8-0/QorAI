@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/domain/entities/product_entity.dart';
+import 'package:compair/core/category_key_specs.dart' as keySpecs;
 
 /// Shared key specs grid widget used by both detail and compare screens.
 /// Shows category-aware key specifications in a 3-column grid (6 or 9 cells).
@@ -211,75 +212,18 @@ class SharedKeySpecsGrid extends StatelessWidget {
     ],
   };
 
-  static const _categoryAliases = <String, String>{
-    'phone': 'smartphones', 'telefon': 'smartphones', 'akıllı telefon': 'smartphones',
-    'smartphone': 'smartphones', 'cep telefonu': 'smartphones',
-    'tablet': 'tablets',
-    'laptop': 'laptops', 'dizüstü': 'laptops', 'notebook': 'laptops', 'dizüstü bilgisayar': 'laptops',
-    'desktop': 'laptops', 'masaüstü': 'laptops',
-    'monitor': 'monitors', 'monitör': 'monitors', 'ekran': 'monitors',
-    'tv': 'tvs', 'televizyon': 'tvs', 'television': 'tvs',
-    'headphone': 'headphones', 'kulaklık': 'headphones', 'earphone': 'headphones', 'earbuds': 'headphones',
-    'keyboard': 'keyboards', 'klavye': 'keyboards',
-    'mouse': 'mice', 'fare': 'mice',
-    'camera': 'cameras', 'fotoğraf makinesi': 'cameras', 'kamera': 'cameras',
-    'printer': 'printers', 'yazıcı': 'printers',
-    'router': 'routers', 'modem': 'routers',
-    'ssd': 'ssds',
-    'hdd': 'hdds', 'hard disk': 'hdds',
-    'ram': 'ram', 'memory': 'ram', 'bellek': 'ram',
-    'gpu': 'gpus', 'ekran kartı': 'gpus', 'graphics card': 'gpus', 'video card': 'gpus',
-    'cpu': 'cpus', 'işlemci': 'cpus', 'processor': 'cpus',
-    'smartwatch': 'smartwatches', 'akıllı saat': 'smartwatches', 'watch': 'smartwatches',
-    'powerbank': 'powerbanks', 'power bank': 'powerbanks', 'taşınabilir şarj': 'powerbanks',
-  };
-
-  static IconData iconForSpec(String key) {
-    final k = key.toLowerCase();
-    if (k.contains('screen') || k.contains('display') || k.contains('ekran') || k.contains('çözünürlük')) return Icons.monitor_rounded;
-    if (k.contains('battery') || k.contains('pil')) return Icons.battery_full_rounded;
-    if (k.contains('ram') || k.contains('memory') || k.contains('bellek')) return Icons.memory_rounded;
-    if (k.contains('processor') || k.contains('cpu') || k.contains('chip') || k.contains('işlemci')) return Icons.developer_board_rounded;
-    if (k.contains('camera') || k.contains('kamera') || k.contains('megapixel')) return Icons.camera_alt_rounded;
-    if (k.contains('storage') || k.contains('ssd') || k.contains('hdd') || k.contains('depolama') || k.contains('kapasite') || k.contains('capacity') || k.contains('hard disk')) return Icons.storage_rounded;
-    if (k.contains('weight') || k.contains('ağırlık')) return Icons.scale_rounded;
-    if (k.contains('5g') || k.contains('4.5g') || k.contains('network') || k.contains('wifi') || k.contains('ağ') || k.contains('bağlantı') || k.contains('connectivity') || k.contains('cellular')) return Icons.signal_cellular_alt_rounded;
-    if (k.contains('gpu') || k.contains('graphic') || k.contains('ekran kartı') || k.contains('vram')) return Icons.videogame_asset_rounded;
-    if (k.contains('os') || k.contains('operating') || k.contains('işletim')) return Icons.phone_android_rounded;
-    if (k.contains('refresh') || k.contains('yenileme')) return Icons.speed_rounded;
-    if (k.contains('resolution')) return Icons.high_quality_rounded;
-    if (k.contains('panel')) return Icons.grid_view_rounded;
-    if (k.contains('hdr')) return Icons.hdr_on_rounded;
-    if (k.contains('noise') || k.contains('anc')) return Icons.noise_aware_rounded;
-    if (k.contains('heart') || k.contains('kalp')) return Icons.favorite_rounded;
-    if (k.contains('gps')) return Icons.location_on_rounded;
-    if (k.contains('water') || k.contains('su') || k.contains('ip6') || k.contains('atm')) return Icons.water_drop_rounded;
-    if (k.contains('sensor') || k.contains('sensör')) return Icons.sensors_rounded;
-    if (k.contains('dpi')) return Icons.mouse_rounded;
-    if (k.contains('switch') || k.contains('anahtar')) return Icons.keyboard_rounded;
-    if (k.contains('port') || k.contains('hdmi') || k.contains('usb')) return Icons.settings_input_hdmi_rounded;
-    if (k.contains('speed') || k.contains('hız') || k.contains('clock') || k.contains('frequency') || k.contains('frekans')) return Icons.speed_rounded;
-    if (k.contains('type') || k.contains('tip')) return Icons.category_rounded;
-    if (k.contains('thread') || k.contains('iş parçacığı')) return Icons.hub_rounded;
-    if (k.contains('core') || k.contains('çekirdek')) return Icons.developer_board_rounded;
-    if (k.contains('socket') || k.contains('soket')) return Icons.electrical_services_rounded;
-    if (k.contains('cache') || k.contains('önbellek')) return Icons.cached_rounded;
-    if (k.contains('tdp') || k.contains('güç') || k.contains('power') || k.contains('watt')) return Icons.bolt_rounded;
-    if (k.contains('cool') || k.contains('soğut') || k.contains('fan')) return Icons.ac_unit_rounded;
-    if (k.contains('warranty') || k.contains('garanti')) return Icons.verified_rounded;
-    if (k.contains('nfc') || k.contains('payment')) return Icons.contactless_rounded;
-    if (k.contains('microphone') || k.contains('mikrofon')) return Icons.mic_rounded;
-    if (k.contains('rgb') || k.contains('backlight') || k.contains('aydınlatma')) return Icons.lightbulb_rounded;
-    return Icons.info_outline_rounded;
-  }
+  static IconData iconForSpec(String key) => keySpecs.iconForSpecKey(key);
 
   String _resolveCategory() {
     final cat = product.category.toLowerCase().trim();
+    // Check local _categoryKeys first (has extended 9-spec lists)
     if (_categoryKeys.containsKey(cat)) return cat;
-    for (final alias in _categoryAliases.entries) {
-      if (cat.contains(alias.key) || alias.key.contains(cat)) return alias.value;
-    }
-    return '';
+    // Try centralized resolver, then map back to local key
+    final resolved = keySpecs.resolveCategory(cat);
+    if (_categoryKeys.containsKey(resolved)) return resolved;
+    // Handle pluralization differences (ssd→ssds, etc.)
+    if (_categoryKeys.containsKey('${resolved}s')) return '${resolved}s';
+    return resolved;
   }
 
   /// Build a merged pool of all available specs from keySpecs + specs + specSections.
