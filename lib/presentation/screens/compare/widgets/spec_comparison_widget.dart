@@ -1462,30 +1462,31 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
               controller: scrollController,
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
               children: [
-                // Score circle large
-                Center(child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: matchScore / 100),
-                  duration: const Duration(milliseconds: 1000),
-                  curve: Curves.easeOutCubic,
-                  builder: (_, value, __) => SizedBox(
-                    width: 80, height: 80,
-                    child: Stack(alignment: Alignment.center, children: [
-                      CircularProgressIndicator(
-                        value: value, strokeWidth: 6,
-                        backgroundColor: matchColor.withValues(alpha: 0.12),
-                        color: matchColor),
-                      Text('${(value * 100).toInt()}%',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 22, fontWeight: FontWeight.w900, color: matchColor)),
-                    ]),
+                // Score circle + product name side by side
+                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: matchScore / 100),
+                    duration: const Duration(milliseconds: 1000),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, value, __) => SizedBox(
+                      width: 72, height: 72,
+                      child: Stack(alignment: Alignment.center, children: [
+                        CircularProgressIndicator(
+                          value: value, strokeWidth: 5,
+                          backgroundColor: matchColor.withValues(alpha: 0.12),
+                          color: matchColor),
+                        Text('${(value * 100).toInt()}%',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 20, fontWeight: FontWeight.w900, color: matchColor)),
+                      ]),
+                    ),
                   ),
-                )),
-                const SizedBox(height: 16),
-                // Product name
-                Center(child: Text(productName, textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16, fontWeight: FontWeight.w800,
-                    color: Theme.of(ctx).colorScheme.onSurface))),
+                  const SizedBox(width: 16),
+                  Expanded(child: Text(productName,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16, fontWeight: FontWeight.w800,
+                      color: Theme.of(ctx).colorScheme.onSurface))),
+                ]),
                 const SizedBox(height: 20),
                 // "Why This Score?" section
                 Text('Why This Score?', style: GoogleFonts.plusJakartaSans(
