@@ -205,32 +205,24 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
       }).join('\n');
 
-      final prompt = '''You are a senior tech analyst. Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
-$productNames
+      final productJson = widget.products.map((p) => '"${p.name}"').join(', ');
+      final prompt = '''Return only valid JSON. No markdown, no explanation, no code blocks. ALL text in $langName. Address the user directly using "you/your".
 
-Specs:
+Provide a comprehensive deep analysis comparing these products:
 $specSummary
 
-Return ONLY valid JSON:
+Return JSON in exactly this format (fill products for each of: $productJson):
 {
-  "winner": "product name",
-  "verdict": "1 sentence verdict addressing you directly",
+  "winner": "exact product name",
+  "verdict": "comprehensive 4-5 sentence analysis",
   "products": {
-    "<product_name>": {
-      "score": 0-100,
-      "strengths": ["str1", "str2", "str3"],
-      "weaknesses": ["weak1", "weak2"],
-      "best_for": "ideal use case for you"
+    "ExactProductName": {
+      "score": 95,
+      "strengths": ["detailed point1", "detailed point2", "detailed point3"],
+      "weaknesses": ["detailed point1", "detailed point2"],
+      "best_for": "detailed ideal user description"
     }
-  },
-  "categories": {
-    "Performance": {"<name1>": 85, "<name2>": 70},
-    "Display": {"<name1>": 90, "<name2>": 80},
-    "Build Quality": {"<name1>": 75, "<name2>": 85},
-    "Value": {"<name1>": 80, "<name2>": 65},
-    "Features": {"<name1>": 70, "<name2>": 90}
-  },
-  "recommendation": "3-4 sentence personalized recommendation addressing you directly"
+  }
 }''';
 
       debugPrint('[Compair] Deep Analysis starting for: $productNames');
@@ -244,6 +236,14 @@ Return ONLY valid JSON:
 
       if (mounted) {
         final parsed = _tryParseJson(result);
+        if (parsed == null) {
+          debugPrint('[Compair] Deep Analysis parse failed — showing error');
+          setState(() {
+            _deepAnalysisError = true;
+            _deepAnalysisLoading = false;
+          });
+          return;
+        }
         setState(() {
           _deepAnalysisResult = result;
           _deepAnalysisStructured = parsed;
@@ -252,7 +252,7 @@ Return ONLY valid JSON:
         _saveToSession();
         _saveAiCache('deep_analysis', {
           'result': result,
-          if (parsed != null) 'structured': parsed,
+          'structured': parsed,
         });
       }
       debugPrint('[Compair] ⏱ Deep Analysis from Gemini: ${sw.elapsedMilliseconds}ms');
@@ -294,14 +294,24 @@ Return ONLY valid JSON:
         return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $specs';
       }).join('\n');
 
-      final prompt = '''You are a decisive tech advisor. Address the user directly using "you/your". ALL text in $langName.
+      final productJson = widget.products.map((p) => '"${p.name}"').join(', ');
+      final prompt = '''Return only valid JSON. No markdown, no explanation, no code blocks. ALL text in $langName. Address the user directly using "you/your".
+
 Compare these products:
 $specSummary
 
-Return ONLY valid JSON, no markdown, no explanation:
+Return JSON in exactly this format (fill products for each of: $productJson):
 {
-  "winner": "product name",
-  "verdict": "2-3 sentence clear buying recommendation addressing the user directly"
+  "winner": "exact product name",
+  "verdict": "2-3 sentence decision rationale",
+  "products": {
+    "ExactProductName": {
+      "score": 95,
+      "strengths": ["point1", "point2", "point3"],
+      "weaknesses": ["point1", "point2"],
+      "best_for": "ideal user description"
+    }
+  }
 }''';
 
       debugPrint('[Compair] Quick Verdict starting for: $productNames');
@@ -314,6 +324,14 @@ Return ONLY valid JSON, no markdown, no explanation:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
+        if (parsed == null) {
+          debugPrint('[Compair] Quick Verdict parse failed — showing error');
+          setState(() {
+            _quickVerdictError = true;
+            _quickVerdictLoading = false;
+          });
+          return;
+        }
         setState(() {
           _quickVerdictResult = result;
           _quickVerdictStructured = parsed;
@@ -322,7 +340,7 @@ Return ONLY valid JSON, no markdown, no explanation:
         _saveToSession();
         _saveAiCache('quick_verdict', {
           'result': result,
-          if (parsed != null) 'structured': parsed,
+          'structured': parsed,
         });
       }
       debugPrint('[Compair] ⏱ Quick Verdict from Gemini: ${sw.elapsedMilliseconds}ms');
@@ -387,6 +405,14 @@ Return ONLY valid JSON:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
+        if (parsed == null) {
+          debugPrint('[Compair] Alternatives parse failed — showing error');
+          setState(() {
+            _alternativesError = true;
+            _alternativesLoading = false;
+          });
+          return;
+        }
         setState(() {
           _alternativesResult = result;
           _alternativesStructured = parsed;
@@ -395,7 +421,7 @@ Return ONLY valid JSON:
         _saveToSession();
         _saveAiCache('alternatives', {
           'result': result,
-          if (parsed != null) 'structured': parsed,
+          'structured': parsed,
         });
       }
       debugPrint('[Compair] ⏱ Alternatives from Gemini: ${sw.elapsedMilliseconds}ms');
@@ -464,6 +490,14 @@ Return ONLY valid JSON:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
+        if (parsed == null) {
+          debugPrint('[Compair] Prediction parse failed — showing error');
+          setState(() {
+            _predictionError = true;
+            _predictionLoading = false;
+          });
+          return;
+        }
         setState(() {
           _predictionResult = result;
           _predictionStructured = parsed;
@@ -472,7 +506,7 @@ Return ONLY valid JSON:
         _saveToSession();
         _saveAiCache('prediction', {
           'result': result,
-          if (parsed != null) 'structured': parsed,
+          'structured': parsed,
         });
       }
       debugPrint('[Compair] ⏱ Prediction from Gemini: ${sw.elapsedMilliseconds}ms');
@@ -928,175 +962,6 @@ Return ONLY valid JSON:
   }
 
   // ─── Structured Visual Builders for Premium AI Sections ───
-
-  Widget _buildDeepAnalysisVisual() {
-    final data = _deepAnalysisStructured!;
-    final winner = data['winner'] as String?;
-    final verdict = data['verdict'] as String?;
-    final products = data['products'] as Map<String, dynamic>? ?? {};
-    final categories = data['categories'] as Map<String, dynamic>? ?? {};
-    final recommendation = data['recommendation'] as String?;
-    final categoryIcons = {
-      'Performance': '⚡', 'Display': '🖥️', 'Build Quality': '🔨',
-      'Value': '💰', 'Features': '✨', 'Camera': '📷', 'Battery': '🔋',
-      'Software': '📱', 'Audio': '🔊', 'Design': '🎨',
-    };
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Winner card
-      if (winner != null)
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              const Color(0xFFFFD700).withValues(alpha: 0.15),
-              const Color(0xFFFFA500).withValues(alpha: 0.08)]),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.4), width: 1.5)),
-          child: Column(children: [
-            const Text('🏆', style: TextStyle(fontSize: 24)),
-            const SizedBox(height: 4),
-            Text(winner, style: GoogleFonts.plusJakartaSans(
-              fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
-              maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-            if (verdict != null) ...[
-              const SizedBox(height: 6),
-              ExpandableText(verdict, style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: context.textSecondary, height: 1.4),
-                textAlign: TextAlign.center),
-            ],
-          ]),
-        ),
-      // Per-product scores with strengths/weaknesses
-      if (products.isNotEmpty) ...[
-        const SizedBox(height: 14),
-        ...products.entries.map((e) {
-          final pData = e.value as Map<String, dynamic>? ?? {};
-          final score = (pData['score'] as num?)?.toDouble() ?? 0;
-          final strengths = List<String>.from(pData['strengths'] ?? []);
-          final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
-          final bestFor = pData['best_for'] as String? ?? '';
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(12)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(e.key, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                  maxLines: 1, overflow: TextOverflow.ellipsis)),
-                Container(
-                  width: 42, height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [
-                      _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
-                  child: Center(child: Text('${score.toInt()}',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white))),
-                ),
-              ]),
-              if (bestFor.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, color: context.textSecondary, fontStyle: FontStyle.italic)),
-              ],
-              if (strengths.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                ...strengths.take(3).map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Row(children: [
-                    const Text('✅ ', style: TextStyle(fontSize: 10)),
-                    Expanded(child: Text(s, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textSecondary))),
-                  ]),
-                )),
-              ],
-              if (weaknesses.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                ...weaknesses.take(2).map((w) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Row(children: [
-                    const Text('⚠️ ', style: TextStyle(fontSize: 10)),
-                    Expanded(child: Text(w, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textTertiaryColor))),
-                  ]),
-                )),
-              ],
-            ]),
-          );
-        }),
-      ],
-      // Category comparison bars
-      if (categories.isNotEmpty) ...[
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: context.surfaceElevatedColor,
-            borderRadius: BorderRadius.circular(12)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Category Comparison', style: GoogleFonts.plusJakartaSans(
-              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
-            const SizedBox(height: 10),
-            ...categories.entries.map((cat) {
-              final scores = cat.value as Map<String, dynamic>? ?? {};
-              final icon = categoryIcons[cat.key] ?? '📊';
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('$icon ${cat.key}', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary)),
-                  const SizedBox(height: 4),
-                  ...scores.entries.map((s) {
-                    final val = (s.value as num?)?.toDouble() ?? 0;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Row(children: [
-                        SizedBox(width: 60, child: Text(s.key.length > 10 ? '${s.key.substring(0, 10)}…' : s.key,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        Expanded(child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: val / 100, minHeight: 6,
-                            backgroundColor: context.surfaceVariantColor,
-                            color: _aiScoreColor(val)))),
-                        const SizedBox(width: 6),
-                        SizedBox(width: 24, child: Text('${val.toInt()}',
-                          textAlign: TextAlign.right,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: _aiScoreColor(val)))),
-                      ]),
-                    );
-                  }),
-                ]),
-              );
-            }),
-          ]),
-        ),
-      ],
-      // Recommendation
-      if (recommendation != null) ...[
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              AppTheme.brandBlue.withValues(alpha: 0.08),
-              AppTheme.brandSkyBlue.withValues(alpha: 0.06)]),
-            borderRadius: BorderRadius.circular(12)),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('💡', style: TextStyle(fontSize: 14)),
-            const SizedBox(width: 8),
-            Expanded(child: ExpandableText(recommendation, style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, height: 1.5, color: context.textPrimary))),
-          ]),
-        ),
-      ],
-    ]);
-  }
 
   Widget _buildAlternativesVisual() {
     final data = _alternativesStructured!;
@@ -1570,6 +1435,8 @@ Return ONLY valid JSON:
                         : Theme.of(context).colorScheme.primary;
                     return TabBar(
                       controller: tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
                       labelColor: activeColor,
                       unselectedLabelColor: context.textTertiaryColor,
                       indicatorSize: TabBarIndicatorSize.tab,
@@ -2254,13 +2121,19 @@ Return ONLY valid JSON:
     if (_quickVerdictLoading) return _buildAiShimmer();
 
     final data = _quickVerdictStructured;
-    final winner = data?['winner'] as String?;
-    final verdict = data?['verdict'] as String?;
-    // Fallback to raw text if no structured data
-    final displayText = verdict ?? _quickVerdictResult;
+    if (data == null) return const SizedBox.shrink();
+
+    return _buildVerdictVisual(data);
+  }
+
+  /// Shared rich visual for Quick Verdict and Deep Analysis
+  Widget _buildVerdictVisual(Map<String, dynamic> data) {
+    final winner = data['winner'] as String?;
+    final verdict = data['verdict'] as String?;
+    final products = data['products'] as Map<String, dynamic>? ?? {};
 
     return ListView(
-      key: const ValueKey('quick_verdict'),
+      key: ValueKey('verdict_${data.hashCode}'),
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
       children: [
         // Winner card
@@ -2269,30 +2142,103 @@ Return ONLY valid JSON:
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                const Color(0xFFFFD700).withValues(alpha: 0.15),
-                const Color(0xFFFFA500).withValues(alpha: 0.08)]),
+              color: const Color(0xFF4A8FD9).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.4), width: 1.5)),
+              border: Border.all(color: const Color(0xFF4A8FD9), width: 2)),
             child: Column(children: [
               const Text('🏆', style: TextStyle(fontSize: 28)),
               const SizedBox(height: 6),
               Text(winner, style: GoogleFonts.plusJakartaSans(
                 fontSize: 18, fontWeight: FontWeight.w800, color: context.textPrimary),
                 maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              if (verdict != null && verdict.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(verdict, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, height: 1.5, color: context.textSecondary),
+                  textAlign: TextAlign.center),
+              ],
             ]),
           ),
-        const SizedBox(height: 16),
-        // Verdict text
-        if (displayText != null && displayText.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(14)),
-            child: Text(displayText, style: GoogleFonts.plusJakartaSans(
-              fontSize: 14, height: 1.6, color: context.textPrimary)),
-          ),
+
+        // Per-product cards
+        if (products.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ...products.entries.map((entry) {
+            final pData = entry.value as Map<String, dynamic>? ?? {};
+            final score = (pData['score'] as num?)?.toDouble() ?? 0;
+            final strengths = List<String>.from(pData['strengths'] ?? []);
+            final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
+            final bestFor = pData['best_for'] as String? ?? '';
+
+            final scoreColor = score >= 90
+                ? AppTheme.scoreExcellent
+                : score >= 70
+                    ? AppTheme.warning
+                    : AppTheme.error;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: context.surfaceElevatedColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: context.dividerColor)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // Product name + score badge
+                Row(children: [
+                  Expanded(child: Text(entry.key, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
+                    maxLines: 2, overflow: TextOverflow.ellipsis)),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: scoreColor.withValues(alpha: 0.12),
+                      border: Border.all(color: scoreColor, width: 2)),
+                    child: Center(child: Text('${score.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15, fontWeight: FontWeight.w900, color: scoreColor))),
+                  ),
+                ]),
+                // Strengths
+                if (strengths.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 6, runSpacing: 6, children: strengths.map((s) =>
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppTheme.scoreExcellent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Text('✅ $s', style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11, color: AppTheme.scoreExcellent, fontWeight: FontWeight.w500)),
+                    ),
+                  ).toList()),
+                ],
+                // Weaknesses
+                if (weaknesses.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 6, runSpacing: 6, children: weaknesses.map((w) =>
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppTheme.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Text('⚠️ $w', style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11, color: AppTheme.error, fontWeight: FontWeight.w500)),
+                    ),
+                  ).toList()),
+                ],
+                // Best for
+                if (bestFor.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, color: context.textTertiaryColor, fontStyle: FontStyle.italic)),
+                ],
+              ]),
+            );
+          }),
+        ],
       ],
     );
   }
@@ -2342,7 +2288,7 @@ Return ONLY valid JSON:
                 matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
 
             return GestureDetector(
-              onTap: reason != null && reason.isNotEmpty ? () => _showAiDetailModal(product.name, reason) : null,
+              onTap: reason != null && reason.isNotEmpty ? () => _showMatchDetailModal(product, matchScore ?? 0, reason) : null,
               child: Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
@@ -2419,22 +2365,10 @@ Return ONLY valid JSON:
     }
     if (_deepAnalysisLoading) return _buildAiShimmer();
 
-    if (_deepAnalysisStructured != null) {
-      return ListView(
-        key: const ValueKey('deep_analysis'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-        children: [_buildDeepAnalysisVisual()],
-      );
-    }
-    // Fallback: show raw text via MarkdownBody
-    if (_deepAnalysisResult != null) {
-      return ListView(
-        key: const ValueKey('deep_analysis_raw'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-        children: [MarkdownBody(data: _deepAnalysisResult!, selectable: true)],
-      );
-    }
-    return const SizedBox.shrink();
+    final data = _deepAnalysisStructured;
+    if (data == null) return const SizedBox.shrink();
+
+    return _buildVerdictVisual(data);
   }
 
   Widget _buildAlternativesContent() {
@@ -2456,13 +2390,6 @@ Return ONLY valid JSON:
         key: const ValueKey('alternatives'),
         padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
         children: [_buildAlternativesVisual()],
-      );
-    }
-    if (_alternativesResult != null) {
-      return ListView(
-        key: const ValueKey('alternatives_raw'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-        children: [MarkdownBody(data: _alternativesResult!, selectable: true)],
       );
     }
     return const SizedBox.shrink();
@@ -2489,46 +2416,115 @@ Return ONLY valid JSON:
         children: [_buildPredictionVisual()],
       );
     }
-    if (_predictionResult != null) {
-      return ListView(
-        key: const ValueKey('prediction_raw'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-        children: [MarkdownBody(data: _predictionResult!, selectable: true)],
-      );
-    }
     return const SizedBox.shrink();
   }
 
-  /// Full-screen modal for AI detail text
-  void _showAiDetailModal(String title, String content) {
+  /// Enriched match score detail modal
+  void _showMatchDetailModal(ProductEntity product, int score, String reason) {
+    final scoreColor = score >= 80
+        ? AppTheme.scoreExcellent
+        : score >= 60
+            ? AppTheme.scoreAverage
+            : AppTheme.error;
+
+    // Split reason into bullet points
+    final bullets = reason
+        .split(RegExp(r'[\n•\-]'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
     showDialog(
       context: context,
-      builder: (ctx) => Dialog.fullscreen(
+      builder: (ctx) => Dialog(
         backgroundColor: Theme.of(ctx).colorScheme.surface,
-        child: SafeArea(
-          child: Column(children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
-              child: Row(children: [
-                Expanded(child: Text(title, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface),
-                  maxLines: 2, overflow: TextOverflow.ellipsis)),
-                IconButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  icon: const Icon(Icons.close_rounded)),
-              ]),
-            ),
-            const Divider(height: 1),
-            // Scrollable content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Text(content, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14, height: 1.7, color: Theme.of(ctx).colorScheme.onSurface)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Close button
+              Align(
+                alignment: Alignment.topRight,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(ctx).pop(),
+                  child: Icon(Icons.close_rounded, size: 22, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5)),
+                ),
               ),
-            ),
-          ]),
+              // Circular score indicator
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: score / 100),
+                duration: const Duration(milliseconds: 1200),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  final displayVal = (value * 100).toInt();
+                  return SizedBox(
+                    width: 80, height: 80,
+                    child: Stack(alignment: Alignment.center, children: [
+                      CircularProgressIndicator(
+                        value: value, strokeWidth: 6,
+                        backgroundColor: scoreColor.withValues(alpha: 0.15),
+                        color: scoreColor),
+                      Text('$displayVal%', style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20, fontWeight: FontWeight.w900, color: scoreColor)),
+                    ]),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              // Product name
+              Text(product.name, style: GoogleFonts.plusJakartaSans(
+                fontSize: 16, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface),
+                maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              // "Neden Bu Skor?" heading
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Neden Bu Skor?', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15, fontWeight: FontWeight.w700, color: Theme.of(ctx).colorScheme.onSurface)),
+              ),
+              const SizedBox(height: 10),
+              // Bullet list
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.35),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: bullets.map((b) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('• ', style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14, fontWeight: FontWeight.w700, color: scoreColor)),
+                        Expanded(child: Text(b, style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13, height: 1.5, color: Theme.of(ctx).colorScheme.onSurface))),
+                      ]),
+                    )).toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // "Ürünü Keşfet" button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    context.push('/product/${product.id}');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scoreColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(context.l10n?.exploreProducts ?? 'Ürünü Keşfet', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
