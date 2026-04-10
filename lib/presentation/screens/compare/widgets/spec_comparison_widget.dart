@@ -16,34 +16,29 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   // Quick Verdict state
   bool _quickVerdictExpanded = false;
   bool _quickVerdictLoading = false;
-  bool _quickVerdictError = false;
   String? _quickVerdictResult;
 
   // Deep Analysis state (merged with AI Analysis structured)
   bool _deepAnalysisExpanded = false;
   bool _deepAnalysisLoading = false;
-  bool _deepAnalysisError = false;
   String? _deepAnalysisResult;
   Map<String, dynamic>? _deepAnalysisStructured;
 
   // Smart Alternatives state
   bool _alternativesExpanded = false;
   bool _alternativesLoading = false;
-  bool _alternativesError = false;
   String? _alternativesResult;
   Map<String, dynamic>? _alternativesStructured;
 
   // AI Advisor state
   bool _advisorExpanded = false;
   bool _advisorLoading = false;
-  bool _advisorError = false;
   String? _advisorResult;
   Map<String, dynamic>? _advisorStructured;
 
   // Price Prediction state
   bool _predictionExpanded = false;
   bool _predictionLoading = false;
-  bool _predictionError = false;
   String? _predictionResult;
   Map<String, dynamic>? _predictionStructured;
 
@@ -313,7 +308,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Deep Analysis FAILED: $e\n$st');
       if (mounted) setState(() {
-        _deepAnalysisError = true;
+        _deepAnalysisResult = 'Unable to generate analysis. Please try again.';
         _deepAnalysisLoading = false;
       });
     }
@@ -377,7 +372,7 @@ Keep it punchy and actionable. No hedging.''',
     } catch (e, st) {
       debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
       if (mounted) setState(() {
-        _quickVerdictError = true;
+        _quickVerdictResult = 'Unable to generate verdict. Please try again.';
         _quickVerdictLoading = false;
       });
     }
@@ -465,7 +460,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Alternatives FAILED: $e\n$st');
       if (mounted) setState(() {
-        _alternativesError = true;
+        _alternativesResult = 'Unable to generate alternatives. Please try again.';
         _alternativesLoading = false;
       });
     }
@@ -560,7 +555,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Advisor FAILED: $e\n$st');
       if (mounted) setState(() {
-        _advisorError = true;
+        _advisorResult = 'Unable to generate advice. Please try again.';
         _advisorLoading = false;
       });
     }
@@ -652,7 +647,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Prediction FAILED: $e\n$st');
       if (mounted) setState(() {
-        _predictionError = true;
+        _predictionResult = 'Unable to predict prices. Please try again.';
         _predictionLoading = false;
       });
     }
@@ -1985,48 +1980,29 @@ Return ONLY valid JSON:
           // Pill-style tab bar (always visible)
           Container(
             color: context.surfaceColor,
-            child: Builder(
-              builder: (tabContext) {
-                final controller = DefaultTabController.of(tabContext);
-                return ListenableBuilder(
-                  listenable: controller,
-                  builder: (ctx, _) {
-                    final isPremium = controller.index == 3;
-                    final activeColor = isPremium
-                        ? const Color(0xFFFFD700)
-                        : Theme.of(ctx).colorScheme.primary;
-                    return TabBar(
-                      labelColor: activeColor,
-                      unselectedLabelColor: context.textTertiaryColor,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      indicator: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: activeColor, width: 2.5),
-                        ),
-                      ),
-                      labelStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700),
-                      unselectedLabelStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500),
-                      tabs: [
-                        Tab(text: context.l10n?.specsTab ?? 'Specs'),
-                        Tab(text: context.l10n?.reviews ?? 'Reviews'),
-                        Tab(text: context.l10n?.similarTab ?? 'Similar'),
-                        Tab(child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(context.l10n?.proTab ?? 'Premium'),
-                            const SizedBox(width: 3),
-                            Icon(Icons.diamond_rounded, size: 12,
-                              color: isPremium ? const Color(0xFFFFD700) : context.textTertiaryColor),
-                          ],
-                        )),
-                      ],
-                    );
-                  },
-                );
-              },
+            child: TabBar(
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: context.textTertiaryColor,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2.5,
+                  ),
+                ),
+              ),
+              labelStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700),
+              unselectedLabelStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w500),
+              tabs: [
+                Tab(text: context.l10n?.specsTab ?? 'Specs'),
+                Tab(text: context.l10n?.reviews ?? 'Reviews'),
+                Tab(text: context.l10n?.similarTab ?? 'Similar'),
+                Tab(text: context.l10n?.proTab ?? 'Premium'),
+              ],
             ),
           ),
 
@@ -2513,11 +2489,6 @@ Return ONLY valid JSON:
           isExpanded: _quickVerdictExpanded,
           isLoading: _quickVerdictLoading,
           content: _quickVerdictResult,
-          hasError: _quickVerdictError,
-          onRetry: () {
-            setState(() { _quickVerdictError = false; _quickVerdictLoading = true; });
-            _fetchQuickVerdict();
-          },
           onTap: _toggleQuickVerdict,
         ),
         const SizedBox(height: 14),
@@ -2534,11 +2505,6 @@ Return ONLY valid JSON:
           isLoading: _deepAnalysisLoading,
           content: _deepAnalysisResult,
           contentWidget: _deepAnalysisStructured != null ? _buildDeepAnalysisVisual() : null,
-          hasError: _deepAnalysisError,
-          onRetry: () {
-            setState(() { _deepAnalysisError = false; _deepAnalysisLoading = true; });
-            _fetchDeepAnalysis();
-          },
           onTap: _toggleDeepAnalysis,
         ),
         const SizedBox(height: 14),
@@ -2552,11 +2518,6 @@ Return ONLY valid JSON:
           isLoading: _alternativesLoading,
           content: _alternativesResult,
           contentWidget: _alternativesStructured != null ? _buildAlternativesVisual() : null,
-          hasError: _alternativesError,
-          onRetry: () {
-            setState(() { _alternativesError = false; _alternativesLoading = true; });
-            _fetchAlternatives();
-          },
           onTap: _toggleAlternatives,
         ),
         const SizedBox(height: 14),
@@ -2570,11 +2531,6 @@ Return ONLY valid JSON:
           isLoading: _advisorLoading,
           content: _advisorResult,
           contentWidget: _advisorStructured != null ? _buildAdvisorVisual() : null,
-          hasError: _advisorError,
-          onRetry: () {
-            setState(() { _advisorError = false; _advisorLoading = true; });
-            _fetchAdvisor();
-          },
           onTap: _toggleAdvisor,
         ),
         const SizedBox(height: 14),
@@ -2588,11 +2544,6 @@ Return ONLY valid JSON:
           isLoading: _predictionLoading,
           content: _predictionResult,
           contentWidget: _predictionStructured != null ? _buildPredictionVisual() : null,
-          hasError: _predictionError,
-          onRetry: () {
-            setState(() { _predictionError = false; _predictionLoading = true; });
-            _fetchPrediction();
-          },
           onTap: _togglePrediction,
         ),
       ],
@@ -2774,29 +2725,11 @@ Return ONLY valid JSON:
                               Icon(Icons.auto_awesome, size: 12,
                                   color: matchColor.withValues(alpha: 0.7)),
                               const SizedBox(width: 6),
-                              Expanded(child: Text(reason,
-                                maxLines: 2, overflow: TextOverflow.ellipsis,
+                              Expanded(child: ExpandableText(reason,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11, fontStyle: FontStyle.italic,
                                   color: context.textSecondary, height: 1.3))),
                             ],
-                          ),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: () => _showAiDetailModal(
-                              title: '${context.l10n?.personalizedMatch ?? 'Personalized Match'} — ${product.name}',
-                              gradient: const [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue],
-                              child: Text(reason,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13, color: context.textPrimary, height: 1.6)),
-                            ),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Text(context.l10n?.viewDetails ?? 'View Details',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.brandSkyBlue)),
-                              const SizedBox(width: 2),
-                              const Icon(Icons.arrow_forward_rounded, size: 12, color: AppTheme.brandSkyBlue),
-                            ]),
                           ),
                         ],
                       ],
@@ -2822,8 +2755,6 @@ Return ONLY valid JSON:
     required String? content,
     required VoidCallback onTap,
     Widget? contentWidget,
-    bool hasError = false,
-    VoidCallback? onRetry,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
@@ -2863,18 +2794,6 @@ Return ONLY valid JSON:
                   Text(subtitle, style: GoogleFonts.plusJakartaSans(
                     fontSize: 12, color: context.textSecondary)),
                 ])),
-              // Ready badge when collapsed and content loaded
-              if (!isExpanded && !isLoading && (content != null || contentWidget != null) && !hasError)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: gradient[0].withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6)),
-                    child: Text('✓', style: TextStyle(fontSize: 10, color: gradient[0], fontWeight: FontWeight.w700)),
-                  ),
-                ),
               if (isLoading)
                 SizedBox(width: 20, height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: gradient[0]))
@@ -2883,171 +2802,53 @@ Return ONLY valid JSON:
                   color: gradient[0]),
             ]),
           ),
-          // Content area — shimmer, error, or actual content
-          if (isExpanded) ...[
+          // Content area — taps do NOT propagate to toggle
+          if (isExpanded && contentWidget != null) ...[
             const SizedBox(height: 14),
-            GestureDetector(
-              onTap: () {},
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: isLoading
-                    ? _buildShimmerPlaceholder(key: const ValueKey('shimmer'))
-                    : hasError
-                        ? _buildErrorRetry(gradient: gradient, onRetry: onRetry, key: const ValueKey('error'))
-                        : contentWidget != null
-                            ? KeyedSubtree(key: const ValueKey('visual'), child: contentWidget)
-                            : content != null
-                                ? KeyedSubtree(
-                                    key: const ValueKey('markdown'),
-                                    child: MarkdownBody(
-                                      data: content,
-                                      selectable: true,
-                                      styleSheet: MarkdownStyleSheet(
-                                        p: GoogleFonts.plusJakartaSans(
-                                          fontSize: 13, height: 1.6,
-                                          color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
-                                        strong: GoogleFonts.plusJakartaSans(
-                                          fontSize: 13, fontWeight: FontWeight.w700,
-                                          color: isDark ? Colors.white : context.textPrimary),
-                                        em: GoogleFonts.plusJakartaSans(
-                                          fontSize: 13, fontStyle: FontStyle.italic,
-                                          color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
-                                        h1: GoogleFonts.plusJakartaSans(
-                                          fontSize: 16, fontWeight: FontWeight.w800,
-                                          color: isDark ? Colors.white : context.textPrimary),
-                                        h2: GoogleFonts.plusJakartaSans(
-                                          fontSize: 15, fontWeight: FontWeight.w700,
-                                          color: isDark ? Colors.white : context.textPrimary),
-                                        h3: GoogleFonts.plusJakartaSans(
-                                          fontSize: 14, fontWeight: FontWeight.w700,
-                                          color: gradient[0]),
-                                        listBullet: GoogleFonts.plusJakartaSans(
-                                          fontSize: 13, color: gradient[0]),
-                                        listIndent: 16,
-                                        blockSpacing: 8,
-                                        h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
-                                        h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
-                                        h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
-                                        pPadding: const EdgeInsets.symmetric(vertical: 2),
-                                        blockquoteDecoration: BoxDecoration(
-                                          color: gradient[0].withValues(alpha: 0.06),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border(left: BorderSide(color: gradient[0], width: 3)),
-                                        ),
-                                        blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      ),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(key: ValueKey('empty')),
-              ),
-            ),
+            GestureDetector(onTap: () {}, child: contentWidget),
+          ] else if (isExpanded && content != null) ...[
+            const SizedBox(height: 14),
+            GestureDetector(onTap: () {}, child: MarkdownBody(
+                data: content,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, height: 1.6,
+                    color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
+                  strong: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  em: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontStyle: FontStyle.italic,
+                    color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
+                  h1: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  h2: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  h3: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w700,
+                    color: gradient[0]),
+                  listBullet: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, color: gradient[0]),
+                  listIndent: 16,
+                  blockSpacing: 8,
+                  h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
+                  pPadding: const EdgeInsets.symmetric(vertical: 2),
+                  blockquoteDecoration: BoxDecoration(
+                    color: gradient[0].withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: gradient[0], width: 3)),
+                  ),
+                  blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              )),
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildShimmerPlaceholder({Key? key}) {
-    return Column(
-      key: key,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: List.generate(3, (i) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        height: 14,
-        width: i == 2 ? 160 : double.infinity,
-        decoration: BoxDecoration(
-          color: context.textTertiaryColor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6)),
-      )),
-    );
-  }
-
-  Widget _buildErrorRetry({required List<Color> gradient, VoidCallback? onRetry, Key? key}) {
-    return Column(
-      key: key,
-      children: [
-        Icon(Icons.error_outline_rounded, color: AppTheme.error.withValues(alpha: 0.7), size: 32),
-        const SizedBox(height: 8),
-        Text('Unable to generate. Please try again.',
-          style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary),
-          textAlign: TextAlign.center),
-        const SizedBox(height: 10),
-        if (onRetry != null)
-          GestureDetector(
-            onTap: onRetry,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: gradient),
-                borderRadius: BorderRadius.circular(10)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.refresh_rounded, size: 14, color: Colors.white),
-                const SizedBox(width: 6),
-                Text('Retry',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-              ]),
-            ),
-          ),
-      ],
-    );
-  }
-
-  void _showAiDetailModal({
-    required String title,
-    required List<Color> gradient,
-    required Widget child,
-  }) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: title,
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (ctx, a1, a2, widget) {
-        return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-              .animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
-          child: FadeTransition(opacity: a1, child: widget),
-        );
-      },
-      pageBuilder: (ctx, _, __) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
-            child: Material(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
-              child: Column(children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [gradient[0].withValues(alpha: 0.12), gradient[1].withValues(alpha: 0.06)]),
-                    border: Border(bottom: BorderSide(color: context.dividerColor))),
-                  child: Row(children: [
-                    Expanded(child: Text(title,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary))),
-                    IconButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      icon: Icon(Icons.close_rounded, color: context.textSecondary)),
-                  ]),
-                ),
-                // Scrollable content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: child,
-                  ),
-                ),
-              ]),
-            ),
-          ),
-        );
-      },
     );
   }
 
