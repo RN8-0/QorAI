@@ -137,6 +137,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
       }).join('\n');
 
+      debugPrint('[Compair] Deep Analysis starting for: $productNames');
+
       final prompt = '''You are a senior tech analyst. Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
 $productNames
 
@@ -165,7 +167,17 @@ Return ONLY valid JSON:
   "recommendation": "3-4 sentence personalized recommendation addressing you directly"
 }''';
 
-      final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+      // Try JSON mode first, fallback to plain text on failure
+      String result;
+      try {
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+        debugPrint('[Compair] Deep Analysis JSON query succeeded (${result.length} chars)');
+      } catch (jsonErr) {
+        debugPrint('[Compair] Deep Analysis JSON query failed: $jsonErr — retrying as plain text');
+        result = await gemini.groundedQuery(prompt);
+        debugPrint('[Compair] Deep Analysis grounded query succeeded (${result.length} chars)');
+      }
+
       if (mounted) {
         Map<String, dynamic>? parsed;
         try {
@@ -177,7 +189,7 @@ Return ONLY valid JSON:
           if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
           parsed = jsonDecode(clean) as Map<String, dynamic>?;
         } catch (_) {
-          debugPrint('=== COMPAIR: Deep Analysis JSON parse failed ===');
+          debugPrint('[Compair] Deep Analysis JSON parse failed, using raw text');
         }
         setState(() {
           _deepAnalysisResult = result;
@@ -186,7 +198,8 @@ Return ONLY valid JSON:
         });
         _saveToSession();
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Compair] Deep Analysis FAILED completely: $e\n$st');
       if (mounted) setState(() {
         _deepAnalysisResult = 'Unable to generate analysis. Please try again.';
         _deepAnalysisLoading = false;
@@ -226,7 +239,8 @@ Keep it punchy and actionable. No hedging.''',
           _quickVerdictLoading = false;
         });
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
       if (mounted) setState(() {
         _quickVerdictResult = 'Unable to generate verdict. Please try again.';
         _quickVerdictLoading = false;
@@ -268,7 +282,15 @@ Return ONLY valid JSON:
   ]
 }''';
 
-      final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+      debugPrint('[Compair] Alternatives starting for: $productNames');
+
+      String result;
+      try {
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+      } catch (jsonErr) {
+        debugPrint('[Compair] Alternatives JSON query failed: $jsonErr — retrying as plain text');
+        result = await gemini.groundedQuery(prompt);
+      }
       if (mounted) {
         Map<String, dynamic>? parsed;
         try {
@@ -280,7 +302,7 @@ Return ONLY valid JSON:
           if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
           parsed = jsonDecode(clean) as Map<String, dynamic>?;
         } catch (_) {
-          debugPrint('=== COMPAIR: Alternatives JSON parse failed ===');
+          debugPrint('[Compair] Alternatives JSON parse failed');
         }
         setState(() {
           _alternativesResult = result;
@@ -289,7 +311,8 @@ Return ONLY valid JSON:
         });
         _saveToSession();
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Compair] Alternatives FAILED: $e\n$st');
       if (mounted) setState(() {
         _alternativesResult = 'Unable to generate alternatives. Please try again.';
         _alternativesLoading = false;
@@ -338,7 +361,15 @@ Return ONLY valid JSON:
   "final_verdict": "2 sentence clear recommendation addressing you directly"
 }''';
 
-      final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+      debugPrint('[Compair] Advisor starting');
+
+      String result;
+      try {
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+      } catch (jsonErr) {
+        debugPrint('[Compair] Advisor JSON query failed: $jsonErr — retrying as plain text');
+        result = await gemini.groundedQuery(prompt);
+      }
       if (mounted) {
         Map<String, dynamic>? parsed;
         try {
@@ -350,7 +381,7 @@ Return ONLY valid JSON:
           if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
           parsed = jsonDecode(clean) as Map<String, dynamic>?;
         } catch (_) {
-          debugPrint('=== COMPAIR: Advisor JSON parse failed ===');
+          debugPrint('[Compair] Advisor JSON parse failed');
         }
         setState(() {
           _advisorResult = result;
@@ -359,7 +390,8 @@ Return ONLY valid JSON:
         });
         _saveToSession();
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Compair] Advisor FAILED: $e\n$st');
       if (mounted) setState(() {
         _advisorResult = 'Unable to generate advice. Please try again.';
         _advisorLoading = false;
@@ -405,7 +437,15 @@ Return ONLY valid JSON:
   ]
 }''';
 
-      final result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+      debugPrint('[Compair] Prediction starting');
+
+      String result;
+      try {
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+      } catch (jsonErr) {
+        debugPrint('[Compair] Prediction JSON query failed: $jsonErr — retrying as plain text');
+        result = await gemini.groundedQuery(prompt);
+      }
       if (mounted) {
         Map<String, dynamic>? parsed;
         try {
@@ -417,7 +457,7 @@ Return ONLY valid JSON:
           if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
           parsed = jsonDecode(clean) as Map<String, dynamic>?;
         } catch (_) {
-          debugPrint('=== COMPAIR: Prediction JSON parse failed ===');
+          debugPrint('[Compair] Prediction JSON parse failed');
         }
         setState(() {
           _predictionResult = result;
@@ -426,7 +466,8 @@ Return ONLY valid JSON:
         });
         _saveToSession();
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Compair] Prediction FAILED: $e\n$st');
       if (mounted) setState(() {
         _predictionResult = 'Unable to predict prices. Please try again.';
         _predictionLoading = false;
@@ -1827,7 +1868,7 @@ Return ONLY valid JSON:
     );
   }
 
-  /// Product header: images + VS badge + names (non-pinned, scrolls away)
+  /// Product header: images + names (non-pinned, scrolls away)
   Widget _buildProductHeader(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -1861,23 +1902,7 @@ Return ONLY valid JSON:
                   : AppTheme.error;
 
       if (idx > 0) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 24),
-            child: Container(
-              width: 32, height: 32,
-              decoration: const BoxDecoration(
-                gradient: _accentGradient,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text('VS',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
-              ),
-            ),
-          ),
-        );
+        widgets.add(const SizedBox(width: 4));
       }
 
       widgets.add(
