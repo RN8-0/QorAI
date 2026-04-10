@@ -285,24 +285,24 @@ $productNames
 Specs:
 $specSummary
 
-Return ONLY valid JSON:
+Return ONLY valid JSON, no markdown, no explanation:
 {
   "winner": "product name",
-  "verdict": "1 sentence verdict addressing you directly",
+  "verdict": "2-3 sentence comprehensive verdict addressing you directly",
   "products": {
     "<product_name>": {
-      "score": 0-100,
-      "strengths": ["str1", "str2", "str3"],
-      "weaknesses": ["weak1", "weak2"],
+      "score": 85,
+      "strengths": ["detailed strength 1", "detailed strength 2", "detailed strength 3"],
+      "weaknesses": ["detailed weakness 1", "detailed weakness 2"],
       "best_for": "ideal use case for you"
     }
   },
   "categories": {
-    "Performance": {"<name1>": 85, "<name2>": 70},
-    "Display": {"<name1>": 90, "<name2>": 80},
-    "Build Quality": {"<name1>": 75, "<name2>": 85},
-    "Value": {"<name1>": 80, "<name2>": 65},
-    "Features": {"<name1>": 70, "<name2>": 90}
+    "Performance": {"scores": {"<name1>": 85, "<name2>": 70}, "explanation": "one line explanation"},
+    "Display": {"scores": {"<name1>": 90, "<name2>": 80}, "explanation": "one line explanation"},
+    "Battery": {"scores": {"<name1>": 75, "<name2>": 85}, "explanation": "one line explanation"},
+    "Value": {"scores": {"<name1>": 80, "<name2>": 65}, "explanation": "one line explanation"},
+    "Design": {"scores": {"<name1>": 70, "<name2>": 90}, "explanation": "one line explanation"}
   },
   "recommendation": "3-4 sentence personalized recommendation addressing you directly"
 }''';
@@ -402,7 +402,8 @@ $specSummary
 Return ONLY valid JSON, no markdown, no explanation:
 {
   "winner": "exact product name",
-  "verdict": "2-3 sentence clear buying recommendation",
+  "confidence": 85,
+  "verdict": "2-3 sentence clear buying recommendation addressing the user",
   "products": {
     "ExactProductName": {
       "score": 95,
@@ -607,19 +608,20 @@ Return ONLY valid JSON:
 Products:
 $productDetails
 
-Return ONLY valid JSON:
+Return ONLY valid JSON, no markdown, no explanation:
 {
+  "recommended": "exact product name you recommend",
   "best_for": "1 sentence summary - which product is best for most users and why",
-  "buy_if": ["reason 1 to buy the winner", "reason 2", "reason 3"],
-  "avoid_if": ["scenario where this is NOT the right choice", "another scenario"],
+  "match_points": ["reason this fits the user 1", "reason 2", "reason 3"],
+  "caution_points": ["scenario where this is NOT the right choice", "another scenario"],
   "per_product": [
     {
       "name": "product name",
       "ideal_user": "who should buy this",
-      "rating": 1-5
+      "rating": 4
     }
   ],
-  "final_verdict": "2 sentence clear recommendation addressing you directly"
+  "final_verdict": "2-3 sentence clear recommendation addressing you directly"
 }''';
 
       debugPrint('[Compair] Advisor starting');
@@ -713,19 +715,20 @@ Return ONLY valid JSON:
 
 Products: $productNames
 
-Return ONLY valid JSON:
+Return ONLY valid JSON, no markdown, no explanation:
 {
   "products": [
     {
       "name": "product name",
-      "trend": "up" or "down" or "stable",
+      "trend": "dropping",
       "change_percent": -5,
-      "buy_now": true,
-      "reason": "1 sentence why",
-      "best_time": "when to buy"
+      "best_time_to_buy": "now",
+      "confidence": 75,
+      "reason": "1-2 sentence explanation of the prediction"
     }
   ]
-}''';
+}
+Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must be one of "now", "wait_1_month", "wait_3_months". confidence is 0-100.''';
 
       debugPrint('[Compair] Prediction starting');
       String result;
@@ -1258,12 +1261,13 @@ Return ONLY valid JSON:
     final data = _quickVerdictStructured!;
     final winner = data['winner'] as String?;
     final verdict = data['verdict'] as String?;
+    final confidence = (data['confidence'] as num?)?.toDouble() ?? 0;
     final products = data['products'] as Map<String, dynamic>? ?? {};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Winner card
+        // Winner card with confidence bar
         if (winner != null) Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -1271,25 +1275,40 @@ Return ONLY valid JSON:
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFF4A8FD9), width: 2),
           ),
-          child: Row(children: [
-            const Text('🏆', style: TextStyle(fontSize: 26)),
-            const SizedBox(width: 10),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(winner, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary)),
-                if (verdict != null) ...[
-                  const SizedBox(height: 4),
-                  Text(verdict, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, color: context.textSecondary, height: 1.4)),
-                ],
-              ],
-            )),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Text('🏆', style: TextStyle(fontSize: 26)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(winner, style: GoogleFonts.plusJakartaSans(
+                fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary))),
+            ]),
+            if (verdict != null) ...[
+              const SizedBox(height: 8),
+              Text(verdict, style: GoogleFonts.plusJakartaSans(
+                fontSize: 13, color: context.textSecondary, height: 1.4)),
+            ],
+            if (confidence > 0) ...[
+              const SizedBox(height: 10),
+              Row(children: [
+                Text('Confidence', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: context.textTertiaryColor)),
+                const Spacer(),
+                Text('${confidence.toInt()}%', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11, fontWeight: FontWeight.w800, color: _aiScoreColor(confidence))),
+              ]),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: confidence / 100, minHeight: 6,
+                  backgroundColor: context.dividerColor,
+                  color: _aiScoreColor(confidence)),
+              ),
+            ],
           ]),
         ),
         const SizedBox(height: 12),
-        // Per-product cards
+        // Per-product cards side by side
         ...products.entries.map((entry) {
           final name = entry.key;
           final info = entry.value as Map<String, dynamic>? ?? {};
@@ -1297,9 +1316,7 @@ Return ONLY valid JSON:
           final strengths = (info['strengths'] as List?)?.cast<String>() ?? [];
           final weaknesses = (info['weaknesses'] as List?)?.cast<String>() ?? [];
           final bestFor = info['best_for'] as String?;
-          final scoreColor = score >= 90 ? AppTheme.scoreExcellent
-              : score >= 70 ? AppTheme.orange500
-              : AppTheme.error;
+          final scoreColor = _aiScoreColor(score);
 
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
@@ -1314,16 +1331,31 @@ Return ONLY valid JSON:
               children: [
                 Row(children: [
                   Container(
-                    width: 40, height: 40,
+                    width: 44, height: 44,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(colors: [scoreColor.withValues(alpha: 0.7), scoreColor]),
                       shape: BoxShape.circle),
                     child: Center(child: Text('${score.toInt()}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white))),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(name, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary))),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
+                      if (name == winner)
+                        Container(
+                          margin: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4A8FD9).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4)),
+                          child: Text('WINNER', style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF4A8FD9), letterSpacing: 0.5)),
+                        ),
+                    ],
+                  )),
                 ]),
                 if (strengths.isNotEmpty) ...[
                   const SizedBox(height: 10),
@@ -1332,8 +1364,11 @@ Return ONLY valid JSON:
                     decoration: BoxDecoration(
                       color: AppTheme.scoreExcellent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8)),
-                    child: Text(s, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
-                      color: AppTheme.scoreExcellent)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('✅ ', style: TextStyle(fontSize: 10)),
+                      Flexible(child: Text(s, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
+                        color: AppTheme.scoreExcellent))),
+                    ]),
                   )).toList()),
                 ],
                 if (weaknesses.isNotEmpty) ...[
@@ -1343,13 +1378,16 @@ Return ONLY valid JSON:
                     decoration: BoxDecoration(
                       color: AppTheme.error.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8)),
-                    child: Text(w, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
-                      color: AppTheme.error)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('⚠️ ', style: TextStyle(fontSize: 10)),
+                      Flexible(child: Text(w, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
+                        color: AppTheme.error))),
+                    ]),
                   )).toList()),
                 ],
                 if (bestFor != null) ...[
                   const SizedBox(height: 8),
-                  Text(bestFor, style: GoogleFonts.plusJakartaSans(
+                  Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
                     fontSize: 12, fontStyle: FontStyle.italic, color: context.textSecondary)),
                 ],
               ],
@@ -1367,11 +1405,11 @@ Return ONLY valid JSON:
     final products = data['products'] as Map<String, dynamic>? ?? {};
     final categories = data['categories'] as Map<String, dynamic>? ?? {};
     final recommendation = data['recommendation'] as String?;
-    final categoryIcons = {
-      'Performance': '⚡', 'Display': '🖥️', 'Build Quality': '🔨',
-      'Value': '💰', 'Features': '✨', 'Camera': '📷', 'Battery': '🔋',
-      'Software': '📱', 'Audio': '🔊', 'Design': '🎨',
-    };
+    final productNames = widget.products.map((p) => p.name).toList();
+    final barColors = [
+      const Color(0xFF6366F1), const Color(0xFFEC4899), const Color(0xFF06B6D4),
+      const Color(0xFFF59E0B), const Color(0xFF10B981),
+    ];
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // Winner card
@@ -1393,13 +1431,13 @@ Return ONLY valid JSON:
               maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
             if (verdict != null) ...[
               const SizedBox(height: 6),
-              ExpandableText(verdict, style: GoogleFonts.plusJakartaSans(
+              Text(verdict, style: GoogleFonts.plusJakartaSans(
                 fontSize: 12, color: context.textSecondary, height: 1.4),
                 textAlign: TextAlign.center),
             ],
           ]),
         ),
-      // Per-product scores with strengths/weaknesses
+      // Per-product scores
       if (products.isNotEmpty) ...[
         const SizedBox(height: 14),
         ...products.entries.map((e) {
@@ -1460,48 +1498,98 @@ Return ONLY valid JSON:
           );
         }),
       ],
-      // Category comparison bars
+      // Category comparison bar chart using fl_chart
       if (categories.isNotEmpty) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: context.surfaceElevatedColor,
-            borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(14)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Category Comparison', style: GoogleFonts.plusJakartaSans(
-              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
-            const SizedBox(height: 10),
+            Text('📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
+              fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
+            const SizedBox(height: 4),
+            // Legend
+            Wrap(spacing: 12, runSpacing: 4, children: [
+              for (int i = 0; i < productNames.length && i < barColors.length; i++)
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 10, height: 10, decoration: BoxDecoration(
+                    color: barColors[i], borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 4),
+                  Text(productNames[i].length > 15 ? '${productNames[i].substring(0, 15)}…' : productNames[i],
+                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textSecondary)),
+                ]),
+            ]),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: categories.length * 48.0 + 20,
+              child: BarChart(BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: 100,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final pName = productNames.length > rodIndex ? productNames[rodIndex] : '';
+                      return BarTooltipItem('$pName\n${rod.toY.toInt()}',
+                        GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white));
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(sideTitles: SideTitles(
+                    showTitles: true, reservedSize: 32,
+                    getTitlesWidget: (value, meta) {
+                      final idx = value.toInt();
+                      if (idx < 0 || idx >= categories.length) return const SizedBox.shrink();
+                      final catName = categories.keys.elementAt(idx);
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(catName.length > 8 ? '${catName.substring(0, 8)}…' : catName,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor),
+                          textAlign: TextAlign.center),
+                      );
+                    },
+                  )),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(
+                    showTitles: true, reservedSize: 28,
+                    getTitlesWidget: (value, meta) => Text('${value.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 9, color: context.textTertiaryColor)),
+                  )),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 25,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: context.dividerColor, strokeWidth: 0.5),
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: _buildCategoryBarGroups(categories, productNames, barColors),
+              )),
+            ),
+            // Expandable explanations per category
+            const SizedBox(height: 12),
             ...categories.entries.map((cat) {
-              final scores = cat.value as Map<String, dynamic>? ?? {};
-              final icon = categoryIcons[cat.key] ?? '📊';
+              final catData = cat.value;
+              String? explanation;
+              if (catData is Map<String, dynamic>) {
+                explanation = catData['explanation'] as String?;
+              }
+              if (explanation == null) return const SizedBox.shrink();
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('$icon ${cat.key}', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary)),
-                  const SizedBox(height: 4),
-                  ...scores.entries.map((s) {
-                    final val = (s.value as num?)?.toDouble() ?? 0;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Row(children: [
-                        SizedBox(width: 60, child: Text(s.key.length > 10 ? '${s.key.substring(0, 10)}…' : s.key,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        Expanded(child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: val / 100, minHeight: 6,
-                            backgroundColor: context.surfaceVariantColor,
-                            color: _aiScoreColor(val)))),
-                        const SizedBox(width: 6),
-                        SizedBox(width: 24, child: Text('${val.toInt()}',
-                          textAlign: TextAlign.right,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: _aiScoreColor(val)))),
-                      ]),
-                    );
-                  }),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${_categoryIcon(cat.key)} ', style: const TextStyle(fontSize: 12)),
+                  Expanded(child: RichText(text: TextSpan(children: [
+                    TextSpan(text: '${cat.key}: ', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: context.textPrimary)),
+                    TextSpan(text: explanation, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textSecondary)),
+                  ]))),
                 ]),
               );
             }),
@@ -1521,7 +1609,7 @@ Return ONLY valid JSON:
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('💡', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 8),
-            Expanded(child: ExpandableText(recommendation, style: GoogleFonts.plusJakartaSans(
+            Expanded(child: Text(recommendation, style: GoogleFonts.plusJakartaSans(
               fontSize: 12, height: 1.5, color: context.textPrimary))),
           ]),
         ),
@@ -1529,13 +1617,69 @@ Return ONLY valid JSON:
     ]);
   }
 
+  String _categoryIcon(String category) {
+    const icons = {
+      'Performance': '⚡', 'Display': '🖥️', 'Build Quality': '🔨',
+      'Value': '💰', 'Features': '✨', 'Camera': '📷', 'Battery': '🔋',
+      'Software': '📱', 'Audio': '🔊', 'Design': '🎨',
+    };
+    return icons[category] ?? '📊';
+  }
+
+  List<BarChartGroupData> _buildCategoryBarGroups(
+    Map<String, dynamic> categories, List<String> productNames, List<Color> barColors) {
+    final groups = <BarChartGroupData>[];
+    int catIdx = 0;
+    for (final cat in categories.entries) {
+      final catData = cat.value;
+      Map<String, dynamic> scores = {};
+      if (catData is Map<String, dynamic>) {
+        // New format: {"scores": {...}, "explanation": "..."}
+        if (catData.containsKey('scores')) {
+          scores = Map<String, dynamic>.from(catData['scores'] as Map);
+        } else {
+          // Old format: {"<name1>": 85, "<name2>": 70} — filter out non-numeric entries
+          scores = Map.fromEntries(catData.entries.where((e) => e.value is num));
+        }
+      }
+      final rods = <BarChartRodData>[];
+      for (int pIdx = 0; pIdx < productNames.length; pIdx++) {
+        final pName = productNames[pIdx];
+        double val = 0;
+        // Try exact match first, then partial match
+        if (scores.containsKey(pName)) {
+          val = (scores[pName] as num).toDouble();
+        } else {
+          for (final se in scores.entries) {
+            if (pName.toLowerCase().contains(se.key.toLowerCase()) ||
+                se.key.toLowerCase().contains(pName.toLowerCase())) {
+              val = (se.value as num).toDouble();
+              break;
+            }
+          }
+        }
+        rods.add(BarChartRodData(
+          toY: val, width: 12,
+          color: barColors[pIdx % barColors.length],
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(3), topRight: Radius.circular(3)),
+        ));
+      }
+      groups.add(BarChartGroupData(x: catIdx, barRods: rods, barsSpace: 3));
+      catIdx++;
+    }
+    return groups;
+  }
+
   Widget _buildAlternativesVisual() {
     final data = _alternativesStructured!;
     final alternatives = List<Map<String, dynamic>>.from(
       (data['alternatives'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
     if (alternatives.isEmpty) {
-      return Text(_alternativesResult ?? 'No alternatives found.',
-        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textSecondary));
+      return _buildAiError(() {
+        setState(() { _alternativesError = false; _alternativesLoading = true; _alternativesResult = null; _alternativesStructured = null; });
+        _fetchAlternatives();
+      });
     }
     return SizedBox(
       height: 150,
@@ -1596,80 +1740,101 @@ Return ONLY valid JSON:
 
   Widget _buildAdvisorVisual() {
     final data = _advisorStructured!;
+    final recommended = data['recommended'] as String? ?? data['best_for'] as String?;
     final bestFor = data['best_for'] as String?;
-    final buyIf = List<String>.from(data['buy_if'] ?? []);
-    final avoidIf = List<String>.from(data['avoid_if'] ?? []);
+    final matchPoints = List<String>.from(data['match_points'] ?? data['buy_if'] ?? []);
+    final cautionPoints = List<String>.from(data['caution_points'] ?? data['avoid_if'] ?? []);
     final perProduct = List<Map<String, dynamic>>.from(
       (data['per_product'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
     final finalVerdict = data['final_verdict'] as String?;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Best For card
-      if (bestFor != null)
+      // Recommended product card
+      if (recommended != null || bestFor != null)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
               const Color(0xFF3B82F6).withValues(alpha: 0.12),
               const Color(0xFF06B6D4).withValues(alpha: 0.08)]),
-            borderRadius: BorderRadius.circular(12)),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('🎯', style: TextStyle(fontSize: 16)),
-            const SizedBox(width: 8),
-            Expanded(child: ExpandableText(bestFor, style: GoogleFonts.plusJakartaSans(
-              fontSize: 13, fontWeight: FontWeight.w600, color: context.textPrimary, height: 1.4))),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.2))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.recommend_rounded, color: Color(0xFF3B82F6), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Recommended', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6), letterSpacing: 0.5)),
+                if (recommended != null)
+                  Text(recommended, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+              ])),
+            ]),
+            if (bestFor != null && recommended != bestFor) ...[
+              const SizedBox(height: 8),
+              Text(bestFor, style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, color: context.textSecondary, height: 1.4)),
+            ],
           ]),
         ),
-      // Buy If
-      if (buyIf.isNotEmpty) ...[
+      // Match points (green)
+      if (matchPoints.isNotEmpty) ...[
         const SizedBox(height: 12),
-        ...buyIf.map((item) => Container(
+        ...matchPoints.map((item) => Container(
           margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10)),
           child: Row(children: [
-            const Text('✅', style: TextStyle(fontSize: 12)),
+            Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.scoreExcellent),
             const SizedBox(width: 8),
             Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
               fontSize: 12, color: context.textPrimary))),
           ]),
         )),
       ],
-      // Avoid If
-      if (avoidIf.isNotEmpty) ...[
+      // Caution points (amber)
+      if (cautionPoints.isNotEmpty) ...[
         const SizedBox(height: 8),
-        ...avoidIf.map((item) => Container(
+        ...cautionPoints.map((item) => Container(
           margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: AppTheme.error.withValues(alpha: 0.08),
+            color: AppTheme.warning.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10)),
           child: Row(children: [
-            const Text('⚠️', style: TextStyle(fontSize: 12)),
+            Icon(Icons.warning_amber_rounded, size: 16, color: AppTheme.warning),
             const SizedBox(width: 8),
             Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
               fontSize: 12, color: context.textPrimary))),
           ]),
         )),
       ],
-      // Per-product ratings
+      // Per-product star ratings
       if (perProduct.isNotEmpty) ...[
         const SizedBox(height: 12),
         ...perProduct.map((p) {
           final rating = (p['rating'] as num?)?.toInt() ?? 3;
           return Container(
             margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(12)),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(p['name'] as String? ?? '', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
                 if (p['ideal_user'] != null) ...[
                   const SizedBox(height: 2),
@@ -1680,7 +1845,7 @@ Return ONLY valid JSON:
               const SizedBox(width: 8),
               Row(children: List.generate(5, (i) => Icon(
                 i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                size: 16, color: i < rating ? const Color(0xFFFFD700) : context.textTertiaryColor))),
+                size: 18, color: i < rating ? const Color(0xFFFFD700) : context.textTertiaryColor))),
             ]),
           );
         }),
@@ -1689,16 +1854,16 @@ Return ONLY valid JSON:
       if (finalVerdict != null) ...[
         const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
               const Color(0xFF3B82F6).withValues(alpha: 0.08),
               const Color(0xFF06B6D4).withValues(alpha: 0.06)]),
-            borderRadius: BorderRadius.circular(10)),
+            borderRadius: BorderRadius.circular(12)),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('💡', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 8),
-            Expanded(child: ExpandableText(finalVerdict, style: GoogleFonts.plusJakartaSans(
+            Expanded(child: Text(finalVerdict, style: GoogleFonts.plusJakartaSans(
               fontSize: 12, height: 1.5, color: context.textPrimary))),
           ]),
         ),
@@ -1711,61 +1876,117 @@ Return ONLY valid JSON:
     final products = List<Map<String, dynamic>>.from(
       (data['products'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
     if (products.isEmpty) {
-      return Text(_predictionResult ?? 'No prediction available.',
-        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textSecondary));
+      return _buildAiError(() {
+        setState(() { _predictionError = false; _predictionLoading = true; _predictionResult = null; _predictionStructured = null; });
+        _fetchPrediction();
+      });
     }
 
     return Column(children: products.map((p) {
       final trend = (p['trend'] as String? ?? 'stable').toLowerCase();
       final changePercent = (p['change_percent'] as num?)?.toDouble() ?? 0;
-      final buyNow = p['buy_now'] as bool? ?? true;
+      final confidence = (p['confidence'] as num?)?.toDouble() ?? 0;
       final reason = p['reason'] as String? ?? '';
-      final bestTime = p['best_time'] as String? ?? '';
+      final bestTime = p['best_time_to_buy'] as String? ?? p['best_time'] as String? ?? '';
+      final buyNow = p['buy_now'] as bool? ?? (bestTime == 'now' || trend == 'dropping');
       final name = p['name'] as String? ?? '';
 
-      final trendIcon = trend == 'down' ? Icons.trending_down_rounded
-          : trend == 'up' ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
-      final trendColor = trend == 'down' ? AppTheme.scoreExcellent
-          : trend == 'up' ? AppTheme.error : AppTheme.warning;
+      final isDropping = trend == 'dropping' || trend == 'down';
+      final isRising = trend == 'rising' || trend == 'up';
+      final trendIcon = isDropping ? Icons.trending_down_rounded
+          : isRising ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
+      final trendColor = isDropping ? AppTheme.scoreExcellent
+          : isRising ? AppTheme.error : AppTheme.warning;
+      final trendLabel = isDropping ? 'Dropping' : isRising ? 'Rising' : 'Stable';
+
+      // Best time badge
+      String bestTimeLabel;
+      Color bestTimeColor;
+      if (bestTime == 'now' || buyNow) {
+        bestTimeLabel = '🛒 Buy Now';
+        bestTimeColor = AppTheme.scoreExcellent;
+      } else if (bestTime == 'wait_1_month') {
+        bestTimeLabel = '⏳ Wait 1 Month';
+        bestTimeColor = AppTheme.warning;
+      } else if (bestTime == 'wait_3_months') {
+        bestTimeLabel = '⏳ Wait 3 Months';
+        bestTimeColor = AppTheme.orange500;
+      } else {
+        bestTimeLabel = bestTime.isNotEmpty ? '📅 $bestTime' : '📅 Unknown';
+        bestTimeColor = AppTheme.warning;
+      }
 
       return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: context.surfaceElevatedColor,
-          borderRadius: BorderRadius.circular(12)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: trendColor.withValues(alpha: 0.15))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Product name + trend
           Row(children: [
             Expanded(child: Text(name, style: GoogleFonts.plusJakartaSans(
-              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+              fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
               maxLines: 1, overflow: TextOverflow.ellipsis)),
-            Icon(trendIcon, color: trendColor, size: 24),
-            const SizedBox(width: 4),
-            Text('${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: trendColor)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: trendColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(trendIcon, color: trendColor, size: 16),
+                const SizedBox(width: 4),
+                Text('${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: trendColor)),
+              ]),
+            ),
           ]),
           const SizedBox(height: 8),
+          // Trend label + best time badge
           Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: trendColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6)),
+              child: Text(trendLabel, style: GoogleFonts.plusJakartaSans(
+                fontSize: 11, fontWeight: FontWeight.w600, color: trendColor)),
+            ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: buyNow ? AppTheme.scoreExcellent.withValues(alpha: 0.15) : AppTheme.warning.withValues(alpha: 0.15),
+                color: bestTimeColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8)),
-              child: Text(buyNow ? '🛒 Buy Now' : '⏳ Wait',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12, fontWeight: FontWeight.w700,
-                  color: buyNow ? AppTheme.scoreExcellent : AppTheme.warning)),
+              child: Text(bestTimeLabel, style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, fontWeight: FontWeight.w700, color: bestTimeColor)),
             ),
-            if (bestTime.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              Expanded(child: Text('📅 $bestTime', style: GoogleFonts.plusJakartaSans(
-                fontSize: 11, color: context.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-            ],
           ]),
+          // Confidence bar
+          if (confidence > 0) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              Text('Confidence', style: GoogleFonts.plusJakartaSans(
+                fontSize: 10, fontWeight: FontWeight.w600, color: context.textTertiaryColor)),
+              const Spacer(),
+              Text('${confidence.toInt()}%', style: GoogleFonts.plusJakartaSans(
+                fontSize: 10, fontWeight: FontWeight.w800, color: _aiScoreColor(confidence))),
+            ]),
+            const SizedBox(height: 3),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: confidence / 100, minHeight: 5,
+                backgroundColor: context.dividerColor,
+                color: _aiScoreColor(confidence)),
+            ),
+          ],
+          // Reasoning
           if (reason.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            ExpandableText(reason, style: GoogleFonts.plusJakartaSans(
-              fontSize: 11, color: context.textSecondary, height: 1.4)),
+            const SizedBox(height: 8),
+            Text(reason, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, color: context.textSecondary, height: 1.4)),
           ],
         ]),
       );
@@ -2739,7 +2960,7 @@ Return ONLY valid JSON:
   }
 
   Widget _buildProTab() {
-    _prefetchAllAi();
+    // RULE 1: No auto-fetch. All AI calls are lazy — triggered only when user taps a card.
 
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
@@ -3103,52 +3324,15 @@ Return ONLY valid JSON:
             const SizedBox(height: 14),
             _buildAiShimmer(),
           ]
-          // Structured content widget
+          // Structured content widget (the ONLY content display path)
           else if (isExpanded && contentWidget != null) ...[
             const SizedBox(height: 14),
             GestureDetector(onTap: () {}, child: contentWidget),
           ]
-          // Fallback raw text via MarkdownBody
-          else if (isExpanded && content != null) ...[
+          // No data yet and not loading — idle state (card just opened, fetch will start)
+          else if (isExpanded && content == null && !isLoading && !isError) ...[
             const SizedBox(height: 14),
-            GestureDetector(onTap: () {}, child: MarkdownBody(
-                data: content,
-                selectable: true,
-                styleSheet: MarkdownStyleSheet(
-                  p: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, height: 1.6,
-                    color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
-                  strong: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : context.textPrimary),
-                  em: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, fontStyle: FontStyle.italic,
-                    color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
-                  h1: GoogleFonts.plusJakartaSans(
-                    fontSize: 16, fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : context.textPrimary),
-                  h2: GoogleFonts.plusJakartaSans(
-                    fontSize: 15, fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : context.textPrimary),
-                  h3: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w700,
-                    color: gradient[0]),
-                  listBullet: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, color: gradient[0]),
-                  listIndent: 16,
-                  blockSpacing: 8,
-                  h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
-                  h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
-                  h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
-                  pPadding: const EdgeInsets.symmetric(vertical: 2),
-                  blockquoteDecoration: BoxDecoration(
-                    color: gradient[0].withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border(left: BorderSide(color: gradient[0], width: 3)),
-                  ),
-                  blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              )),
+            _buildAiShimmer(),
           ],
         ],
       ),
