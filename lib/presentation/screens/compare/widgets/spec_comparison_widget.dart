@@ -1528,10 +1528,6 @@ Return ONLY valid JSON:
           ),
           const SizedBox(height: 12),
 
-          // Sticky product name header row
-          _buildProductNameHeader(theme, productCount),
-          const SizedBox(height: 8),
-
           // Spec rows
           for (int i = 0; i < specs.length; i++) ...[
             if (i > 0) const SizedBox(height: 5),
@@ -1539,55 +1535,6 @@ Return ONLY valid JSON:
           ],
         ],
       ),
-    );
-  }
-
-  /// Product name header row — always visible at top
-  Widget _buildProductNameHeader(ThemeData theme, int productCount) {
-    final colors = [
-      const Color(0xFF3B82F6),
-      const Color(0xFFF97316),
-      const Color(0xFF8B5CF6),
-      const Color(0xFF10B981),
-    ];
-    // Unified layout for all product counts
-    return Row(
-      children: List.generate(productCount, (i) {
-        final p = widget.products[i];
-        final maxLen = productCount <= 2 ? 18 : 14;
-        final cutLen = productCount <= 2 ? 16 : 12;
-        final shortName = p.name.length > maxLen ? '${p.name.substring(0, cutLen)}…' : p.name;
-        return Expanded(
-          child: Tooltip(
-            message: p.name,
-            preferBelow: false,
-            decoration: BoxDecoration(
-              color: colors[i].withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(8)),
-            textStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 3),
-              decoration: BoxDecoration(
-                color: colors[i].withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: colors[i].withValues(alpha: 0.2)),
-              ),
-              child: Text(
-                shortName,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: productCount <= 2 ? 10 : 9,
-                  fontWeight: FontWeight.w700,
-                  color: colors[i]),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        );
-      }),
     );
   }
 
@@ -2314,11 +2261,16 @@ Return ONLY valid JSON:
                 )),
               ]),
               const SizedBox(height: 10),
-              _CompareSimilarGrid(
-                category: category,
-                excludeIds: excludeIds,
-                excludeVariantGroups: excludeVariantGroups,
-                refScore: avgScore,
+              // Similar products grid placeholder
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'No similar products found',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13, color: context.textTertiaryColor),
+                  ),
+                ),
               ),
             ],
           ),
@@ -2397,9 +2349,6 @@ Return ONLY valid JSON:
           contentWidget: _predictionStructured != null ? _buildPredictionVisual() : null,
           onTap: _togglePrediction,
         ),
-        const SizedBox(height: 14),
-        // 7. Benchmark comparison — fetched on expand only
-        _CompareBenchmarkSection(products: widget.products),
       ],
     );
   }
@@ -2706,24 +2655,14 @@ Return ONLY valid JSON:
     );
   }
 
+  /// Generate composite document key for comparison reviews
+  String _comparisonReviewDocKey() {
+    final ids = widget.products.map((p) => p.id).toList()..sort();
+    return ids.join('_');
+  }
+
   Widget _buildUserReviewsSection() {
-    // Aggregate reviews from all compared products
-    final allReviewFutures = widget.products.map(
-        (p) => ref.watch(productReviewsProvider(p.id)));
-
-    final allReviews = <ReviewModel>[];
-    bool isLoading = false;
-    for (final asyncVal in allReviewFutures) {
-      asyncVal.when(
-        data: (reviews) => allReviews.addAll(reviews),
-        loading: () => isLoading = true,
-        error: (_, __) {},
-      );
-    }
-    allReviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    final avgRating = allReviews.isEmpty ? 0.0
-        : allReviews.map((r) => r.rating).reduce((a, b) => a + b) / allReviews.length;
+    final docKey = _comparisonReviewDocKey();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2755,24 +2694,6 @@ Return ONLY valid JSON:
                 style: GoogleFonts.plusJakartaSans(fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: context.textPrimary))),
-            if (allReviews.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppTheme.amber500.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.star_rounded, size: 14, color: AppTheme.amber500),
-                  const SizedBox(width: 3),
-                  Text(avgRating.toStringAsFixed(1),
-                      style: GoogleFonts.plusJakartaSans(fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.amber500)),
-                  Text(' (${allReviews.length})',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11,
-                          color: context.textTertiaryColor)),
-                ]),
-              ),
           ]),
           const SizedBox(height: 14),
 
@@ -2796,40 +2717,68 @@ Return ONLY valid JSON:
           ),
           const SizedBox(height: 14),
 
-          if (isLoading)
-            const Center(child: Padding(
-              padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue)))
-          else if (allReviews.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(12)),
-              child: Column(children: [
-                Icon(Icons.rate_review_outlined, size: 32, color: context.textTertiaryColor),
-                const SizedBox(height: 8),
-                Text(context.l10n?.noReviewsYet ?? 'No reviews yet',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14,
-                        fontWeight: FontWeight.w600, color: context.textPrimary)),
-                const SizedBox(height: 4),
-                Text(context.l10n?.beFirstToReview ?? 'Be the first to share your thoughts!',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12,
-                        color: context.textTertiaryColor)),
-              ]),
-            )
-          else
-            ...allReviews.take(5).map((review) => _buildReviewItem(review)),
+          // Real-time review stream from comparison_reviews collection
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('comparison_reviews')
+                .where('docKey', isEqualTo: docKey)
+                .orderBy('timestamp', descending: true)
+                .limit(20)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.brandBlue)));
+              }
+              if (snapshot.hasError) {
+                return _buildEmptyReviews();
+              }
+              final docs = snapshot.data?.docs ?? [];
+              if (docs.isEmpty) {
+                return _buildEmptyReviews();
+              }
+              return Column(
+                children: docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return _buildComparisonReviewItem(data);
+                }).toList(),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildReviewItem(ReviewModel review) {
-    final rating = review.rating.round().clamp(1, 5);
-    final ratingColor = rating >= 4 ? AppTheme.scoreExcellent
-        : rating >= 3 ? AppTheme.scoreAverage : AppTheme.error;
+  Widget _buildEmptyReviews() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(12)),
+      child: Column(children: [
+        Icon(Icons.rate_review_outlined, size: 32, color: context.textTertiaryColor),
+        const SizedBox(height: 8),
+        Text(context.l10n?.noReviewsYet ?? 'No reviews yet',
+            style: GoogleFonts.plusJakartaSans(fontSize: 14,
+                fontWeight: FontWeight.w600, color: context.textPrimary)),
+        const SizedBox(height: 4),
+        Text(context.l10n?.beFirstToReview ?? 'Be the first to share your thoughts!',
+            style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                color: context.textTertiaryColor)),
+      ]),
+    );
+  }
+
+  Widget _buildComparisonReviewItem(Map<String, dynamic> data) {
+    final userId = data['userId'] as String? ?? 'anonymous';
+    final reviewText = data['reviewText'] as String? ?? '';
+    final timestamp = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final isAnonymous = userId == 'anonymous';
+    final displayChar = isAnonymous ? 'A' : userId.substring(0, 1).toUpperCase();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -2845,25 +2794,22 @@ Return ONLY valid JSON:
             CircleAvatar(
               radius: 14,
               backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
-              child: Text(review.userId.substring(0, 1).toUpperCase(),
+              child: Text(displayChar,
                   style: GoogleFonts.plusJakartaSans(fontSize: 11,
                       fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
             ),
             const SizedBox(width: 8),
-            // Star rating
-            ...List.generate(5, (i) => Icon(
-              i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-              size: 14, color: i < rating ? ratingColor : context.textTertiaryColor,
-            )),
+            Text(isAnonymous ? 'Anonymous' : userId.length > 10 ? '${userId.substring(0, 10)}…' : userId,
+                style: GoogleFonts.plusJakartaSans(fontSize: 12,
+                    fontWeight: FontWeight.w600, color: context.textPrimary)),
             const Spacer(),
-            Text(_timeAgo(review.createdAt),
+            Text(_timeAgo(timestamp),
                 style: GoogleFonts.plusJakartaSans(fontSize: 11,
                     color: context.textTertiaryColor)),
           ]),
-          if (review.text.isNotEmpty) ...[
+          if (reviewText.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(review.text,
-              maxLines: 4, overflow: TextOverflow.ellipsis,
+            Text(reviewText,
               style: GoogleFonts.plusJakartaSans(fontSize: 13,
                   height: 1.5, color: context.textSecondary)),
           ],
@@ -2883,13 +2829,7 @@ Return ONLY valid JSON:
 
   void _showWriteReviewSheet(BuildContext ctx) {
     final user = ref.read(userProfileProvider).valueOrNull;
-    if (user == null) {
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-        content: Text(context.l10n?.signInToReview ?? 'Please sign in to write a review'),
-        behavior: SnackBarBehavior.floating));
-      return;
-    }
-
+    final userId = user?.uid ?? 'anonymous';
     final textController = TextEditingController();
 
     showDialog(
@@ -2898,6 +2838,7 @@ Return ONLY valid JSON:
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) {
           final theme = Theme.of(dialogCtx);
+          final hasText = textController.text.trim().isNotEmpty;
           return Dialog(
             backgroundColor: theme.colorScheme.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -2906,7 +2847,7 @@ Return ONLY valid JSON:
               padding: const EdgeInsets.all(24),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 // Title
-                Text(context.l10n?.writeAReview ?? 'Write a Review',
+                Text(context.l10n?.writeAReview ?? 'Yorum Yaz',
                     style: GoogleFonts.plusJakartaSans(fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.onSurface)),
@@ -2927,7 +2868,7 @@ Return ONLY valid JSON:
                   style: GoogleFonts.plusJakartaSans(fontSize: 14,
                       color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: context.l10n?.shareYourExperience ?? 'Share your experience (optional)',
+                    hintText: context.l10n?.shareYourExperience ?? 'Deneyiminizi paylaşın...',
                     hintStyle: GoogleFonts.plusJakartaSans(
                         fontSize: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
                     filled: true,
@@ -2947,7 +2888,7 @@ Return ONLY valid JSON:
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12)),
-                        child: Center(child: Text(context.l10n?.cancel ?? 'Cancel',
+                        child: Center(child: Text(context.l10n?.cancel ?? 'İptal',
                             style: GoogleFonts.plusJakartaSans(fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7)))),
@@ -2957,44 +2898,42 @@ Return ONLY valid JSON:
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: textController.text.trim().isNotEmpty ? () async {
+                      onTap: hasText ? () async {
                         HapticFeedback.mediumImpact();
-                        final review = ReviewModel(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          userId: user.uid,
-                          productId: widget.products.first.id,
-                          rating: 0.0,
-                          text: textController.text.trim(),
-                          helpful: 0,
-                          reported: false,
-                          createdAt: DateTime.now(),
-                        );
-                        final repo = ref.read(productRepositoryProvider);
-                        final result = await repo.addReview(review);
-                        result.when(
-                          success: (_) {
-                            ref.invalidate(productReviewsProvider(widget.products.first.id));
-                            Navigator.of(dialogCtx).pop();
+                        try {
+                          final docKey = _comparisonReviewDocKey();
+                          final productIds = widget.products.map((p) => p.id).toList()..sort();
+                          await FirebaseFirestore.instance
+                              .collection('comparison_reviews')
+                              .add({
+                            'docKey': docKey,
+                            'userId': userId,
+                            'reviewText': textController.text.trim(),
+                            'timestamp': FieldValue.serverTimestamp(),
+                            'productIds': productIds,
+                          });
+                          if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+                          if (ctx.mounted) {
                             ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                              content: Text(context.l10n?.reviewSubmitted ?? 'Review submitted! ⭐',
+                              content: Text(context.l10n?.reviewSubmitted ?? 'Yorum gönderildi! ✨',
                                   style: GoogleFonts.plusJakartaSans(fontSize: 13)),
                               behavior: SnackBarBehavior.floating));
-                          },
-                          failure: (e) {
+                          }
+                        } catch (e) {
+                          if (ctx.mounted) {
                             ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                              content: Text(context.l10n?.failedToSubmit('$e') ?? 'Failed to submit: $e'),
+                              content: Text('Yorum gönderilemedi: $e'),
                               behavior: SnackBarBehavior.floating));
-                          },
-                        );
+                          }
+                        }
                       } : null,
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          gradient: textController.text.trim().isNotEmpty ? _accentGradient : null,
-                          color: textController.text.trim().isNotEmpty
-                              ? null : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                          gradient: hasText ? _accentGradient : null,
+                          color: hasText ? null : theme.colorScheme.onSurface.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12)),
-                        child: Center(child: Text(context.l10n?.submitReview ?? 'Submit',
+                        child: Center(child: Text(context.l10n?.submitReview ?? 'Gönder',
                             style: GoogleFonts.plusJakartaSans(fontSize: 14,
                                 fontWeight: FontWeight.w700, color: Colors.white))),
                       ),

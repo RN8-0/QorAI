@@ -116,6 +116,13 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // ─── Comparison Reviews (public read, anyone can create) ───
+    match /comparison_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
     // ─── Affiliate Clicks Collection ───
     match /affiliate_clicks/{clickId} {
       allow create: if isSignedIn();

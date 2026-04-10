@@ -171,6 +171,14 @@
         { "fieldPath": "category", "order": "ASCENDING" },
         { "fieldPath": "viewCount", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "comparison_reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "docKey", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
