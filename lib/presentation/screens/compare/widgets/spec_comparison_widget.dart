@@ -202,8 +202,29 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       final jsonStart = clean.indexOf('{');
       final jsonEnd = clean.lastIndexOf('}');
       if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
-      return jsonDecode(clean) as Map<String, dynamic>?;
-    } catch (_) {
+      final decoded = jsonDecode(clean);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return null;
+    } catch (e) {
+      debugPrint('[Compair] _tryParseJson failed: $e | raw snippet: ${raw.length > 200 ? raw.substring(0, 200) : raw}');
+      return null;
+    }
+  }
+
+  /// Parse JSON array from AI response
+  List<dynamic>? _tryParseJsonArray(String raw) {
+    try {
+      var clean = raw.trim();
+      final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
+      if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
+      final arrStart = clean.indexOf('[');
+      final arrEnd = clean.lastIndexOf(']');
+      if (arrStart >= 0 && arrEnd > arrStart) clean = clean.substring(arrStart, arrEnd + 1);
+      final decoded = jsonDecode(clean);
+      if (decoded is List) return decoded;
+      return null;
+    } catch (e) {
+      debugPrint('[Compair] _tryParseJsonArray failed: $e');
       return null;
     }
   }
@@ -230,17 +251,23 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       // Check Firestore cache first
       final cached = await _loadAiCache('deep_analysis');
       if (cached != null && cached['result'] != null) {
+        final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
             ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cached['result'] as String);
-        if (mounted) setState(() {
-          _deepAnalysisResult = cached['result'] as String;
-          _deepAnalysisStructured = parsed;
-          _deepAnalysisLoading = false;
-        });
-        _saveToSession();
-        debugPrint('[Compair] ⏱ Deep Analysis from cache: ${sw.elapsedMilliseconds}ms');
-        return;
+            : _tryParseJson(cacheResult);
+        if (parsed == null) {
+          // Stale/unparseable cache — clear and re-fetch
+          debugPrint('[Compair] Deep Analysis cache unparseable — re-fetching');
+        } else {
+          if (mounted) setState(() {
+            _deepAnalysisResult = cacheResult;
+            _deepAnalysisStructured = parsed;
+            _deepAnalysisLoading = false;
+          });
+          _saveToSession();
+          debugPrint('[Compair] ⏱ Deep Analysis from cache: ${sw.elapsedMilliseconds}ms');
+          return;
+        }
       }
 
       final gemini = ref.read(geminiServiceProvider);
@@ -291,16 +318,24 @@ Return ONLY valid JSON:
 
       if (mounted) {
         final parsed = _tryParseJson(result);
-        setState(() {
-          _deepAnalysisResult = result;
-          _deepAnalysisStructured = parsed;
-          _deepAnalysisLoading = false;
-        });
-        _saveToSession();
-        _saveAiCache('deep_analysis', {
-          'result': result,
-          if (parsed != null) 'structured': parsed,
-        });
+        if (parsed == null) {
+          debugPrint('[Compair] Deep Analysis parse FAILED — showing error');
+          setState(() {
+            _deepAnalysisError = true;
+            _deepAnalysisLoading = false;
+          });
+        } else {
+          setState(() {
+            _deepAnalysisResult = result;
+            _deepAnalysisStructured = parsed;
+            _deepAnalysisLoading = false;
+          });
+          _saveToSession();
+          _saveAiCache('deep_analysis', {
+            'result': result,
+            'structured': parsed,
+          });
+        }
       }
       debugPrint('[Compair] ⏱ Deep Analysis from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
@@ -333,17 +368,22 @@ Return ONLY valid JSON:
     try {
       final cached = await _loadAiCache('quick_verdict');
       if (cached != null && cached['result'] != null) {
+        final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
             ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cached['result'] as String);
-        if (mounted) setState(() {
-          _quickVerdictResult = cached['result'] as String;
-          _quickVerdictStructured = parsed;
-          _quickVerdictLoading = false;
-        });
-        _saveToSession();
-        debugPrint('[Compair] ⏱ Quick Verdict from cache: ${sw.elapsedMilliseconds}ms');
-        return;
+            : _tryParseJson(cacheResult);
+        if (parsed == null) {
+          debugPrint('[Compair] Quick Verdict cache unparseable — re-fetching');
+        } else {
+          if (mounted) setState(() {
+            _quickVerdictResult = cacheResult;
+            _quickVerdictStructured = parsed;
+            _quickVerdictLoading = false;
+          });
+          _saveToSession();
+          debugPrint('[Compair] ⏱ Quick Verdict from cache: ${sw.elapsedMilliseconds}ms');
+          return;
+        }
       }
 
       final gemini = ref.read(geminiServiceProvider);
@@ -383,16 +423,24 @@ Return ONLY valid JSON, no markdown, no explanation:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
-        setState(() {
-          _quickVerdictResult = result;
-          _quickVerdictStructured = parsed;
-          _quickVerdictLoading = false;
-        });
-        _saveToSession();
-        _saveAiCache('quick_verdict', {
-          'result': result,
-          if (parsed != null) 'structured': parsed,
-        });
+        if (parsed == null) {
+          debugPrint('[Compair] Quick Verdict parse FAILED — showing error');
+          setState(() {
+            _quickVerdictError = true;
+            _quickVerdictLoading = false;
+          });
+        } else {
+          setState(() {
+            _quickVerdictResult = result;
+            _quickVerdictStructured = parsed;
+            _quickVerdictLoading = false;
+          });
+          _saveToSession();
+          _saveAiCache('quick_verdict', {
+            'result': result,
+            'structured': parsed,
+          });
+        }
       }
       debugPrint('[Compair] ⏱ Quick Verdict from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
@@ -426,17 +474,22 @@ Return ONLY valid JSON, no markdown, no explanation:
       // Check Firestore cache first
       final cached = await _loadAiCache('alternatives');
       if (cached != null && cached['result'] != null) {
+        final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
             ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cached['result'] as String);
-        if (mounted) setState(() {
-          _alternativesResult = cached['result'] as String;
-          _alternativesStructured = parsed;
-          _alternativesLoading = false;
-        });
-        _saveToSession();
-        debugPrint('[Compair] ⏱ Alternatives from cache: ${sw.elapsedMilliseconds}ms');
-        return;
+            : _tryParseJson(cacheResult);
+        if (parsed == null) {
+          debugPrint('[Compair] Alternatives cache unparseable — re-fetching');
+        } else {
+          if (mounted) setState(() {
+            _alternativesResult = cacheResult;
+            _alternativesStructured = parsed;
+            _alternativesLoading = false;
+          });
+          _saveToSession();
+          debugPrint('[Compair] ⏱ Alternatives from cache: ${sw.elapsedMilliseconds}ms');
+          return;
+        }
       }
 
       final gemini = ref.read(geminiServiceProvider);
@@ -471,16 +524,24 @@ Return ONLY valid JSON:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
-        setState(() {
-          _alternativesResult = result;
-          _alternativesStructured = parsed;
-          _alternativesLoading = false;
-        });
-        _saveToSession();
-        _saveAiCache('alternatives', {
-          'result': result,
-          if (parsed != null) 'structured': parsed,
-        });
+        if (parsed == null) {
+          debugPrint('[Compair] Alternatives parse FAILED — showing error');
+          setState(() {
+            _alternativesError = true;
+            _alternativesLoading = false;
+          });
+        } else {
+          setState(() {
+            _alternativesResult = result;
+            _alternativesStructured = parsed;
+            _alternativesLoading = false;
+          });
+          _saveToSession();
+          _saveAiCache('alternatives', {
+            'result': result,
+            'structured': parsed,
+          });
+        }
       }
       debugPrint('[Compair] ⏱ Alternatives from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
@@ -514,17 +575,22 @@ Return ONLY valid JSON:
       // Check Firestore cache first
       final cached = await _loadAiCache('advisor');
       if (cached != null && cached['result'] != null) {
+        final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
             ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cached['result'] as String);
-        if (mounted) setState(() {
-          _advisorResult = cached['result'] as String;
-          _advisorStructured = parsed;
-          _advisorLoading = false;
-        });
-        _saveToSession();
-        debugPrint('[Compair] ⏱ Advisor from cache: ${sw.elapsedMilliseconds}ms');
-        return;
+            : _tryParseJson(cacheResult);
+        if (parsed == null) {
+          debugPrint('[Compair] Advisor cache unparseable — re-fetching');
+        } else {
+          if (mounted) setState(() {
+            _advisorResult = cacheResult;
+            _advisorStructured = parsed;
+            _advisorLoading = false;
+          });
+          _saveToSession();
+          debugPrint('[Compair] ⏱ Advisor from cache: ${sw.elapsedMilliseconds}ms');
+          return;
+        }
       }
 
       final gemini = ref.read(geminiServiceProvider);
@@ -566,16 +632,24 @@ Return ONLY valid JSON:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
-        setState(() {
-          _advisorResult = result;
-          _advisorStructured = parsed;
-          _advisorLoading = false;
-        });
-        _saveToSession();
-        _saveAiCache('advisor', {
-          'result': result,
-          if (parsed != null) 'structured': parsed,
-        });
+        if (parsed == null) {
+          debugPrint('[Compair] Advisor parse FAILED — showing error');
+          setState(() {
+            _advisorError = true;
+            _advisorLoading = false;
+          });
+        } else {
+          setState(() {
+            _advisorResult = result;
+            _advisorStructured = parsed;
+            _advisorLoading = false;
+          });
+          _saveToSession();
+          _saveAiCache('advisor', {
+            'result': result,
+            'structured': parsed,
+          });
+        }
       }
       debugPrint('[Compair] ⏱ Advisor from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
@@ -609,17 +683,22 @@ Return ONLY valid JSON:
       // Check Firestore cache first
       final cached = await _loadAiCache('prediction');
       if (cached != null && cached['result'] != null) {
+        final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
             ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cached['result'] as String);
-        if (mounted) setState(() {
-          _predictionResult = cached['result'] as String;
-          _predictionStructured = parsed;
-          _predictionLoading = false;
-        });
-        _saveToSession();
-        debugPrint('[Compair] ⏱ Prediction from cache: ${sw.elapsedMilliseconds}ms');
-        return;
+            : _tryParseJson(cacheResult);
+        if (parsed == null) {
+          debugPrint('[Compair] Prediction cache unparseable — re-fetching');
+        } else {
+          if (mounted) setState(() {
+            _predictionResult = cacheResult;
+            _predictionStructured = parsed;
+            _predictionLoading = false;
+          });
+          _saveToSession();
+          debugPrint('[Compair] ⏱ Prediction from cache: ${sw.elapsedMilliseconds}ms');
+          return;
+        }
       }
 
       final gemini = ref.read(geminiServiceProvider);
@@ -658,16 +737,24 @@ Return ONLY valid JSON:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
-        setState(() {
-          _predictionResult = result;
-          _predictionStructured = parsed;
-          _predictionLoading = false;
-        });
-        _saveToSession();
-        _saveAiCache('prediction', {
-          'result': result,
-          if (parsed != null) 'structured': parsed,
-        });
+        if (parsed == null) {
+          debugPrint('[Compair] Prediction parse FAILED — showing error');
+          setState(() {
+            _predictionError = true;
+            _predictionLoading = false;
+          });
+        } else {
+          setState(() {
+            _predictionResult = result;
+            _predictionStructured = parsed;
+            _predictionLoading = false;
+          });
+          _saveToSession();
+          _saveAiCache('prediction', {
+            'result': result,
+            'structured': parsed,
+          });
+        }
       }
       debugPrint('[Compair] ⏱ Prediction from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
@@ -2157,8 +2244,8 @@ Return ONLY valid JSON:
           Container(
             color: context.surfaceColor,
             child: TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
+              isScrollable: false,
+              tabAlignment: TabAlignment.fill,
               labelColor: Theme.of(context).colorScheme.primary,
               unselectedLabelColor: context.textTertiaryColor,
               indicatorSize: TabBarIndicatorSize.tab,
