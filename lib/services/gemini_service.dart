@@ -333,7 +333,7 @@ class GeminiService implements AIService {
 
   /// JSON-enforced free text query — returns a clean JSON string (no markdown wrapping).
   /// Use this when the prompt requests a JSON response structure.
-  Future<String> jsonFreeTextQuery(String prompt, {String? language}) async {
+  Future<String> jsonFreeTextQuery(String prompt, {String? language, int maxTokens = 2048}) async {
     final langCode = language ?? 'en';
     final langName = _languageName(langCode);
     final systemText = langCode != 'en'
@@ -354,7 +354,7 @@ class GeminiService implements AIService {
       },
       'generationConfig': {
         'temperature': 0.3,
-        'maxOutputTokens': 4096,
+        'maxOutputTokens': maxTokens,
         'responseMimeType': 'application/json',
       },
     };
@@ -362,7 +362,7 @@ class GeminiService implements AIService {
   }
 
   /// Query Gemini with Google Search grounding for real-time factual data.
-  Future<String> groundedQuery(String prompt) async {
+  Future<String> groundedQuery(String prompt, {int maxTokens = 2048}) async {
     final body = {
       'contents': [
         {
@@ -376,7 +376,7 @@ class GeminiService implements AIService {
       ],
       'generationConfig': {
         'temperature': 0.1,
-        'maxOutputTokens': 2048,
+        'maxOutputTokens': maxTokens,
       },
     };
     // Grounded queries with web search need more time — use 90s timeout

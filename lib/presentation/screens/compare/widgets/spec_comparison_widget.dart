@@ -46,6 +46,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _matchScoreExpanded = false;
   bool _matchScoreFetched = false;
 
+  // Prefetch tracking
+  bool _aiPrefetchStarted = false;
+
   // Floating YouTube player overlay
   OverlayEntry? _pipOverlay;
 
@@ -91,6 +94,74 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     _restoreFromSession();
   }
 
+  /// Cache key for Firestore AI result cache
+  String get _aiCacheDocId {
+    final ids = widget.products.map((p) => p.id).toList()..sort();
+    return ids.join('_');
+  }
+
+  /// Try to load a cached AI result from Firestore
+  Future<Map<String, dynamic>?> _loadAiCache(String feature) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('ai_compare_cache')
+          .doc(_aiCacheDocId)
+          .collection('features')
+          .doc(feature)
+          .get();
+      if (!doc.exists) return null;
+      final data = doc.data()!;
+      final ts = data['timestamp'] as Timestamp?;
+      if (ts == null) return null;
+      // 24h TTL
+      if (DateTime.now().difference(ts.toDate()).inHours > 24) return null;
+      debugPrint('[Compair] ✅ Cache HIT for $feature');
+      return data;
+    } catch (e) {
+      debugPrint('[Compair] Cache read error ($feature): $e');
+      return null;
+    }
+  }
+
+  /// Save an AI result to Firestore cache
+  Future<void> _saveAiCache(String feature, Map<String, dynamic> data) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('ai_compare_cache')
+          .doc(_aiCacheDocId)
+          .collection('features')
+          .doc(feature)
+          .set({...data, 'timestamp': FieldValue.serverTimestamp()});
+    } catch (e) {
+      debugPrint('[Compair] Cache write error ($feature): $e');
+    }
+  }
+
+  /// Pre-fetch ALL AI features in parallel when Premium tab is first visited
+  void _prefetchAllAi() {
+    if (_aiPrefetchStarted) return;
+    // Don't prefetch if session already has results
+    if (_quickVerdictResult != null && _deepAnalysisResult != null) return;
+    _aiPrefetchStarted = true;
+    debugPrint('[Compair] 🚀 Pre-fetching all AI features in parallel');
+
+    // Set loading states so spinners show when cards are expanded
+    setState(() {
+      if (_quickVerdictResult == null) _quickVerdictLoading = true;
+      if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _deepAnalysisLoading = true;
+      if (_alternativesResult == null && _alternativesStructured == null) _alternativesLoading = true;
+      if (_advisorResult == null && _advisorStructured == null) _advisorLoading = true;
+      if (_predictionResult == null && _predictionStructured == null) _predictionLoading = true;
+    });
+
+    // Fire all in parallel — each updates its own state independently
+    if (_quickVerdictResult == null) _fetchQuickVerdict();
+    if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _fetchDeepAnalysis();
+    if (_alternativesResult == null && _alternativesStructured == null) _fetchAlternatives();
+    if (_advisorResult == null && _advisorStructured == null) _fetchAdvisor();
+    if (_predictionResult == null && _predictionStructured == null) _fetchPrediction();
+  }
+
   /// Restore AI analysis results from session (survives navigation)
   void _restoreFromSession() {
     final session = ref.read(compareSessionProvider);
@@ -124,6 +195,21 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     ));
   }
 
+  /// Parse JSON from AI response, handling markdown code blocks
+  Map<String, dynamic>? _tryParseJson(String raw) {
+    try {
+      var clean = raw.trim();
+      final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
+      if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
+      final jsonStart = clean.indexOf('{');
+      final jsonEnd = clean.lastIndexOf('}');
+      if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
+      return jsonDecode(clean) as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _toggleDeepAnalysis() async {
     if (_deepAnalysisExpanded && (_deepAnalysisResult != null || _deepAnalysisStructured != null)) {
       setState(() => _deepAnalysisExpanded = false);
@@ -134,8 +220,31 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (_deepAnalysisResult != null || _deepAnalysisStructured != null) return;
       _deepAnalysisLoading = true;
     });
+    if (_deepAnalysisResult == null && _deepAnalysisStructured == null) {
+      await _fetchDeepAnalysis();
+    }
+  }
+
+  Future<void> _fetchDeepAnalysis() async {
     if (_deepAnalysisResult != null || _deepAnalysisStructured != null) return;
+    final sw = Stopwatch()..start();
     try {
+      // Check Firestore cache first
+      final cached = await _loadAiCache('deep_analysis');
+      if (cached != null && cached['result'] != null) {
+        final parsed = cached['structured'] != null
+            ? Map<String, dynamic>.from(cached['structured'] as Map)
+            : _tryParseJson(cached['result'] as String);
+        if (mounted) setState(() {
+          _deepAnalysisResult = cached['result'] as String;
+          _deepAnalysisStructured = parsed;
+          _deepAnalysisLoading = false;
+        });
+        _saveToSession();
+        debugPrint('[Compair] ⏱ Deep Analysis from cache: ${sw.elapsedMilliseconds}ms');
+        return;
+      }
+
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
@@ -144,8 +253,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         final keySpecs = p.keySpecs.entries.take(10).map((e) => '${e.key}: ${e.value}').join(', ');
         return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
       }).join('\n');
-
-      debugPrint('[Compair] Deep Analysis starting for: $productNames');
 
       final prompt = '''You are a senior tech analyst. Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
 $productNames
@@ -175,39 +282,31 @@ Return ONLY valid JSON:
   "recommendation": "3-4 sentence personalized recommendation addressing you directly"
 }''';
 
-      // Try JSON mode first, fallback to plain text on failure
+      debugPrint('[Compair] Deep Analysis starting for: $productNames');
       String result;
       try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
-        debugPrint('[Compair] Deep Analysis JSON query succeeded (${result.length} chars)');
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 2048);
       } catch (jsonErr) {
-        debugPrint('[Compair] Deep Analysis JSON query failed: $jsonErr — retrying as plain text');
-        result = await gemini.groundedQuery(prompt);
-        debugPrint('[Compair] Deep Analysis grounded query succeeded (${result.length} chars)');
+        debugPrint('[Compair] Deep Analysis JSON failed: $jsonErr — fallback');
+        result = await gemini.groundedQuery(prompt, maxTokens: 2048);
       }
 
       if (mounted) {
-        Map<String, dynamic>? parsed;
-        try {
-          var clean = result.trim();
-          final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
-          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
-          final jsonStart = clean.indexOf('{');
-          final jsonEnd = clean.lastIndexOf('}');
-          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
-          parsed = jsonDecode(clean) as Map<String, dynamic>?;
-        } catch (_) {
-          debugPrint('[Compair] Deep Analysis JSON parse failed, using raw text');
-        }
+        final parsed = _tryParseJson(result);
         setState(() {
           _deepAnalysisResult = result;
           _deepAnalysisStructured = parsed;
           _deepAnalysisLoading = false;
         });
         _saveToSession();
+        _saveAiCache('deep_analysis', {
+          'result': result,
+          if (parsed != null) 'structured': parsed,
+        });
       }
+      debugPrint('[Compair] ⏱ Deep Analysis from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
-      debugPrint('[Compair] Deep Analysis FAILED completely: $e\n$st');
+      debugPrint('[Compair] Deep Analysis FAILED: $e\n$st');
       if (mounted) setState(() {
         _deepAnalysisResult = 'Unable to generate analysis. Please try again.';
         _deepAnalysisLoading = false;
@@ -225,8 +324,27 @@ Return ONLY valid JSON:
       if (_quickVerdictResult != null) return;
       _quickVerdictLoading = true;
     });
+    if (_quickVerdictResult == null) {
+      await _fetchQuickVerdict();
+    }
+  }
+
+  Future<void> _fetchQuickVerdict() async {
     if (_quickVerdictResult != null) return;
+    final sw = Stopwatch()..start();
     try {
+      // Check Firestore cache first
+      final cached = await _loadAiCache('quick_verdict');
+      if (cached != null && cached['result'] != null) {
+        if (mounted) setState(() {
+          _quickVerdictResult = cached['result'] as String;
+          _quickVerdictLoading = false;
+        });
+        _saveToSession();
+        debugPrint('[Compair] ⏱ Quick Verdict from cache: ${sw.elapsedMilliseconds}ms');
+        return;
+      }
+
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
@@ -240,6 +358,7 @@ Answer in $langName in EXACTLY 2-3 sentences:
 1. Which product you should buy and the #1 reason why
 2. When the other product(s) might be better for you
 Keep it punchy and actionable. No hedging.''',
+        maxTokens: 512,
       );
       if (mounted) {
         setState(() {
@@ -247,7 +366,9 @@ Keep it punchy and actionable. No hedging.''',
           _quickVerdictLoading = false;
         });
         _saveToSession();
+        _saveAiCache('quick_verdict', {'result': _quickVerdictResult!});
       }
+      debugPrint('[Compair] ⏱ Quick Verdict from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
       if (mounted) setState(() {
@@ -267,8 +388,31 @@ Keep it punchy and actionable. No hedging.''',
       if (_alternativesResult != null || _alternativesStructured != null) return;
       _alternativesLoading = true;
     });
+    if (_alternativesResult == null && _alternativesStructured == null) {
+      await _fetchAlternatives();
+    }
+  }
+
+  Future<void> _fetchAlternatives() async {
     if (_alternativesResult != null || _alternativesStructured != null) return;
+    final sw = Stopwatch()..start();
     try {
+      // Check Firestore cache first
+      final cached = await _loadAiCache('alternatives');
+      if (cached != null && cached['result'] != null) {
+        final parsed = cached['structured'] != null
+            ? Map<String, dynamic>.from(cached['structured'] as Map)
+            : _tryParseJson(cached['result'] as String);
+        if (mounted) setState(() {
+          _alternativesResult = cached['result'] as String;
+          _alternativesStructured = parsed;
+          _alternativesLoading = false;
+        });
+        _saveToSession();
+        debugPrint('[Compair] ⏱ Alternatives from cache: ${sw.elapsedMilliseconds}ms');
+        return;
+      }
+
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
@@ -292,34 +436,27 @@ Return ONLY valid JSON:
 }''';
 
       debugPrint('[Compair] Alternatives starting for: $productNames');
-
       String result;
       try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 1024);
       } catch (jsonErr) {
-        debugPrint('[Compair] Alternatives JSON query failed: $jsonErr — retrying as plain text');
-        result = await gemini.groundedQuery(prompt);
+        debugPrint('[Compair] Alternatives JSON failed: $jsonErr — fallback');
+        result = await gemini.groundedQuery(prompt, maxTokens: 1024);
       }
       if (mounted) {
-        Map<String, dynamic>? parsed;
-        try {
-          var clean = result.trim();
-          final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
-          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
-          final jsonStart = clean.indexOf('{');
-          final jsonEnd = clean.lastIndexOf('}');
-          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
-          parsed = jsonDecode(clean) as Map<String, dynamic>?;
-        } catch (_) {
-          debugPrint('[Compair] Alternatives JSON parse failed');
-        }
+        final parsed = _tryParseJson(result);
         setState(() {
           _alternativesResult = result;
           _alternativesStructured = parsed;
           _alternativesLoading = false;
         });
         _saveToSession();
+        _saveAiCache('alternatives', {
+          'result': result,
+          if (parsed != null) 'structured': parsed,
+        });
       }
+      debugPrint('[Compair] ⏱ Alternatives from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Alternatives FAILED: $e\n$st');
       if (mounted) setState(() {
@@ -339,8 +476,31 @@ Return ONLY valid JSON:
       if (_advisorResult != null || _advisorStructured != null) return;
       _advisorLoading = true;
     });
+    if (_advisorResult == null && _advisorStructured == null) {
+      await _fetchAdvisor();
+    }
+  }
+
+  Future<void> _fetchAdvisor() async {
     if (_advisorResult != null || _advisorStructured != null) return;
+    final sw = Stopwatch()..start();
     try {
+      // Check Firestore cache first
+      final cached = await _loadAiCache('advisor');
+      if (cached != null && cached['result'] != null) {
+        final parsed = cached['structured'] != null
+            ? Map<String, dynamic>.from(cached['structured'] as Map)
+            : _tryParseJson(cached['result'] as String);
+        if (mounted) setState(() {
+          _advisorResult = cached['result'] as String;
+          _advisorStructured = parsed;
+          _advisorLoading = false;
+        });
+        _saveToSession();
+        debugPrint('[Compair] ⏱ Advisor from cache: ${sw.elapsedMilliseconds}ms');
+        return;
+      }
+
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
@@ -371,34 +531,27 @@ Return ONLY valid JSON:
 }''';
 
       debugPrint('[Compair] Advisor starting');
-
       String result;
       try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 2048);
       } catch (jsonErr) {
-        debugPrint('[Compair] Advisor JSON query failed: $jsonErr — retrying as plain text');
-        result = await gemini.groundedQuery(prompt);
+        debugPrint('[Compair] Advisor JSON failed: $jsonErr — fallback');
+        result = await gemini.groundedQuery(prompt, maxTokens: 2048);
       }
       if (mounted) {
-        Map<String, dynamic>? parsed;
-        try {
-          var clean = result.trim();
-          final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
-          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
-          final jsonStart = clean.indexOf('{');
-          final jsonEnd = clean.lastIndexOf('}');
-          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
-          parsed = jsonDecode(clean) as Map<String, dynamic>?;
-        } catch (_) {
-          debugPrint('[Compair] Advisor JSON parse failed');
-        }
+        final parsed = _tryParseJson(result);
         setState(() {
           _advisorResult = result;
           _advisorStructured = parsed;
           _advisorLoading = false;
         });
         _saveToSession();
+        _saveAiCache('advisor', {
+          'result': result,
+          if (parsed != null) 'structured': parsed,
+        });
       }
+      debugPrint('[Compair] ⏱ Advisor from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Advisor FAILED: $e\n$st');
       if (mounted) setState(() {
@@ -418,8 +571,31 @@ Return ONLY valid JSON:
       if (_predictionResult != null || _predictionStructured != null) return;
       _predictionLoading = true;
     });
+    if (_predictionResult == null && _predictionStructured == null) {
+      await _fetchPrediction();
+    }
+  }
+
+  Future<void> _fetchPrediction() async {
     if (_predictionResult != null || _predictionStructured != null) return;
+    final sw = Stopwatch()..start();
     try {
+      // Check Firestore cache first
+      final cached = await _loadAiCache('prediction');
+      if (cached != null && cached['result'] != null) {
+        final parsed = cached['structured'] != null
+            ? Map<String, dynamic>.from(cached['structured'] as Map)
+            : _tryParseJson(cached['result'] as String);
+        if (mounted) setState(() {
+          _predictionResult = cached['result'] as String;
+          _predictionStructured = parsed;
+          _predictionLoading = false;
+        });
+        _saveToSession();
+        debugPrint('[Compair] ⏱ Prediction from cache: ${sw.elapsedMilliseconds}ms');
+        return;
+      }
+
       final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
@@ -447,34 +623,27 @@ Return ONLY valid JSON:
 }''';
 
       debugPrint('[Compair] Prediction starting');
-
       String result;
       try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang);
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 1024);
       } catch (jsonErr) {
-        debugPrint('[Compair] Prediction JSON query failed: $jsonErr — retrying as plain text');
-        result = await gemini.groundedQuery(prompt);
+        debugPrint('[Compair] Prediction JSON failed: $jsonErr — fallback');
+        result = await gemini.groundedQuery(prompt, maxTokens: 1024);
       }
       if (mounted) {
-        Map<String, dynamic>? parsed;
-        try {
-          var clean = result.trim();
-          final codeBlockMatch = RegExp(r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```').firstMatch(clean);
-          if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
-          final jsonStart = clean.indexOf('{');
-          final jsonEnd = clean.lastIndexOf('}');
-          if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
-          parsed = jsonDecode(clean) as Map<String, dynamic>?;
-        } catch (_) {
-          debugPrint('[Compair] Prediction JSON parse failed');
-        }
+        final parsed = _tryParseJson(result);
         setState(() {
           _predictionResult = result;
           _predictionStructured = parsed;
           _predictionLoading = false;
         });
         _saveToSession();
+        _saveAiCache('prediction', {
+          'result': result,
+          if (parsed != null) 'structured': parsed,
+        });
       }
+      debugPrint('[Compair] ⏱ Prediction from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Prediction FAILED: $e\n$st');
       if (mounted) setState(() {
@@ -2305,6 +2474,9 @@ Return ONLY valid JSON:
   }
 
   Widget _buildProTab() {
+    // Trigger parallel prefetch on first visit
+    _prefetchAllAi();
+
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
