@@ -1409,6 +1409,113 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     ]);
   }
 
+  void _showMatchDetailOverlay({
+    required String productName,
+    required double matchScore,
+    required String reason,
+    required Color color,
+  }) {
+    final matchColor = matchScore >= 80 ? AppTheme.scoreExcellent :
+        matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
+    // Parse reason into bullet points
+    final reasonLines = reason.split(RegExp(r'[.\n]'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty && s.length > 5)
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.35,
+        maxChildSize: 0.85,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 24, spreadRadius: 2)]),
+          child: Column(children: [
+            // Handle bar + close
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+              child: Row(children: [
+                Expanded(child: Center(child: Container(
+                  width: 44, height: 5,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).dividerColor.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(3))))),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(Icons.close_rounded, size: 22,
+                        color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5)))),
+                ),
+              ]),
+            ),
+            Expanded(child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
+              children: [
+                // Score circle large
+                Center(child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: matchScore / 100),
+                  duration: const Duration(milliseconds: 1000),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, value, __) => SizedBox(
+                    width: 80, height: 80,
+                    child: Stack(alignment: Alignment.center, children: [
+                      CircularProgressIndicator(
+                        value: value, strokeWidth: 6,
+                        backgroundColor: matchColor.withValues(alpha: 0.12),
+                        color: matchColor),
+                      Text('${(value * 100).toInt()}%',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 22, fontWeight: FontWeight.w900, color: matchColor)),
+                    ]),
+                  ),
+                )),
+                const SizedBox(height: 16),
+                // Product name
+                Center(child: Text(productName, textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface))),
+                const SizedBox(height: 20),
+                // "Neden Bu Skor?" section
+                Text('Neden Bu Skor?', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15, fontWeight: FontWeight.w800,
+                  color: Theme.of(ctx).colorScheme.onSurface)),
+                const SizedBox(height: 12),
+                ...reasonLines.map((line) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: matchColor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: matchColor.withValues(alpha: 0.1))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Icon(Icons.auto_awesome_rounded, size: 16,
+                      color: matchColor.withValues(alpha: 0.8)),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(line, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface,
+                      height: 1.5))),
+                  ]),
+                )),
+              ],
+            )),
+          ]),
+        ),
+      ),
+    );
+  }
+
   void _showPredictionDetailOverlay({
     required String productName,
     required String trend,
@@ -1454,23 +1561,29 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         builder: (_, scrollController) => Container(
           decoration: BoxDecoration(
             color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)]),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 24, spreadRadius: 2)]),
           child: Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
               child: Row(children: [
                 Expanded(child: Center(child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: Theme.of(ctx).dividerColor, borderRadius: BorderRadius.circular(2))))),
-                IconButton(
-                  icon: Icon(Icons.close_rounded, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6)),
-                  onPressed: () => Navigator.of(ctx).pop()),
+                  width: 44, height: 5,
+                  decoration: BoxDecoration(color: Theme.of(ctx).dividerColor.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(3))))),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(Icons.close_rounded, size: 22,
+                        color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))))),
               ]),
             ),
             Expanded(child: ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
               children: [
                 // Product name
                 Text(productName, style: GoogleFonts.plusJakartaSans(
@@ -1562,23 +1675,29 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         builder: (_, scrollController) => Container(
           decoration: BoxDecoration(
             color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)]),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 24, spreadRadius: 2)]),
           child: Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
               child: Row(children: [
                 Expanded(child: Center(child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: Theme.of(ctx).dividerColor, borderRadius: BorderRadius.circular(2))))),
-                IconButton(
-                  icon: Icon(Icons.close_rounded, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6)),
-                  onPressed: () => Navigator.of(ctx).pop()),
+                  width: 44, height: 5,
+                  decoration: BoxDecoration(color: Theme.of(ctx).dividerColor.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(3))))),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(Icons.close_rounded, size: 22,
+                        color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))))),
               ]),
             ),
             Expanded(child: ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
               children: [
                 // Name + star rating
                 Row(children: [
@@ -1669,101 +1788,107 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         builder: (_, scrollController) => Container(
           decoration: BoxDecoration(
             color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)]),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 24, spreadRadius: 2)]),
           child: Column(children: [
-            // Handle bar + close button
+            // Modern handle bar + close
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
               child: Row(children: [
                 Expanded(child: Center(child: Container(
-                  width: 40, height: 4,
+                  width: 44, height: 5,
                   decoration: BoxDecoration(
-                    color: Theme.of(ctx).dividerColor,
-                    borderRadius: BorderRadius.circular(2))))),
-                IconButton(
-                  icon: Icon(Icons.close_rounded, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6)),
-                  onPressed: () => Navigator.of(ctx).pop()),
+                    color: Theme.of(ctx).dividerColor.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(3))))),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(Icons.close_rounded, size: 22,
+                        color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))))),
               ]),
             ),
-            // Scrollable content
             Expanded(child: ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
               children: [
-                // Product name + score
+                // Score circle + product name
                 Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                   Container(
-                    width: 52, height: 52,
+                    width: 56, height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [
-                        _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [_aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
                     child: Center(child: Text('${score.toInt()}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white))),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white))),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
                   Expanded(child: Text(productName, style: GoogleFonts.plusJakartaSans(
                     fontSize: 16, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface))),
                 ]),
-                // Best for
                 if (bestFor.isNotEmpty) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12)),
+                      color: color.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: color.withValues(alpha: 0.1))),
                     child: Row(children: [
                       const Text('🎯', style: TextStyle(fontSize: 16)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(child: Text(bestFor, style: GoogleFonts.plusJakartaSans(
                         fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface,
-                        fontStyle: FontStyle.italic, height: 1.4))),
+                        fontStyle: FontStyle.italic, height: 1.5))),
                     ]),
                   ),
                 ],
-                // Strengths
                 if (strengths.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Text('Güçlü Yönler', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w800,
+                    fontSize: 15, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   ...strengths.map((s) => Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10)),
-                    child: Row(children: [
-                      Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.scoreExcellent),
-                      const SizedBox(width: 8),
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.1))),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(Icons.check_circle_rounded, size: 18, color: AppTheme.scoreExcellent),
+                      const SizedBox(width: 10),
                       Expanded(child: Text(s, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface, height: 1.4))),
+                        fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface, height: 1.5))),
                     ]),
                   )),
                 ],
-                // Weaknesses
                 if (weaknesses.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Text('Zayıf Yönler', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w800,
+                    fontSize: 15, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   ...weaknesses.map((w) => Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppTheme.error.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10)),
-                    child: Row(children: [
-                      Icon(Icons.warning_rounded, size: 16, color: AppTheme.warning),
-                      const SizedBox(width: 8),
+                      color: AppTheme.error.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.error.withValues(alpha: 0.1))),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(Icons.warning_rounded, size: 18, color: AppTheme.warning),
+                      const SizedBox(width: 10),
                       Expanded(child: Text(w, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface, height: 1.4))),
+                        fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface, height: 1.5))),
                     ]),
                   )),
                 ],
@@ -3279,7 +3404,25 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         // 1. Personalized Match
         _buildMatchScoreSection(),
         const SizedBox(height: 14),
-        // 2. AI Deep Analysis
+        // 2. AI Product Advisor
+        _buildExpandableCard(
+          icon: Icons.support_agent_rounded,
+          title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
+          subtitle: context.l10n?.personalizedPurchaseAdvice ?? 'Personalized comparison purchase advice',
+          gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
+          isExpanded: _advisorExpanded,
+          isLoading: _advisorLoading,
+          content: _advisorResult,
+          contentWidget: _advisorStructured != null ? _buildAdvisorVisual() : null,
+          isError: _advisorError,
+          onRetry: () {
+            setState(() { _advisorError = false; _advisorLoading = true; _advisorResult = null; _advisorStructured = null; });
+            _fetchAdvisor();
+          },
+          onTap: _toggleAdvisor,
+        ),
+        const SizedBox(height: 14),
+        // 3. AI Deep Analysis
         _buildExpandableCard(
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
@@ -3315,25 +3458,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           onTap: _toggleAlternatives,
         ),
         const SizedBox(height: 14),
-        // 5. AI Product Advisor
-        _buildExpandableCard(
-          icon: Icons.support_agent_rounded,
-          title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
-          subtitle: context.l10n?.personalizedPurchaseAdvice ?? 'Personalized comparison purchase advice',
-          gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
-          isExpanded: _advisorExpanded,
-          isLoading: _advisorLoading,
-          content: _advisorResult,
-          contentWidget: _advisorStructured != null ? _buildAdvisorVisual() : null,
-          isError: _advisorError,
-          onRetry: () {
-            setState(() { _advisorError = false; _advisorLoading = true; _advisorResult = null; _advisorStructured = null; });
-            _fetchAdvisor();
-          },
-          onTap: _toggleAdvisor,
-        ),
-        const SizedBox(height: 14),
-        // 6. Price Prediction
+        // 5. Price Prediction
         _buildExpandableCard(
           icon: Icons.trending_down_rounded,
           title: context.l10n?.pricePrediction ?? 'Price Prediction',
@@ -3358,6 +3483,11 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     final userProfile = ref.watch(userProfileProvider);
     final user = userProfile.valueOrNull;
     final quizCompleted = user != null && user.quizCompleted;
+    final productCount = widget.products.length;
+    final barColors = [
+      const Color(0xFF3B82F6), const Color(0xFF06B6D4), const Color(0xFF6366F1),
+      const Color(0xFFF59E0B), const Color(0xFF10B981),
+    ];
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -3375,7 +3505,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Only header row toggles expand/collapse
+          // Header row toggles expand/collapse
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
@@ -3414,7 +3544,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 color: AppTheme.brandBlue),
             ]),
           ),
-          // Content area — taps absorbed, don't toggle card
+          // Content area
           if (_matchScoreExpanded) ...[
             const SizedBox(height: 14),
             GestureDetector(
@@ -3425,121 +3555,112 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     GestureDetector(
                       onTap: () => context.push('/quiz'),
                       child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.quiz_rounded, size: 18, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(context.l10n?.completeQuiz ?? "Complete Quiz",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                ...widget.products.map((product) {
-                  final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
-                  final matchResult = matchAsync.valueOrNull;
-                  final matchScore = matchResult?.matchScore;
-                  final reason = matchResult?.reason;
-                  final isLoading = matchAsync is AsyncLoading;
-
-                  final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
-                      matchScore >= 80 ? AppTheme.scoreExcellent :
-                      matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: matchColor.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: matchColor.withValues(alpha: 0.15)),
-                    ),
-                    child: Column(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.quiz_rounded, size: 18, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text(context.l10n?.completeQuiz ?? "Complete Quiz",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else ...[
+                    // Side-by-side product columns
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          if (isLoading)
-                            Container(
-                              width: 46, height: 46,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: matchColor.withValues(alpha: 0.1)),
-                              child: Center(child: SizedBox(
-                                width: 20, height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: matchColor))),
-                            )
-                          else
-                            // Animated circular score indicator
-                            TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: (matchScore ?? 0) / 100),
-                              duration: const Duration(milliseconds: 1500),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, value, child) {
-                                final displayVal = (value * 100).toInt();
-                                return SizedBox(
-                                  width: 46, height: 46,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
+                      children: List.generate(productCount, (i) {
+                        final product = widget.products[i];
+                        final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
+                        final matchResult = matchAsync.valueOrNull;
+                        final matchScore = matchResult?.matchScore;
+                        final reason = matchResult?.reason;
+                        final isLoading = matchAsync is AsyncLoading;
+                        final color = barColors[i % barColors.length];
+
+                        final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
+                            matchScore >= 80 ? AppTheme.scoreExcellent :
+                            matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
+
+                        return Expanded(child: GestureDetector(
+                          onTap: (matchScore != null && reason != null) ? () => _showMatchDetailOverlay(
+                            productName: product.name,
+                            matchScore: matchScore.toDouble(),
+                            reason: reason,
+                            color: color,
+                          ) : null,
+                          child: Container(
+                            margin: EdgeInsets.only(
+                              left: i == 0 ? 0 : 4,
+                              right: i == productCount - 1 ? 0 : 4),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: matchColor.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: matchColor.withValues(alpha: 0.15))),
+                            child: Column(children: [
+                              // Score circle or loading
+                              if (isLoading)
+                                SizedBox(
+                                  width: 44, height: 44,
+                                  child: Center(child: SizedBox(
+                                    width: 22, height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5, color: matchColor))))
+                              else
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0, end: (matchScore ?? 0) / 100),
+                                  duration: const Duration(milliseconds: 1200),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, value, _) => SizedBox(
+                                    width: 44, height: 44,
+                                    child: Stack(alignment: Alignment.center, children: [
                                       CircularProgressIndicator(
-                                        value: value,
-                                        strokeWidth: 4,
-                                        backgroundColor: matchColor.withValues(alpha: 0.15),
-                                        color: matchColor,
-                                      ),
-                                      Text('$displayVal%',
+                                        value: value, strokeWidth: 3.5,
+                                        backgroundColor: matchColor.withValues(alpha: 0.12),
+                                        color: matchColor),
+                                      Text('${(value * 100).toInt()}%',
                                         style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11, fontWeight: FontWeight.w900, color: matchColor)),
-                                    ],
+                                          fontSize: 10, fontWeight: FontWeight.w900, color: matchColor)),
+                                    ]),
                                   ),
-                                );
-                              },
-                            ),
-                          const SizedBox(width: 12),
-                          Expanded(child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(product.name, style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                                maxLines: 2, overflow: TextOverflow.ellipsis),
-                              const SizedBox(height: 2),
+                                ),
+                              const SizedBox(height: 8),
+                              // Product name
                               Text(
-                                isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
-                                    : context.l10n?.basedOnYourPreferences ?? 'Based on your preferences and usage habits',
+                                product.name.length > (productCount > 2 ? 20 : 30)
+                                  ? '${product.name.substring(0, productCount > 2 ? 18 : 28)}…'
+                                  : product.name,
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11, color: context.textTertiaryColor)),
-                            ],
-                          )),
-                        ]),
-                        if (reason != null && reason.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.auto_awesome, size: 12,
-                                  color: matchColor.withValues(alpha: 0.7)),
-                              const SizedBox(width: 6),
-                              Expanded(child: ExpandableText(reason,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11, fontStyle: FontStyle.italic,
-                                  color: context.textSecondary, height: 1.3))),
-                            ],
+                                  fontSize: productCount > 3 ? 8 : (productCount > 2 ? 9 : 10),
+                                  fontWeight: FontWeight.w700, color: context.textPrimary),
+                                textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              // Detail button
+                              if (matchScore != null) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10)),
+                                  child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9, fontWeight: FontWeight.w700, color: color)),
+                                ),
+                              ],
+                            ]),
                           ),
-                        ],
-                      ],
+                        ));
+                      }),
                     ),
-                  );
-                }),
+                  ],
                 ],
               ),
             ),
@@ -3569,7 +3690,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: gradient[0].withValues(alpha: 0.15)),
         boxShadow: [BoxShadow(
           color: gradient[0].withValues(alpha: 0.08),
