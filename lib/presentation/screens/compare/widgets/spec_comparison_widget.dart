@@ -1154,7 +1154,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           children: [
             Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.error.withValues(alpha: 0.6)),
             const SizedBox(height: 12),
-            Text('Analiz yüklenemedi', style: GoogleFonts.plusJakartaSans(
+            Text('Analysis failed', style: GoogleFonts.plusJakartaSans(
               fontSize: 14, fontWeight: FontWeight.w600, color: context.textSecondary)),
             const SizedBox(height: 12),
             GestureDetector(
@@ -1164,7 +1164,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(colors: [AppTheme.amber500, Color(0xFFF59E0B)]),
                   borderRadius: BorderRadius.circular(10)),
-                child: Text('Tekrar Dene', style: GoogleFonts.plusJakartaSans(
+                child: Text('Try Again', style: GoogleFonts.plusJakartaSans(
                   fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
@@ -1287,7 +1287,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8)),
-                    child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                    child: Text('Detail', style: GoogleFonts.plusJakartaSans(
                       fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                   ),
                 ]),
@@ -1306,7 +1306,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             color: context.surfaceElevatedColor,
             borderRadius: BorderRadius.circular(14)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('📊 Kategori Karşılaştırma', style: GoogleFonts.plusJakartaSans(
+            Text('📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
               fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
             const SizedBox(height: 10),
             // Compact score summary per category
@@ -1356,7 +1356,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(Icons.bar_chart_rounded, size: 20, color: AppTheme.brandBlue),
                   const SizedBox(width: 8),
-                  Text('Grafiği Gör', style: GoogleFonts.plusJakartaSans(
+                  Text('View Chart', style: GoogleFonts.plusJakartaSans(
                     fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
                   const SizedBox(width: 4),
                   Icon(Icons.open_in_full_rounded, size: 14, color: AppTheme.brandBlue),
@@ -1487,8 +1487,8 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     fontSize: 16, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface))),
                 const SizedBox(height: 20),
-                // "Neden Bu Skor?" section
-                Text('Neden Bu Skor?', style: GoogleFonts.plusJakartaSans(
+                // "Why This Score?" section
+                Text('Why This Score?', style: GoogleFonts.plusJakartaSans(
                   fontSize: 15, fontWeight: FontWeight.w800,
                   color: Theme.of(ctx).colorScheme.onSurface)),
                 const SizedBox(height: 12),
@@ -1532,21 +1532,21 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         : isRising ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
     final trendColor = isDropping ? AppTheme.scoreExcellent
         : isRising ? AppTheme.error : AppTheme.warning;
-    final trendLabel = isDropping ? 'Düşüyor' : isRising ? 'Yükseliyor' : 'Stabil';
+    final trendLabel = isDropping ? 'Dropping' : isRising ? 'Rising' : 'Stable';
 
     String bestTimeLabel;
     Color bestTimeColor;
     if (bestTime == 'now' || buyNow) {
-      bestTimeLabel = '🛒 Şimdi Al';
+      bestTimeLabel = '🛒 Buy Now';
       bestTimeColor = AppTheme.scoreExcellent;
     } else if (bestTime == 'wait_1_month') {
-      bestTimeLabel = '⏳ 1 Ay Bekle';
+      bestTimeLabel = '⏳ Wait 1 Month';
       bestTimeColor = AppTheme.warning;
     } else if (bestTime == 'wait_3_months') {
-      bestTimeLabel = '⏳ 3 Ay Bekle';
+      bestTimeLabel = '⏳ Wait 3 Months';
       bestTimeColor = AppTheme.orange500;
     } else {
-      bestTimeLabel = bestTime.isNotEmpty ? '📅 $bestTime' : '📅 Belirsiz';
+      bestTimeLabel = bestTime.isNotEmpty ? '📅 $bestTime' : '📅 Unknown';
       bestTimeColor = AppTheme.warning;
     }
 
@@ -1622,7 +1622,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 if (confidence > 0) ...[
                   const SizedBox(height: 14),
                   Row(children: [
-                    Text('Güven Seviyesi', style: GoogleFonts.plusJakartaSans(
+                    Text('Confidence', style: GoogleFonts.plusJakartaSans(
                       fontSize: 12, fontWeight: FontWeight.w600,
                       color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))),
                     const Spacer(),
@@ -1641,7 +1641,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 // Reasoning
                 if (reason.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Analiz', style: GoogleFonts.plusJakartaSans(
+                  Text('Reasoning', style: GoogleFonts.plusJakartaSans(
                     fontSize: 14, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 8),
@@ -1725,7 +1725,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (matchPoints.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Uyumlu Noktalar', style: GoogleFonts.plusJakartaSans(
+                  Text('Match Points', style: GoogleFonts.plusJakartaSans(
                     fontSize: 14, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 8),
                   ...matchPoints.map((item) => Container(
@@ -1744,7 +1744,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (cautionPoints.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Dikkat Edilmesi Gerekenler', style: GoogleFonts.plusJakartaSans(
+                  Text('Caution Points', style: GoogleFonts.plusJakartaSans(
                     fontSize: 14, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 8),
                   ...cautionPoints.map((item) => Container(
@@ -1852,7 +1852,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (strengths.isNotEmpty) ...[
                   const SizedBox(height: 18),
-                  Text('Güçlü Yönler', style: GoogleFonts.plusJakartaSans(
+                  Text('Strengths', style: GoogleFonts.plusJakartaSans(
                     fontSize: 15, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 10),
@@ -1873,7 +1873,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (weaknesses.isNotEmpty) ...[
                   const SizedBox(height: 18),
-                  Text('Zayıf Yönler', style: GoogleFonts.plusJakartaSans(
+                  Text('Weaknesses', style: GoogleFonts.plusJakartaSans(
                     fontSize: 15, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 10),
@@ -1923,7 +1923,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       builder: (ctx) => Scaffold(
         backgroundColor: Theme.of(ctx).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: Text('📊 Kategori Karşılaştırma', style: GoogleFonts.plusJakartaSans(
+          title: Text('📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
             fontSize: 16, fontWeight: FontWeight.w700)),
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
@@ -1941,7 +1941,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Ürünler', style: GoogleFonts.plusJakartaSans(
+                Text('Products', style: GoogleFonts.plusJakartaSans(
                   fontSize: 12, fontWeight: FontWeight.w700,
                   color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6))),
                 const SizedBox(height: 8),
@@ -2230,7 +2230,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             const Icon(Icons.recommend_rounded, color: Color(0xFF3B82F6), size: 20),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('ÖNERİLEN', style: GoogleFonts.plusJakartaSans(
+              Text('RECOMMENDED', style: GoogleFonts.plusJakartaSans(
                 fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6), letterSpacing: 0.5)),
               Text(recommended, style: GoogleFonts.plusJakartaSans(
                 fontSize: 13, fontWeight: FontWeight.w800, color: context.textPrimary),
@@ -2298,7 +2298,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8)),
-                    child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                    child: Text('Detail', style: GoogleFonts.plusJakartaSans(
                       fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                   ),
                 ]),
@@ -2409,7 +2409,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     decoration: BoxDecoration(
                       color: AppTheme.scoreExcellent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6)),
-                    child: Text('🛒 Şimdi Al', style: GoogleFonts.plusJakartaSans(
+                    child: Text('🛒 Buy Now', style: GoogleFonts.plusJakartaSans(
                       fontSize: 8, fontWeight: FontWeight.w700, color: AppTheme.scoreExcellent)),
                   ),
                 const SizedBox(height: 6),
@@ -2418,7 +2418,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8)),
-                  child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                  child: Text('Detail', style: GoogleFonts.plusJakartaSans(
                     fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                 ),
               ]),
@@ -3651,7 +3651,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                                   decoration: BoxDecoration(
                                     color: color.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(10)),
-                                  child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                                  child: Text('Detail', style: GoogleFonts.plusJakartaSans(
                                     fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                                 ),
                               ],
