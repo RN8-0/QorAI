@@ -314,7 +314,6 @@ Return ONLY valid JSON:
       debugPrint('[Compair] Deep Analysis FAILED: $e\n$st');
       if (mounted) setState(() {
         _deepAnalysisError = true;
-        _deepAnalysisResult = null;
         _deepAnalysisLoading = false;
       });
     }
@@ -379,7 +378,6 @@ Keep it punchy and actionable. No hedging.''',
       debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
       if (mounted) setState(() {
         _quickVerdictError = true;
-        _quickVerdictResult = null;
         _quickVerdictLoading = false;
       });
     }
@@ -468,7 +466,6 @@ Return ONLY valid JSON:
       debugPrint('[Compair] Alternatives FAILED: $e\n$st');
       if (mounted) setState(() {
         _alternativesError = true;
-        _alternativesResult = null;
         _alternativesLoading = false;
       });
     }
@@ -564,7 +561,6 @@ Return ONLY valid JSON:
       debugPrint('[Compair] Advisor FAILED: $e\n$st');
       if (mounted) setState(() {
         _advisorError = true;
-        _advisorResult = null;
         _advisorLoading = false;
       });
     }
@@ -657,7 +653,6 @@ Return ONLY valid JSON:
       debugPrint('[Compair] Prediction FAILED: $e\n$st');
       if (mounted) setState(() {
         _predictionError = true;
-        _predictionResult = null;
         _predictionLoading = false;
       });
     }
@@ -2830,6 +2825,7 @@ Return ONLY valid JSON:
     bool hasError = false,
     VoidCallback? onRetry,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -2867,13 +2863,17 @@ Return ONLY valid JSON:
                   Text(subtitle, style: GoogleFonts.plusJakartaSans(
                     fontSize: 12, color: context.textSecondary)),
                 ])),
-              if (!isExpanded && !isLoading && content != null && !hasError)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: gradient[0].withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6)),
-                  child: Text('✓', style: TextStyle(fontSize: 10, color: gradient[0], fontWeight: FontWeight.w700)),
+              // Ready badge when collapsed and content loaded
+              if (!isExpanded && !isLoading && (content != null || contentWidget != null) && !hasError)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: gradient[0].withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6)),
+                    child: Text('✓', style: TextStyle(fontSize: 10, color: gradient[0], fontWeight: FontWeight.w700)),
+                  ),
                 ),
               if (isLoading)
                 SizedBox(width: 20, height: 20,
@@ -2883,7 +2883,7 @@ Return ONLY valid JSON:
                   color: gradient[0]),
             ]),
           ),
-          // Content area
+          // Content area — shimmer, error, or actual content
           if (isExpanded) ...[
             const SizedBox(height: 14),
             GestureDetector(
@@ -2894,13 +2894,51 @@ Return ONLY valid JSON:
                     ? _buildShimmerPlaceholder(key: const ValueKey('shimmer'))
                     : hasError
                         ? _buildErrorRetry(gradient: gradient, onRetry: onRetry, key: const ValueKey('error'))
-                        : _buildCardContent(
-                            content: content,
-                            contentWidget: contentWidget,
-                            gradient: gradient,
-                            title: title,
-                            key: const ValueKey('content'),
-                          ),
+                        : contentWidget != null
+                            ? KeyedSubtree(key: const ValueKey('visual'), child: contentWidget)
+                            : content != null
+                                ? KeyedSubtree(
+                                    key: const ValueKey('markdown'),
+                                    child: MarkdownBody(
+                                      data: content,
+                                      selectable: true,
+                                      styleSheet: MarkdownStyleSheet(
+                                        p: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13, height: 1.6,
+                                          color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
+                                        strong: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13, fontWeight: FontWeight.w700,
+                                          color: isDark ? Colors.white : context.textPrimary),
+                                        em: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13, fontStyle: FontStyle.italic,
+                                          color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
+                                        h1: GoogleFonts.plusJakartaSans(
+                                          fontSize: 16, fontWeight: FontWeight.w800,
+                                          color: isDark ? Colors.white : context.textPrimary),
+                                        h2: GoogleFonts.plusJakartaSans(
+                                          fontSize: 15, fontWeight: FontWeight.w700,
+                                          color: isDark ? Colors.white : context.textPrimary),
+                                        h3: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14, fontWeight: FontWeight.w700,
+                                          color: gradient[0]),
+                                        listBullet: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13, color: gradient[0]),
+                                        listIndent: 16,
+                                        blockSpacing: 8,
+                                        h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                                        h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                                        h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
+                                        pPadding: const EdgeInsets.symmetric(vertical: 2),
+                                        blockquoteDecoration: BoxDecoration(
+                                          color: gradient[0].withValues(alpha: 0.06),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border(left: BorderSide(color: gradient[0], width: 3)),
+                                        ),
+                                        blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(key: ValueKey('empty')),
               ),
             ),
           ],
@@ -2953,97 +2991,6 @@ Return ONLY valid JSON:
           ),
       ],
     );
-  }
-
-  Widget _buildCardContent({
-    required String? content,
-    required Widget? contentWidget,
-    required List<Color> gradient,
-    required String title,
-    Key? key,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Summary view with "Detayları Gör" button
-    if (contentWidget != null) {
-      return Column(
-        key: key,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          contentWidget,
-          const SizedBox(height: 10),
-          Center(
-            child: GestureDetector(
-              onTap: () => _showAiDetailModal(
-                title: title,
-                gradient: gradient,
-                child: contentWidget,
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: gradient[0].withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: gradient[0].withValues(alpha: 0.2))),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(context.l10n?.viewDetails ?? 'View Details',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w600, color: gradient[0])),
-                  const SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_rounded, size: 14, color: gradient[0]),
-                ]),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    if (content != null) {
-      return Column(
-        key: key,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          MarkdownBody(
-            data: content,
-            selectable: true,
-            styleSheet: MarkdownStyleSheet(
-              p: GoogleFonts.plusJakartaSans(
-                fontSize: 13, height: 1.6,
-                color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
-              strong: GoogleFonts.plusJakartaSans(
-                fontSize: 13, fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : context.textPrimary),
-              em: GoogleFonts.plusJakartaSans(
-                fontSize: 13, fontStyle: FontStyle.italic,
-                color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
-              h1: GoogleFonts.plusJakartaSans(
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : context.textPrimary),
-              h2: GoogleFonts.plusJakartaSans(
-                fontSize: 15, fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : context.textPrimary),
-              h3: GoogleFonts.plusJakartaSans(
-                fontSize: 14, fontWeight: FontWeight.w700,
-                color: gradient[0]),
-              listBullet: GoogleFonts.plusJakartaSans(
-                fontSize: 13, color: gradient[0]),
-              listIndent: 16,
-              blockSpacing: 8,
-              h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
-              h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
-              h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
-              pPadding: const EdgeInsets.symmetric(vertical: 2),
-              blockquoteDecoration: BoxDecoration(
-                color: gradient[0].withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(8),
-                border: Border(left: BorderSide(color: gradient[0], width: 3)),
-              ),
-              blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-          ),
-        ],
-      );
-    }
-    return const SizedBox.shrink(key: ValueKey('empty'));
   }
 
   void _showAiDetailModal({
