@@ -13,12 +13,6 @@ class _SpecComparisonView extends ConsumerStatefulWidget {
 class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   late Map<String, bool> _expandedGroups;
   late Map<String, Map<String, List<String>>> _groupedSpecs;
-  // Quick Verdict state
-  bool _quickVerdictExpanded = false;
-  bool _quickVerdictLoading = false;
-  String? _quickVerdictResult;
-  Map<String, dynamic>? _quickVerdictStructured;
-  bool _quickVerdictError = false;
 
   // Deep Analysis state (merged with AI Analysis structured)
   bool _deepAnalysisExpanded = false;
@@ -51,9 +45,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   // Personalized Match state
   bool _matchScoreExpanded = false;
   bool _matchScoreFetched = false;
-
-  // Prefetch tracking
-  bool _aiPrefetchStarted = false;
 
   // Floating YouTube player overlay
   OverlayEntry? _pipOverlay;
@@ -143,23 +134,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  /// Pre-fetch first two AI features when Premium tab is first visited
-  /// Others load on-demand when their cards are expanded
-  void _prefetchAllAi() {
-    if (_aiPrefetchStarted) return;
-    if (_quickVerdictResult != null && _deepAnalysisResult != null) return;
-    _aiPrefetchStarted = true;
-    debugPrint('[Compair] 🚀 Pre-fetching Quick Verdict + Deep Analysis');
-
-    setState(() {
-      if (_quickVerdictResult == null && _quickVerdictStructured == null) _quickVerdictLoading = true;
-      if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _deepAnalysisLoading = true;
-    });
-
-    if (_quickVerdictResult == null && _quickVerdictStructured == null) _fetchQuickVerdict();
-    if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _fetchDeepAnalysis();
-  }
-
   /// Restore AI analysis results from session (survives navigation)
   void _restoreFromSession() {
     final session = ref.read(compareSessionProvider);
@@ -174,7 +148,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (session.advisorStructured != null) _advisorStructured = session.advisorStructured;
       if (session.predictionResult != null) _predictionResult = session.predictionResult;
       if (session.predictionStructured != null) _predictionStructured = session.predictionStructured;
-      if (session.quickVerdictResult != null) _quickVerdictResult = session.quickVerdictResult;
     }
   }
 
@@ -189,11 +162,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       advisorStructured: _advisorStructured,
       predictionResult: _predictionResult,
       predictionStructured: _predictionStructured,
-      quickVerdictResult: _quickVerdictResult,
     ));
   }
 
-  /// Parse JSON from AI response, handling markdown code blocks
+  /// Parse JSON from AI response, handling markdown code blocks and truncated responses
   Map<String, dynamic>? _tryParseJson(String raw) {
     try {
       var clean = raw.trim();
@@ -201,14 +173,71 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
       final jsonStart = clean.indexOf('{');
       final jsonEnd = clean.lastIndexOf('}');
-      if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.substring(jsonStart, jsonEnd + 1);
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        clean = clean.substring(jsonStart, jsonEnd + 1);
+      } else if (jsonStart >= 0) {
+        // No closing brace — truncated JSON, try repair
+        clean = _repairTruncatedJson(clean.substring(jsonStart));
+        debugPrint('[Compair] _tryParseJson: attempted JSON repair');
+      }
       final decoded = jsonDecode(clean);
       if (decoded is Map<String, dynamic>) return decoded;
       return null;
     } catch (e) {
+      // Try repair as last resort
+      try {
+        final repaired = _repairTruncatedJson(raw.trim());
+        final decoded = jsonDecode(repaired);
+        if (decoded is Map<String, dynamic>) {
+          debugPrint('[Compair] _tryParseJson: repair succeeded');
+          return decoded;
+        }
+      } catch (_) {}
       debugPrint('[Compair] _tryParseJson failed: $e | raw snippet: ${raw.length > 200 ? raw.substring(0, 200) : raw}');
       return null;
     }
+  }
+
+  /// Attempt to repair truncated JSON by closing open strings, arrays, and objects
+  String _repairTruncatedJson(String truncated) {
+    var inString = false;
+    var escaped = false;
+    final stack = <String>[]; // tracks '{' and '['
+
+    for (var i = 0; i < truncated.length; i++) {
+      final c = truncated[i];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (c == '\\' && inString) {
+        escaped = true;
+        continue;
+      }
+      if (c == '"') {
+        inString = !inString;
+        continue;
+      }
+      if (!inString) {
+        if (c == '{') stack.add('{');
+        else if (c == '[') stack.add('[');
+        else if (c == '}' && stack.isNotEmpty && stack.last == '{') stack.removeLast();
+        else if (c == ']' && stack.isNotEmpty && stack.last == '[') stack.removeLast();
+      }
+    }
+
+    var repaired = truncated;
+    // Close open string
+    if (inString) repaired += '"';
+    // Remove trailing incomplete key-value (e.g. `"key": ` or `, "key"`)
+    repaired = repaired.replaceAll(RegExp(r',\s*"[^"]*"\s*:\s*"?[^"{}[\]]*$'), '');
+    repaired = repaired.replaceAll(RegExp(r',\s*"[^"]*"\s*$'), '');
+    repaired = repaired.replaceAll(RegExp(r',\s*$'), '');
+    // Close remaining open brackets/braces in reverse order
+    for (var i = stack.length - 1; i >= 0; i--) {
+      repaired += stack[i] == '{' ? '}' : ']';
+    }
+    return repaired;
   }
 
   /// Parse JSON array from AI response
@@ -227,6 +256,33 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       debugPrint('[Compair] _tryParseJsonArray failed: $e');
       return null;
     }
+  }
+
+  /// Fetch from Gemini with automatic retry on parse failure (max 2 attempts)
+  Future<Map<String, dynamic>?> _fetchWithRetry(String prompt, String label, String lang, {int maxTokens = 4096}) async {
+    final gemini = ref.read(geminiServiceProvider);
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      try {
+        String result;
+        String source = 'jsonFreeTextQuery';
+        try {
+          result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: maxTokens);
+        } catch (jsonErr) {
+          debugPrint('[Compair] ❌ $label jsonFreeTextQuery THREW: $jsonErr — falling back to groundedQuery');
+          source = 'groundedQuery (fallback)';
+          result = await gemini.groundedQuery(prompt, maxTokens: maxTokens);
+        }
+        debugPrint('[Compair] 🔍 $label RAW attempt $attempt ($source, ${result.length} chars):\n${result.length > 800 ? result.substring(0, 800) : result}');
+        final parsed = _tryParseJson(result);
+        if (parsed != null) return parsed;
+        debugPrint('[Compair] $label parse FAILED attempt $attempt${attempt < 2 ? " — retrying" : " — giving up"}');
+        if (attempt < 2) await Future.delayed(const Duration(seconds: 1));
+      } catch (e) {
+        debugPrint('[Compair] $label attempt $attempt error: $e');
+        if (attempt < 2) await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+    return null;
   }
 
   Future<void> _toggleDeepAnalysis() async {
@@ -270,7 +326,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         }
       }
 
-      final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) => p.name).join(' vs ');
@@ -308,16 +363,8 @@ Return ONLY valid JSON, no markdown, no explanation:
 }''';
 
       debugPrint('[Compair] Deep Analysis starting for: $productNames');
-      String result;
-      try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 2048);
-      } catch (jsonErr) {
-        debugPrint('[Compair] Deep Analysis JSON failed: $jsonErr — fallback');
-        result = await gemini.groundedQuery(prompt, maxTokens: 2048);
-      }
-
+      final parsed = await _fetchWithRetry(prompt, 'Deep Analysis', lang, maxTokens: 8192);
       if (mounted) {
-        final parsed = _tryParseJson(result);
         if (parsed == null) {
           debugPrint('[Compair] Deep Analysis parse FAILED — showing error');
           setState(() {
@@ -325,14 +372,15 @@ Return ONLY valid JSON, no markdown, no explanation:
             _deepAnalysisLoading = false;
           });
         } else {
+          final resultStr = jsonEncode(parsed);
           setState(() {
-            _deepAnalysisResult = result;
+            _deepAnalysisResult = resultStr;
             _deepAnalysisStructured = parsed;
             _deepAnalysisLoading = false;
           });
           _saveToSession();
           _saveAiCache('deep_analysis', {
-            'result': result,
+            'result': resultStr,
             'structured': parsed,
           });
         }
@@ -343,112 +391,6 @@ Return ONLY valid JSON, no markdown, no explanation:
       if (mounted) setState(() {
         _deepAnalysisError = true;
         _deepAnalysisLoading = false;
-      });
-    }
-  }
-
-  Future<void> _toggleQuickVerdict() async {
-    if (_quickVerdictExpanded && _quickVerdictResult != null) {
-      setState(() => _quickVerdictExpanded = false);
-      return;
-    }
-    setState(() {
-      _quickVerdictExpanded = true;
-      if (_quickVerdictResult != null || _quickVerdictStructured != null) return;
-      _quickVerdictLoading = true;
-    });
-    if (_quickVerdictResult == null && _quickVerdictStructured == null) {
-      await _fetchQuickVerdict();
-    }
-  }
-
-  Future<void> _fetchQuickVerdict() async {
-    if (_quickVerdictResult != null || _quickVerdictStructured != null) return;
-    final sw = Stopwatch()..start();
-    try {
-      final cached = await _loadAiCache('quick_verdict');
-      if (cached != null && cached['result'] != null) {
-        final cacheResult = cached['result'] as String;
-        final parsed = cached['structured'] != null
-            ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cacheResult);
-        if (parsed == null) {
-          debugPrint('[Compair] Quick Verdict cache unparseable — re-fetching');
-        } else {
-          if (mounted) setState(() {
-            _quickVerdictResult = cacheResult;
-            _quickVerdictStructured = parsed;
-            _quickVerdictLoading = false;
-          });
-          _saveToSession();
-          debugPrint('[Compair] ⏱ Quick Verdict from cache: ${sw.elapsedMilliseconds}ms');
-          return;
-        }
-      }
-
-      final gemini = ref.read(geminiServiceProvider);
-      final lang = Localizations.localeOf(context).languageCode;
-      final langName = lang == 'tr' ? 'Turkish' : 'English';
-      final productNames = widget.products.map((p) => p.name).join(' vs ');
-      final specSummary = widget.products.map((p) {
-        final specs = p.keySpecs.entries.take(6).map((e) => '${e.key}: ${e.value}').join(', ');
-        return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $specs';
-      }).join('\n');
-
-      final prompt = '''You are a decisive tech advisor. Address the user directly using "you/your". ALL text in $langName.
-Compare these products:
-$specSummary
-
-Return ONLY valid JSON, no markdown, no explanation:
-{
-  "winner": "exact product name",
-  "confidence": 85,
-  "verdict": "2-3 sentence clear buying recommendation addressing the user",
-  "products": {
-    "ExactProductName": {
-      "score": 95,
-      "strengths": ["point1", "point2", "point3"],
-      "weaknesses": ["point1", "point2"],
-      "best_for": "ideal user description"
-    }
-  }
-}''';
-
-      debugPrint('[Compair] Quick Verdict starting for: $productNames');
-      String result;
-      try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 512);
-      } catch (jsonErr) {
-        debugPrint('[Compair] Quick Verdict JSON failed: $jsonErr — fallback');
-        result = await gemini.groundedQuery(prompt, maxTokens: 512);
-      }
-      if (mounted) {
-        final parsed = _tryParseJson(result);
-        if (parsed == null) {
-          debugPrint('[Compair] Quick Verdict parse FAILED — showing error');
-          setState(() {
-            _quickVerdictError = true;
-            _quickVerdictLoading = false;
-          });
-        } else {
-          setState(() {
-            _quickVerdictResult = result;
-            _quickVerdictStructured = parsed;
-            _quickVerdictLoading = false;
-          });
-          _saveToSession();
-          _saveAiCache('quick_verdict', {
-            'result': result,
-            'structured': parsed,
-          });
-        }
-      }
-      debugPrint('[Compair] ⏱ Quick Verdict from Gemini: ${sw.elapsedMilliseconds}ms');
-    } catch (e, st) {
-      debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
-      if (mounted) setState(() {
-        _quickVerdictError = true;
-        _quickVerdictLoading = false;
       });
     }
   }
@@ -493,7 +435,6 @@ Return ONLY valid JSON, no markdown, no explanation:
         }
       }
 
-      final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) => '${p.name} (${p.brand ?? "Unknown"})').join(' vs ');
@@ -516,15 +457,8 @@ Return ONLY valid JSON:
 }''';
 
       debugPrint('[Compair] Alternatives starting for: $productNames');
-      String result;
-      try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 1024);
-      } catch (jsonErr) {
-        debugPrint('[Compair] Alternatives JSON failed: $jsonErr — fallback');
-        result = await gemini.groundedQuery(prompt, maxTokens: 1024);
-      }
+      final parsed = await _fetchWithRetry(prompt, 'Alternatives', lang, maxTokens: 4096);
       if (mounted) {
-        final parsed = _tryParseJson(result);
         if (parsed == null) {
           debugPrint('[Compair] Alternatives parse FAILED — showing error');
           setState(() {
@@ -532,14 +466,15 @@ Return ONLY valid JSON:
             _alternativesLoading = false;
           });
         } else {
+          final resultStr = jsonEncode(parsed);
           setState(() {
-            _alternativesResult = result;
+            _alternativesResult = resultStr;
             _alternativesStructured = parsed;
             _alternativesLoading = false;
           });
           _saveToSession();
           _saveAiCache('alternatives', {
-            'result': result,
+            'result': resultStr,
             'structured': parsed,
           });
         }
@@ -594,7 +529,6 @@ Return ONLY valid JSON:
         }
       }
 
-      final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productDetails = widget.products.map((p) {
@@ -625,30 +559,23 @@ Return ONLY valid JSON, no markdown, no explanation:
 }''';
 
       debugPrint('[Compair] Advisor starting');
-      String result;
-      try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 2048);
-      } catch (jsonErr) {
-        debugPrint('[Compair] Advisor JSON failed: $jsonErr — fallback');
-        result = await gemini.groundedQuery(prompt, maxTokens: 2048);
-      }
+      final parsed = await _fetchWithRetry(prompt, 'Advisor', lang, maxTokens: 4096);
       if (mounted) {
-        final parsed = _tryParseJson(result);
         if (parsed == null) {
-          debugPrint('[Compair] Advisor parse FAILED — showing error');
           setState(() {
             _advisorError = true;
             _advisorLoading = false;
           });
         } else {
+          final resultStr = jsonEncode(parsed);
           setState(() {
-            _advisorResult = result;
+            _advisorResult = resultStr;
             _advisorStructured = parsed;
             _advisorLoading = false;
           });
           _saveToSession();
           _saveAiCache('advisor', {
-            'result': result,
+            'result': resultStr,
             'structured': parsed,
           });
         }
@@ -703,7 +630,6 @@ Return ONLY valid JSON, no markdown, no explanation:
         }
       }
 
-      final gemini = ref.read(geminiServiceProvider);
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) {
@@ -731,30 +657,23 @@ Return ONLY valid JSON, no markdown, no explanation:
 Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must be one of "now", "wait_1_month", "wait_3_months". confidence is 0-100.''';
 
       debugPrint('[Compair] Prediction starting');
-      String result;
-      try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 1024);
-      } catch (jsonErr) {
-        debugPrint('[Compair] Prediction JSON failed: $jsonErr — fallback');
-        result = await gemini.groundedQuery(prompt, maxTokens: 1024);
-      }
+      final parsed = await _fetchWithRetry(prompt, 'Prediction', lang, maxTokens: 4096);
       if (mounted) {
-        final parsed = _tryParseJson(result);
         if (parsed == null) {
-          debugPrint('[Compair] Prediction parse FAILED — showing error');
           setState(() {
             _predictionError = true;
             _predictionLoading = false;
           });
         } else {
+          final resultStr = jsonEncode(parsed);
           setState(() {
-            _predictionResult = result;
+            _predictionResult = resultStr;
             _predictionStructured = parsed;
             _predictionLoading = false;
           });
           _saveToSession();
           _saveAiCache('prediction', {
-            'result': result,
+            'result': resultStr,
             'structured': parsed,
           });
         }
@@ -1256,147 +1175,6 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
   }
 
   // ─── Structured Visual Builders for Premium AI Sections ───
-
-  Widget _buildQuickVerdictVisual() {
-    final data = _quickVerdictStructured!;
-    final winner = data['winner'] as String?;
-    final verdict = data['verdict'] as String?;
-    final confidence = (data['confidence'] as num?)?.toDouble() ?? 0;
-    final products = data['products'] as Map<String, dynamic>? ?? {};
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Winner card with confidence bar
-        if (winner != null) Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4A8FD9).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF4A8FD9), width: 2),
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const Text('🏆', style: TextStyle(fontSize: 26)),
-              const SizedBox(width: 10),
-              Expanded(child: Text(winner, style: GoogleFonts.plusJakartaSans(
-                fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary))),
-            ]),
-            if (verdict != null) ...[
-              const SizedBox(height: 8),
-              Text(verdict, style: GoogleFonts.plusJakartaSans(
-                fontSize: 13, color: context.textSecondary, height: 1.4)),
-            ],
-            if (confidence > 0) ...[
-              const SizedBox(height: 10),
-              Row(children: [
-                Text('Confidence', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: context.textTertiaryColor)),
-                const Spacer(),
-                Text('${confidence.toInt()}%', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, fontWeight: FontWeight.w800, color: _aiScoreColor(confidence))),
-              ]),
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: confidence / 100, minHeight: 6,
-                  backgroundColor: context.dividerColor,
-                  color: _aiScoreColor(confidence)),
-              ),
-            ],
-          ]),
-        ),
-        const SizedBox(height: 12),
-        // Per-product cards side by side
-        ...products.entries.map((entry) {
-          final name = entry.key;
-          final info = entry.value as Map<String, dynamic>? ?? {};
-          final score = (info['score'] as num?)?.toDouble() ?? 0;
-          final strengths = (info['strengths'] as List?)?.cast<String>() ?? [];
-          final weaknesses = (info['weaknesses'] as List?)?.cast<String>() ?? [];
-          final bestFor = info['best_for'] as String?;
-          final scoreColor = _aiScoreColor(score);
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: context.surfaceVariantColor,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: context.dividerColor),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [scoreColor.withValues(alpha: 0.7), scoreColor]),
-                      shape: BoxShape.circle),
-                    child: Center(child: Text('${score.toInt()}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
-                      if (name == winner)
-                        Container(
-                          margin: const EdgeInsets.only(top: 2),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4A8FD9).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4)),
-                          child: Text('WINNER', style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF4A8FD9), letterSpacing: 0.5)),
-                        ),
-                    ],
-                  )),
-                ]),
-                if (strengths.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(spacing: 6, runSpacing: 6, children: strengths.map((s) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.scoreExcellent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('✅ ', style: TextStyle(fontSize: 10)),
-                      Flexible(child: Text(s, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
-                        color: AppTheme.scoreExcellent))),
-                    ]),
-                  )).toList()),
-                ],
-                if (weaknesses.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 6, runSpacing: 6, children: weaknesses.map((w) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.error.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('⚠️ ', style: TextStyle(fontSize: 10)),
-                      Flexible(child: Text(w, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
-                        color: AppTheme.error))),
-                    ]),
-                  )).toList()),
-                ],
-                if (bestFor != null) ...[
-                  const SizedBox(height: 8),
-                  Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, fontStyle: FontStyle.italic, color: context.textSecondary)),
-                ],
-              ],
-            ),
-          );
-        }),
-      ],
-    );
-  }
 
   Widget _buildDeepAnalysisVisual() {
     final data = _deepAnalysisStructured!;
@@ -2965,28 +2743,10 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
-        // 1. Quick Verdict
-        _buildExpandableCard(
-          icon: Icons.gavel_rounded,
-          title: context.l10n?.whichShouldIBuy ?? 'Which Should I Buy?',
-          subtitle: context.l10n?.quickAiComparisonResult ?? 'Quick AI comparison result',
-          gradient: const [Color(0xFFEC4899), Color(0xFFF43F5E)],
-          isExpanded: _quickVerdictExpanded,
-          isLoading: _quickVerdictLoading,
-          content: _quickVerdictResult,
-          contentWidget: _quickVerdictStructured != null ? _buildQuickVerdictVisual() : null,
-          isError: _quickVerdictError,
-          onRetry: () {
-            setState(() { _quickVerdictError = false; _quickVerdictLoading = true; _quickVerdictResult = null; _quickVerdictStructured = null; });
-            _fetchQuickVerdict();
-          },
-          onTap: _toggleQuickVerdict,
-        ),
-        const SizedBox(height: 14),
-        // 2. Personalized Match
+        // 1. Personalized Match
         _buildMatchScoreSection(),
         const SizedBox(height: 14),
-        // 3. AI Deep Analysis
+        // 2. AI Deep Analysis
         _buildExpandableCard(
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',

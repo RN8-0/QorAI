@@ -961,11 +961,15 @@ $jsonSchema
 
         // Check for finish reason that indicates issues
         final finishReason = candidates[0]['finishReason'] as String?;
+        debugPrint('[Gemini] finishReason: $finishReason');
         if (finishReason == 'SAFETY') {
           debugPrint('[Gemini] Response blocked by safety filter');
           throw const AIServiceException(
             message: 'Response was blocked by safety filter.',
           );
+        }
+        if (finishReason == 'MAX_TOKENS') {
+          debugPrint('[Gemini] ⚠️ Response TRUNCATED — finishReason=MAX_TOKENS');
         }
 
         final content = candidates[0]['content'];
@@ -981,7 +985,13 @@ $jsonSchema
               message: 'AI returned no content.');
         }
 
-        return parts[0]['text'] as String? ?? '';
+        // Concatenate all parts in case response is split
+        final buffer = StringBuffer();
+        for (final part in parts) {
+          final text = part['text'] as String?;
+          if (text != null) buffer.write(text);
+        }
+        return buffer.toString();
       } on DioException catch (e) {
         retryCount++;
         final statusCode = e.response?.statusCode;
