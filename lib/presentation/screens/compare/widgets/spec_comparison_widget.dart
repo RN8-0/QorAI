@@ -911,7 +911,7 @@ Return ONLY valid JSON:
               maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
             if (verdict != null) ...[
               const SizedBox(height: 6),
-              Text(verdict, style: GoogleFonts.plusJakartaSans(
+              ExpandableText(verdict, style: GoogleFonts.plusJakartaSans(
                 fontSize: 12, color: context.textSecondary, height: 1.4),
                 textAlign: TextAlign.center),
             ],
@@ -1039,7 +1039,7 @@ Return ONLY valid JSON:
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('💡', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 8),
-            Expanded(child: Text(recommendation, style: GoogleFonts.plusJakartaSans(
+            Expanded(child: ExpandableText(recommendation, style: GoogleFonts.plusJakartaSans(
               fontSize: 12, height: 1.5, color: context.textPrimary))),
           ]),
         ),
@@ -1097,8 +1097,8 @@ Return ONLY valid JSON:
                   decoration: BoxDecoration(
                     color: AppTheme.scoreExcellent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6)),
-                  child: Text(alt['why_better'] as String, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10, color: AppTheme.scoreExcellent), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  child: ExpandableText(alt['why_better'] as String, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, color: AppTheme.scoreExcellent), maxLines: 2),
                 ),
               if (alt['price_range'] != null) ...[
                 const SizedBox(height: 4),
@@ -1135,7 +1135,7 @@ Return ONLY valid JSON:
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('🎯', style: TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
-            Expanded(child: Text(bestFor, style: GoogleFonts.plusJakartaSans(
+            Expanded(child: ExpandableText(bestFor, style: GoogleFonts.plusJakartaSans(
               fontSize: 13, fontWeight: FontWeight.w600, color: context.textPrimary, height: 1.4))),
           ]),
         ),
@@ -1192,7 +1192,7 @@ Return ONLY valid JSON:
                 if (p['ideal_user'] != null) ...[
                   const SizedBox(height: 2),
                   Text(p['ideal_user'] as String, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, color: context.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    fontSize: 11, color: context.textSecondary)),
                 ],
               ])),
               const SizedBox(width: 8),
@@ -1216,7 +1216,7 @@ Return ONLY valid JSON:
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('💡', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 8),
-            Expanded(child: Text(finalVerdict, style: GoogleFonts.plusJakartaSans(
+            Expanded(child: ExpandableText(finalVerdict, style: GoogleFonts.plusJakartaSans(
               fontSize: 12, height: 1.5, color: context.textPrimary))),
           ]),
         ),
@@ -1282,7 +1282,7 @@ Return ONLY valid JSON:
           ]),
           if (reason.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(reason, style: GoogleFonts.plusJakartaSans(
+            ExpandableText(reason, style: GoogleFonts.plusJakartaSans(
               fontSize: 11, color: context.textSecondary, height: 1.4)),
           ],
         ]),
@@ -2499,11 +2499,10 @@ Return ONLY valid JSON:
                               Icon(Icons.auto_awesome, size: 12,
                                   color: matchColor.withValues(alpha: 0.7)),
                               const SizedBox(width: 6),
-                              Expanded(child: Text(reason,
+                              Expanded(child: ExpandableText(reason,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11, fontStyle: FontStyle.italic,
-                                  color: context.textSecondary, height: 1.3),
-                                maxLines: 3, overflow: TextOverflow.ellipsis)),
+                                  color: context.textSecondary, height: 1.3))),
                             ],
                           ),
                         ],
@@ -2807,7 +2806,6 @@ Return ONLY valid JSON:
       return;
     }
 
-    double selectedRating = 4.0;
     final textController = TextEditingController();
 
     showModalBottomSheet(
@@ -2816,127 +2814,92 @@ Return ONLY valid JSON:
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => StatefulBuilder(
         builder: (sheetCtx, setSheetState) {
-          final ratingLabels = ['😞 Poor', '😐 Fair', '🙂 Good', '😊 Very Good', '🤩 Excellent'];
-          final ratingColors = [
-            AppTheme.error,
-            AppTheme.orange500,
-            AppTheme.scoreAverage,
-            AppTheme.scoreExcellent,
-            AppTheme.brandBlue,
-          ];
-          final starIndex = selectedRating.round().clamp(1, 5) - 1;
-
-          return Container(
-            padding: EdgeInsets.fromLTRB(24, 24, 24,
-                MediaQuery.of(sheetCtx).viewInsets.bottom + 24),
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: context.dividerColor,
-                  borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 16),
-              Text(context.l10n?.writeAReview ?? 'Write a Review',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: context.textPrimary)),
-              const SizedBox(height: 4),
-              Text(widget.products.map((p) => p.name).join(' vs '),
-                  textAlign: TextAlign.center,
-                  maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13,
-                      color: context.textTertiaryColor)),
-              const SizedBox(height: 20),
-              // 5-star rating
-              Row(mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  final starVal = (i + 1).toDouble();
-                  return GestureDetector(
-                    onTap: () => setSheetState(() => selectedRating = starVal),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Icon(
-                        i < selectedRating.round() ? Icons.star_rounded : Icons.star_outline_rounded,
-                        size: 36,
-                        color: i < selectedRating.round() ? ratingColors[starIndex] : context.textTertiaryColor,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 8),
-              // Rating label
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Text(
-                  ratingLabels[starIndex],
-                  key: ValueKey(starIndex),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w600,
-                    color: ratingColors[starIndex]),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: textController,
-                maxLines: 4, minLines: 2,
-                style: GoogleFonts.plusJakartaSans(fontSize: 14, color: context.textPrimary),
-                decoration: InputDecoration(
-                  hintText: context.l10n?.shareYourExperience ?? 'Share your experience...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, color: context.textTertiaryColor),
-                  filled: true,
-                  fillColor: context.surfaceVariantColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none)),
-              ),
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () async {
-                  HapticFeedback.mediumImpact();
-                  final review = ReviewModel(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    userId: user.uid,
-                    productId: widget.products.first.id,
-                    rating: selectedRating,
-                    text: textController.text.trim(),
-                    helpful: 0,
-                    reported: false,
-                    createdAt: DateTime.now(),
-                  );
-                  final repo = ref.read(productRepositoryProvider);
-                  final result = await repo.addReview(review);
-                  result.when(
-                    success: (_) {
-                      ref.invalidate(productReviewsProvider(widget.products.first.id));
-                      Navigator.of(sheetCtx).pop();
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                        content: Text(context.l10n?.reviewSubmitted ?? 'Review submitted! ⭐',
-                            style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-                        behavior: SnackBarBehavior.floating));
-                    },
-                    failure: (e) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                        content: Text(context.l10n?.failedToSubmit('$e') ?? 'Failed to submit: $e'),
-                        behavior: SnackBarBehavior.floating));
-                    },
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+          return SafeArea(
+            top: false,
+            child: Container(
+              padding: EdgeInsets.fromLTRB(24, 24, 24,
+                  MediaQuery.of(sheetCtx).viewInsets.bottom + MediaQuery.of(sheetCtx).padding.bottom + 24),
+              decoration: BoxDecoration(
+                color: context.surfaceElevatedColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 40, height: 4,
                   decoration: BoxDecoration(
-                    gradient: _accentGradient,
-                    borderRadius: BorderRadius.circular(14)),
-                  child: Center(child: Text(context.l10n?.submitReview ?? 'Submit Review',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 15,
-                          fontWeight: FontWeight.w700, color: Colors.white))),
+                    color: context.dividerColor,
+                    borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 16),
+                Text(context.l10n?.writeAReview ?? 'Write a Review',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary)),
+                const SizedBox(height: 4),
+                Text(widget.products.map((p) => p.name).join(' vs '),
+                    textAlign: TextAlign.center,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13,
+                        color: context.textTertiaryColor)),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: textController,
+                  maxLines: 4, minLines: 2,
+                  onChanged: (_) => setSheetState(() {}),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14, color: context.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: context.l10n?.shareYourExperience ?? 'Share your experience...',
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 14, color: context.textTertiaryColor),
+                    filled: true,
+                    fillColor: context.surfaceVariantColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none)),
                 ),
-              ),
-            ]),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: textController.text.trim().isNotEmpty ? () async {
+                    HapticFeedback.mediumImpact();
+                    final review = ReviewModel(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      userId: user.uid,
+                      productId: widget.products.first.id,
+                      rating: 0.0,
+                      text: textController.text.trim(),
+                      helpful: 0,
+                      reported: false,
+                      createdAt: DateTime.now(),
+                    );
+                    final repo = ref.read(productRepositoryProvider);
+                    final result = await repo.addReview(review);
+                    result.when(
+                      success: (_) {
+                        ref.invalidate(productReviewsProvider(widget.products.first.id));
+                        Navigator.of(sheetCtx).pop();
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                          content: Text(context.l10n?.reviewSubmitted ?? 'Review submitted! ⭐',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 13)),
+                          behavior: SnackBarBehavior.floating));
+                      },
+                      failure: (e) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                          content: Text(context.l10n?.failedToSubmit('$e') ?? 'Failed to submit: $e'),
+                          behavior: SnackBarBehavior.floating));
+                      },
+                    );
+                  } : null,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: textController.text.trim().isNotEmpty ? _accentGradient : null,
+                      color: textController.text.trim().isNotEmpty ? null : context.textTertiaryColor,
+                      borderRadius: BorderRadius.circular(14)),
+                    child: Center(child: Text(context.l10n?.submitReview ?? 'Submit Review',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 15,
+                            fontWeight: FontWeight.w700, color: Colors.white))),
+                  ),
+                ),
+              ]),
+            ),
           );
         },
       ),

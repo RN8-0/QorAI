@@ -34,6 +34,7 @@ import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_premium_section.dart';
 import 'package:compair/presentation/widgets/shared/shared_benchmark_card.dart';
 import 'package:compair/core/category_key_specs.dart' as keySpecs;
+import 'package:compair/presentation/widgets/shared/expandable_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 
@@ -525,22 +526,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     final totalSlots = (filledCount + 1).clamp(2, 4);
     final widgets = <Widget>[];
     for (int i = 0; i < totalSlots; i++) {
-      if (i > 0) {
-        widgets.add(
-          Container(
-            width: 22,
-            height: 22,
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: const BoxDecoration(
-              gradient: _accentGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text('VS', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800)),
-            ),
-          ),
-        );
-      }
       if (i < filledCount) {
         final productId = _selectedProductIds[i];
         final productAsync = ref.watch(productDetailProvider(productId));

@@ -180,26 +180,36 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
   /// Fetch benchmark scores via Gemini grounded query
   Future<void> _fetchFromGemini() async {
     final gemini = ref.read(geminiServiceProvider);
-    final names = widget.products.map((p) => '${p.brand ?? ''} ${p.name}'.trim()).toList();
+    // Normalize product names: trim, collapse whitespace, remove special chars
+    String _normalize(String s) => s.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final names = widget.products.map((p) => _normalize('${p.brand ?? ''} ${p.name}')).toList();
     final labels = widget.products.map((p) => p.name).toList();
     final benchStr = _benchmarkNames.join(', ');
 
+    // Build a numbered product list for clearer Gemini identification
+    final numberedProducts = <String>[];
+    for (int i = 0; i < names.length; i++) {
+      numberedProducts.add('Product${i + 1}: ${names[i]}');
+    }
+
     final prompt = StringBuffer()
       ..writeln('Find REAL published benchmark scores for these products:')
-      ..writeln(names.map((n) => '- $n').join('\n'))
+      ..writeln(numberedProducts.join('\n'))
       ..writeln('')
       ..writeln('Benchmarks needed: $benchStr')
       ..writeln('')
       ..writeln('RULES:')
       ..writeln('- Only report real verified scores from official benchmark databases')
-      ..writeln('- Return ONLY lines in this exact format: ProductName|BenchmarkName|NumericScore')
-      ..writeln('- Example: iPhone 16 Pro|Geekbench Single-Core|3400')
-      ..writeln('- Example: Samsung Galaxy S25 Ultra|AnTuTu|2150000')
+      ..writeln('- Return ONLY lines in this exact format: ProductN|BenchmarkName|NumericScore')
+      ..writeln('- Use the exact ProductN label (Product1, Product2, etc.) — NOT the product name')
+      ..writeln('- Example: Product1|Geekbench Single-Core|3400')
+      ..writeln('- Example: Product2|AnTuTu|2150000')
       ..writeln('- If a score is not available for a product, skip that line entirely')
-      ..writeln('- No text, no explanations, just data lines')
-      ..writeln('- ProductName must match one of the products listed above');
+      ..writeln('- No text, no explanations, just data lines');
 
+    debugPrint('[Benchmark] Prompt:\n${prompt.toString()}');
     final result = await gemini.groundedQuery(prompt.toString());
+    debugPrint('[Benchmark] Raw Gemini response:\n$result');
 
     for (final line in result.split('\n')) {
       final trimmed = line.trim();
@@ -218,33 +228,52 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
         (b) {
           final bLow = bRaw.toLowerCase();
           final benchLow = b!.toLowerCase();
-          // Check if main keywords match
           final benchWords = benchLow.split(RegExp(r'[\s\-]+')).where((w) => w.length > 2).toList();
           return benchWords.every((w) => bLow.contains(w)) || bLow.contains(benchLow);
         },
         orElse: () => null,
       );
-      if (matchedBench == null) continue;
+      if (matchedBench == null) {
+        debugPrint('[Benchmark] No benchmark match for: "$bRaw"');
+        continue;
+      }
 
-      // Fuzzy match product name
+      // Match ProductN label first (preferred)
       String? matchedLabel;
-      for (int i = 0; i < names.length; i++) {
-        final nameParts = names[i].toLowerCase().split(' ').where((w) => w.length > 1).take(3).toList();
-        final pLow = pRaw.toLowerCase();
-        final matchCount = nameParts.where((w) => pLow.contains(w)).length;
-        if (matchCount >= 2 || pLow.contains(labels[i].toLowerCase().split(' ').take(2).join(' '))) {
-          matchedLabel = labels[i];
-          break;
+      final pLow = pRaw.toLowerCase().trim();
+      final productNMatch = RegExp(r'product\s*(\d+)').firstMatch(pLow);
+      if (productNMatch != null) {
+        final idx = int.tryParse(productNMatch.group(1)!);
+        if (idx != null && idx >= 1 && idx <= labels.length) {
+          matchedLabel = labels[idx - 1];
         }
       }
-      if (matchedLabel == null) continue;
+
+      // Fallback: fuzzy match product name
+      if (matchedLabel == null) {
+        for (int i = 0; i < names.length; i++) {
+          final allWords = names[i].toLowerCase().split(' ').where((w) => w.length > 1).toList();
+          final matchCount = allWords.where((w) => pLow.contains(w)).length;
+          // More lenient: match 2 words OR >50% of words
+          if (matchCount >= 2 || (allWords.isNotEmpty && matchCount / allWords.length > 0.5) ||
+              pLow.contains(labels[i].toLowerCase().split(' ').take(2).join(' '))) {
+            matchedLabel = labels[i];
+            break;
+          }
+        }
+      }
+      if (matchedLabel == null) {
+        debugPrint('[Benchmark] No product match for: "$pRaw"');
+        continue;
+      }
 
       _scores.putIfAbsent(matchedBench, () => {});
       _scores[matchedBench]![matchedLabel] = score;
+      debugPrint('[Benchmark] Matched: $matchedLabel | $matchedBench = $score');
     }
   }
 
-  /// Main fetch: cache first, then Gemini fallback
+  /// Main fetch: cache first, then Gemini fallback (with retry)
   Future<void> _fetchScores() async {
     setState(() { _loading = true; _error = null; });
     try {
@@ -253,6 +282,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
       // 1. Try Firestore cache
       final cached = await _readFirestoreCache();
       if (cached && _scores.isNotEmpty) {
+        debugPrint('[Benchmark] Loaded from Firestore cache: ${_scores.length} benchmarks');
         if (mounted) {
           setState(() { _loading = false; _loaded = true; });
           _barAnimCtrl.forward();
@@ -260,12 +290,20 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
         return;
       }
 
-      // 2. Fetch from Gemini
+      // 2. Fetch from Gemini (with single retry on empty result)
       await _fetchFromGemini();
+
+      if (_scores.isEmpty) {
+        debugPrint('[Benchmark] First attempt empty, retrying...');
+        await _fetchFromGemini();
+      }
 
       // 3. Cache results to Firestore (fire and forget)
       if (_scores.isNotEmpty) {
+        debugPrint('[Benchmark] Got scores for ${_scores.length} benchmarks, caching...');
         _writeFirestoreCache();
+      } else {
+        debugPrint('[Benchmark] No scores found after retry');
       }
 
       if (mounted) {
@@ -273,6 +311,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
         _barAnimCtrl.forward();
       }
     } catch (e) {
+      debugPrint('[Benchmark] Error: $e');
       if (mounted) setState(() { _error = 'Could not load benchmarks'; _loading = false; _loaded = true; });
     }
   }
@@ -390,7 +429,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
         Icon(Icons.info_outline_rounded, size: 32,
           color: context.textTertiaryColor),
         const SizedBox(height: 8),
-        Text(_error ?? (context.l10n?.benchmarkNotFound ?? 'No benchmark data found'),
+        Text(_error ?? (context.l10n?.benchmarkNotFound ?? 'Could not load benchmarks'),
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textTertiaryColor)),
         const SizedBox(height: 12),
@@ -407,7 +446,7 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
             decoration: BoxDecoration(
               color: AppTheme.brandBlue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8)),
-            child: Text(context.l10n?.retryBenchmark ?? 'Retry',
+            child: Text(context.l10n?.retryBenchmark ?? 'Retry Benchmark Lookup',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.brandBlue)),
           ),
