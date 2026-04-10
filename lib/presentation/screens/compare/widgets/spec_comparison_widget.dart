@@ -100,8 +100,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (session.deepAnalysisResult != null) _deepAnalysisResult = session.deepAnalysisResult;
       if (session.aiStructured != null) _deepAnalysisStructured = session.aiStructured;
       if (session.alternativesResult != null) _alternativesResult = session.alternativesResult;
+      if (session.alternativesStructured != null) _alternativesStructured = session.alternativesStructured;
       if (session.advisorResult != null) _advisorResult = session.advisorResult;
+      if (session.advisorStructured != null) _advisorStructured = session.advisorStructured;
       if (session.predictionResult != null) _predictionResult = session.predictionResult;
+      if (session.predictionStructured != null) _predictionStructured = session.predictionStructured;
+      if (session.quickVerdictResult != null) _quickVerdictResult = session.quickVerdictResult;
     }
   }
 
@@ -111,8 +115,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       aiStructured: _deepAnalysisStructured,
       deepAnalysisResult: _deepAnalysisResult,
       alternativesResult: _alternativesResult,
+      alternativesStructured: _alternativesStructured,
       advisorResult: _advisorResult,
+      advisorStructured: _advisorStructured,
       predictionResult: _predictionResult,
+      predictionStructured: _predictionStructured,
+      quickVerdictResult: _quickVerdictResult,
     ));
   }
 
@@ -238,6 +246,7 @@ Keep it punchy and actionable. No hedging.''',
           _quickVerdictResult = result.isNotEmpty ? result : 'Unable to generate verdict.';
           _quickVerdictLoading = false;
         });
+        _saveToSession();
       }
     } catch (e, st) {
       debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
@@ -1492,10 +1501,6 @@ Return ONLY valid JSON:
 
     final theme = Theme.of(context);
     final productCount = widget.products.length;
-    // For ≤2 products: 3 rows, 2 spec-pairs per row
-    // For >2 products: 6 rows, 1 spec per row (N product cells)
-    final pairMode = productCount <= 2;
-    final specRows = pairMode ? (specs.length / 2).ceil() : specs.length;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -1523,62 +1528,191 @@ Return ONLY valid JSON:
           ),
           const SizedBox(height: 12),
 
-          // Spec comparison grid
-          for (int row = 0; row < specRows; row++) ...[
-            if (row > 0) const SizedBox(height: 6),
-            if (pairMode)
-              _buildPairRow(specs, row, theme)
-            else
-              _buildSingleSpecRow(specs[row], theme),
+          // Sticky product name header row
+          _buildProductNameHeader(theme, productCount),
+          const SizedBox(height: 8),
+
+          // Spec rows
+          for (int i = 0; i < specs.length; i++) ...[
+            if (i > 0) const SizedBox(height: 5),
+            _buildSpecComparisonRow(specs[i], theme, productCount),
           ],
         ],
       ),
     );
   }
 
-  /// Build a row containing 2 spec comparisons side-by-side (for ≤2 products).
-  Widget _buildPairRow(List<_CompareSpecRow> specs, int rowIndex, ThemeData theme) {
-    final leftIdx = rowIndex * 2;
-    final rightIdx = leftIdx + 1;
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  /// Product name header row — always visible at top
+  Widget _buildProductNameHeader(ThemeData theme, int productCount) {
+    final colors = [
+      const Color(0xFF3B82F6),
+      const Color(0xFFF97316),
+      const Color(0xFF8B5CF6),
+      const Color(0xFF10B981),
+    ];
+    if (productCount <= 2) {
+      // 2-product: left spacer for label column, then 2 product names
+      return Row(
         children: [
-          Expanded(child: _buildSingleSpecRow(specs[leftIdx], theme)),
-          if (rightIdx < specs.length) ...[
-            const SizedBox(width: 6),
-            Expanded(child: _buildSingleSpecRow(specs[rightIdx], theme)),
-          ] else
-            const Expanded(child: SizedBox.shrink()),
+          // Label column spacer
+          const SizedBox(width: 90),
+          ...List.generate(productCount, (i) {
+            final p = widget.products[i];
+            final shortName = p.name.length > 18 ? '${p.name.substring(0, 16)}…' : p.name;
+            return Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: colors[i].withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: colors[i].withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  shortName,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: colors[i]),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            );
+          }).expand((w) => [const SizedBox(width: 4), w]).skip(1),
         ],
-      ),
+      );
+    }
+    // 3-4 products: all columns equal width
+    return Row(
+      children: List.generate(productCount, (i) {
+        final p = widget.products[i];
+        final shortName = p.name.length > 14 ? '${p.name.substring(0, 12)}…' : p.name;
+        return Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 3),
+            decoration: BoxDecoration(
+              color: colors[i].withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colors[i].withValues(alpha: 0.2)),
+            ),
+            child: Text(
+              shortName,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 9, fontWeight: FontWeight.w700,
+                color: colors[i]),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      }),
     );
   }
 
-  /// Build a single spec comparison block: spec label + product cells.
-  Widget _buildSingleSpecRow(_CompareSpecRow spec, ThemeData theme) {
+  /// Build a single spec comparison row.
+  Widget _buildSpecComparisonRow(_CompareSpecRow spec, ThemeData theme, int productCount) {
     final winnerIdx = _findCompareWinner(spec.label, spec.values);
-    final productCount = widget.products.length;
-    final isCompact = productCount > 2;
 
+    if (productCount <= 2) {
+      // 2-product layout: [label column] [value1] [value2]
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            // Label + icon column (fixed width)
+            SizedBox(
+              width: 86,
+              child: Row(
+                children: [
+                  Icon(
+                    keySpecs.iconForSpecKey(spec.label),
+                    size: 14,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _localizedSpecName(context, spec.label),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9, fontWeight: FontWeight.w600,
+                        color: context.textTertiaryColor, letterSpacing: 0.2),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Value cells
+            ...List.generate(productCount, (i) {
+              final val = i < spec.values.length ? spec.values[i] : '—';
+              final isMissing = val == '—';
+              final style = _cellStyle(value: val, index: i, winnerIndex: winnerIdx, theme: theme);
+              return Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
+                        ? AppTheme.scoreExcellent.withValues(alpha: 0.10)
+                        : (winnerIdx >= 0 && i != winnerIdx && !isMissing)
+                            ? AppTheme.error.withValues(alpha: 0.05)
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
+                        ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.3))
+                        : null,
+                  ),
+                  child: Text(
+                    _localizedSpecValue(context, val),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, fontWeight: style.weight, color: style.color),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    // 3-4 product layout: spec label above, then N cells
+    final isCompact = productCount > 2;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
-          // Spec label centered above cells
-          Text(
-            _localizedSpecName(context, spec.label),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 9, fontWeight: FontWeight.w600,
-              color: context.textTertiaryColor, letterSpacing: 0.3),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          // Spec label centered
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(keySpecs.iconForSpecKey(spec.label),
+                size: 12, color: theme.colorScheme.primary.withValues(alpha: 0.7)),
+              const SizedBox(width: 4),
+              Text(
+                _localizedSpecName(context, spec.label),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9, fontWeight: FontWeight.w600,
+                  color: context.textTertiaryColor, letterSpacing: 0.2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           // Product cells
@@ -1586,48 +1720,31 @@ Return ONLY valid JSON:
             children: List.generate(productCount, (i) {
               final val = i < spec.values.length ? spec.values[i] : '—';
               final isMissing = val == '—';
-              final style = _cellStyle(
-                value: val, index: i, winnerIndex: winnerIdx, theme: theme);
-
+              final style = _cellStyle(value: val, index: i, winnerIndex: winnerIdx, theme: theme);
               return Expanded(
                 child: Container(
                   margin: EdgeInsets.symmetric(horizontal: isCompact ? 1.5 : 2),
-                  constraints: BoxConstraints(minHeight: isCompact ? 52 : 58),
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
                   decoration: BoxDecoration(
                     color: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
-                        ? AppTheme.scoreExcellent.withValues(alpha: 0.08)
+                        ? AppTheme.scoreExcellent.withValues(alpha: 0.10)
                         : (winnerIdx >= 0 && i != winnerIdx && !isMissing)
-                            ? AppTheme.error.withValues(alpha: 0.04)
+                            ? AppTheme.error.withValues(alpha: 0.05)
                             : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
-                        ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.25))
+                        ? Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.3))
                         : null,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        keySpecs.iconForSpecKey(spec.label),
-                        size: isCompact ? 14 : 16,
-                        color: isMissing
-                            ? context.textTertiaryColor
-                            : theme.colorScheme.primary.withValues(alpha: 0.7),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _localizedSpecValue(context, val),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: isCompact ? 10 : 11,
-                          fontWeight: style.weight,
-                          color: style.color,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    _localizedSpecValue(context, val),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: isCompact ? 10 : 11,
+                      fontWeight: style.weight,
+                      color: style.color),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               );
@@ -1852,14 +1969,14 @@ Return ONLY valid JSON:
             ),
           ),
 
-          // Tab content (scrollable)
+          // Tab content (scrollable) — KeepAlive prevents disposal on tab switch
           Expanded(
             child: TabBarView(
               children: [
-                _buildSpecsTab(),
-                _buildReviewsTab(),
-                _buildSimilarTab(),
-                _buildProTab(),
+                _KeepAliveTab(child: _buildSpecsTab()),
+                _KeepAliveTab(child: _buildReviewsTab()),
+                _KeepAliveTab(child: _buildSimilarTab()),
+                _KeepAliveTab(child: _buildProTab()),
               ],
             ),
           ),
@@ -2350,8 +2467,8 @@ Return ONLY valid JSON:
           onTap: _togglePrediction,
         ),
         const SizedBox(height: 14),
-        // 7. Benchmark comparison
-        _CompareBenchmarkSection(products: widget.products),
+        // 7. Benchmark comparison — auto-fetch in background
+        _CompareBenchmarkSection(products: widget.products, autoFetch: true),
       ],
     );
   }
@@ -2361,34 +2478,36 @@ Return ONLY valid JSON:
     final user = userProfile.valueOrNull;
     final quizCompleted = user != null && user.quizCompleted;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() => _matchScoreExpanded = !_matchScoreExpanded);
-        if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
-          _matchScoreFetched = true;
-          for (final product in widget.products) {
-            final notifier = ref.read(geminiMatchScoreProvider(product.id).notifier);
-            notifier.fetchMatchScore(product: product);
-          }
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.brandBlue.withValues(alpha: 0.08),
-              blurRadius: 12, offset: const Offset(0, 4)),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.08),
+            blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Only header row toggles expand/collapse
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() => _matchScoreExpanded = !_matchScoreExpanded);
+              if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
+                _matchScoreFetched = true;
+                for (final product in widget.products) {
+                  final notifier = ref.read(geminiMatchScoreProvider(product.id).notifier);
+                  notifier.fetchMatchScore(product: product);
+                }
+              }
+            },
+            child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -2413,13 +2532,18 @@ Return ONLY valid JSON:
               Icon(_matchScoreExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                 color: AppTheme.brandBlue),
             ]),
-            if (_matchScoreExpanded) ...[
-              const SizedBox(height: 14),
-              if (!quizCompleted)
-                // Quiz not completed — show CTA button
-                GestureDetector(
-                  onTap: () => context.push('/quiz'),
-                  child: Container(
+          ),
+          // Content area — taps absorbed, don't toggle card
+          if (_matchScoreExpanded) ...[
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: () {},
+              child: Column(
+                children: [
+                  if (!quizCompleted)
+                    GestureDetector(
+                      onTap: () => context.push('/quiz'),
+                      child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
@@ -2535,9 +2659,11 @@ Return ONLY valid JSON:
                     ),
                   );
                 }),
-            ],
+                ],
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -2554,24 +2680,26 @@ Return ONLY valid JSON:
     Widget? contentWidget,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: gradient[0].withValues(alpha: 0.15)),
-          boxShadow: [BoxShadow(
-            color: gradient[0].withValues(alpha: 0.08),
-            blurRadius: 12, offset: const Offset(0, 4))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: gradient[0].withValues(alpha: 0.15)),
+        boxShadow: [BoxShadow(
+          color: gradient[0].withValues(alpha: 0.08),
+          blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Only header row is tappable for toggle
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -2596,13 +2724,14 @@ Return ONLY valid JSON:
                 Icon(isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                   color: gradient[0]),
             ]),
-            // Prefer structured contentWidget over markdown fallback
-            if (isExpanded && contentWidget != null) ...[
-              const SizedBox(height: 14),
-              contentWidget,
-            ] else if (isExpanded && content != null) ...[
-              const SizedBox(height: 14),
-              MarkdownBody(
+          ),
+          // Content area — taps do NOT propagate to toggle
+          if (isExpanded && contentWidget != null) ...[
+            const SizedBox(height: 14),
+            GestureDetector(onTap: () {}, child: contentWidget),
+          ] else if (isExpanded && content != null) ...[
+            const SizedBox(height: 14),
+            GestureDetector(onTap: () {}, child: MarkdownBody(
                 data: content,
                 selectable: true,
                 styleSheet: MarkdownStyleSheet(
@@ -2639,10 +2768,9 @@ Return ONLY valid JSON:
                   ),
                   blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-              ),
-            ],
+              )),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -2979,6 +3107,25 @@ class _CompareSpecRow {
   final String label;
   final List<String> values;
   const _CompareSpecRow({required this.label, required this.values});
+}
+
+/// Keeps TabBarView children alive across tab switches.
+class _KeepAliveTab extends StatefulWidget {
+  final Widget child;
+  const _KeepAliveTab({required this.child});
+  @override
+  State<_KeepAliveTab> createState() => _KeepAliveTabState();
+}
+
+class _KeepAliveTabState extends State<_KeepAliveTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }
 
 // ─── Tab Bar Delegate ─────────────────────────────────────────────────────────

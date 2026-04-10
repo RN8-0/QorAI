@@ -13,7 +13,8 @@ String _benchmarkCacheKey(List<String> productIds, List<String> benchmarkNames) 
 
 class _CompareBenchmarkSection extends ConsumerStatefulWidget {
   final List<ProductEntity> products;
-  const _CompareBenchmarkSection({required this.products});
+  final bool autoFetch;
+  const _CompareBenchmarkSection({required this.products, this.autoFetch = false});
 
   @override
   ConsumerState<_CompareBenchmarkSection> createState() => _CompareBenchmarkSectionState();
@@ -39,6 +40,12 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
+    // Auto-fetch benchmark data in background when requested
+    if (widget.autoFetch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_loaded && !_loading) _fetchScores();
+      });
+    }
   }
 
   @override
@@ -328,27 +335,28 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
     final labels = widget.products.map((p) => p.name).toList();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() => _expanded = !_expanded);
-        if (_expanded && !_loaded && !_loading) _fetchScores();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
-          boxShadow: [BoxShadow(
-            color: AppTheme.brandBlue.withValues(alpha: 0.08),
-            blurRadius: 12, offset: const Offset(0, 4))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header row ──
-            Row(children: [
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
+        boxShadow: [BoxShadow(
+          color: AppTheme.brandBlue.withValues(alpha: 0.08),
+          blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header row — only this toggles ──
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() => _expanded = !_expanded);
+              if (_expanded && !_loaded && !_loading) _fetchScores();
+            },
+            child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -378,19 +386,23 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
                   child: const Icon(Icons.expand_more_rounded, color: AppTheme.brandBlue),
                 ),
             ]),
+          ),
 
-            // ── Expanded content ──
-            if (_expanded) ...[
-              const SizedBox(height: 16),
-              if (_loading)
-                _buildShimmer(isDark)
-              else if (_error != null || (_loaded && _scores.isEmpty))
-                _buildEmptyState()
-              else if (_loaded)
-                _buildScoresTable(labels, isDark),
-            ],
+          // ── Expanded content — taps absorbed ──
+          if (_expanded) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () {},
+              child: _loading
+                ? _buildShimmer(isDark)
+                : (_error != null || (_loaded && _scores.isEmpty))
+                  ? _buildEmptyState()
+                  : _loaded
+                    ? _buildScoresTable(labels, isDark)
+                    : const SizedBox.shrink(),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

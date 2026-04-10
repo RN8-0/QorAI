@@ -1150,8 +1150,12 @@ class CompareSessionData {
   final Map<String, dynamic>? aiStructured;
   final String? deepAnalysisResult;
   final String? alternativesResult;
+  final Map<String, dynamic>? alternativesStructured;
   final String? advisorResult;
+  final Map<String, dynamic>? advisorStructured;
   final String? predictionResult;
+  final Map<String, dynamic>? predictionStructured;
+  final String? quickVerdictResult;
 
   const CompareSessionData({
     this.selectedProductIds = const [],
@@ -1162,8 +1166,12 @@ class CompareSessionData {
     this.aiStructured,
     this.deepAnalysisResult,
     this.alternativesResult,
+    this.alternativesStructured,
     this.advisorResult,
+    this.advisorStructured,
     this.predictionResult,
+    this.predictionStructured,
+    this.quickVerdictResult,
   });
 
   CompareSessionData copyWith({
@@ -1175,8 +1183,12 @@ class CompareSessionData {
     Map<String, dynamic>? aiStructured,
     String? deepAnalysisResult,
     String? alternativesResult,
+    Map<String, dynamic>? alternativesStructured,
     String? advisorResult,
+    Map<String, dynamic>? advisorStructured,
     String? predictionResult,
+    Map<String, dynamic>? predictionStructured,
+    String? quickVerdictResult,
     bool clearProducts = false,
     bool clearAiAnalysis = false,
   }) {
@@ -1189,8 +1201,12 @@ class CompareSessionData {
       aiStructured: clearAiAnalysis ? null : (aiStructured ?? this.aiStructured),
       deepAnalysisResult: clearAiAnalysis ? null : (deepAnalysisResult ?? this.deepAnalysisResult),
       alternativesResult: clearAiAnalysis ? null : (alternativesResult ?? this.alternativesResult),
+      alternativesStructured: clearAiAnalysis ? null : (alternativesStructured ?? this.alternativesStructured),
       advisorResult: clearAiAnalysis ? null : (advisorResult ?? this.advisorResult),
+      advisorStructured: clearAiAnalysis ? null : (advisorStructured ?? this.advisorStructured),
       predictionResult: clearAiAnalysis ? null : (predictionResult ?? this.predictionResult),
+      predictionStructured: clearAiAnalysis ? null : (predictionStructured ?? this.predictionStructured),
+      quickVerdictResult: clearAiAnalysis ? null : (quickVerdictResult ?? this.quickVerdictResult),
     );
   }
 
