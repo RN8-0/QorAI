@@ -256,13 +256,16 @@ final searchResultsProvider =
     );
     final merged = [...localResults, ...cloudProducts];
 
+    // Deduplicate variants (same product, different storage/color)
+    final deduped = deduplicateVariants(merged);
+
     // Personalize results using match score
     final user = ref.read(userProfileProvider).valueOrNull;
-    if (user != null && merged.isNotEmpty) {
+    if (user != null && deduped.isNotEmpty) {
       final algo = ref.read(profileAlgorithmServiceProvider);
       final behavior = ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
       // Blend relevance + personalization
-      merged.sort((a, b) {
+      deduped.sort((a, b) {
         final nameA = a.name.toLowerCase();
         final nameB = b.name.toLowerCase();
         double relA = 0, relB = 0;
@@ -286,7 +289,7 @@ final searchResultsProvider =
       });
     } else {
       // No user profile — sort by relevance only
-      merged.sort((a, b) {
+      deduped.sort((a, b) {
         final nameA = a.name.toLowerCase();
         final nameB = b.name.toLowerCase();
         int scoreA = 0, scoreB = 0;
@@ -300,8 +303,8 @@ final searchResultsProvider =
       });
     }
 
-    AnalyticsService.instance.logProductSearch(query, merged.length);
-    return Success(merged.take(100).toList());
+    AnalyticsService.instance.logProductSearch(query, deduped.length);
+    return Success(deduped.take(100).toList());
   } catch (_) {
     // Timeout — return local results if any
     if (localResults.isNotEmpty) return Success(localResults.take(100).toList());

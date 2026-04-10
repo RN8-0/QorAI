@@ -1179,102 +1179,124 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
   Widget _buildDeepAnalysisVisual() {
     final data = _deepAnalysisStructured!;
     final winner = data['winner'] as String?;
-    final verdict = data['verdict'] as String?;
     final products = data['products'] as Map<String, dynamic>? ?? {};
     final categories = data['categories'] as Map<String, dynamic>? ?? {};
-    final recommendation = data['recommendation'] as String?;
+    final recommendation = data['recommendation'] as String? ?? data['verdict'] as String?;
     final productNames = widget.products.map((p) => p.name).toList();
+    final productCount = productNames.length;
     final barColors = [
       const Color(0xFF6366F1), const Color(0xFFEC4899), const Color(0xFF06B6D4),
       const Color(0xFFF59E0B), const Color(0xFF10B981),
     ];
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Winner card
+      // Winner badge — compact
       if (winner != null)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
               const Color(0xFFFFD700).withValues(alpha: 0.15),
               const Color(0xFFFFA500).withValues(alpha: 0.08)]),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.4), width: 1.5)),
-          child: Column(children: [
-            const Text('🏆', style: TextStyle(fontSize: 24)),
-            const SizedBox(height: 4),
-            Text(winner, style: GoogleFonts.plusJakartaSans(
-              fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
-              textAlign: TextAlign.center),
-            if (verdict != null) ...[
-              const SizedBox(height: 6),
-              Text(verdict, style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: context.textSecondary, height: 1.4),
-                textAlign: TextAlign.center),
-            ],
+          child: Row(children: [
+            const Text('🏆', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(winner, style: GoogleFonts.plusJakartaSans(
+              fontSize: 13, fontWeight: FontWeight.w800, color: context.textPrimary),
+              maxLines: 2, overflow: TextOverflow.ellipsis)),
           ]),
         ),
-      // Per-product scores
+
+      // Per-product columns — side by side like Specs tab
       if (products.isNotEmpty) ...[
-        const SizedBox(height: 14),
-        ...products.entries.map((e) {
-          final pData = e.value as Map<String, dynamic>? ?? {};
-          final score = (pData['score'] as num?)?.toDouble() ?? 0;
-          final strengths = List<String>.from(pData['strengths'] ?? []);
-          final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
-          final bestFor = pData['best_for'] as String? ?? '';
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(12)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(e.key, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary))),
-                Container(
-                  width: 42, height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [
-                      _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
-                  child: Center(child: Text('${score.toInt()}',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white))),
-                ),
-              ]),
-              if (bestFor.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, color: context.textSecondary, fontStyle: FontStyle.italic)),
-              ],
-              if (strengths.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                ...strengths.take(3).map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Row(children: [
-                    const Text('✅ ', style: TextStyle(fontSize: 10)),
-                    Expanded(child: Text(s, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textSecondary))),
-                  ]),
-                )),
-              ],
-              if (weaknesses.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                ...weaknesses.take(2).map((w) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Row(children: [
-                    const Text('⚠️ ', style: TextStyle(fontSize: 10)),
-                    Expanded(child: Text(w, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textTertiaryColor))),
-                  ]),
-                )),
-              ],
-            ]),
-          );
-        }),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: List.generate(productCount, (i) {
+            final pName = productNames[i];
+            // Find matching product data
+            Map<String, dynamic> pData = {};
+            for (final e in products.entries) {
+              if (e.key.toLowerCase().contains(pName.toLowerCase().split(' ').take(3).join(' ')) ||
+                  pName.toLowerCase().contains(e.key.toLowerCase().split(' ').take(3).join(' '))) {
+                pData = e.value as Map<String, dynamic>? ?? {};
+                break;
+              }
+            }
+            if (pData.isEmpty && i < products.length) {
+              pData = products.values.elementAt(i) as Map<String, dynamic>? ?? {};
+            }
+            final score = (pData['score'] as num?)?.toDouble() ?? 0;
+            final strengths = List<String>.from(pData['strengths'] ?? []);
+            final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
+            final bestFor = pData['best_for'] as String? ?? '';
+            final color = barColors[i % barColors.length];
+
+            return Expanded(child: GestureDetector(
+              onTap: () => _showProductDetailOverlay(
+                productName: pName,
+                score: score,
+                strengths: strengths,
+                weaknesses: weaknesses,
+                bestFor: bestFor,
+                color: color,
+              ),
+              child: Container(
+                margin: EdgeInsets.only(
+                  left: i == 0 ? 0 : 3,
+                  right: i == productCount - 1 ? 0 : 3),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withValues(alpha: 0.2))),
+                child: Column(children: [
+                  // Score circle
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: [
+                        _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
+                    child: Center(child: Text('${score.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white))),
+                  ),
+                  const SizedBox(height: 6),
+                  // Product name — short
+                  Text(
+                    pName.length > (productCount > 2 ? 20 : 30)
+                      ? '${pName.substring(0, productCount > 2 ? 18 : 28)}…'
+                      : pName,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: productCount > 3 ? 8 : (productCount > 2 ? 9 : 10),
+                      fontWeight: FontWeight.w700, color: context.textPrimary),
+                    textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 6),
+                  // Quick info
+                  if (strengths.isNotEmpty)
+                    Text('✅ ${strengths.first}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 8, color: context.textSecondary),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+                  const SizedBox(height: 6),
+                  // Detail button
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9, fontWeight: FontWeight.w700, color: color)),
+                  ),
+                ]),
+              ),
+            ));
+          }),
+        ),
       ],
+
       // Category comparison — compact preview + full screen button
       if (categories.isNotEmpty) ...[
         const SizedBox(height: 14),
@@ -1385,6 +1407,372 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         ),
       ],
     ]);
+  }
+
+  void _showPredictionDetailOverlay({
+    required String productName,
+    required String trend,
+    required double changePercent,
+    required String bestTime,
+    required bool buyNow,
+    required String reason,
+    required double confidence,
+    required Color color,
+  }) {
+    final isDropping = trend == 'dropping' || trend == 'down';
+    final isRising = trend == 'rising' || trend == 'up';
+    final trendIcon = isDropping ? Icons.trending_down_rounded
+        : isRising ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
+    final trendColor = isDropping ? AppTheme.scoreExcellent
+        : isRising ? AppTheme.error : AppTheme.warning;
+    final trendLabel = isDropping ? 'Düşüyor' : isRising ? 'Yükseliyor' : 'Stabil';
+
+    String bestTimeLabel;
+    Color bestTimeColor;
+    if (bestTime == 'now' || buyNow) {
+      bestTimeLabel = '🛒 Şimdi Al';
+      bestTimeColor = AppTheme.scoreExcellent;
+    } else if (bestTime == 'wait_1_month') {
+      bestTimeLabel = '⏳ 1 Ay Bekle';
+      bestTimeColor = AppTheme.warning;
+    } else if (bestTime == 'wait_3_months') {
+      bestTimeLabel = '⏳ 3 Ay Bekle';
+      bestTimeColor = AppTheme.orange500;
+    } else {
+      bestTimeLabel = bestTime.isNotEmpty ? '📅 $bestTime' : '📅 Belirsiz';
+      bestTimeColor = AppTheme.warning;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.3,
+        maxChildSize: 0.8,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)]),
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+              child: Row(children: [
+                Expanded(child: Center(child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Theme.of(ctx).dividerColor, borderRadius: BorderRadius.circular(2))))),
+                IconButton(
+                  icon: Icon(Icons.close_rounded, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6)),
+                  onPressed: () => Navigator.of(ctx).pop()),
+              ]),
+            ),
+            Expanded(child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              children: [
+                // Product name
+                Text(productName, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16, fontWeight: FontWeight.w800,
+                  color: Theme.of(ctx).colorScheme.onSurface)),
+                const SizedBox(height: 14),
+                // Trend + change percent
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: trendColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12)),
+                    child: Icon(trendIcon, color: trendColor, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(1)}%',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w900, color: trendColor)),
+                    Text(trendLabel, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, fontWeight: FontWeight.w600, color: trendColor)),
+                  ]),
+                ]),
+                const SizedBox(height: 14),
+                // Best time badge
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: bestTimeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12)),
+                  child: Text(bestTimeLabel, textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: bestTimeColor)),
+                ),
+                // Confidence bar
+                if (confidence > 0) ...[
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Text('Güven Seviyesi', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, fontWeight: FontWeight.w600,
+                      color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))),
+                    const Spacer(),
+                    Text('${confidence.toInt()}%', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, fontWeight: FontWeight.w800, color: _aiScoreColor(confidence))),
+                  ]),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: confidence / 100, minHeight: 6,
+                      backgroundColor: Theme.of(ctx).dividerColor,
+                      color: _aiScoreColor(confidence)),
+                  ),
+                ],
+                // Reasoning
+                if (reason.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text('Analiz', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  Text(reason, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.8), height: 1.5)),
+                ],
+              ],
+            )),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  void _showAdvisorDetailOverlay({
+    required String productName,
+    required int rating,
+    required String idealUser,
+    required List<String> matchPoints,
+    required List<String> cautionPoints,
+    required Color color,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.35,
+        maxChildSize: 0.85,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)]),
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+              child: Row(children: [
+                Expanded(child: Center(child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Theme.of(ctx).dividerColor, borderRadius: BorderRadius.circular(2))))),
+                IconButton(
+                  icon: Icon(Icons.close_rounded, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6)),
+                  onPressed: () => Navigator.of(ctx).pop()),
+              ]),
+            ),
+            Expanded(child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              children: [
+                // Name + star rating
+                Row(children: [
+                  Expanded(child: Text(productName, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface))),
+                  ...List.generate(5, (i) => Icon(
+                    i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    size: 18, color: i < rating ? const Color(0xFFFFD700) : Theme.of(ctx).dividerColor)),
+                ]),
+                if (idealUser.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10)),
+                    child: Row(children: [
+                      const Text('🎯', style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(idealUser, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface, fontStyle: FontStyle.italic))),
+                    ]),
+                  ),
+                ],
+                if (matchPoints.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text('Uyumlu Noktalar', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  ...matchPoints.map((item) => Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10)),
+                    child: Row(children: [
+                      Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.scoreExcellent),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface))),
+                    ]),
+                  )),
+                ],
+                if (cautionPoints.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text('Dikkat Edilmesi Gerekenler', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  ...cautionPoints.map((item) => Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warning.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10)),
+                    child: Row(children: [
+                      Icon(Icons.warning_amber_rounded, size: 16, color: AppTheme.warning),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface))),
+                    ]),
+                  )),
+                ],
+              ],
+            )),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  void _showProductDetailOverlay({
+    required String productName,
+    required double score,
+    required List<String> strengths,
+    required List<String> weaknesses,
+    required String bestFor,
+    required Color color,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)]),
+          child: Column(children: [
+            // Handle bar + close button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+              child: Row(children: [
+                Expanded(child: Center(child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).dividerColor,
+                    borderRadius: BorderRadius.circular(2))))),
+                IconButton(
+                  icon: Icon(Icons.close_rounded, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6)),
+                  onPressed: () => Navigator.of(ctx).pop()),
+              ]),
+            ),
+            // Scrollable content
+            Expanded(child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              children: [
+                // Product name + score
+                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                  Container(
+                    width: 52, height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: [
+                        _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
+                    child: Center(child: Text('${score.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white))),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(child: Text(productName, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface))),
+                ]),
+                // Best for
+                if (bestFor.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12)),
+                    child: Row(children: [
+                      const Text('🎯', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(bestFor, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface,
+                        fontStyle: FontStyle.italic, height: 1.4))),
+                    ]),
+                  ),
+                ],
+                // Strengths
+                if (strengths.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text('Güçlü Yönler', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  ...strengths.map((s) => Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10)),
+                    child: Row(children: [
+                      Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.scoreExcellent),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(s, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface, height: 1.4))),
+                    ]),
+                  )),
+                ],
+                // Weaknesses
+                if (weaknesses.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text('Zayıf Yönler', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  ...weaknesses.map((w) => Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10)),
+                    child: Row(children: [
+                      Icon(Icons.warning_rounded, size: 16, color: AppTheme.warning),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(w, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface, height: 1.4))),
+                    ]),
+                  )),
+                ],
+              ],
+            )),
+          ]),
+        ),
+      ),
+    );
   }
 
   String _categoryIcon(String category) {
@@ -1690,113 +2078,111 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
   Widget _buildAdvisorVisual() {
     final data = _advisorStructured!;
     final recommended = data['recommended'] as String? ?? data['best_for'] as String?;
-    final bestFor = data['best_for'] as String?;
     final matchPoints = List<String>.from(data['match_points'] ?? data['buy_if'] ?? []);
     final cautionPoints = List<String>.from(data['caution_points'] ?? data['avoid_if'] ?? []);
     final perProduct = List<Map<String, dynamic>>.from(
       (data['per_product'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
     final finalVerdict = data['final_verdict'] as String?;
+    final productCount = widget.products.length;
+    final barColors = [
+      const Color(0xFF3B82F6), const Color(0xFF06B6D4), const Color(0xFF6366F1),
+      const Color(0xFFF59E0B), const Color(0xFF10B981),
+    ];
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Recommended product card
-      if (recommended != null || bestFor != null)
+      // Recommended badge — compact
+      if (recommended != null)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
               const Color(0xFF3B82F6).withValues(alpha: 0.12),
               const Color(0xFF06B6D4).withValues(alpha: 0.08)]),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.2))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.recommend_rounded, color: Color(0xFF3B82F6), size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Recommended', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6), letterSpacing: 0.5)),
-                if (recommended != null)
-                  Text(recommended, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary)),
-              ])),
-            ]),
-            if (bestFor != null && recommended != bestFor) ...[
-              const SizedBox(height: 8),
-              Text(bestFor, style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: context.textSecondary, height: 1.4)),
-            ],
+          child: Row(children: [
+            const Icon(Icons.recommend_rounded, color: Color(0xFF3B82F6), size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('ÖNERİLEN', style: GoogleFonts.plusJakartaSans(
+                fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6), letterSpacing: 0.5)),
+              Text(recommended, style: GoogleFonts.plusJakartaSans(
+                fontSize: 13, fontWeight: FontWeight.w800, color: context.textPrimary),
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+            ])),
           ]),
         ),
-      // Match points (green)
-      if (matchPoints.isNotEmpty) ...[
-        const SizedBox(height: 12),
-        ...matchPoints.map((item) => Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10)),
-          child: Row(children: [
-            Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.scoreExcellent),
-            const SizedBox(width: 8),
-            Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, color: context.textPrimary))),
-          ]),
-        )),
-      ],
-      // Caution points (amber)
-      if (cautionPoints.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        ...cautionPoints.map((item) => Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppTheme.warning.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10)),
-          child: Row(children: [
-            Icon(Icons.warning_amber_rounded, size: 16, color: AppTheme.warning),
-            const SizedBox(width: 8),
-            Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, color: context.textPrimary))),
-          ]),
-        )),
-      ],
-      // Per-product star ratings
+
+      // Per-product columns with star ratings
       if (perProduct.isNotEmpty) ...[
         const SizedBox(height: 12),
-        ...perProduct.map((p) {
-          final rating = (p['rating'] as num?)?.toInt() ?? 3;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(12)),
-            child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(p['name'] as String? ?? '', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
-                if (p['ideal_user'] != null) ...[
-                  const SizedBox(height: 2),
-                  Text(p['ideal_user'] as String, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, color: context.textSecondary)),
-                ],
-              ])),
-              const SizedBox(width: 8),
-              Row(children: List.generate(5, (i) => Icon(
-                i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                size: 18, color: i < rating ? const Color(0xFFFFD700) : context.textTertiaryColor))),
-            ]),
-          );
-        }),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: List.generate(perProduct.length.clamp(0, productCount), (i) {
+            final p = perProduct[i];
+            final rating = (p['rating'] as num?)?.toInt() ?? 3;
+            final name = p['name'] as String? ?? '';
+            final idealUser = p['ideal_user'] as String? ?? '';
+            final color = barColors[i % barColors.length];
+
+            return Expanded(child: GestureDetector(
+              onTap: () => _showAdvisorDetailOverlay(
+                productName: name,
+                rating: rating,
+                idealUser: idealUser,
+                matchPoints: matchPoints,
+                cautionPoints: cautionPoints,
+                color: color,
+              ),
+              child: Container(
+                margin: EdgeInsets.only(
+                  left: i == 0 ? 0 : 3,
+                  right: i == perProduct.length - 1 ? 0 : 3),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withValues(alpha: 0.2))),
+                child: Column(children: [
+                  // Star rating
+                  Row(mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (s) => Icon(
+                      s < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      size: productCount > 3 ? 12 : 14,
+                      color: s < rating ? const Color(0xFFFFD700) : context.textTertiaryColor))),
+                  const SizedBox(height: 6),
+                  // Product name
+                  Text(
+                    name.length > (productCount > 2 ? 20 : 30)
+                      ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
+                      : name,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: productCount > 3 ? 8 : (productCount > 2 ? 9 : 10),
+                      fontWeight: FontWeight.w700, color: context.textPrimary),
+                    textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  if (idealUser.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(idealUser,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 8, color: context.textSecondary),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+                  ],
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9, fontWeight: FontWeight.w700, color: color)),
+                  ),
+                ]),
+              ),
+            ));
+          }),
+        ),
       ],
+
       // Final verdict
       if (finalVerdict != null) ...[
         const SizedBox(height: 10),
@@ -1829,114 +2215,93 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       });
     }
 
-    return Column(children: products.map((p) {
-      final trend = (p['trend'] as String? ?? 'stable').toLowerCase();
-      final changePercent = (p['change_percent'] as num?)?.toDouble() ?? 0;
-      final confidence = (p['confidence'] as num?)?.toDouble() ?? 0;
-      final reason = p['reason'] as String? ?? '';
-      final bestTime = p['best_time_to_buy'] as String? ?? p['best_time'] as String? ?? '';
-      final buyNow = p['buy_now'] as bool? ?? (bestTime == 'now' || trend == 'dropping');
-      final name = p['name'] as String? ?? '';
+    final productCount = widget.products.length;
+    final barColors = [
+      const Color(0xFF6366F1), const Color(0xFFEC4899), const Color(0xFF06B6D4),
+      const Color(0xFFF59E0B), const Color(0xFF10B981),
+    ];
 
-      final isDropping = trend == 'dropping' || trend == 'down';
-      final isRising = trend == 'rising' || trend == 'up';
-      final trendIcon = isDropping ? Icons.trending_down_rounded
-          : isRising ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
-      final trendColor = isDropping ? AppTheme.scoreExcellent
-          : isRising ? AppTheme.error : AppTheme.warning;
-      final trendLabel = isDropping ? 'Dropping' : isRising ? 'Rising' : 'Stable';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Products in side-by-side columns
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: List.generate(products.length.clamp(0, productCount), (i) {
+          final p = products[i];
+          final trend = (p['trend'] as String? ?? 'stable').toLowerCase();
+          final changePercent = (p['change_percent'] as num?)?.toDouble() ?? 0;
+          final name = p['name'] as String? ?? '';
+          final bestTime = p['best_time_to_buy'] as String? ?? p['best_time'] as String? ?? '';
+          final buyNow = p['buy_now'] as bool? ?? (bestTime == 'now' || trend == 'dropping');
+          final reason = p['reason'] as String? ?? '';
+          final confidence = (p['confidence'] as num?)?.toDouble() ?? 0;
 
-      // Best time badge
-      String bestTimeLabel;
-      Color bestTimeColor;
-      if (bestTime == 'now' || buyNow) {
-        bestTimeLabel = '🛒 Buy Now';
-        bestTimeColor = AppTheme.scoreExcellent;
-      } else if (bestTime == 'wait_1_month') {
-        bestTimeLabel = '⏳ Wait 1 Month';
-        bestTimeColor = AppTheme.warning;
-      } else if (bestTime == 'wait_3_months') {
-        bestTimeLabel = '⏳ Wait 3 Months';
-        bestTimeColor = AppTheme.orange500;
-      } else {
-        bestTimeLabel = bestTime.isNotEmpty ? '📅 $bestTime' : '📅 Unknown';
-        bestTimeColor = AppTheme.warning;
-      }
+          final isDropping = trend == 'dropping' || trend == 'down';
+          final isRising = trend == 'rising' || trend == 'up';
+          final trendIcon = isDropping ? Icons.trending_down_rounded
+              : isRising ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
+          final trendColor = isDropping ? AppTheme.scoreExcellent
+              : isRising ? AppTheme.error : AppTheme.warning;
+          final color = barColors[i % barColors.length];
 
-      return Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: context.surfaceElevatedColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: trendColor.withValues(alpha: 0.15))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Product name + trend
-          Row(children: [
-            Expanded(child: Text(name, style: GoogleFonts.plusJakartaSans(
-              fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary))),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          return Expanded(child: GestureDetector(
+            onTap: () => _showPredictionDetailOverlay(
+              productName: name, trend: trend, changePercent: changePercent,
+              bestTime: bestTime, buyNow: buyNow, reason: reason,
+              confidence: confidence, color: color),
+            child: Container(
+              margin: EdgeInsets.only(
+                left: i == 0 ? 0 : 3,
+                right: i == products.length - 1 ? 0 : 3),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: trendColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(trendIcon, color: trendColor, size: 16),
-                const SizedBox(width: 4),
+                color: context.surfaceElevatedColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: trendColor.withValues(alpha: 0.2))),
+              child: Column(children: [
+                // Trend icon
+                Icon(trendIcon, color: trendColor, size: productCount > 3 ? 20 : 24),
+                const SizedBox(height: 4),
+                // Change percent
                 Text('${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: trendColor)),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: productCount > 3 ? 13 : 15,
+                    fontWeight: FontWeight.w900, color: trendColor)),
+                const SizedBox(height: 6),
+                // Product name
+                Text(
+                  name.length > (productCount > 2 ? 20 : 30)
+                    ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
+                    : name,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: productCount > 3 ? 8 : (productCount > 2 ? 9 : 10),
+                    fontWeight: FontWeight.w700, color: context.textPrimary),
+                  textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                // Buy now badge
+                if (buyNow)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6)),
+                    child: Text('🛒 Şimdi Al', style: GoogleFonts.plusJakartaSans(
+                      fontSize: 8, fontWeight: FontWeight.w700, color: AppTheme.scoreExcellent)),
+                  ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Text('Detay', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9, fontWeight: FontWeight.w700, color: color)),
+                ),
               ]),
             ),
-          ]),
-          const SizedBox(height: 8),
-          // Trend label + best time badge
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: trendColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(6)),
-              child: Text(trendLabel, style: GoogleFonts.plusJakartaSans(
-                fontSize: 11, fontWeight: FontWeight.w600, color: trendColor)),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: bestTimeColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8)),
-              child: Text(bestTimeLabel, style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, fontWeight: FontWeight.w700, color: bestTimeColor)),
-            ),
-          ]),
-          // Confidence bar
-          if (confidence > 0) ...[
-            const SizedBox(height: 10),
-            Row(children: [
-              Text('Confidence', style: GoogleFonts.plusJakartaSans(
-                fontSize: 10, fontWeight: FontWeight.w600, color: context.textTertiaryColor)),
-              const Spacer(),
-              Text('${confidence.toInt()}%', style: GoogleFonts.plusJakartaSans(
-                fontSize: 10, fontWeight: FontWeight.w800, color: _aiScoreColor(confidence))),
-            ]),
-            const SizedBox(height: 3),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                value: confidence / 100, minHeight: 5,
-                backgroundColor: context.dividerColor,
-                color: _aiScoreColor(confidence)),
-            ),
-          ],
-          // Reasoning
-          if (reason.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(reason, style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, color: context.textSecondary, height: 1.4)),
-          ],
-        ]),
-      );
-    }).toList());
+          ));
+        }),
+      ),
+    ]);
   }
 
   // ─── Key Specs Side-by-Side Comparison ───

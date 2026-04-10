@@ -446,7 +446,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
         _buildStepProgress(),
 
-        // Search bar
+        // Search bar — hide when all 4 slots are filled
+        if (_selectedProductIds.length < 4)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Container(
@@ -484,12 +485,52 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
         const SizedBox(height: 8),
 
-        // Product list: show search list until all 4 slots are filled
+        // When 4 slots filled: show prominent compare button
+        // Otherwise: show search results list
         Expanded(
           child: _selectedProductIds.length >= 4
-              ? _EmptyCompareState(
-                  onTapSearch: () => context.push(AppRoutes.search),
-                  onDirectCompare: _directCompare,
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded,
+                          size: 56, color: AppTheme.scoreExcellent.withValues(alpha: 0.8)),
+                        const SizedBox(height: 12),
+                        Text('4 ürün seçildi!', style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18, fontWeight: FontWeight.w800, color: context.textPrimary)),
+                        const SizedBox(height: 6),
+                        Text('Karşılaştırmaya hazırsınız', style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13, color: context.textSecondary)),
+                        const SizedBox(height: 24),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            _startComparison();
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              gradient: _accentGradient,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.brandDeepBlue.withValues(alpha: 0.35),
+                                  blurRadius: 16, offset: const Offset(0, 6)),
+                              ]),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 22),
+                              const SizedBox(width: 10),
+                              Text('Karşılaştır', style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                            ]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 )
               : _ProductSearchList(
                   selectedIds: _selectedProductIds,
