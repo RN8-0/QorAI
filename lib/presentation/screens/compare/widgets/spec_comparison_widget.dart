@@ -1206,7 +1206,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             const SizedBox(height: 4),
             Text(winner, style: GoogleFonts.plusJakartaSans(
               fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
-              maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              textAlign: TextAlign.center),
             if (verdict != null) ...[
               const SizedBox(height: 6),
               Text(verdict, style: GoogleFonts.plusJakartaSans(
@@ -1232,9 +1232,9 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
               borderRadius: BorderRadius.circular(12)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: Text(e.key, style: GoogleFonts.plusJakartaSans(
+                Expanded(child: ExpandableText(e.key, style: GoogleFonts.plusJakartaSans(
                   fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  maxLines: 1)),
                 Container(
                   width: 42, height: 42,
                   decoration: BoxDecoration(
@@ -1295,8 +1295,8 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                   Container(width: 10, height: 10, decoration: BoxDecoration(
                     color: barColors[i], borderRadius: BorderRadius.circular(2))),
                   const SizedBox(width: 4),
-                  Text(productNames[i].length > 15 ? '${productNames[i].substring(0, 15)}…' : productNames[i],
-                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textSecondary)),
+                  Flexible(child: Text(productNames[i],
+                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textSecondary))),
                 ]),
             ]),
             const SizedBox(height: 12),
@@ -1459,60 +1459,62 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         _fetchAlternatives();
       });
     }
-    return SizedBox(
-      height: 150,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: alternatives.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final alt = alternatives[i];
-          final score = (alt['score'] as num?)?.toDouble() ?? 0;
-          return Container(
-            width: 200,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _aiScoreColor(score).withValues(alpha: 0.2))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(alt['name'] as String? ?? '',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+    return Column(
+      children: alternatives.map((alt) {
+        final score = (alt['score'] as num?)?.toDouble() ?? 0;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.surfaceElevatedColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _aiScoreColor(score).withValues(alpha: 0.2))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _aiScoreColor(score).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8)),
+                child: Text('${score.toInt()}', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, fontWeight: FontWeight.w800, color: _aiScoreColor(score))),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                ExpandableText(alt['name'] as String? ?? '',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  maxLines: 1),
+                if (alt['brand'] != null) ...[
+                  const SizedBox(height: 2),
+                  Text((alt['brand'] as String).toUpperCase(), style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, fontWeight: FontWeight.w600, color: context.textTertiaryColor, letterSpacing: 0.5)),
+                ],
+              ])),
+              if (alt['price_range'] != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _aiScoreColor(score).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6)),
-                  child: Text('${score.toInt()}', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, fontWeight: FontWeight.w800, color: _aiScoreColor(score))),
+                    color: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Text('💰 ${alt['price_range']}', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary)),
                 ),
-              ]),
-              if (alt['brand'] != null) ...[
-                const SizedBox(height: 2),
-                Text((alt['brand'] as String).toUpperCase(), style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10, fontWeight: FontWeight.w600, color: context.textTertiaryColor, letterSpacing: 0.5)),
-              ],
-              const Spacer(),
-              if (alt['why_better'] != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.scoreExcellent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6)),
-                  child: ExpandableText(alt['why_better'] as String, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10, color: AppTheme.scoreExcellent), maxLines: 2),
-                ),
-              if (alt['price_range'] != null) ...[
-                const SizedBox(height: 4),
-                Text('💰 ${alt['price_range']}', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10, color: context.textSecondary)),
-              ],
             ]),
-          );
-        },
-      ),
+            if (alt['why_better'] != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10)),
+                child: ExpandableText(alt['why_better'] as String, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, color: context.textPrimary, height: 1.4), maxLines: 2),
+              ),
+            ],
+          ]),
+        );
+      }).toList(),
     );
   }
 
@@ -1553,8 +1555,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                   fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6), letterSpacing: 0.5)),
                 if (recommended != null)
                   Text(recommended, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                    fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary)),
               ])),
             ]),
             if (bestFor != null && recommended != bestFor) ...[
@@ -1612,8 +1613,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(p['name'] as String? ?? '', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
                 if (p['ideal_user'] != null) ...[
                   const SizedBox(height: 2),
                   Text(p['ideal_user'] as String, style: GoogleFonts.plusJakartaSans(
@@ -1705,8 +1705,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           // Product name + trend
           Row(children: [
             Expanded(child: Text(name, style: GoogleFonts.plusJakartaSans(
-              fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
-              maxLines: 1, overflow: TextOverflow.ellipsis)),
+              fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary))),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
