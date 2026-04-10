@@ -13,8 +13,7 @@ String _benchmarkCacheKey(List<String> productIds, List<String> benchmarkNames) 
 
 class _CompareBenchmarkSection extends ConsumerStatefulWidget {
   final List<ProductEntity> products;
-  final bool autoFetch;
-  const _CompareBenchmarkSection({required this.products, this.autoFetch = false});
+  const _CompareBenchmarkSection({required this.products});
 
   @override
   ConsumerState<_CompareBenchmarkSection> createState() => _CompareBenchmarkSectionState();
@@ -40,12 +39,6 @@ class _CompareBenchmarkSectionState extends ConsumerState<_CompareBenchmarkSecti
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    // Auto-fetch benchmark data in background when requested
-    if (widget.autoFetch) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_loaded && !_loading) _fetchScores();
-      });
-    }
   }
 
   @override
