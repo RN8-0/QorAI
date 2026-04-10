@@ -13,36 +13,41 @@ class _SpecComparisonView extends ConsumerStatefulWidget {
 class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   late Map<String, bool> _expandedGroups;
   late Map<String, Map<String, List<String>>> _groupedSpecs;
-
-  // ─── Chip-based Premium tab state ───
-  int _selectedChipIndex = 0;
-
   // Quick Verdict state
+  bool _quickVerdictExpanded = false;
   bool _quickVerdictLoading = false;
   String? _quickVerdictResult;
-  Map<String, dynamic>? _quickVerdictStructured;
-  bool _quickVerdictError = false;
 
-  // Deep Analysis state
+  // Deep Analysis state (merged with AI Analysis structured)
+  bool _deepAnalysisExpanded = false;
   bool _deepAnalysisLoading = false;
   String? _deepAnalysisResult;
   Map<String, dynamic>? _deepAnalysisStructured;
-  bool _deepAnalysisError = false;
 
   // Smart Alternatives state
+  bool _alternativesExpanded = false;
   bool _alternativesLoading = false;
   String? _alternativesResult;
   Map<String, dynamic>? _alternativesStructured;
-  bool _alternativesError = false;
+
+  // AI Advisor state
+  bool _advisorExpanded = false;
+  bool _advisorLoading = false;
+  String? _advisorResult;
+  Map<String, dynamic>? _advisorStructured;
 
   // Price Prediction state
+  bool _predictionExpanded = false;
   bool _predictionLoading = false;
   String? _predictionResult;
   Map<String, dynamic>? _predictionStructured;
-  bool _predictionError = false;
 
   // Personalized Match state
+  bool _matchScoreExpanded = false;
   bool _matchScoreFetched = false;
+
+  // Prefetch tracking
+  bool _aiPrefetchStarted = false;
 
   // Floating YouTube player overlay
   OverlayEntry? _pipOverlay;
@@ -132,6 +137,31 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
+  /// Pre-fetch ALL AI features in parallel when Premium tab is first visited
+  void _prefetchAllAi() {
+    if (_aiPrefetchStarted) return;
+    // Don't prefetch if session already has results
+    if (_quickVerdictResult != null && _deepAnalysisResult != null) return;
+    _aiPrefetchStarted = true;
+    debugPrint('[Compair] 🚀 Pre-fetching all AI features in parallel');
+
+    // Set loading states so spinners show when cards are expanded
+    setState(() {
+      if (_quickVerdictResult == null) _quickVerdictLoading = true;
+      if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _deepAnalysisLoading = true;
+      if (_alternativesResult == null && _alternativesStructured == null) _alternativesLoading = true;
+      if (_advisorResult == null && _advisorStructured == null) _advisorLoading = true;
+      if (_predictionResult == null && _predictionStructured == null) _predictionLoading = true;
+    });
+
+    // Fire all in parallel — each updates its own state independently
+    if (_quickVerdictResult == null) _fetchQuickVerdict();
+    if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _fetchDeepAnalysis();
+    if (_alternativesResult == null && _alternativesStructured == null) _fetchAlternatives();
+    if (_advisorResult == null && _advisorStructured == null) _fetchAdvisor();
+    if (_predictionResult == null && _predictionStructured == null) _fetchPrediction();
+  }
+
   /// Restore AI analysis results from session (survives navigation)
   void _restoreFromSession() {
     final session = ref.read(compareSessionProvider);
@@ -142,6 +172,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (session.aiStructured != null) _deepAnalysisStructured = session.aiStructured;
       if (session.alternativesResult != null) _alternativesResult = session.alternativesResult;
       if (session.alternativesStructured != null) _alternativesStructured = session.alternativesStructured;
+      if (session.advisorResult != null) _advisorResult = session.advisorResult;
+      if (session.advisorStructured != null) _advisorStructured = session.advisorStructured;
       if (session.predictionResult != null) _predictionResult = session.predictionResult;
       if (session.predictionStructured != null) _predictionStructured = session.predictionStructured;
       if (session.quickVerdictResult != null) _quickVerdictResult = session.quickVerdictResult;
@@ -155,6 +187,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       deepAnalysisResult: _deepAnalysisResult,
       alternativesResult: _alternativesResult,
       alternativesStructured: _alternativesStructured,
+      advisorResult: _advisorResult,
+      advisorStructured: _advisorStructured,
       predictionResult: _predictionResult,
       predictionStructured: _predictionStructured,
       quickVerdictResult: _quickVerdictResult,
@@ -173,6 +207,21 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       return jsonDecode(clean) as Map<String, dynamic>?;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _toggleDeepAnalysis() async {
+    if (_deepAnalysisExpanded && (_deepAnalysisResult != null || _deepAnalysisStructured != null)) {
+      setState(() => _deepAnalysisExpanded = false);
+      return;
+    }
+    setState(() {
+      _deepAnalysisExpanded = true;
+      if (_deepAnalysisResult != null || _deepAnalysisStructured != null) return;
+      _deepAnalysisLoading = true;
+    });
+    if (_deepAnalysisResult == null && _deepAnalysisStructured == null) {
+      await _fetchDeepAnalysis();
     }
   }
 
@@ -205,24 +254,32 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
       }).join('\n');
 
-      final productJson = widget.products.map((p) => '"${p.name}"').join(', ');
-      final prompt = '''Return only valid JSON. No markdown, no explanation, no code blocks. ALL text in $langName. Address the user directly using "you/your".
+      final prompt = '''You are a senior tech analyst. Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
+$productNames
 
-Provide a comprehensive deep analysis comparing these products:
+Specs:
 $specSummary
 
-Return JSON in exactly this format (fill products for each of: $productJson):
+Return ONLY valid JSON:
 {
-  "winner": "exact product name",
-  "verdict": "comprehensive 4-5 sentence analysis",
+  "winner": "product name",
+  "verdict": "1 sentence verdict addressing you directly",
   "products": {
-    "ExactProductName": {
-      "score": 95,
-      "strengths": ["detailed point1", "detailed point2", "detailed point3"],
-      "weaknesses": ["detailed point1", "detailed point2"],
-      "best_for": "detailed ideal user description"
+    "<product_name>": {
+      "score": 0-100,
+      "strengths": ["str1", "str2", "str3"],
+      "weaknesses": ["weak1", "weak2"],
+      "best_for": "ideal use case for you"
     }
-  }
+  },
+  "categories": {
+    "Performance": {"<name1>": 85, "<name2>": 70},
+    "Display": {"<name1>": 90, "<name2>": 80},
+    "Build Quality": {"<name1>": 75, "<name2>": 85},
+    "Value": {"<name1>": 80, "<name2>": 65},
+    "Features": {"<name1>": 70, "<name2>": 90}
+  },
+  "recommendation": "3-4 sentence personalized recommendation addressing you directly"
 }''';
 
       debugPrint('[Compair] Deep Analysis starting for: $productNames');
@@ -236,14 +293,6 @@ Return JSON in exactly this format (fill products for each of: $productJson):
 
       if (mounted) {
         final parsed = _tryParseJson(result);
-        if (parsed == null) {
-          debugPrint('[Compair] Deep Analysis parse failed — showing error');
-          setState(() {
-            _deepAnalysisError = true;
-            _deepAnalysisLoading = false;
-          });
-          return;
-        }
         setState(() {
           _deepAnalysisResult = result;
           _deepAnalysisStructured = parsed;
@@ -252,32 +301,43 @@ Return JSON in exactly this format (fill products for each of: $productJson):
         _saveToSession();
         _saveAiCache('deep_analysis', {
           'result': result,
-          'structured': parsed,
+          if (parsed != null) 'structured': parsed,
         });
       }
       debugPrint('[Compair] ⏱ Deep Analysis from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Deep Analysis FAILED: $e\n$st');
       if (mounted) setState(() {
-        _deepAnalysisError = true;
+        _deepAnalysisResult = 'Unable to generate analysis. Please try again.';
         _deepAnalysisLoading = false;
       });
     }
   }
 
+  Future<void> _toggleQuickVerdict() async {
+    if (_quickVerdictExpanded && _quickVerdictResult != null) {
+      setState(() => _quickVerdictExpanded = false);
+      return;
+    }
+    setState(() {
+      _quickVerdictExpanded = true;
+      if (_quickVerdictResult != null) return;
+      _quickVerdictLoading = true;
+    });
+    if (_quickVerdictResult == null) {
+      await _fetchQuickVerdict();
+    }
+  }
+
   Future<void> _fetchQuickVerdict() async {
-    if (_quickVerdictResult != null || _quickVerdictStructured != null) return;
+    if (_quickVerdictResult != null) return;
     final sw = Stopwatch()..start();
     try {
       // Check Firestore cache first
       final cached = await _loadAiCache('quick_verdict');
       if (cached != null && cached['result'] != null) {
-        final parsed = cached['structured'] != null
-            ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cached['result'] as String);
         if (mounted) setState(() {
           _quickVerdictResult = cached['result'] as String;
-          _quickVerdictStructured = parsed;
           _quickVerdictLoading = false;
         });
         _saveToSession();
@@ -289,67 +349,47 @@ Return JSON in exactly this format (fill products for each of: $productJson):
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) => p.name).join(' vs ');
-      final specSummary = widget.products.map((p) {
-        final specs = p.keySpecs.entries.take(6).map((e) => '${e.key}: ${e.value}').join(', ');
-        return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $specs';
-      }).join('\n');
 
-      final productJson = widget.products.map((p) => '"${p.name}"').join(', ');
-      final prompt = '''Return only valid JSON. No markdown, no explanation, no code blocks. ALL text in $langName. Address the user directly using "you/your".
+      final result = await gemini.groundedQuery(
+        '''You are a decisive tech advisor. Address the user directly using "you/your" (2nd person).
+Compare "$productNames" and give a CLEAR, CONCISE buying recommendation.
 
-Compare these products:
-$specSummary
-
-Return JSON in exactly this format (fill products for each of: $productJson):
-{
-  "winner": "exact product name",
-  "verdict": "2-3 sentence decision rationale",
-  "products": {
-    "ExactProductName": {
-      "score": 95,
-      "strengths": ["point1", "point2", "point3"],
-      "weaknesses": ["point1", "point2"],
-      "best_for": "ideal user description"
-    }
-  }
-}''';
-
-      debugPrint('[Compair] Quick Verdict starting for: $productNames');
-      String result;
-      try {
-        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 512);
-      } catch (jsonErr) {
-        debugPrint('[Compair] Quick Verdict JSON failed: $jsonErr — fallback');
-        result = await gemini.groundedQuery(prompt, maxTokens: 512);
-      }
+Answer in $langName in EXACTLY 2-3 sentences:
+1. Which product you should buy and the #1 reason why
+2. When the other product(s) might be better for you
+Keep it punchy and actionable. No hedging.''',
+        maxTokens: 512,
+      );
       if (mounted) {
-        final parsed = _tryParseJson(result);
-        if (parsed == null) {
-          debugPrint('[Compair] Quick Verdict parse failed — showing error');
-          setState(() {
-            _quickVerdictError = true;
-            _quickVerdictLoading = false;
-          });
-          return;
-        }
         setState(() {
-          _quickVerdictResult = result;
-          _quickVerdictStructured = parsed;
+          _quickVerdictResult = result.isNotEmpty ? result : 'Unable to generate verdict.';
           _quickVerdictLoading = false;
         });
         _saveToSession();
-        _saveAiCache('quick_verdict', {
-          'result': result,
-          'structured': parsed,
-        });
+        _saveAiCache('quick_verdict', {'result': _quickVerdictResult!});
       }
       debugPrint('[Compair] ⏱ Quick Verdict from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
       if (mounted) setState(() {
-        _quickVerdictError = true;
+        _quickVerdictResult = 'Unable to generate verdict. Please try again.';
         _quickVerdictLoading = false;
       });
+    }
+  }
+
+  Future<void> _toggleAlternatives() async {
+    if (_alternativesExpanded && (_alternativesResult != null || _alternativesStructured != null)) {
+      setState(() => _alternativesExpanded = false);
+      return;
+    }
+    setState(() {
+      _alternativesExpanded = true;
+      if (_alternativesResult != null || _alternativesStructured != null) return;
+      _alternativesLoading = true;
+    });
+    if (_alternativesResult == null && _alternativesStructured == null) {
+      await _fetchAlternatives();
     }
   }
 
@@ -405,14 +445,6 @@ Return ONLY valid JSON:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
-        if (parsed == null) {
-          debugPrint('[Compair] Alternatives parse failed — showing error');
-          setState(() {
-            _alternativesError = true;
-            _alternativesLoading = false;
-          });
-          return;
-        }
         setState(() {
           _alternativesResult = result;
           _alternativesStructured = parsed;
@@ -421,16 +453,126 @@ Return ONLY valid JSON:
         _saveToSession();
         _saveAiCache('alternatives', {
           'result': result,
-          'structured': parsed,
+          if (parsed != null) 'structured': parsed,
         });
       }
       debugPrint('[Compair] ⏱ Alternatives from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Alternatives FAILED: $e\n$st');
       if (mounted) setState(() {
-        _alternativesError = true;
+        _alternativesResult = 'Unable to generate alternatives. Please try again.';
         _alternativesLoading = false;
       });
+    }
+  }
+
+  Future<void> _toggleAdvisor() async {
+    if (_advisorExpanded && (_advisorResult != null || _advisorStructured != null)) {
+      setState(() => _advisorExpanded = false);
+      return;
+    }
+    setState(() {
+      _advisorExpanded = true;
+      if (_advisorResult != null || _advisorStructured != null) return;
+      _advisorLoading = true;
+    });
+    if (_advisorResult == null && _advisorStructured == null) {
+      await _fetchAdvisor();
+    }
+  }
+
+  Future<void> _fetchAdvisor() async {
+    if (_advisorResult != null || _advisorStructured != null) return;
+    final sw = Stopwatch()..start();
+    try {
+      // Check Firestore cache first
+      final cached = await _loadAiCache('advisor');
+      if (cached != null && cached['result'] != null) {
+        final parsed = cached['structured'] != null
+            ? Map<String, dynamic>.from(cached['structured'] as Map)
+            : _tryParseJson(cached['result'] as String);
+        if (mounted) setState(() {
+          _advisorResult = cached['result'] as String;
+          _advisorStructured = parsed;
+          _advisorLoading = false;
+        });
+        _saveToSession();
+        debugPrint('[Compair] ⏱ Advisor from cache: ${sw.elapsedMilliseconds}ms');
+        return;
+      }
+
+      final gemini = ref.read(geminiServiceProvider);
+      final lang = Localizations.localeOf(context).languageCode;
+      final langName = lang == 'tr' ? 'Turkish' : 'English';
+      final productDetails = widget.products.map((p) {
+        final specs = p.specs.entries.take(10).map((e) => '${e.key}: ${e.value}').join(', ');
+        final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
+        return '${p.name} (Score: ${p.techScore}, Price: $price, Specs: $specs)';
+      }).join('\n');
+
+      final prompt = '''You are a personal tech shopping advisor. Address the user directly using "you/your". ALL text in $langName.
+
+Products:
+$productDetails
+
+Return ONLY valid JSON:
+{
+  "best_for": "1 sentence summary - which product is best for most users and why",
+  "buy_if": ["reason 1 to buy the winner", "reason 2", "reason 3"],
+  "avoid_if": ["scenario where this is NOT the right choice", "another scenario"],
+  "per_product": [
+    {
+      "name": "product name",
+      "ideal_user": "who should buy this",
+      "rating": 1-5
+    }
+  ],
+  "final_verdict": "2 sentence clear recommendation addressing you directly"
+}''';
+
+      debugPrint('[Compair] Advisor starting');
+      String result;
+      try {
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 2048);
+      } catch (jsonErr) {
+        debugPrint('[Compair] Advisor JSON failed: $jsonErr — fallback');
+        result = await gemini.groundedQuery(prompt, maxTokens: 2048);
+      }
+      if (mounted) {
+        final parsed = _tryParseJson(result);
+        setState(() {
+          _advisorResult = result;
+          _advisorStructured = parsed;
+          _advisorLoading = false;
+        });
+        _saveToSession();
+        _saveAiCache('advisor', {
+          'result': result,
+          if (parsed != null) 'structured': parsed,
+        });
+      }
+      debugPrint('[Compair] ⏱ Advisor from Gemini: ${sw.elapsedMilliseconds}ms');
+    } catch (e, st) {
+      debugPrint('[Compair] Advisor FAILED: $e\n$st');
+      if (mounted) setState(() {
+        _advisorResult = 'Unable to generate advice. Please try again.';
+        _advisorLoading = false;
+      });
+    }
+  }
+
+  Future<void> _togglePrediction() async {
+    if (_predictionExpanded && (_predictionResult != null || _predictionStructured != null)) {
+      setState(() => _predictionExpanded = false);
+      return;
+    }
+    setState(() {
+      _predictionExpanded = true;
+      if (_predictionResult != null || _predictionStructured != null) return;
+      _predictionLoading = true;
+    });
+    if (_predictionResult == null && _predictionStructured == null) {
+      await _fetchPrediction();
     }
   }
 
@@ -490,14 +632,6 @@ Return ONLY valid JSON:
       }
       if (mounted) {
         final parsed = _tryParseJson(result);
-        if (parsed == null) {
-          debugPrint('[Compair] Prediction parse failed — showing error');
-          setState(() {
-            _predictionError = true;
-            _predictionLoading = false;
-          });
-          return;
-        }
         setState(() {
           _predictionResult = result;
           _predictionStructured = parsed;
@@ -506,14 +640,14 @@ Return ONLY valid JSON:
         _saveToSession();
         _saveAiCache('prediction', {
           'result': result,
-          'structured': parsed,
+          if (parsed != null) 'structured': parsed,
         });
       }
       debugPrint('[Compair] ⏱ Prediction from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Prediction FAILED: $e\n$st');
       if (mounted) setState(() {
-        _predictionError = true;
+        _predictionResult = 'Unable to predict prices. Please try again.';
         _predictionLoading = false;
       });
     }
@@ -963,6 +1097,175 @@ Return ONLY valid JSON:
 
   // ─── Structured Visual Builders for Premium AI Sections ───
 
+  Widget _buildDeepAnalysisVisual() {
+    final data = _deepAnalysisStructured!;
+    final winner = data['winner'] as String?;
+    final verdict = data['verdict'] as String?;
+    final products = data['products'] as Map<String, dynamic>? ?? {};
+    final categories = data['categories'] as Map<String, dynamic>? ?? {};
+    final recommendation = data['recommendation'] as String?;
+    final categoryIcons = {
+      'Performance': '⚡', 'Display': '🖥️', 'Build Quality': '🔨',
+      'Value': '💰', 'Features': '✨', 'Camera': '📷', 'Battery': '🔋',
+      'Software': '📱', 'Audio': '🔊', 'Design': '🎨',
+    };
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Winner card
+      if (winner != null)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              const Color(0xFFFFD700).withValues(alpha: 0.15),
+              const Color(0xFFFFA500).withValues(alpha: 0.08)]),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.4), width: 1.5)),
+          child: Column(children: [
+            const Text('🏆', style: TextStyle(fontSize: 24)),
+            const SizedBox(height: 4),
+            Text(winner, style: GoogleFonts.plusJakartaSans(
+              fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+              maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+            if (verdict != null) ...[
+              const SizedBox(height: 6),
+              ExpandableText(verdict, style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, color: context.textSecondary, height: 1.4),
+                textAlign: TextAlign.center),
+            ],
+          ]),
+        ),
+      // Per-product scores with strengths/weaknesses
+      if (products.isNotEmpty) ...[
+        const SizedBox(height: 14),
+        ...products.entries.map((e) {
+          final pData = e.value as Map<String, dynamic>? ?? {};
+          final score = (pData['score'] as num?)?.toDouble() ?? 0;
+          final strengths = List<String>.from(pData['strengths'] ?? []);
+          final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
+          final bestFor = pData['best_for'] as String? ?? '';
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor,
+              borderRadius: BorderRadius.circular(12)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(e.key, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Container(
+                  width: 42, height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [
+                      _aiScoreColor(score).withValues(alpha: 0.7), _aiScoreColor(score)])),
+                  child: Center(child: Text('${score.toInt()}',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white))),
+                ),
+              ]),
+              if (bestFor.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11, color: context.textSecondary, fontStyle: FontStyle.italic)),
+              ],
+              if (strengths.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                ...strengths.take(3).map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(children: [
+                    const Text('✅ ', style: TextStyle(fontSize: 10)),
+                    Expanded(child: Text(s, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textSecondary))),
+                  ]),
+                )),
+              ],
+              if (weaknesses.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                ...weaknesses.take(2).map((w) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(children: [
+                    const Text('⚠️ ', style: TextStyle(fontSize: 10)),
+                    Expanded(child: Text(w, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textTertiaryColor))),
+                  ]),
+                )),
+              ],
+            ]),
+          );
+        }),
+      ],
+      // Category comparison bars
+      if (categories.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: context.surfaceElevatedColor,
+            borderRadius: BorderRadius.circular(12)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Category Comparison', style: GoogleFonts.plusJakartaSans(
+              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
+            const SizedBox(height: 10),
+            ...categories.entries.map((cat) {
+              final scores = cat.value as Map<String, dynamic>? ?? {};
+              final icon = categoryIcons[cat.key] ?? '📊';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('$icon ${cat.key}', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary)),
+                  const SizedBox(height: 4),
+                  ...scores.entries.map((s) {
+                    final val = (s.value as num?)?.toDouble() ?? 0;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Row(children: [
+                        SizedBox(width: 60, child: Text(s.key.length > 10 ? '${s.key.substring(0, 10)}…' : s.key,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        Expanded(child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: val / 100, minHeight: 6,
+                            backgroundColor: context.surfaceVariantColor,
+                            color: _aiScoreColor(val)))),
+                        const SizedBox(width: 6),
+                        SizedBox(width: 24, child: Text('${val.toInt()}',
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: _aiScoreColor(val)))),
+                      ]),
+                    );
+                  }),
+                ]),
+              );
+            }),
+          ]),
+        ),
+      ],
+      // Recommendation
+      if (recommendation != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              AppTheme.brandBlue.withValues(alpha: 0.08),
+              AppTheme.brandSkyBlue.withValues(alpha: 0.06)]),
+            borderRadius: BorderRadius.circular(12)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('💡', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 8),
+            Expanded(child: ExpandableText(recommendation, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, height: 1.5, color: context.textPrimary))),
+          ]),
+        ),
+      ],
+    ]);
+  }
+
   Widget _buildAlternativesVisual() {
     final data = _alternativesStructured!;
     final alternatives = List<Map<String, dynamic>>.from(
@@ -1026,6 +1329,118 @@ Return ONLY valid JSON:
         },
       ),
     );
+  }
+
+  Widget _buildAdvisorVisual() {
+    final data = _advisorStructured!;
+    final bestFor = data['best_for'] as String?;
+    final buyIf = List<String>.from(data['buy_if'] ?? []);
+    final avoidIf = List<String>.from(data['avoid_if'] ?? []);
+    final perProduct = List<Map<String, dynamic>>.from(
+      (data['per_product'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>) ?? []);
+    final finalVerdict = data['final_verdict'] as String?;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Best For card
+      if (bestFor != null)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              const Color(0xFF3B82F6).withValues(alpha: 0.12),
+              const Color(0xFF06B6D4).withValues(alpha: 0.08)]),
+            borderRadius: BorderRadius.circular(12)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('🎯', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Expanded(child: ExpandableText(bestFor, style: GoogleFonts.plusJakartaSans(
+              fontSize: 13, fontWeight: FontWeight.w600, color: context.textPrimary, height: 1.4))),
+          ]),
+        ),
+      // Buy If
+      if (buyIf.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        ...buyIf.map((item) => Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.scoreExcellent.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            const Text('✅', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, color: context.textPrimary))),
+          ]),
+        )),
+      ],
+      // Avoid If
+      if (avoidIf.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        ...avoidIf.map((item) => Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            const Text('⚠️', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, color: context.textPrimary))),
+          ]),
+        )),
+      ],
+      // Per-product ratings
+      if (perProduct.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        ...perProduct.map((p) {
+          final rating = (p['rating'] as num?)?.toInt() ?? 3;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor,
+              borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(p['name'] as String? ?? '', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (p['ideal_user'] != null) ...[
+                  const SizedBox(height: 2),
+                  Text(p['ideal_user'] as String, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11, color: context.textSecondary)),
+                ],
+              ])),
+              const SizedBox(width: 8),
+              Row(children: List.generate(5, (i) => Icon(
+                i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: 16, color: i < rating ? const Color(0xFFFFD700) : context.textTertiaryColor))),
+            ]),
+          );
+        }),
+      ],
+      // Final verdict
+      if (finalVerdict != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              const Color(0xFF3B82F6).withValues(alpha: 0.08),
+              const Color(0xFF06B6D4).withValues(alpha: 0.06)]),
+            borderRadius: BorderRadius.circular(10)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('💡', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 8),
+            Expanded(child: ExpandableText(finalVerdict, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, height: 1.5, color: context.textPrimary))),
+          ]),
+        ),
+      ],
+    ]);
   }
 
   Widget _buildPredictionVisual() {
@@ -1406,6 +1821,148 @@ Return ONLY valid JSON:
 
   // ─── Expert Scores Comparison ───
 
+  Widget _buildExpertScoresComparison() {
+    final scores = widget.products.map((p) => p.techScore).toList();
+    final maxScore = scores.reduce((a, b) => a > b ? a : b);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                gradient: _accentGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.analytics_rounded, size: 20, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(
+              'TechScore',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
+            )),
+          ]),
+          const SizedBox(height: 16),
+          ...widget.products.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final product = entry.value;
+            final score = product.techScore;
+            final isBest = score == maxScore && scores.where((s) => s == maxScore).length == 1;
+            final scoreColor = score >= 80 ? AppTheme.scoreExcellent
+                : score >= 60 ? AppTheme.scoreAverage
+                : score >= 40 ? AppTheme.orange500
+                : AppTheme.error;
+            final chipColors = [
+              AppTheme.brandBlue,
+              AppTheme.scoreAverage,
+              AppTheme.premiumPurpleLight,
+              AppTheme.scoreExcellent,
+            ];
+            final chipColor = chipColors[idx % 4];
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isBest
+                    ? AppTheme.scoreExcellent.withValues(alpha: 0.06)
+                    : context.surfaceColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isBest
+                      ? AppTheme.scoreExcellent.withValues(alpha: 0.2)
+                      : context.dividerColor,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(
+                        color: chipColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(
+                      product.name,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )),
+                    if (isBest)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.scoreExcellent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('🏆',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11)),
+                      ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 42, height: 42,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [scoreColor.withValues(alpha: 0.8), scoreColor],
+                        ),
+                      ),
+                      child: Center(child: Text(
+                        score.toInt().toString(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      )),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: score / 100,
+                      minHeight: 6,
+                      backgroundColor: context.dividerColor,
+                      color: scoreColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   // ─── Visual Builders ───
 
 
@@ -1415,62 +1972,43 @@ Return ONLY valid JSON:
 
     return DefaultTabController(
       length: 4,
-      child: Builder(
-        builder: (tabContext) {
-          final tabController = DefaultTabController.of(tabContext);
-          return Column(
-            children: [
-              // Sticky product header (always visible)
-              _buildProductHeader(context),
+      child: Column(
+        children: [
+          // Sticky product header (always visible)
+          _buildProductHeader(context),
 
-              // Tab bar with gold Premium theme
-              Container(
-                color: context.surfaceColor,
-                child: ListenableBuilder(
-                  listenable: tabController,
-                  builder: (ctx, _) {
-                    final isPremium = tabController.index == 3;
-                    final activeColor = isPremium
-                        ? const Color(0xFFFFD700)
-                        : Theme.of(context).colorScheme.primary;
-                    return TabBar(
-                      controller: tabController,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      labelColor: activeColor,
-                      unselectedLabelColor: context.textTertiaryColor,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      indicator: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: activeColor, width: 2.5),
-                        ),
-                      ),
-                      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                      unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                      tabs: [
-                        Tab(text: context.l10n?.specsTab ?? 'Specs'),
-                        Tab(text: context.l10n?.reviews ?? 'Reviews'),
-                        Tab(text: context.l10n?.similarTab ?? 'Similar'),
-                        Tab(child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(context.l10n?.proTab ?? 'Premium'),
-                            const SizedBox(width: 4),
-                            Text('💎', style: TextStyle(fontSize: 10,
-                              color: isPremium ? const Color(0xFFFFD700) : context.textTertiaryColor)),
-                          ],
-                        )),
-                      ],
-                    );
-                  },
+          // Pill-style tab bar (always visible)
+          Container(
+            color: context.surfaceColor,
+            child: TabBar(
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: context.textTertiaryColor,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2.5,
+                  ),
                 ),
               ),
+              labelStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700),
+              unselectedLabelStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w500),
+              tabs: [
+                Tab(text: context.l10n?.specsTab ?? 'Specs'),
+                Tab(text: context.l10n?.reviews ?? 'Reviews'),
+                Tab(text: context.l10n?.similarTab ?? 'Similar'),
+                Tab(text: context.l10n?.proTab ?? 'Premium'),
+              ],
+            ),
+          ),
 
           // Tab content (scrollable) — KeepAlive prevents disposal on tab switch
           Expanded(
             child: TabBarView(
-              controller: tabController,
               children: [
                 _KeepAliveTab(child: _buildSpecsTab()),
                 _KeepAliveTab(child: _buildReviewsTab()),
@@ -1479,9 +2017,7 @@ Return ONLY valid JSON:
               ],
             ),
           ),
-            ],
-          );
-        },
+        ],
       ),
     );
   }
@@ -1938,594 +2474,380 @@ Return ONLY valid JSON:
   }
 
   Widget _buildProTab() {
-    return Column(
-      children: [
-        // ─── Chip bar ───
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(5, (i) {
-                final labels = [
-                  '🏆 ${context.l10n?.whichShouldIBuy ?? "Hangisini Almalıyım"}',
-                  '👤 ${context.l10n?.personalizedMatch ?? "Kişisel Eşleşme"}',
-                  '🔍 ${context.l10n?.aiDeepAnalysis ?? "Derin Analiz"}',
-                  '💡 ${context.l10n?.smartAlternatives ?? "Alternatifler"}',
-                  '📈 ${context.l10n?.pricePrediction ?? "Fiyat Tahmini"}',
-                ];
-                final isSelected = _selectedChipIndex == i;
-                return Padding(
-                  padding: EdgeInsets.only(right: i < 4 ? 8 : 0),
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_selectedChipIndex != i) {
-                        setState(() => _selectedChipIndex = i);
-                        _triggerChipFetch(i);
-                      }
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFFFD700) : context.surfaceVariantColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isSelected ? const Color(0xFFFFD700) : context.dividerColor,
-                          width: isSelected ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Text(labels[i],
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? const Color(0xFF1A1A2E) : context.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-
-        // ─── Content area ───
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            child: _buildChipContent(_selectedChipIndex),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Trigger the AI fetch for the selected chip (on-demand only)
-  void _triggerChipFetch(int index) {
-    switch (index) {
-      case 0: // Hangisini Almalıyım
-        if (_quickVerdictResult == null && _quickVerdictStructured == null && !_quickVerdictLoading) {
-          setState(() => _quickVerdictLoading = true);
-          _fetchQuickVerdict();
-        }
-      case 1: // Kişisel Eşleşme
-        _ensureMatchScoreFetch();
-      case 2: // Derin Analiz
-        if (_deepAnalysisResult == null && _deepAnalysisStructured == null && !_deepAnalysisLoading) {
-          setState(() => _deepAnalysisLoading = true);
-          _fetchDeepAnalysis();
-        }
-      case 3: // Alternatifler
-        if (_alternativesResult == null && _alternativesStructured == null && !_alternativesLoading) {
-          setState(() => _alternativesLoading = true);
-          _fetchAlternatives();
-        }
-      case 4: // Fiyat Tahmini
-        if (_predictionResult == null && _predictionStructured == null && !_predictionLoading) {
-          setState(() => _predictionLoading = true);
-          _fetchPrediction();
-        }
-    }
-  }
-
-  /// Ensure match score providers are triggered
-  void _ensureMatchScoreFetch() {
-    final userProfile = ref.read(userProfileProvider);
-    final user = userProfile.valueOrNull;
-    final quizCompleted = user != null && user.quizCompleted;
-    if (!_matchScoreFetched && quizCompleted) {
-      _matchScoreFetched = true;
-      for (final product in widget.products) {
-        final notifier = ref.read(geminiMatchScoreProvider(product.id).notifier);
-        notifier.fetchMatchScore(product: product);
-      }
-    }
-  }
-
-  /// Build content for the selected chip index
-  Widget _buildChipContent(int index) {
-    switch (index) {
-      case 0: return _buildQuickVerdictContent();
-      case 1: return _buildMatchScoreContent();
-      case 2: return _buildDeepAnalysisContent();
-      case 3: return _buildAlternativesContent();
-      case 4: return _buildPredictionContent();
-      default: return const SizedBox.shrink();
-    }
-  }
-
-  /// Shimmer placeholder for loading AI content
-  Widget _buildAiShimmer() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: List.generate(4, (i) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _ShimmerBlock(
-            width: i == 0 ? 200 : double.infinity,
-            height: i == 0 ? 20 : 14,
-          ),
-        )),
-      ),
-    );
-  }
-
-  /// Error + retry widget
-  Widget _buildAiError(VoidCallback onRetry) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.error.withValues(alpha: 0.6)),
-            const SizedBox(height: 12),
-            Text('Analiz yüklenemedi',
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: context.textSecondary)),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: onRetry,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
-                  borderRadius: BorderRadius.circular(12)),
-                child: Text('Tekrar Dene',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A2E))),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Chip Content Builders ───
-
-  Widget _buildQuickVerdictContent() {
-    // Auto-trigger on first view
-    if (_quickVerdictResult == null && _quickVerdictStructured == null && !_quickVerdictLoading && !_quickVerdictError) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _triggerChipFetch(0));
-    }
-
-    if (_quickVerdictError) {
-      return _buildAiError(() {
-        setState(() { _quickVerdictError = false; _quickVerdictLoading = true; _quickVerdictResult = null; _quickVerdictStructured = null; });
-        _fetchQuickVerdict();
-      });
-    }
-    if (_quickVerdictLoading) return _buildAiShimmer();
-
-    final data = _quickVerdictStructured;
-    if (data == null) return const SizedBox.shrink();
-
-    return _buildVerdictVisual(data);
-  }
-
-  /// Shared rich visual for Quick Verdict and Deep Analysis
-  Widget _buildVerdictVisual(Map<String, dynamic> data) {
-    final winner = data['winner'] as String?;
-    final verdict = data['verdict'] as String?;
-    final products = data['products'] as Map<String, dynamic>? ?? {};
+    // Trigger parallel prefetch on first visit
+    _prefetchAllAi();
 
     return ListView(
-      key: ValueKey('verdict_${data.hashCode}'),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance),
       children: [
-        // Winner card
-        if (winner != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF4A8FD9).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF4A8FD9), width: 2)),
-            child: Column(children: [
-              const Text('🏆', style: TextStyle(fontSize: 28)),
-              const SizedBox(height: 6),
-              Text(winner, style: GoogleFonts.plusJakartaSans(
-                fontSize: 18, fontWeight: FontWeight.w800, color: context.textPrimary),
-                maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-              if (verdict != null && verdict.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(verdict, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, height: 1.5, color: context.textSecondary),
-                  textAlign: TextAlign.center),
-              ],
-            ]),
-          ),
-
-        // Per-product cards
-        if (products.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          ...products.entries.map((entry) {
-            final pData = entry.value as Map<String, dynamic>? ?? {};
-            final score = (pData['score'] as num?)?.toDouble() ?? 0;
-            final strengths = List<String>.from(pData['strengths'] ?? []);
-            final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
-            final bestFor = pData['best_for'] as String? ?? '';
-
-            final scoreColor = score >= 90
-                ? AppTheme.scoreExcellent
-                : score >= 70
-                    ? AppTheme.warning
-                    : AppTheme.error;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: context.surfaceElevatedColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: context.dividerColor)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Product name + score badge
-                Row(children: [
-                  Expanded(child: Text(entry.key, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
-                    maxLines: 2, overflow: TextOverflow.ellipsis)),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: scoreColor.withValues(alpha: 0.12),
-                      border: Border.all(color: scoreColor, width: 2)),
-                    child: Center(child: Text('${score.toInt()}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15, fontWeight: FontWeight.w900, color: scoreColor))),
-                  ),
-                ]),
-                // Strengths
-                if (strengths.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(spacing: 6, runSpacing: 6, children: strengths.map((s) =>
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppTheme.scoreExcellent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8)),
-                      child: Text('✅ $s', style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11, color: AppTheme.scoreExcellent, fontWeight: FontWeight.w500)),
-                    ),
-                  ).toList()),
-                ],
-                // Weaknesses
-                if (weaknesses.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 6, runSpacing: 6, children: weaknesses.map((w) =>
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppTheme.error.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8)),
-                      child: Text('⚠️ $w', style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11, color: AppTheme.error, fontWeight: FontWeight.w500)),
-                    ),
-                  ).toList()),
-                ],
-                // Best for
-                if (bestFor.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text('🎯 $bestFor', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, color: context.textTertiaryColor, fontStyle: FontStyle.italic)),
-                ],
-              ]),
-            );
-          }),
-        ],
+        // 1. Quick Verdict
+        _buildExpandableCard(
+          icon: Icons.gavel_rounded,
+          title: context.l10n?.whichShouldIBuy ?? 'Which Should I Buy?',
+          subtitle: context.l10n?.quickAiComparisonResult ?? 'Quick AI comparison result',
+          gradient: const [Color(0xFFEC4899), Color(0xFFF43F5E)],
+          isExpanded: _quickVerdictExpanded,
+          isLoading: _quickVerdictLoading,
+          content: _quickVerdictResult,
+          onTap: _toggleQuickVerdict,
+        ),
+        const SizedBox(height: 14),
+        // 2. Personalized Match
+        _buildMatchScoreSection(),
+        const SizedBox(height: 14),
+        // 3. AI Deep Analysis
+        _buildExpandableCard(
+          icon: Icons.psychology_rounded,
+          title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
+          subtitle: context.l10n?.comprehensiveAiComparison ?? 'Comprehensive AI-powered comparison evaluation',
+          gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
+          isExpanded: _deepAnalysisExpanded,
+          isLoading: _deepAnalysisLoading,
+          content: _deepAnalysisResult,
+          contentWidget: _deepAnalysisStructured != null ? _buildDeepAnalysisVisual() : null,
+          onTap: _toggleDeepAnalysis,
+        ),
+        const SizedBox(height: 14),
+        // 4. Smart Alternatives
+        _buildExpandableCard(
+          icon: Icons.swap_horizontal_circle_rounded,
+          title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
+          subtitle: context.l10n?.aiAlternativesToConsider ?? 'AI-curated alternatives you should consider',
+          gradient: const [AppTheme.warning, Color(0xFFF97316)],
+          isExpanded: _alternativesExpanded,
+          isLoading: _alternativesLoading,
+          content: _alternativesResult,
+          contentWidget: _alternativesStructured != null ? _buildAlternativesVisual() : null,
+          onTap: _toggleAlternatives,
+        ),
+        const SizedBox(height: 14),
+        // 5. AI Product Advisor
+        _buildExpandableCard(
+          icon: Icons.support_agent_rounded,
+          title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
+          subtitle: context.l10n?.personalizedPurchaseAdvice ?? 'Personalized comparison purchase advice',
+          gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
+          isExpanded: _advisorExpanded,
+          isLoading: _advisorLoading,
+          content: _advisorResult,
+          contentWidget: _advisorStructured != null ? _buildAdvisorVisual() : null,
+          onTap: _toggleAdvisor,
+        ),
+        const SizedBox(height: 14),
+        // 6. Price Prediction
+        _buildExpandableCard(
+          icon: Icons.trending_down_rounded,
+          title: context.l10n?.pricePrediction ?? 'Price Prediction',
+          subtitle: context.l10n?.aiPriceTrendAnalysis ?? 'AI-powered price trend analysis & best time to buy',
+          gradient: const [Color(0xFF10B981), Color(0xFF059669)],
+          isExpanded: _predictionExpanded,
+          isLoading: _predictionLoading,
+          content: _predictionResult,
+          contentWidget: _predictionStructured != null ? _buildPredictionVisual() : null,
+          onTap: _togglePrediction,
+        ),
       ],
     );
   }
 
-  Widget _buildMatchScoreContent() {
-    // Auto-trigger on first view
-    _ensureMatchScoreFetch();
-
+  Widget _buildMatchScoreSection() {
     final userProfile = ref.watch(userProfileProvider);
     final user = userProfile.valueOrNull;
     final quizCompleted = user != null && user.quizCompleted;
 
-    return ListView(
-      key: const ValueKey('match_score'),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-      children: [
-        if (!quizCompleted)
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.08),
+            blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Only header row toggles expand/collapse
           GestureDetector(
-            onTap: () => context.push('/quiz'),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
-                borderRadius: BorderRadius.circular(14)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() => _matchScoreExpanded = !_matchScoreExpanded);
+              if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
+                _matchScoreFetched = true;
+                for (final product in widget.products) {
+                  final notifier = ref.read(geminiMatchScoreProvider(product.id).notifier);
+                  notifier.fetchMatchScore(product: product);
+                }
+              }
+            },
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
+                  borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.person_search_rounded, size: 20, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.quiz_rounded, size: 18, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(context.l10n?.completeQuiz ?? "Complete Quiz",
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Text(
+                    context.l10n?.personalizedMatch ?? 'Personalized Match',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(context.l10n?.aiCompatibilityAnalysis ?? 'AI-powered compatibility analysis',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
+                ],
+              )),
+              Icon(_matchScoreExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                color: AppTheme.brandBlue),
+            ]),
+          ),
+          // Content area — taps absorbed, don't toggle card
+          if (_matchScoreExpanded) ...[
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: () {},
+              child: Column(
+                children: [
+                  if (!quizCompleted)
+                    GestureDetector(
+                      onTap: () => context.push('/quiz'),
+                      child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue]),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.quiz_rounded, size: 18, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(context.l10n?.completeQuiz ?? "Complete Quiz",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ...widget.products.map((product) {
+                  final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
+                  final matchResult = matchAsync.valueOrNull;
+                  final matchScore = matchResult?.matchScore;
+                  final reason = matchResult?.reason;
+                  final isLoading = matchAsync is AsyncLoading;
+
+                  final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
+                      matchScore >= 80 ? AppTheme.scoreExcellent :
+                      matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: matchColor.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: matchColor.withValues(alpha: 0.15)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          if (isLoading)
+                            Container(
+                              width: 46, height: 46,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: matchColor.withValues(alpha: 0.1)),
+                              child: Center(child: SizedBox(
+                                width: 20, height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: matchColor))),
+                            )
+                          else
+                            // Animated circular score indicator
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: (matchScore ?? 0) / 100),
+                              duration: const Duration(milliseconds: 1500),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                final displayVal = (value * 100).toInt();
+                                return SizedBox(
+                                  width: 46, height: 46,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        value: value,
+                                        strokeWidth: 4,
+                                        backgroundColor: matchColor.withValues(alpha: 0.15),
+                                        color: matchColor,
+                                      ),
+                                      Text('$displayVal%',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11, fontWeight: FontWeight.w900, color: matchColor)),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          const SizedBox(width: 12),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(product.name, style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                                maxLines: 2, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 2),
+                              Text(
+                                isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
+                                    : context.l10n?.basedOnYourPreferences ?? 'Based on your preferences and usage habits',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11, color: context.textTertiaryColor)),
+                            ],
+                          )),
+                        ]),
+                        if (reason != null && reason.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.auto_awesome, size: 12,
+                                  color: matchColor.withValues(alpha: 0.7)),
+                              const SizedBox(width: 6),
+                              Expanded(child: ExpandableText(reason,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11, fontStyle: FontStyle.italic,
+                                  color: context.textSecondary, height: 1.3))),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
                 ],
               ),
             ),
-          )
-        else
-          ...widget.products.map((product) {
-            final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
-            final matchResult = matchAsync.valueOrNull;
-            final matchScore = matchResult?.matchScore;
-            final reason = matchResult?.reason;
-            final isLoading = matchAsync is AsyncLoading;
-
-            final matchColor = matchScore == null ? AppTheme.brandDeepBlue :
-                matchScore >= 80 ? AppTheme.scoreExcellent :
-                matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
-
-            return GestureDetector(
-              onTap: reason != null && reason.isNotEmpty ? () => _showMatchDetailModal(product, matchScore ?? 0, reason) : null,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: matchColor.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: matchColor.withValues(alpha: 0.15))),
-                child: Row(children: [
-                  if (isLoading)
-                    Container(
-                      width: 52, height: 52,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: matchColor.withValues(alpha: 0.1)),
-                      child: Center(child: SizedBox(width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: matchColor))),
-                    )
-                  else
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: (matchScore ?? 0) / 100),
-                      duration: const Duration(milliseconds: 1500),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        final displayVal = (value * 100).toInt();
-                        return SizedBox(
-                          width: 52, height: 52,
-                          child: Stack(alignment: Alignment.center, children: [
-                            CircularProgressIndicator(
-                              value: value, strokeWidth: 4.5,
-                              backgroundColor: matchColor.withValues(alpha: 0.15),
-                              color: matchColor),
-                            Text('$displayVal%', style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12, fontWeight: FontWeight.w900, color: matchColor)),
-                          ]),
-                        );
-                      },
-                    ),
-                  const SizedBox(width: 14),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(product.name, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 3),
-                      Text(
-                        isLoading ? (context.l10n?.analyzing ?? 'Analyzing...')
-                            : reason != null && reason.isNotEmpty
-                                ? (reason.length > 80 ? '${reason.substring(0, 80)}...' : reason)
-                                : context.l10n?.basedOnYourPreferences ?? 'Based on your preferences',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 11, color: context.textTertiaryColor),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ],
-                  )),
-                  if (reason != null && reason.isNotEmpty)
-                    Icon(Icons.chevron_right_rounded, size: 20, color: context.textTertiaryColor),
-                ]),
-              ),
-            );
-          }),
-      ],
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildDeepAnalysisContent() {
-    // Auto-trigger on first view
-    if (_deepAnalysisResult == null && _deepAnalysisStructured == null && !_deepAnalysisLoading && !_deepAnalysisError) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _triggerChipFetch(2));
-    }
-
-    if (_deepAnalysisError) {
-      return _buildAiError(() {
-        setState(() { _deepAnalysisError = false; _deepAnalysisLoading = true; _deepAnalysisResult = null; _deepAnalysisStructured = null; });
-        _fetchDeepAnalysis();
-      });
-    }
-    if (_deepAnalysisLoading) return _buildAiShimmer();
-
-    final data = _deepAnalysisStructured;
-    if (data == null) return const SizedBox.shrink();
-
-    return _buildVerdictVisual(data);
-  }
-
-  Widget _buildAlternativesContent() {
-    // Auto-trigger on first view
-    if (_alternativesResult == null && _alternativesStructured == null && !_alternativesLoading && !_alternativesError) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _triggerChipFetch(3));
-    }
-
-    if (_alternativesError) {
-      return _buildAiError(() {
-        setState(() { _alternativesError = false; _alternativesLoading = true; _alternativesResult = null; _alternativesStructured = null; });
-        _fetchAlternatives();
-      });
-    }
-    if (_alternativesLoading) return _buildAiShimmer();
-
-    if (_alternativesStructured != null) {
-      return ListView(
-        key: const ValueKey('alternatives'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-        children: [_buildAlternativesVisual()],
-      );
-    }
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildPredictionContent() {
-    // Auto-trigger on first view
-    if (_predictionResult == null && _predictionStructured == null && !_predictionLoading && !_predictionError) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _triggerChipFetch(4));
-    }
-
-    if (_predictionError) {
-      return _buildAiError(() {
-        setState(() { _predictionError = false; _predictionLoading = true; _predictionResult = null; _predictionStructured = null; });
-        _fetchPrediction();
-      });
-    }
-    if (_predictionLoading) return _buildAiShimmer();
-
-    if (_predictionStructured != null) {
-      return ListView(
-        key: const ValueKey('prediction'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-        children: [_buildPredictionVisual()],
-      );
-    }
-    return const SizedBox.shrink();
-  }
-
-  /// Enriched match score detail modal
-  void _showMatchDetailModal(ProductEntity product, int score, String reason) {
-    final scoreColor = score >= 80
-        ? AppTheme.scoreExcellent
-        : score >= 60
-            ? AppTheme.scoreAverage
-            : AppTheme.error;
-
-    // Split reason into bullet points
-    final bullets = reason
-        .split(RegExp(r'[\n•\-]'))
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Theme.of(ctx).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Close button
-              Align(
-                alignment: Alignment.topRight,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(ctx).pop(),
-                  child: Icon(Icons.close_rounded, size: 22, color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5)),
-                ),
-              ),
-              // Circular score indicator
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: score / 100),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, child) {
-                  final displayVal = (value * 100).toInt();
-                  return SizedBox(
-                    width: 80, height: 80,
-                    child: Stack(alignment: Alignment.center, children: [
-                      CircularProgressIndicator(
-                        value: value, strokeWidth: 6,
-                        backgroundColor: scoreColor.withValues(alpha: 0.15),
-                        color: scoreColor),
-                      Text('$displayVal%', style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20, fontWeight: FontWeight.w900, color: scoreColor)),
-                    ]),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              // Product name
-              Text(product.name, style: GoogleFonts.plusJakartaSans(
-                fontSize: 16, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface),
-                maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              // "Neden Bu Skor?" heading
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Neden Bu Skor?', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: Theme.of(ctx).colorScheme.onSurface)),
-              ),
-              const SizedBox(height: 10),
-              // Bullet list
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.35),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: bullets.map((b) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('• ', style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14, fontWeight: FontWeight.w700, color: scoreColor)),
-                        Expanded(child: Text(b, style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13, height: 1.5, color: Theme.of(ctx).colorScheme.onSurface))),
-                      ]),
-                    )).toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // "Ürünü Keşfet" button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    context.push('/product/${product.id}');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: scoreColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: Text(context.l10n?.exploreProducts ?? 'Ürünü Keşfet', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
+  Widget _buildExpandableCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Color> gradient,
+    required bool isExpanded,
+    required bool isLoading,
+    required String? content,
+    required VoidCallback onTap,
+    Widget? contentWidget,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: gradient[0].withValues(alpha: 0.15)),
+        boxShadow: [BoxShadow(
+          color: gradient[0].withValues(alpha: 0.08),
+          blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Only header row is tappable for toggle
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: gradient),
+                  borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: context.surfaceVariantColor, size: 20)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12, color: context.textSecondary)),
+                ])),
+              if (isLoading)
+                SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: gradient[0]))
+              else
+                Icon(isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: gradient[0]),
+            ]),
           ),
-        ),
+          // Content area — taps do NOT propagate to toggle
+          if (isExpanded && contentWidget != null) ...[
+            const SizedBox(height: 14),
+            GestureDetector(onTap: () {}, child: contentWidget),
+          ] else if (isExpanded && content != null) ...[
+            const SizedBox(height: 14),
+            GestureDetector(onTap: () {}, child: MarkdownBody(
+                data: content,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, height: 1.6,
+                    color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
+                  strong: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  em: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontStyle: FontStyle.italic,
+                    color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
+                  h1: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  h2: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : context.textPrimary),
+                  h3: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, fontWeight: FontWeight.w700,
+                    color: gradient[0]),
+                  listBullet: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, color: gradient[0]),
+                  listIndent: 16,
+                  blockSpacing: 8,
+                  h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
+                  pPadding: const EdgeInsets.symmetric(vertical: 2),
+                  blockquoteDecoration: BoxDecoration(
+                    color: gradient[0].withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: gradient[0], width: 3)),
+                  ),
+                  blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              )),
+          ],
+        ],
       ),
     );
   }
@@ -2903,6 +3225,48 @@ Return ONLY valid JSON:
       ),
     );
   }
+
+  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppTheme.brandBlue.withValues(alpha: 0.23),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.brandBlue.withValues(alpha: 0.11),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+            const BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ShaderMask(
+              shaderCallback: (bounds) => _accentGradient.createShader(bounds),
+              child: Icon(icon, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: context.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Data class for a single spec comparison row.
@@ -2928,57 +3292,6 @@ class _KeepAliveTabState extends State<_KeepAliveTab>
   Widget build(BuildContext context) {
     super.build(context);
     return widget.child;
-  }
-}
-
-/// Animated shimmer block for loading placeholders
-class _ShimmerBlock extends StatefulWidget {
-  final double width;
-  final double height;
-  const _ShimmerBlock({required this.width, required this.height});
-  @override
-  State<_ShimmerBlock> createState() => _ShimmerBlockState();
-}
-
-class _ShimmerBlockState extends State<_ShimmerBlock>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
-  }
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _controller,
-      builder: (ctx, _) {
-        final shimmerValue = _controller.value;
-        return Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            gradient: LinearGradient(
-              begin: Alignment(-1.0 + 2.0 * shimmerValue, 0),
-              end: Alignment(-1.0 + 2.0 * shimmerValue + 1, 0),
-              colors: [
-                context.surfaceVariantColor,
-                context.surfaceElevatedColor,
-                context.surfaceVariantColor,
-              ],
-              stops: const [0.0, 0.5, 1.0],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 

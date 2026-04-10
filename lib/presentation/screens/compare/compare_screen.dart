@@ -34,6 +34,7 @@ import 'package:compair/presentation/widgets/shared/shared_premium_section.dart'
 import 'package:compair/core/category_key_specs.dart' as keySpecs;
 import 'package:compair/presentation/widgets/shared/expandable_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';
