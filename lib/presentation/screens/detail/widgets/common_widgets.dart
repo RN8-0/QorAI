@@ -190,23 +190,45 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
             ),
           ],
         ),
-        child: TabBar(
-          indicator: BoxDecoration(
-            color: AppTheme.primaryBlue,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: context.surfaceVariantColor,
-          unselectedLabelColor: AppTheme.slate500,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-          dividerColor: Colors.transparent,
-          tabs: [
-            Tab(text: context.l10n?.specsTab ?? 'Specs'),
-            Tab(text: context.l10n?.reviews ?? 'Reviews'),
-            Tab(text: context.l10n?.similarTab ?? 'Similar'),
-            Tab(text: context.l10n?.proTab ?? 'Premium'),
-          ],
+        child: Builder(
+          builder: (tabContext) {
+            final controller = DefaultTabController.of(tabContext);
+            return ListenableBuilder(
+              listenable: controller,
+              builder: (ctx, _) {
+                final isPremium = controller.index == 3;
+                final indicatorColor = isPremium
+                    ? const Color(0xFFFFD700)
+                    : AppTheme.primaryBlue;
+                return TabBar(
+                  indicator: BoxDecoration(
+                    color: indicatorColor,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: context.surfaceVariantColor,
+                  unselectedLabelColor: AppTheme.slate500,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                  dividerColor: Colors.transparent,
+                  tabs: [
+                    Tab(text: context.l10n?.specsTab ?? 'Specs'),
+                    Tab(text: context.l10n?.reviews ?? 'Reviews'),
+                    Tab(text: context.l10n?.similarTab ?? 'Similar'),
+                    Tab(child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(context.l10n?.proTab ?? 'Premium'),
+                        const SizedBox(width: 3),
+                        Icon(Icons.diamond_rounded, size: 11,
+                          color: isPremium ? context.surfaceVariantColor : AppTheme.slate500),
+                      ],
+                    )),
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
