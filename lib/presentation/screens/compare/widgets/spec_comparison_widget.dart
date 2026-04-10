@@ -17,30 +17,36 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _quickVerdictExpanded = false;
   bool _quickVerdictLoading = false;
   String? _quickVerdictResult;
+  Map<String, dynamic>? _quickVerdictStructured;
+  bool _quickVerdictError = false;
 
   // Deep Analysis state (merged with AI Analysis structured)
   bool _deepAnalysisExpanded = false;
   bool _deepAnalysisLoading = false;
   String? _deepAnalysisResult;
   Map<String, dynamic>? _deepAnalysisStructured;
+  bool _deepAnalysisError = false;
 
   // Smart Alternatives state
   bool _alternativesExpanded = false;
   bool _alternativesLoading = false;
   String? _alternativesResult;
   Map<String, dynamic>? _alternativesStructured;
+  bool _alternativesError = false;
 
   // AI Advisor state
   bool _advisorExpanded = false;
   bool _advisorLoading = false;
   String? _advisorResult;
   Map<String, dynamic>? _advisorStructured;
+  bool _advisorError = false;
 
   // Price Prediction state
   bool _predictionExpanded = false;
   bool _predictionLoading = false;
   String? _predictionResult;
   Map<String, dynamic>? _predictionStructured;
+  bool _predictionError = false;
 
   // Personalized Match state
   bool _matchScoreExpanded = false;
@@ -137,29 +143,21 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  /// Pre-fetch ALL AI features in parallel when Premium tab is first visited
+  /// Pre-fetch first two AI features when Premium tab is first visited
+  /// Others load on-demand when their cards are expanded
   void _prefetchAllAi() {
     if (_aiPrefetchStarted) return;
-    // Don't prefetch if session already has results
     if (_quickVerdictResult != null && _deepAnalysisResult != null) return;
     _aiPrefetchStarted = true;
-    debugPrint('[Compair] 🚀 Pre-fetching all AI features in parallel');
+    debugPrint('[Compair] 🚀 Pre-fetching Quick Verdict + Deep Analysis');
 
-    // Set loading states so spinners show when cards are expanded
     setState(() {
-      if (_quickVerdictResult == null) _quickVerdictLoading = true;
+      if (_quickVerdictResult == null && _quickVerdictStructured == null) _quickVerdictLoading = true;
       if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _deepAnalysisLoading = true;
-      if (_alternativesResult == null && _alternativesStructured == null) _alternativesLoading = true;
-      if (_advisorResult == null && _advisorStructured == null) _advisorLoading = true;
-      if (_predictionResult == null && _predictionStructured == null) _predictionLoading = true;
     });
 
-    // Fire all in parallel — each updates its own state independently
-    if (_quickVerdictResult == null) _fetchQuickVerdict();
+    if (_quickVerdictResult == null && _quickVerdictStructured == null) _fetchQuickVerdict();
     if (_deepAnalysisResult == null && _deepAnalysisStructured == null) _fetchDeepAnalysis();
-    if (_alternativesResult == null && _alternativesStructured == null) _fetchAlternatives();
-    if (_advisorResult == null && _advisorStructured == null) _fetchAdvisor();
-    if (_predictionResult == null && _predictionStructured == null) _fetchPrediction();
   }
 
   /// Restore AI analysis results from session (survives navigation)
@@ -308,7 +306,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Deep Analysis FAILED: $e\n$st');
       if (mounted) setState(() {
-        _deepAnalysisResult = 'Unable to generate analysis. Please try again.';
+        _deepAnalysisError = true;
         _deepAnalysisLoading = false;
       });
     }
@@ -321,23 +319,26 @@ Return ONLY valid JSON:
     }
     setState(() {
       _quickVerdictExpanded = true;
-      if (_quickVerdictResult != null) return;
+      if (_quickVerdictResult != null || _quickVerdictStructured != null) return;
       _quickVerdictLoading = true;
     });
-    if (_quickVerdictResult == null) {
+    if (_quickVerdictResult == null && _quickVerdictStructured == null) {
       await _fetchQuickVerdict();
     }
   }
 
   Future<void> _fetchQuickVerdict() async {
-    if (_quickVerdictResult != null) return;
+    if (_quickVerdictResult != null || _quickVerdictStructured != null) return;
     final sw = Stopwatch()..start();
     try {
-      // Check Firestore cache first
       final cached = await _loadAiCache('quick_verdict');
       if (cached != null && cached['result'] != null) {
+        final parsed = cached['structured'] != null
+            ? Map<String, dynamic>.from(cached['structured'] as Map)
+            : _tryParseJson(cached['result'] as String);
         if (mounted) setState(() {
           _quickVerdictResult = cached['result'] as String;
+          _quickVerdictStructured = parsed;
           _quickVerdictLoading = false;
         });
         _saveToSession();
@@ -349,30 +350,55 @@ Return ONLY valid JSON:
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
       final productNames = widget.products.map((p) => p.name).join(' vs ');
+      final specSummary = widget.products.map((p) {
+        final specs = p.keySpecs.entries.take(6).map((e) => '${e.key}: ${e.value}').join(', ');
+        return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $specs';
+      }).join('\n');
 
-      final result = await gemini.groundedQuery(
-        '''You are a decisive tech advisor. Address the user directly using "you/your" (2nd person).
-Compare "$productNames" and give a CLEAR, CONCISE buying recommendation.
+      final prompt = '''You are a decisive tech advisor. Address the user directly using "you/your". ALL text in $langName.
+Compare these products:
+$specSummary
 
-Answer in $langName in EXACTLY 2-3 sentences:
-1. Which product you should buy and the #1 reason why
-2. When the other product(s) might be better for you
-Keep it punchy and actionable. No hedging.''',
-        maxTokens: 512,
-      );
+Return ONLY valid JSON, no markdown, no explanation:
+{
+  "winner": "exact product name",
+  "verdict": "2-3 sentence clear buying recommendation",
+  "products": {
+    "ExactProductName": {
+      "score": 95,
+      "strengths": ["point1", "point2", "point3"],
+      "weaknesses": ["point1", "point2"],
+      "best_for": "ideal user description"
+    }
+  }
+}''';
+
+      debugPrint('[Compair] Quick Verdict starting for: $productNames');
+      String result;
+      try {
+        result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: 512);
+      } catch (jsonErr) {
+        debugPrint('[Compair] Quick Verdict JSON failed: $jsonErr — fallback');
+        result = await gemini.groundedQuery(prompt, maxTokens: 512);
+      }
       if (mounted) {
+        final parsed = _tryParseJson(result);
         setState(() {
-          _quickVerdictResult = result.isNotEmpty ? result : 'Unable to generate verdict.';
+          _quickVerdictResult = result;
+          _quickVerdictStructured = parsed;
           _quickVerdictLoading = false;
         });
         _saveToSession();
-        _saveAiCache('quick_verdict', {'result': _quickVerdictResult!});
+        _saveAiCache('quick_verdict', {
+          'result': result,
+          if (parsed != null) 'structured': parsed,
+        });
       }
       debugPrint('[Compair] ⏱ Quick Verdict from Gemini: ${sw.elapsedMilliseconds}ms');
     } catch (e, st) {
       debugPrint('[Compair] Quick Verdict FAILED: $e\n$st');
       if (mounted) setState(() {
-        _quickVerdictResult = 'Unable to generate verdict. Please try again.';
+        _quickVerdictError = true;
         _quickVerdictLoading = false;
       });
     }
@@ -460,7 +486,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Alternatives FAILED: $e\n$st');
       if (mounted) setState(() {
-        _alternativesResult = 'Unable to generate alternatives. Please try again.';
+        _alternativesError = true;
         _alternativesLoading = false;
       });
     }
@@ -555,7 +581,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Advisor FAILED: $e\n$st');
       if (mounted) setState(() {
-        _advisorResult = 'Unable to generate advice. Please try again.';
+        _advisorError = true;
         _advisorLoading = false;
       });
     }
@@ -647,7 +673,7 @@ Return ONLY valid JSON:
     } catch (e, st) {
       debugPrint('[Compair] Prediction FAILED: $e\n$st');
       if (mounted) setState(() {
-        _predictionResult = 'Unable to predict prices. Please try again.';
+        _predictionError = true;
         _predictionLoading = false;
       });
     }
@@ -1095,7 +1121,157 @@ Return ONLY valid JSON:
     return AppTheme.error;
   }
 
+  Widget _buildAiShimmer() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ShimmerBlock(width: 200, height: 20),
+        const SizedBox(height: 10),
+        _ShimmerBlock(width: double.infinity, height: 14),
+        const SizedBox(height: 8),
+        _ShimmerBlock(width: double.infinity, height: 14),
+        const SizedBox(height: 8),
+        _ShimmerBlock(width: 160, height: 14),
+      ],
+    );
+  }
+
+  Widget _buildAiError(VoidCallback onRetry) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.error.withValues(alpha: 0.6)),
+            const SizedBox(height: 12),
+            Text('Analiz yüklenemedi', style: GoogleFonts.plusJakartaSans(
+              fontSize: 14, fontWeight: FontWeight.w600, color: context.textSecondary)),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: onRetry,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.amber500, Color(0xFFF59E0B)]),
+                  borderRadius: BorderRadius.circular(10)),
+                child: Text('Tekrar Dene', style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ─── Structured Visual Builders for Premium AI Sections ───
+
+  Widget _buildQuickVerdictVisual() {
+    final data = _quickVerdictStructured!;
+    final winner = data['winner'] as String?;
+    final verdict = data['verdict'] as String?;
+    final products = data['products'] as Map<String, dynamic>? ?? {};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Winner card
+        if (winner != null) Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4A8FD9).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF4A8FD9), width: 2),
+          ),
+          child: Row(children: [
+            const Text('🏆', style: TextStyle(fontSize: 26)),
+            const SizedBox(width: 10),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(winner, style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary)),
+                if (verdict != null) ...[
+                  const SizedBox(height: 4),
+                  Text(verdict, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, color: context.textSecondary, height: 1.4)),
+                ],
+              ],
+            )),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        // Per-product cards
+        ...products.entries.map((entry) {
+          final name = entry.key;
+          final info = entry.value as Map<String, dynamic>? ?? {};
+          final score = (info['score'] as num?)?.toDouble() ?? 0;
+          final strengths = (info['strengths'] as List?)?.cast<String>() ?? [];
+          final weaknesses = (info['weaknesses'] as List?)?.cast<String>() ?? [];
+          final bestFor = info['best_for'] as String?;
+          final scoreColor = score >= 90 ? AppTheme.scoreExcellent
+              : score >= 70 ? AppTheme.orange500
+              : AppTheme.error;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: context.surfaceVariantColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: context.dividerColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [scoreColor.withValues(alpha: 0.7), scoreColor]),
+                      shape: BoxShape.circle),
+                    child: Center(child: Text('${score.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white))),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(name, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary))),
+                ]),
+                if (strengths.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 6, runSpacing: 6, children: strengths.map((s) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Text(s, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
+                      color: AppTheme.scoreExcellent)),
+                  )).toList()),
+                ],
+                if (weaknesses.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 6, runSpacing: 6, children: weaknesses.map((w) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.error.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Text(w, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600,
+                      color: AppTheme.error)),
+                  )).toList()),
+                ],
+                if (bestFor != null) ...[
+                  const SizedBox(height: 8),
+                  Text(bestFor, style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12, fontStyle: FontStyle.italic, color: context.textSecondary)),
+                ],
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
 
   Widget _buildDeepAnalysisVisual() {
     final data = _deepAnalysisStructured!;
@@ -1981,6 +2157,8 @@ Return ONLY valid JSON:
           Container(
             color: context.surfaceColor,
             child: TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               labelColor: Theme.of(context).colorScheme.primary,
               unselectedLabelColor: context.textTertiaryColor,
               indicatorSize: TabBarIndicatorSize.tab,
@@ -2474,7 +2652,6 @@ Return ONLY valid JSON:
   }
 
   Widget _buildProTab() {
-    // Trigger parallel prefetch on first visit
     _prefetchAllAi();
 
     return ListView(
@@ -2489,6 +2666,12 @@ Return ONLY valid JSON:
           isExpanded: _quickVerdictExpanded,
           isLoading: _quickVerdictLoading,
           content: _quickVerdictResult,
+          contentWidget: _quickVerdictStructured != null ? _buildQuickVerdictVisual() : null,
+          isError: _quickVerdictError,
+          onRetry: () {
+            setState(() { _quickVerdictError = false; _quickVerdictLoading = true; _quickVerdictResult = null; _quickVerdictStructured = null; });
+            _fetchQuickVerdict();
+          },
           onTap: _toggleQuickVerdict,
         ),
         const SizedBox(height: 14),
@@ -2505,6 +2688,11 @@ Return ONLY valid JSON:
           isLoading: _deepAnalysisLoading,
           content: _deepAnalysisResult,
           contentWidget: _deepAnalysisStructured != null ? _buildDeepAnalysisVisual() : null,
+          isError: _deepAnalysisError,
+          onRetry: () {
+            setState(() { _deepAnalysisError = false; _deepAnalysisLoading = true; _deepAnalysisResult = null; _deepAnalysisStructured = null; });
+            _fetchDeepAnalysis();
+          },
           onTap: _toggleDeepAnalysis,
         ),
         const SizedBox(height: 14),
@@ -2518,6 +2706,11 @@ Return ONLY valid JSON:
           isLoading: _alternativesLoading,
           content: _alternativesResult,
           contentWidget: _alternativesStructured != null ? _buildAlternativesVisual() : null,
+          isError: _alternativesError,
+          onRetry: () {
+            setState(() { _alternativesError = false; _alternativesLoading = true; _alternativesResult = null; _alternativesStructured = null; });
+            _fetchAlternatives();
+          },
           onTap: _toggleAlternatives,
         ),
         const SizedBox(height: 14),
@@ -2531,6 +2724,11 @@ Return ONLY valid JSON:
           isLoading: _advisorLoading,
           content: _advisorResult,
           contentWidget: _advisorStructured != null ? _buildAdvisorVisual() : null,
+          isError: _advisorError,
+          onRetry: () {
+            setState(() { _advisorError = false; _advisorLoading = true; _advisorResult = null; _advisorStructured = null; });
+            _fetchAdvisor();
+          },
           onTap: _toggleAdvisor,
         ),
         const SizedBox(height: 14),
@@ -2544,6 +2742,11 @@ Return ONLY valid JSON:
           isLoading: _predictionLoading,
           content: _predictionResult,
           contentWidget: _predictionStructured != null ? _buildPredictionVisual() : null,
+          isError: _predictionError,
+          onRetry: () {
+            setState(() { _predictionError = false; _predictionLoading = true; _predictionResult = null; _predictionStructured = null; });
+            _fetchPrediction();
+          },
           onTap: _togglePrediction,
         ),
       ],
@@ -2755,6 +2958,8 @@ Return ONLY valid JSON:
     required String? content,
     required VoidCallback onTap,
     Widget? contentWidget,
+    bool isError = false,
+    VoidCallback? onRetry,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
@@ -2772,7 +2977,6 @@ Return ONLY valid JSON:
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Only header row is tappable for toggle
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onTap,
@@ -2802,11 +3006,23 @@ Return ONLY valid JSON:
                   color: gradient[0]),
             ]),
           ),
-          // Content area — taps do NOT propagate to toggle
-          if (isExpanded && contentWidget != null) ...[
+          // Error state with retry
+          if (isExpanded && isError && onRetry != null) ...[
+            const SizedBox(height: 14),
+            _buildAiError(onRetry),
+          ]
+          // Loading shimmer
+          else if (isExpanded && isLoading) ...[
+            const SizedBox(height: 14),
+            _buildAiShimmer(),
+          ]
+          // Structured content widget
+          else if (isExpanded && contentWidget != null) ...[
             const SizedBox(height: 14),
             GestureDetector(onTap: () {}, child: contentWidget),
-          ] else if (isExpanded && content != null) ...[
+          ]
+          // Fallback raw text via MarkdownBody
+          else if (isExpanded && content != null) ...[
             const SizedBox(height: 14),
             GestureDetector(onTap: () {}, child: MarkdownBody(
                 data: content,
@@ -3296,6 +3512,48 @@ class _KeepAliveTabState extends State<_KeepAliveTab>
 }
 
 // ─── Tab Bar Delegate ─────────────────────────────────────────────────────────
+
+class _ShimmerBlock extends StatefulWidget {
+  final double width;
+  final double height;
+  const _ShimmerBlock({required this.width, required this.height});
+  @override
+  State<_ShimmerBlock> createState() => _ShimmerBlockState();
+}
+
+class _ShimmerBlockState extends State<_ShimmerBlock> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Container(
+        width: widget.width,
+        height: widget.height,
+        margin: const EdgeInsets.only(bottom: 2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          gradient: LinearGradient(
+            begin: Alignment(-1.0 + 2.0 * _ctrl.value, 0),
+            end: Alignment(-1.0 + 2.0 * _ctrl.value + 1, 0),
+            colors: [
+              Colors.grey.withValues(alpha: 0.12),
+              Colors.grey.withValues(alpha: 0.24),
+              Colors.grey.withValues(alpha: 0.12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 
 
