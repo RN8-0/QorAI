@@ -1832,6 +1832,18 @@ function _qualityScore(p) {
     + (p.imageUrl || p.imageURL ? 5 : 0);
 }
 
+// Test whether an image URL is actually loadable (returns a visible image)
+function testImageUrl(url) {
+  return new Promise((resolve) => {
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) { resolve(false); return; }
+    const img = new Image();
+    const timer = setTimeout(() => { img.src = ''; resolve(false); }, 6000);
+    img.onload = () => { clearTimeout(timer); resolve(img.naturalWidth > 0); };
+    img.onerror = () => { clearTimeout(timer); resolve(false); };
+    img.src = url;
+  });
+}
+
 // Detect quality issues for a single product
 function _qualityIssues(p, minSpecs, minImages) {
   const issues = [];
@@ -1853,6 +1865,7 @@ async function startQualityScan() {
   const minImages = parseInt(document.getElementById('qualityMinImages')?.value) || 1;
   const doRescrape = document.getElementById('qualityRescrape')?.checked !== false;
   const doDedupe = document.getElementById('qualityDedupe')?.checked !== false;
+  const doCheckImages = document.getElementById('qualityCheckImages')?.checked === true;
   const delay = parseInt(document.getElementById('qualityScanDelay')?.value) || 2000;
 
   scraperRunning = true;
@@ -1899,6 +1912,37 @@ async function startQualityScan() {
     slog('Sorunlu ürünler (ilk 30):', 'warn');
     badProducts.slice(0, 30).forEach(p => slog(`  ⚠️ ${p.name || p._docId}: ${p._issues.join(', ')}`, 'warn'));
     if (badProducts.length > 30) slog(`  ... ve ${badProducts.length - 30} ürün daha`, 'warn');
+  }
+
+  // ── Phase 1b: Broken image URL check (optional) ──
+  if (doCheckImages && !scraperAbort) {
+    slog(`\n[2b/4] Görsel URL erişilebilirlik testi yapılıyor (${goodProducts.length + badProducts.length} ürün)...`, 'info');
+    slog('Her görsel 6 saniyeye kadar test edilecek, lütfen bekleyin...', 'warn');
+    let brokenCount = 0;
+    const allToCheck = [...goodProducts];
+    for (let i = 0; i < allToCheck.length && !scraperAbort; i++) {
+      const p = allToCheck[i];
+      updateProgress(i + 1, allToCheck.length, 'Görsel Test');
+      const primaryUrl = p.imageUrl || p.imageURL || (p.images && p.images[0]) || '';
+      if (!primaryUrl) continue;
+      const ok = await testImageUrl(primaryUrl);
+      if (!ok && p.sourceUrl) {
+        slog(`  🔴 Kırık görsel: ${p.name || p._docId}`, 'warn');
+        const alreadyBad = badProducts.some(b => b._docId === p._docId);
+        if (!alreadyBad) {
+          badProducts.push({ ...p, _issues: ['kırık görsel URL'] });
+          const idx = goodProducts.findIndex(g => g._docId === p._docId);
+          if (idx !== -1) goodProducts.splice(idx, 1);
+        } else {
+          const existing = badProducts.find(b => b._docId === p._docId);
+          if (existing && !existing._issues.includes('kırık görsel URL')) {
+            existing._issues.push('kırık görsel URL');
+          }
+        }
+        brokenCount++;
+      }
+    }
+    slog(`✓ Kırık görsel URL testi tamamlandı: ${brokenCount} kırık görsel bulundu`, brokenCount > 0 ? 'warn' : 'success');
   }
 
   // ── Phase 1b: Re-scrape bad products ──
