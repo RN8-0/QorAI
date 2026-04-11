@@ -276,6 +276,8 @@ class ReviewModel {
   final int helpful;
   final bool reported;
   final DateTime createdAt;
+  final List<String> likedBy;
+  final List<String> dislikedBy;
 
   const ReviewModel({
     required this.id,
@@ -286,6 +288,8 @@ class ReviewModel {
     this.helpful = 0,
     this.reported = false,
     required this.createdAt,
+    this.likedBy = const [],
+    this.dislikedBy = const [],
   });
 
   factory ReviewModel.fromFirestore(DocumentSnapshot doc) {
@@ -299,6 +303,8 @@ class ReviewModel {
       helpful: data['helpful'] ?? 0,
       reported: data['reported'] ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      likedBy: List<String>.from(data['likedBy'] ?? []),
+      dislikedBy: List<String>.from(data['dislikedBy'] ?? []),
     );
   }
 
@@ -310,6 +316,8 @@ class ReviewModel {
         'helpful': helpful,
         'reported': reported,
         'createdAt': Timestamp.fromDate(createdAt),
+        'likedBy': likedBy,
+        'dislikedBy': dislikedBy,
       };
 }
 

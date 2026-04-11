@@ -358,6 +358,16 @@ class _ProfileBody extends ConsumerWidget {
                 child: _RecentlyViewedPreviewList(),
               ),
 
+              const SizedBox(height: 16),
+
+              // Yorumlarım
+              _ContentSection(
+                title: 'Yorumlarım',
+                icon: Icons.rate_review_rounded,
+                color: const Color(0xFF10B981),
+                child: const _MyReviewsList(),
+              ),
+
               const SizedBox(height: 24),
 
               // Log Out
@@ -1163,6 +1173,93 @@ class _UsageRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MyReviewsList extends ConsumerWidget {
+  const _MyReviewsList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reviewsAsync = ref.watch(myReviewsProvider);
+
+    return reviewsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (reviews) {
+        if (reviews.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text('Henüz yorum yapmadın',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13, color: AppTheme.slate500)),
+            ),
+          );
+        }
+
+        final feed = ref.watch(homeFeedProvider);
+        final allProducts = feed.valueOrNull?.all ?? [];
+
+        return Column(
+          children: reviews.take(5).map((review) {
+            final product = allProducts
+                .where((p) => p.id == review.productId)
+                .firstOrNull;
+            final displayName = product?.name ?? review.productId;
+
+            return GestureDetector(
+              onTap: () => context.push('/product/${review.productId}'),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: context.surfaceVariantColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.dividerColor),
+                ),
+                child: Row(children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.rate_review_rounded,
+                        size: 18, color: Color(0xFF10B981)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12, fontWeight: FontWeight.w600,
+                            color: context.textPrimary),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      ),
+                      if (review.text.isNotEmpty)
+                        Text(
+                          review.text,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11, color: context.textSecondary),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  )),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 18, color: AppTheme.slate400),
+                ]),
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }

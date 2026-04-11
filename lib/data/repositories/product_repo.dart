@@ -154,6 +154,36 @@ class ProductRepository {
     }
   }
 
+  /// Delete review
+  Future<Result<void>> deleteReview(String reviewId) async {
+    try {
+      await _firebaseDS.deleteReview(reviewId);
+      return const Success(null);
+    } catch (e) {
+      return Failure(FirestoreException(message: e.toString()));
+    }
+  }
+
+  /// Toggle review like
+  Future<Result<void>> toggleReviewLike(String reviewId, String userId) async {
+    try {
+      await _firebaseDS.toggleReviewLike(reviewId, userId);
+      return const Success(null);
+    } catch (e) {
+      return Failure(FirestoreException(message: e.toString()));
+    }
+  }
+
+  /// Toggle review dislike
+  Future<Result<void>> toggleReviewDislike(String reviewId, String userId) async {
+    try {
+      await _firebaseDS.toggleReviewDislike(reviewId, userId);
+      return const Success(null);
+    } catch (e) {
+      return Failure(FirestoreException(message: e.toString()));
+    }
+  }
+
   /// Return all products via in-memory cache (fastest path)
   Future<Result<List<ProductEntity>>> getAllCachedProducts() async {
     try {

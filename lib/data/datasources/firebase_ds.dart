@@ -539,6 +539,67 @@ class FirebaseDataSource {
     }
   }
 
+  Future<void> deleteReview(String reviewId) async {
+    await _firestore
+        .collection(AppConstants.reviewsCollection)
+        .doc(reviewId)
+        .delete();
+  }
+
+  Future<void> toggleReviewLike(String reviewId, String userId) async {
+    final ref = _firestore.collection(AppConstants.reviewsCollection).doc(reviewId);
+    final doc = await ref.get();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final liked = List<String>.from(data['likedBy'] ?? []);
+    if (liked.contains(userId)) {
+      await ref.update({'likedBy': FieldValue.arrayRemove([userId])});
+    } else {
+      await ref.update({
+        'likedBy': FieldValue.arrayUnion([userId]),
+        'dislikedBy': FieldValue.arrayRemove([userId]),
+      });
+    }
+  }
+
+  Future<void> toggleReviewDislike(String reviewId, String userId) async {
+    final ref = _firestore.collection(AppConstants.reviewsCollection).doc(reviewId);
+    final doc = await ref.get();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final disliked = List<String>.from(data['dislikedBy'] ?? []);
+    if (disliked.contains(userId)) {
+      await ref.update({'dislikedBy': FieldValue.arrayRemove([userId])});
+    } else {
+      await ref.update({
+        'dislikedBy': FieldValue.arrayUnion([userId]),
+        'likedBy': FieldValue.arrayRemove([userId]),
+      });
+    }
+  }
+
+  Stream<List<ReviewModel>> watchProductReviews(String productId, {int limit = 30}) {
+    return _firestore
+        .collection(AppConstants.reviewsCollection)
+        .where('productId', isEqualTo: productId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => ReviewModel.fromFirestore(doc))
+            .toList());
+  }
+
+  Stream<List<ReviewModel>> watchUserReviews(String userId, {int limit = 50}) {
+    return _firestore
+        .collection(AppConstants.reviewsCollection)
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => ReviewModel.fromFirestore(doc))
+            .toList());
+  }
+
   // ─── User Links ─── Section 4.4
 
   Future<void> saveUserLink(UserLinkModel link) async {

@@ -1255,20 +1255,25 @@ final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((re
   );
 });
 
-/// Reviews for a product
+/// Reviews for a product (realtime stream)
 final productReviewsProvider =
-    FutureProvider.family<List<ReviewModel>, String>((ref, productId) async {
-  try {
-    final result = await ref.read(productRepositoryProvider)
-        .getProductReviews(productId)
-        .timeout(const Duration(seconds: 8));
-    return result.when(
-      success: (reviews) => reviews,
-      failure: (_) => <ReviewModel>[],
-    );
-  } catch (_) {
-    return <ReviewModel>[];
-  }
+    StreamProvider.family<List<ReviewModel>, String>((ref, productId) {
+  return ref.read(firebaseDataSourceProvider)
+      .watchProductReviews(productId);
+});
+
+/// Current user's reviews
+final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.when(
+    data: (user) {
+      if (user == null) return Stream.value(<ReviewModel>[]);
+      return ref.read(firebaseDataSourceProvider)
+          .watchUserReviews(user.uid);
+    },
+    loading: () => Stream.value(<ReviewModel>[]),
+    error: (_, _) => Stream.value(<ReviewModel>[]),
+  );
 });
 
 /// Toggle favorite - returns new isFavorite state

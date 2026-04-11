@@ -455,6 +455,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
     final avgRating = reviews.isEmpty
         ? 0.0
         : reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
+    final currentUserId = currentUser?.uid as String?;
 
     // Filter reviews
     final filtered = _selectedFilter == 0
@@ -486,7 +487,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
             ),
           )
         else ...[
-          ...filtered.take(5).map((review) => _buildReviewItem(review)),
+          ...filtered.take(5).map((review) => _buildReviewItem(review, currentUserId)),
           if (filtered.length > 5)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -626,7 +627,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
     );
   }
 
-  Widget _buildReviewItem(ReviewModel review) {
+  Widget _buildReviewItem(ReviewModel review, String? currentUserId) {
     final timeDiff = DateTime.now().difference(review.createdAt);
     String timeAgo;
     if (timeDiff.inDays > 365) {
@@ -683,6 +684,28 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13, height: 1.5, color: context.textSecondary)),
           ],
+          const SizedBox(height: 10),
+          Row(children: [
+            _LikeDislikeButton(
+              reviewId: review.id,
+              isLike: true,
+              count: review.likedBy.length,
+              isActive: currentUserId != null && review.likedBy.contains(currentUserId),
+            ),
+            const SizedBox(width: 12),
+            _LikeDislikeButton(
+              reviewId: review.id,
+              isLike: false,
+              count: review.dislikedBy.length,
+              isActive: currentUserId != null && review.dislikedBy.contains(currentUserId),
+            ),
+            const Spacer(),
+            if (review.userId == currentUserId)
+              _DeleteReviewButton(
+                reviewId: review.id,
+                productId: widget.product.id,
+              ),
+          ]),
         ],
       ),
     );
@@ -901,5 +924,111 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
         );
       }
     }
+  }
+}
+
+class _LikeDislikeButton extends ConsumerWidget {
+  final String reviewId;
+  final bool isLike;
+  final int count;
+  final bool isActive;
+
+  const _LikeDislikeButton({
+    required this.reviewId,
+    required this.isLike,
+    required this.count,
+    required this.isActive,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeColor = isLike ? AppTheme.success : AppTheme.error;
+    final icon = isLike ? Icons.thumb_up_alt_rounded : Icons.thumb_down_alt_rounded;
+    final outlineIcon = isLike ? Icons.thumb_up_alt_outlined : Icons.thumb_down_alt_outlined;
+
+    return GestureDetector(
+      onTap: () async {
+        final uid = ref.read(authStateProvider).valueOrNull?.uid;
+        if (uid == null) return;
+        HapticFeedback.lightImpact();
+        final repo = ref.read(productRepositoryProvider);
+        if (isLike) {
+          await repo.toggleReviewLike(reviewId, uid);
+        } else {
+          await repo.toggleReviewDislike(reviewId, uid);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive
+              ? activeColor.withValues(alpha: 0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive
+                ? activeColor.withValues(alpha: 0.4)
+                : AppTheme.slate500.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(isActive ? icon : outlineIcon,
+              size: 14, color: isActive ? activeColor : AppTheme.slate500),
+          if (count > 0) ...[
+            const SizedBox(width: 4),
+            Text('$count',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isActive ? activeColor : AppTheme.slate500)),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+class _DeleteReviewButton extends ConsumerWidget {
+  final String reviewId;
+  final String productId;
+
+  const _DeleteReviewButton({required this.reviewId, required this.productId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onTap: () async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: context.surfaceColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Yorumu Sil',
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16, fontWeight: FontWeight.w700)),
+            content: Text('Bu yorumu silmek istiyor musun?',
+                style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(context.l10n?.cancel ?? 'İptal'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('Sil',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, color: AppTheme.error)),
+              ),
+            ],
+          ),
+        );
+        if (confirmed == true) {
+          await ref.read(productRepositoryProvider).deleteReview(reviewId);
+        }
+      },
+      child: Icon(Icons.delete_outline_rounded,
+          size: 18, color: AppTheme.error.withValues(alpha: 0.7)),
+    );
   }
 }
