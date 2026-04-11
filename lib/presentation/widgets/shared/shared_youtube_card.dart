@@ -61,7 +61,7 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
       duration: const Duration(milliseconds: 250),
       vsync: this,
     );
-    _chevronTurns = Tween<double>(begin: 0, end: 0.5).animate(
+    _chevronTurns = Tween<double>(begin: 0, end: 0.25).animate(
       CurvedAnimation(parent: _chevronController, curve: Curves.easeInOut),
     );
     // Non-collapsible mode doesn't need expand state
@@ -108,6 +108,9 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
   /// Compact expandable row for compare screen
   Widget _buildCollapsible(BuildContext context) {
     final title = widget.titleOverride ?? context.l10n?.youtubeReviews ?? 'YouTube Reviews';
+    final subtitle = _loaded && _videos.isNotEmpty
+        ? '${_videos.length} review videos found'
+        : (context.l10n?.tapToLoadVideos ?? 'Tap to see review videos');
 
     return Container(
       decoration: BoxDecoration(
@@ -138,12 +141,27 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text(
-                          context.l10n?.tapToLoadVideos ?? 'Tap to load comparison videos',
-                          style: TextStyle(fontSize: 11, color: AppTheme.slate500),
+                        Row(
+                          children: [
+                            Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                            if (_loaded && _videos.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.error.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${_videos.length}',
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.error),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: TextStyle(fontSize: 11, color: AppTheme.slate500)),
                       ],
                     ),
                   ),
@@ -155,7 +173,11 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
                   else
                     RotationTransition(
                       turns: _chevronTurns,
-                      child: Icon(Icons.expand_more, size: 24, color: AppTheme.slate500),
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 24,
+                        color: AppTheme.slate500,
+                      ),
                     ),
                 ],
               ),
