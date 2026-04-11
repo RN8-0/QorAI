@@ -282,7 +282,7 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
       final yte = yt_explode.YoutubeExplode();
       final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
       yte.close();
-      final url = manifest.muxed.withHighestBitrate().url.toString();
+      final url = _bestMuxedCmp(manifest).url.toString();
       _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
       await _videoCtrl!.initialize();
       _chewieCtrl = ChewieController(
@@ -503,7 +503,7 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
       final yte = yt_explode.YoutubeExplode();
       final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
       yte.close();
-      final url = manifest.muxed.withHighestBitrate().url.toString();
+      final url = _bestMuxedCmp(manifest).url.toString();
       _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
       await _videoCtrl!.initialize();
       _setupChewie();
@@ -539,46 +539,35 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(children: [
-          if (!_loading && _chewieCtrl != null)
-            Center(child: Chewie(controller: _chewieCtrl!))
-          else
-            const Center(child: CircularProgressIndicator(color: Colors.red)),
-          // Geri butonu
-          Positioned(
-            top: 8, left: 4,
-            child: IconButton(
-              icon: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(widget.title,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+          maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isLandscape
+                  ? Icons.screen_lock_portrait_rounded
+                  : Icons.screen_rotation_rounded,
+              color: Colors.white),
+            onPressed: _toggleOrientation,
+            tooltip: _isLandscape ? 'Dikey mod' : 'Yatay mod',
           ),
-          // Ekran döndürme butonu
-          Positioned(
-            top: 8, right: 4,
-            child: IconButton(
-              icon: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  shape: BoxShape.circle),
-                child: Icon(
-                  _isLandscape
-                      ? Icons.screen_lock_portrait_rounded
-                      : Icons.screen_rotation_rounded,
-                  color: Colors.white, size: 20),
-              ),
-              onPressed: _toggleOrientation,
-            ),
-          ),
-        ]),
+        ],
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: Colors.red))
+          : _chewieCtrl != null
+              ? Center(child: Chewie(controller: _chewieCtrl!))
+              : const Center(child: CircularProgressIndicator(color: Colors.red)),
     );
   }
 }
@@ -613,7 +602,7 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
       final yte = yt_explode.YoutubeExplode();
       final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
       yte.close();
-      final url = manifest.muxed.withHighestBitrate().url.toString();
+      final url = _bestMuxedCmp(manifest).url.toString();
       _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
       await _videoCtrl!.initialize();
       _chewieCtrl = ChewieController(
@@ -691,6 +680,25 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
                   child: Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48)),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// YARDIMCI — en yüksek kaliteli muxed stream seç
+// ═══════════════════════════════════════════════════════════
+
+yt_explode.MuxedStreamInfo _bestMuxedCmp(yt_explode.StreamManifest manifest) {
+  final sorted = manifest.muxed.sortByBitrate();
+  if (sorted.isEmpty) return manifest.muxed.withHighestBitrate();
+  for (final q in [
+    yt_explode.VideoQuality.high720,
+    yt_explode.VideoQuality.medium480,
+    yt_explode.VideoQuality.medium360,
+  ]) {
+    try {
+      return sorted.firstWhere((s) => s.videoQuality == q);
+    } catch (_) {}
+  }
+  return sorted.last;
 }
 
 // ═══════════════════════════════════════════════════════════

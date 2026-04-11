@@ -47,7 +47,7 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
       final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
       yte.close();
 
-      final stream = manifest.muxed.withHighestBitrate();
+      final stream = _bestMuxed(manifest);
       final url = stream.url.toString();
 
       _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
@@ -294,7 +294,7 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
       final yte = yt_explode.YoutubeExplode();
       final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
       yte.close();
-      final url = manifest.muxed.withHighestBitrate().url.toString();
+      final url = _bestMuxed(manifest).url.toString();
       _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
       await _videoCtrl!.initialize();
       _setupChewie();
@@ -331,49 +331,37 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(children: [
-          if (!_loading && _chewieCtrl != null)
-            Center(child: Chewie(controller: _chewieCtrl!))
-          else
-            const Center(child: CircularProgressIndicator(color: Colors.red)),
-
-          // Geri butonu (sol üst)
-          Positioned(
-            top: 8, left: 4,
-            child: IconButton(
-              icon: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back_rounded,
-                  color: Colors.white, size: 20),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          widget.title.isNotEmpty ? widget.title : 'Video',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isLandscape
+                  ? Icons.screen_lock_portrait_rounded
+                  : Icons.screen_rotation_rounded,
+              color: Colors.white),
+            onPressed: _toggleOrientation,
+            tooltip: _isLandscape ? 'Dikey mod' : 'Yatay mod',
           ),
-
-          // Ekran döndürme butonu (sağ üst)
-          Positioned(
-            top: 8, right: 4,
-            child: IconButton(
-              icon: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  shape: BoxShape.circle),
-                child: Icon(
-                  _isLandscape
-                      ? Icons.screen_lock_portrait_rounded
-                      : Icons.screen_rotation_rounded,
-                  color: Colors.white, size: 20),
-              ),
-              onPressed: _toggleOrientation,
-            ),
-          ),
-        ]),
+        ],
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: Colors.red))
+          : _chewieCtrl != null
+              ? Center(child: Chewie(controller: _chewieCtrl!))
+              : const Center(child: CircularProgressIndicator(color: Colors.red)),
     );
   }
 }
@@ -407,7 +395,7 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
       final yte = yt_explode.YoutubeExplode();
       final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
       yte.close();
-      final url = manifest.muxed.withHighestBitrate().url.toString();
+      final url = _bestMuxed(manifest).url.toString();
       _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
       await _videoCtrl!.initialize();
       _chewieCtrl = ChewieController(
@@ -522,6 +510,27 @@ class _MiniBtn extends StatelessWidget {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// YARDIMCI — en yüksek kaliteli muxed stream seç (720p > 480p > en yüksek)
+// ═══════════════════════════════════════════════════════════
+
+yt_explode.MuxedStreamInfo _bestMuxed(yt_explode.StreamManifest manifest) {
+  final sorted = manifest.muxed.sortByBitrate();
+  if (sorted.isEmpty) return manifest.muxed.withHighestBitrate();
+
+  // 720p varsa onu seç, yoksa 480p, yoksa en yüksek bitrate
+  for (final q in [
+    yt_explode.VideoQuality.high720,
+    yt_explode.VideoQuality.medium480,
+    yt_explode.VideoQuality.medium360,
+  ]) {
+    try {
+      return sorted.firstWhere((s) => s.videoQuality == q);
+    } catch (_) {}
+  }
+  return sorted.last;
 }
 
 // ═══════════════════════════════════════════════════════════

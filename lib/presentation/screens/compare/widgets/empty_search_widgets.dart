@@ -1,6 +1,6 @@
 part of '../compare_screen.dart';
 
-// ─── Empty State ───
+// ─── Empty / Discover State ───────────────────────────────────────────────────
 
 class _EmptyCompareState extends ConsumerWidget {
   final VoidCallback onTapSearch;
@@ -12,115 +12,142 @@ class _EmptyCompareState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final trending = ref.watch(trendingProductsProvider);
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final userComparisons = ref.watch(userComparisonsProvider);
+    final recentlyViewed  = ref.watch(recentlyViewedProductsProvider);
+    final trending        = ref.watch(trendingProductsProvider);
+    final feedAsync       = ref.watch(homeFeedProvider);
+    final theme           = Theme.of(context);
+    final cs              = theme.colorScheme;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(20, 12, 20,
-          MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 20),
+      padding: EdgeInsets.fromLTRB(16, 4, 16,
+          MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero section
-          Center(child: Column(children: [
-            Container(
-              width: 80, height: 80,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  AppTheme.brandBlue.withValues(alpha: 0.16),
-                  AppTheme.brandDeepBlue.withValues(alpha: 0.16)]),
-                shape: BoxShape.circle),
-              child: const Center(child: Icon(Icons.compare_arrows_rounded,
-                  size: 40, color: AppTheme.brandBlue)),
-            ),
-            const SizedBox(height: 16),
-            Text(context.l10n?.compareProducts ?? 'Compare Products', style: GoogleFonts.plusJakartaSans(
-                fontSize: 20, fontWeight: FontWeight.w800,
-                color: context.textPrimary)),
-            const SizedBox(height: 6),
-            Text(context.l10n?.selectProductsOrTry ?? 'Select products or try a popular comparison',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(fontSize: 13,
-                    color: context.textSecondary)),
-          ])).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
-          const SizedBox(height: 24),
 
-          // Popular Comparisons
-          Text(context.l10n?.popularComparisons ?? 'Popular Comparisons', style: GoogleFonts.plusJakartaSans(
-              fontSize: 16, fontWeight: FontWeight.w700,
-              color: context.textPrimary)),
-          const SizedBox(height: 12),
-          ..._buildPopularComparisons(context, ref),
-          const SizedBox(height: 24),
+          // ── Geçmiş Karşılaştırmalar ──────────────────────────────────────
+          userComparisons.when(
+            data: (result) {
+              final comps = result.when(
+                success: (list) => list
+                    .where((c) => c.itemIds.length >= 2)
+                    .take(5)
+                    .toList(),
+                failure: (_) => <ComparisonEntity>[],
+              );
+              if (comps.isEmpty) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionHeader(
+                    icon: Icons.history_rounded,
+                    label: 'Geçmiş Karşılaştırmalarınız',
+                    color: cs.primary,
+                  ),
+                  const SizedBox(height: 10),
+                  ...comps.asMap().entries.map((e) =>
+                    _PastComparisonCard(
+                      comparison: e.value,
+                      onTap: onDirectCompare,
+                    ).animate()
+                      .fadeIn(delay: (50 * e.key).ms, duration: 300.ms)
+                      .slideX(begin: 0.04),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
 
-          // Trending Products to Compare
-          Text(context.l10n?.trendingProducts ?? 'Trending Products', style: GoogleFonts.plusJakartaSans(
-              fontSize: 16, fontWeight: FontWeight.w700,
-              color: context.textPrimary)),
-          const SizedBox(height: 12),
+          // ── Son İncelenenler ──────────────────────────────────────────────
+          recentlyViewed.when(
+            data: (products) {
+              if (products.isEmpty) return const SizedBox.shrink();
+              final top = products.take(10).toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionHeader(
+                    icon: Icons.remove_red_eye_rounded,
+                    label: 'Son İncelenenler',
+                    color: AppTheme.brandDeepBlue,
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 110,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.zero,
+                      itemCount: top.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (ctx, i) => _RecentProductChip(
+                        product: top[i],
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          ref.read(comparisonStateProvider.notifier).toggleProduct(top[i].id);
+                        },
+                      ).animate()
+                        .fadeIn(delay: (40 * i).ms, duration: 280.ms)
+                        .slideX(begin: 0.06),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+
+          // ── Popüler Karşılaştırmalar ─────────────────────────────────────
+          _SectionHeader(
+            icon: Icons.local_fire_department_rounded,
+            label: 'Popüler Karşılaştırmalar',
+            color: const Color(0xFFFF6B35),
+          ),
+          const SizedBox(height: 10),
+          ..._buildPopularPairs(context, ref, feedAsync.valueOrNull),
+          const SizedBox(height: 20),
+
+          // ── Trend Ürünler ─────────────────────────────────────────────────
+          _SectionHeader(
+            icon: Icons.trending_up_rounded,
+            label: 'Trend Ürünler',
+            color: cs.primary,
+          ),
+          const SizedBox(height: 10),
           trending.when(
             data: (products) {
-              // Enforce brand diversity — max 2 per brand
-              final diverseProducts = <ProductEntity>[];
+              final diverse = <ProductEntity>[];
               final brandCount = <String, int>{};
               for (final p in products) {
-                final brand = p.brand?.toLowerCase() ?? 'unknown';
+                final brand = p.brand?.toLowerCase() ?? 'x';
                 if ((brandCount[brand] ?? 0) >= 2) continue;
                 brandCount[brand] = (brandCount[brand] ?? 0) + 1;
-                diverseProducts.add(p);
-                if (diverseProducts.length >= 16) break;
+                diverse.add(p);
+                if (diverse.length >= 16) break;
               }
-              final top = diverseProducts;
-              if (top.isEmpty) return const SizedBox.shrink();
+              if (diverse.isEmpty) return const SizedBox.shrink();
               return Wrap(
                 spacing: 8, runSpacing: 8,
-                children: top.asMap().entries.map((e) {
+                children: diverse.asMap().entries.map((e) {
                   final p = e.value;
-                  return GestureDetector(
+                  return _TrendChip(
+                    product: p,
                     onTap: () {
                       HapticFeedback.selectionClick();
                       ref.read(comparisonStateProvider.notifier).toggleProduct(p.id);
                     },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: context.surfaceVariantColor,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: context.dividerColor),
-                        boxShadow: [BoxShadow(
-                          color: (isDark ? Colors.black : Colors.black12).withValues(alpha: isDark ? 0.04 : 0.06),
-                          blurRadius: 8, offset: const Offset(0, 2))]),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        if (p.imageUrl != null)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: CachedNetworkImage(
-                              imageUrl: p.imageUrl!,
-                              width: 28, height: 28, fit: BoxFit.contain,
-                              errorWidget: (_, __, ___) => Icon(
-                                  Icons.devices, size: 18, color: context.textTertiaryColor))),
-                        if (p.imageUrl != null) const SizedBox(width: 8),
-                        Flexible(child: Text(p.name,
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: context.textSecondary))),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8)),
-                          child: Text('${p.techScore.toInt()}',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 10,
-                                  fontWeight: FontWeight.w700, color: AppTheme.brandBlue))),
-                      ]),
-                    ),
-                  ).animate().fadeIn(delay: (60 * e.key).ms, duration: 300.ms);
+                  ).animate()
+                    .fadeIn(delay: (50 * e.key).ms, duration: 280.ms);
                 }).toList(),
               );
             },
-            loading: () => const Center(child: Padding(
+            loading: () => const Center(
+              child: Padding(
                 padding: EdgeInsets.all(20),
                 child: CircularProgressIndicator(strokeWidth: 2))),
             error: (_, __) => const SizedBox.shrink(),
@@ -130,116 +157,444 @@ class _EmptyCompareState extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildPopularComparisons(BuildContext context, WidgetRef ref) {
-    // Use real products from homeFeed cache instead of hardcoded names
-    final feedAsync = ref.watch(homeFeedProvider);
-    final feed = feedAsync.valueOrNull;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
+  List<Widget> _buildPopularPairs(
+    BuildContext context,
+    WidgetRef ref,
+    HomeFeed? feed,
+  ) {
     if (feed == null) {
       return [const Center(child: Padding(
         padding: EdgeInsets.all(16),
         child: CircularProgressIndicator(strokeWidth: 2)))];
     }
 
-    // Build comparison pairs from top 2 products in popular categories
     final comparisons = <Map<String, dynamic>>[];
     final categoryMeta = <String, Map<String, String>>{
-      'smartphones': {'icon': '\u{1F4F1}', 'label': 'Smartphones'},
-      'laptops': {'icon': '\u{1F4BB}', 'label': 'Laptops'},
-      'tablets': {'icon': '\u{1F4F1}', 'label': 'Tablets'},
-      'headphones': {'icon': '\u{1F3A7}', 'label': 'Audio'},
-      'smartwatches': {'icon': '\u231A', 'label': 'Wearables'},
-      'tvs': {'icon': '\u{1F4FA}', 'label': 'TVs'},
-      'gpus': {'icon': '\u{1F3AE}', 'label': 'Graphics Cards'},
-      'cameras': {'icon': '\u{1F4F7}', 'label': 'Cameras'},
+      'smartphones':   {'icon': '📱', 'label': 'Akıllı Telefon'},
+      'laptops':       {'icon': '💻', 'label': 'Laptop'},
+      'tablets':       {'icon': '📱', 'label': 'Tablet'},
+      'headphones':    {'icon': '🎧', 'label': 'Ses Sistemi'},
+      'smartwatches':  {'icon': '⌚', 'label': 'Giyilebilir'},
+      'tvs':           {'icon': '📺', 'label': 'Televizyon'},
+      'gpus':          {'icon': '🎮', 'label': 'Ekran Kartı'},
+      'cameras':       {'icon': '📷', 'label': 'Kamera'},
     };
 
     for (final entry in categoryMeta.entries) {
       final catProducts = feed.byCategory[entry.key] ?? [];
-      // Need at least 2 different-brand products
-      if (catProducts.length >= 2) {
-        final a = catProducts[0];
-        ProductEntity? b;
-        for (int i = 1; i < catProducts.length; i++) {
-          if (catProducts[i].brand != a.brand) {
-            b = catProducts[i];
-            break;
-          }
-        }
-        b ??= catProducts[1];
-        comparisons.add({
-          'a': a,
-          'b': b,
-          'icon': entry.value['icon']!,
-          'cat': entry.value['label']!,
-        });
+      if (catProducts.length < 2) continue;
+      final a = catProducts[0];
+      ProductEntity? b;
+      for (int i = 1; i < catProducts.length; i++) {
+        if (catProducts[i].brand != a.brand) { b = catProducts[i]; break; }
       }
+      b ??= catProducts[1];
+      comparisons.add({'a': a, 'b': b, 'icon': entry.value['icon']!, 'cat': entry.value['label']!});
       if (comparisons.length >= 6) break;
     }
 
     if (comparisons.isEmpty) {
       return [Padding(
         padding: const EdgeInsets.all(12),
-        child: Text(context.l10n?.loadingPopularComparisons ?? 'Loading popular comparisons...',
-            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: context.textTertiaryColor)),
+        child: Text('Yükleniyor...',
+          style: GoogleFonts.plusJakartaSans(fontSize: 13,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4))),
       )];
     }
 
     return comparisons.asMap().entries.map((e) {
       final c = e.value;
-      final i = e.key;
-      final productA = c['a'] as ProductEntity;
-      final productB = c['b'] as ProductEntity;
+      final a = c['a'] as ProductEntity;
+      final b = c['b'] as ProductEntity;
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            onDirectCompare([productA, productB]);
-          },
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: context.surfaceVariantColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.dividerColor),
-              boxShadow: [BoxShadow(
-                color: (isDark ? Colors.black : Colors.black12).withValues(alpha: isDark ? 0.03 : 0.06),
-                blurRadius: 8, offset: const Offset(0, 2))]),
-            child: Row(children: [
-              Text(c['icon'] as String, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${productA.name} vs ${productB.name}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary)),
-                  const SizedBox(height: 2),
-                  Text(c['cat'] as String, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textTertiaryColor)),
-                ])),
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.compare_arrows_rounded,
-                    size: 16, color: AppTheme.brandBlue)),
-            ]),
-          ),
-        ),
-      ).animate().fadeIn(delay: (80 * i).ms, duration: 300.ms)
-        .slideX(begin: 0.05, duration: 300.ms);
+        child: _PopularPairCard(
+          productA: a,
+          productB: b,
+          icon: c['icon'] as String,
+          category: c['cat'] as String,
+          onTap: () { HapticFeedback.mediumImpact(); onDirectCompare([a, b]); },
+        ).animate()
+          .fadeIn(delay: (70 * e.key).ms, duration: 300.ms)
+          .slideX(begin: 0.04),
+      );
     }).toList();
   }
 }
 
-// ─── Product Search List (no category lock, with match badge) ───
+// ─── Section Header ───────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _SectionHeader({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Container(
+        width: 30, height: 30,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, size: 16, color: color),
+      ),
+      const SizedBox(width: 10),
+      Text(label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 15, fontWeight: FontWeight.w700,
+          color: context.textPrimary)),
+    ]);
+  }
+}
+
+// ─── Past Comparison Card ─────────────────────────────────────────────────────
+
+class _PastComparisonCard extends ConsumerWidget {
+  final ComparisonEntity comparison;
+  final void Function(List<ProductEntity>) onTap;
+  const _PastComparisonCard({required this.comparison, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final ids = comparison.itemIds.take(4).toList();
+
+    // Load products from the comparison
+    final products = <ProductEntity>[];
+    bool loading = false;
+    for (final id in ids) {
+      final async = ref.watch(productDetailProvider(id));
+      async.when(
+        data: (result) => result.when(
+          success: (p) => products.add(p),
+          failure: (_) {},
+        ),
+        loading: () => loading = true,
+        error: (_, __) {},
+      );
+    }
+
+    final title = comparison.title?.isNotEmpty == true
+        ? comparison.title!
+        : products.isNotEmpty
+            ? products.map((p) => p.name).join(' vs ')
+            : ids.join(' vs ');
+
+    return GestureDetector(
+      onTap: () {
+        if (products.length >= 2) onTap(products);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.dividerColor),
+          boxShadow: [BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Row(children: [
+          // Product images
+          SizedBox(
+            width: 64,
+            height: 40,
+            child: Stack(
+              children: products.take(2).toList().asMap().entries.map((e) {
+                return Positioned(
+                  left: e.key * 22.0,
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: context.surfaceColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: context.dividerColor)),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(9),
+                      child: e.value.imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: e.value.imageUrl!,
+                              width: 40, height: 40, fit: BoxFit.contain,
+                              errorWidget: (_, __, ___) => Icon(
+                                Icons.devices, size: 18,
+                                color: context.textTertiaryColor))
+                          : Icon(Icons.devices, size: 18,
+                              color: context.textTertiaryColor),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: context.textPrimary)),
+                const SizedBox(height: 3),
+                Row(children: [
+                  Icon(Icons.schedule_rounded, size: 11,
+                    color: context.textTertiaryColor),
+                  const SizedBox(width: 4),
+                  Text(_timeAgo(comparison.createdAt),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textTertiaryColor)),
+                ]),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10)),
+            child: Text('Tekrar',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: cs.primary)),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()} ay önce';
+    if (diff.inDays >= 1) return '${diff.inDays} gün önce';
+    if (diff.inHours >= 1) return '${diff.inHours} saat önce';
+    return 'Az önce';
+  }
+}
+
+// ─── Recently Viewed Chip ─────────────────────────────────────────────────────
+
+class _RecentProductChip extends StatelessWidget {
+  final ProductEntity product;
+  final VoidCallback onTap;
+  const _RecentProductChip({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 90,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.dividerColor),
+          boxShadow: [BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (product.imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: product.imageUrl!,
+                  width: 44, height: 44, fit: BoxFit.contain,
+                  errorWidget: (_, __, ___) =>
+                    Icon(Icons.devices, size: 24, color: context.textTertiaryColor)),
+              )
+            else
+              Icon(Icons.devices, size: 28, color: context.textTertiaryColor),
+            const SizedBox(height: 6),
+            Text(product.name,
+              maxLines: 2, overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 9, fontWeight: FontWeight.w600,
+                color: context.textSecondary)),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6)),
+              child: Text('${product.techScore.toInt()}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9, fontWeight: FontWeight.w700,
+                  color: cs.primary)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Popular Pair Card ────────────────────────────────────────────────────────
+
+class _PopularPairCard extends StatelessWidget {
+  final ProductEntity productA;
+  final ProductEntity productB;
+  final String icon;
+  final String category;
+  final VoidCallback onTap;
+  const _PopularPairCard({
+    required this.productA,
+    required this.productB,
+    required this.icon,
+    required this.category,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.dividerColor),
+          boxShadow: [BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Row(children: [
+          // Product images side by side
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            _ProductMini(product: productA),
+            Container(
+              width: 24, height: 24,
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle),
+              child: Icon(Icons.compare_arrows_rounded,
+                size: 13, color: cs.primary),
+            ),
+            _ProductMini(product: productB),
+          ]),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${productA.name} vs ${productB.name}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12, fontWeight: FontWeight.w700,
+                    color: context.textPrimary)),
+                const SizedBox(height: 3),
+                Row(children: [
+                  Text(icon, style: const TextStyle(fontSize: 11)),
+                  const SizedBox(width: 4),
+                  Text(category,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, color: context.textTertiaryColor)),
+                ]),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded,
+            size: 18, color: context.textTertiaryColor),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ProductMini extends StatelessWidget {
+  final ProductEntity product;
+  const _ProductMini({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40, height: 40,
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: context.dividerColor)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(9),
+        child: product.imageUrl != null
+            ? CachedNetworkImage(
+                imageUrl: product.imageUrl!,
+                width: 40, height: 40, fit: BoxFit.contain,
+                errorWidget: (_, __, ___) => Icon(
+                  Icons.devices, size: 18, color: context.textTertiaryColor))
+            : Icon(Icons.devices, size: 18, color: context.textTertiaryColor),
+      ),
+    );
+  }
+}
+
+// ─── Trend Chip ───────────────────────────────────────────────────────────────
+
+class _TrendChip extends StatelessWidget {
+  final ProductEntity product;
+  final VoidCallback onTap;
+  const _TrendChip({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.dividerColor),
+          boxShadow: [BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6, offset: const Offset(0, 2))],
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (product.imageUrl != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: CachedNetworkImage(
+                imageUrl: product.imageUrl!,
+                width: 26, height: 26, fit: BoxFit.contain,
+                errorWidget: (_, __, ___) => Icon(
+                  Icons.devices, size: 16, color: context.textTertiaryColor))),
+          if (product.imageUrl != null) const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 130),
+            child: Text(product.name,
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, fontWeight: FontWeight.w600,
+                color: context.textSecondary)),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8)),
+            child: Text('${product.techScore.toInt()}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10, fontWeight: FontWeight.w700, color: cs.primary)),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── Product Search List ──────────────────────────────────────────────────────
 
 class _ProductSearchList extends ConsumerWidget {
   final List<String> selectedIds;
@@ -290,12 +645,14 @@ class _ProductSearchList extends ConsumerWidget {
           );
         },
         failure: (error) => Center(
-          child: Text(context.l10n?.errorPrefix(error.message ?? '') ?? 'Error: ${error.message}', style: TextStyle(color: context.textPrimary)),
+          child: Text(context.l10n?.errorPrefix(error.message ?? '') ?? 'Error: ${error.message}',
+            style: TextStyle(color: context.textPrimary)),
         ),
       ),
       loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.brandBlue)),
       error: (err, _) => Center(
-        child: Text(context.l10n?.anErrorOccurred('$err') ?? 'An error occurred: $err', style: TextStyle(color: context.textPrimary)),
+        child: Text(context.l10n?.anErrorOccurred('$err') ?? 'An error occurred: $err',
+          style: TextStyle(color: context.textPrimary)),
       ),
     );
   }
@@ -336,7 +693,8 @@ class _SearchProductTile extends StatelessWidget {
             : Border.all(color: context.dividerColor),
         boxShadow: isSelected
             ? [
-                BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 3)),
+                BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.18),
+                  blurRadius: 12, offset: const Offset(0, 3)),
                 ..._cardShadow,
               ]
             : _cardShadow,
@@ -351,7 +709,6 @@ class _SearchProductTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                // Product image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: ProductImageBox(
@@ -362,31 +719,22 @@ class _SearchProductTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Name + brand
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        product.name,
+                      Text(product.name,
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: context.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                          fontSize: 15, fontWeight: FontWeight.w600,
+                          color: context.textPrimary),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
-                      Text(
-                        product.brand ?? product.subcategory,
-                        style: TextStyle(fontSize: 13, color: context.textSecondary),
-                      ),
+                      Text(product.brand ?? product.subcategory,
+                        style: TextStyle(fontSize: 13, color: context.textSecondary)),
                     ],
                   ),
                 ),
-                // TechScore badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -395,22 +743,19 @@ class _SearchProductTile extends StatelessWidget {
                         : AppTheme.brandBlue.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    '${product.techScore.round()}',
+                  child: Text('${product.techScore.round()}',
                     style: TextStyle(
-                        fontSize: 11,
-                        color: isSelected ? AppTheme.brandDeepBlue : AppTheme.brandBlue,
-                        fontWeight: FontWeight.w600),
-                  ),
+                      fontSize: 11,
+                      color: isSelected ? AppTheme.brandDeepBlue : AppTheme.brandBlue,
+                      fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 8),
-                // Select/deselect icon
                 isSelected
                     ? ShaderMask(
                         shaderCallback: (bounds) => _accentGradient.createShader(bounds),
-                        child: const Icon(Icons.check_circle, color: Colors.white, size: 24),
-                      )
-                    : Icon(Icons.add_circle_outline, color: context.textTertiaryColor, size: 22),
+                        child: const Icon(Icons.check_circle, color: Colors.white, size: 24))
+                    : Icon(Icons.add_circle_outline,
+                        color: context.textTertiaryColor, size: 22),
               ],
             ),
           ),
@@ -420,5 +765,4 @@ class _SearchProductTile extends StatelessWidget {
   }
 }
 
-// ─── Direct Spec-by-Spec Comparison View ───
-
+// ─── Direct Spec-by-Spec Comparison View ─────────────────────────────────────
