@@ -286,7 +286,9 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
     _controller.stream.listen((value) {
       if (!mounted) return;
       if (value.hasError) setState(() => _hasError = true);
-      if (value.playerState == PlayerState.playing) {
+      if (value.playerState == PlayerState.playing ||
+          value.playerState == PlayerState.buffering ||
+          value.playerState == PlayerState.paused) {
         if (_showOverlay) setState(() => _showOverlay = false);
       }
     });

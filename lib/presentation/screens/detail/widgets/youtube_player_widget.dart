@@ -49,11 +49,10 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
 
     _controller.stream.listen((value) {
       if (!mounted) return;
-      if (value.hasError) {
-        setState(() => _hasError = true);
-      }
-      // Video oynatılınca overlay'i gizle
-      if (value.playerState == PlayerState.playing) {
+      if (value.hasError) setState(() => _hasError = true);
+      if (value.playerState == PlayerState.playing ||
+          value.playerState == PlayerState.buffering ||
+          value.playerState == PlayerState.paused) {
         if (_showOverlay) setState(() => _showOverlay = false);
       }
     });

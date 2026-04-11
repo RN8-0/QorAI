@@ -130,10 +130,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   Future<void> _doRemoteSearch(String query) async {
     if (!mounted || query.isEmpty) return;
-    // Check if local results are sufficient
-    final localCount = _filteredProducts.length;
-    if (localCount >= 10) return;
-
     setState(() => _remoteSearching = true);
     try {
       final ds = ref.read(firebaseDataSourceProvider);
@@ -237,10 +233,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
     } catch (_) {}
 
-    // 3. Firestore fallback — paginated load
+    // 3. Firestore fallback — load all products in category
     try {
       final result = await ref.read(productRepositoryProvider)
-          .getProducts(category: _activeCategoryId, limit: AppConstants.categoryBrowsePageSize);
+          .getProducts(category: _activeCategoryId, limit: 300, orderBy: 'techScore', descending: true);
       result.when(
         success: (products) {
           if (mounted) {
@@ -261,11 +257,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   Future<void> _loadMoreFromFirestore(String catKey, List<ProductEntity> initial) async {
     try {
       final result = await ref.read(productRepositoryProvider)
-          .getProducts(category: _activeCategoryId, limit: AppConstants.categoryBrowsePageSize);
+          .getProducts(category: _activeCategoryId, limit: 300, orderBy: 'techScore', descending: true);
       result.when(
         success: (products) {
           if (!mounted || products.length <= initial.length) return;
-          _hasMore = products.length >= AppConstants.categoryBrowsePageSize;
+          _hasMore = false;
           setState(() { _allProducts = products; });
         },
         failure: (_) {},
@@ -1077,100 +1073,138 @@ class _ProductListTile extends StatelessWidget {
   final ProductEntity product;
   final VoidCallback onTap;
 
+  Color _scoreColor(double s) {
+    if (s >= 80) return AppTheme.scoreExcellent;
+    if (s >= 60) return AppTheme.scoreGood;
+    if (s >= 40) return AppTheme.scoreAverage;
+    return AppTheme.scorePoor;
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageUrl = product.imageUrl ??
         (product.allImages.isNotEmpty ? product.allImages.first : null);
     final usPrice = product.prices['US'];
+    final score = product.techScore;
+    final scoreColor = _scoreColor(score);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 64,
           decoration: BoxDecoration(
             color: context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppTheme.brandCyan.withValues(alpha: 0.09),
-              width: 0.8,
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                blurRadius: 8, offset: const Offset(0, 2)),
+            ],
           ),
           child: Row(
             children: [
-              // compact product image
+              // ── Ürün görseli ──
               ClipRRect(
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(15)),
                 child: ProductImageBox(
                   imageUrl: imageUrl,
-                  height: 64,
-                  width: 64,
-                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
-                  padding: const EdgeInsets.all(6),
+                  height: 86,
+                  width: 86,
+                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(15)),
+                  padding: const EdgeInsets.all(8),
                 ),
               ),
-              // product info
+              // ── Bilgiler ──
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // Marka
+                      if ((product.brand ?? '').isNotEmpty)
+                        Text(
+                          product.brand!.toUpperCase(),
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      // İsim
                       Text(
                         product.name,
                         style: GoogleFonts.plusJakartaSans(
                           color: context.textPrimary,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                           height: 1.25,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 6),
+                      // Fiyat + Score satırı
                       Row(
                         children: [
-                          if ((product.brand ?? '').isNotEmpty)
-                            Flexible(
-                              child: Text(
-                                product.brand!,
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: context.textTertiaryColor,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          if ((product.brand ?? '').isNotEmpty && usPrice != null)
-                            Text(' · ', style: TextStyle(color: context.textTertiaryColor, fontSize: 10.5)),
                           if (usPrice != null)
-                            Text(
-                              '\$${usPrice.round()}',
-                              style: GoogleFonts.plusJakartaSans(
-                                color: AppTheme.accentCyan,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 11,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '\$${usPrice.round()}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
+                          if (usPrice != null && score > 0) const SizedBox(width: 6),
+                          if (score > 0)
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.star_rounded, size: 12, color: scoreColor),
+                              const SizedBox(width: 2),
+                              Text(
+                                score.round().toString(),
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: scoreColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                '/100',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: scoreColor.withValues(alpha: 0.6),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ]),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-              // score badge + chevron
-              if (product.techScore > 0)
-                _TechScoreBadge(score: product.techScore),
+              // ── Sağ ok ──
               Padding(
-                padding: const EdgeInsets.only(right: 8, left: 4),
+                padding: const EdgeInsets.only(right: 12),
                 child: Icon(
-                  Icons.chevron_right_rounded,
-                  color: context.textSecondary.withValues(alpha: 0.4),
-                  size: 18,
+                  Icons.arrow_forward_ios_rounded,
+                  color: context.textTertiaryColor.withValues(alpha: 0.4),
+                  size: 14,
                 ),
               ),
             ],
