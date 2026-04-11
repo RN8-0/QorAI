@@ -162,9 +162,9 @@ class AppLocalizationsTr extends AppLocalizations {
       'Herhangi bir bağlantı yapıştır (Zillow, BestBuy, FB Marketplace...)';
 
   @override
-  @override
   String get allShoppingSitesSupported => 'Tüm alışveriş siteleri desteklenir';
 
+  @override
   String get analyze => 'Analiz Et';
 
   @override
@@ -655,9 +655,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get aiVerified => 'AI Doğrulandı';
-
-  @override
-  String get loadBenchmarkScores => 'Benchmark Puanlarını Yükle';
 
   @override
   String get premiumInsights => 'Premium İçgörüler';
@@ -2975,21 +2972,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get readMore => 'Devamını oku';
 
   @override
-  String get benchmarkSoundQuality => 'Ses Kalitesi';
-
-  @override
-  String get benchmarkAncRating => 'ANC Derecesi';
-
-  @override
-  String get benchmarkColorAccuracy => 'Renk Doğruluğu';
-
-  @override
-  String get benchmarkVideoScore => 'Video Puanı';
-
-  @override
-  String get benchmarkTechScore => 'Teknik Puan';
-
-  @override
   String get comingSoonDescription =>
       'Veritabanımıza ürünler ekliyoruz. Şimdilik bu adımı atlayabilirsiniz.';
 
@@ -3259,9 +3241,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get retryAvailable => 'Tekrar dene';
 
   @override
-  String get retryBenchmark => 'Benchmark Aramasını Tekrarla';
-
-  @override
   String get generatingVerdict => 'AI değerlendirmesi oluşturuluyor…';
 
   @override
@@ -3340,17 +3319,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get added => 'Eklendi';
-
-  @override
-  String get benchmarkAiInfo =>
-      'Yapay zeka, bu ürün için doğrulanmış skorları bulmak amacıyla gerçek benchmark veritabanlarını (AnTuTu, Geekbench, DxOMark, Cinebench) arar.';
-
-  @override
-  String get loadAiBenchmarks => 'AI Benchmark Skorlarını Yükle';
-
-  @override
-  String get benchmarkNotFound =>
-      'Bu ürün için doğrulanmış benchmark skoru bulunamadı. Bölgesel bir sürüm olabilir veya henüz veritabanlarında yer almıyor olabilir.';
 
   @override
   String get selectComponent => 'Seç';

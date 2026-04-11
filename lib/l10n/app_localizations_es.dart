@@ -163,9 +163,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Pega cualquier enlace (Zillow, BestBuy, FB Marketplace...)';
 
   @override
-  @override
-  String get allShoppingSitesSupported => 'Todos los sitios de compras son compatibles';
+  String get allShoppingSitesSupported =>
+      'Todos los sitios de compras son compatibles';
 
+  @override
   String get analyze => 'Analizar';
 
   @override
@@ -655,9 +656,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get aiVerified => 'Verificado por IA';
-
-  @override
-  String get loadBenchmarkScores => 'Cargar puntuaciones benchmark';
 
   @override
   String get premiumInsights => 'Información premium';
@@ -2984,21 +2982,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get readMore => 'Leer más';
 
   @override
-  String get benchmarkSoundQuality => 'Calidad de sonido';
-
-  @override
-  String get benchmarkAncRating => 'Clasificación ANC';
-
-  @override
-  String get benchmarkColorAccuracy => 'Precisión de color';
-
-  @override
-  String get benchmarkVideoScore => 'Puntuación de vídeo';
-
-  @override
-  String get benchmarkTechScore => 'Puntuación técnica';
-
-  @override
   String get comingSoonDescription =>
       'Estamos agregando productos a nuestra base de datos. Puede omitir este paso por ahora.';
 
@@ -3268,9 +3251,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get retryAvailable => 'Reintento disponible';
 
   @override
-  String get retryBenchmark => 'Reintentar búsqueda';
-
-  @override
   String get generatingVerdict => 'Generando veredicto IA…';
 
   @override
@@ -3349,17 +3329,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get added => 'Added';
-
-  @override
-  String get benchmarkAiInfo =>
-      'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.';
-
-  @override
-  String get loadAiBenchmarks => 'Load AI Benchmark Scores';
-
-  @override
-  String get benchmarkNotFound =>
-      'No verified benchmark scores were found for this product. It may be a regional release or too recent to have database entries.';
 
   @override
   String get selectComponent => 'Select';

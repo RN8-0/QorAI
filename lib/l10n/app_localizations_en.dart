@@ -161,9 +161,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Paste any link (Zillow, BestBuy, FB Marketplace...)';
 
   @override
-  @override
   String get allShoppingSitesSupported => 'All shopping sites are supported';
 
+  @override
   String get analyze => 'Analyze';
 
   @override
@@ -653,9 +653,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiVerified => 'AI Verified';
-
-  @override
-  String get loadBenchmarkScores => 'Load Benchmark Scores';
 
   @override
   String get premiumInsights => 'Premium Insights';
@@ -2967,21 +2964,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readMore => 'Read more';
 
   @override
-  String get benchmarkSoundQuality => 'Sound Quality';
-
-  @override
-  String get benchmarkAncRating => 'ANC Rating';
-
-  @override
-  String get benchmarkColorAccuracy => 'Color Accuracy';
-
-  @override
-  String get benchmarkVideoScore => 'Video Score';
-
-  @override
-  String get benchmarkTechScore => 'Tech Score';
-
-  @override
   String get comingSoonDescription =>
       'We\'re adding products to our database. You can skip this step for now.';
 
@@ -3250,9 +3232,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retryAvailable => 'Retry available';
 
   @override
-  String get retryBenchmark => 'Retry Benchmark Lookup';
-
-  @override
   String get generatingVerdict => 'Generating AI verdict…';
 
   @override
@@ -3329,17 +3308,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get added => 'Added';
-
-  @override
-  String get benchmarkAiInfo =>
-      'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.';
-
-  @override
-  String get loadAiBenchmarks => 'Load AI Benchmark Scores';
-
-  @override
-  String get benchmarkNotFound =>
-      'No verified benchmark scores were found for this product. It may be a regional release or too recent to have database entries.';
 
   @override
   String get selectComponent => 'Select';

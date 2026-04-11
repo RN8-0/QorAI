@@ -160,9 +160,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'الصق أي رابط (Zillow، BestBuy، FB Marketplace...)';
 
   @override
-  @override
   String get allShoppingSitesSupported => 'جميع مواقع التسوق مدعومة';
 
+  @override
   String get analyze => 'تحليل';
 
   @override
@@ -648,9 +648,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get aiVerified => 'تم التحقق بالذكاء الاصطناعي';
-
-  @override
-  String get loadBenchmarkScores => 'تحميل نتائج المقاييس';
 
   @override
   String get premiumInsights => 'رؤى متميزة';
@@ -2947,21 +2944,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get readMore => 'قراءة المزيد';
 
   @override
-  String get benchmarkSoundQuality => 'جودة الصوت';
-
-  @override
-  String get benchmarkAncRating => 'تصنيف ANC';
-
-  @override
-  String get benchmarkColorAccuracy => 'دقة الألوان';
-
-  @override
-  String get benchmarkVideoScore => 'تقييم الفيديو';
-
-  @override
-  String get benchmarkTechScore => 'التقييم التقني';
-
-  @override
   String get comingSoonDescription =>
       'نحن نضيف منتجات إلى قاعدة بياناتنا. يمكنك تخطي هذه الخطوة الآن.';
 
@@ -3230,9 +3212,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get retryAvailable => 'إعادة المحاولة متاحة';
 
   @override
-  String get retryBenchmark => 'إعادة البحث عن المعيار';
-
-  @override
   String get generatingVerdict => '…جارٍ إنشاء حكم الذكاء الاصطناعي';
 
   @override
@@ -3310,17 +3289,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get added => 'Added';
-
-  @override
-  String get benchmarkAiInfo =>
-      'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.';
-
-  @override
-  String get loadAiBenchmarks => 'Load AI Benchmark Scores';
-
-  @override
-  String get benchmarkNotFound =>
-      'No verified benchmark scores were found for this product. It may be a regional release or too recent to have database entries.';
 
   @override
   String get selectComponent => 'Select';

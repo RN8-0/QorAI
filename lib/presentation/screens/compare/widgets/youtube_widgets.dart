@@ -262,6 +262,8 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   double _dy = -1;
   bool _positionSet = false;
   bool _hidden = false;
+  bool _playerError = false;
+  bool _isPlaying = false;
   late YoutubePlayerController _controller;
 
   @override
@@ -271,9 +273,24 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
       params: const YoutubePlayerParams(
         mute: false,
         showControls: false,
-        strictRelatedVideos: true,
+        enableCaption: false,
+        playsInline: true,
       ),
     )..loadVideoById(videoId: widget.videoId);
+
+    _controller.stream.listen((value) {
+      if (!mounted) return;
+      if (value.hasError) {
+        setState(() => _playerError = true);
+      }
+      if (value.playerState == PlayerState.playing) {
+        setState(() { _isPlaying = true; _playerError = false; });
+      }
+    });
+
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted && !_isPlaying) setState(() => _playerError = true);
+    });
   }
 
   @override
@@ -300,6 +317,11 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
     });
   }
 
+  void _openInYouTube() {
+    final uri = Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
+    launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_hidden) return const SizedBox.shrink();
@@ -312,6 +334,10 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
       _dy = size.height - playerH - 100;
       _positionSet = true;
     }
+
+    final thumb = widget.thumbnailUrl.isNotEmpty
+        ? widget.thumbnailUrl
+        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
 
     return Positioned(
       left: _dx, top: _dy,
@@ -336,12 +362,25 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Stack(children: [
-                Positioned.fill(
-                  child: YoutubePlayer(
-                    controller: _controller,
-                    aspectRatio: playerW / playerH,
+                if (_playerError)
+                  Positioned.fill(child: _CompareErrorFallback(
+                    videoId: widget.videoId,
+                    thumbnailUrl: thumb,
+                    title: widget.title,
+                  ))
+                else ...[
+                  Positioned.fill(
+                    child: YoutubePlayer(
+                      controller: _controller,
+                      aspectRatio: playerW / playerH,
+                    ),
                   ),
-                ),
+                  _CompareLoadingOverlay(
+                    controller: _controller,
+                    thumbnailUrl: thumb,
+                  ),
+                ],
+                // Top bar
                 Positioned(top: 0, left: 0, right: 0,
                   child: Container(
                     height: 36,
@@ -356,40 +395,29 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
                           color: Colors.white.withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(2))),
                       const Spacer(),
-                      GestureDetector(
-                        onTap: () => _openFullscreen(context),
-                        child: Container(
-                          width: 28, height: 28,
-                          margin: const EdgeInsets.only(right: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            shape: BoxShape.circle),
-                          child: const Icon(Icons.fullscreen, size: 16, color: Colors.white),
-                        )),
-                      GestureDetector(
+                      if (!_playerError)
+                        _CmpIconBtn(icon: Icons.fullscreen,
+                          onTap: () => _openFullscreen(context)),
+                      _CmpIconBtn(icon: Icons.open_in_new_rounded,
+                        onTap: _openInYouTube),
+                      _CmpIconBtn(icon: Icons.close,
                         onTap: widget.onClose,
-                        child: Container(
-                          width: 28, height: 28,
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            shape: BoxShape.circle),
-                          child: const Icon(Icons.close, size: 14, color: Colors.white),
-                        )),
+                        margin: const EdgeInsets.only(right: 6)),
                     ]),
                   )),
-                Positioned(bottom: 0, left: 0, right: 0,
-                  child: IgnorePointer(child: Container(
-                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-                    decoration: BoxDecoration(gradient: LinearGradient(
-                      begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                      colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
-                    )),
-                    child: Text(widget.title,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ))),
+                if (!_playerError)
+                  Positioned(bottom: 0, left: 0, right: 0,
+                    child: IgnorePointer(child: Container(
+                      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+                      decoration: BoxDecoration(gradient: LinearGradient(
+                        begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                        colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                      )),
+                      child: Text(widget.title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ))),
               ]),
             ),
           ),
@@ -421,7 +449,8 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
         mute: false,
         showControls: true,
         showFullscreenButton: true,
-        strictRelatedVideos: true,
+        enableCaption: false,
+        playsInline: false,
       ),
     )..loadVideoById(videoId: widget.videoId);
   }
@@ -430,6 +459,11 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
   void dispose() {
     _controller.close();
     super.dispose();
+  }
+
+  void _openInYouTube() {
+    final uri = Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
+    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -443,16 +477,28 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
           Center(child: player),
           Positioned(
             top: 8, left: 8,
-            child: SafeArea(child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle),
-                child: const Icon(Icons.close, color: Colors.white, size: 18),
-              ),
-            ))),
+            child: SafeArea(child: Row(children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle),
+                  child: const Icon(Icons.close, color: Colors.white, size: 18),
+                )),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _openInYouTube,
+                child: Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle),
+                  child: const Icon(Icons.open_in_new_rounded,
+                    color: Colors.white, size: 16),
+                )),
+            ]))),
         ]),
       ),
     );
@@ -479,7 +525,8 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
         mute: false,
         showControls: true,
         showFullscreenButton: true,
-        strictRelatedVideos: true,
+        enableCaption: false,
+        playsInline: false,
       ),
     )..loadVideoById(videoId: widget.videoId);
   }
@@ -488,6 +535,11 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
   void dispose() {
     _controller.close();
     super.dispose();
+  }
+
+  void _openInYouTube() {
+    final uri = Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
+    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -503,6 +555,12 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
           title: Text(widget.title,
             style: const TextStyle(fontSize: 14),
             maxLines: 1, overflow: TextOverflow.ellipsis),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.open_in_new_rounded, size: 20),
+              onPressed: _openInYouTube,
+            ),
+          ],
         ),
         body: Center(child: player),
       ),
@@ -510,4 +568,134 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
   }
 }
 
-
+
+// ═══════════════════════════════════════════════════════════
+// YARDIMCI WİDGET'LAR (Compare)
+// ═══════════════════════════════════════════════════════════
+
+class _CompareErrorFallback extends StatelessWidget {
+  final String videoId;
+  final String thumbnailUrl;
+  final String title;
+  const _CompareErrorFallback({
+    required this.videoId,
+    required this.thumbnailUrl,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(fit: StackFit.expand, children: [
+      Image.network(thumbnailUrl, fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(color: Colors.black)),
+      Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.3),
+              Colors.black.withValues(alpha: 0.8),
+            ])),
+      ),
+      Center(
+        child: GestureDetector(
+          onTap: () {
+            final uri = Uri.parse('https://www.youtube.com/watch?v=$videoId');
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF0000),
+              borderRadius: BorderRadius.circular(24)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 6),
+              Text("YouTube'da İzle",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w700,
+                  color: Colors.white)),
+            ]),
+          ),
+        ),
+      ),
+      Positioned(bottom: 8, left: 8, right: 8,
+        child: Text(title,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 10, fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.9)),
+          maxLines: 2, overflow: TextOverflow.ellipsis)),
+    ]);
+  }
+}
+
+class _CompareLoadingOverlay extends StatefulWidget {
+  final YoutubePlayerController controller;
+  final String thumbnailUrl;
+  const _CompareLoadingOverlay({
+    required this.controller,
+    required this.thumbnailUrl,
+  });
+
+  @override
+  State<_CompareLoadingOverlay> createState() => _CompareLoadingOverlayState();
+}
+
+class _CompareLoadingOverlayState extends State<_CompareLoadingOverlay> {
+  bool _visible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.stream.listen((value) {
+      if (!mounted) return;
+      if (value.playerState != PlayerState.unknown) {
+        setState(() => _visible = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: Stack(fit: StackFit.expand, children: [
+        Image.network(widget.thumbnailUrl, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(color: Colors.black)),
+        Container(color: Colors.black.withValues(alpha: 0.35)),
+        const Center(child: SizedBox(
+          width: 28, height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+        )),
+      ]),
+    );
+  }
+}
+
+class _CmpIconBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final EdgeInsets margin;
+  const _CmpIconBtn({
+    required this.icon,
+    required this.onTap,
+    this.margin = const EdgeInsets.only(right: 4),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28, height: 28,
+        margin: margin,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle),
+        child: Icon(icon, size: 14, color: Colors.white),
+      ),
+    );
+  }
+}

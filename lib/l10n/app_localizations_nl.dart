@@ -162,9 +162,10 @@ class AppLocalizationsNl extends AppLocalizations {
       'Plak een willekeurige link (Zillow, BestBuy, FB Marketplace...)';
 
   @override
-  @override
-  String get allShoppingSitesSupported => 'Alle winkelwebsites worden ondersteund';
+  String get allShoppingSitesSupported =>
+      'Alle winkelwebsites worden ondersteund';
 
+  @override
   String get analyze => 'Analyseren';
 
   @override
@@ -653,9 +654,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get aiVerified => 'AI-geverifieerd';
-
-  @override
-  String get loadBenchmarkScores => 'Benchmarkscores laden';
 
   @override
   String get premiumInsights => 'Premium inzichten';
@@ -2973,21 +2971,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get readMore => 'Meer lezen';
 
   @override
-  String get benchmarkSoundQuality => 'Geluidskwaliteit';
-
-  @override
-  String get benchmarkAncRating => 'ANC-beoordeling';
-
-  @override
-  String get benchmarkColorAccuracy => 'Kleurnauwkeurigheid';
-
-  @override
-  String get benchmarkVideoScore => 'Videoscore';
-
-  @override
-  String get benchmarkTechScore => 'Techscore';
-
-  @override
   String get comingSoonDescription =>
       'We voegen producten toe aan onze database. U kunt deze stap voor nu overslaan.';
 
@@ -3256,9 +3239,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get retryAvailable => 'Opnieuw proberen';
 
   @override
-  String get retryBenchmark => 'Benchmark opnieuw zoeken';
-
-  @override
   String get generatingVerdict => 'AI-oordeel genereren…';
 
   @override
@@ -3337,17 +3317,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get added => 'Added';
-
-  @override
-  String get benchmarkAiInfo =>
-      'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.';
-
-  @override
-  String get loadAiBenchmarks => 'Load AI Benchmark Scores';
-
-  @override
-  String get benchmarkNotFound =>
-      'No verified benchmark scores were found for this product. It may be a regional release or too recent to have database entries.';
 
   @override
   String get selectComponent => 'Select';

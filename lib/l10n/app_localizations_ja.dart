@@ -159,9 +159,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get pasteLinkHint => '任意のリンクを貼り付け（Zillow、BestBuy、FB Marketplace...）';
 
   @override
-  @override
   String get allShoppingSitesSupported => 'すべてのショッピングサイトに対応しています';
 
+  @override
   String get analyze => '分析する';
 
   @override
@@ -647,9 +647,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get aiVerified => 'AI検証済み';
-
-  @override
-  String get loadBenchmarkScores => 'ベンチマークスコアを読み込む';
 
   @override
   String get premiumInsights => 'プレミアムインサイト';
@@ -2923,21 +2920,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readMore => 'もっと読む';
 
   @override
-  String get benchmarkSoundQuality => '音質';
-
-  @override
-  String get benchmarkAncRating => 'ANC評価';
-
-  @override
-  String get benchmarkColorAccuracy => '色精度';
-
-  @override
-  String get benchmarkVideoScore => 'ビデオスコア';
-
-  @override
-  String get benchmarkTechScore => 'テックスコア';
-
-  @override
   String get comingSoonDescription => 'データベースに製品を追加中です。このステップはスキップできます。';
 
   @override
@@ -3205,9 +3187,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get retryAvailable => 'リトライ可能';
 
   @override
-  String get retryBenchmark => 'ベンチマーク検索を再試行';
-
-  @override
   String get generatingVerdict => 'AI判定を生成中…';
 
   @override
@@ -3283,17 +3262,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get added => 'Added';
-
-  @override
-  String get benchmarkAiInfo =>
-      'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.';
-
-  @override
-  String get loadAiBenchmarks => 'Load AI Benchmark Scores';
-
-  @override
-  String get benchmarkNotFound =>
-      'No verified benchmark scores were found for this product. It may be a regional release or too recent to have database entries.';
 
   @override
   String get selectComponent => 'Select';

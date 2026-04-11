@@ -2,9 +2,6 @@
   "ar": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -38,9 +35,6 @@
   "de": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -74,9 +68,6 @@
   "es": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -110,9 +101,6 @@
   "fr": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -146,9 +134,6 @@
   "it": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -182,9 +167,6 @@
   "ja": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -218,9 +200,6 @@
   "nl": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -254,9 +233,6 @@
   "pl": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -290,9 +266,6 @@
   "pt": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",
@@ -326,9 +299,6 @@
   "sv": [
     "mustBe13OrOlder",
     "added",
-    "benchmarkAiInfo",
-    "loadAiBenchmarks",
-    "benchmarkNotFound",
     "selectComponent",
     "productComparisons",
     "aiChatMessages",

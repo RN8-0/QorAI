@@ -162,9 +162,9 @@ class AppLocalizationsSv extends AppLocalizations {
       'Klistra in valfri länk (Zillow, BestBuy, FB Marketplace...)';
 
   @override
-  @override
   String get allShoppingSitesSupported => 'Alla shoppingsidor stöds';
 
+  @override
   String get analyze => 'Analysera';
 
   @override
@@ -652,9 +652,6 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get aiVerified => 'AI-verifierad';
-
-  @override
-  String get loadBenchmarkScores => 'Ladda benchmarkpoäng';
 
   @override
   String get premiumInsights => 'Premium insikter';
@@ -2963,21 +2960,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get readMore => 'Läs mer';
 
   @override
-  String get benchmarkSoundQuality => 'Ljudkvalitet';
-
-  @override
-  String get benchmarkAncRating => 'ANC-betyg';
-
-  @override
-  String get benchmarkColorAccuracy => 'Färgnoggrannhet';
-
-  @override
-  String get benchmarkVideoScore => 'Videopoäng';
-
-  @override
-  String get benchmarkTechScore => 'Teknikpoäng';
-
-  @override
   String get comingSoonDescription =>
       'Vi lägger till produkter i vår databas. Du kan hoppa över detta steg för tillfället.';
 
@@ -3246,9 +3228,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get retryAvailable => 'Försök igen tillgängligt';
 
   @override
-  String get retryBenchmark => 'Försök igen benchmark';
-
-  @override
   String get generatingVerdict => 'Genererar AI-bedömning…';
 
   @override
@@ -3324,17 +3303,6 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get added => 'Added';
-
-  @override
-  String get benchmarkAiInfo =>
-      'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.';
-
-  @override
-  String get loadAiBenchmarks => 'Load AI Benchmark Scores';
-
-  @override
-  String get benchmarkNotFound =>
-      'No verified benchmark scores were found for this product. It may be a regional release or too recent to have database entries.';
 
   @override
   String get selectComponent => 'Select';

@@ -1390,12 +1390,6 @@ abstract class AppLocalizations {
   /// **'AI Verified'**
   String get aiVerified;
 
-  /// No description provided for @loadBenchmarkScores.
-  ///
-  /// In en, this message translates to:
-  /// **'Load Benchmark Scores'**
-  String get loadBenchmarkScores;
-
   /// No description provided for @premiumInsights.
   ///
   /// In en, this message translates to:
@@ -5776,36 +5770,6 @@ abstract class AppLocalizations {
   /// **'Read more'**
   String get readMore;
 
-  /// No description provided for @benchmarkSoundQuality.
-  ///
-  /// In en, this message translates to:
-  /// **'Sound Quality'**
-  String get benchmarkSoundQuality;
-
-  /// No description provided for @benchmarkAncRating.
-  ///
-  /// In en, this message translates to:
-  /// **'ANC Rating'**
-  String get benchmarkAncRating;
-
-  /// No description provided for @benchmarkColorAccuracy.
-  ///
-  /// In en, this message translates to:
-  /// **'Color Accuracy'**
-  String get benchmarkColorAccuracy;
-
-  /// No description provided for @benchmarkVideoScore.
-  ///
-  /// In en, this message translates to:
-  /// **'Video Score'**
-  String get benchmarkVideoScore;
-
-  /// No description provided for @benchmarkTechScore.
-  ///
-  /// In en, this message translates to:
-  /// **'Tech Score'**
-  String get benchmarkTechScore;
-
   /// No description provided for @comingSoonDescription.
   ///
   /// In en, this message translates to:
@@ -6340,12 +6304,6 @@ abstract class AppLocalizations {
   /// **'Retry available'**
   String get retryAvailable;
 
-  /// No description provided for @retryBenchmark.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry Benchmark Lookup'**
-  String get retryBenchmark;
-
   /// No description provided for @generatingVerdict.
   ///
   /// In en, this message translates to:
@@ -6495,24 +6453,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added'**
   String get added;
-
-  /// No description provided for @benchmarkAiInfo.
-  ///
-  /// In en, this message translates to:
-  /// **'AI searches real benchmark databases (AnTuTu, Geekbench, DxOMark, Cinebench) to find verified scores for this product.'**
-  String get benchmarkAiInfo;
-
-  /// No description provided for @loadAiBenchmarks.
-  ///
-  /// In en, this message translates to:
-  /// **'Load AI Benchmark Scores'**
-  String get loadAiBenchmarks;
-
-  /// No description provided for @benchmarkNotFound.
-  ///
-  /// In en, this message translates to:
-  /// **'No verified benchmark scores were found for this product. It may be a regional release or too recent to have database entries.'**
-  String get benchmarkNotFound;
 
   /// No description provided for @selectComponent.
   ///

@@ -2,7 +2,6 @@ part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // IN-APP YOUTUBE PLAYER (fullscreen route)
-// youtube_player_iframe — official YT embed, no stream expiry
 // ═══════════════════════════════════════════════════════════
 
 class _InAppYouTubePlayer extends StatefulWidget {
@@ -23,7 +22,8 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
         mute: false,
         showControls: true,
         showFullscreenButton: true,
-        strictRelatedVideos: true,
+        enableCaption: false,
+        playsInline: false,
       ),
     )..loadVideoById(videoId: widget.videoId);
   }
@@ -54,6 +54,13 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.open_in_new_rounded, size: 20),
+              tooltip: 'YouTube\'da Aç',
+              onPressed: () => _openInYouTube(widget.videoId),
+            ),
+          ],
         ),
         body: Center(child: player),
       ),
@@ -63,7 +70,6 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
 
 // ═══════════════════════════════════════════════════════════
 // FLOATING YOUTUBE PLAYER (mini draggable PiP)
-// youtube_player_iframe embedded in draggable overlay
 // ═══════════════════════════════════════════════════════════
 
 class _FloatingYouTubePlayer extends StatefulWidget {
@@ -87,6 +93,8 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   double _dy = -1;
   bool _positionSet = false;
   bool _hidden = false;
+  bool _playerError = false;
+  bool _isPlaying = false;
   late YoutubePlayerController _controller;
 
   @override
@@ -96,9 +104,28 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
       params: const YoutubePlayerParams(
         mute: false,
         showControls: false,
-        strictRelatedVideos: true,
+        enableCaption: false,
+        playsInline: true,
       ),
     )..loadVideoById(videoId: widget.videoId);
+
+    // Hata tespiti
+    _controller.stream.listen((value) {
+      if (!mounted) return;
+      if (value.hasError) {
+        setState(() => _playerError = true);
+      }
+      if (value.playerState == PlayerState.playing) {
+        setState(() { _isPlaying = true; _playerError = false; });
+      }
+    });
+
+    // 4 saniye sonra hâlâ oynatılmadıysa hata say
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted && !_isPlaying) {
+        setState(() => _playerError = true);
+      }
+    });
   }
 
   @override
@@ -107,16 +134,14 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
     super.dispose();
   }
 
-  void _openFullscreen(BuildContext context) {
+  void _openFullscreen() {
     _controller.pauseVideo();
     setState(() => _hidden = true);
     Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
       fullscreenDialog: true,
       transitionDuration: const Duration(milliseconds: 200),
       reverseTransitionDuration: const Duration(milliseconds: 150),
-      pageBuilder: (_, __, ___) => _FullscreenYouTubePlayer(
-        videoId: widget.videoId,
-      ),
+      pageBuilder: (_, __, ___) => _FullscreenYouTubePlayer(videoId: widget.videoId),
       transitionsBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
     )).then((_) {
@@ -168,14 +193,32 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Stack(children: [
-                // YouTube IFrame player
-                Positioned.fill(
-                  child: YoutubePlayer(
-                    controller: _controller,
-                    aspectRatio: playerW / playerH,
+
+                // ── Hata durumu: thumbnail + YouTube'da Aç ──
+                if (_playerError)
+                  Positioned.fill(
+                    child: _ErrorFallback(
+                      videoId: widget.videoId,
+                      thumbnailUrl: thumb,
+                      title: widget.title,
+                    ),
+                  )
+                else ...[
+                  // YouTube IFrame player
+                  Positioned.fill(
+                    child: YoutubePlayer(
+                      controller: _controller,
+                      aspectRatio: playerW / playerH,
+                    ),
                   ),
-                ),
-                // Gradient overlay top
+                  // Loading shimmer — player hazır olana kadar thumbnail göster
+                  _YoutubeLoadingOverlay(
+                    controller: _controller,
+                    thumbnailUrl: thumb,
+                  ),
+                ],
+
+                // ── Top overlay: drag handle + fullscreen + close ──
                 Positioned(top: 0, left: 0, right: 0,
                   child: Container(
                     height: 36,
@@ -192,46 +235,40 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
                           color: Colors.white.withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(2))),
                       const Spacer(),
-                      GestureDetector(
-                        onTap: () => _openFullscreen(context),
-                        child: Container(
-                          width: 28, height: 28,
-                          margin: const EdgeInsets.only(right: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            shape: BoxShape.circle),
-                          child: const Icon(Icons.fullscreen,
-                            size: 16, color: Colors.white),
-                        )),
-                      GestureDetector(
+                      if (!_playerError)
+                        _PipIconBtn(
+                          icon: Icons.fullscreen,
+                          onTap: _openFullscreen,
+                        ),
+                      _PipIconBtn(
+                        icon: Icons.open_in_new_rounded,
+                        onTap: () => _openInYouTube(widget.videoId),
+                      ),
+                      _PipIconBtn(
+                        icon: Icons.close,
                         onTap: widget.onClose,
-                        child: Container(
-                          width: 28, height: 28,
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            shape: BoxShape.circle),
-                          child: const Icon(Icons.close,
-                            size: 14, color: Colors.white),
-                        )),
+                        margin: const EdgeInsets.only(right: 6),
+                      ),
                     ]),
                   )),
-                // Title bottom
-                Positioned(bottom: 0, left: 0, right: 0,
-                  child: IgnorePointer(child: Container(
-                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-                    decoration: BoxDecoration(gradient: LinearGradient(
-                      begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.8),
-                        Colors.transparent],
-                    )),
-                    child: Text(widget.title,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9, fontWeight: FontWeight.w600,
-                        color: Colors.white),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ))),
+
+                // ── Bottom: title ──
+                if (!_playerError)
+                  Positioned(bottom: 0, left: 0, right: 0,
+                    child: IgnorePointer(child: Container(
+                      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+                      decoration: BoxDecoration(gradient: LinearGradient(
+                        begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.8),
+                          Colors.transparent],
+                      )),
+                      child: Text(widget.title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9, fontWeight: FontWeight.w600,
+                          color: Colors.white),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ))),
               ]),
             ),
           ),
@@ -263,7 +300,8 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
         mute: false,
         showControls: true,
         showFullscreenButton: true,
-        strictRelatedVideos: true,
+        enableCaption: false,
+        playsInline: false,
       ),
     )..loadVideoById(videoId: widget.videoId);
   }
@@ -285,16 +323,28 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
           Center(child: player),
           Positioned(
             top: 8, left: 8,
-            child: SafeArea(child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle),
-                child: const Icon(Icons.close, color: Colors.white, size: 18),
-              ),
-            ))),
+            child: SafeArea(child: Row(children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle),
+                  child: const Icon(Icons.close, color: Colors.white, size: 18),
+                )),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _openInYouTube(widget.videoId),
+                child: Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle),
+                  child: const Icon(Icons.open_in_new_rounded,
+                    color: Colors.white, size: 16),
+                )),
+            ]))),
         ]),
       ),
     );
@@ -302,10 +352,147 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// youtube_explode_dart — ONLY for metadata (title, thumbnail)
+// YARDIMCI WİDGET'LAR
 // ═══════════════════════════════════════════════════════════
 
-/// Fetches video metadata (title, thumbnail) only — no stream extraction.
+/// Hata/embed yasağı durumunda thumbnail + YouTube'da Aç butonu
+class _ErrorFallback extends StatelessWidget {
+  final String videoId;
+  final String thumbnailUrl;
+  final String title;
+  const _ErrorFallback({
+    required this.videoId,
+    required this.thumbnailUrl,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(fit: StackFit.expand, children: [
+      Image.network(thumbnailUrl, fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(color: Colors.black)),
+      Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.3),
+              Colors.black.withValues(alpha: 0.8),
+            ])),
+      ),
+      Center(
+        child: GestureDetector(
+          onTap: () => _openInYouTube(videoId),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF0000),
+              borderRadius: BorderRadius.circular(24)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.play_arrow_rounded,
+                color: Colors.white, size: 20),
+              const SizedBox(width: 6),
+              Text('YouTube\'da İzle',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w700,
+                  color: Colors.white)),
+            ]),
+          ),
+        ),
+      ),
+      Positioned(bottom: 8, left: 8, right: 8,
+        child: Text(title,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 10, fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.9)),
+          maxLines: 2, overflow: TextOverflow.ellipsis)),
+    ]);
+  }
+}
+
+/// Player yüklenirken thumbnail gösterir, hazır olunca kaybolur
+class _YoutubeLoadingOverlay extends StatefulWidget {
+  final YoutubePlayerController controller;
+  final String thumbnailUrl;
+  const _YoutubeLoadingOverlay({
+    required this.controller,
+    required this.thumbnailUrl,
+  });
+
+  @override
+  State<_YoutubeLoadingOverlay> createState() => _YoutubeLoadingOverlayState();
+}
+
+class _YoutubeLoadingOverlayState extends State<_YoutubeLoadingOverlay> {
+  bool _visible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.stream.listen((value) {
+      if (!mounted) return;
+      if (value.playerState != PlayerState.unknown) {
+        setState(() => _visible = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: Stack(fit: StackFit.expand, children: [
+        Image.network(widget.thumbnailUrl, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(color: Colors.black)),
+        Container(color: Colors.black.withValues(alpha: 0.35)),
+        const Center(child: SizedBox(
+          width: 28, height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+        )),
+      ]),
+    );
+  }
+}
+
+/// PiP overlay'deki küçük ikon butonu
+class _PipIconBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final EdgeInsets margin;
+  const _PipIconBtn({
+    required this.icon,
+    required this.onTap,
+    this.margin = const EdgeInsets.only(right: 4),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28, height: 28,
+        margin: margin,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle),
+        child: Icon(icon, size: 14, color: Colors.white),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// YARDIMCI FONKSİYONLAR
+// ═══════════════════════════════════════════════════════════
+
+void _openInYouTube(String videoId) {
+  final uri = Uri.parse('https://www.youtube.com/watch?v=$videoId');
+  launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+/// YouTube metadata (title, thumbnail) — sadece youtube_explode_dart kullanır
 Future<({String title, String thumbnail})> _getYouTubeMetadata(String videoId) async {
   try {
     final yte = yt_explode.YoutubeExplode();
