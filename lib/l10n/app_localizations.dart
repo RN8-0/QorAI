@@ -418,6 +418,12 @@ abstract class AppLocalizations {
   /// **'Paste any link (Zillow, BestBuy, FB Marketplace...)'**
   String get pasteLinkHint;
 
+  /// No description provided for @allShoppingSitesSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'All shopping sites are supported'**
+  String get allShoppingSitesSupported;
+
   /// No description provided for @analyze.
   ///
   /// In en, this message translates to:

@@ -12,9 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
@@ -41,7 +39,6 @@ import 'package:fl_chart/fl_chart.dart';
 part 'widgets/empty_search_widgets.dart';
 part 'widgets/spec_comparison_widget.dart';
 part 'widgets/youtube_widgets.dart';
-part 'widgets/benchmark_actions_widgets.dart';
 
 
 /// 3-layer card shadow used throughout the screen.

@@ -1408,7 +1408,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       ],
     ]);
   }
-
+
   void _showMatchDetailOverlay({
     required String productName,
     required double matchScore,
@@ -1963,7 +1963,9 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             ),
             const SizedBox(height: 20),
             // Full bar chart
-            SizedBox(
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 480),
+              child: SizedBox(
               height: categories.length * 64.0 + 60,
               child: BarChart(BarChartData(
                 alignment: BarChartAlignment.spaceAround,
@@ -2014,6 +2016,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 borderData: FlBorderData(show: false),
                 barGroups: _buildCategoryBarGroups(categories, productNames, barColors),
               )),
+              ),
             ),
             // Detailed category explanations
             const SizedBox(height: 20),
@@ -3492,6 +3495,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
+      clipBehavior: Clip.hardEdge,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
@@ -3688,6 +3692,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
+      clipBehavior: Clip.hardEdge,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
@@ -4442,7 +4447,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
   }
 }
 
-class _CompareRepliesSection extends ConsumerWidget {
+class _CompareRepliesSection extends ConsumerStatefulWidget {
   final String reviewId;
   final String? currentUserId;
   final bool isExpanded;
@@ -4464,10 +4469,23 @@ class _CompareRepliesSection extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CompareRepliesSection> createState() => _CompareRepliesSectionState();
+}
+
+class _CompareRepliesSectionState extends ConsumerState<_CompareRepliesSection> {
+  late Stream<List<Map<String, dynamic>>> _repliesStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _repliesStream = ref.read(firebaseDataSourceProvider)
+        .watchReviewReplies('comparison_reviews', widget.reviewId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: ref.read(firebaseDataSourceProvider)
-          .watchReviewReplies('comparison_reviews', reviewId),
+      stream: _repliesStream,
       builder: (context, snapshot) {
         final replies = snapshot.data ?? [];
         final replyCount = replies.length;
@@ -4479,14 +4497,14 @@ class _CompareRepliesSection extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: GestureDetector(
-                  onTap: onToggleExpand,
+                  onTap: widget.onToggleExpand,
                   child: Row(children: [
                     Container(
                         width: 2, height: 14,
                         color: AppTheme.brandBlue.withValues(alpha: 0.3),
                         margin: const EdgeInsets.only(right: 8)),
                     Text(
-                      isExpanded ? 'Yanıtları gizle' : '$replyCount yanıt',
+                      widget.isExpanded ? 'Yanıtları gizle' : '$replyCount yanıt',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -4494,7 +4512,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                     ),
                     const SizedBox(width: 4),
                     Icon(
-                      isExpanded
+                      widget.isExpanded
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
                       size: 16,
@@ -4504,7 +4522,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                 ),
               ),
 
-            if (isExpanded && replyCount > 0)
+            if (widget.isExpanded && replyCount > 0)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Column(
@@ -4523,7 +4541,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                         : diff.inHours > 0
                             ? '${diff.inHours}s'
                             : '${diff.inMinutes}d';
-                    final isOwner = currentUserId == replyUserId;
+                    final isOwner = widget.currentUserId == replyUserId;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -4587,7 +4605,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                                                 firebaseDataSourceProvider)
                                             .deleteReviewReply(
                                           collection: 'comparison_reviews',
-                                          reviewId: reviewId,
+                                          reviewId: widget.reviewId,
                                           replyId: replyId,
                                         );
                                       },
@@ -4614,7 +4632,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                 ),
               ),
 
-            if (showInput)
+            if (widget.showInput)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: Row(
@@ -4622,7 +4640,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: replyController,
+                        controller: widget.replyController,
                         maxLines: 3,
                         minLines: 1,
                         autofocus: true,
@@ -4653,7 +4671,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: submitting ? null : onSubmitReply,
+                      onTap: widget.submitting ? null : widget.onSubmitReply,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         width: 40,
@@ -4665,7 +4683,7 @@ class _CompareRepliesSection extends ConsumerWidget {
                           ]),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: submitting
+                        child: widget.submitting
                             ? const Padding(
                                 padding: EdgeInsets.all(10),
                                 child: CircularProgressIndicator(

@@ -366,7 +366,6 @@ class _UserReviewsCard extends ConsumerStatefulWidget {
 }
 
 class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
-  int _selectedFilter = 0; // 0=All, 1=Positive, 2=Critical
 
   @override
   Widget build(BuildContext context) {
@@ -452,178 +451,37 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
   }
 
   Widget _buildReviewsContent(List<ReviewModel> reviews, dynamic currentUser) {
-    final avgRating = reviews.isEmpty
-        ? 0.0
-        : reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
     final currentUserId = currentUser?.uid as String?;
-
-    // Filter reviews
-    final filtered = _selectedFilter == 0
-        ? reviews
-        : _selectedFilter == 1
-            ? reviews.where((r) => r.rating >= 4.0).toList()
-            : reviews.where((r) => r.rating <= 2.0).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Rating summary header
-        _buildRatingSummary(avgRating, reviews.length, reviews),
-        const SizedBox(height: 16),
-
-        // Pill-style filter tabs
-        _buildFilterTabs(reviews),
-        const SizedBox(height: 14),
+        // Simple count header
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Text(
+            '${reviews.length} ${context.l10n?.reviews ?? 'yorum'}',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: context.textSecondary,
+            ),
+          ),
+        ),
 
         // Review cards
-        if (filtered.isEmpty)
+        ...reviews.take(5).map((review) => _buildReviewItem(review, currentUserId)),
+        if (reviews.length > 5)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.only(top: 4),
             child: Center(
               child: Text(
-                'No reviews in this category',
-                style: TextStyle(fontSize: 13, color: AppTheme.slate500),
+                '+ ${reviews.length - 5} more reviews',
+                style: TextStyle(fontSize: 13, color: AppTheme.slate500, fontWeight: FontWeight.w500),
               ),
             ),
-          )
-        else ...[
-          ...filtered.take(5).map((review) => _buildReviewItem(review, currentUserId)),
-          if (filtered.length > 5)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Center(
-                child: Text(
-                  '+ ${filtered.length - 5} more reviews',
-                  style: TextStyle(fontSize: 13, color: AppTheme.slate500, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ),
-        ],
+          ),
       ],
-    );
-  }
-
-  Widget _buildRatingSummary(double avgRating, int totalCount, List<ReviewModel> reviews) {
-    // Distribution bars
-    final dist = List.filled(5, 0);
-    for (final r in reviews) {
-      final idx = r.rating.round().clamp(1, 5) - 1;
-      dist[idx]++;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryBlue.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        children: [
-          // Left: big number + stars + count
-          Column(
-            children: [
-              Text(
-                avgRating.toStringAsFixed(1),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 40, fontWeight: FontWeight.w900, color: context.textPrimary, height: 1),
-              ),
-              const SizedBox(height: 6),
-              _buildStarRow(avgRating, size: 18),
-              const SizedBox(height: 4),
-              Text(
-                '$totalCount ${context.l10n?.reviews ?? 'reviews'}',
-                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.slate500),
-              ),
-            ],
-          ),
-          const SizedBox(width: 20),
-          // Right: distribution bars
-          Expanded(
-            child: Column(
-              children: List.generate(5, (i) {
-                final star = 5 - i;
-                final count = dist[star - 1];
-                final pct = totalCount > 0 ? count / totalCount : 0.0;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    children: [
-                      Text('$star', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.slate500)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.star_rounded, size: 12, color: AppTheme.warning),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: pct,
-                            minHeight: 6,
-                            backgroundColor: AppTheme.slate500.withValues(alpha: 0.15),
-                            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.warning),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      SizedBox(
-                        width: 24,
-                        child: Text('$count', style: TextStyle(fontSize: 10, color: AppTheme.slate500)),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterTabs(List<ReviewModel> reviews) {
-    final positiveCount = reviews.where((r) => r.rating >= 4.0).length;
-    final criticalCount = reviews.where((r) => r.rating <= 2.0).length;
-
-    final tabs = [
-      ('All', reviews.length),
-      ('Positive', positiveCount),
-      ('Critical', criticalCount),
-    ];
-
-    return Row(
-      children: List.generate(tabs.length, (i) {
-        final isSelected = _selectedFilter == i;
-        final (label, count) = tabs[i];
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: GestureDetector(
-            onTap: () => setState(() => _selectedFilter = i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppTheme.primaryBlue.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected
-                      ? AppTheme.primaryBlue.withValues(alpha: 0.4)
-                      : AppTheme.slate500.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Text(
-                '$label ($count)',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppTheme.primaryBlue : AppTheme.slate500,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
     );
   }
 
@@ -707,23 +565,6 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12, color: context.textTertiaryColor)),
       ]),
-    );
-  }
-
-  Widget _buildStarRow(double rating, {double size = 16}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (i) {
-        if (i < rating.floor()) {
-          return Icon(Icons.star_rounded,
-              color: AppTheme.warning, size: size);
-        } else if (i < rating) {
-          return Icon(Icons.star_half_rounded,
-              color: AppTheme.warning, size: size);
-        }
-        return Icon(Icons.star_outline_rounded,
-            color: AppTheme.slate400, size: size);
-      }),
     );
   }
 
@@ -1105,26 +946,10 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                               fontWeight: FontWeight.w700,
                               color: context.textPrimary)),
                       const SizedBox(height: 2),
-                      Row(children: [
-                        if (widget.rating > 0) ...[
-                          ...List.generate(5, (i) {
-                            if (i < widget.rating.floor()) {
-                              return Icon(Icons.star_rounded,
-                                  color: AppTheme.warning, size: 13);
-                            } else if (i < widget.rating) {
-                              return Icon(Icons.star_half_rounded,
-                                  color: AppTheme.warning, size: 13);
-                            }
-                            return Icon(Icons.star_outline_rounded,
-                                color: AppTheme.slate400, size: 13);
-                          }),
-                          const SizedBox(width: 6),
-                        ],
-                        Text(widget.timeAgo,
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                color: context.textTertiaryColor)),
-                      ]),
+                      Text(widget.timeAgo,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: context.textTertiaryColor)),
                     ],
                   ),
                 ),
@@ -1286,7 +1111,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
   }
 }
 
-class _ReviewRepliesSection extends ConsumerWidget {
+class _ReviewRepliesSection extends ConsumerStatefulWidget {
   final String reviewId;
   final String firestoreCollection;
   final String? currentUserId;
@@ -1310,10 +1135,23 @@ class _ReviewRepliesSection extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ReviewRepliesSection> createState() => _ReviewRepliesSectionState();
+}
+
+class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
+  late Stream<List<Map<String, dynamic>>> _repliesStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _repliesStream = ref.read(firebaseDataSourceProvider)
+        .watchReviewReplies(widget.firestoreCollection, widget.reviewId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: ref.read(firebaseDataSourceProvider)
-          .watchReviewReplies(firestoreCollection, reviewId),
+      stream: _repliesStream,
       builder: (context, snapshot) {
         final replies = snapshot.data ?? [];
         final replyCount = replies.length;
@@ -1325,14 +1163,14 @@ class _ReviewRepliesSection extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: GestureDetector(
-                  onTap: onToggleExpand,
+                  onTap: widget.onToggleExpand,
                   child: Row(children: [
                     Container(
                         width: 2, height: 14,
                         color: AppTheme.brandBlue.withValues(alpha: 0.3),
                         margin: const EdgeInsets.only(right: 8)),
                     Text(
-                      isExpanded ? 'Yanıtları gizle' : '$replyCount yanıt',
+                      widget.isExpanded ? 'Yanıtları gizle' : '$replyCount yanıt',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -1340,7 +1178,7 @@ class _ReviewRepliesSection extends ConsumerWidget {
                     ),
                     const SizedBox(width: 4),
                     Icon(
-                      isExpanded
+                      widget.isExpanded
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
                       size: 16,
@@ -1350,7 +1188,7 @@ class _ReviewRepliesSection extends ConsumerWidget {
                 ),
               ),
 
-            if (isExpanded && replyCount > 0)
+            if (widget.isExpanded && replyCount > 0)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Column(
@@ -1369,7 +1207,7 @@ class _ReviewRepliesSection extends ConsumerWidget {
                         : diff.inHours > 0
                             ? '${diff.inHours}s'
                             : '${diff.inMinutes}d';
-                    final isOwner = currentUserId == replyUserId;
+                    final isOwner = widget.currentUserId == replyUserId;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -1432,8 +1270,8 @@ class _ReviewRepliesSection extends ConsumerWidget {
                                             .read(
                                                 firebaseDataSourceProvider)
                                             .deleteReviewReply(
-                                          collection: firestoreCollection,
-                                          reviewId: reviewId,
+                                          collection: widget.firestoreCollection,
+                                          reviewId: widget.reviewId,
                                           replyId: replyId,
                                         );
                                       },
@@ -1460,7 +1298,7 @@ class _ReviewRepliesSection extends ConsumerWidget {
                 ),
               ),
 
-            if (showInput)
+            if (widget.showInput)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: Row(
@@ -1468,7 +1306,7 @@ class _ReviewRepliesSection extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: replyController,
+                        controller: widget.replyController,
                         maxLines: 3,
                         minLines: 1,
                         autofocus: true,
@@ -1499,7 +1337,7 @@ class _ReviewRepliesSection extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: submitting ? null : onSubmitReply,
+                      onTap: widget.submitting ? null : widget.onSubmitReply,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         width: 40,
@@ -1511,7 +1349,7 @@ class _ReviewRepliesSection extends ConsumerWidget {
                           ]),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: submitting
+                        child: widget.submitting
                             ? const Padding(
                                 padding: EdgeInsets.all(10),
                                 child: CircularProgressIndicator(

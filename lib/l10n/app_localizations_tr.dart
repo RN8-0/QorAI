@@ -162,6 +162,9 @@ class AppLocalizationsTr extends AppLocalizations {
       'Herhangi bir bağlantı yapıştır (Zillow, BestBuy, FB Marketplace...)';
 
   @override
+  @override
+  String get allShoppingSitesSupported => 'Tüm alışveriş siteleri desteklenir';
+
   String get analyze => 'Analiz Et';
 
   @override

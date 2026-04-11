@@ -164,6 +164,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Beliebigen Link einfügen (Zillow, BestBuy, FB Marketplace...)';
 
   @override
+  @override
+  String get allShoppingSitesSupported => 'Alle Einkaufsseiten werden unterstützt';
+
   String get analyze => 'Analysieren';
 
   @override

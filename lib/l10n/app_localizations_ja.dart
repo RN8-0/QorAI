@@ -159,6 +159,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get pasteLinkHint => '任意のリンクを貼り付け（Zillow、BestBuy、FB Marketplace...）';
 
   @override
+  @override
+  String get allShoppingSitesSupported => 'すべてのショッピングサイトに対応しています';
+
   String get analyze => '分析する';
 
   @override

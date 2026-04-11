@@ -238,27 +238,8 @@ class _CompareVideoTile extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FLOATING YOUTUBE PLAYER (mini player overlay — matches detail screen)
+// FLOATING YOUTUBE PLAYER (mini PiP — youtube_player_iframe)
 // ═══════════════════════════════════════════════════════════
-
-/// Extracts direct stream URL for a YouTube video ID.
-Future<String?> _getCompareYouTubeStreamUrl(String videoId) async {
-  try {
-    final yte = YoutubeExplode();
-    final manifest = await yte.videos.streamsClient.getManifest(videoId);
-    yte.close();
-    final muxed = manifest.muxed.toList()
-      ..sort((a, b) => (b.videoResolution?.height ?? 0).compareTo(a.videoResolution?.height ?? 0));
-    if (muxed.isNotEmpty) return muxed.first.url.toString();
-    final videos = manifest.videoOnly.toList()
-      ..sort((a, b) => (b.videoResolution?.height ?? 0).compareTo(a.videoResolution?.height ?? 0));
-    if (videos.isNotEmpty) return videos.first.url.toString();
-    return null;
-  } catch (e) {
-    debugPrint('=== COMPAIR: youtube_explode error: $e ===');
-    return null;
-  }
-}
 
 class _CompareFloatingPlayer extends StatefulWidget {
   final String videoId;
@@ -280,70 +261,41 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   double _dx = -1;
   double _dy = -1;
   bool _positionSet = false;
-  bool _hidden = false; // hidden during fullscreen
-  VideoPlayerController? _vpc;
-  ChewieController? _chewie;
-  bool _loading = true;
-  String? _error;
-  String? _streamUrl;
+  bool _hidden = false;
+  late YoutubePlayerController _controller;
 
   @override
   void initState() {
     super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    final url = await _getCompareYouTubeStreamUrl(widget.videoId);
-    if (!mounted) return;
-    if (url == null) {
-      setState(() { _loading = false; _error = 'Could not load'; });
-      return;
-    }
-    _streamUrl = url;
-    _vpc = VideoPlayerController.networkUrl(Uri.parse(url));
-    await _vpc!.initialize();
-    if (!mounted) return;
-    _chewie = ChewieController(
-      videoPlayerController: _vpc!,
-      autoPlay: true,
-      showControls: true,
-      allowFullScreen: false,
-      allowMuting: true,
-    );
-    setState(() => _loading = false);
+    _controller = YoutubePlayerController(
+      params: const YoutubePlayerParams(
+        mute: false,
+        showControls: false,
+        strictRelatedVideos: true,
+      ),
+    )..loadVideoById(videoId: widget.videoId);
   }
 
   @override
   void dispose() {
-    _chewie?.dispose();
-    _vpc?.dispose();
+    _controller.close();
     super.dispose();
   }
 
   void _openFullscreen(BuildContext context) {
-    final pos = _vpc?.value.position ?? Duration.zero;
-    final url = _streamUrl;
-    // Pause and hide mini player (don't destroy it)
-    _vpc?.pause();
+    _controller.pauseVideo();
     setState(() => _hidden = true);
     Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
       fullscreenDialog: true,
       transitionDuration: const Duration(milliseconds: 200),
       reverseTransitionDuration: const Duration(milliseconds: 150),
-      pageBuilder: (_, __, ___) => _CompareFullscreenPlayer(
-        videoId: widget.videoId,
-        streamUrl: url,
-        startAt: pos,
-      ),
-      transitionsBuilder: (_, anim, __, child) {
-        return FadeTransition(opacity: anim, child: child);
-      },
+      pageBuilder: (_, __, ___) => _CompareFullscreenPlayer(videoId: widget.videoId),
+      transitionsBuilder: (_, anim, __, child) =>
+          FadeTransition(opacity: anim, child: child),
     )).then((_) {
-      // Fullscreen closed — show mini player and resume
       if (mounted) {
         setState(() => _hidden = false);
-        _vpc?.play();
+        _controller.playVideo();
       }
     });
   }
@@ -361,10 +313,6 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
       _positionSet = true;
     }
 
-    final thumb = widget.thumbnailUrl.isNotEmpty
-        ? widget.thumbnailUrl
-        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
-
     return Positioned(
       left: _dx, top: _dy,
       child: Material(
@@ -381,27 +329,19 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 6))],
+              boxShadow: [BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 20, offset: const Offset(0, 6))],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Stack(children: [
-                if (_chewie != null && !_loading)
-                  Positioned.fill(child: Chewie(controller: _chewie!))
-                else if (_error != null)
-                  Positioned.fill(child: Container(
-                    color: Colors.black,
-                    child: Center(child: Text(_error!, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                  ))
-                else
-                  Stack(children: [
-                    Positioned.fill(child: CachedNetworkImage(
-                      imageUrl: thumb, fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(color: Colors.black))),
-                    Positioned.fill(child: Container(color: Colors.black.withValues(alpha: 0.5))),
-                    const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-                  ]),
-                // Top bar: drag handle + fullscreen + close
+                Positioned.fill(
+                  child: YoutubePlayer(
+                    controller: _controller,
+                    aspectRatio: playerW / playerH,
+                  ),
+                ),
                 Positioned(top: 0, left: 0, right: 0,
                   child: Container(
                     height: 36,
@@ -412,14 +352,18 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
                     child: Row(children: [
                       const SizedBox(width: 8),
                       Container(width: 28, height: 3,
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(2))),
                       const Spacer(),
                       GestureDetector(
                         onTap: () => _openFullscreen(context),
                         child: Container(
                           width: 28, height: 28,
                           margin: const EdgeInsets.only(right: 4),
-                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle),
                           child: const Icon(Icons.fullscreen, size: 16, color: Colors.white),
                         )),
                       GestureDetector(
@@ -427,12 +371,13 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
                         child: Container(
                           width: 28, height: 28,
                           margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle),
                           child: const Icon(Icons.close, size: 14, color: Colors.white),
                         )),
                     ]),
                   )),
-                // Bottom title
                 Positioned(bottom: 0, left: 0, right: 0,
                   child: IgnorePointer(child: Container(
                     padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
@@ -441,7 +386,8 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
                       colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
                     )),
                     child: Text(widget.title,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   ))),
               ]),
@@ -454,80 +400,61 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FULLSCREEN YOUTUBE PLAYER (native video_player + chewie)
+// FULLSCREEN + NATIVE COMPARE VIDEO PLAYER (youtube_player_iframe)
 // ═══════════════════════════════════════════════════════════
+
 class _CompareFullscreenPlayer extends StatefulWidget {
   final String videoId;
-  final String? streamUrl;
-  final Duration startAt;
-  const _CompareFullscreenPlayer({
-    required this.videoId,
-    this.streamUrl,
-    this.startAt = Duration.zero,
-  });
+  const _CompareFullscreenPlayer({required this.videoId});
   @override
   State<_CompareFullscreenPlayer> createState() => _CompareFullscreenPlayerState();
 }
 
 class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
-  VideoPlayerController? _vpc;
-  ChewieController? _chewie;
-  bool _loading = true;
-  String? _error;
+  late YoutubePlayerController _controller;
 
   @override
   void initState() {
     super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    final url = widget.streamUrl ?? await _getCompareYouTubeStreamUrl(widget.videoId);
-    if (!mounted) return;
-    if (url == null) {
-      setState(() { _loading = false; _error = 'Could not load video'; });
-      return;
-    }
-    _vpc = VideoPlayerController.networkUrl(Uri.parse(url));
-    await _vpc!.initialize();
-    if (!mounted) return;
-    if (widget.startAt > Duration.zero) {
-      await _vpc!.seekTo(widget.startAt);
-    }
-    _chewie = ChewieController(
-      videoPlayerController: _vpc!,
-      autoPlay: true,
-      allowFullScreen: true,
-      showControls: true,
-      allowMuting: true,
-    );
-    setState(() => _loading = false);
+    _controller = YoutubePlayerController(
+      params: const YoutubePlayerParams(
+        mute: false,
+        showControls: true,
+        showFullscreenButton: true,
+        strictRelatedVideos: true,
+      ),
+    )..loadVideoById(videoId: widget.videoId);
   }
 
   @override
   void dispose() {
-    _chewie?.dispose();
-    _vpc?.dispose();
+    _controller.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return YoutubePlayerScaffold(
+      controller: _controller,
+      aspectRatio: 16 / 9,
+      builder: (context, player) => Scaffold(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text('Video', style: const TextStyle(fontSize: 14),
-          maxLines: 1, overflow: TextOverflow.ellipsis),
+        body: Stack(children: [
+          Center(child: player),
+          Positioned(
+            top: 8, left: 8,
+            child: SafeArea(child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle),
+                child: const Icon(Icons.close, color: Colors.white, size: 18),
+              ),
+            ))),
+        ]),
       ),
-      body: _loading
-        ? const Center(child: CircularProgressIndicator(color: Colors.red))
-        : _error != null
-          ? Center(child: Text(_error!, style: const TextStyle(color: Colors.white70)))
-          : _chewie != null
-            ? Chewie(controller: _chewie!)
-            : const SizedBox.shrink(),
     );
   }
 }
@@ -536,71 +463,49 @@ class _NativeCompareVideoPlayer extends StatefulWidget {
   final String videoId;
   final String title;
   const _NativeCompareVideoPlayer({required this.videoId, required this.title});
-  
+
   @override
   State<_NativeCompareVideoPlayer> createState() => _NativeCompareVideoPlayerState();
 }
 
 class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
-  VideoPlayerController? _vpc;
-  ChewieController? _chewie;
-  bool _loading = true;
-  String? _error;
+  late YoutubePlayerController _controller;
 
   @override
   void initState() {
     super.initState();
-    _loadVideo();
-  }
-
-  Future<void> _loadVideo() async {
-    try {
-      final yt = YoutubeExplode();
-      final manifest = await yt.videos.streamsClient.getManifest(widget.videoId);
-      yt.close();
-      final muxed = manifest.muxed.sortByVideoQuality();
-      if (muxed.isEmpty) {
-        if (mounted) setState(() { _error = 'No streams found'; _loading = false; });
-        return;
-      }
-      final streamUrl = muxed.first.url;
-      _vpc = VideoPlayerController.networkUrl(streamUrl);
-      await _vpc!.initialize();
-      _chewie = ChewieController(
-        videoPlayerController: _vpc!,
-        autoPlay: true,
-        allowFullScreen: true,
-        allowMuting: true,
-      );
-      if (mounted) setState(() => _loading = false);
-    } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load video'; _loading = false; });
-    }
+    _controller = YoutubePlayerController(
+      params: const YoutubePlayerParams(
+        mute: false,
+        showControls: true,
+        showFullscreenButton: true,
+        strictRelatedVideos: true,
+      ),
+    )..loadVideoById(videoId: widget.videoId);
   }
 
   @override
   void dispose() {
-    _chewie?.dispose();
-    _vpc?.dispose();
+    _controller.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return YoutubePlayerScaffold(
+      controller: _controller,
+      aspectRatio: 16 / 9,
+      builder: (context, player) => Scaffold(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(widget.title, style: const TextStyle(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          title: Text(widget.title,
+            style: const TextStyle(fontSize: 14),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+        body: Center(child: player),
       ),
-      body: _loading
-        ? const Center(child: CircularProgressIndicator(color: Colors.red))
-        : _error != null
-          ? Center(child: Text(_error!, style: const TextStyle(color: Colors.white70)))
-          : _chewie != null
-            ? Chewie(controller: _chewie!)
-            : const SizedBox.shrink(),
     );
   }
 }

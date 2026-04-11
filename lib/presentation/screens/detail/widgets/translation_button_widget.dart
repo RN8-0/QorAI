@@ -102,29 +102,4 @@ class _SeeTranslationButtonState extends State<_SeeTranslationButton> {
 
 // ═══════════════════════════════════════════════════════════
 // YOUTUBE PLAYER HELPER
-// ═══════════════════════════════════════════════════════════
-// NATIVE YOUTUBE PLAYER — uses youtube_explode_dart to extract
-// direct video stream URL, then plays with video_player + chewie.
-// NO embed, NO WebView, NO YouTube restrictions. Guaranteed playback.
-// ═══════════════════════════════════════════════════════════
-
-/// Extracts direct stream URL for a YouTube video ID.
-Future<String?> _getYouTubeStreamUrl(String videoId) async {
-  try {
-    final yte = yt_explode.YoutubeExplode();
-    final manifest = await yte.videos.streamsClient.getManifest(videoId);
-    yte.close();
-    // Prefer muxed stream (video+audio) at highest quality
-    final muxed = manifest.muxed.toList()
-      ..sort((a, b) => (b.videoResolution?.height ?? 0).compareTo(a.videoResolution?.height ?? 0));
-    if (muxed.isNotEmpty) return muxed.first.url.toString();
-    // Fallback: highest quality video-only + audio-only (less ideal)
-    final videos = manifest.videoOnly.toList()
-      ..sort((a, b) => (b.videoResolution?.height ?? 0).compareTo(a.videoResolution?.height ?? 0));
-    if (videos.isNotEmpty) return videos.first.url.toString();
-    return null;
-  } catch (e) {
-    debugPrint('=== COMPAIR: youtube_explode error: $e ===');
-    return null;
-  }
-}
+// (Stream URL extraction kaldırıldı — artık youtube_player_iframe kullanılıyor)

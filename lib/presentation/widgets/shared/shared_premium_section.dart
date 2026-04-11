@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/utils.dart';
 import 'package:compair/domain/entities/product_entity.dart';
@@ -696,26 +696,13 @@ class SharedPremiumFeaturesSectionState
         ]),
 
         if (r.trendPercentage > 0) ...[
-          const SizedBox(height: 14),
-          Text('Beklenen Değişim',
+          const SizedBox(height: 16),
+          Text('Tahmini Fiyat Trendi (6 Ay)',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary)),
-          const SizedBox(height: 6),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: (r.trendPercentage / 50).clamp(0, 1)),
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeOutCubic,
-            builder: (_, v, __) => ClipRRect(
-              borderRadius: BorderRadius.circular(5),
-              child: SizedBox(height: 8, child: Stack(children: [
-                Container(color: trendColor.withValues(alpha: 0.1)),
-                FractionallySizedBox(widthFactor: v,
-                  child: Container(decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [trendColor.withValues(alpha: 0.4), trendColor]),
-                    borderRadius: BorderRadius.circular(5)))),
-              ])),
-            ),
-          ),
+          const SizedBox(height: 8),
+          _buildPriceTrendChart(r.trendPercentage.toDouble(), trendLower, trendColor),
+          const SizedBox(height: 4),
         ],
 
         if (r.expectedDrop.isNotEmpty) ...[
@@ -758,65 +745,289 @@ class SharedPremiumFeaturesSectionState
     );
   }
 
+  /// Ham JSON veya fallback metni hiçbir zaman kullanıcıya JSON formatında göstermez.
+  /// JSON ise parse edip anlamlı kartlara dönüştürür, değilse temiz metin olarak render eder.
+  /// fl_chart ile basit fiyat trend grafiği (6 aylık projeksiyon)
+  Widget _buildPriceTrendChart(double trendPct, String direction, Color trendColor) {
+    // 100 baz fiyat kabul edip trendi uygula
+    final isDown = direction == 'down';
+    final isUp = direction == 'up';
+    final delta = trendPct.clamp(0, 50).toDouble();
+    final spots = List.generate(7, (i) {
+      double y;
+      if (isDown) {
+        y = 100 - (delta * i / 6);
+      } else if (isUp) {
+        y = 100 + (delta * i / 6);
+      } else {
+        // Stable with small noise
+        y = 100 + (i % 2 == 0 ? 1.0 : -1.0) * (delta * 0.2);
+      }
+      return FlSpot(i.toDouble(), y);
+    });
+
+    final minY = (spots.map((s) => s.y).reduce((a, b) => a < b ? a : b) - 5).clamp(0, 9999).toDouble();
+    final maxY = (spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) + 5).toDouble();
+
+    return SizedBox(
+      height: 110,
+      child: LineChart(
+        LineChartData(
+          minY: minY,
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: delta > 10 ? delta / 2 : 5,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: trendColor.withValues(alpha: 0.08),
+              strokeWidth: 1,
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1,
+                getTitlesWidget: (val, _) {
+                  const months = ['Şu an', '1A', '2A', '3A', '4A', '5A', '6A'];
+                  final idx = val.toInt();
+                  if (idx < 0 || idx >= months.length) return const SizedBox.shrink();
+                  return Text(months[idx], style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9, color: context.textSecondary));
+                },
+              ),
+            ),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              curveSmoothness: 0.3,
+              color: trendColor,
+              barWidth: 2.5,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, pct, bar, idx) {
+                  if (idx != 0 && idx != spots.length - 1) {
+                    return FlDotCirclePainter(radius: 0, color: Colors.transparent, strokeColor: Colors.transparent, strokeWidth: 0);
+                  }
+                  return FlDotCirclePainter(
+                    radius: 4,
+                    color: trendColor,
+                    strokeColor: context.surfaceVariantColor,
+                    strokeWidth: 2,
+                  );
+                },
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    trendColor.withValues(alpha: 0.2),
+                    trendColor.withValues(alpha: 0.01),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRichContent(String content, Color accentColor) {
-    // If content looks like raw JSON, clean it up for display
-    var displayContent = content;
     final trimmed = content.trim();
+
+    // JSON mi? Parse edip visual cards göster.
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       try {
         final decoded = jsonDecode(trimmed);
-        displayContent = _jsonToReadableMarkdown(decoded);
+        return _buildJsonVisualCards(decoded, accentColor);
       } catch (_) {
-        // Not valid JSON, show as-is
+        // Parse edilemedi, temiz metin olarak devam et.
       }
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return MarkdownBody(
-      data: displayContent,
-      selectable: true,
-      styleSheet: MarkdownStyleSheet(
-        p: GoogleFonts.plusJakartaSans(
-          fontSize: 13, height: 1.6,
-          color: isDark ? Colors.white.withValues(alpha: 0.9) : context.textPrimary),
-        strong: GoogleFonts.plusJakartaSans(
-          fontSize: 13, fontWeight: FontWeight.w700,
-          color: isDark ? Colors.white : context.textPrimary),
-        em: GoogleFonts.plusJakartaSans(
-          fontSize: 13, fontStyle: FontStyle.italic,
-          color: isDark ? Colors.white.withValues(alpha: 0.8) : context.textSecondary),
-        h1: GoogleFonts.plusJakartaSans(
-          fontSize: 16, fontWeight: FontWeight.w800,
-          color: isDark ? Colors.white : context.textPrimary),
-        h2: GoogleFonts.plusJakartaSans(
-          fontSize: 15, fontWeight: FontWeight.w700,
-          color: isDark ? Colors.white : context.textPrimary),
-        h3: GoogleFonts.plusJakartaSans(
-          fontSize: 14, fontWeight: FontWeight.w700,
-          color: accentColor),
-        listBullet: GoogleFonts.plusJakartaSans(
-          fontSize: 13, color: accentColor),
-        listIndent: 16,
-        blockSpacing: 8,
-        h1Padding: const EdgeInsets.only(top: 8, bottom: 4),
-        h2Padding: const EdgeInsets.only(top: 8, bottom: 4),
-        h3Padding: const EdgeInsets.only(top: 6, bottom: 2),
-        pPadding: const EdgeInsets.symmetric(vertical: 2),
-        blockquoteDecoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(8),
-          border: Border(left: BorderSide(color: accentColor, width: 3)),
-        ),
-        blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        codeblockDecoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        code: GoogleFonts.jetBrainsMono(
-          fontSize: 12,
-          color: isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF334155)),
+    // JSON-benzeri karakterleri temizle (kurşun geçirmez fallback)
+    final cleaned = _stripJsonSyntax(trimmed);
+    if (cleaned.isEmpty) return const SizedBox.shrink();
+
+    return _buildCleanTextContent(cleaned, accentColor);
+  }
+
+  /// JSON objesini/dizisini anlamlı kartlara dönüştürür; hiçbir JSON anahtarı kullanıcıya gösterilmez.
+  Widget _buildJsonVisualCards(dynamic data, Color accentColor) {
+    if (data is Map<String, dynamic>) {
+      // Bilinen alanları çıkar
+      final List<String> pros = _extractStringList(data, ['pros', 'strengths', 'artılar', 'güçlüYönler']);
+      final List<String> cons = _extractStringList(data, ['cons', 'weaknesses', 'eksiler', 'zayıfYönler']);
+      final String verdict = _extractString(data, ['verdict', 'karar', 'summary', 'özet', 'conclusion']);
+      final String text = _extractString(data, ['text', 'description', 'analysis', 'content', 'message', 'result']);
+
+      final widgets = <Widget>[];
+
+      if (pros.isNotEmpty) {
+        widgets.add(_buildSimpleListCard(Icons.check_circle_rounded, 'Artılar', pros, AppTheme.green500));
+        widgets.add(const SizedBox(height: 8));
+      }
+      if (cons.isNotEmpty) {
+        widgets.add(_buildSimpleListCard(Icons.cancel_rounded, 'Eksiler', cons, AppTheme.rose500));
+        widgets.add(const SizedBox(height: 8));
+      }
+      if (verdict.isNotEmpty) {
+        widgets.add(_buildVerdictBox(verdict, accentColor));
+        widgets.add(const SizedBox(height: 8));
+      }
+      if (text.isNotEmpty && widgets.isEmpty) {
+        widgets.add(_buildCleanTextContent(text, accentColor));
+      }
+
+      if (widgets.isEmpty) {
+        // Tüm değerleri metin olarak düzleştir
+        final allText = data.values
+            .whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .join('\n\n');
+        if (allText.isNotEmpty) {
+          return _buildCleanTextContent(allText, accentColor);
+        }
+        return const SizedBox.shrink();
+      }
+
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
+    }
+
+    if (data is List) {
+      final items = data.map((e) {
+        if (e is String) return e;
+        if (e is Map<String, dynamic>) {
+          return _extractString(e, ['name', 'title', 'text', 'description', 'item'])
+              .isNotEmpty
+              ? _extractString(e, ['name', 'title', 'text', 'description', 'item'])
+              : e.values.whereType<String>().firstOrNull ?? '';
+        }
+        return e.toString();
+      }).where((s) => s.isNotEmpty).toList();
+
+      return _buildSimpleListCard(Icons.info_outline_rounded, 'Analiz', items, accentColor);
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSimpleListCard(IconData icon, String title, List<String> items, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+            Text(title, style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+          ]),
+          const SizedBox(height: 8),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.arrow_right_rounded, size: 16, color: color),
+              const SizedBox(width: 4),
+              Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, color: context.textPrimary, height: 1.3))),
+            ]),
+          )),
+        ],
       ),
     );
+  }
+
+  Widget _buildVerdictBox(String text, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('💡', style: TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: GoogleFonts.plusJakartaSans(
+          fontSize: 12.5, fontWeight: FontWeight.w500,
+          color: context.textPrimary, height: 1.5, fontStyle: FontStyle.italic))),
+      ]),
+    );
+  }
+
+  Widget _buildCleanTextContent(String text, Color accentColor) {
+    final paragraphs = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: paragraphs.map((p) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(p.trim(), style: GoogleFonts.plusJakartaSans(
+          fontSize: 13, height: 1.6, color: context.textPrimary)),
+      )).toList(),
+    );
+  }
+
+  /// JSON syntax karakterlerini metinden temizler
+  static String _stripJsonSyntax(String input) {
+    if (!input.startsWith('{') && !input.startsWith('[')) return input;
+    // Tüm JSON-like yapıyı düzleştir
+    var s = input
+        .replaceAll(RegExp(r'[{}\[\]]'), '')
+        .replaceAll(RegExp(r'"(\w+)"\s*:\s*'), '')
+        .replaceAll(RegExp(r',\s*\n'), '\n')
+        .replaceAll('"', '')
+        .replaceAll('  ', ' ')
+        .trim();
+    return s;
+  }
+
+  static List<String> _extractStringList(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      final val = map[key];
+      if (val is List) return val.whereType<String>().toList();
+    }
+    // Case-insensitive search
+    for (final key in keys) {
+      final entry = map.entries.where((e) => e.key.toLowerCase() == key.toLowerCase()).firstOrNull;
+      if (entry != null && entry.value is List) {
+        return (entry.value as List).whereType<String>().toList();
+      }
+    }
+    return [];
+  }
+
+  static String _extractString(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      final val = map[key];
+      if (val is String && val.isNotEmpty) return val;
+    }
+    for (final key in keys) {
+      final entry = map.entries.where((e) => e.key.toLowerCase() == key.toLowerCase()).firstOrNull;
+      if (entry != null && entry.value is String && (entry.value as String).isNotEmpty) {
+        return entry.value as String;
+      }
+    }
+    return '';
   }
 
   Widget buildMatchScoreCard() {
@@ -960,51 +1171,4 @@ class SharedPremiumFeaturesSectionState
   }
 }
 
-/// Converts a parsed JSON object/array to human-readable Markdown
-String _jsonToReadableMarkdown(dynamic data) {
-  final sb = StringBuffer();
-  if (data is Map<String, dynamic>) {
-    for (final entry in data.entries) {
-      final key = entry.key;
-      final val = entry.value;
-      final label = key.replaceAllMapped(
-        RegExp(r'([a-z])([A-Z])'), (m) => '${m[1]} ${m[2]}',
-      );
-      final title = label[0].toUpperCase() + label.substring(1);
-      if (val is List) {
-        sb.writeln('### $title');
-        for (final item in val) {
-          if (item is Map) {
-            final name = item['name']?.toString() ?? '';
-            final detail = item['detail']?.toString() ?? '';
-            final score = item['score'];
-            if (name.isNotEmpty) {
-              sb.write('- **$name**');
-              if (score != null) sb.write(' ($score)');
-              if (detail.isNotEmpty) sb.write(': $detail');
-              sb.writeln();
-            } else {
-              sb.writeln('- $item');
-            }
-          } else {
-            sb.writeln('- $item');
-          }
-        }
-        sb.writeln();
-      } else if (val is String && val.isNotEmpty) {
-        sb.writeln('**$title:** $val\n');
-      } else if (val is num) {
-        sb.writeln('**$title:** $val\n');
-      }
-    }
-  } else if (data is List) {
-    for (final item in data) {
-      if (item is Map) {
-        sb.writeln(_jsonToReadableMarkdown(item));
-      } else {
-        sb.writeln('- $item');
-      }
-    }
-  }
-  return sb.toString().trim();
-}
+// (Eski _jsonToReadableMarkdown kaldırıldı — artık _buildJsonVisualCards kullanılıyor)

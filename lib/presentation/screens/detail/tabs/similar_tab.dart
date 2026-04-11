@@ -64,7 +64,9 @@ class _SimilarProductsSection extends ConsumerWidget {
           ),
         );
         // Use provider's persona-aware ordering (already scored)
-        final top = products.take(12).toList();
+        final raw = products.take(12).toList();
+        // Çift sayı garantisi: tek sayıysa son elemanı düş (minimum 2)
+        final top = raw.length.isOdd && raw.length > 1 ? raw.sublist(0, raw.length - 1) : raw;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

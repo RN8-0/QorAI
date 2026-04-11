@@ -160,6 +160,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'الصق أي رابط (Zillow، BestBuy، FB Marketplace...)';
 
   @override
+  @override
+  String get allShoppingSitesSupported => 'جميع مواقع التسوق مدعومة';
+
   String get analyze => 'تحليل';
 
   @override

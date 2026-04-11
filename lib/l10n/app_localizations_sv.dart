@@ -162,6 +162,9 @@ class AppLocalizationsSv extends AppLocalizations {
       'Klistra in valfri länk (Zillow, BestBuy, FB Marketplace...)';
 
   @override
+  @override
+  String get allShoppingSitesSupported => 'Alla shoppingsidor stöds';
+
   String get analyze => 'Analysera';
 
   @override

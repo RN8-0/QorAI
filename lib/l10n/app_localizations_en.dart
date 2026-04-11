@@ -161,6 +161,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Paste any link (Zillow, BestBuy, FB Marketplace...)';
 
   @override
+  @override
+  String get allShoppingSitesSupported => 'All shopping sites are supported';
+
   String get analyze => 'Analyze';
 
   @override

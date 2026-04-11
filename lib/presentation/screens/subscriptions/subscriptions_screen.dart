@@ -184,13 +184,13 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
                     // Idle: input + suggestions
                     if (state.phase == SubFlowPhase.idle) ...[
+                      const SizedBox(height: 20),
                       _buildInputCard(isWorking),
                       const SizedBox(height: 20),
                       if (state.error != null) ...[
                         _buildError(state.error!),
                         const SizedBox(height: 16),
                       ],
-                      _buildPreviousComparisons(),
                       _buildInfoCards(),
                     ],
 
@@ -266,52 +266,36 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 ),
               ),
             ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Builder(builder: (ctx) {
-            final isDark = Theme.of(ctx).brightness == Brightness.dark;
-            final title = _getTitle(state.phase);
-            if (isDark) {
-              return ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [_kPrimary, _kSecondary, _kAccent],
-                ).createShader(bounds),
-                child: Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              );
-            }
-            return Text(
+      centerTitle: true,
+      title: Builder(builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final title = _getTitle(state.phase);
+        if (isDark) {
+          return ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [_kPrimary, _kSecondary, _kAccent],
+            ).createShader(bounds),
+            child: Text(
               title,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
-                color: _kPrimary,
+                color: Colors.white,
                 letterSpacing: -0.5,
               ),
-            );
-          }),
-          Text(
-            context.l10n?.subscriptionIntelligenceSubtitle ??
-                'AI-powered analysis with real web data',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: context.textTertiaryColor,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          );
+        }
+        return Text(
+          title,
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: _kPrimary,
+            letterSpacing: -0.5,
           ),
-        ],
-      ),
+        );
+      }),
       actions: [
         if (state.phase != SubFlowPhase.idle)
           _buildAppBarAction(
@@ -323,7 +307,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             },
             tooltip: context.l10n?.startOver ?? 'Start over',
           ),
-        const SizedBox(width: 8),
+        _buildAppBarAction(
+          icon: Icons.history_rounded,
+          onPressed: _showSubscriptionHistory,
+          tooltip: 'Geçmiş',
+        ),
+        const SizedBox(width: 4),
       ],
     );
   }
@@ -1011,6 +1000,134 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   // ── Previous Comparisons (idle) ─────────────────────────────────────────
+
+  // ═══════════════════════════════════════════════════════════
+  // SUBSCRIPTION HISTORY — Görev 13
+  // ═══════════════════════════════════════════════════════════
+
+  void _showSubscriptionHistory() {
+    final historyAsync = ref.read(subscriptionHistoryProvider);
+    final history = historyAsync.valueOrNull ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.92,
+        builder: (_, scrollCtrl) => Container(
+          decoration: BoxDecoration(
+            color: context.backgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: context.textTertiaryColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [_kPrimary, _kAccent]),
+                      borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.history_rounded,
+                      color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Geçmiş Karşılaştırmalar',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16, fontWeight: FontWeight.w800,
+                      color: context.textPrimary)),
+                ]),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: history.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.history_rounded, size: 48,
+                              color: context.textTertiaryColor.withValues(alpha: 0.3)),
+                            const SizedBox(height: 12),
+                            Text('Henüz karşılaştırma yok',
+                              style: GoogleFonts.inter(
+                                fontSize: 14, color: context.textTertiaryColor)),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: scrollCtrl,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: history.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
+                        itemBuilder: (_, i) {
+                          final entry = history[i];
+                          final services = (entry['services'] as List?)?.cast<String>() ?? [];
+                          final winner = entry['winner'] as String?;
+                          final timestamp = entry['timestamp'] as String?;
+                          final date = timestamp != null
+                              ? DateTime.tryParse(timestamp) : null;
+                          final dateStr = date != null
+                              ? '${date.day}/${date.month}/${date.year}' : '';
+
+                          return ListTile(
+                            leading: Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: _kPrimary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12)),
+                              child: const Icon(Icons.compare_arrows_rounded,
+                                color: _kPrimary, size: 20),
+                            ),
+                            title: Text(services.join(' vs '),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 13, fontWeight: FontWeight.w600,
+                                color: context.textPrimary)),
+                            subtitle: Text(
+                              [
+                                if (winner != null) '🏆 $winner',
+                                if (dateStr.isNotEmpty) dateStr,
+                              ].join(' • '),
+                              style: GoogleFonts.inter(
+                                fontSize: 11, color: context.textTertiaryColor)),
+                            trailing: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: _kPrimary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8)),
+                              child: const Icon(Icons.replay_rounded,
+                                color: _kPrimary, size: 16),
+                            ),
+                            onTap: () {
+                              Navigator.of(ctx).pop();
+                              setState(() {
+                                _chips.clear();
+                                _chips.addAll(services);
+                              });
+                              _startAnalysis();
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildPreviousComparisons() {
     final historyAsync = ref.watch(subscriptionHistoryProvider);

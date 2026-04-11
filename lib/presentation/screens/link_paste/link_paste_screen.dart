@@ -4,6 +4,7 @@
 /// Enhanced compatibility score with detailed breakdown.
 library;
 
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -302,40 +303,30 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           ),
                         ),
                       ),
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Builder(builder: (context) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
-                      final titleText = compareState.phase == ComparePhase.done
-                          ? 'Comparison'
-                          : _getTitle(quizState.phase);
-                      if (isDark) {
-                        return ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue, AppTheme.brandCyan],
-                          ).createShader(bounds),
-                          child: Text(titleText,
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800, fontSize: 17,
-                              color: Colors.white, letterSpacing: -0.5),
-                          ),
-                        );
-                      }
-                      return Text(titleText,
+                centerTitle: true,
+                title: Builder(builder: (context) {
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final titleText = compareState.phase == ComparePhase.done
+                      ? 'Comparison'
+                      : _getTitle(quizState.phase);
+                  if (isDark) {
+                    return ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue, AppTheme.brandCyan],
+                      ).createShader(bounds),
+                      child: Text(titleText,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w800, fontSize: 17,
-                          color: AppTheme.brandBlue, letterSpacing: -0.5),
-                      );
-                    }),
-                    Text(context.l10n?.aiPoweredProductAnalysis ?? 'AI-powered product analysis',
-                      style: GoogleFonts.inter(
-                        fontSize: 11, fontWeight: FontWeight.w500,
-                        color: context.textTertiaryColor),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
+                          color: Colors.white, letterSpacing: -0.5),
+                      ),
+                    );
+                  }
+                  return Text(titleText,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w800, fontSize: 17,
+                      color: AppTheme.brandBlue, letterSpacing: -0.5),
+                  );
+                }),
                 actions: [
                   if (showBack)
                     _buildAppBarAction(
@@ -349,7 +340,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       },
                       tooltip: context.l10n?.startOver ?? 'Start over',
                     ),
-                  const SizedBox(width: 8),
+                  _buildAppBarAction(
+                    icon: Icons.history_rounded,
+                    onPressed: _showAnalysisHistory,
+                    tooltip: 'Geçmiş',
+                  ),
+                  const SizedBox(width: 4),
                 ],
                 // Tab bar at the bottom of the app bar (only when idle)
                 bottom: (quizState.phase == LinkFlowPhase.idle && compareState.phase == ComparePhase.idle)
@@ -522,6 +518,20 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             if (quizState.phase == LinkFlowPhase.result &&
                 quizState.enhancedResult != null) ...[
               _EnhancedResultView(result: quizState.enhancedResult!),
+              // History'e kaydet (sadece bir kez)
+              Builder(builder: (_) {
+                final r = quizState.enhancedResult!;
+                final name = r.baseResult.metadata.title ?? '';
+                final url = _singleUrlController.text.trim();
+                if (name.isNotEmpty && url.isNotEmpty) {
+                  Future.microtask(() => _saveToHistory(
+                    url: url,
+                    productName: name,
+                    score: r.enhancedScore,
+                  ));
+                }
+                return const SizedBox.shrink();
+              }),
             ],
 
             SizedBox(height: AppTheme.navBarTotalClearance +
@@ -631,23 +641,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ),
                 ),
                 const SizedBox(height: 14),
-                // Supported stores chips
-                Wrap(
-                  spacing: 6, runSpacing: 6,
-                  children: ['Amazon', 'eBay', 'Best Buy', 'Trendyol', 'AliExpress', '100+']
-                      .map((store) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: context.surfaceVariantColor,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: context.textTertiaryColor.withValues(alpha: 0.12)),
-                            ),
-                            child: Text(store,
-                              style: GoogleFonts.inter(
-                                fontSize: 11, color: context.textTertiaryColor)),
-                          ))
-                      .toList(),
+                // Supported stores text
+                Center(
+                  child: Text(
+                    context.l10n?.allShoppingSitesSupported ?? 'Tüm alışveriş siteleri desteklenir',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 12, color: context.textTertiaryColor,
+                      fontWeight: FontWeight.w500),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 // Analyze button
@@ -2610,6 +2612,199 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           style: GoogleFonts.plusJakartaSans(
               fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // ANALYSIS HISTORY — Görev 11
+  // ═══════════════════════════════════════════════════════════
+
+  static const _historyKey = 'link_analysis_history_v1';
+
+  Future<List<Map<String, dynamic>>> _loadHistory() async {
+    try {
+      final cache = ref.read(cacheServiceProvider);
+      final raw = await cache.get<String>(_historyKey);
+      if (raw == null || raw.isEmpty) return [];
+      final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+      return list;
+    } catch (_) { return []; }
+  }
+
+  Future<void> _saveToHistory({
+    required String url,
+    required String productName,
+    required double score,
+  }) async {
+    try {
+      final cache = ref.read(cacheServiceProvider);
+      final history = await _loadHistory();
+      // Duplicate kontrolü
+      history.removeWhere((e) => e['url'] == url);
+      history.insert(0, {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'url': url,
+        'productName': productName,
+        'score': score,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+      // Max 30 kayıt
+      final trimmed = history.take(30).toList();
+      await cache.set<String>(_historyKey, jsonEncode(trimmed),
+          duration: const Duration(days: 30));
+    } catch (_) {}
+  }
+
+  Future<void> _showAnalysisHistory() async {
+    final history = await _loadHistory();
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.92,
+        builder: (_, scrollCtrl) => Container(
+          decoration: BoxDecoration(
+            color: context.backgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: context.textTertiaryColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2)),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
+                        borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.history_rounded,
+                        color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('Analiz Geçmişi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16, fontWeight: FontWeight.w800,
+                        color: context.textPrimary)),
+                    const Spacer(),
+                    if (history.isNotEmpty)
+                      TextButton(
+                        onPressed: () async {
+                          final cache = ref.read(cacheServiceProvider);
+                          await cache.set<String>(_historyKey, '[]',
+                              duration: const Duration(days: 30));
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Text('Temizle',
+                          style: GoogleFonts.inter(
+                            fontSize: 12, color: AppTheme.error)),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // List
+              Expanded(
+                child: history.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.history_rounded, size: 48,
+                              color: context.textTertiaryColor.withValues(alpha: 0.3)),
+                            const SizedBox(height: 12),
+                            Text('Henüz analiz geçmişi yok',
+                              style: GoogleFonts.inter(
+                                fontSize: 14, color: context.textTertiaryColor)),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: scrollCtrl,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: history.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
+                        itemBuilder: (_, i) {
+                          final item = history[i];
+                          final name = item['productName'] as String? ?? 'Ürün';
+                          final url = item['url'] as String? ?? '';
+                          final score = (item['score'] as num?)?.toDouble() ?? 0;
+                          final ts = item['timestamp'] as String?;
+                          final date = ts != null
+                              ? _formatDate(DateTime.tryParse(ts))
+                              : '';
+                          final scoreColor = score >= 80 ? AppTheme.green500
+                              : score >= 60 ? AppTheme.amber500
+                              : AppTheme.rose500;
+
+                          return ListTile(
+                            leading: Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: AppTheme.brandBlue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12)),
+                              child: const Icon(Icons.link_rounded,
+                                color: AppTheme.brandBlue, size: 20),
+                            ),
+                            title: Text(name,
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 13, fontWeight: FontWeight.w600,
+                                color: context.textPrimary)),
+                            subtitle: Text(date,
+                              style: GoogleFonts.inter(
+                                fontSize: 11, color: context.textTertiaryColor)),
+                            trailing: score > 0 ? Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: scoreColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8)),
+                              child: Text('${score.toStringAsFixed(0)}%',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12, fontWeight: FontWeight.w700,
+                                  color: scoreColor)),
+                            ) : null,
+                            onTap: () {
+                              Navigator.of(ctx).pop();
+                              // URL'yi forma doldur ve analizi başlat
+                              _singleUrlController.text = url;
+                              _tabController.animateTo(0);
+                              _startSingleAnalysis();
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '';
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'Az önce';
+    if (diff.inHours < 1) return '${diff.inMinutes}dk önce';
+    if (diff.inDays < 1) return '${diff.inHours}sa önce';
+    if (diff.inDays < 7) return '${diff.inDays}g önce';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   Widget _moreStoresPill() {

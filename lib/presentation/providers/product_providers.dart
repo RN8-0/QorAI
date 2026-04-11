@@ -2008,7 +2008,10 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
         if (result.length >= 12) break;
       }
 
-      return result;
+      // Çift sayı garantisi: tek sayıysa son elemanı düş (minimum 2)
+      return result.length.isOdd && result.length > 1
+          ? result.sublist(0, result.length - 1)
+          : result;
     } catch (_) {
       return [];
     }
