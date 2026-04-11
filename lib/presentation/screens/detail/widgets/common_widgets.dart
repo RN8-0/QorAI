@@ -168,46 +168,38 @@ class _NewBottomBar extends ConsumerWidget {
 
 class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   @override
-  double get minExtent => 64;
+  double get minExtent => 48;
 
   @override
-  double get maxExtent => 64;
+  double get maxExtent => 48;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: context.backgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+      color: context.surfaceColor,
+      child: TabBar(
+        isScrollable: false,
+        tabAlignment: TabAlignment.fill,
+        labelColor: Theme.of(context).colorScheme.primary,
+        unselectedLabelColor: context.textTertiaryColor,
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        indicator: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2.5,
             ),
-          ],
-        ),
-        child: TabBar(
-          indicator: const BoxDecoration(
-            color: AppTheme.primaryBlue,
-            borderRadius: BorderRadius.all(Radius.circular(24)),
           ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: context.surfaceVariantColor,
-          unselectedLabelColor: AppTheme.slate500,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-          dividerColor: Colors.transparent,
-          tabs: [
-            Tab(text: context.l10n?.specsTab ?? 'Specs'),
-            Tab(text: context.l10n?.reviews ?? 'Reviews'),
-            Tab(text: context.l10n?.similarTab ?? 'Similar'),
-            Tab(text: context.l10n?.proTab ?? 'Premium'),
-          ],
         ),
+        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        tabs: [
+          Tab(text: context.l10n?.specsTab ?? 'Specs'),
+          Tab(text: context.l10n?.reviews ?? 'Reviews'),
+          Tab(text: context.l10n?.similarTab ?? 'Similar'),
+          Tab(text: context.l10n?.proTab ?? 'Premium'),
+        ],
       ),
     );
   }
