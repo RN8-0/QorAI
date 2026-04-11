@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
+import 'package:compair/domain/entities/comparison_entity.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
