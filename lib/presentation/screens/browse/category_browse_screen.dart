@@ -16,7 +16,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
-import 'package:compair/core/product_filter.dart';
 import 'package:compair/config/filter_config.dart';
 import 'package:compair/presentation/models/filter_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -233,14 +232,14 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
     } catch (_) {}
 
-    // 3. Firestore fallback — load all products in category
+    // 3. Firestore fallback — load all products in category directly
     try {
       final result = await ref.read(productRepositoryProvider)
-          .getProducts(category: _activeCategoryId, limit: 300, orderBy: 'techScore', descending: true);
+          .getProducts(category: _activeCategoryId, limit: 1000, orderBy: 'techScore', descending: true);
       result.when(
         success: (products) {
           if (mounted) {
-            _hasMore = products.length >= AppConstants.categoryBrowsePageSize;
+            _hasMore = false; // loaded all at once
             setState(() { _allProducts = products; _loading = false; });
           }
         },
@@ -257,12 +256,14 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   Future<void> _loadMoreFromFirestore(String catKey, List<ProductEntity> initial) async {
     try {
       final result = await ref.read(productRepositoryProvider)
-          .getProducts(category: _activeCategoryId, limit: 300, orderBy: 'techScore', descending: true);
+          .getProducts(category: _activeCategoryId, limit: 1000, orderBy: 'techScore', descending: true);
       result.when(
         success: (products) {
-          if (!mounted || products.length <= initial.length) return;
+          if (!mounted) return;
           _hasMore = false;
-          setState(() { _allProducts = products; });
+          if (products.length > initial.length) {
+            setState(() { _allProducts = products; });
+          }
         },
         failure: (_) {},
       );
@@ -271,8 +272,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   List<ProductEntity> get _filteredProducts {
     if (_allProducts == null) return [];
-    // Apply year/brand filter first
-    var list = ProductFilter.filter(_allProducts!);
+    // Category browse shows ALL products from Firebase — no brand/year filter
+    var list = List<ProductEntity>.from(_allProducts!);
 
     // Search query filter
     if (_searchQuery.isNotEmpty) {
