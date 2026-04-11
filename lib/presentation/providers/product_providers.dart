@@ -1559,20 +1559,28 @@ final userProfileVectorProvider = Provider<Map<String, double>>((ref) {
   return algorithmService.calculateProfileVector(user);
 });
 
-/// Recently viewed product IDs (from Hive local storage)
-final viewedProductsProvider = Provider<List<String>>((ref) {
-  try {
-    return ref.watch(hiveDataSourceProvider).getViewedProducts();
-  } catch (_) {
-    return [];
-  }
+/// Recently viewed product IDs (Firestore-backed, persistent across sessions)
+final viewedProductsProvider = StreamProvider<List<String>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.when(
+    data: (user) {
+      if (user == null) return Stream.value(<String>[]);
+      return ref.read(firebaseDataSourceProvider).watchRecentlyViewed(user.uid);
+    },
+    loading: () => Stream.value(<String>[]),
+    error: (_, __) => Stream.value(<String>[]),
+  );
 });
 
 /// Record a product view (non-blocking, uses cached data)
 Future<void> recordProductView(WidgetRef ref, String productId) async {
   try {
     await ref.read(hiveDataSourceProvider).addViewedProduct(productId);
-    ref.invalidate(viewedProductsProvider);
+    // Save to Firestore for persistence
+    final user = ref.read(authStateProvider).valueOrNull;
+    if (user != null) {
+      ref.read(firebaseDataSourceProvider).addRecentlyViewed(user.uid, productId);
+    }
     // Get product info from cache (no network call)
     String category = '';
     String? brand;
@@ -1711,7 +1719,8 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
       }
 
       // Recently viewed product IDs for boosting/awareness
-      final viewedIds = ref.read(viewedProductsProvider);
+      final viewedAsync = ref.read(viewedProductsProvider);
+      final viewedIds = viewedAsync.valueOrNull ?? [];
       final recentViewedSet = viewedIds.take(10).toSet();
 
       // 1) Build product pool from multiple sources

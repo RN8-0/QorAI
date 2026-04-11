@@ -605,6 +605,4 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
   }
 }
 
-
-// ─── Benchmark Comparison Section (numerical table) ───
 

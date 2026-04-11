@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -758,9 +759,21 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildRichContent(String content, Color accentColor) {
+    // If content looks like raw JSON, clean it up for display
+    var displayContent = content;
+    final trimmed = content.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(trimmed);
+        displayContent = _jsonToReadableMarkdown(decoded);
+      } catch (_) {
+        // Not valid JSON, show as-is
+      }
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return MarkdownBody(
-      data: content,
+      data: displayContent,
       selectable: true,
       styleSheet: MarkdownStyleSheet(
         p: GoogleFonts.plusJakartaSans(
@@ -947,70 +960,51 @@ class SharedPremiumFeaturesSectionState
   }
 }
 
-/// Collapsible wrapper for benchmark scores in premium section.
-class SharedBenchmarkCollapsibleCard extends StatefulWidget {
-  final Widget child;
-  const SharedBenchmarkCollapsibleCard({super.key, required this.child});
-
-  @override
-  State<SharedBenchmarkCollapsibleCard> createState() => _SharedBenchmarkCollapsibleCardState();
-}
-
-class _SharedBenchmarkCollapsibleCardState extends State<SharedBenchmarkCollapsibleCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    const gradient = [AppTheme.premiumPurple, AppTheme.neonPurple];
-
-    return GestureDetector(
-      onTap: () => setState(() => _expanded = !_expanded),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: gradient[0].withValues(alpha: 0.15)),
-          boxShadow: [BoxShadow(
-            color: gradient[0].withValues(alpha: 0.08),
-            blurRadius: 12, offset: const Offset(0, 4))]),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: gradient),
-                  borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.speed_rounded, color: context.surfaceVariantColor, size: 20)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.l10n?.benchmarkScores ?? 'Benchmark Puanları', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15, fontWeight: FontWeight.w700,
-                    color: context.textPrimary)),
-                  const SizedBox(height: 2),
-                  Text('AI destekli gerçek veritabanlarından benchmark arama',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, color: context.textSecondary)),
-                ])),
-              Icon(_expanded
-                  ? Icons.expand_less_rounded
-                  : Icons.expand_more_rounded,
-                color: gradient[0]),
-            ]),
-            if (_expanded) ...[
-              const SizedBox(height: 14),
-              widget.child,
-            ],
-          ],
-        ),
-      ),
-    );
+/// Converts a parsed JSON object/array to human-readable Markdown
+String _jsonToReadableMarkdown(dynamic data) {
+  final sb = StringBuffer();
+  if (data is Map<String, dynamic>) {
+    for (final entry in data.entries) {
+      final key = entry.key;
+      final val = entry.value;
+      final label = key.replaceAllMapped(
+        RegExp(r'([a-z])([A-Z])'), (m) => '${m[1]} ${m[2]}',
+      );
+      final title = label[0].toUpperCase() + label.substring(1);
+      if (val is List) {
+        sb.writeln('### $title');
+        for (final item in val) {
+          if (item is Map) {
+            final name = item['name']?.toString() ?? '';
+            final detail = item['detail']?.toString() ?? '';
+            final score = item['score'];
+            if (name.isNotEmpty) {
+              sb.write('- **$name**');
+              if (score != null) sb.write(' ($score)');
+              if (detail.isNotEmpty) sb.write(': $detail');
+              sb.writeln();
+            } else {
+              sb.writeln('- $item');
+            }
+          } else {
+            sb.writeln('- $item');
+          }
+        }
+        sb.writeln();
+      } else if (val is String && val.isNotEmpty) {
+        sb.writeln('**$title:** $val\n');
+      } else if (val is num) {
+        sb.writeln('**$title:** $val\n');
+      }
+    }
+  } else if (data is List) {
+    for (final item in data) {
+      if (item is Map) {
+        sb.writeln(_jsonToReadableMarkdown(item));
+      } else {
+        sb.writeln('- $item');
+      }
+    }
   }
+  return sb.toString().trim();
 }

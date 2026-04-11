@@ -218,7 +218,13 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
                     Tab(child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(context.l10n?.proTab ?? 'Premium'),
+                        Flexible(
+                          child: Text(
+                            context.l10n?.proTab ?? 'Premium',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
                         const SizedBox(width: 3),
                         Icon(Icons.diamond_rounded, size: 11,
                           color: isPremium ? context.surfaceVariantColor : AppTheme.slate500),

@@ -1709,9 +1709,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === DYNAMIC USER SECTIONS =================================================
 
-  /// Recently Viewed section — shows products user has recently viewed from Hive
+  /// Recently Viewed section — shows products user has recently viewed from Firestore
   List<Widget> _buildRecentlyViewedSection() {
-    final viewedIds = ref.watch(viewedProductsProvider);
+    final viewedAsync = ref.watch(viewedProductsProvider);
+    final viewedIds = viewedAsync.valueOrNull ?? [];
     if (viewedIds.isEmpty) return [];
 
     // Match viewed product IDs with full product data from homeFeed cache

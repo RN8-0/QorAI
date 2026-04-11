@@ -706,7 +706,8 @@ class _ProductPreviewList extends ConsumerWidget {
 class _RecentlyViewedPreviewList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final viewed = ref.watch(viewedProductsProvider);
+    final viewedAsync = ref.watch(viewedProductsProvider);
+    final viewed = viewedAsync.valueOrNull ?? [];
 
     if (viewed.isEmpty) {
       return Center(

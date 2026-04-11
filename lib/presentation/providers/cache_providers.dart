@@ -242,9 +242,17 @@ String _cleanJsonString(String raw) {
   s = s.trim();
   // If it doesn't start with { or [, try to extract JSON
   if (!s.startsWith('{') && !s.startsWith('[')) {
-    final match = RegExp(r'(\{[\s\S]*\})', multiLine: true).firstMatch(s);
-    if (match != null) s = match.group(1)!;
+    // Try object first, then array
+    final objMatch = RegExp(r'(\{[\s\S]*\})', multiLine: true).firstMatch(s);
+    if (objMatch != null) {
+      s = objMatch.group(1)!;
+    } else {
+      final arrMatch = RegExp(r'(\[[\s\S]*\])', multiLine: true).firstMatch(s);
+      if (arrMatch != null) s = arrMatch.group(1)!;
+    }
   }
+  // Remove trailing commas before } or ]
+  s = s.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
   return s;
 }
 
@@ -607,61 +615,6 @@ class _PredictionCacheNotifier extends StateNotifier<AsyncValue<PredictionResult
       debugPrint('[Prediction] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
       return PredictionResult(rawFallback: raw);
     }
-  }
-
-  void reset() => state = const AsyncValue.data(null);
-}
-
-// ════════════════════════════════════════════════════
-// ─── BENCHMARK SCORES CACHE ───
-// ════════════════════════════════════════════════════
-
-class BenchmarkResult {
-  final String rawScoresResponse;
-  final String? rawVerdictResponse;
-  final bool failed;
-  const BenchmarkResult({this.rawScoresResponse = '', this.rawVerdictResponse, this.failed = false});
-}
-
-final benchmarkCacheProvider = StateNotifierProvider.family<
-    _BenchmarkCacheNotifier, AsyncValue<BenchmarkResult?>, String>((ref, productId) {
-  return _BenchmarkCacheNotifier(ref, productId);
-});
-
-class _BenchmarkCacheNotifier extends StateNotifier<AsyncValue<BenchmarkResult?>> {
-  final Ref _ref;
-  final String _productId;
-  _BenchmarkCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
-
-  Future<void> fetchBenchmarks(String prompt) async {
-    if (state is AsyncLoading) return;
-    if (state.valueOrNull != null) return;
-    state = const AsyncValue.loading();
-    try {
-      final gemini = _ref.read(geminiServiceProvider);
-      final result = await gemini.groundedQuery(prompt);
-      if (result.isNotEmpty) {
-        state = AsyncValue.data(BenchmarkResult(rawScoresResponse: result));
-      } else {
-        state = const AsyncValue.data(BenchmarkResult(failed: true));
-      }
-    } catch (e) {
-      state = const AsyncValue.data(BenchmarkResult(failed: true));
-    }
-  }
-
-  Future<void> fetchVerdict(String prompt) async {
-    final current = state.valueOrNull;
-    if (current == null || current.rawVerdictResponse != null) return;
-    try {
-      final gemini = _ref.read(geminiServiceProvider);
-      final result = await gemini.jsonFreeTextQuery(prompt);
-      state = AsyncValue.data(BenchmarkResult(
-        rawScoresResponse: current.rawScoresResponse,
-        rawVerdictResponse: result,
-        failed: current.failed,
-      ));
-    } catch (_) {}
   }
 
   void reset() => state = const AsyncValue.data(null);

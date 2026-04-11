@@ -90,6 +90,51 @@ class FirebaseDataSource {
     return !isFav; // returns new state
   }
 
+  // ─── Recently Viewed (Firestore persistence) ───
+
+  /// Save a viewed product to Firestore sub-collection
+  Future<void> addRecentlyViewed(String uid, String productId) async {
+    try {
+      final docRef = _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .collection('recently_viewed')
+          .doc(productId);
+      await docRef.set({
+        'productId': productId,
+        'viewedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
+
+  /// Get recently viewed product IDs from Firestore (ordered by most recent)
+  Future<List<String>> getRecentlyViewed(String uid) async {
+    try {
+      final snap = await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .collection('recently_viewed')
+          .orderBy('viewedAt', descending: true)
+          .limit(50)
+          .get();
+      return snap.docs.map((d) => d.id).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Stream recently viewed product IDs (realtime)
+  Stream<List<String>> watchRecentlyViewed(String uid) {
+    return _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(uid)
+        .collection('recently_viewed')
+        .orderBy('viewedAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.id).toList());
+  }
+
   // ─── User Activity Tracking ───
 
   /// Save a quiz entry to user's quizHistory array (max 50 entries)

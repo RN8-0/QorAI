@@ -543,7 +543,6 @@ class AppLocalizationsPl extends AppLocalizations {
   String get aiComparisonReview => 'Recenzja porównania AI';
 
   @override
-  String get benchmarkScores => 'Wyniki benchmark';
 
   @override
   String get userReviews => 'Recenzje użytkowników';
@@ -654,7 +653,6 @@ class AppLocalizationsPl extends AppLocalizations {
   String get aiVerified => 'Zweryfikowane przez AI';
 
   @override
-  String get loadBenchmarkScores => 'Załaduj wyniki benchmark';
 
   @override
   String get premiumInsights => 'Spostrzeżenia premium';
