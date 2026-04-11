@@ -18,6 +18,7 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:compair/presentation/screens/subscriptions/subscription_history_screen.dart';
 
 // ─── Design tokens (mapped to global AppTheme brand palette) ─────────────────
 const _kPrimary = AppTheme.brandBlue;
@@ -1007,132 +1008,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   // ═══════════════════════════════════════════════════════════
 
   void _showSubscriptionHistory() {
-    final historyAsync = ref.read(subscriptionHistoryProvider);
-    final history = historyAsync.valueOrNull ?? [];
-
-    // Capture theme values before async/modal context
-    final bgColor = context.backgroundColor;
-    final textPrimaryColor = context.textPrimary;
-    final textTertiaryClr = context.textTertiaryColor;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.3,
-        maxChildSize: 0.92,
-        builder: (_, scrollCtrl) => Container(
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: textTertiaryClr.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2)),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_kPrimary, _kAccent]),
-                      borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.history_rounded,
-                      color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Text('Geçmiş Karşılaştırmalar',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16, fontWeight: FontWeight.w800,
-                      color: textPrimaryColor)),
-                ]),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: history.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.history_rounded, size: 48,
-                              color: textTertiaryClr.withValues(alpha: 0.3)),
-                            const SizedBox(height: 12),
-                            Text('Henüz karşılaştırma yok',
-                              style: GoogleFonts.inter(
-                                fontSize: 14, color: textTertiaryClr)),
-                          ],
-                        ),
-                      )
-                    : ListView.separated(
-                        controller: scrollCtrl,
-                        padding: EdgeInsets.only(
-                            top: 8,
-                            bottom: AppTheme.navBarTotalClearance + 8),
-                        itemCount: history.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
-                        itemBuilder: (_, i) {
-                          final entry = history[i];
-                          final services = (entry['services'] as List?)?.cast<String>() ?? [];
-                          final winner = entry['winner'] as String?;
-                          final timestamp = entry['timestamp'] as String?;
-                          final date = timestamp != null
-                              ? DateTime.tryParse(timestamp) : null;
-                          final dateStr = date != null
-                              ? '${date.day}/${date.month}/${date.year}' : '';
-
-                          return ListTile(
-                            leading: Container(
-                              width: 44, height: 44,
-                              decoration: BoxDecoration(
-                                color: _kPrimary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12)),
-                              child: const Icon(Icons.compare_arrows_rounded,
-                                color: _kPrimary, size: 20),
-                            ),
-                            title: Text(services.join(' vs '),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 13, fontWeight: FontWeight.w600,
-                                color: textPrimaryColor)),
-                            subtitle: Text(
-                              [
-                                if (winner != null) '🏆 $winner',
-                                if (dateStr.isNotEmpty) dateStr,
-                              ].join(' • '),
-                              style: GoogleFonts.inter(
-                                fontSize: 11, color: textTertiaryClr)),
-                            trailing: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: _kPrimary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8)),
-                              child: const Icon(Icons.replay_rounded,
-                                color: _kPrimary, size: 16),
-                            ),
-                            onTap: () {
-                              Navigator.of(ctx).pop();
-                              setState(() {
-                                _chips.clear();
-                                _chips.addAll(services);
-                              });
-                              _startAnalysis();
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const SubscriptionHistoryScreen(),
       ),
     );
   }

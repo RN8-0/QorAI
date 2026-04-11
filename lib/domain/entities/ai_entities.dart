@@ -145,6 +145,24 @@ class LinkAnalysisResult extends Equatable {
     required this.analyzedAt,
   });
 
+  Map<String, dynamic> toJson() => {
+    'url': url,
+    'metadata': metadata.toJson(),
+    'aiScore': aiScore,
+    'aiAnalysis': aiAnalysis,
+    'category': category,
+    'analyzedAt': analyzedAt.toIso8601String(),
+  };
+
+  factory LinkAnalysisResult.fromJson(Map<String, dynamic> j) => LinkAnalysisResult(
+    url: j['url'] as String,
+    metadata: OgMetadata.fromJson(j['metadata'] as Map<String, dynamic>),
+    aiScore: (j['aiScore'] as num).toDouble(),
+    aiAnalysis: j['aiAnalysis'] as String,
+    category: j['category'] as String?,
+    analyzedAt: DateTime.parse(j['analyzedAt'] as String),
+  );
+
   @override
   List<Object?> get props => [url, aiScore];
 }
@@ -164,6 +182,22 @@ class OgMetadata extends Equatable {
     this.price,
     this.siteName,
   });
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'description': description,
+    'image': image,
+    'price': price,
+    'siteName': siteName,
+  };
+
+  factory OgMetadata.fromJson(Map<String, dynamic> j) => OgMetadata(
+    title: j['title'] as String?,
+    description: j['description'] as String?,
+    image: j['image'] as String?,
+    price: j['price'] as String?,
+    siteName: j['siteName'] as String?,
+  );
 
   @override
   List<Object?> get props => [title, description];
@@ -234,6 +268,28 @@ class EnhancedAnalysisResult extends Equatable {
     this.alternatives = const [],
   });
 
+  Map<String, dynamic> toJson() => {
+    'baseResult': baseResult.toJson(),
+    'enhancedScore': enhancedScore,
+    'factors': factors.map((f) => f.toJson()).toList(),
+    'detailedVerdict': detailedVerdict,
+    'prosForUser': prosForUser,
+    'consForUser': consForUser,
+    'alternatives': alternatives,
+  };
+
+  factory EnhancedAnalysisResult.fromJson(Map<String, dynamic> j) => EnhancedAnalysisResult(
+    baseResult: LinkAnalysisResult.fromJson(j['baseResult'] as Map<String, dynamic>),
+    enhancedScore: (j['enhancedScore'] as num).toDouble(),
+    factors: (j['factors'] as List<dynamic>? ?? [])
+        .map((f) => CompatibilityFactor.fromJson(f as Map<String, dynamic>))
+        .toList(),
+    detailedVerdict: j['detailedVerdict'] as String,
+    prosForUser: (j['prosForUser'] as List<dynamic>? ?? []).cast<String>(),
+    consForUser: (j['consForUser'] as List<dynamic>? ?? []).cast<String>(),
+    alternatives: (j['alternatives'] as List<dynamic>? ?? []).cast<String>(),
+  );
+
   @override
   List<Object?> get props => [baseResult, enhancedScore];
 }
@@ -248,6 +304,14 @@ class CompatibilityFactor extends Equatable {
     required this.score,
     required this.emoji,
   });
+
+  Map<String, dynamic> toJson() => {'label': label, 'score': score, 'emoji': emoji};
+
+  factory CompatibilityFactor.fromJson(Map<String, dynamic> j) => CompatibilityFactor(
+    label: j['label'] as String,
+    score: (j['score'] as num).toDouble(),
+    emoji: j['emoji'] as String,
+  );
 
   @override
   List<Object?> get props => [label, score];

@@ -20,6 +20,7 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:compair/presentation/screens/link_paste/link_analysis_history_screen.dart';
 
 // ── Part files ──
 part 'widgets/quiz_widgets.dart';
@@ -528,6 +529,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     url: url,
                     productName: name,
                     score: r.enhancedScore,
+                    result: r,
                   ));
                 }
                 return const SizedBox.shrink();
@@ -2634,6 +2636,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     required String url,
     required String productName,
     required double score,
+    EnhancedAnalysisResult? result,
   }) async {
     try {
       final cache = ref.read(cacheServiceProvider);
@@ -2646,6 +2649,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         'productName': productName,
         'score': score,
         'timestamp': DateTime.now().toIso8601String(),
+        if (result != null) 'result': result.toJson(),
       });
       // Max 30 kayıt
       final trimmed = history.take(30).toList();
@@ -2654,150 +2658,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     } catch (_) {}
   }
 
-  Future<void> _showAnalysisHistory() async {
-    final history = await _loadHistory();
-    if (!mounted) return;
-    // Capture theme values before entering modal builder
-    final bgColor = context.backgroundColor;
-    final textPrimaryColor = context.textPrimary;
-    final textTertiaryClr = context.textTertiaryColor;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.3,
-        maxChildSize: 0.92,
-        builder: (_, scrollCtrl) => Container(
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              // Handle
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: textTertiaryClr.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2)),
-              ),
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
-                        borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.history_rounded,
-                        color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Text('Analiz Geçmişi',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16, fontWeight: FontWeight.w800,
-                        color: textPrimaryColor)),
-                    const Spacer(),
-                    if (history.isNotEmpty)
-                      TextButton(
-                        onPressed: () async {
-                          final cache = ref.read(cacheServiceProvider);
-                          await cache.set<String>(_historyKey, '[]',
-                              duration: const Duration(days: 30));
-                          Navigator.of(ctx).pop();
-                        },
-                        child: Text('Temizle',
-                          style: GoogleFonts.inter(
-                            fontSize: 12, color: AppTheme.error)),
-                      ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              // List
-              Expanded(
-                child: history.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.history_rounded, size: 48,
-                              color: textTertiaryClr.withValues(alpha: 0.3)),
-                            const SizedBox(height: 12),
-                            Text('Henüz analiz geçmişi yok',
-                              style: GoogleFonts.inter(
-                                fontSize: 14, color: textTertiaryClr)),
-                          ],
-                        ),
-                      )
-                    : ListView.separated(
-                        controller: scrollCtrl,
-                        padding: EdgeInsets.only(
-                            top: 8,
-                            bottom: AppTheme.navBarTotalClearance + 8),
-                        itemCount: history.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
-                        itemBuilder: (_, i) {
-                          final item = history[i];
-                          final name = item['productName'] as String? ?? 'Ürün';
-                          final url = item['url'] as String? ?? '';
-                          final score = (item['score'] as num?)?.toDouble() ?? 0;
-                          final ts = item['timestamp'] as String?;
-                          final date = ts != null
-                              ? _formatDate(DateTime.tryParse(ts))
-                              : '';
-                          final scoreColor = score >= 80 ? AppTheme.green500
-                              : score >= 60 ? AppTheme.amber500
-                              : AppTheme.rose500;
-
-                          return ListTile(
-                            leading: Container(
-                              width: 44, height: 44,
-                              decoration: BoxDecoration(
-                                color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12)),
-                              child: const Icon(Icons.link_rounded,
-                                color: AppTheme.brandBlue, size: 20),
-                            ),
-                            title: Text(name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 13, fontWeight: FontWeight.w600,
-                                color: textPrimaryColor)),
-                            subtitle: Text(date,
-                              style: GoogleFonts.inter(
-                                fontSize: 11, color: textTertiaryClr)),
-                            trailing: score > 0 ? Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: scoreColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8)),
-                              child: Text('${score.toStringAsFixed(0)}%',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12, fontWeight: FontWeight.w700,
-                                  color: scoreColor)),
-                            ) : null,
-                            onTap: () {
-                              Navigator.of(ctx).pop();
-                              // URL'yi forma doldur ve analizi başlat
-                              _singleUrlController.text = url;
-                              _tabController.animateTo(0);
-                              _startSingleAnalysis();
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
+  void _showAnalysisHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const LinkAnalysisHistoryScreen(),
       ),
     );
   }

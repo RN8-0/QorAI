@@ -547,6 +547,15 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   void reset() {
     state = const LinkQuizState();
   }
+
+  /// Restore a previously saved analysis result from history.
+  void restoreFromHistory(EnhancedAnalysisResult result) {
+    state = LinkQuizState(
+      phase: LinkFlowPhase.result,
+      enhancedResult: result,
+      baseResult: result.baseResult,
+    );
+  }
 }
 
 final linkQuizProvider =
@@ -962,6 +971,22 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   void reset() => state = const SubQuizState();
 
+  /// Restore a previously saved subscription analysis from history.
+  void restoreFromHistory({
+    required List<String> services,
+    required String analysisResult,
+    required Map<String, double> scores,
+    Map<String, dynamic>? structured,
+  }) {
+    state = SubQuizState(
+      phase: SubFlowPhase.result,
+      subscriptionNames: services,
+      analysisResult: analysisResult,
+      scores: scores,
+      structured: structured,
+    );
+  }
+
   /// Step 1: Generate AI quiz based on subscription names.
   Future<void> startQuiz(List<String> names) async {
     if (!_subService.canAskAI) {
@@ -1083,6 +1108,8 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
             'services': names,
             'scores': Map<String, double>.from(result['scores'] as Map? ?? {}),
             'winner': winnerData is Map ? winnerData['overall'] : null,
+            'analysisResult': result['analysis'] as String? ?? '',
+            'structured': result['structured'] as Map<String, dynamic>?,
           };
           _ref.read(firebaseDataSourceProvider).saveSubscriptionHistory(authState.uid, entry);
         }
@@ -1292,4 +1319,4 @@ bool isFavorite(WidgetRef ref, String productId) {
   if (user == null) return false;
   return user.favorites.contains(productId);
 }
-
+

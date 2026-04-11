@@ -218,7 +218,9 @@ final searchResultsProvider =
         });
       }
 
-      return Success(products.take(500).toList());
+      // Dedup before returning — homeFeed pool can have storage/color variants
+      final deduped = deduplicateVariants(products);
+      return Success(deduped.take(500).toList());
     }
     return ref.read(productRepositoryProvider).getProducts(limit: 200);
   }
