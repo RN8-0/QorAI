@@ -748,12 +748,15 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   }
 
   // Build priority category list based on behavior + profile
+  // Only include categories with at least 4 products
+  bool hasSufficientProducts(String cat) => (byCategory[cat]?.length ?? 0) >= 4;
+
   final priorityCats = <String>[];
   // First: categories from behavior (most viewed first)
   final sortedViewedCats = viewedCategoryScores.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
   for (final e in sortedViewedCats) {
-    if (byCategory.containsKey(e.key) && !priorityCats.contains(e.key)) {
+    if (byCategory.containsKey(e.key) && hasSufficientProducts(e.key) && !priorityCats.contains(e.key)) {
       priorityCats.add(e.key);
     }
   }
@@ -761,21 +764,21 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   if (user != null) {
     for (final interest in user.interestCategories) {
       final cat = interest.toLowerCase().trim();
-      if (byCategory.containsKey(cat) && !priorityCats.contains(cat)) {
+      if (byCategory.containsKey(cat) && hasSufficientProducts(cat) && !priorityCats.contains(cat)) {
         priorityCats.add(cat);
       }
     }
     // Primary category
     if (user.primaryCategory != null) {
       final primary = user.primaryCategory!.toLowerCase().trim();
-      if (byCategory.containsKey(primary) && !priorityCats.contains(primary)) {
+      if (byCategory.containsKey(primary) && hasSufficientProducts(primary) && !priorityCats.contains(primary)) {
         priorityCats.insert(0, primary);
       }
     }
   }
   // Finally: remaining categories by product count
   for (final cat in byCategory.keys) {
-    if (!priorityCats.contains(cat)) priorityCats.add(cat);
+    if (!priorityCats.contains(cat) && hasSufficientProducts(cat)) priorityCats.add(cat);
   }
 
   debugPrint('=== COMPAIR: homeFeed built — cats:${byCategory.keys.join(",")} '
@@ -1584,9 +1587,9 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
   );
 });
 
-/// Synchronous provider: always returns viewed product entities immediately.
-/// Uses Hive as instant source, enriched by Firestore stream when available.
-final recentlyViewedProductsProvider = Provider<List<ProductEntity>>((ref) {
+/// Recently viewed products — feed + Firestore fallback for missing items.
+/// Reactive: rebuilds when viewedProducts or homeFeed change.
+final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
   // Prefer Firestore stream data, fall back to Hive
   final firestoreIds = ref.watch(viewedProductsProvider).valueOrNull;
   final hiveDs = ref.read(hiveDataSourceProvider);
@@ -1596,16 +1599,43 @@ final recentlyViewedProductsProvider = Provider<List<ProductEntity>>((ref) {
 
   final feed = ref.watch(homeFeedProvider);
   final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
-  if (allProducts.isEmpty) return [];
 
   final productMap = {for (final p in allProducts) p.id: p};
-  final results = <ProductEntity>[];
-  for (final id in viewedIds.take(20)) {
-    if (id.isNotEmpty && productMap.containsKey(id)) {
-      results.add(productMap[id]!);
+  final limitedIds = viewedIds.take(20).where((id) => id.isNotEmpty).toList();
+
+  // Separate found vs missing
+  final results = <String, ProductEntity>{};
+  final missingIds = <String>[];
+  for (final id in limitedIds) {
+    if (productMap.containsKey(id)) {
+      results[id] = productMap[id]!;
+    } else {
+      missingIds.add(id);
     }
   }
-  return results;
+
+  // Fetch missing from Firestore in parallel (max 10)
+  if (missingIds.isNotEmpty) {
+    final repo = ref.read(productRepositoryProvider);
+    final futures = missingIds.take(10).map((id) async {
+      try {
+        final result = await repo.getProduct(id);
+        return result.when(
+          success: (p) => MapEntry(id, p),
+          failure: (_) => null,
+        );
+      } catch (_) {
+        return null;
+      }
+    });
+    final fetched = await Future.wait(futures);
+    for (final entry in fetched) {
+      if (entry != null) results[entry.key] = entry.value;
+    }
+  }
+
+  // Return in original viewedIds order
+  return limitedIds.where((id) => results.containsKey(id)).map((id) => results[id]!).toList();
 });
 
 /// Record a product view (non-blocking, uses cached data)

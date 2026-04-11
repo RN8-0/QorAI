@@ -1711,7 +1711,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   /// Recently Viewed section — shows products user has recently viewed from Firestore
   List<Widget> _buildRecentlyViewedSection() {
-    final recentProducts = ref.watch(recentlyViewedProductsProvider);
+    final recentAsync = ref.watch(recentlyViewedProductsProvider);
+    final recentProducts = recentAsync.valueOrNull ?? [];
     if (recentProducts.isEmpty) return [];
 
     return [
@@ -1765,7 +1766,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         data: (f) => f.byCategory[category]?.length ?? 0,
       ) ?? 0;
       final isLoading = feed.isLoading;
-      if (!isLoading && productCount < 1) continue;
+      if (!isLoading && productCount < 4) continue;
 
       final info = _categoryMeta(category);
       final isWide = shown < 6; // First 6 categories are wide cards
