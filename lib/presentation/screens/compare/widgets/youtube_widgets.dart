@@ -263,9 +263,46 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   double _dy = -1;
   bool _positionSet = false;
   bool _hidden = false;
+  bool _loading = true;
+  late final WebViewController _controller;
 
   static const _playerW = 300.0;
   static const _playerH = 169.0;
+
+  String get _youtubeUrl =>
+      'https://m.youtube.com/watch?v=${widget.videoId}&autoplay=1';
+
+  static const _mobileUA =
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_mobileUA)
+      ..setBackgroundColor(Colors.black)
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageFinished: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onWebResourceError: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onNavigationRequest: (req) {
+          final host = Uri.tryParse(req.url)?.host ?? '';
+          const allowed = [
+            'youtube.com', 'googlevideo.com', 'ytimg.com',
+            'googleapis.com', 'google.com', 'gstatic.com',
+          ];
+          return allowed.any((d) => host.contains(d))
+              ? NavigationDecision.navigate
+              : NavigationDecision.prevent;
+        },
+      ))
+      ..loadRequest(Uri.parse(_youtubeUrl));
+  }
 
   void _openFullscreen() {
     setState(() => _hidden = true);
@@ -295,79 +332,69 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
       _positionSet = true;
     }
 
-    final thumb = widget.thumbnailUrl.isNotEmpty
-        ? widget.thumbnailUrl
-        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
-
     return Positioned(
       left: _dx, top: _dy,
       child: Material(
         color: Colors.transparent,
-        child: GestureDetector(
-          onPanUpdate: (d) {
-            setState(() {
-              _dx = (_dx + d.delta.dx).clamp(0.0, size.width - _playerW);
-              _dy = (_dy + d.delta.dy).clamp(0.0, size.height - _playerH);
-            });
-          },
-          child: Container(
-            width: _playerW, height: _playerH,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(
-                color: Colors.black.withValues(alpha: 0.55),
-                blurRadius: 24, offset: const Offset(0, 8))],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Stack(children: [
-                // Thumbnail + oynat butonu
+        child: Container(
+          width: _playerW, height: _playerH,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [BoxShadow(
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 24, offset: const Offset(0, 8))],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(children: [
+              // WebView — video direkt oynar
+              Positioned.fill(
+                child: WebViewWidget(controller: _controller),
+              ),
+
+              // Yüklenirken spinner
+              if (_loading)
                 Positioned.fill(
-                  child: _CmpThumbnailOverlay(
-                    thumbnailUrl: thumb,
-                    onTap: _openFullscreen,
+                  child: Container(
+                    color: Colors.black,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.red, strokeWidth: 2),
+                    ),
                   ),
                 ),
-                // Üst şerit: drag handle + fullscreen + kapat
-                Positioned(top: 0, left: 0, right: 0,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: _openFullscreen,
-                    child: Container(
-                      height: 36,
-                      decoration: BoxDecoration(gradient: LinearGradient(
-                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                        colors: [Colors.black.withValues(alpha: 0.65), Colors.transparent],
-                      )),
-                      child: Row(children: [
-                        const SizedBox(width: 8),
-                        Container(width: 24, height: 3,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(2))),
-                        const Spacer(),
-                        _CmpIconBtn(icon: Icons.fullscreen_rounded, onTap: _openFullscreen),
-                        _CmpIconBtn(icon: Icons.close_rounded, onTap: widget.onClose,
-                          margin: const EdgeInsets.only(right: 6)),
-                      ]),
-                    ),
-                  )),
-                // Alt şerit: başlık
-                Positioned(bottom: 0, left: 0, right: 0,
-                  child: IgnorePointer(child: Container(
-                    padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
+
+              // Üst şerit — DRAG HANDLE + fullscreen + kapat
+              Positioned(top: 0, left: 0, right: 0,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanUpdate: (d) {
+                    setState(() {
+                      _dx = (_dx + d.delta.dx).clamp(0.0, size.width - _playerW);
+                      _dy = (_dy + d.delta.dy).clamp(0.0, size.height - _playerH);
+                    });
+                  },
+                  child: Container(
+                    height: 36,
                     decoration: BoxDecoration(gradient: LinearGradient(
-                      begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                      colors: [Colors.black.withValues(alpha: 0.75), Colors.transparent],
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
                     )),
-                    child: Text(widget.title,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ))),
-              ]),
-            ),
+                    child: Row(children: [
+                      const SizedBox(width: 8),
+                      Container(width: 24, height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(2))),
+                      const Spacer(),
+                      _CmpIconBtn(icon: Icons.fullscreen_rounded, onTap: _openFullscreen),
+                      _CmpIconBtn(icon: Icons.close_rounded, onTap: widget.onClose,
+                        margin: const EdgeInsets.only(right: 6)),
+                    ]),
+                  ),
+                )),
+            ]),
           ),
         ),
       ),
@@ -553,33 +580,6 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
 // YARDIMCI WİDGET'LAR (Compare)
 // ═══════════════════════════════════════════════════════════
 
-class _CmpThumbnailOverlay extends StatelessWidget {
-  final String thumbnailUrl;
-  final VoidCallback onTap;
-  const _CmpThumbnailOverlay({required this.thumbnailUrl, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(fit: StackFit.expand, children: [
-        Image.network(thumbnailUrl, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A1A))),
-        Container(color: Colors.black.withValues(alpha: 0.3)),
-        Center(
-          child: Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12)]),
-            child: const Icon(Icons.play_arrow_rounded, color: Color(0xFF1A1A1A), size: 30),
-          ),
-        ),
-      ]),
-    );
-  }
-}
 
 
 class _CmpIconBtn extends StatelessWidget {

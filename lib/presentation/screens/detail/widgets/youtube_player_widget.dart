@@ -2,7 +2,7 @@ part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // FLOATING YOUTUBE PLAYER (mini draggable PiP)
-// WebView tabanlı — gömülü oynatma kısıtlaması yok
+// WebView tabanlı — video direkt mini ekranda oynar
 // ═══════════════════════════════════════════════════════════
 
 class _FloatingYouTubePlayer extends StatefulWidget {
@@ -26,9 +26,49 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   double _dy = -1;
   bool _positionSet = false;
   bool _hidden = false;
+  bool _loading = true;
+  late final WebViewController _controller;
 
   static const _playerW = 300.0;
   static const _playerH = 169.0; // 16:9
+
+  // Mobil YouTube — embed kısıtlaması yok
+  String get _youtubeUrl =>
+      'https://m.youtube.com/watch?v=${widget.videoId}&autoplay=1';
+
+  static const _mobileUA =
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_mobileUA)
+      ..setBackgroundColor(Colors.black)
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageFinished: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onWebResourceError: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onNavigationRequest: (req) => _allowNav(req.url),
+      ))
+      ..loadRequest(Uri.parse(_youtubeUrl));
+  }
+
+  NavigationDecision _allowNav(String url) {
+    final host = Uri.tryParse(url)?.host ?? '';
+    const allowed = [
+      'youtube.com', 'googlevideo.com', 'ytimg.com',
+      'googleapis.com', 'google.com', 'gstatic.com',
+    ];
+    return allowed.any((d) => host.contains(d))
+        ? NavigationDecision.navigate
+        : NavigationDecision.prevent;
+  }
 
   void _openFullscreen() {
     setState(() => _hidden = true);
@@ -60,106 +100,87 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
       _positionSet = true;
     }
 
-    final thumb = widget.thumbnailUrl.isNotEmpty
-        ? widget.thumbnailUrl
-        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
-
     return Positioned(
       left: _dx, top: _dy,
       child: Material(
         color: Colors.transparent,
-        child: GestureDetector(
-          onPanUpdate: (d) {
-            setState(() {
-              _dx = (_dx + d.delta.dx).clamp(0.0, size.width - _playerW);
-              _dy = (_dy + d.delta.dy).clamp(0.0, size.height - _playerH);
-            });
-          },
-          child: Container(
-            width: _playerW, height: _playerH,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  blurRadius: 24, offset: const Offset(0, 8)),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Stack(children: [
-                // Thumbnail + oynat butonu (mini player dokunmada fullscreen açar)
+        child: Container(
+          width: _playerW, height: _playerH,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.55),
+                blurRadius: 24, offset: const Offset(0, 8)),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(children: [
+              // WebView — video direkt oynar
+              Positioned.fill(
+                child: WebViewWidget(controller: _controller),
+              ),
+
+              // Yüklenirken spinner
+              if (_loading)
                 Positioned.fill(
-                  child: _ThumbnailOverlay(
-                    thumbnailUrl: thumb,
-                    onTap: _openFullscreen,
+                  child: Container(
+                    color: Colors.black,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.red, strokeWidth: 2),
+                    ),
                   ),
                 ),
 
-                // Üst şerit: drag handle + fullscreen + kapat
-                Positioned(top: 0, left: 0, right: 0,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: _openFullscreen,
-                    child: Container(
-                      height: 36,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.65),
-                            Colors.transparent,
-                          ],
-                        ),
+              // Üst şerit — DRAG HANDLE + fullscreen + kapat
+              // (sadece bu şerit sürüklemeyi yakalar, video kontrollerine dokunmaz)
+              Positioned(top: 0, left: 0, right: 0,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanUpdate: (d) {
+                    setState(() {
+                      _dx = (_dx + d.delta.dx).clamp(0.0, size.width - _playerW);
+                      _dy = (_dy + d.delta.dy).clamp(0.0, size.height - _playerH);
+                    });
+                  },
+                  child: Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.7),
+                          Colors.transparent,
+                        ],
                       ),
-                      child: Row(children: [
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 24, height: 3,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(2)),
-                        ),
-                        const Spacer(),
-                        _MiniBtn(
-                          icon: Icons.fullscreen_rounded,
-                          onTap: _openFullscreen,
-                        ),
-                        _MiniBtn(
-                          icon: Icons.close_rounded,
-                          onTap: widget.onClose,
-                          margin: const EdgeInsets.only(right: 6),
-                        ),
-                      ]),
                     ),
-                  )),
-
-                // Alt şerit: başlık
-                Positioned(bottom: 0, left: 0, right: 0,
-                  child: IgnorePointer(
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.75),
-                            Colors.transparent,
-                          ],
-                        ),
+                    child: Row(children: [
+                      const SizedBox(width: 8),
+                      // Drag handle göstergesi
+                      Container(
+                        width: 24, height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(2)),
                       ),
-                      child: Text(widget.title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9, fontWeight: FontWeight.w600,
-                          color: Colors.white),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  )),
-              ]),
-            ),
+                      const Spacer(),
+                      _MiniBtn(
+                        icon: Icons.fullscreen_rounded,
+                        onTap: _openFullscreen,
+                      ),
+                      _MiniBtn(
+                        icon: Icons.close_rounded,
+                        onTap: widget.onClose,
+                        margin: const EdgeInsets.only(right: 6),
+                      ),
+                    ]),
+                  ),
+                )),
+            ]),
           ),
         ),
       ),
@@ -169,7 +190,6 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
 
 // ═══════════════════════════════════════════════════════════
 // FULLSCREEN YOUTUBE PLAYER — WebView tabanlı
-// m.youtube.com yükler → gömülü kısıtlama yok
 // ═══════════════════════════════════════════════════════════
 
 class _FullscreenYouTubePlayer extends StatefulWidget {
@@ -186,11 +206,9 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
   late final WebViewController _webViewController;
   bool _loading = true;
 
-  // Mobile YouTube URL — embedding kısıtlamasını tamamen bypass eder
   String get _youtubeUrl =>
       'https://m.youtube.com/watch?v=${widget.videoId}&autoplay=1&fs=1';
 
-  // Mobil user agent — YouTube masaüstü yerine mobil site sunar
   static const _mobileUA =
       'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
@@ -213,20 +231,15 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
           if (mounted) setState(() => _loading = false);
         },
         onNavigationRequest: (request) {
-          // YouTube navigasyonuna izin ver, dışarıya çıkmayı engelle
-          final uri = Uri.tryParse(request.url);
-          if (uri == null) return NavigationDecision.prevent;
-          final host = uri.host;
-          if (host.contains('youtube.com') ||
-              host.contains('googlevideo.com') ||
-              host.contains('ytimg.com') ||
-              host.contains('googleapis.com') ||
-              host.contains('google.com') ||
-              host.contains('gstatic.com') ||
-              host.contains('accounts.google.com')) {
-            return NavigationDecision.navigate;
-          }
-          return NavigationDecision.prevent;
+          final host = Uri.tryParse(request.url)?.host ?? '';
+          const allowed = [
+            'youtube.com', 'googlevideo.com', 'ytimg.com',
+            'googleapis.com', 'google.com', 'gstatic.com',
+            'accounts.google.com',
+          ];
+          return allowed.any((d) => host.contains(d))
+              ? NavigationDecision.navigate
+              : NavigationDecision.prevent;
         },
       ))
       ..loadRequest(Uri.parse(_youtubeUrl));
@@ -311,19 +324,14 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
           if (mounted) setState(() => _loading = false);
         },
         onNavigationRequest: (request) {
-          final uri = Uri.tryParse(request.url);
-          if (uri == null) return NavigationDecision.prevent;
-          final host = uri.host;
-          if (host.contains('youtube.com') ||
-              host.contains('googlevideo.com') ||
-              host.contains('ytimg.com') ||
-              host.contains('googleapis.com') ||
-              host.contains('google.com') ||
-              host.contains('gstatic.com') ||
-              host.contains('accounts.google.com')) {
-            return NavigationDecision.navigate;
-          }
-          return NavigationDecision.prevent;
+          final host = Uri.tryParse(request.url)?.host ?? '';
+          const allowed = [
+            'youtube.com', 'googlevideo.com', 'ytimg.com',
+            'googleapis.com', 'google.com', 'gstatic.com',
+          ];
+          return allowed.any((d) => host.contains(d))
+              ? NavigationDecision.navigate
+              : NavigationDecision.prevent;
         },
       ))
       ..loadRequest(Uri.parse(_youtubeUrl));
@@ -361,38 +369,6 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
 // ═══════════════════════════════════════════════════════════
 // YARDIMCI WİDGET'LAR
 // ═══════════════════════════════════════════════════════════
-
-/// Mini player thumbnail + oynat butonu
-class _ThumbnailOverlay extends StatelessWidget {
-  final String thumbnailUrl;
-  final VoidCallback onTap;
-  const _ThumbnailOverlay({required this.thumbnailUrl, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(fit: StackFit.expand, children: [
-        Image.network(thumbnailUrl, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A1A))),
-        Container(color: Colors.black.withValues(alpha: 0.25)),
-        Center(
-          child: Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 12)]),
-            child: const Icon(Icons.play_arrow_rounded,
-              color: Color(0xFF1A1A1A), size: 30),
-          ),
-        ),
-      ]),
-    );
-  }
-}
 
 /// Mini overlay'deki ikon butonu
 class _MiniBtn extends StatelessWidget {
