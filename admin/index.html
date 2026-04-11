@@ -342,6 +342,7 @@
           <button class="scraper-tab" data-tab="scoreUpdate" onclick="switchScraperTab(this)">🏆 Update Scores</button>
           <button class="scraper-tab" data-tab="productUpdate" onclick="switchScraperTab(this)">🔄 Update Products</button>
           <button class="scraper-tab" data-tab="inventoryScan" onclick="switchScraperTab(this)">🔍 Inventory Scan</button>
+          <button class="scraper-tab" data-tab="qualityScan" onclick="switchScraperTab(this)">🔬 Quality Scan</button>
         </div>
 
         <!-- Bulk Scrape -->
@@ -469,6 +470,52 @@
               </div>
             </div>
             <button class="btn btn-primary" onclick="startInventoryScan()" style="margin-top:8px">Scan</button>
+          </div>
+        </div>
+
+        <!-- Quality Scan -->
+        <div class="scraper-panel" id="qualityScanPanel">
+          <div class="card">
+            <div class="card-title">🔬 Çift Katman Kalite Taraması</div>
+            <p class="text-muted" style="margin-bottom:12px">
+              <strong>Katman 1 — Kalite Kontrolü:</strong> Kırık görseli veya az spec'i olan ürünleri tespit edip yeniden scrape eder.<br>
+              <strong>Katman 2 — Duplikasyon Temizliği:</strong> Aynı ürünün birden fazla kaydını bulur, en kaliteli olanı tutar, diğerlerini siler.
+            </p>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Kategori (boş = tümü)</label>
+                <select class="input" id="qualityScanCategory">
+                  <option value="">Tüm Kategoriler</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Min. Spec Sayısı (altı → yeniden scrape)</label>
+                <input class="input" type="number" id="qualityMinSpecs" value="5" min="1" max="100">
+              </div>
+              <div class="form-field">
+                <label>Min. Görsel Sayısı (altı → yeniden scrape)</label>
+                <input class="input" type="number" id="qualityMinImages" value="1" min="0" max="20">
+              </div>
+              <div class="form-field">
+                <label>Bekleme Süresi (ms)</label>
+                <input class="input" type="number" id="qualityScanDelay" value="2000" min="500" step="500">
+              </div>
+              <div class="form-field" style="display:flex;align-items:end">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                  <input type="checkbox" id="qualityRescrape" checked> Kötü ürünleri yeniden scrape et
+                </label>
+              </div>
+              <div class="form-field" style="display:flex;align-items:end">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                  <input type="checkbox" id="qualityDedupe" checked> Duplikatları sil
+                </label>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="btnQualityScan" onclick="startQualityScan()">🔬 Tam Tarama Başlat</button>
+              <button class="btn" style="background:#e67e22;color:#fff" onclick="startDeduplicateOnly()">🗑️ Sadece Duplikat Temizle</button>
+              <button class="btn btn-danger" id="btnStopQuality" onclick="stopScraping()" style="display:none">Durdur</button>
+            </div>
           </div>
         </div>
 
