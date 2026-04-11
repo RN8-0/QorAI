@@ -25,6 +25,7 @@ import 'package:compair/presentation/widgets/product_image_box.dart';
 import 'package:compair/routing/router.dart';
 
 import 'package:compair/domain/entities/product_entity.dart';
+import 'package:compair/data/models/product_model.dart';
 
 // ---------------------------------------------------------------------------
 // Sort options
@@ -217,8 +218,24 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   Future<void> _loadProducts() async {
     setState(() { _loading = true; _error = null; _allLoaded = false; _lastDoc = null; _allProducts = []; });
     final catKey = _activeCategoryId.toLowerCase().trim();
+    final hiveCacheKey = 'cat_products_${catKey}_v2';
 
-    // 1. HomeFeed cache — instant, no network
+    // 0. Hive stale-while-revalidate — instant from last session (<5ms)
+    try {
+      final cache = ref.read(cacheServiceProvider);
+      final stale = cache.getLocalStale<List<dynamic>>(hiveCacheKey);
+      if (stale.data != null && (stale.data as List).isNotEmpty) {
+        final products = (stale.data as List)
+            .map((item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)))
+            .cast<ProductEntity>()
+            .toList();
+        if (products.isNotEmpty && mounted) {
+          setState(() { _allProducts = products; _loading = false; });
+        }
+      }
+    } catch (_) {}
+
+    // 1. HomeFeed cache — instant, no network (may have subset of products)
     try {
       final feedAsync = ref.read(homeFeedProvider);
       final cached = feedAsync.valueOrNull;
@@ -231,7 +248,16 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               (!catKey.endsWith('s') && pCat == '${catKey}s');
         }).toList();
         if (catProducts.isNotEmpty && mounted) {
-          setState(() { _allProducts = catProducts; _loading = false; });
+          // Merge: keep existing hive products, add any new from homeFeed
+          if (_allProducts.isEmpty) {
+            setState(() { _allProducts = catProducts; _loading = false; });
+          } else {
+            final existingIds = _allProducts.map((p) => p.id).toSet();
+            final extras = catProducts.where((p) => !existingIds.contains(p.id)).toList();
+            if (extras.isNotEmpty) {
+              setState(() { _allProducts = [..._allProducts, ...extras]; _loading = false; });
+            }
+          }
         }
       }
     } catch (_) {}
@@ -240,12 +266,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     _lastDoc = null;
     _allLoaded = false;
     if (mounted && _loading) setState(() => _loading = false);
-    _fetchAllPages();
+    _fetchAllPages(hiveCacheKey: hiveCacheKey);
   }
 
   /// Fetches every page of products for this category using cursor pagination.
   /// Each page is merged into _allProducts immediately so filters stay fresh.
-  Future<void> _fetchAllPages() async {
+  Future<void> _fetchAllPages({String? hiveCacheKey}) async {
     if (_fetchingAll || !mounted) return;
     setState(() => _fetchingAll = true);
 
@@ -277,7 +303,20 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         }
 
         if (page.products.length < 200 || page.lastDoc == null) {
-          // Last page reached
+          // Last page reached — save all to Hive for instant next-session load
+          if (hiveCacheKey != null && mounted && _allProducts.isNotEmpty) {
+            try {
+              final cache = ref.read(cacheServiceProvider);
+              final maps = _allProducts
+                  .whereType<ProductModel>()
+                  .map((p) => p.toFirestore())
+                  .toList();
+              if (maps.isNotEmpty) {
+                cache.setLocal(hiveCacheKey, maps,
+                    duration: const Duration(hours: 12));
+              }
+            } catch (_) {}
+          }
           setState(() { _allLoaded = true; _lastDoc = null; });
           break;
         }

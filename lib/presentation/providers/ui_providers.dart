@@ -269,14 +269,35 @@ List<ProductEntity> deduplicateVariants(List<ProductEntity> products) {
   return result.values.toList();
 }
 
-/// Normalize product name for dedup (strip storage/color variants)
+/// Normalize product name for dedup (strip storage/color/connectivity variants)
 String _normalizeProductName(String name) {
   return name
       .toLowerCase()
-      .replaceAll(RegExp(r'\s*\(\d+\s*gb\)'), '') // (512 GB)
-      .replaceAll(RegExp(r'\s*\(\d+\s*tb\)'), '') // (1 TB)
-      .replaceAll(RegExp(r'\s*\d+\s*gb\s*$'), '')  // trailing "512 GB"
-      .replaceAll(RegExp(r'\s+'), ' ')
+      // Strip storage in parentheses: (256GB), (1 TB), (512 MB)
+      .replaceAll(RegExp(r'\s*\(\d+\s*(?:gb|tb|mb)\)', caseSensitive: false), '')
+      // Strip standalone storage anywhere: 256GB, 1TB, 512 MB
+      .replaceAll(RegExp(r'\b\d+\s*(?:gb|tb|mb)\b', caseSensitive: false), '')
+      // Strip RAM+Storage combos: 8/256, 12/512
+      .replaceAll(RegExp(r'\b\d+/\d+\b'), '')
+      // Strip connectivity: Wi-Fi + Cellular, Wi-Fi+Cellular, Wi-Fi, WiFi, 5G, LTE, Cellular
+      .replaceAll(RegExp(r'\bwi-fi\s*\+\s*cellular\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bwi-fi\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bwifi\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bcellular\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\b5g\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\blte\b', caseSensitive: false), '')
+      // Strip common Apple colors
+      .replaceAll(RegExp(r'\bspace\s*gr[ae]y\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bnatural\s*titanium\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bblack\s*titanium\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bwhite\s*titanium\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bdesert\s*titanium\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\b(?:starlight|midnight|silver|gold|black|white|blue|purple|pink|red|green|yellow|orange|graphite|sierra\s*blue|alpine\s*green|deep\s*purple|product\s*red)\b', caseSensitive: false), '')
+      // Strip color parentheticals: (Black), (Cosmic Black)
+      .replaceAll(RegExp(r'\s*\([^)]*(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight)[^)]*\)', caseSensitive: false), '')
+      // Normalize whitespace and trailing separators
+      .replaceAll(RegExp(r'[\s\-,/]+$'), '')
+      .replaceAll(RegExp(r'\s{2,}'), ' ')
       .trim();
 }
 

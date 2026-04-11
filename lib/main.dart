@@ -57,7 +57,7 @@ void main() {
 
       // Limit Firestore memory/disk cache to prevent OOM on mid-range devices
       FirebaseFirestore.instance.settings = const Settings(
-        cacheSizeBytes: 10 * 1024 * 1024, // 10MB max (prevent OOM on 256MB heap)
+        cacheSizeBytes: 50 * 1024 * 1024, // 50MB — covers ~10K products offline
         persistenceEnabled: true,
       );
 

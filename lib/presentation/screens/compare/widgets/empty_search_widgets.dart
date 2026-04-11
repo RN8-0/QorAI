@@ -123,9 +123,11 @@ class _EmptyCompareState extends ConsumerWidget {
           const SizedBox(height: 10),
           trending.when(
             data: (products) {
+              // Dedup variants first, then pick diverse brands
+              final deduped = deduplicateVariants(products);
               final diverse = <ProductEntity>[];
               final brandCount = <String, int>{};
-              for (final p in products) {
+              for (final p in deduped) {
                 final brand = p.brand?.toLowerCase() ?? 'x';
                 if ((brandCount[brand] ?? 0) >= 2) continue;
                 brandCount[brand] = (brandCount[brand] ?? 0) + 1;
