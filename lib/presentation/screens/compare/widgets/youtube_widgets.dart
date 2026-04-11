@@ -238,7 +238,8 @@ class _CompareVideoTile extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FLOATING YOUTUBE PLAYER (mini PiP — youtube_player_iframe)
+// FLOATING YOUTUBE PLAYER (mini PiP — WebView tabanlı)
+// Gömülü kısıtlama yok — m.youtube.com yükler
 // ═══════════════════════════════════════════════════════════
 
 class _CompareFloatingPlayer extends StatefulWidget {
@@ -262,46 +263,11 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   double _dy = -1;
   bool _positionSet = false;
   bool _hidden = false;
-  bool _hasError = false;
-  bool _showOverlay = true;
-  late YoutubePlayerController _controller;
 
   static const _playerW = 300.0;
   static const _playerH = 169.0;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = YoutubePlayerController(
-      params: const YoutubePlayerParams(
-        mute: false,
-        showControls: true,
-        showFullscreenButton: false,
-        enableCaption: false,
-        playsInline: true,
-        color: 'white',
-      ),
-    )..loadVideoById(videoId: widget.videoId);
-
-    _controller.stream.listen((value) {
-      if (!mounted) return;
-      if (value.hasError) setState(() => _hasError = true);
-      if (value.playerState == PlayerState.playing ||
-          value.playerState == PlayerState.buffering ||
-          value.playerState == PlayerState.paused) {
-        if (_showOverlay) setState(() => _showOverlay = false);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.close();
-    super.dispose();
-  }
-
   void _openFullscreen() {
-    _controller.pauseVideo();
     setState(() => _hidden = true);
     Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
       fullscreenDialog: true,
@@ -309,7 +275,7 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
       reverseTransitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (_, __, ___) => _CompareFullscreenPlayer(
         videoId: widget.videoId,
-        controller: _controller,
+        title: widget.title,
       ),
       transitionsBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
@@ -355,59 +321,52 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: _hasError
-                  ? _CmpInAppError(title: widget.title, thumbnailUrl: thumb, onClose: widget.onClose)
-                  : Stack(children: [
-                      Positioned.fill(
-                        child: YoutubePlayer(
-                          controller: _controller,
-                          aspectRatio: _playerW / _playerH,
-                        ),
-                      ),
-                      if (_showOverlay)
-                        Positioned.fill(
-                          child: _CmpThumbnailOverlay(
-                            thumbnailUrl: thumb,
-                            onTap: () {
-                              setState(() => _showOverlay = false);
-                              _controller.playVideo();
-                            },
-                          ),
-                        ),
-                      // Üst şerit
-                      Positioned(top: 0, left: 0, right: 0,
-                        child: Container(
-                          height: 36,
-                          decoration: BoxDecoration(gradient: LinearGradient(
-                            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                            colors: [Colors.black.withValues(alpha: 0.65), Colors.transparent],
-                          )),
-                          child: Row(children: [
-                            const SizedBox(width: 8),
-                            Container(width: 24, height: 3,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(2))),
-                            const Spacer(),
-                            _CmpIconBtn(icon: Icons.fullscreen_rounded, onTap: _openFullscreen),
-                            _CmpIconBtn(icon: Icons.close_rounded, onTap: widget.onClose,
-                              margin: const EdgeInsets.only(right: 6)),
-                          ]),
-                        )),
-                      // Alt şerit: başlık
-                      Positioned(bottom: 0, left: 0, right: 0,
-                        child: IgnorePointer(child: Container(
-                          padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
-                          decoration: BoxDecoration(gradient: LinearGradient(
-                            begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                            colors: [Colors.black.withValues(alpha: 0.75), Colors.transparent],
-                          )),
-                          child: Text(widget.title,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ))),
-                    ]),
+              child: Stack(children: [
+                // Thumbnail + oynat butonu
+                Positioned.fill(
+                  child: _CmpThumbnailOverlay(
+                    thumbnailUrl: thumb,
+                    onTap: _openFullscreen,
+                  ),
+                ),
+                // Üst şerit: drag handle + fullscreen + kapat
+                Positioned(top: 0, left: 0, right: 0,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _openFullscreen,
+                    child: Container(
+                      height: 36,
+                      decoration: BoxDecoration(gradient: LinearGradient(
+                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                        colors: [Colors.black.withValues(alpha: 0.65), Colors.transparent],
+                      )),
+                      child: Row(children: [
+                        const SizedBox(width: 8),
+                        Container(width: 24, height: 3,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(2))),
+                        const Spacer(),
+                        _CmpIconBtn(icon: Icons.fullscreen_rounded, onTap: _openFullscreen),
+                        _CmpIconBtn(icon: Icons.close_rounded, onTap: widget.onClose,
+                          margin: const EdgeInsets.only(right: 6)),
+                      ]),
+                    ),
+                  )),
+                // Alt şerit: başlık
+                Positioned(bottom: 0, left: 0, right: 0,
+                  child: IgnorePointer(child: Container(
+                    padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
+                    decoration: BoxDecoration(gradient: LinearGradient(
+                      begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                      colors: [Colors.black.withValues(alpha: 0.75), Colors.transparent],
+                    )),
+                    child: Text(widget.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ))),
+              ]),
             ),
           ),
         ),
@@ -417,82 +376,100 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FULLSCREEN COMPARE PLAYER — aynı controller, video devam eder
+// FULLSCREEN COMPARE PLAYER — WebView tabanlı
 // ═══════════════════════════════════════════════════════════
 
 class _CompareFullscreenPlayer extends StatefulWidget {
   final String videoId;
-  final YoutubePlayerController? controller;
-  const _CompareFullscreenPlayer({required this.videoId, this.controller});
+  final String title;
+  const _CompareFullscreenPlayer({required this.videoId, required this.title});
 
   @override
   State<_CompareFullscreenPlayer> createState() => _CompareFullscreenPlayerState();
 }
 
 class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
-  late YoutubePlayerController _controller;
-  bool _ownController = false;
+  late final WebViewController _webViewController;
+  bool _loading = true;
+
+  String get _youtubeUrl =>
+      'https://m.youtube.com/watch?v=${widget.videoId}&autoplay=1&fs=1';
+
+  static const _mobileUA =
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
 
   @override
   void initState() {
     super.initState();
-    if (widget.controller != null) {
-      _controller = widget.controller!;
-      _ownController = false;
-    } else {
-      _ownController = true;
-      _controller = YoutubePlayerController(
-        params: const YoutubePlayerParams(
-          mute: false,
-          showControls: true,
-          showFullscreenButton: true,
-          enableCaption: false,
-          playsInline: false,
-        ),
-      )..loadVideoById(videoId: widget.videoId);
-    }
-  }
-
-  @override
-  void dispose() {
-    if (_ownController) _controller.close();
-    else _controller.pauseVideo();
-    super.dispose();
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_mobileUA)
+      ..setBackgroundColor(Colors.black)
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (_) {
+          if (mounted) setState(() => _loading = true);
+        },
+        onPageFinished: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onWebResourceError: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onNavigationRequest: (request) {
+          final uri = Uri.tryParse(request.url);
+          if (uri == null) return NavigationDecision.prevent;
+          final host = uri.host;
+          if (host.contains('youtube.com') ||
+              host.contains('googlevideo.com') ||
+              host.contains('ytimg.com') ||
+              host.contains('googleapis.com') ||
+              host.contains('google.com') ||
+              host.contains('gstatic.com') ||
+              host.contains('accounts.google.com')) {
+            return NavigationDecision.navigate;
+          }
+          return NavigationDecision.prevent;
+        },
+      ))
+      ..loadRequest(Uri.parse(_youtubeUrl));
   }
 
   @override
   Widget build(BuildContext context) {
-    return YoutubePlayerScaffold(
-      controller: _controller,
-      aspectRatio: 16 / 9,
-      enableFullScreenOnVerticalDrag: true,
-      builder: (ctx, player) => Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
         backgroundColor: Colors.black,
-        body: Stack(children: [
-          Center(child: player),
-          Positioned(
-            top: 0, left: 0,
-            child: SafeArea(
-              child: IconButton(
-                icon: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    shape: BoxShape.circle),
-                  child: const Icon(Icons.arrow_back_rounded,
-                    color: Colors.white, size: 20),
-                ),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            )),
-        ]),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.55),
+              shape: BoxShape.circle),
+            child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(widget.title,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+          maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
+      body: Stack(children: [
+        WebViewWidget(controller: _webViewController),
+        if (_loading)
+          const Center(child: CircularProgressIndicator(color: Colors.red)),
+      ]),
     );
   }
 }
 
 // ═══════════════════════════════════════════════════════════
 // NATIVE COMPARE VIDEO PLAYER (liste'den direkt açılır)
+// WebView tabanlı — gömülü kısıtlama yok
 // ═══════════════════════════════════════════════════════════
 
 class _NativeCompareVideoPlayer extends StatefulWidget {
@@ -505,45 +482,69 @@ class _NativeCompareVideoPlayer extends StatefulWidget {
 }
 
 class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
-  late YoutubePlayerController _controller;
+  late final WebViewController _webViewController;
+  bool _loading = true;
+
+  String get _youtubeUrl =>
+      'https://m.youtube.com/watch?v=${widget.videoId}&autoplay=1&fs=1';
+
+  static const _mobileUA =
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
 
   @override
   void initState() {
     super.initState();
-    _controller = YoutubePlayerController(
-      params: const YoutubePlayerParams(
-        mute: false,
-        showControls: true,
-        showFullscreenButton: true,
-        enableCaption: false,
-        playsInline: false,
-      ),
-    )..loadVideoById(videoId: widget.videoId);
-  }
-
-  @override
-  void dispose() {
-    _controller.close();
-    super.dispose();
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_mobileUA)
+      ..setBackgroundColor(Colors.black)
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (_) {
+          if (mounted) setState(() => _loading = true);
+        },
+        onPageFinished: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onWebResourceError: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
+        onNavigationRequest: (request) {
+          final uri = Uri.tryParse(request.url);
+          if (uri == null) return NavigationDecision.prevent;
+          final host = uri.host;
+          if (host.contains('youtube.com') ||
+              host.contains('googlevideo.com') ||
+              host.contains('ytimg.com') ||
+              host.contains('googleapis.com') ||
+              host.contains('google.com') ||
+              host.contains('gstatic.com') ||
+              host.contains('accounts.google.com')) {
+            return NavigationDecision.navigate;
+          }
+          return NavigationDecision.prevent;
+        },
+      ))
+      ..loadRequest(Uri.parse(_youtubeUrl));
   }
 
   @override
   Widget build(BuildContext context) {
-    return YoutubePlayerScaffold(
-      controller: _controller,
-      aspectRatio: 16 / 9,
-      enableFullScreenOnVerticalDrag: true,
-      builder: (ctx, player) => Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          title: Text(widget.title,
-            style: const TextStyle(fontSize: 14),
-            maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
-        body: Center(child: player),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(widget.title,
+          style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+          maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
+      body: Stack(children: [
+        WebViewWidget(controller: _webViewController),
+        if (_loading)
+          const Center(child: CircularProgressIndicator(color: Colors.red)),
+      ]),
     );
   }
 }
@@ -580,36 +581,6 @@ class _CmpThumbnailOverlay extends StatelessWidget {
   }
 }
 
-class _CmpInAppError extends StatelessWidget {
-  final String title;
-  final String thumbnailUrl;
-  final VoidCallback onClose;
-  const _CmpInAppError({required this.title, required this.thumbnailUrl, required this.onClose});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(fit: StackFit.expand, children: [
-      Image.network(thumbnailUrl, fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A1A))),
-      Container(color: Colors.black.withValues(alpha: 0.6)),
-      Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.videocam_off_rounded, color: Colors.white.withValues(alpha: 0.5), size: 32),
-        const SizedBox(height: 8),
-        Text('Video oynatılamıyor',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12, fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.7))),
-        const SizedBox(height: 4),
-        Text('Bu video gömülü oynatmaya kapalı',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 10, color: Colors.white.withValues(alpha: 0.4)),
-          textAlign: TextAlign.center),
-      ]),
-      Positioned(top: 6, right: 6,
-        child: _CmpIconBtn(icon: Icons.close_rounded, onTap: onClose)),
-    ]);
-  }
-}
 
 class _CmpIconBtn extends StatelessWidget {
   final IconData icon;
