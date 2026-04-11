@@ -1017,10 +1017,12 @@ Future<List<ProductEntity>> _fetchAllProducts(
   final sw = Stopwatch()..start();
 
   // ── Multi-category parallel fetch (diverse results, composite index) ──────
-  // Fetch top products from EVERY category in ONE parallel batch.
-  // Uses category+techScore DESC composite index → fast per-query.
-  final categories = _feedCategories; // all categories — no artificial limit
-  debugPrint('=== COMPAIR: MULTI-CAT fetch — ${categories.length} categories, 50 each ===');
+  // Fetch top products from priority categories in ONE parallel batch.
+  // All 20 run in parallel → total time = slowest single query (~1-2s).
+  // Secondary categories (projectors, microphones, etc.) load on-demand
+  // when user opens that category browse screen.
+  final categories = _feedCategories.take(20).toList();
+  debugPrint('=== COMPAIR: MULTI-CAT fetch — ${categories.length} categories, 80 each ===');
 
   try {
     final futures = categories.map((cat) => repo.getProducts(

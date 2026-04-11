@@ -97,6 +97,22 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   // Cursor for Firestore pagination
   DocumentSnapshot? _lastDoc;
+
+  // ── Filter cache — computed once per products change, not on every build ──
+  List<FilterDefinition>? _cachedFilterDefs;
+  int _cachedProductCount = -1;
+  String _cachedCategoryId = '';
+
+  List<FilterDefinition> get _filterDefinitions {
+    if (_cachedFilterDefs == null ||
+        _allProducts.length != _cachedProductCount ||
+        _activeCategoryId != _cachedCategoryId) {
+      _cachedFilterDefs = FilterConfig.getFiltersWithProducts(_activeCategoryId, _allProducts);
+      _cachedProductCount = _allProducts.length;
+      _cachedCategoryId = _activeCategoryId;
+    }
+    return _cachedFilterDefs!;
+  }
   bool _allLoaded = false;
 
   @override
@@ -297,15 +313,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         }
       }
 
-      final definitions = FilterConfig.getFiltersWithProducts(_activeCategoryId, localMatches);
-      final filtered = FilterApplier.apply(localMatches, _filterState, definitions);
+      final filtered = FilterApplier.apply(localMatches, _filterState, _filterDefinitions);
       return _sortProducts(filtered);
     }
 
     // No search — show all loaded products
-    var list = List<ProductEntity>.from(_allProducts);
-    final definitions = FilterConfig.getFiltersWithProducts(_activeCategoryId, list);
-    final filtered = FilterApplier.apply(list, _filterState, definitions);
+    final filtered = FilterApplier.apply(_allProducts, _filterState, _filterDefinitions);
     return _sortProducts(filtered);
   }
 
@@ -612,10 +625,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   Widget _buildActiveFilterChips() {
-    final definitions = FilterConfig.getFiltersWithProducts(
-      _activeCategoryId,
-      _allProducts,
-    );
+    final definitions = _filterDefinitions;
     final chips = <Widget>[];
 
     for (final def in definitions) {

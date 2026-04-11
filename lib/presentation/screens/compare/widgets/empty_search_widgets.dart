@@ -66,7 +66,9 @@ class _EmptyCompareState extends ConsumerWidget {
           recentlyViewed.when(
             data: (products) {
               if (products.isEmpty) return const SizedBox.shrink();
-              final top = products.take(10).toList();
+              // Deduplicate: show only one representative per model (no duplicate iPad variants etc.)
+              final deduped = deduplicateVariants(products);
+              final top = deduped.take(10).toList();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -181,14 +183,26 @@ class _EmptyCompareState extends ConsumerWidget {
     };
 
     for (final entry in categoryMeta.entries) {
-      final catProducts = feed.byCategory[entry.key] ?? [];
+      final raw = feed.byCategory[entry.key] ?? [];
+      if (raw.length < 2) continue;
+      // Deduplicate variants before picking pairs
+      final catProducts = deduplicateVariants(raw);
       if (catProducts.length < 2) continue;
+      // Sort by techScore desc for best representatives
+      catProducts.sort((a, b) => b.techScore.compareTo(a.techScore));
       final a = catProducts[0];
+      // Pick B from a different brand if possible
       ProductEntity? b;
       for (int i = 1; i < catProducts.length; i++) {
-        if (catProducts[i].brand != a.brand) { b = catProducts[i]; break; }
+        final candidate = catProducts[i];
+        if ((candidate.brand ?? '').toLowerCase() != (a.brand ?? '').toLowerCase()) {
+          b = candidate;
+          break;
+        }
       }
-      b ??= catProducts[1];
+      b ??= catProducts[1]; // fallback: same brand, different model
+      // Skip if A and B have the same normalized name
+      if (normalizeProductName(a.name) == normalizeProductName(b.name)) continue;
       comparisons.add({'a': a, 'b': b, 'icon': entry.value['icon']!, 'cat': entry.value['label']!});
       if (comparisons.length >= 6) break;
     }

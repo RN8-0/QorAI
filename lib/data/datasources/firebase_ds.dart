@@ -333,25 +333,28 @@ class FirebaseDataSource {
     int limit = 200,
     DocumentSnapshot? startAfter,
   }) async {
-    // Try the exact category key first, then fallback variants
-    final variants = _categoryVariants(category);
-    for (final cat in variants) {
-      final result = await _getProductsPageForCategory(cat, limit: limit, startAfter: startAfter);
-      if (result.products.isNotEmpty) return result;
-    }
-    return (products: <ProductModel>[], lastDoc: null);
-  }
+    // Try exact key first (fast path — no extra queries if it works)
+    final exact = await _getProductsPageForCategory(category, limit: limit, startAfter: startAfter);
+    if (exact.products.isNotEmpty) return exact;
 
-  /// Returns a list of possible category string variants to try (exact + fallbacks).
-  List<String> _categoryVariants(String category) {
+    // Exact miss — try variants in parallel (one network roundtrip total)
     final lower = category.toLowerCase().trim();
-    final variants = <String>{category, lower};
-    // singular/plural variants
+    final variants = <String>{};
+    if (lower != category) variants.add(lower);
     if (lower.endsWith('s')) variants.add(lower.substring(0, lower.length - 1));
     else variants.add('${lower}s');
-    // capitalize first letter
-    if (lower.isNotEmpty) variants.add(lower[0].toUpperCase() + lower.substring(1));
-    return variants.toList();
+    if (lower.isNotEmpty) {
+      final cap = lower[0].toUpperCase() + lower.substring(1);
+      if (cap != category) variants.add(cap);
+    }
+    if (variants.isEmpty) return (products: <ProductModel>[], lastDoc: null);
+
+    final futures = variants.map((v) => _getProductsPageForCategory(v, limit: limit, startAfter: startAfter));
+    final results = await Future.wait(futures);
+    for (final r in results) {
+      if (r.products.isNotEmpty) return r;
+    }
+    return (products: <ProductModel>[], lastDoc: null);
   }
 
   Future<({List<ProductModel> products, DocumentSnapshot? lastDoc})> _getProductsPageForCategory(
