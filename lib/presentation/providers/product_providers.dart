@@ -1565,7 +1565,24 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
   return authState.when(
     data: (user) {
       if (user == null) return Stream.value(<String>[]);
-      return ref.read(firebaseDataSourceProvider).watchRecentlyViewed(user.uid);
+      final fireDs = ref.read(firebaseDataSourceProvider);
+      final hiveDs = ref.read(hiveDataSourceProvider);
+
+      // Migrate Hive → Firestore on first load, then stream Firestore
+      return fireDs.watchRecentlyViewed(user.uid).asyncMap((firestoreIds) async {
+        if (firestoreIds.isEmpty) {
+          // Firestore empty → migrate from Hive local cache
+          final hiveIds = hiveDs.getViewedProducts();
+          if (hiveIds.isNotEmpty) {
+            // Write all Hive data to Firestore (non-blocking, fire-and-forget)
+            for (final id in hiveIds.reversed) {
+              fireDs.addRecentlyViewed(user.uid, id);
+            }
+            return hiveIds;
+          }
+        }
+        return firestoreIds;
+      });
     },
     loading: () => Stream.value(<String>[]),
     error: (_, __) => Stream.value(<String>[]),
@@ -1573,12 +1590,10 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
 });
 
 /// Provider that resolves recently viewed product IDs into full ProductEntity objects.
-/// First tries the homeFeed cache, then fetches missing ones from Firestore individually.
 final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
   final viewedIds = ref.watch(viewedProductsProvider).valueOrNull ?? [];
   if (viewedIds.isEmpty) return [];
 
-  // Try to match from homeFeed cache first
   final feed = ref.watch(homeFeedProvider);
   final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
   final productMap = {for (final p in allProducts) p.id: p};
@@ -1595,17 +1610,16 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((ref)
     }
   }
 
-  // Fetch missing products from Firestore
+  // Fetch missing products from Firestore individually
   if (missingIds.isNotEmpty) {
     final ds = ref.read(firebaseDataSourceProvider);
-    final futures = missingIds.map((id) => ds.getProduct(id).catchError((_) => null));
+    final futures = missingIds.map((id) =>
+        ds.getProduct(id).then<ProductEntity?>((p) => p).catchError((_) => null as ProductEntity?));
     final fetched = await Future.wait(futures);
-    // Insert fetched products at correct positions
     final fetchedMap = <String, ProductEntity>{};
     for (final p in fetched) {
       if (p != null) fetchedMap[p.id] = p;
     }
-    // Rebuild in original order
     results.clear();
     for (final id in viewedIds.take(20)) {
       if (id.isEmpty) continue;
