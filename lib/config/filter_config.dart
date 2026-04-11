@@ -1524,12 +1524,20 @@ class FilterConfig {
       if (!def.isDynamic) return def;
 
       if (def.id == 'brand') {
-        final brandSet = <String>{};
+        // Count products per brand for frequency-based sorting
+        final brandCount = <String, int>{};
         for (final p in products) {
           final brand = (p.brand as String?) ?? '';
-          if (brand.isNotEmpty) brandSet.add(brand);
+          if (brand.isNotEmpty) {
+            brandCount[brand] = (brandCount[brand] ?? 0) + 1;
+          }
         }
-        final sorted = brandSet.toList()..sort();
+        // Sort by frequency desc, then alphabetically
+        final sorted = brandCount.keys.toList()
+          ..sort((a, b) {
+            final cmp = brandCount[b]!.compareTo(brandCount[a]!);
+            return cmp != 0 ? cmp : a.compareTo(b);
+          });
         return def.withOptions(sorted
             .map((b) => FilterOption(
                   id: b.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),

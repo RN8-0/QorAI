@@ -129,19 +129,32 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   Future<void> _doRemoteSearch(String query) async {
     if (!mounted || query.isEmpty) return;
+
+    // If local products are already loaded, no need for Cloud Function —
+    // _filteredProducts getter handles local search in real-time.
+    if (_allProducts != null && _allProducts!.isNotEmpty) {
+      if (mounted) setState(() => _remoteSearching = false);
+      return;
+    }
+
     setState(() => _remoteSearching = true);
     try {
       final ds = ref.read(firebaseDataSourceProvider);
       final results = await ds.searchProducts(
         query: query,
-        limit: 50,
+        limit: 100,
         category: _activeCategoryId,
       );
       if (mounted && _searchQuery == query) {
-        final localIds = (_allProducts ?? []).map((p) => p.id).toSet();
-        final newProducts = results
-            .where((p) => !localIds.contains(p.id))
+        final catKey = _activeCategoryId.toLowerCase().trim();
+        // Strict client-side category filter — Cloud Function may ignore it
+        final categoryResults = results
+            .where((p) => p.category.toLowerCase().trim() == catKey)
             .cast<ProductEntity>()
+            .toList();
+        final localIds = (_allProducts ?? []).map((p) => p.id).toSet();
+        final newProducts = categoryResults
+            .where((p) => !localIds.contains(p.id))
             .toList();
         setState(() {
           _remoteSearchResults = newProducts;
@@ -282,11 +295,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             (p.brand ?? '').toLowerCase().contains(_searchQuery);
       }).toList();
 
-      // Merge remote search results (products not in local set)
+      // Merge remote search results (same category, products not in local set)
       if (_remoteSearchResults != null && _remoteSearchResults!.isNotEmpty) {
+        final catKey = _activeCategoryId.toLowerCase().trim();
         final localIds = list.map((p) => p.id).toSet();
         for (final p in _remoteSearchResults!) {
-          if (!localIds.contains(p.id)) {
+          if (!localIds.contains(p.id) &&
+              p.category.toLowerCase().trim() == catKey) {
             list.add(p);
             localIds.add(p.id);
           }
