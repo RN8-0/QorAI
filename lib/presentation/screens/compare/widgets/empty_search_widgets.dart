@@ -176,36 +176,85 @@ class _EmptyCompareState extends ConsumerWidget {
     final categoryMeta = <String, Map<String, String>>{
       'smartphones':   {'icon': '📱', 'label': 'Akıllı Telefon'},
       'laptops':       {'icon': '💻', 'label': 'Laptop'},
-      'tablets':       {'icon': '📱', 'label': 'Tablet'},
+      'tablets':       {'icon': '�', 'label': 'Tablet'},
       'headphones':    {'icon': '🎧', 'label': 'Ses Sistemi'},
       'smartwatches':  {'icon': '⌚', 'label': 'Giyilebilir'},
       'tvs':           {'icon': '📺', 'label': 'Televizyon'},
       'gpus':          {'icon': '🎮', 'label': 'Ekran Kartı'},
       'cameras':       {'icon': '📷', 'label': 'Kamera'},
+      'monitors':      {'icon': '🖥️', 'label': 'Monitör'},
+      'keyboards':     {'icon': '⌨️', 'label': 'Klavye'},
     };
 
-    for (final entry in categoryMeta.entries) {
-      final raw = feed.byCategory[entry.key] ?? [];
+    // ── Behavior-based category ordering ──────────────────────────────────
+    // Read user's viewed category signals from behavior provider
+    final behavior = ref.watch(behaviorSignalsProvider).valueOrNull;
+    final categoryViewScore = <String, double>{};
+    if (behavior != null) {
+      for (final entry in behavior.categoryViews.entries) {
+        categoryViewScore[entry.key.toLowerCase()] =
+            (categoryViewScore[entry.key.toLowerCase()] ?? 0) + entry.value.toDouble();
+      }
+    }
+    // Sort categories: user's most viewed first, then by available products
+    final sortedCategories = categoryMeta.keys.toList()
+      ..sort((a, b) {
+        final scoreA = categoryViewScore[a] ?? 0;
+        final scoreB = categoryViewScore[b] ?? 0;
+        if (scoreB != scoreA) return scoreB.compareTo(scoreA);
+        // Tie-break: prefer categories with more products
+        final countA = (feed.byCategory[a] ?? []).length;
+        final countB = (feed.byCategory[b] ?? []).length;
+        return countB.compareTo(countA);
+      });
+
+    // ── Small daily rotation seed (changes every day) ─────────────────────
+    final today = DateTime.now();
+    final rotationSeed = today.year * 10000 + today.month * 100 + today.day;
+    final rng = Random(rotationSeed);
+
+    for (final cat in sortedCategories) {
+      final raw = feed.byCategory[cat] ?? [];
       if (raw.length < 2) continue;
       // Deduplicate variants before picking pairs
       final catProducts = deduplicateVariants(raw);
       if (catProducts.length < 2) continue;
-      // Sort by techScore desc for best representatives
-      catProducts.sort((a, b) => b.techScore.compareTo(a.techScore));
-      final a = catProducts[0];
-      // Pick B from a different brand if possible
+      // Sort by combined score (trendScore * 0.4 + techScore * 0.6) for variety
+      catProducts.sort((a, b) {
+        final sA = a.techScore * 0.6 + a.trendScore * 0.4;
+        final sB = b.techScore * 0.6 + b.trendScore * 0.4;
+        return sB.compareTo(sA);
+      });
+      // Pick from top-5 candidates with daily rotation to vary picks
+      final pool = catProducts.take(5).toList();
+      // Shuffle pool with daily seed for variety
+      final shuffled = List<ProductEntity>.from(pool)..shuffle(rng);
+      final a = shuffled[0];
+      // Pick B: strongly prefer different brand
       ProductEntity? b;
-      for (int i = 1; i < catProducts.length; i++) {
-        final candidate = catProducts[i];
+      for (final candidate in shuffled.skip(1)) {
         if ((candidate.brand ?? '').toLowerCase() != (a.brand ?? '').toLowerCase()) {
           b = candidate;
           break;
         }
       }
-      b ??= catProducts[1]; // fallback: same brand, different model
+      // Fallback: find any B from full catProducts with different name
+      if (b == null) {
+        for (int i = 1; i < catProducts.length; i++) {
+          if (normalizeProductName(catProducts[i].name) != normalizeProductName(a.name)) {
+            b = catProducts[i];
+            break;
+          }
+        }
+      }
+      if (b == null) continue;
       // Skip if A and B have the same normalized name
       if (normalizeProductName(a.name) == normalizeProductName(b.name)) continue;
-      comparisons.add({'a': a, 'b': b, 'icon': entry.value['icon']!, 'cat': entry.value['label']!});
+      comparisons.add({
+        'a': a, 'b': b,
+        'icon': categoryMeta[cat]!['icon']!,
+        'cat': categoryMeta[cat]!['label']!
+      });
       if (comparisons.length >= 6) break;
     }
 
@@ -633,7 +682,29 @@ class _ProductSearchList extends ConsumerWidget {
 
     return resultsAsync.when(
       data: (result) => result.when(
-        success: (products) {
+        success: (rawProducts) {
+          // Final safety dedup — ensures no variant duplicates regardless of source
+          var products = deduplicateVariants(rawProducts);
+
+          // When no query: enforce brand + category diversity
+          // so the same brand/model doesn't dominate the list
+          if (query.isEmpty) {
+            final brandCount = <String, int>{};
+            final catCount = <String, int>{};
+            final diverseProducts = <ProductEntity>[];
+            for (final p in products) {
+              final brand = (p.brand ?? 'x').toLowerCase();
+              final cat = p.category.toLowerCase();
+              final bc = brandCount[brand] ?? 0;
+              final cc = catCount[cat] ?? 0;
+              if (bc >= 3 || cc >= 6) continue;
+              brandCount[brand] = bc + 1;
+              catCount[cat] = cc + 1;
+              diverseProducts.add(p);
+              if (diverseProducts.length >= 80) break;
+            }
+            products = diverseProducts;
+          }
           if (products.isEmpty) {
             return Center(
               child: Column(
@@ -786,3 +857,19 @@ class _SearchProductTile extends StatelessWidget {
 }
 
 // ─── Direct Spec-by-Spec Comparison View ─────────────────────────────────────
+
+// Normalize product name for compare pair deduplication
+String normalizeProductName(String name) {
+  return name
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s*\(\d+\s*(?:gb|tb|mb)\)', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\b\d+\s*(?:gb|tb|mb)\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bwi-fi\s*\+\s*cellular\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bwi-fi\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\bcellular\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\b5g\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\blte\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'[\s\-,/]+$'), '')
+      .replaceAll(RegExp(r'\s{2,}'), ' ')
+      .trim();
+}

@@ -145,6 +145,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
     // Listen for errors
     ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
+      if (!mounted) return;
       if (next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -228,8 +229,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       ),
 
                     SizedBox(
-                        height:
-                            MediaQuery.of(context).padding.bottom + 100),
+                        height: AppTheme.navBarTotalClearance +
+                            MediaQuery.of(context).padding.bottom + 24),
                   ]),
                 ),
               ),
@@ -1009,6 +1010,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     final historyAsync = ref.read(subscriptionHistoryProvider);
     final history = historyAsync.valueOrNull ?? [];
 
+    // Capture theme values before async/modal context
+    final bgColor = context.backgroundColor;
+    final textPrimaryColor = context.textPrimary;
+    final textTertiaryClr = context.textTertiaryColor;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1019,7 +1025,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         maxChildSize: 0.92,
         builder: (_, scrollCtrl) => Container(
           decoration: BoxDecoration(
-            color: context.backgroundColor,
+            color: bgColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -1028,7 +1034,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 margin: const EdgeInsets.only(top: 12, bottom: 8),
                 width: 36, height: 4,
                 decoration: BoxDecoration(
-                  color: context.textTertiaryColor.withValues(alpha: 0.3),
+                  color: textTertiaryClr.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2)),
               ),
               Padding(
@@ -1047,7 +1053,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   Text('Geçmiş Karşılaştırmalar',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16, fontWeight: FontWeight.w800,
-                      color: context.textPrimary)),
+                      color: textPrimaryColor)),
                 ]),
               ),
               const Divider(height: 1),
@@ -1058,17 +1064,19 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.history_rounded, size: 48,
-                              color: context.textTertiaryColor.withValues(alpha: 0.3)),
+                              color: textTertiaryClr.withValues(alpha: 0.3)),
                             const SizedBox(height: 12),
                             Text('Henüz karşılaştırma yok',
                               style: GoogleFonts.inter(
-                                fontSize: 14, color: context.textTertiaryColor)),
+                                fontSize: 14, color: textTertiaryClr)),
                           ],
                         ),
                       )
                     : ListView.separated(
                         controller: scrollCtrl,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.only(
+                            top: 8,
+                            bottom: AppTheme.navBarTotalClearance + 8),
                         itemCount: history.length,
                         separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
                         itemBuilder: (_, i) {
@@ -1094,14 +1102,14 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                               maxLines: 1, overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(
                                 fontSize: 13, fontWeight: FontWeight.w600,
-                                color: context.textPrimary)),
+                                color: textPrimaryColor)),
                             subtitle: Text(
                               [
                                 if (winner != null) '🏆 $winner',
                                 if (dateStr.isNotEmpty) dateStr,
                               ].join(' • '),
                               style: GoogleFonts.inter(
-                                fontSize: 11, color: context.textTertiaryColor)),
+                                fontSize: 11, color: textTertiaryClr)),
                             trailing: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
