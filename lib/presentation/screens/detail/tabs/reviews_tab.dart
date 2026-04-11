@@ -733,159 +733,116 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
   void _showWriteReviewSheet(BuildContext context, String userId) {
     final textController = TextEditingController();
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 0,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          decoration: BoxDecoration(
-            color: context.backgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Gradient header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(0, 16, 0, 20),
-                child: Column(
-                  children: [
-                    // Handle bar
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppTheme.slate400.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(2),
+      barrierDismissible: true,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          final theme = Theme.of(dialogCtx);
+          final hasText = textController.text.trim().isNotEmpty;
+          return Dialog(
+            backgroundColor: theme.colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  context.l10n?.writeAReview ?? 'Yorum Yaz',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18, fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.product.name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: textController,
+                  maxLines: 4,
+                  minLines: 2,
+                  autofocus: true,
+                  onChanged: (_) => setDialogState(() {}),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, color: theme.colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    hintText: context.l10n?.shareYourExperience ?? 'Deneyiminizi paylaşın...',
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHighest,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(dialogCtx).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12)),
+                        child: Center(
+                          child: Text(
+                            context.l10n?.cancel ?? 'İptal',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14, fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Product image + name
-                    Row(
-                      children: [
-                        Container(
-                          width: 48, height: 48,
-                          decoration: BoxDecoration(
-                            color: AppTheme.warning.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: hasText
+                          ? () async {
+                              HapticFeedback.mediumImpact();
+                              await _submitReview(
+                                dialogCtx,
+                                userId,
+                                0.0,
+                                textController.text.trim(),
+                              );
+                            }
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: hasText ? const LinearGradient(
+                            colors: [AppTheme.primaryBlue, AppTheme.neonPurple]) : null,
+                          color: hasText ? null
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12)),
+                        child: Center(
+                          child: Text(
+                            context.l10n?.submitReview ?? 'Gönder',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14, fontWeight: FontWeight.w700,
+                              color: Colors.white),
                           ),
-                          child: const Icon(Icons.rate_review_rounded, 
-                            color: AppTheme.warning, size: 24),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              context.l10n?.writeAReview ?? 'Write a Review',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 20, fontWeight: FontWeight.w800,
-                                color: context.textPrimary),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.product.name,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13, color: context.textSecondary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        )),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Comment field with modern design
-              TextField(
-                controller: textController,
-                maxLines: 4,
-                maxLength: 500,
-                onChanged: (_) => setSheetState(() {}),
-                style: GoogleFonts.plusJakartaSans(fontSize: 14, height: 1.5),
-                decoration: InputDecoration(
-                  hintText: context.l10n?.shareYourExperience ?? 'Share your experience...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    color: AppTheme.slate400, fontSize: 14),
-                  filled: true,
-                  fillColor: context.surfaceVariantColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: AppTheme.warning.withValues(alpha: 0.5), width: 1.5),
-                  ),
-                  contentPadding: const EdgeInsets.all(16),
-                  counterStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, color: context.textSecondary),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Submit button with gradient
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: textController.text.trim().isNotEmpty
-                      ? const LinearGradient(
-                          colors: [AppTheme.primaryBlue, AppTheme.neonPurple])
-                      : null,
-                    color: textController.text.trim().isNotEmpty
-                      ? null : context.textTertiaryColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: textController.text.trim().isNotEmpty
-                      ? [BoxShadow(
-                          color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                          blurRadius: 12, offset: const Offset(0, 4))]
-                      : null,
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: textController.text.trim().isNotEmpty
-                        ? () => _submitReview(
-                              ctx,
-                              userId,
-                              0.0,
-                              textController.text.trim(),
-                            )
-                        : null,
-                    icon: const Icon(Icons.send_rounded, size: 18),
-                    label: Text(
-                      'Submit Review',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shadowColor: Colors.transparent,
-                      disabledBackgroundColor: Colors.transparent,
-                      disabledForegroundColor: Colors.white54,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ],
-          ),
-        ),
+                ]),
+              ]),
+            ),
+          );
+        },
       ),
     );
   }
