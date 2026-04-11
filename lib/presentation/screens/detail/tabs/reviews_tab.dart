@@ -432,7 +432,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.edit_rounded, size: 18, color: Colors.white),
+                          const Icon(Icons.edit_note_rounded, size: 18, color: Colors.white),
                           const SizedBox(width: 8),
                           Text(
                             context.l10n?.writeAReview ?? 'Write a Review',
@@ -645,87 +645,43 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8, offset: const Offset(0, 2),
-          ),
-        ],
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 38, height: 38,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.primaryBlue, AppTheme.neonCyan]),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(child: Text(
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
+                child: Text(
                   review.userId.isNotEmpty ? review.userId[0].toUpperCase() : '?',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
-                )),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'User',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (review.rating > 0) ...[
-                          _buildStarRow(review.rating, size: 13),
-                          const SizedBox(width: 6),
-                        ],
-                        Text(
-                          timeAgo,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.slate500),
-                        ),
-                      ],
-                    ),
-                  ],
+                    fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.brandBlue),
                 ),
               ),
-              if (review.helpful > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.thumb_up_alt_rounded, size: 12, color: AppTheme.success),
-                      const SizedBox(width: 4),
-                      Text('${review.helpful}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.success)),
-                    ],
-                  ),
-                ),
+              const SizedBox(width: 8),
+              Expanded(child: Text('User',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary),
+                maxLines: 1, overflow: TextOverflow.ellipsis)),
+              if (review.rating > 0) ...[
+                _buildStarRow(review.rating, size: 13),
+                const SizedBox(width: 6),
+              ],
+              Text(timeAgo,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11, color: context.textTertiaryColor)),
             ],
           ),
           if (review.text.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              review.text,
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, height: 1.5, color: context.textPrimary),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            _SeeTranslationButton(text: review.text),
+            const SizedBox(height: 8),
+            Text(review.text,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13, height: 1.5, color: context.textSecondary)),
           ],
         ],
       ),
@@ -733,56 +689,27 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
   }
 
   Widget _buildEmptyState(bool isLoggedIn) {
-    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 32),
       width: double.infinity,
-      child: Column(
-        children: [
-          Container(
-            width: 64, height: 64,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16)),
-            child: Icon(Icons.rate_review_rounded,
-                size: 32, color: theme.colorScheme.primary),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            context.l10n?.noReviewsYet ?? 'No reviews yet',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.slate500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            isLoggedIn
-                ? (context.l10n?.beFirstToReview ?? 'Be the first to share your experience!')
-                : (context.l10n?.signInToReview ?? 'Sign in to write a review'),
-            style: const TextStyle(fontSize: 13, color: AppTheme.slate400),
-          ),
-          if (isLoggedIn) ...[
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () {
-                final authState = ref.read(authStateProvider);
-                final uid = authState.valueOrNull?.uid;
-                if (uid != null) _showWriteReviewSheet(context, uid);
-              },
-              icon: const Icon(Icons.edit_rounded, size: 16),
-              label: Text(context.l10n?.writeAReview ?? 'Write a Review'),
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ],
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(12),
       ),
+      child: Column(children: [
+        Icon(Icons.rate_review_outlined, size: 32, color: context.textTertiaryColor),
+        const SizedBox(height: 8),
+        Text(context.l10n?.noReviewsYet ?? 'No reviews yet',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14, fontWeight: FontWeight.w600, color: context.textPrimary)),
+        const SizedBox(height: 4),
+        Text(
+          isLoggedIn
+            ? (context.l10n?.beFirstToReview ?? 'Be the first to share your thoughts!')
+            : (context.l10n?.signInToReview ?? 'Sign in to write a review'),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12, color: context.textTertiaryColor)),
+      ]),
     );
   }
 
