@@ -464,6 +464,7 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
   ChewieController? _chewieCtrl;
   bool _loading = true;
   bool _ownController = false;
+  bool _isLandscape = false;
 
   @override
   void initState() {
@@ -511,8 +512,24 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
     }
   }
 
+  void _toggleOrientation() {
+    setState(() => _isLandscape = !_isLandscape);
+    if (_isLandscape) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
+  }
+
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _chewieCtrl?.dispose();
     if (_ownController) _videoCtrl?.dispose();
     super.dispose();
@@ -528,6 +545,7 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
             Center(child: Chewie(controller: _chewieCtrl!))
           else
             const Center(child: CircularProgressIndicator(color: Colors.red)),
+          // Geri butonu
           Positioned(
             top: 8, left: 4,
             child: IconButton(
@@ -539,6 +557,24 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
                 child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
               ),
               onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          // Ekran döndürme butonu
+          Positioned(
+            top: 8, right: 4,
+            child: IconButton(
+              icon: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  shape: BoxShape.circle),
+                child: Icon(
+                  _isLandscape
+                      ? Icons.screen_lock_portrait_rounded
+                      : Icons.screen_rotation_rounded,
+                  color: Colors.white, size: 20),
+              ),
+              onPressed: _toggleOrientation,
             ),
           ),
         ]),
@@ -564,6 +600,7 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
   VideoPlayerController? _videoCtrl;
   ChewieController? _chewieCtrl;
   bool _loading = true;
+  bool _isLandscape = false;
 
   @override
   void initState() {
@@ -585,7 +622,7 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
         looping: false,
         showControls: true,
         aspectRatio: 16 / 9,
-        allowFullScreen: true,
+        allowFullScreen: false,
         allowPlaybackSpeedChanging: true,
         materialProgressColors: ChewieProgressColors(
           playedColor: Colors.red,
@@ -600,8 +637,24 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
     }
   }
 
+  void _toggleOrientation() {
+    setState(() => _isLandscape = !_isLandscape);
+    if (_isLandscape) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
+  }
+
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _chewieCtrl?.dispose();
     _videoCtrl?.dispose();
     super.dispose();
@@ -619,6 +672,16 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
           maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isLandscape
+                  ? Icons.screen_lock_portrait_rounded
+                  : Icons.screen_rotation_rounded,
+              color: Colors.white),
+            onPressed: _toggleOrientation,
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.red))

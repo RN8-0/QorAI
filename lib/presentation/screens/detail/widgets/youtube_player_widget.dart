@@ -255,6 +255,7 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
   ChewieController? _chewieCtrl;
   bool _loading = true;
   bool _ownController = false;
+  bool _isLandscape = false;
 
   @override
   void initState() {
@@ -302,8 +303,25 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
     }
   }
 
+  void _toggleOrientation() {
+    setState(() => _isLandscape = !_isLandscape);
+    if (_isLandscape) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
+  }
+
   @override
   void dispose() {
+    // Ekrandan çıkarken orientation sıfırla
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _chewieCtrl?.dispose();
     if (_ownController) _videoCtrl?.dispose();
     super.dispose();
@@ -320,7 +338,7 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
           else
             const Center(child: CircularProgressIndicator(color: Colors.red)),
 
-          // Geri butonu
+          // Geri butonu (sol üst)
           Positioned(
             top: 8, left: 4,
             child: IconButton(
@@ -333,6 +351,25 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
                   color: Colors.white, size: 20),
               ),
               onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+
+          // Ekran döndürme butonu (sağ üst)
+          Positioned(
+            top: 8, right: 4,
+            child: IconButton(
+              icon: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  shape: BoxShape.circle),
+                child: Icon(
+                  _isLandscape
+                      ? Icons.screen_lock_portrait_rounded
+                      : Icons.screen_rotation_rounded,
+                  color: Colors.white, size: 20),
+              ),
+              onPressed: _toggleOrientation,
             ),
           ),
         ]),
@@ -357,6 +394,7 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
   VideoPlayerController? _videoCtrl;
   ChewieController? _chewieCtrl;
   bool _loading = true;
+  bool _isLandscape = false;
 
   @override
   void initState() {
@@ -378,7 +416,7 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
         looping: false,
         showControls: true,
         aspectRatio: 16 / 9,
-        allowFullScreen: true,
+        allowFullScreen: false,
         allowPlaybackSpeedChanging: true,
         materialProgressColors: ChewieProgressColors(
           playedColor: Colors.red,
@@ -393,8 +431,24 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
     }
   }
 
+  void _toggleOrientation() {
+    setState(() => _isLandscape = !_isLandscape);
+    if (_isLandscape) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
+  }
+
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _chewieCtrl?.dispose();
     _videoCtrl?.dispose();
     super.dispose();
@@ -417,6 +471,17 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isLandscape
+                  ? Icons.screen_lock_portrait_rounded
+                  : Icons.screen_rotation_rounded,
+              color: Colors.white),
+            onPressed: _toggleOrientation,
+            tooltip: _isLandscape ? 'Dikey mod' : 'Yatay mod',
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.red))
