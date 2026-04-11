@@ -540,8 +540,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get aiComparisonReview => 'مراجعة مقارنة الذكاء الاصطناعي';
 
   @override
-
-  @override
   String get userReviews => 'تقييمات المستخدمين';
 
   @override
@@ -649,6 +647,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get aiVerified => 'تم التحقق بالذكاء الاصطناعي';
 
   @override
+  String get loadBenchmarkScores => 'تحميل نتائج المقاييس';
 
   @override
   String get premiumInsights => 'رؤى متميزة';

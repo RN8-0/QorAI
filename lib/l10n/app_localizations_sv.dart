@@ -543,8 +543,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get aiComparisonReview => 'AI-jämförelserecension';
 
   @override
-
-  @override
   String get userReviews => 'Användarrecensioner';
 
   @override
@@ -653,6 +651,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get aiVerified => 'AI-verifierad';
 
   @override
+  String get loadBenchmarkScores => 'Ladda benchmarkpoäng';
 
   @override
   String get premiumInsights => 'Premium insikter';

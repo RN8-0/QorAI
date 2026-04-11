@@ -547,8 +547,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get aiComparisonReview => 'KI-Vergleichsbericht';
 
   @override
-
-  @override
   String get userReviews => 'Nutzerbewertungen';
 
   @override
@@ -658,6 +656,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get aiVerified => 'KI-verifiziert';
 
   @override
+  String get loadBenchmarkScores => 'Benchmark-Werte laden';
 
   @override
   String get premiumInsights => 'Premium-Einblicke';

@@ -1174,10 +1174,6 @@ abstract class AppLocalizations {
   /// **'AI Comparison Review'**
   String get aiComparisonReview;
 
-  ///
-  /// In en, this message translates to:
-  /// **'Benchmark Scores'**
-
   /// No description provided for @userReviews.
   ///
   /// In en, this message translates to:
@@ -1388,9 +1384,11 @@ abstract class AppLocalizations {
   /// **'AI Verified'**
   String get aiVerified;
 
+  /// No description provided for @loadBenchmarkScores.
   ///
   /// In en, this message translates to:
   /// **'Load Benchmark Scores'**
+  String get loadBenchmarkScores;
 
   /// No description provided for @premiumInsights.
   ///

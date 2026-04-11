@@ -1572,6 +1572,51 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
   );
 });
 
+/// Provider that resolves recently viewed product IDs into full ProductEntity objects.
+/// First tries the homeFeed cache, then fetches missing ones from Firestore individually.
+final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
+  final viewedIds = ref.watch(viewedProductsProvider).valueOrNull ?? [];
+  if (viewedIds.isEmpty) return [];
+
+  // Try to match from homeFeed cache first
+  final feed = ref.watch(homeFeedProvider);
+  final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
+  final productMap = {for (final p in allProducts) p.id: p};
+
+  final results = <ProductEntity>[];
+  final missingIds = <String>[];
+
+  for (final id in viewedIds.take(20)) {
+    if (id.isEmpty) continue;
+    if (productMap.containsKey(id)) {
+      results.add(productMap[id]!);
+    } else {
+      missingIds.add(id);
+    }
+  }
+
+  // Fetch missing products from Firestore
+  if (missingIds.isNotEmpty) {
+    final ds = ref.read(firebaseDataSourceProvider);
+    final futures = missingIds.map((id) => ds.getProduct(id).catchError((_) => null));
+    final fetched = await Future.wait(futures);
+    // Insert fetched products at correct positions
+    final fetchedMap = <String, ProductEntity>{};
+    for (final p in fetched) {
+      if (p != null) fetchedMap[p.id] = p;
+    }
+    // Rebuild in original order
+    results.clear();
+    for (final id in viewedIds.take(20)) {
+      if (id.isEmpty) continue;
+      final p = productMap[id] ?? fetchedMap[id];
+      if (p != null) results.add(p);
+    }
+  }
+
+  return results;
+});
+
 /// Record a product view (non-blocking, uses cached data)
 Future<void> recordProductView(WidgetRef ref, String productId) async {
   try {

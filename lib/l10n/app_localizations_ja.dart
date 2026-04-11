@@ -539,8 +539,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get aiComparisonReview => 'AI比較レビュー';
 
   @override
-
-  @override
   String get userReviews => 'ユーザーレビュー';
 
   @override
@@ -648,6 +646,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get aiVerified => 'AI検証済み';
 
   @override
+  String get loadBenchmarkScores => 'ベンチマークスコアを読み込む';
 
   @override
   String get premiumInsights => 'プレミアムインサイト';

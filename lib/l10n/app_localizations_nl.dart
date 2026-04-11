@@ -544,8 +544,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get aiComparisonReview => 'AI-vergelijkingsanalyse';
 
   @override
-
-  @override
   String get userReviews => 'Gebruikersrecensies';
 
   @override
@@ -654,6 +652,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get aiVerified => 'AI-geverifieerd';
 
   @override
+  String get loadBenchmarkScores => 'Benchmarkscores laden';
 
   @override
   String get premiumInsights => 'Premium inzichten';

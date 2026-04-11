@@ -1711,22 +1711,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   /// Recently Viewed section — shows products user has recently viewed from Firestore
   List<Widget> _buildRecentlyViewedSection() {
-    final viewedAsync = ref.watch(viewedProductsProvider);
-    final viewedIds = viewedAsync.valueOrNull ?? [];
-    if (viewedIds.isEmpty) return [];
-
-    // Match viewed product IDs with full product data from homeFeed cache
-    final feed = ref.watch(homeFeedProvider);
-    final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
-    if (allProducts.isEmpty) return [];
-
-    final productMap = {for (final p in allProducts) p.id: p};
-    final recentProducts = <ProductEntity>[];
-    for (final id in viewedIds.take(20)) {
-      if (id.isNotEmpty && productMap.containsKey(id)) {
-        recentProducts.add(productMap[id]!);
-      }
-    }
+    final recentAsync = ref.watch(recentlyViewedProductsProvider);
+    final recentProducts = recentAsync.valueOrNull ?? [];
     if (recentProducts.isEmpty) return [];
 
     return [
