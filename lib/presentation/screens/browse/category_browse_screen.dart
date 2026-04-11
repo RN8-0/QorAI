@@ -696,8 +696,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   Widget _buildBody(List<ProductEntity> products) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+    // Show spinner: initial load OR fetching still running with no products yet
+    if (_loading || (_fetchingAll && _allProducts.isEmpty)) {
+      return const Center(child: CircularProgressIndicator(
+        color: AppTheme.primaryBlue, strokeWidth: 2.5));
     }
 
     if (_error != null) {

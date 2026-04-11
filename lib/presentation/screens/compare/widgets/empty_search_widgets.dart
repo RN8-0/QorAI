@@ -420,6 +420,7 @@ class _RecentProductChip extends StatelessWidget {
                 fontSize: 9, fontWeight: FontWeight.w600,
                 color: context.textSecondary)),
             const SizedBox(height: 4),
+            if (product.techScore > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
@@ -578,6 +579,7 @@ class _TrendChip extends StatelessWidget {
                 fontSize: 12, fontWeight: FontWeight.w600,
                 color: context.textSecondary)),
           ),
+          if (product.techScore > 0) ...[
           const SizedBox(width: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -588,6 +590,7 @@ class _TrendChip extends StatelessWidget {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 10, fontWeight: FontWeight.w700, color: cs.primary)),
           ),
+          ],
         ]),
       ),
     );
@@ -735,6 +738,7 @@ class _SearchProductTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (product.techScore > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

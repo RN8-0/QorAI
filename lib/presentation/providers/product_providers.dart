@@ -1017,9 +1017,9 @@ Future<List<ProductEntity>> _fetchAllProducts(
   final sw = Stopwatch()..start();
 
   // ── Multi-category parallel fetch (diverse results, composite index) ──────
-  // Fetch top products from each category in ONE parallel batch.
+  // Fetch top products from EVERY category in ONE parallel batch.
   // Uses category+techScore DESC composite index → fast per-query.
-  final categories = _feedCategories.take(20).toList();
+  final categories = _feedCategories; // all categories — no artificial limit
   debugPrint('=== COMPAIR: MULTI-CAT fetch — ${categories.length} categories, 50 each ===');
 
   try {
@@ -1895,9 +1895,15 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
         if (dedupeIds.add(p.id)) deduped.add(p);
       }
 
-      // Separate same-category products
-      final sameCat = deduped.where((p) =>
-          p.category.toLowerCase().trim() == catKey).toList();
+      // Separate same-category products — accept singular/plural/case variants
+      final sameCat = deduped.where((p) {
+        final pCat = p.category.toLowerCase().trim();
+        if (pCat == catKey) return true;
+        // singular ↔ plural
+        if (catKey.endsWith('s') && pCat == catKey.substring(0, catKey.length - 1)) return true;
+        if (!catKey.endsWith('s') && pCat == '${catKey}s') return true;
+        return false;
+      }).toList();
 
       // Graduated expansion to find at least 4 results
       List<ProductEntity> candidates = [];
