@@ -1567,22 +1567,17 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
       if (user == null) return Stream.value(<String>[]);
       final fireDs = ref.read(firebaseDataSourceProvider);
       final hiveDs = ref.read(hiveDataSourceProvider);
+      final hiveIds = hiveDs.getViewedProducts();
 
-      // Migrate Hive → Firestore on first load, then stream Firestore
       return fireDs.watchRecentlyViewed(user.uid).asyncMap((firestoreIds) async {
-        if (firestoreIds.isEmpty) {
-          // Firestore empty → migrate from Hive local cache
-          final hiveIds = hiveDs.getViewedProducts();
-          if (hiveIds.isNotEmpty) {
-            // Write all Hive data to Firestore (non-blocking, fire-and-forget)
-            for (final id in hiveIds.reversed) {
-              fireDs.addRecentlyViewed(user.uid, id);
-            }
-            return hiveIds;
+        if (firestoreIds.isEmpty && hiveIds.isNotEmpty) {
+          for (final id in hiveIds.reversed) {
+            fireDs.addRecentlyViewed(user.uid, id);
           }
+          return hiveIds;
         }
         return firestoreIds;
-      });
+      }).handleError((_) => <String>[]);
     },
     loading: () => Stream.value(<String>[]),
     error: (_, __) => Stream.value(<String>[]),
@@ -1590,45 +1585,48 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
 });
 
 /// Provider that resolves recently viewed product IDs into full ProductEntity objects.
-final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
-  final viewedIds = ref.watch(viewedProductsProvider).valueOrNull ?? [];
-  if (viewedIds.isEmpty) return [];
+/// Uses autoDispose to avoid stale data. Falls back to Hive IDs if stream hasn't loaded yet.
+final recentlyViewedProductsProvider = Provider<AsyncValue<List<ProductEntity>>>((ref) {
+  final viewedAsync = ref.watch(viewedProductsProvider);
 
-  final feed = ref.watch(homeFeedProvider);
-  final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
-  final productMap = {for (final p in allProducts) p.id: p};
+  return viewedAsync.when(
+    loading: () {
+      // While Firestore stream is loading, try Hive for immediate display
+      final hiveDs = ref.read(hiveDataSourceProvider);
+      final hiveIds = hiveDs.getViewedProducts();
+      if (hiveIds.isEmpty) return const AsyncValue.data([]);
 
-  final results = <ProductEntity>[];
-  final missingIds = <String>[];
+      final feed = ref.watch(homeFeedProvider);
+      final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
+      if (allProducts.isEmpty) return const AsyncValue.loading();
 
-  for (final id in viewedIds.take(20)) {
-    if (id.isEmpty) continue;
-    if (productMap.containsKey(id)) {
-      results.add(productMap[id]!);
-    } else {
-      missingIds.add(id);
-    }
-  }
+      final productMap = {for (final p in allProducts) p.id: p};
+      final results = <ProductEntity>[];
+      for (final id in hiveIds.take(20)) {
+        if (id.isNotEmpty && productMap.containsKey(id)) {
+          results.add(productMap[id]!);
+        }
+      }
+      return AsyncValue.data(results);
+    },
+    error: (e, st) => AsyncValue.error(e, st),
+    data: (viewedIds) {
+      if (viewedIds.isEmpty) return const AsyncValue.data([]);
 
-  // Fetch missing products from Firestore individually
-  if (missingIds.isNotEmpty) {
-    final ds = ref.read(firebaseDataSourceProvider);
-    final futures = missingIds.map((id) =>
-        ds.getProduct(id).then<ProductEntity?>((p) => p).catchError((_) => null as ProductEntity?));
-    final fetched = await Future.wait(futures);
-    final fetchedMap = <String, ProductEntity>{};
-    for (final p in fetched) {
-      if (p != null) fetchedMap[p.id] = p;
-    }
-    results.clear();
-    for (final id in viewedIds.take(20)) {
-      if (id.isEmpty) continue;
-      final p = productMap[id] ?? fetchedMap[id];
-      if (p != null) results.add(p);
-    }
-  }
+      final feed = ref.watch(homeFeedProvider);
+      final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
+      if (allProducts.isEmpty) return const AsyncValue.data([]);
 
-  return results;
+      final productMap = {for (final p in allProducts) p.id: p};
+      final results = <ProductEntity>[];
+      for (final id in viewedIds.take(20)) {
+        if (id.isNotEmpty && productMap.containsKey(id)) {
+          results.add(productMap[id]!);
+        }
+      }
+      return AsyncValue.data(results);
+    },
+  );
 });
 
 /// Record a product view (non-blocking, uses cached data)
