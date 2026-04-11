@@ -3,17 +3,20 @@
 /// Always uses white background (matches product photo white bg from e-commerce).
 /// Works in both light and dark mode — the white creates a clean product card look.
 ///
+/// Supports fallback URLs: if the primary [imageUrl] fails to load, tries each
+/// URL in [fallbackUrls] in order before showing the broken image icon.
+///
 /// Use this everywhere a product image is shown in a card.
 library;
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:compair/core/theme.dart';
 import 'package:flutter/material.dart';
 
-class ProductImageBox extends StatelessWidget {
+class ProductImageBox extends StatefulWidget {
   const ProductImageBox({
     super.key,
     required this.imageUrl,
+    this.fallbackUrls = const [],
     this.width,
     this.height = 120,
     this.borderRadius,
@@ -22,6 +25,8 @@ class ProductImageBox extends StatelessWidget {
   });
 
   final String? imageUrl;
+  /// Additional URLs to try if [imageUrl] fails (e.g. product.images list).
+  final List<String> fallbackUrls;
   final double? width;
   final double height;
   final BorderRadius? borderRadius;
@@ -29,12 +34,59 @@ class ProductImageBox extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
+  State<ProductImageBox> createState() => _ProductImageBoxState();
+}
+
+class _ProductImageBoxState extends State<ProductImageBox> {
+  late List<String> _urls;
+  int _idx = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _buildUrlList();
+  }
+
+  @override
+  void didUpdateWidget(ProductImageBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.fallbackUrls != widget.fallbackUrls) {
+      setState(() {
+        _buildUrlList();
+        _idx = 0;
+      });
+    }
+  }
+
+  void _buildUrlList() {
+    final seen = <String>{};
+    _urls = [
+      if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
+        widget.imageUrl!,
+      ...widget.fallbackUrls.where((u) => u.isNotEmpty),
+    ].where((u) => seen.add(u)).toList();
+  }
+
+  void _onError(String failedUrl) {
+    CachedNetworkImageProvider(failedUrl).evict();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _idx < _urls.length - 1) {
+        setState(() => _idx++);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     Widget imageWidget;
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+
+    if (_urls.isNotEmpty && _idx < _urls.length) {
+      final url = _urls[_idx];
       imageWidget = CachedNetworkImage(
-        imageUrl: imageUrl!,
-        fit: fit,
+        key: ValueKey(url),
+        imageUrl: url,
+        fit: widget.fit,
         placeholder: (_, __) => const Center(
           child: SizedBox(
             width: 22,
@@ -42,11 +94,14 @@ class ProductImageBox extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 1.5),
           ),
         ),
-        errorWidget: (_, __, ___) => const Icon(
-          Icons.image_not_supported_outlined,
-          color: Color(0xFF64748B),
-          size: 32,
-        ),
+        errorWidget: (context, url, error) {
+          _onError(url);
+          return const Icon(
+            Icons.image_not_supported_outlined,
+            color: Color(0xFF64748B),
+            size: 32,
+          );
+        },
       );
     } else {
       imageWidget = const Icon(
@@ -57,12 +112,12 @@ class ProductImageBox extends StatelessWidget {
     }
 
     return ClipRRect(
-      borderRadius: borderRadius ?? BorderRadius.circular(12),
+      borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
       child: Container(
-        width: width,
-        height: height,
+        width: widget.width,
+        height: widget.height,
         decoration: const BoxDecoration(color: Colors.white),
-        child: Padding(padding: padding, child: imageWidget),
+        child: Padding(padding: widget.padding, child: imageWidget),
       ),
     );
   }

@@ -48,6 +48,7 @@ class SharedSimilarGridCard extends StatelessWidget {
                       top: Radius.circular(16))),
                 child: ProductImageBox(
                   imageUrl: product.imageUrl,
+                  fallbackUrls: product.images,
                   height: 88,
                   borderRadius: BorderRadius.circular(10),
                   padding: EdgeInsets.zero,

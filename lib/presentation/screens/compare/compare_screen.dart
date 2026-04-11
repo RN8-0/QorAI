@@ -660,7 +660,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
             child: ProductImageBox(
-              imageUrl: product.imageUrl, width: 60, height: 60,
+              imageUrl: product.imageUrl,
+              fallbackUrls: product.images,
+              width: 60, height: 60,
               borderRadius: BorderRadius.circular(15), padding: const EdgeInsets.all(4),
             ),
           ),

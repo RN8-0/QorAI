@@ -999,6 +999,7 @@ class _ProductCard extends StatelessWidget {
             // ── product image ──────────────────────────────────────────────
             ProductImageBox(
               imageUrl: imageUrl,
+              fallbackUrls: product.images,
               height: 140,
               width: double.infinity,
               borderRadius: const BorderRadius.vertical(
@@ -1172,6 +1173,7 @@ class _ProductListTile extends StatelessWidget {
                 borderRadius: const BorderRadius.horizontal(left: Radius.circular(15)),
                 child: ProductImageBox(
                   imageUrl: imageUrl,
+                  fallbackUrls: product.images,
                   height: 86,
                   width: 86,
                   borderRadius: const BorderRadius.horizontal(left: Radius.circular(15)),

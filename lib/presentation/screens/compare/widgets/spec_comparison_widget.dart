@@ -2997,6 +2997,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
               children: [
                 ProductImageBox(
                   imageUrl: product.imageUrl,
+                  fallbackUrls: product.images,
                   width: 80,
                   height: 80,
                   borderRadius: BorderRadius.circular(16),
@@ -3828,7 +3829,11 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 .where('docKey', isEqualTo: docKey)
                 .orderBy('timestamp', descending: true)
                 .limit(20)
-                .snapshots(),
+                .snapshots()
+                .timeout(
+                  const Duration(seconds: 10),
+                  onTimeout: (sink) => sink.close(),
+                ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: Padding(

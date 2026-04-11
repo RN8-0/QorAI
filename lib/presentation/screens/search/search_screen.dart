@@ -382,7 +382,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: ProductImageBox(
-                    imageUrl: p.imageURL, height: 60,
+                    imageUrl: p.imageURL,
+                    fallbackUrls: p.images,
+                    height: 60,
                     borderRadius: BorderRadius.circular(12)),
               ),
               const SizedBox(width: 12),
@@ -483,7 +485,9 @@ class _TopRatedGrid extends ConsumerWidget {
                       Center(child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: ProductImageBox(
-                            imageUrl: p.imageURL, height: 100,
+                            imageUrl: p.imageURL,
+                            fallbackUrls: p.images,
+                            height: 100,
                             borderRadius: BorderRadius.circular(14)),
                       )),
                       // Rank badge

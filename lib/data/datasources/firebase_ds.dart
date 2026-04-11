@@ -648,7 +648,11 @@ class FirebaseDataSource {
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => ReviewModel.fromFirestore(doc))
-            .toList());
+            .toList())
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.add([]),
+        );
   }
 
   Stream<List<ReviewModel>> watchUserReviews(String userId, {int limit = 50}) {
@@ -660,7 +664,11 @@ class FirebaseDataSource {
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => ReviewModel.fromFirestore(doc))
-            .toList());
+            .toList())
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.add([]),
+        );
   }
 
   // ─── Review Replies (subcollection) ───
