@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,14 +87,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   late String _activeCategoryId;
   late String _activeCategoryName;
 
-  List<ProductEntity>? _allProducts;
+  List<ProductEntity> _allProducts = [];
   List<ProductEntity>? _remoteSearchResults;
   bool _loading = true;
-  bool _loadingMore = false; // background full-fetch in progress
-  bool _hasMore = false;
+  bool _fetchingAll = false; // cursor pagination in progress
   bool _remoteSearching = false;
   String? _error;
   Timer? _searchDebounce;
+
+  // Cursor for Firestore pagination
+  DocumentSnapshot? _lastDoc;
+  bool _allLoaded = false;
 
   @override
   void initState() {
@@ -121,14 +125,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     });
     _searchDebounce?.cancel();
     if (q.length >= 2) {
-      // Debounce 300ms — local search updates instantly via _filteredProducts getter
       _searchDebounce = Timer(const Duration(milliseconds: 300), () {
         _doRemoteSearch(q);
       });
     }
   }
 
-  /// Remote search via Cloud Function — always runs to fill gaps in local data.
+  /// Remote search via Cloud Function — runs in parallel with local search.
   Future<void> _doRemoteSearch(String query) async {
     if (!mounted || query.isEmpty) return;
     setState(() => _remoteSearching = true);
@@ -141,12 +144,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       );
       if (mounted && _searchQuery == query) {
         final catKey = _activeCategoryId.toLowerCase().trim();
-        // Strict client-side category filter — Cloud Function may ignore it
         final categoryResults = results
             .where((p) => p.category.toLowerCase().trim() == catKey)
             .cast<ProductEntity>()
             .toList();
-        final localIds = (_allProducts ?? []).map((p) => p.id).toSet();
+        final localIds = _allProducts.map((p) => p.id).toSet();
         final newProducts = categoryResults
             .where((p) => !localIds.contains(p.id))
             .toList();
@@ -162,49 +164,41 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 400) {
-      _loadMore();
+        _scrollController.position.maxScrollExtent - 600 &&
+        !_fetchingAll && !_allLoaded) {
+      _fetchNextPage();
     }
   }
 
-  Future<void> _loadMore() async {
-    if (_loadingMore || !_hasMore || _searchQuery.isNotEmpty) return;
-    setState(() => _loadingMore = true);
+  /// Fetch next page via cursor, called by scroll or background loop.
+  Future<void> _fetchNextPage() async {
+    if (_fetchingAll || _allLoaded || !mounted) return;
+    setState(() => _fetchingAll = true);
     try {
-      final existing = _allProducts ?? [];
-      final result = await ref.read(productRepositoryProvider)
-          .getProducts(
-            category: _activeCategoryId,
-            limit: 500,
-            orderBy: 'techScore',
-            descending: true,
-          );
-      result.when(
-        success: (products) {
-          if (!mounted) return;
-          final existingIds = existing.map((p) => p.id).toSet();
-          final newProducts = products.where((p) => !existingIds.contains(p.id)).toList();
-          if (newProducts.isEmpty) {
-            _hasMore = false;
-          } else {
-            setState(() {
-              _allProducts = [...existing, ...newProducts];
-              _hasMore = false; // single bulk fetch
-            });
-          }
-        },
-        failure: (_) => _hasMore = false,
+      final ds = ref.read(firebaseDataSourceProvider);
+      final page = await ds.getProductsPage(
+        category: _activeCategoryId,
+        limit: 200,
+        startAfter: _lastDoc,
       );
-    } catch (_) {
-      _hasMore = false;
-    }
-    if (mounted) setState(() => _loadingMore = false);
+      if (!mounted) return;
+      final existingIds = _allProducts.map((p) => p.id).toSet();
+      final newProducts = page.products
+          .where((p) => !existingIds.contains(p.id))
+          .cast<ProductEntity>()
+          .toList();
+      setState(() {
+        _allProducts = [..._allProducts, ...newProducts];
+        _lastDoc = page.lastDoc;
+        _allLoaded = page.products.length < 200;
+      });
+    } catch (_) {}
+    if (mounted) setState(() => _fetchingAll = false);
   }
 
-  /// Phase 1: fast first load — limit:100, shows UI quickly.
-  /// Phase 2: background full fetch — limit:500+, fills remaining products.
+  /// Load first page fast, then keep fetching all pages in background.
   Future<void> _loadProducts() async {
-    setState(() { _loading = true; _error = null; _hasMore = false; });
+    setState(() { _loading = true; _error = null; _allLoaded = false; _lastDoc = null; });
     final catKey = _activeCategoryId.toLowerCase().trim();
 
     // 1. HomeFeed cache — instant, no network
@@ -217,89 +211,74 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             .toList();
         if (catProducts.isNotEmpty && mounted) {
           setState(() { _allProducts = catProducts; _loading = false; });
-          _backgroundLoadAll(catProducts); // load full list in background
-          return;
         }
       }
     } catch (_) {}
 
-    // 2. In-memory full cache — fast, no network
-    try {
-      final ds = ref.read(firebaseDataSourceProvider);
-      if (ds.isCacheReady) {
-        final all = await ds.getAllCachedProducts();
-        final catProducts = all
-            .where((p) => p.category.toLowerCase().trim() == catKey)
+    // 2. Fetch ALL pages from Firestore via cursor pagination
+    _lastDoc = null;
+    _allLoaded = false;
+    if (mounted && _loading) setState(() => _loading = false);
+    _fetchAllPages();
+  }
+
+  /// Fetches every page of products for this category using cursor pagination.
+  /// Each page is merged into _allProducts immediately so filters stay fresh.
+  Future<void> _fetchAllPages() async {
+    if (_fetchingAll || !mounted) return;
+    setState(() => _fetchingAll = true);
+
+    final ds = ref.read(firebaseDataSourceProvider);
+    DocumentSnapshot? cursor;
+    final seenIds = _allProducts.map((p) => p.id).toSet();
+
+    while (mounted) {
+      try {
+        final page = await ds.getProductsPage(
+          category: _activeCategoryId,
+          limit: 200,
+          startAfter: cursor,
+        );
+
+        if (!mounted) break;
+
+        final newProducts = page.products
+            .where((p) => !seenIds.contains(p.id))
             .cast<ProductEntity>()
             .toList();
-        if (catProducts.isNotEmpty && mounted) {
-          setState(() { _allProducts = catProducts; _loading = false; });
-          _backgroundLoadAll(catProducts);
-          return;
-        }
-      }
-    } catch (_) {}
 
-    // 3. Firestore — fast first batch (limit:100, uses Firestore local cache first)
-    try {
-      final result = await ref.read(productRepositoryProvider)
-          .getProducts(
-            category: _activeCategoryId,
-            limit: 100,
-            orderBy: 'techScore',
-            descending: true,
-          );
-      result.when(
-        success: (products) {
-          if (mounted) {
-            setState(() { _allProducts = products; _loading = false; });
-            if (products.isNotEmpty) {
-              _backgroundLoadAll(products); // fetch rest in background
-            }
-          }
-        },
-        failure: (err) {
-          if (mounted) setState(() { _error = err.message; _loading = false; });
-        },
-      );
-    } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+        if (newProducts.isNotEmpty) {
+          for (final p in newProducts) seenIds.add(p.id);
+          setState(() {
+            _allProducts = [..._allProducts, ...newProducts];
+            _loading = false;
+          });
+        }
+
+        if (page.products.length < 200 || page.lastDoc == null) {
+          // Last page reached
+          setState(() { _allLoaded = true; _lastDoc = null; });
+          break;
+        }
+
+        cursor = page.lastDoc;
+        _lastDoc = cursor;
+
+        // Small pause between pages to avoid hammering Firestore
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      } catch (_) {
+        break;
+      }
+    }
+
+    if (mounted) {
+      setState(() { _fetchingAll = false; _loading = false; });
     }
   }
 
-  /// Background: fetch up to 500 products and merge with existing list.
-  Future<void> _backgroundLoadAll(List<ProductEntity> initial) async {
-    if (!mounted) return;
-    setState(() => _loadingMore = true);
-    try {
-      final result = await ref.read(productRepositoryProvider)
-          .getProducts(
-            category: _activeCategoryId,
-            limit: 500,
-            orderBy: 'techScore',
-            descending: true,
-          );
-      result.when(
-        success: (products) {
-          if (!mounted) return;
-          final existingIds = (_allProducts ?? []).map((p) => p.id).toSet();
-          final newProducts = products.where((p) => !existingIds.contains(p.id)).toList();
-          if (newProducts.isNotEmpty) {
-            setState(() {
-              _allProducts = [...(_allProducts ?? []), ...newProducts];
-            });
-          }
-        },
-        failure: (_) {},
-      );
-    } catch (_) {}
-    if (mounted) setState(() => _loadingMore = false);
-  }
-
   List<ProductEntity> get _filteredProducts {
-    if (_allProducts == null) return [];
     // Category browse shows ALL products from Firebase — no brand/year filter
-    var list = List<ProductEntity>.from(_allProducts!);
+    var list = List<ProductEntity>.from(_allProducts);
 
     // Search query filter
     if (_searchQuery.isNotEmpty) {
@@ -324,7 +303,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
     final definitions = FilterConfig.getFiltersWithProducts(
       _activeCategoryId,
-      _allProducts!,
+      _allProducts,
     );
     final filtered = FilterApplier.apply(list, _filterState, definitions);
     return _sortProducts(filtered);
@@ -352,7 +331,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       context: context,
       categoryId: _activeCategoryId,
       initialState: _filterState,
-      products: _allProducts ?? [],
+      products: _allProducts,
     );
     if (result != null && mounted) {
       setState(() => _filterState = result);
@@ -396,7 +375,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                 setState(() {
                   _activeCategoryId = id;
                   _activeCategoryName = itemName;
-                  _allProducts = null;
+                  _allProducts = [];
                   _searchController.clear();
                   _searchQuery = '';
                   _filterState = const FilterState();
@@ -621,7 +600,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         currentSort: _sortOption,
         filterState: _filterState,
         categoryId: _activeCategoryId,
-        products: _allProducts ?? [],
+        products: _allProducts,
         onApply: (sort, filters) {
           setState(() {
             _sortOption = sort;
@@ -635,7 +614,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   Widget _buildActiveFilterChips() {
     final definitions = FilterConfig.getFiltersWithProducts(
       _activeCategoryId,
-      _allProducts ?? [],
+      _allProducts,
     );
     final chips = <Widget>[];
 
@@ -779,7 +758,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           ),
         );
       }
-      final isEmptyCategory = _allProducts != null && _allProducts!.isEmpty && !_filterState.isActive;
+      final isEmptyCategory = _allProducts.isEmpty && !_loading && !_fetchingAll && !_filterState.isActive;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -857,7 +836,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               12, 8, 12,
               MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
             ),
-            itemCount: products.length + (_loadingMore ? 1 : 0),
+            itemCount: products.length + (_fetchingAll ? 1 : 0),
             itemBuilder: (context, index) {
               if (index >= products.length) {
                 return const Padding(

@@ -327,6 +327,40 @@ class FirebaseDataSource {
     }
   }
 
+  /// Like [getProducts] but also returns the last DocumentSnapshot for cursor pagination.
+  Future<({List<ProductModel> products, DocumentSnapshot? lastDoc})> getProductsPage({
+    required String category,
+    int limit = 200,
+    DocumentSnapshot? startAfter,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection(AppConstants.productsCollection)
+          .where('category', isEqualTo: category)
+          .orderBy('techScore', descending: true);
+
+      if (startAfter != null) {
+        query = query.startAfterDocument(startAfter);
+      }
+      query = query.limit(limit);
+
+      final sw = Stopwatch()..start();
+      final snapshot = await query.get().timeout(const Duration(seconds: 60));
+      sw.stop();
+      debugPrint('=== COMPAIR: getProductsPage cat=$category limit=$limit cursor=${startAfter?.id} → ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
+
+      final products = snapshot.docs.map((doc) {
+        try { return ProductModel.fromFirestore(doc); } catch (_) { return null; }
+      }).whereType<ProductModel>().toList();
+
+      final lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+      return (products: products, lastDoc: lastDoc);
+    } catch (e, st) {
+      debugPrint('=== COMPAIR: getProductsPage ERROR: $e\n$st ===');
+      return (products: <ProductModel>[], lastDoc: null);
+    }
+  }
+
   String _getFieldValue(ProductModel p, String field) {
     switch (field) {
       case 'name': return p.name.toLowerCase();
