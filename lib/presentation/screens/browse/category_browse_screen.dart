@@ -131,7 +131,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
   }
 
-  /// Remote search via Cloud Function — runs in parallel with local search.
+  /// Remote search via Cloud Function — returns ALL matching products from server.
   Future<void> _doRemoteSearch(String query) async {
     if (!mounted || query.isEmpty) return;
     setState(() => _remoteSearching = true);
@@ -139,21 +139,22 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final ds = ref.read(firebaseDataSourceProvider);
       final results = await ds.searchProducts(
         query: query,
-        limit: 100,
+        limit: 150,
         category: _activeCategoryId,
       );
       if (mounted && _searchQuery == query) {
         final catKey = _activeCategoryId.toLowerCase().trim();
-        final categoryResults = results
-            .where((p) => p.category.toLowerCase().trim() == catKey)
-            .cast<ProductEntity>()
-            .toList();
-        final localIds = _allProducts.map((p) => p.id).toSet();
-        final newProducts = categoryResults
-            .where((p) => !localIds.contains(p.id))
-            .toList();
+        // Accept both exact match and variant (e.g. "microphone" vs "microphones")
+        final categoryResults = results.where((p) {
+          final pCat = p.category.toLowerCase().trim();
+          return pCat == catKey ||
+              (catKey.endsWith('s') && pCat == catKey.substring(0, catKey.length - 1)) ||
+              (!catKey.endsWith('s') && pCat == '${catKey}s');
+        }).cast<ProductEntity>().toList();
+
         setState(() {
-          _remoteSearchResults = newProducts;
+          // ALL remote results — let _filteredProducts merge with local
+          _remoteSearchResults = categoryResults;
           _remoteSearching = false;
         });
       }
@@ -198,7 +199,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   /// Load first page fast, then keep fetching all pages in background.
   Future<void> _loadProducts() async {
-    setState(() { _loading = true; _error = null; _allLoaded = false; _lastDoc = null; });
+    setState(() { _loading = true; _error = null; _allLoaded = false; _lastDoc = null; _allProducts = []; });
     final catKey = _activeCategoryId.toLowerCase().trim();
 
     // 1. HomeFeed cache — instant, no network
@@ -206,9 +207,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final feedAsync = ref.read(homeFeedProvider);
       final cached = feedAsync.valueOrNull;
       if (cached != null && cached.all.isNotEmpty) {
-        final catProducts = cached.all
-            .where((p) => p.category.toLowerCase().trim() == catKey)
-            .toList();
+        // Accept category variants (e.g. "microphone" matches "microphones")
+        final catProducts = cached.all.where((p) {
+          final pCat = p.category.toLowerCase().trim();
+          return pCat == catKey ||
+              (catKey.endsWith('s') && pCat == catKey.substring(0, catKey.length - 1)) ||
+              (!catKey.endsWith('s') && pCat == '${catKey}s');
+        }).toList();
         if (catProducts.isNotEmpty && mounted) {
           setState(() { _allProducts = catProducts; _loading = false; });
         }
@@ -263,9 +268,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
         cursor = page.lastDoc;
         _lastDoc = cursor;
-
-        // Small pause between pages to avoid hammering Firestore
-        await Future<void>.delayed(const Duration(milliseconds: 300));
       } catch (_) {
         break;
       }
@@ -277,34 +279,32 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   List<ProductEntity> get _filteredProducts {
-    // Category browse shows ALL products from Firebase — no brand/year filter
-    var list = List<ProductEntity>.from(_allProducts);
-
-    // Search query filter
     if (_searchQuery.isNotEmpty) {
-      list = list.where((p) {
+      // Start with local results that match the search query
+      final localMatches = _allProducts.where((p) {
         return p.name.toLowerCase().contains(_searchQuery) ||
             (p.brand ?? '').toLowerCase().contains(_searchQuery);
       }).toList();
 
-      // Merge remote search results (same category, products not in local set)
+      // Merge ALL remote search results (dedup by id)
       if (_remoteSearchResults != null && _remoteSearchResults!.isNotEmpty) {
-        final catKey = _activeCategoryId.toLowerCase().trim();
-        final localIds = list.map((p) => p.id).toSet();
+        final seenIds = localMatches.map((p) => p.id).toSet();
         for (final p in _remoteSearchResults!) {
-          if (!localIds.contains(p.id) &&
-              p.category.toLowerCase().trim() == catKey) {
-            list.add(p);
-            localIds.add(p.id);
+          if (!seenIds.contains(p.id)) {
+            localMatches.add(p);
+            seenIds.add(p.id);
           }
         }
       }
+
+      final definitions = FilterConfig.getFiltersWithProducts(_activeCategoryId, localMatches);
+      final filtered = FilterApplier.apply(localMatches, _filterState, definitions);
+      return _sortProducts(filtered);
     }
 
-    final definitions = FilterConfig.getFiltersWithProducts(
-      _activeCategoryId,
-      _allProducts,
-    );
+    // No search — show all loaded products
+    var list = List<ProductEntity>.from(_allProducts);
+    final definitions = FilterConfig.getFiltersWithProducts(_activeCategoryId, list);
     final filtered = FilterApplier.apply(list, _filterState, definitions);
     return _sortProducts(filtered);
   }

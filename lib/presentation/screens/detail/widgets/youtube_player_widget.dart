@@ -329,39 +329,41 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          widget.title.isNotEmpty ? widget.title : 'Video',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-          maxLines: 1, overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isLandscape
+      body: Stack(
+        children: [
+          // Video — tüm ekranı kaplar
+          Positioned.fill(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Colors.red))
+                : _chewieCtrl != null
+                    ? Chewie(controller: _chewieCtrl!)
+                    : const Center(child: CircularProgressIndicator(color: Colors.red)),
+          ),
+          // Geri butonu — sol üst
+          Positioned(
+            top: topPadding + 8,
+            left: 8,
+            child: _FloatingOverlayBtn(
+              icon: Icons.arrow_back_rounded,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ),
+          // Döndür butonu — sağ üst
+          Positioned(
+            top: topPadding + 8,
+            right: 8,
+            child: _FloatingOverlayBtn(
+              icon: _isLandscape
                   ? Icons.screen_lock_portrait_rounded
                   : Icons.screen_rotation_rounded,
-              color: Colors.white),
-            onPressed: _toggleOrientation,
-            tooltip: _isLandscape ? 'Dikey mod' : 'Yatay mod',
+              onTap: _toggleOrientation,
+            ),
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.red))
-          : _chewieCtrl != null
-              ? Center(child: Chewie(controller: _chewieCtrl!))
-              : const Center(child: CircularProgressIndicator(color: Colors.red)),
     );
   }
 }
@@ -444,40 +446,38 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          context.l10n?.video ?? 'Video',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isLandscape
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Colors.red))
+                : _chewieCtrl != null
+                    ? Chewie(controller: _chewieCtrl!)
+                    : const Center(child: Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48)),
+          ),
+          Positioned(
+            top: topPadding + 8,
+            left: 8,
+            child: _FloatingOverlayBtn(
+              icon: Icons.arrow_back_rounded,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ),
+          Positioned(
+            top: topPadding + 8,
+            right: 8,
+            child: _FloatingOverlayBtn(
+              icon: _isLandscape
                   ? Icons.screen_lock_portrait_rounded
                   : Icons.screen_rotation_rounded,
-              color: Colors.white),
-            onPressed: _toggleOrientation,
-            tooltip: _isLandscape ? 'Dikey mod' : 'Yatay mod',
+              onTap: _toggleOrientation,
+            ),
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.red))
-          : _chewieCtrl != null
-              ? Center(child: Chewie(controller: _chewieCtrl!))
-              : const Center(
-                  child: Icon(Icons.videocam_off_rounded,
-                    color: Colors.white54, size: 48)),
     );
   }
 }
@@ -485,6 +485,29 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
 // ═══════════════════════════════════════════════════════════
 // YARDIMCI WİDGET'LAR
 // ═══════════════════════════════════════════════════════════
+
+/// Fullscreen üzerinde yarı şeffaf yüzen buton (geri / döndür)
+class _FloatingOverlayBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _FloatingOverlayBtn({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        child: Icon(icon, size: 20, color: Colors.white),
+      ),
+    );
+  }
+}
 
 class _MiniBtn extends StatelessWidget {
   final IconData icon;

@@ -333,11 +333,37 @@ class FirebaseDataSource {
     int limit = 200,
     DocumentSnapshot? startAfter,
   }) async {
+    // Try the exact category key first, then fallback variants
+    final variants = _categoryVariants(category);
+    for (final cat in variants) {
+      final result = await _getProductsPageForCategory(cat, limit: limit, startAfter: startAfter);
+      if (result.products.isNotEmpty) return result;
+    }
+    return (products: <ProductModel>[], lastDoc: null);
+  }
+
+  /// Returns a list of possible category string variants to try (exact + fallbacks).
+  List<String> _categoryVariants(String category) {
+    final lower = category.toLowerCase().trim();
+    final variants = <String>{category, lower};
+    // singular/plural variants
+    if (lower.endsWith('s')) variants.add(lower.substring(0, lower.length - 1));
+    else variants.add('${lower}s');
+    // capitalize first letter
+    if (lower.isNotEmpty) variants.add(lower[0].toUpperCase() + lower.substring(1));
+    return variants.toList();
+  }
+
+  Future<({List<ProductModel> products, DocumentSnapshot? lastDoc})> _getProductsPageForCategory(
+    String category, {
+    int limit = 200,
+    DocumentSnapshot? startAfter,
+  }) async {
     try {
+      // No orderBy → no composite index needed. Client-side sorting handles order.
       Query query = _firestore
           .collection(AppConstants.productsCollection)
-          .where('category', isEqualTo: category)
-          .orderBy('techScore', descending: true);
+          .where('category', isEqualTo: category);
 
       if (startAfter != null) {
         query = query.startAfterDocument(startAfter);
@@ -345,7 +371,7 @@ class FirebaseDataSource {
       query = query.limit(limit);
 
       final sw = Stopwatch()..start();
-      final snapshot = await query.get().timeout(const Duration(seconds: 60));
+      final snapshot = await query.get().timeout(const Duration(seconds: 30));
       sw.stop();
       debugPrint('=== COMPAIR: getProductsPage cat=$category limit=$limit cursor=${startAfter?.id} → ${snapshot.docs.length} docs in ${sw.elapsedMilliseconds}ms ===');
 
@@ -356,7 +382,7 @@ class FirebaseDataSource {
       final lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       return (products: products, lastDoc: lastDoc);
     } catch (e, st) {
-      debugPrint('=== COMPAIR: getProductsPage ERROR: $e\n$st ===');
+      debugPrint('=== COMPAIR: getProductsPage ERROR cat=$category: $e\n$st ===');
       return (products: <ProductModel>[], lastDoc: null);
     }
   }

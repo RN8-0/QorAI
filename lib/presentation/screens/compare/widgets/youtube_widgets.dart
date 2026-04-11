@@ -537,37 +537,38 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(widget.title,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-          maxLines: 1, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isLandscape
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Colors.red))
+                : _chewieCtrl != null
+                    ? Chewie(controller: _chewieCtrl!)
+                    : const Center(child: CircularProgressIndicator(color: Colors.red)),
+          ),
+          Positioned(
+            top: topPadding + 8,
+            left: 8,
+            child: _CmpFloatingBtn(
+              icon: Icons.arrow_back_rounded,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ),
+          Positioned(
+            top: topPadding + 8,
+            right: 8,
+            child: _CmpFloatingBtn(
+              icon: _isLandscape
                   ? Icons.screen_lock_portrait_rounded
                   : Icons.screen_rotation_rounded,
-              color: Colors.white),
-            onPressed: _toggleOrientation,
-            tooltip: _isLandscape ? 'Dikey mod' : 'Yatay mod',
+              onTap: _toggleOrientation,
+            ),
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.red))
-          : _chewieCtrl != null
-              ? Center(child: Chewie(controller: _chewieCtrl!))
-              : const Center(child: CircularProgressIndicator(color: Colors.red)),
     );
   }
 }
@@ -651,33 +652,38 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Text(widget.title,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-          maxLines: 1, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isLandscape
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Colors.red))
+                : _chewieCtrl != null
+                    ? Chewie(controller: _chewieCtrl!)
+                    : const Center(child: Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48)),
+          ),
+          Positioned(
+            top: topPadding + 8,
+            left: 8,
+            child: _CmpFloatingBtn(
+              icon: Icons.arrow_back_rounded,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ),
+          Positioned(
+            top: topPadding + 8,
+            right: 8,
+            child: _CmpFloatingBtn(
+              icon: _isLandscape
                   ? Icons.screen_lock_portrait_rounded
                   : Icons.screen_rotation_rounded,
-              color: Colors.white),
-            onPressed: _toggleOrientation,
+              onTap: _toggleOrientation,
+            ),
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.red))
-          : _chewieCtrl != null
-              ? Center(child: Chewie(controller: _chewieCtrl!))
-              : const Center(
-                  child: Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48)),
     );
   }
 }
@@ -705,7 +711,28 @@ yt_explode.MuxedStreamInfo _bestMuxedCmp(yt_explode.StreamManifest manifest) {
 // YARDIMCI WİDGET'LAR (Compare)
 // ═══════════════════════════════════════════════════════════
 
+/// Fullscreen üstünde yüzen buton
+class _CmpFloatingBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _CmpFloatingBtn({required this.icon, required this.onTap});
 
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        child: Icon(icon, size: 20, color: Colors.white),
+      ),
+    );
+  }
+}
 
 class _CmpIconBtn extends StatelessWidget {
   final IconData icon;
