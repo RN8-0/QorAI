@@ -642,72 +642,46 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
       timeAgo = 'Just now';
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
-                child: Text(
-                  review.userId.isNotEmpty ? review.userId[0].toUpperCase() : '?',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.brandBlue),
+    return _ReviewCard(
+      reviewId: review.id,
+      firestoreCollection: AppConstants.reviewsCollection,
+      userId: review.userId,
+      displayName: 'User',
+      timeAgo: timeAgo,
+      text: review.text,
+      rating: review.rating,
+      likedBy: review.likedBy,
+      dislikedBy: review.dislikedBy,
+      currentUserId: currentUserId,
+      onDelete: review.userId == currentUserId
+          ? () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: context.surfaceColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: Text('Yorumu Sil',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700)),
+                  content: Text('Bu yorumu silmek istiyor musun?',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(context.l10n?.cancel ?? 'İptal'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text('Sil',
+                          style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.error)),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text('User',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary),
-                maxLines: 1, overflow: TextOverflow.ellipsis)),
-              if (review.rating > 0) ...[
-                _buildStarRow(review.rating, size: 13),
-                const SizedBox(width: 6),
-              ],
-              Text(timeAgo,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, color: context.textTertiaryColor)),
-            ],
-          ),
-          if (review.text.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(review.text,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13, height: 1.5, color: context.textSecondary)),
-          ],
-          const SizedBox(height: 10),
-          Row(children: [
-            _LikeDislikeButton(
-              reviewId: review.id,
-              isLike: true,
-              count: review.likedBy.length,
-              isActive: currentUserId != null && review.likedBy.contains(currentUserId),
-            ),
-            const SizedBox(width: 12),
-            _LikeDislikeButton(
-              reviewId: review.id,
-              isLike: false,
-              count: review.dislikedBy.length,
-              isActive: currentUserId != null && review.dislikedBy.contains(currentUserId),
-            ),
-            const Spacer(),
-            if (review.userId == currentUserId)
-              _DeleteReviewButton(
-                reviewId: review.id,
-                productId: widget.product.id,
-              ),
-          ]),
-        ],
-      ),
+              );
+              if (confirmed == true) {
+                await ref.read(productRepositoryProvider).deleteReview(review.id);
+              }
+            }
+          : null,
     );
   }
 
@@ -1029,6 +1003,529 @@ class _DeleteReviewButton extends ConsumerWidget {
       },
       child: Icon(Icons.delete_outline_rounded,
           size: 18, color: AppTheme.error.withValues(alpha: 0.7)),
+    );
+  }
+}
+
+// ─── Shared Review Card with Replies ───
+
+class _ReviewCard extends ConsumerStatefulWidget {
+  final String reviewId;
+  final String firestoreCollection;
+  final String userId;
+  final String displayName;
+  final String timeAgo;
+  final String text;
+  final double rating;
+  final List<String> likedBy;
+  final List<String> dislikedBy;
+  final String? currentUserId;
+  final VoidCallback? onDelete;
+
+  const _ReviewCard({
+    required this.reviewId,
+    required this.firestoreCollection,
+    required this.userId,
+    required this.displayName,
+    required this.timeAgo,
+    required this.text,
+    required this.rating,
+    required this.likedBy,
+    required this.dislikedBy,
+    this.currentUserId,
+    this.onDelete,
+  });
+
+  @override
+  ConsumerState<_ReviewCard> createState() => _ReviewCardState();
+}
+
+class _ReviewCardState extends ConsumerState<_ReviewCard> {
+  bool _repliesExpanded = false;
+  bool _replyInputVisible = false;
+  bool _textExpanded = false;
+  final TextEditingController _replyCtrl = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _replyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayChar = widget.displayName.isNotEmpty
+        ? widget.displayName[0].toUpperCase()
+        : (widget.userId.isNotEmpty ? widget.userId[0].toUpperCase() : '?');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header: Avatar + Name + Time + Delete ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
+                  child: Text(displayChar,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.brandBlue)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          widget.displayName.isNotEmpty
+                              ? widget.displayName
+                              : 'User',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary)),
+                      const SizedBox(height: 2),
+                      Row(children: [
+                        if (widget.rating > 0) ...[
+                          ...List.generate(5, (i) {
+                            if (i < widget.rating.floor()) {
+                              return Icon(Icons.star_rounded,
+                                  color: AppTheme.warning, size: 13);
+                            } else if (i < widget.rating) {
+                              return Icon(Icons.star_half_rounded,
+                                  color: AppTheme.warning, size: 13);
+                            }
+                            return Icon(Icons.star_outline_rounded,
+                                color: AppTheme.slate400, size: 13);
+                          }),
+                          const SizedBox(width: 6),
+                        ],
+                        Text(widget.timeAgo,
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                color: context.textTertiaryColor)),
+                      ]),
+                    ],
+                  ),
+                ),
+                if (widget.onDelete != null)
+                  GestureDetector(
+                    onTap: widget.onDelete,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8, top: 2),
+                      child: Icon(Icons.delete_outline_rounded,
+                          size: 20,
+                          color: AppTheme.error.withValues(alpha: 0.6)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ── Review text (collapsible) ──
+          if (widget.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: GestureDetector(
+                onTap: () => setState(() => _textExpanded = !_textExpanded),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.text,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          height: 1.6,
+                          color: context.textPrimary),
+                      maxLines: _textExpanded ? null : 4,
+                      overflow: _textExpanded
+                          ? TextOverflow.visible
+                          : TextOverflow.ellipsis,
+                    ),
+                    if (!_textExpanded && widget.text.length > 200)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('Devamını gör',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: AppTheme.brandBlue,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Action bar: Like / Dislike / Reply ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: Row(children: [
+              _LikeDislikeButton(
+                reviewId: widget.reviewId,
+                isLike: true,
+                count: widget.likedBy.length,
+                isActive: widget.currentUserId != null &&
+                    widget.likedBy.contains(widget.currentUserId),
+              ),
+              const SizedBox(width: 8),
+              _LikeDislikeButton(
+                reviewId: widget.reviewId,
+                isLike: false,
+                count: widget.dislikedBy.length,
+                isActive: widget.currentUserId != null &&
+                    widget.dislikedBy.contains(widget.currentUserId),
+              ),
+              const Spacer(),
+              if (widget.currentUserId != null)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _replyInputVisible = !_replyInputVisible;
+                    if (_replyInputVisible) _repliesExpanded = true;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _replyInputVisible
+                          ? AppTheme.brandBlue.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: _replyInputVisible
+                              ? AppTheme.brandBlue.withValues(alpha: 0.4)
+                              : context.dividerColor),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.reply_rounded,
+                          size: 15,
+                          color: _replyInputVisible
+                              ? AppTheme.brandBlue
+                              : context.textTertiaryColor),
+                      const SizedBox(width: 5),
+                      Text('Yanıtla',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _replyInputVisible
+                                  ? AppTheme.brandBlue
+                                  : context.textTertiaryColor)),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+
+          // ── Replies section ──
+          _ReviewRepliesSection(
+            reviewId: widget.reviewId,
+            firestoreCollection: widget.firestoreCollection,
+            currentUserId: widget.currentUserId,
+            isExpanded: _repliesExpanded,
+            showInput: _replyInputVisible,
+            replyController: _replyCtrl,
+            submitting: _submitting,
+            onToggleExpand: () =>
+                setState(() => _repliesExpanded = !_repliesExpanded),
+            onSubmitReply: _submitReply,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitReply() async {
+    final text = _replyCtrl.text.trim();
+    if (text.isEmpty) return;
+    final uid = widget.currentUserId;
+    if (uid == null) return;
+    setState(() => _submitting = true);
+    try {
+      HapticFeedback.mediumImpact();
+      final user = ref.read(userProfileProvider).valueOrNull;
+      final displayName = user?.displayName.isNotEmpty == true
+          ? user!.displayName
+          : (user?.email.isNotEmpty == true
+              ? user!.email.split('@').first
+              : 'User');
+      await ref.read(firebaseDataSourceProvider).addReviewReply(
+        collection: widget.firestoreCollection,
+        reviewId: widget.reviewId,
+        userId: uid,
+        displayName: displayName,
+        text: text,
+      );
+      _replyCtrl.clear();
+      setState(() {
+        _replyInputVisible = false;
+        _repliesExpanded = true;
+      });
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+}
+
+class _ReviewRepliesSection extends ConsumerWidget {
+  final String reviewId;
+  final String firestoreCollection;
+  final String? currentUserId;
+  final bool isExpanded;
+  final bool showInput;
+  final TextEditingController replyController;
+  final bool submitting;
+  final VoidCallback onToggleExpand;
+  final VoidCallback onSubmitReply;
+
+  const _ReviewRepliesSection({
+    required this.reviewId,
+    required this.firestoreCollection,
+    required this.currentUserId,
+    required this.isExpanded,
+    required this.showInput,
+    required this.replyController,
+    required this.submitting,
+    required this.onToggleExpand,
+    required this.onSubmitReply,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: ref.read(firebaseDataSourceProvider)
+          .watchReviewReplies(firestoreCollection, reviewId),
+      builder: (context, snapshot) {
+        final replies = snapshot.data ?? [];
+        final replyCount = replies.length;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (replyCount > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: GestureDetector(
+                  onTap: onToggleExpand,
+                  child: Row(children: [
+                    Container(
+                        width: 2, height: 14,
+                        color: AppTheme.brandBlue.withValues(alpha: 0.3),
+                        margin: const EdgeInsets.only(right: 8)),
+                    Text(
+                      isExpanded ? 'Yanıtları gizle' : '$replyCount yanıt',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.brandBlue),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      size: 16,
+                      color: AppTheme.brandBlue,
+                    ),
+                  ]),
+                ),
+              ),
+
+            if (isExpanded && replyCount > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Column(
+                  children: replies.map((reply) {
+                    final replyId = reply['id'] as String? ?? '';
+                    final replyUserId = reply['userId'] as String? ?? '';
+                    final replyName =
+                        reply['displayName'] as String? ?? 'User';
+                    final replyText = reply['text'] as String? ?? '';
+                    final replyTs =
+                        (reply['createdAt'] as Timestamp?)?.toDate() ??
+                            DateTime.now();
+                    final diff = DateTime.now().difference(replyTs);
+                    final timeStr = diff.inDays > 0
+                        ? '${diff.inDays}g'
+                        : diff.inHours > 0
+                            ? '${diff.inHours}s'
+                            : '${diff.inMinutes}d';
+                    final isOwner = currentUserId == replyUserId;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: context.surfaceVariantColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color:
+                                AppTheme.brandBlue.withValues(alpha: 0.08)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                              width: 2,
+                              height: 36,
+                              color:
+                                  AppTheme.brandBlue.withValues(alpha: 0.25),
+                              margin: const EdgeInsets.only(right: 10)),
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor:
+                                AppTheme.brandBlue.withValues(alpha: 0.1),
+                            child: Text(
+                              replyName.isNotEmpty
+                                  ? replyName[0].toUpperCase()
+                                  : '?',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.brandBlue),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Expanded(
+                                    child: Text(replyName,
+                                        style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: context.textPrimary),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                  Text(timeStr,
+                                      style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10,
+                                          color:
+                                              context.textTertiaryColor)),
+                                  if (isOwner) ...[
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        await ref
+                                            .read(
+                                                firebaseDataSourceProvider)
+                                            .deleteReviewReply(
+                                          collection: firestoreCollection,
+                                          reviewId: reviewId,
+                                          replyId: replyId,
+                                        );
+                                      },
+                                      child: Icon(Icons.close_rounded,
+                                          size: 14,
+                                          color: AppTheme.error
+                                              .withValues(alpha: 0.6)),
+                                    ),
+                                  ],
+                                ]),
+                                const SizedBox(height: 3),
+                                Text(replyText,
+                                    style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        height: 1.5,
+                                        color: context.textSecondary)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+            if (showInput)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: replyController,
+                        maxLines: 3,
+                        minLines: 1,
+                        autofocus: true,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13, color: context.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Cevabınızı yazın...',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              color: context.textTertiaryColor),
+                          filled: true,
+                          fillColor: context.surfaceVariantColor,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                                color: AppTheme.brandBlue
+                                    .withValues(alpha: 0.5),
+                                width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: submitting ? null : onSubmitReply,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [
+                            AppTheme.primaryBlue,
+                            AppTheme.neonPurple
+                          ]),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: submitting
+                            ? const Padding(
+                                padding: EdgeInsets.all(10),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.send_rounded,
+                                color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

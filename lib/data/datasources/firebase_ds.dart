@@ -600,6 +600,53 @@ class FirebaseDataSource {
             .toList());
   }
 
+  // ─── Review Replies (subcollection) ───
+
+  Stream<List<Map<String, dynamic>>> watchReviewReplies(
+      String collection, String reviewId) {
+    return _firestore
+        .collection(collection)
+        .doc(reviewId)
+        .collection('replies')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => {'id': d.id, ...d.data()})
+            .toList());
+  }
+
+  Future<void> addReviewReply({
+    required String collection,
+    required String reviewId,
+    required String userId,
+    required String displayName,
+    required String text,
+  }) async {
+    await _firestore
+        .collection(collection)
+        .doc(reviewId)
+        .collection('replies')
+        .add({
+      'userId': userId,
+      'displayName': displayName,
+      'text': text,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteReviewReply({
+    required String collection,
+    required String reviewId,
+    required String replyId,
+  }) async {
+    await _firestore
+        .collection(collection)
+        .doc(reviewId)
+        .collection('replies')
+        .doc(replyId)
+        .delete();
+  }
+
   // ─── User Links ─── Section 4.4
 
   Future<void> saveUserLink(UserLinkModel link) async {
