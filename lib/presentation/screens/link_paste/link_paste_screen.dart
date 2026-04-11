@@ -2659,7 +2659,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   void _showAnalysisHistory() {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => const LinkAnalysisHistoryScreen(),
       ),

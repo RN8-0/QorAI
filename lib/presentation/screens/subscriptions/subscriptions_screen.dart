@@ -1008,120 +1008,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   // ═══════════════════════════════════════════════════════════
 
   void _showSubscriptionHistory() {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => const SubscriptionHistoryScreen(),
       ),
     );
   }
-
-  Widget _buildPreviousComparisons() {
-    final historyAsync = ref.watch(subscriptionHistoryProvider);
-    return historyAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (history) {
-        if (history.isEmpty) return const SizedBox.shrink();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Previous Comparisons',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: context.textPrimary,
-                ),
-              ),
-            ),
-            ...history.take(5).map((entry) {
-              final services = (entry['services'] as List?)?.cast<String>() ?? [];
-              final winner = entry['winner'] as String?;
-              final timestamp = entry['timestamp'] as String?;
-              final date = timestamp != null
-                  ? DateTime.tryParse(timestamp)
-                  : null;
-              final dateStr = date != null
-                  ? '${date.day}/${date.month}/${date.year}'
-                  : '';
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: GlassContainer(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: _kPrimary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.history_rounded,
-                            color: _kPrimary, size: 18),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              services.join(' vs '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                            if (winner != null || dateStr.isNotEmpty)
-                              Text(
-                                [
-                                  if (winner != null) '🏆 $winner',
-                                  if (dateStr.isNotEmpty) dateStr,
-                                ].join(' • '),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  color: context.textTertiaryColor,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          // Pre-fill chips and start new analysis
-                          setState(() {
-                            _chips.clear();
-                            _chips.addAll(services);
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: _kPrimary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.replay_rounded,
-                              color: _kPrimary, size: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 16),
-          ],
-        );
-      },
-    );
-  }
-
-  // ── Info Cards (idle) ──────────────────────────────────────────────────────
 
   Widget _buildInfoCards() {
     final items = [
