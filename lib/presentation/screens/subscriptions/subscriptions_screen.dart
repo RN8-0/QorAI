@@ -309,11 +309,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             },
             tooltip: context.l10n?.startOver ?? 'Start over',
           ),
-        _buildAppBarAction(
-          icon: Icons.history_rounded,
-          onPressed: _showSubscriptionHistory,
-          tooltip: 'Geçmiş',
-        ),
+        if (state.phase == SubFlowPhase.idle)
+          _buildAppBarAction(
+            icon: Icons.history_rounded,
+            onPressed: _showSubscriptionHistory,
+            tooltip: 'Geçmiş',
+          ),
         const SizedBox(width: 4),
       ],
     );

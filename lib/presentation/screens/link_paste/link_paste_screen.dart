@@ -341,11 +341,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       },
                       tooltip: context.l10n?.startOver ?? 'Start over',
                     ),
-                  _buildAppBarAction(
-                    icon: Icons.history_rounded,
-                    onPressed: _showAnalysisHistory,
-                    tooltip: 'Geçmiş',
-                  ),
+                  if (quizState.phase == LinkFlowPhase.idle)
+                    _buildAppBarAction(
+                      icon: Icons.history_rounded,
+                      onPressed: _showAnalysisHistory,
+                      tooltip: 'Geçmiş',
+                    ),
                   const SizedBox(width: 4),
                 ],
                 // Tab bar at the bottom of the app bar (only when idle)

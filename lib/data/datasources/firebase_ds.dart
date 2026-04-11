@@ -193,6 +193,20 @@ class FirebaseDataSource {
     }
   }
 
+  /// Overwrite entire subscription history (used for deletions)
+  Future<void> updateSubscriptionHistory(
+      String uid, List<Map<String, dynamic>> history) async {
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(uid);
+      await docRef.update({
+        'subscriptionHistory': history,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('[Firestore] Failed to update subscription history: $e');
+    }
+  }
+
   /// Read subscription comparison history
   Future<List<Map<String, dynamic>>> getSubscriptionHistory(String uid) async {
     try {

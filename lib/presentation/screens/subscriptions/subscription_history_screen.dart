@@ -1,17 +1,20 @@
 ﻿/// Compair — Subscription Analysis History Screen
-///
-/// Geçmiş abonelik karşılaştırmalarını listeleyen tam ekran.
-/// Bir öğeye basınca sonuç yeniden yüklenir.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/presentation/providers/providers.dart';
 
-const _kPrimary = AppTheme.brandBlue;
-const _kAccent = AppTheme.brandCyan;
+const _kBlue = AppTheme.brandBlue;
+const _kCyan = AppTheme.brandCyan;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// History List Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SubscriptionHistoryScreen extends ConsumerStatefulWidget {
   const SubscriptionHistoryScreen({super.key});
@@ -23,32 +26,94 @@ class SubscriptionHistoryScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionHistoryScreenState
     extends ConsumerState<SubscriptionHistoryScreen> {
-  List<Map<String, dynamic>>? _cachedHistory;
-  bool _isRefreshing = false;
+  List<Map<String, dynamic>>? _history;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     final cached = ref.read(subscriptionHistoryProvider).valueOrNull;
     if (cached != null) {
-      _cachedHistory = cached;
+      _history = List.from(cached);
+      _isLoading = false;
     } else {
-      _refresh();
+      _fetchFromFirestore();
     }
   }
 
-  Future<void> _refresh() async {
-    if (_isRefreshing) return;
-    setState(() => _isRefreshing = true);
+  Future<void> _fetchFromFirestore() async {
+    setState(() => _isLoading = true);
     ref.invalidate(subscriptionHistoryProvider);
     try {
       final result = await ref
           .read(subscriptionHistoryProvider.future)
           .timeout(const Duration(seconds: 10));
-      if (mounted) setState(() { _cachedHistory = result; _isRefreshing = false; });
+      if (mounted) setState(() { _history = List.from(result); _isLoading = false; });
     } catch (_) {
-      if (mounted) setState(() { _cachedHistory = _cachedHistory ?? []; _isRefreshing = false; });
+      if (mounted) setState(() { _history ??= []; _isLoading = false; });
     }
+  }
+
+  Future<void> _deleteItem(int index) async {
+    final removed = _history![index];
+    setState(() => _history!.removeAt(index));
+
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        // Get full list from Firestore and remove by timestamp
+        final allItems = await ref.read(firebaseDataSourceProvider)
+            .getSubscriptionHistory(auth.uid);
+        final ts = removed['timestamp'] as String?;
+        final filtered = allItems
+            .where((e) => e['timestamp'] != ts)
+            .toList();
+        await ref.read(firebaseDataSourceProvider)
+            .updateSubscriptionHistory(auth.uid, filtered);
+        ref.invalidate(subscriptionHistoryProvider);
+      }
+    } catch (_) {
+      // Revert on error
+      if (mounted) setState(() => _history!.insert(index, removed));
+    }
+  }
+
+  Future<void> _clearAll() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.backgroundColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Geçmişi Temizle',
+            style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800, color: context.textPrimary)),
+        content: Text('Tüm karşılaştırma geçmişi silinecek. Emin misiniz?',
+            style: GoogleFonts.inter(
+                color: context.textTertiaryColor, height: 1.5)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('İptal',
+                  style: GoogleFonts.inter(color: context.textTertiaryColor))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Temizle',
+                  style: GoogleFonts.inter(
+                      color: AppTheme.error, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _history = []);
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        await ref.read(firebaseDataSourceProvider)
+            .updateSubscriptionHistory(auth.uid, []);
+        ref.invalidate(subscriptionHistoryProvider);
+      }
+    } catch (_) {}
   }
 
   String _formatDate(String? ts) {
@@ -57,37 +122,11 @@ class _SubscriptionHistoryScreenState
     if (dt == null) return '';
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'Az once';
-    if (diff.inHours < 1) return '${diff.inMinutes}dk once';
-    if (diff.inDays < 1) return '${diff.inHours}sa once';
-    if (diff.inDays < 7) return '${diff.inDays}g once';
+    if (diff.inMinutes < 1) return 'Az önce';
+    if (diff.inHours < 1) return '${diff.inMinutes}dk önce';
+    if (diff.inDays < 1) return '${diff.inHours}sa önce';
+    if (diff.inDays < 7) return '${diff.inDays}g önce';
     return '${dt.day}/${dt.month}/${dt.year}';
-  }
-
-  void _openEntry(Map<String, dynamic> entry) {
-    final services = (entry['services'] as List?)?.cast<String>() ?? <String>[];
-    if (services.isEmpty) return;
-
-    final analysisResult = entry['analysisResult'] as String?;
-    final structured = entry['structured'] as Map<String, dynamic>?;
-    final rawScores = entry['scores'];
-    final Map<String, double> scores;
-    if (rawScores is Map) {
-      scores = rawScores.map((k, v) => MapEntry(k.toString(), (v as num).toDouble()));
-    } else {
-      scores = {};
-    }
-
-    final hasFullResult = analysisResult != null && analysisResult.isNotEmpty;
-
-    ref.read(subQuizProvider.notifier).restoreFromHistory(
-          services: services,
-          // Boş ise structured'dan _readableAnalysis üretecek; raw JSON değilse direkt göster
-          analysisResult: hasFullResult ? analysisResult : '',
-          scores: scores,
-          structured: structured,
-        );
-    Navigator.of(context).pop();
   }
 
   @override
@@ -95,115 +134,103 @@ class _SubscriptionHistoryScreenState
     final bg = context.backgroundColor;
     final textPrimary = context.textPrimary;
     final textTertiary = context.textTertiaryColor;
-
-    final liveData = ref.watch(subscriptionHistoryProvider).valueOrNull;
-    if (liveData != null && liveData != _cachedHistory && !_isRefreshing) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _cachedHistory = liveData);
-      });
-    }
-
-    final history = _cachedHistory;
+    final history = _history;
 
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 20, color: textPrimary),
         ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [_kPrimary, _kAccent]),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.history_rounded, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Gecmis Karsilastirmalar',
-              style: GoogleFonts.plusJakartaSans(
-                  fontSize: 17, fontWeight: FontWeight.w800, color: textPrimary),
-            ),
-          ],
+        title: Text(
+          'Geçmiş Karşılaştırmalar',
+          style: GoogleFonts.plusJakartaSans(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: textPrimary),
         ),
         actions: [
-          if (_isRefreshing)
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: _kPrimary)),
-            )
-          else
+          if (history != null && history.isNotEmpty)
             IconButton(
-              onPressed: _refresh,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
+              onPressed: _clearAll,
+              icon: Icon(Icons.delete_sweep_rounded,
+                  size: 22, color: AppTheme.error.withValues(alpha: 0.8)),
+              tooltip: 'Tamamını Sil',
             ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: history == null
-          ? const Center(child: CircularProgressIndicator(color: _kPrimary))
-          : history.isEmpty
-              ? _buildEmptyState(textPrimary, textTertiary)
-              : ListView.separated(
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: _kBlue))
+          : (history == null || history.isEmpty)
+              ? _buildEmpty(textPrimary, textTertiary)
+              : ListView.builder(
                   padding: EdgeInsets.only(
-                      top: 8,
+                      top: 12,
+                      left: 16,
+                      right: 16,
                       bottom: MediaQuery.of(context).padding.bottom + 24),
                   itemCount: history.length,
-                  separatorBuilder: (a, b) => const Divider(height: 1, indent: 72),
                   itemBuilder: (_, i) =>
-                      _buildHistoryTile(history[i], textPrimary, textTertiary),
+                      _buildCard(history[i], i, textPrimary, textTertiary),
                 ),
     );
   }
 
-  Widget _buildEmptyState(Color textPrimary, Color textTertiary) {
+  Widget _buildEmpty(Color textPrimary, Color textTertiary) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 48),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
-                color: _kPrimary.withValues(alpha: 0.08),
+                gradient: LinearGradient(
+                  colors: [
+                    _kBlue.withValues(alpha: 0.12),
+                    _kCyan.withValues(alpha: 0.06),
+                  ],
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.compare_arrows_rounded,
-                  size: 40, color: _kPrimary.withValues(alpha: 0.5)),
+                  size: 42, color: _kBlue.withValues(alpha: 0.5)),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
-              'Henuz karsilastirma yapmadiniz',
+              'Henüz geçmiş yok',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary),
-              textAlign: TextAlign.center,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: textPrimary),
             ),
             const SizedBox(height: 10),
             Text(
-              'Abonelik karsilastirmasi yaptiktan sonra sonuclar burada listelenir.',
-              style: GoogleFonts.inter(fontSize: 14, color: textTertiary, height: 1.5),
+              'Abonelik karşılaştırması yaptıktan sonra sonuçlar burada görüntülenir.',
+              style: GoogleFonts.inter(
+                  fontSize: 14, color: textTertiary, height: 1.6),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
+            const SizedBox(height: 28),
+            FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.compare_arrows_rounded, size: 18),
-              label: const Text('Ilk karsilastirmayi yap'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              label: const Text('Karşılaştırma Yap'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _kBlue,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
             ),
           ],
@@ -212,78 +239,438 @@ class _SubscriptionHistoryScreenState
     );
   }
 
-  Widget _buildHistoryTile(
-      Map<String, dynamic> entry, Color textPrimary, Color textTertiary) {
-    final services = (entry['services'] as List?)?.cast<String>() ?? <String>[];
+  Widget _buildCard(
+      Map<String, dynamic> entry,
+      int index,
+      Color textPrimary,
+      Color textTertiary) {
+    final services =
+        (entry['services'] as List?)?.cast<String>() ?? <String>[];
     final winner = entry['winner'] as String?;
     final date = _formatDate(entry['timestamp'] as String?);
     final analysisResult = entry['analysisResult'] as String?;
-    final hasFullResult = analysisResult != null && analysisResult.isNotEmpty;
+    final hasFullResult =
+        analysisResult != null && analysisResult.isNotEmpty;
 
     final rawScores = entry['scores'];
     Map<String, double> scores = {};
     if (rawScores is Map) {
-      scores = rawScores.map((k, v) => MapEntry(k.toString(), (v as num).toDouble()));
+      scores = rawScores.map(
+          (k, v) => MapEntry(k.toString(), (v as num).toDouble()));
     }
 
-    double? winnerScore = winner != null ? scores[winner] : null;
-    final scoreColor = winnerScore != null
-        ? (winnerScore >= 80
-            ? AppTheme.green500
-            : winnerScore >= 60 ? AppTheme.amber500 : AppTheme.rose500)
-        : _kPrimary;
+    double? winnerScore =
+        winner != null ? scores[winner] : null;
+    final scoreColor = (winnerScore ?? 0) >= 80
+        ? AppTheme.green500
+        : (winnerScore ?? 0) >= 60
+            ? AppTheme.amber500
+            : AppTheme.rose500;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 48,
-        height: 48,
+    return Dismissible(
+      key: ValueKey(entry['timestamp'] ?? index),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_kPrimary.withValues(alpha: 0.15), _kAccent.withValues(alpha: 0.1)],
-          ),
-          borderRadius: BorderRadius.circular(14),
+          color: AppTheme.error.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(18),
         ),
-        child: const Icon(Icons.compare_arrows_rounded, color: _kPrimary, size: 22),
+        child: const Icon(Icons.delete_rounded,
+            color: AppTheme.error, size: 24),
       ),
-      title: Text(
-        services.join(' vs '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: textPrimary),
-      ),
-      subtitle: Text(
-        [
-          if (winner != null && winner.isNotEmpty) '🏆 $winner',
-          if (date.isNotEmpty) date,
-        ].join(' • '),
-        style: GoogleFonts.inter(fontSize: 11, color: textTertiary),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (winnerScore != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: scoreColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${winnerScore.toStringAsFixed(0)}%',
-                style: GoogleFonts.inter(
-                    fontSize: 12, fontWeight: FontWeight.w700, color: scoreColor),
-              ),
+      onDismissed: (_) {
+        HapticFeedback.mediumImpact();
+        _deleteItem(index);
+      },
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => _SubscriptionResultDetailScreen(
+              services: services,
+              scores: scores,
+              analysisResult: hasFullResult ? analysisResult : '',
+              structured: entry['structured'] as Map<String, dynamic>?,
+              winner: winner,
+              date: date,
             ),
-          const SizedBox(width: 6),
-          Icon(
-            hasFullResult ? Icons.arrow_forward_ios_rounded : Icons.replay_rounded,
-            size: 14,
-            color: textTertiary,
+          ));
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.surfaceElevatedColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: _kBlue.withValues(alpha: 0.08),
+              width: 1,
+            ),
           ),
-        ],
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_kBlue, _kCyan],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.compare_arrows_rounded,
+                    color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      services.join(' vs '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (winner != null && winner.isNotEmpty) ...[
+                          Icon(Icons.emoji_events_rounded,
+                              size: 13,
+                              color: AppTheme.amber500),
+                          const SizedBox(width: 3),
+                          Text(winner,
+                              style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppTheme.amber500,
+                                  fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 8),
+                        ],
+                        if (date.isNotEmpty)
+                          Text(date,
+                              style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: textTertiary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Score badge
+              if (winnerScore != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: scoreColor.withValues(alpha: 0.25)),
+                  ),
+                  child: Text(
+                    '${winnerScore.toInt()}%',
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: scoreColor),
+                  ),
+                )
+              else
+                Icon(Icons.chevron_right_rounded,
+                    color: textTertiary, size: 20),
+            ],
+          ),
+        ),
       ),
-      onTap: () => _openEntry(entry),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Result Detail Screen — tam ekran, alt bar yok, extra buton yok
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SubscriptionResultDetailScreen extends StatelessWidget {
+  final List<String> services;
+  final Map<String, double> scores;
+  final String analysisResult;
+  final Map<String, dynamic>? structured;
+  final String? winner;
+  final String date;
+
+  const _SubscriptionResultDetailScreen({
+    required this.services,
+    required this.scores,
+    required this.analysisResult,
+    this.structured,
+    this.winner,
+    this.date = '',
+  });
+
+  Color _scoreColor(double s) {
+    if (s >= 80) return AppTheme.green500;
+    if (s >= 60) return AppTheme.amber500;
+    return AppTheme.rose500;
+  }
+
+  // Structured JSON varsa okunabilir markdown ozeti uret
+  String _buildAnalysisText() {
+    if (analysisResult.isNotEmpty &&
+        !analysisResult.trim().startsWith('{') &&
+        !analysisResult.trim().startsWith('[')) {
+      return analysisResult;
+    }
+    // structured'dan ozet olustur
+    final subs = (structured?['subscriptions'] as Map<String, dynamic>?) ?? {};
+    final winnerData =
+        (structured?['winner'] as Map<String, dynamic>?) ?? {};
+    if (subs.isNotEmpty) {
+      final buf = StringBuffer();
+      for (final e in subs.entries) {
+        final d = e.value as Map<String, dynamic>? ?? {};
+        buf.writeln('### ${e.key}');
+        if (d['compatibility_explanation'] != null) {
+          buf.writeln(d['compatibility_explanation']);
+        }
+        final pros = (d['pros'] as List?)?.cast<String>() ?? [];
+        if (pros.isNotEmpty) {
+          buf.writeln('\n**Artıları**');
+          for (final p in pros) { buf.writeln('- $p'); }
+        }
+        final cons = (d['cons'] as List?)?.cast<String>() ?? [];
+        if (cons.isNotEmpty) {
+          buf.writeln('\n**Eksileri**');
+          for (final c in cons) { buf.writeln('- $c'); }
+        }
+        buf.writeln();
+      }
+      if (winnerData['recommendation'] != null) {
+        buf.writeln('---\n**Tavsiye**\n\n${winnerData['recommendation']}');
+      }
+      return buf.toString().trim();
+    }
+    if (analysisResult.isNotEmpty) return analysisResult;
+    return 'Detaylı analiz verisi bu kayıt için mevcut değil.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = context.backgroundColor;
+    final textPrimary = context.textPrimary;
+    final textTertiary = context.textTertiaryColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final analysisText = _buildAnalysisText();
+
+    return Scaffold(
+      backgroundColor: bg,
+      appBar: AppBar(
+        backgroundColor: bg,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 20, color: textPrimary),
+        ),
+        centerTitle: true,
+        title: isDark
+            ? ShaderMask(
+                shaderCallback: (b) => const LinearGradient(
+                  colors: [_kBlue, _kCyan],
+                ).createShader(b),
+                child: Text(
+                  services.join(' vs '),
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: Colors.white,
+                      letterSpacing: -0.3),
+                ),
+              )
+            : Text(
+                services.join(' vs '),
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: _kBlue,
+                    letterSpacing: -0.3),
+              ),
+        // Sag uste HICBIR buton yok
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).padding.bottom + 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Tarih
+            if (date.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Icon(Icons.access_time_rounded,
+                        size: 14, color: textTertiary),
+                    const SizedBox(width: 5),
+                    Text(date,
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: textTertiary)),
+                  ],
+                ),
+              ),
+
+            // Kazanan banner
+            if (winner != null && winner!.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_kBlue, _kCyan],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.emoji_events_rounded,
+                        color: Colors.white, size: 28),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Kazanan',
+                            style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.white70)),
+                        Text(winner!,
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Skor kartlari
+            if (scores.isNotEmpty) ...[
+              _buildSectionTitle('Uyumluluk Puanları', textPrimary),
+              const SizedBox(height: 10),
+              ...scores.entries.map((e) {
+                final sc = e.value;
+                final cl = _scoreColor(sc);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: context.surfaceElevatedColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: cl.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(e.key,
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: textPrimary)),
+                          ),
+                          Text('${sc.toInt()}%',
+                              style: GoogleFonts.inter(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: cl)),
+                        ]),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: sc / 100,
+                            backgroundColor:
+                                cl.withValues(alpha: 0.12),
+                            valueColor:
+                                AlwaysStoppedAnimation(cl),
+                            minHeight: 8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+
+            // AI Analiz
+            if (analysisText.isNotEmpty) ...[
+              _buildSectionTitle('AI Analiz', textPrimary),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: MarkdownBody(
+                  data: analysisText,
+                  selectable: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: textPrimary,
+                        height: 1.6),
+                    h3: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary),
+                    strong: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary),
+                    listBullet: GoogleFonts.inter(
+                        fontSize: 14, color: textTertiary),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, Color textPrimary) {
+    return Text(
+      title,
+      style: GoogleFonts.plusJakartaSans(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: textPrimary),
     );
   }
 }
