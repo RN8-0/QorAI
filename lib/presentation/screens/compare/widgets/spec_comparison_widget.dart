@@ -307,7 +307,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     final sw = Stopwatch()..start();
     try {
       // Check Firestore cache first
-      final cached = await _loadAiCache('deep_analysis');
+      final cached = await _loadAiCache('deep_analysis_v2');
       if (cached != null && cached['result'] != null) {
         final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
@@ -341,36 +341,34 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
           .map((p) => '"${p.name.split(' ').take(3).join(' ')}": 75')
           .join(', ');
       final productTemplate = widget.products
-          .map((p) => '"${p.name.split(' ').take(3).join(' ')}": {"score": 80, "strengths": ["strength 1", "strength 2"], "weaknesses": ["weakness 1"], "best_for": "ideal use"}')
+          .map((p) => '"${p.name.split(' ').take(3).join(' ')}": {"score": 80, "strengths": ["s1", "s2"], "weaknesses": ["w1"], "best_for": "use case"}')
           .join(',\n    ');
 
-      final prompt = '''You are a senior tech analyst. Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
-$productNames
+      final prompt = '''You are a senior tech analyst. Compare these products. Address the user as "you/your". ALL text in $langName.
+Products: $productNames
 
 Specs:
 $specSummary
 
-IMPORTANT: You MUST provide scores for ALL ${widget.products.length} products listed above in every category.
-
-Return ONLY valid JSON, no markdown, no explanation:
+CRITICAL: Include ALL ${widget.products.length} products in every section. Return ONLY valid JSON, no markdown:
 {
-  "winner": "product name",
-  "verdict": "2-3 sentence comprehensive verdict addressing you directly",
+  "winner": "exact product name",
   "products": {
     $productTemplate
   },
   "categories": {
-    "Performance": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
-    "Display": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
-    "Storage": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
-    "Value": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
-    "Design": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"}
+    "Performance": {"scores": {$catScoreTemplate}, "explanation": "brief"},
+    "Display": {"scores": {$catScoreTemplate}, "explanation": "brief"},
+    "Storage": {"scores": {$catScoreTemplate}, "explanation": "brief"},
+    "Value": {"scores": {$catScoreTemplate}, "explanation": "brief"},
+    "Design": {"scores": {$catScoreTemplate}, "explanation": "brief"}
   },
-  "recommendation": "3-4 sentence personalized recommendation addressing you directly"
+  "verdict": "2-3 sentence verdict addressing you directly",
+  "recommendation": "2-3 sentence recommendation addressing you directly"
 }''';
 
       debugPrint('[Compair] Deep Analysis starting for: $productNames');
-      final result = await _fetchWithRetry(prompt, 'Deep Analysis', lang, maxTokens: 4096);
+      final result = await _fetchWithRetry(prompt, 'Deep Analysis', lang, maxTokens: 8192);
       if (mounted) {
         if (result.data == null) {
           debugPrint('[Compair] Deep Analysis parse FAILED — showing error: ${result.error}');
@@ -387,7 +385,7 @@ Return ONLY valid JSON, no markdown, no explanation:
             _deepAnalysisLoading = false;
           });
           _saveToSession();
-          _saveAiCache('deep_analysis', {
+          _saveAiCache('deep_analysis_v2', {
             'result': resultStr,
             'structured': result.data,
           });
