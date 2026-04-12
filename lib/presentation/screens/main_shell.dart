@@ -51,15 +51,16 @@ class _MainShellState extends ConsumerState<MainShell> {
     try {
       ref.read(countryInitProvider);
     } catch (_) {}
-    // Preload all PC Builder categories in background so picker is instant
-    // pcBuilderProductsProvider uses disk-cache-first → no blocking network call
-    Future.microtask(() {
+    // Preload PC Builder categories SEQUENTIALLY to avoid
+    // Firestore SDK connection throttling on mobile
+    Future.microtask(() async {
       const pcCats = [
-        'cpus', 'gpus', 'motherboards', 'ram', 'ssd',
-        'psu', 'cases', 'coolers', 'monitors', 'keyboards', 'mice', 'headsets',
+        'cpus', 'gpus', 'ram', 'ssd',
+        'psu', 'cases', 'coolers', 'motherboards',
+        'monitors', 'keyboards', 'mice', 'headsets',
       ];
       for (final cat in pcCats) {
-        try { ref.read(pcBuilderProductsProvider(cat)); } catch (_) {}
+        try { await ref.read(pcBuilderProductsProvider(cat).future); } catch (_) {}
       }
     });
   }

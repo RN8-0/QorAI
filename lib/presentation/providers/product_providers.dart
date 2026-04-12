@@ -16,7 +16,7 @@ const pcCategoryAliases = <String, List<String>>{
   'cpus': ['cpus', 'cpu', 'processors', 'islemci', 'işlemci', 'işlemciler'],
   'gpus': ['gpus', 'gpu', 'graphics-cards', 'ekran-karti', 'ekran kartı'],
   'motherboards': ['motherboards', 'anakart', 'mainboard', 'motherboard'],
-  'ram': ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram'],
+  'ram': ['ram', 'bellek-ram', 'memory'],
   'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama'],
   'psu': ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı'],
   'cases': ['cases', 'bilgisayar-kasasi', 'case', 'kasa'],
@@ -27,12 +27,11 @@ const pcCategoryAliases = <String, List<String>>{
   'headsets': ['headsets', 'headset', 'headphones', 'kulaklık'],
 };
 
-/// PC Builder product provider — loads ALL products for a category.
+/// PC Builder product provider — loads products for a category.
 /// Strategy:
 ///   1. In-memory cache (instant)
-///   2. Parallel: Firestore disk cache for ALL aliases (instant, no network)
-///   3. Parallel: Server query for ALL aliases (network)
-///   Merges results from all aliases, deduplicates by product ID.
+///   2. Try primary alias from disk cache (limited to 500 docs)
+///   3. Then default get() with timeout
 final pcBuilderProductsProvider = FutureProvider.family<
     List<ProductEntity>, String>((ref, categoryId) async {
   final normalizedCategory = categoryId.toLowerCase().trim();
@@ -44,87 +43,56 @@ final pcBuilderProductsProvider = FutureProvider.family<
 
   final aliases = pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
   final db = FirebaseFirestore.instance;
+  const maxDocs = 500;
 
   List<ProductEntity> _parseDocs(QuerySnapshot snap) {
     final list = <ProductEntity>[];
     for (final d in snap.docs) {
       try { list.add(ProductModel.fromFirestore(d) as ProductEntity); } catch (_) {}
     }
+    list.sort((a, b) => b.techScore.compareTo(a.techScore));
     return list;
   }
 
-  List<ProductEntity> _dedupeAndSort(List<ProductEntity> all) {
-    final seen = <String>{};
-    final deduped = <ProductEntity>[];
-    for (final p in all) {
-      if (seen.add(p.id)) deduped.add(p);
-    }
-    deduped.sort((a, b) => b.techScore.compareTo(a.techScore));
-    return deduped;
-  }
-
-  Future<List<ProductEntity>> _queryAlias(String alias, Source source) async {
+  // 2) Try each alias from DISK CACHE first (no network, limited docs)
+  for (final alias in aliases) {
     try {
       final snap = await db
           .collection('products')
           .where('category', isEqualTo: alias)
-          .get(GetOptions(source: source))
-          .timeout(const Duration(seconds: 30));
-      return _parseDocs(snap);
-    } catch (_) {
-      return [];
+          .limit(maxDocs)
+          .get(const GetOptions(source: Source.cache));
+      if (snap.docs.isNotEmpty) {
+        final products = _parseDocs(snap);
+        _pcBuilderCacheMap[normalizedCategory] = products;
+        debugPrint('[PCBuilder] ✅ Cache "$alias": ${products.length}');
+        return products;
+      }
+    } catch (_) {}
+  }
+
+  // 3) No cache — try only primary alias with timeout
+  final primaryAlias = aliases.first;
+  try {
+    debugPrint('[PCBuilder] 📡 Fetch "$primaryAlias"...');
+    final snap = await db
+        .collection('products')
+        .where('category', isEqualTo: primaryAlias)
+        .limit(maxDocs)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    debugPrint('[PCBuilder] 📡 Fetch "$primaryAlias": ${snap.docs.length} docs');
+    if (snap.docs.isNotEmpty) {
+      final products = _parseDocs(snap);
+      _pcBuilderCacheMap[normalizedCategory] = products;
+      debugPrint('[PCBuilder] ✅ Loaded "$primaryAlias": ${products.length}');
+      return products;
     }
-  }
-
-  // 2) Try ALL aliases in PARALLEL from disk cache — merge results
-  final allCached = <ProductEntity>[];
-  try {
-    final cacheResults = await Future.wait(
-      aliases.map((alias) => _queryAlias(alias, Source.cache)),
-    );
-    for (final r in cacheResults) allCached.addAll(r);
-  } catch (_) {}
-
-  if (allCached.isNotEmpty) {
-    final products = _dedupeAndSort(allCached);
-    _pcBuilderCacheMap[normalizedCategory] = products;
-    debugPrint('[PCBuilder] ✅ Cache: ${products.length} "$normalizedCategory"');
-    // Background refresh from server
-    Future.microtask(() async {
-      try {
-        final serverResults = await Future.wait(
-          aliases.map((alias) => _queryAlias(alias, Source.serverAndCache)),
-        );
-        final allServer = <ProductEntity>[];
-        for (final r in serverResults) allServer.addAll(r);
-        if (allServer.isNotEmpty) {
-          _pcBuilderCacheMap[normalizedCategory] = _dedupeAndSort(allServer);
-        }
-      } catch (_) {}
-    });
-    return products;
-  }
-
-  // 3) No cache — parallel server queries for ALL aliases
-  final allServer = <ProductEntity>[];
-  try {
-    final serverResults = await Future.wait(
-      aliases.map((alias) => _queryAlias(alias, Source.serverAndCache)),
-    );
-    for (final r in serverResults) allServer.addAll(r);
   } catch (e) {
-    debugPrint('[PCBuilder] ❌ Server failed "$normalizedCategory": $e');
+    debugPrint('[PCBuilder] ❌ Fetch "$primaryAlias": $e');
   }
 
-  if (allServer.isNotEmpty) {
-    final products = _dedupeAndSort(allServer);
-    _pcBuilderCacheMap[normalizedCategory] = products;
-    debugPrint('[PCBuilder] ✅ Server: ${products.length} "$normalizedCategory"');
-    return products;
-  }
-
-  debugPrint('[PCBuilder] ⚠️ No products found for "$normalizedCategory" (aliases: $aliases)');
-  // All aliases exhausted
+  debugPrint('[PCBuilder] ⚠️ Empty "$normalizedCategory" (tried: $aliases)');
   return [];
 });
 
