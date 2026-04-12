@@ -1,20 +1,20 @@
 part of 'providers.dart';
 
-// ── In-memory cache for PC builder fast queries ──
+// ── In-memory cache for PC builder ──
 final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
 
-/// Fast paginated provider for PC Builder picker.
-/// Strategy (same as productsByCategoryProvider but optimised):
-///   1. In-memory cache (instant, survives hot reload)
-///   2. Firestore local cache (instant when previously fetched offline)
-///   3. serverAndCache with 400-doc batches (same as other category pages)
+/// PC Builder product provider — loads ALL products in a SINGLE Firestore query.
+/// No pagination loops (they cause sequential network waits → timeout).
+/// Strategy:
+///   1. In-memory cache (instant)
+///   2. Firestore disk cache — single query, no network (instant)
+///   3. serverAndCache — single query, all docs at once
 final pcBuilderProductsProvider = FutureProvider.family<
     List<ProductEntity>, String>((ref, categoryId) async {
   final normalizedCategory = categoryId.toLowerCase().trim();
 
   // 1) In-memory cache — instant
   if (_pcBuilderCacheMap.containsKey(normalizedCategory)) {
-    debugPrint('[PCBuilder] ✅ Memory cache HIT for "$normalizedCategory"');
     return _pcBuilderCacheMap[normalizedCategory]!;
   }
 
@@ -27,62 +27,53 @@ final pcBuilderProductsProvider = FutureProvider.family<
 
   final alias = pcCategoryAliases[normalizedCategory] ?? normalizedCategory;
   final db = FirebaseFirestore.instance;
-  const batchSize = 400;
-  const maxTotal = 2000;
 
-  Future<List<ProductEntity>> _fetchBatched(Source source) async {
-    final all = <ProductEntity>[];
-    DocumentSnapshot? lastDoc;
-    while (all.length < maxTotal) {
-      var q = db.collection('products')
-          .where('category', isEqualTo: alias)
-          .limit(batchSize);
-      if (lastDoc != null) q = q.startAfterDocument(lastDoc);
-      final snap = await q
-          .get(GetOptions(source: source))
-          .timeout(const Duration(seconds: 20));
-      if (snap.docs.isEmpty) break;
-      for (final d in snap.docs) {
-        try { all.add(ProductModel.fromFirestore(d) as ProductEntity); } catch (_) {}
-      }
-      lastDoc = snap.docs.last;
-      if (snap.docs.length < batchSize) break;
+  List<ProductEntity> _parseDocs(QuerySnapshot snap) {
+    final list = <ProductEntity>[];
+    for (final d in snap.docs) {
+      try { list.add(ProductModel.fromFirestore(d) as ProductEntity); } catch (_) {}
     }
-    return all;
+    list.sort((a, b) => b.techScore.compareTo(a.techScore));
+    return list;
   }
 
-  // 2) Try Firestore local cache first (instant if previously loaded)
+  // 2) Firestore disk cache — instant, no network round-trip
   try {
-    final cached = await _fetchBatched(Source.cache);
-    if (cached.isNotEmpty) {
-      cached.sort((a, b) => b.techScore.compareTo(a.techScore));
-      _pcBuilderCacheMap[normalizedCategory] = cached;
-      debugPrint('[PCBuilder] ✅ Firestore cache HIT: ${cached.length} "$alias"');
-      // Refresh from server in background (non-blocking)
+    final cacheSnap = await db
+        .collection('products')
+        .where('category', isEqualTo: alias)
+        .get(const GetOptions(source: Source.cache));
+    if (cacheSnap.docs.isNotEmpty) {
+      final products = _parseDocs(cacheSnap);
+      _pcBuilderCacheMap[normalizedCategory] = products;
+      debugPrint('[PCBuilder] ✅ Disk cache: ${products.length} "$alias"');
+      // Background refresh — won't block UI
       Future.microtask(() async {
         try {
-          final fresh = await _fetchBatched(Source.serverAndCache);
-          if (fresh.isNotEmpty) {
-            fresh.sort((a, b) => b.techScore.compareTo(a.techScore));
-            _pcBuilderCacheMap[normalizedCategory] = fresh;
+          final freshSnap = await db
+              .collection('products')
+              .where('category', isEqualTo: alias)
+              .get(const GetOptions(source: Source.serverAndCache))
+              .timeout(const Duration(seconds: 30));
+          if (freshSnap.docs.isNotEmpty) {
+            _pcBuilderCacheMap[normalizedCategory] = _parseDocs(freshSnap);
           }
         } catch (_) {}
       });
-      return cached;
+      return products;
     }
   } catch (_) {}
 
-  // 3) Fetch from server (with cache fallback on failure)
-  try {
-    final products = await _fetchBatched(Source.serverAndCache);
-    products.sort((a, b) => b.techScore.compareTo(a.techScore));
-    _pcBuilderCacheMap[normalizedCategory] = products;
-    debugPrint('[PCBuilder] ✅ Server loaded: ${products.length} "$alias"');
-    return products;
-  } catch (e) {
-    debugPrint('[PCBuilder] ❌ Server failed for "$alias": $e');
-    rethrow;
-  }
+  // 3) No cache — single server query, no pagination
+  final snap = await db
+      .collection('products')
+      .where('category', isEqualTo: alias)
+      .get(const GetOptions(source: Source.serverAndCache))
+      .timeout(const Duration(seconds: 30));
+  final products = _parseDocs(snap);
+  _pcBuilderCacheMap[normalizedCategory] = products;
+  debugPrint('[PCBuilder] ✅ Server: ${products.length} "$alias"');
+  return products;
 });
 
 final productsByCategoryProvider = FutureProvider.family<
