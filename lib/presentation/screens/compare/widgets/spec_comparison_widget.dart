@@ -20,6 +20,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   String? _deepAnalysisResult;
   Map<String, dynamic>? _deepAnalysisStructured;
   bool _deepAnalysisError = false;
+  String? _deepAnalysisErrorMsg;
 
   // Smart Alternatives state
   bool _alternativesExpanded = false;
@@ -27,6 +28,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   String? _alternativesResult;
   Map<String, dynamic>? _alternativesStructured;
   bool _alternativesError = false;
+  String? _alternativesErrorMsg;
 
   // AI Advisor state
   bool _advisorExpanded = false;
@@ -34,6 +36,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   String? _advisorResult;
   Map<String, dynamic>? _advisorStructured;
   bool _advisorError = false;
+  String? _advisorErrorMsg;
 
   // Price Prediction state
   bool _predictionExpanded = false;
@@ -41,6 +44,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   String? _predictionResult;
   Map<String, dynamic>? _predictionStructured;
   bool _predictionError = false;
+  String? _predictionErrorMsg;
 
   // Personalized Match state
   bool _matchScoreExpanded = false;
@@ -90,6 +94,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     // Restore AI analysis from session if available
     _restoreFromSession();
   }
+
+  /// Locale helper — true when app language is Turkish
+  bool get _isTr => Localizations.localeOf(context).languageCode == 'tr';
 
   /// Cache key for Firestore AI result cache
   String get _aiCacheDocId {
@@ -258,31 +265,26 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  /// Fetch from Gemini with automatic retry on parse failure (max 2 attempts)
-  Future<Map<String, dynamic>?> _fetchWithRetry(String prompt, String label, String lang, {int maxTokens = 4096}) async {
+  /// Fetch from Gemini with automatic retry on parse failure (max 3 attempts)
+  Future<({Map<String, dynamic>? data, String? error})> _fetchWithRetry(String prompt, String label, String lang, {int maxTokens = 4096}) async {
     final gemini = ref.read(geminiServiceProvider);
-    for (var attempt = 1; attempt <= 2; attempt++) {
+    String? lastError;
+    for (var attempt = 1; attempt <= 3; attempt++) {
       try {
-        String result;
-        String source = 'jsonFreeTextQuery';
-        try {
-          result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: maxTokens);
-        } catch (jsonErr) {
-          debugPrint('[Compair] ❌ $label jsonFreeTextQuery THREW: $jsonErr — falling back to groundedQuery');
-          source = 'groundedQuery (fallback)';
-          result = await gemini.groundedQuery(prompt, maxTokens: maxTokens);
-        }
-        debugPrint('[Compair] 🔍 $label RAW attempt $attempt ($source, ${result.length} chars):\n${result.length > 800 ? result.substring(0, 800) : result}');
+        final result = await gemini.jsonFreeTextQuery(prompt, language: lang, maxTokens: maxTokens);
+        debugPrint('[Compair] 🔍 $label RAW attempt $attempt (${result.length} chars):\n${result.length > 600 ? result.substring(0, 600) : result}');
         final parsed = _tryParseJson(result);
-        if (parsed != null) return parsed;
-        debugPrint('[Compair] $label parse FAILED attempt $attempt${attempt < 2 ? " — retrying" : " — giving up"}');
-        if (attempt < 2) await Future.delayed(const Duration(seconds: 1));
+        if (parsed != null) return (data: parsed, error: null);
+        lastError = 'JSON parse failed';
+        debugPrint('[Compair] $label parse FAILED attempt $attempt${attempt < 3 ? " — retrying" : " — giving up"}');
+        if (attempt < 3) await Future.delayed(Duration(seconds: attempt));
       } catch (e) {
+        lastError = e.toString();
         debugPrint('[Compair] $label attempt $attempt error: $e');
-        if (attempt < 2) await Future.delayed(const Duration(seconds: 1));
+        if (attempt < 3) await Future.delayed(Duration(seconds: attempt));
       }
     }
-    return null;
+    return (data: null, error: lastError);
   }
 
   Future<void> _toggleDeepAnalysis() async {
@@ -334,54 +336,60 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
       }).join('\n');
 
+      // Build dynamic category score template with ALL product names
+      final catScoreTemplate = widget.products
+          .map((p) => '"${p.name.split(' ').take(3).join(' ')}": 75')
+          .join(', ');
+      final productTemplate = widget.products
+          .map((p) => '"${p.name.split(' ').take(3).join(' ')}": {"score": 80, "strengths": ["strength 1", "strength 2"], "weaknesses": ["weakness 1"], "best_for": "ideal use"}')
+          .join(',\n    ');
+
       final prompt = '''You are a senior tech analyst. Compare these products for the user. Address the user directly using "you/your". ALL text in $langName.
 $productNames
 
 Specs:
 $specSummary
 
+IMPORTANT: You MUST provide scores for ALL ${widget.products.length} products listed above in every category.
+
 Return ONLY valid JSON, no markdown, no explanation:
 {
   "winner": "product name",
   "verdict": "2-3 sentence comprehensive verdict addressing you directly",
   "products": {
-    "<product_name>": {
-      "score": 85,
-      "strengths": ["detailed strength 1", "detailed strength 2", "detailed strength 3"],
-      "weaknesses": ["detailed weakness 1", "detailed weakness 2"],
-      "best_for": "ideal use case for you"
-    }
+    $productTemplate
   },
   "categories": {
-    "Performance": {"scores": {"<name1>": 85, "<name2>": 70}, "explanation": "one line explanation"},
-    "Display": {"scores": {"<name1>": 90, "<name2>": 80}, "explanation": "one line explanation"},
-    "Battery": {"scores": {"<name1>": 75, "<name2>": 85}, "explanation": "one line explanation"},
-    "Value": {"scores": {"<name1>": 80, "<name2>": 65}, "explanation": "one line explanation"},
-    "Design": {"scores": {"<name1>": 70, "<name2>": 90}, "explanation": "one line explanation"}
+    "Performance": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
+    "Display": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
+    "Storage": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
+    "Value": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"},
+    "Design": {"scores": {$catScoreTemplate}, "explanation": "one line explanation"}
   },
   "recommendation": "3-4 sentence personalized recommendation addressing you directly"
 }''';
 
       debugPrint('[Compair] Deep Analysis starting for: $productNames');
-      final parsed = await _fetchWithRetry(prompt, 'Deep Analysis', lang, maxTokens: 8192);
+      final result = await _fetchWithRetry(prompt, 'Deep Analysis', lang, maxTokens: 4096);
       if (mounted) {
-        if (parsed == null) {
-          debugPrint('[Compair] Deep Analysis parse FAILED — showing error');
+        if (result.data == null) {
+          debugPrint('[Compair] Deep Analysis parse FAILED — showing error: ${result.error}');
           setState(() {
             _deepAnalysisError = true;
+            _deepAnalysisErrorMsg = result.error;
             _deepAnalysisLoading = false;
           });
         } else {
-          final resultStr = jsonEncode(parsed);
+          final resultStr = jsonEncode(result.data);
           setState(() {
             _deepAnalysisResult = resultStr;
-            _deepAnalysisStructured = parsed;
+            _deepAnalysisStructured = result.data;
             _deepAnalysisLoading = false;
           });
           _saveToSession();
           _saveAiCache('deep_analysis', {
             'result': resultStr,
-            'structured': parsed,
+            'structured': result.data,
           });
         }
       }
@@ -390,6 +398,7 @@ Return ONLY valid JSON, no markdown, no explanation:
       debugPrint('[Compair] Deep Analysis FAILED: $e\n$st');
       if (mounted) setState(() {
         _deepAnalysisError = true;
+        _deepAnalysisErrorMsg = e.toString();
         _deepAnalysisLoading = false;
       });
     }
@@ -457,25 +466,26 @@ Return ONLY valid JSON:
 }''';
 
       debugPrint('[Compair] Alternatives starting for: $productNames');
-      final parsed = await _fetchWithRetry(prompt, 'Alternatives', lang, maxTokens: 4096);
+      final result = await _fetchWithRetry(prompt, 'Alternatives', lang, maxTokens: 2048);
       if (mounted) {
-        if (parsed == null) {
-          debugPrint('[Compair] Alternatives parse FAILED — showing error');
+        if (result.data == null) {
+          debugPrint('[Compair] Alternatives parse FAILED — showing error: ${result.error}');
           setState(() {
             _alternativesError = true;
+            _alternativesErrorMsg = result.error;
             _alternativesLoading = false;
           });
         } else {
-          final resultStr = jsonEncode(parsed);
+          final resultStr = jsonEncode(result.data);
           setState(() {
             _alternativesResult = resultStr;
-            _alternativesStructured = parsed;
+            _alternativesStructured = result.data;
             _alternativesLoading = false;
           });
           _saveToSession();
           _saveAiCache('alternatives', {
             'result': resultStr,
-            'structured': parsed,
+            'structured': result.data,
           });
         }
       }
@@ -484,6 +494,7 @@ Return ONLY valid JSON:
       debugPrint('[Compair] Alternatives FAILED: $e\n$st');
       if (mounted) setState(() {
         _alternativesError = true;
+        _alternativesErrorMsg = e.toString();
         _alternativesLoading = false;
       });
     }
@@ -559,24 +570,26 @@ Return ONLY valid JSON, no markdown, no explanation:
 }''';
 
       debugPrint('[Compair] Advisor starting');
-      final parsed = await _fetchWithRetry(prompt, 'Advisor', lang, maxTokens: 4096);
+      final result = await _fetchWithRetry(prompt, 'Advisor', lang, maxTokens: 2048);
       if (mounted) {
-        if (parsed == null) {
+        if (result.data == null) {
+          debugPrint('[Compair] Advisor FAILED: ${result.error}');
           setState(() {
             _advisorError = true;
+            _advisorErrorMsg = result.error;
             _advisorLoading = false;
           });
         } else {
-          final resultStr = jsonEncode(parsed);
+          final resultStr = jsonEncode(result.data);
           setState(() {
             _advisorResult = resultStr;
-            _advisorStructured = parsed;
+            _advisorStructured = result.data;
             _advisorLoading = false;
           });
           _saveToSession();
           _saveAiCache('advisor', {
             'result': resultStr,
-            'structured': parsed,
+            'structured': result.data,
           });
         }
       }
@@ -585,6 +598,7 @@ Return ONLY valid JSON, no markdown, no explanation:
       debugPrint('[Compair] Advisor FAILED: $e\n$st');
       if (mounted) setState(() {
         _advisorError = true;
+        _advisorErrorMsg = e.toString();
         _advisorLoading = false;
       });
     }
@@ -641,40 +655,44 @@ Return ONLY valid JSON, no markdown, no explanation:
 
 Products: $productNames
 
+CRITICAL: You MUST include ALL ${widget.products.length} products in your response. Return exactly ${widget.products.length} entries in the products array, one for each product listed above.
+
 Return ONLY valid JSON, no markdown, no explanation:
 {
   "products": [
     {
-      "name": "product name",
+      "name": "exact product name as listed above",
       "trend": "dropping",
       "change_percent": -5,
       "best_time_to_buy": "now",
       "confidence": 75,
-      "reason": "1-2 sentence explanation of the prediction"
+      "reason": "1-2 sentence explanation of the prediction for you"
     }
   ]
 }
 Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must be one of "now", "wait_1_month", "wait_3_months". confidence is 0-100.''';
 
       debugPrint('[Compair] Prediction starting');
-      final parsed = await _fetchWithRetry(prompt, 'Prediction', lang, maxTokens: 4096);
+      final result = await _fetchWithRetry(prompt, 'Prediction', lang, maxTokens: 2048);
       if (mounted) {
-        if (parsed == null) {
+        if (result.data == null) {
+          debugPrint('[Compair] Prediction FAILED: ${result.error}');
           setState(() {
             _predictionError = true;
+            _predictionErrorMsg = result.error;
             _predictionLoading = false;
           });
         } else {
-          final resultStr = jsonEncode(parsed);
+          final resultStr = jsonEncode(result.data);
           setState(() {
             _predictionResult = resultStr;
-            _predictionStructured = parsed;
+            _predictionStructured = result.data;
             _predictionLoading = false;
           });
           _saveToSession();
           _saveAiCache('prediction', {
             'result': resultStr,
-            'structured': parsed,
+            'structured': result.data,
           });
         }
       }
@@ -683,6 +701,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       debugPrint('[Compair] Prediction FAILED: $e\n$st');
       if (mounted) setState(() {
         _predictionError = true;
+        _predictionErrorMsg = e.toString();
         _predictionLoading = false;
       });
     }
@@ -1145,7 +1164,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     );
   }
 
-  Widget _buildAiError(VoidCallback onRetry) {
+  Widget _buildAiError(VoidCallback onRetry, {String? errorMsg}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
@@ -1154,8 +1173,19 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           children: [
             Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.error.withValues(alpha: 0.6)),
             const SizedBox(height: 12),
-            Text('Analysis failed', style: GoogleFonts.plusJakartaSans(
+            Text(_isTr ? 'Analiz başarısız' : 'Analysis failed', style: GoogleFonts.plusJakartaSans(
               fontSize: 14, fontWeight: FontWeight.w600, color: context.textSecondary)),
+            if (errorMsg != null && errorMsg.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  errorMsg.length > 120 ? errorMsg.substring(0, 120) : errorMsg,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             GestureDetector(
               onTap: onRetry,
@@ -1164,7 +1194,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(colors: [AppTheme.amber500, Color(0xFFF59E0B)]),
                   borderRadius: BorderRadius.circular(10)),
-                child: Text('Try Again', style: GoogleFonts.plusJakartaSans(
+                child: Text(_isTr ? 'Tekrar Dene' : 'Try Again', style: GoogleFonts.plusJakartaSans(
                   fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
@@ -1287,7 +1317,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8)),
-                    child: Text('Detail', style: GoogleFonts.plusJakartaSans(
+                    child: Text(_isTr ? 'Detay' : 'Detail', style: GoogleFonts.plusJakartaSans(
                       fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                   ),
                 ]),
@@ -1306,10 +1336,10 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             color: context.surfaceElevatedColor,
             borderRadius: BorderRadius.circular(14)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
+            Text(_isTr ? '📊 Kategori Karşılaştırması' : '📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
               fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary)),
             const SizedBox(height: 10),
-            // Compact score summary per category
+            // Per-product scores per category
             ...categories.entries.take(5).map((cat) {
               final catData = cat.value;
               Map<String, dynamic> scores = {};
@@ -1320,23 +1350,57 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                   scores = Map.fromEntries(catData.entries.where((e) => e.value is num));
                 }
               }
-              final avgScore = scores.values.isEmpty ? 0.0
-                : scores.values.fold<double>(0, (a, b) => a + (b as num).toDouble()) / scores.values.length;
               return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(children: [
-                  Text('${_categoryIcon(cat.key)} ', style: const TextStyle(fontSize: 14)),
-                  Expanded(child: Text(cat.key, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary))),
-                  Container(
-                    width: 36, height: 22,
-                    decoration: BoxDecoration(
-                      color: _aiScoreColor(avgScore).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6)),
-                    child: Center(child: Text('${avgScore.toInt()}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800,
-                        color: _aiScoreColor(avgScore)))),
-                  ),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('${_categoryIcon(cat.key)} ', style: const TextStyle(fontSize: 13)),
+                    Text(cat.key, style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary)),
+                  ]),
+                  const SizedBox(height: 5),
+                  Row(children: List.generate(productNames.length, (i) {
+                    final pName = productNames[i];
+                    double? score;
+                    // Primary: name-based matching (first 3 words)
+                    for (final se in scores.entries) {
+                      final seKey = se.key.toLowerCase().split(' ').take(3).join(' ');
+                      final pKey = pName.toLowerCase().split(' ').take(3).join(' ');
+                      if (pKey.contains(seKey) || seKey.contains(pKey) ||
+                          pName.toLowerCase().contains(seKey) ||
+                          se.key.toLowerCase().contains(pKey)) {
+                        score = (se.value as num).toDouble();
+                        break;
+                      }
+                    }
+                    // Fallback: positional — only when score count matches product count
+                    if (score == null && scores.values.length == productNames.length) {
+                      score = (scores.values.elementAt(i) as num).toDouble();
+                    }
+                    // Last resort: positional if available
+                    if (score == null && i < scores.values.length) {
+                      score = (scores.values.elementAt(i) as num).toDouble();
+                    }
+                    final scoreVal = score ?? 0;
+                    final col = barColors[i % barColors.length];
+                    final shortName = pName.split(' ').take(2).join(' ');
+                    return Expanded(child: Container(
+                      margin: EdgeInsets.only(left: i == 0 ? 0 : 4),
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: col.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: col.withValues(alpha: 0.2))),
+                      child: Column(children: [
+                        Text('${scoreVal.toInt()}', style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13, fontWeight: FontWeight.w900, color: col)),
+                        const SizedBox(height: 2),
+                        Text(shortName, style: GoogleFonts.plusJakartaSans(
+                          fontSize: 8, color: context.textTertiaryColor),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+                      ]),
+                    ));
+                  })),
                 ]),
               );
             }),
@@ -1356,7 +1420,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(Icons.bar_chart_rounded, size: 20, color: AppTheme.brandBlue),
                   const SizedBox(width: 8),
-                  Text('View Chart', style: GoogleFonts.plusJakartaSans(
+                  Text(_isTr ? 'Tam Grafiği Gör' : 'Full Chart', style: GoogleFonts.plusJakartaSans(
                     fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
                   const SizedBox(width: 4),
                   Icon(Icons.open_in_full_rounded, size: 14, color: AppTheme.brandBlue),
@@ -1414,23 +1478,25 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     required double matchScore,
     required String reason,
     required Color color,
+    List<String> topMatchFactors = const [],
+    List<String> missingFactors = const [],
   }) {
     final matchColor = matchScore >= 80 ? AppTheme.scoreExcellent :
         matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
-    // Parse reason into bullet points
-    final reasonLines = reason.split(RegExp(r'[.\n]'))
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty && s.length > 5)
-        .toList();
+    final matchLabel = matchScore >= 80
+        ? (_isTr ? 'Mükemmel Uyum' : 'Excellent Match')
+        : matchScore >= 60
+            ? (_isTr ? 'İyi Uyum' : 'Good Match')
+            : (_isTr ? 'Düşük Uyum' : 'Low Match');
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.35,
-        maxChildSize: 0.85,
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
         builder: (_, scrollController) => Container(
           decoration: BoxDecoration(
             color: Theme.of(ctx).scaffoldBackgroundColor,
@@ -1460,55 +1526,148 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             ),
             Expanded(child: ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
               children: [
-                // Score circle + product name side by side
-                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: matchScore / 100),
-                    duration: const Duration(milliseconds: 1000),
-                    curve: Curves.easeOutCubic,
-                    builder: (_, value, __) => SizedBox(
-                      width: 72, height: 72,
-                      child: Stack(alignment: Alignment.center, children: [
-                        CircularProgressIndicator(
-                          value: value, strokeWidth: 5,
-                          backgroundColor: matchColor.withValues(alpha: 0.12),
-                          color: matchColor),
-                        Text('${(value * 100).toInt()}%',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 20, fontWeight: FontWeight.w900, color: matchColor)),
-                      ]),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(child: Text(productName,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16, fontWeight: FontWeight.w800,
-                      color: Theme.of(ctx).colorScheme.onSurface))),
-                ]),
-                const SizedBox(height: 20),
-                // "Why This Score?" section
-                Text('Why This Score?', style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15, fontWeight: FontWeight.w800,
-                  color: Theme.of(ctx).colorScheme.onSurface)),
-                const SizedBox(height: 12),
-                ...reasonLines.map((line) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(14),
+                // Score hero + product name
+                Container(
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: matchColor.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: matchColor.withValues(alpha: 0.1))),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Icon(Icons.auto_awesome_rounded, size: 16,
-                      color: matchColor.withValues(alpha: 0.8)),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text(line, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface,
-                      height: 1.5))),
+                    gradient: LinearGradient(
+                      colors: [matchColor.withValues(alpha: 0.12), matchColor.withValues(alpha: 0.04)]),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: matchColor.withValues(alpha: 0.2))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: matchScore / 100),
+                      duration: const Duration(milliseconds: 1000),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, value, __) => SizedBox(
+                        width: 84, height: 84,
+                        child: Stack(alignment: Alignment.center, children: [
+                          CircularProgressIndicator(
+                            value: value, strokeWidth: 7,
+                            backgroundColor: matchColor.withValues(alpha: 0.12),
+                            color: matchColor),
+                          RichText(text: TextSpan(children: [
+                            TextSpan(
+                              text: '${(value * 100).toInt()}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 20, fontWeight: FontWeight.w900, color: matchColor)),
+                            TextSpan(
+                              text: '%',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11, fontWeight: FontWeight.w700, color: matchColor)),
+                          ])),
+                        ]),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: matchColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8)),
+                        child: Text(matchLabel, style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10, fontWeight: FontWeight.w700, color: matchColor, letterSpacing: 0.3)),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(productName, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15, fontWeight: FontWeight.w800,
+                        color: Theme.of(ctx).colorScheme.onSurface),
+                        maxLines: 3, overflow: TextOverflow.ellipsis),
+                    ])),
                   ]),
-                )),
+                ),
+
+                // Reason / why this score
+                if (reason.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Text(_isTr ? 'Neden Bu Puan?' : 'Why This Score?', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: matchColor.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: matchColor.withValues(alpha: 0.12))),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(Icons.auto_awesome_rounded, size: 16, color: matchColor.withValues(alpha: 0.8)),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(reason, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface, height: 1.6))),
+                    ]),
+                  ),
+                ],
+
+                // Güçlü Yönler (topMatchFactors)
+                if (topMatchFactors.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Text(_isTr ? 'Uyumluluk Noktaları' : 'Compatibility Points', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 10),
+                  ...topMatchFactors.map((factor) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.scoreExcellent.withValues(alpha: 0.15))),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.scoreExcellent),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(factor, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface, height: 1.5))),
+                    ]),
+                  )),
+                ],
+
+                // Eksik Noktalar (missingFactors)
+                if (missingFactors.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(_isTr ? 'Dikkat Edilmesi Gerekenler' : 'Points to Consider', style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15, fontWeight: FontWeight.w800,
+                    color: Theme.of(ctx).colorScheme.onSurface)),
+                  const SizedBox(height: 10),
+                  ...missingFactors.map((factor) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warning.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.warning.withValues(alpha: 0.2))),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(Icons.warning_amber_rounded, size: 16, color: AppTheme.warning),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(factor, style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface, height: 1.5))),
+                    ]),
+                  )),
+                ],
+
+                // Hiç içerik yoksa
+                if (reason.isEmpty && topMatchFactors.isEmpty) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: matchColor.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14)),
+                    child: Row(children: [
+                      Icon(Icons.info_outline_rounded, size: 18, color: matchColor),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(
+                        _isTr
+                          ? 'Bu puan, kullanıcı profiliniz ve ürün özellikleri karşılaştırılarak hesaplandı.'
+                          : 'This score was calculated by comparing your profile with the product specifications.',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Theme.of(ctx).colorScheme.onSurface, height: 1.5))),
+                    ]),
+                  ),
+                ],
               ],
             )),
           ]),
@@ -1533,21 +1692,23 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         : isRising ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
     final trendColor = isDropping ? AppTheme.scoreExcellent
         : isRising ? AppTheme.error : AppTheme.warning;
-    final trendLabel = isDropping ? 'Dropping' : isRising ? 'Rising' : 'Stable';
+    final trendLabel = isDropping
+        ? (_isTr ? 'Düşüyor' : 'Dropping')
+        : isRising ? (_isTr ? 'Yükseliyor' : 'Rising') : (_isTr ? 'Stabil' : 'Stable');
 
     String bestTimeLabel;
     Color bestTimeColor;
     if (bestTime == 'now' || buyNow) {
-      bestTimeLabel = '🛒 Buy Now';
+      bestTimeLabel = _isTr ? '✅ Şimdi Uygun Zaman' : '✅ Best Time to Buy';
       bestTimeColor = AppTheme.scoreExcellent;
     } else if (bestTime == 'wait_1_month') {
-      bestTimeLabel = '⏳ Wait 1 Month';
+      bestTimeLabel = _isTr ? '⏳ 1 Ay Bekle' : '⏳ Wait 1 Month';
       bestTimeColor = AppTheme.warning;
     } else if (bestTime == 'wait_3_months') {
-      bestTimeLabel = '⏳ Wait 3 Months';
+      bestTimeLabel = _isTr ? '⏳ 3 Ay Bekle' : '⏳ Wait 3 Months';
       bestTimeColor = AppTheme.orange500;
     } else {
-      bestTimeLabel = bestTime.isNotEmpty ? '📅 $bestTime' : '📅 Unknown';
+      bestTimeLabel = bestTime.isNotEmpty ? '📅 $bestTime' : (_isTr ? '📅 Belirsiz' : '📅 Unknown');
       bestTimeColor = AppTheme.warning;
     }
 
@@ -1623,7 +1784,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 if (confidence > 0) ...[
                   const SizedBox(height: 14),
                   Row(children: [
-                    Text('Confidence', style: GoogleFonts.plusJakartaSans(
+                    Text(_isTr ? 'Güven' : 'Confidence', style: GoogleFonts.plusJakartaSans(
                       fontSize: 12, fontWeight: FontWeight.w600,
                       color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.5))),
                     const Spacer(),
@@ -1642,7 +1803,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 // Reasoning
                 if (reason.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Reasoning', style: GoogleFonts.plusJakartaSans(
+                  Text(_isTr ? 'Açıklama' : 'Explanation', style: GoogleFonts.plusJakartaSans(
                     fontSize: 14, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 8),
@@ -1726,7 +1887,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (matchPoints.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Match Points', style: GoogleFonts.plusJakartaSans(
+                  Text(_isTr ? 'Uyum Noktaları' : 'Compatibility Points', style: GoogleFonts.plusJakartaSans(
                     fontSize: 14, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 8),
                   ...matchPoints.map((item) => Container(
@@ -1745,7 +1906,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (cautionPoints.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Caution Points', style: GoogleFonts.plusJakartaSans(
+                  Text(_isTr ? 'Dikkat Noktaları' : 'Caution Points', style: GoogleFonts.plusJakartaSans(
                     fontSize: 14, fontWeight: FontWeight.w800, color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 8),
                   ...cautionPoints.map((item) => Container(
@@ -1853,7 +2014,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (strengths.isNotEmpty) ...[
                   const SizedBox(height: 18),
-                  Text('Strengths', style: GoogleFonts.plusJakartaSans(
+                  Text(_isTr ? 'Güçlü Yönler' : 'Strengths', style: GoogleFonts.plusJakartaSans(
                     fontSize: 15, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 10),
@@ -1874,7 +2035,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 ],
                 if (weaknesses.isNotEmpty) ...[
                   const SizedBox(height: 18),
-                  Text('Weaknesses', style: GoogleFonts.plusJakartaSans(
+                  Text(_isTr ? 'Zayıf Yönler' : 'Weaknesses', style: GoogleFonts.plusJakartaSans(
                     fontSize: 15, fontWeight: FontWeight.w800,
                     color: Theme.of(ctx).colorScheme.onSurface)),
                   const SizedBox(height: 10),
@@ -1924,7 +2085,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       builder: (ctx) => Scaffold(
         backgroundColor: Theme.of(ctx).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: Text('📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
+          title: Text(_isTr ? '📊 Kategori Karşılaştırması' : '📊 Category Comparison', style: GoogleFonts.plusJakartaSans(
             fontSize: 16, fontWeight: FontWeight.w700)),
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
@@ -1942,7 +2103,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                 color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Products', style: GoogleFonts.plusJakartaSans(
+                Text(_isTr ? 'Ürünler' : 'Products', style: GoogleFonts.plusJakartaSans(
                   fontSize: 12, fontWeight: FontWeight.w700,
                   color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6))),
                 const SizedBox(height: 8),
@@ -2110,16 +2271,24 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
       for (int pIdx = 0; pIdx < productNames.length; pIdx++) {
         final pName = productNames[pIdx];
         double val = 0;
-        // Try exact match first, then partial match
+        // Exact match first
         if (scores.containsKey(pName)) {
           val = (scores[pName] as num).toDouble();
         } else {
+          // Name-based partial match (first 3 words)
           for (final se in scores.entries) {
-            if (pName.toLowerCase().contains(se.key.toLowerCase()) ||
-                se.key.toLowerCase().contains(pName.toLowerCase())) {
+            final seKey = se.key.toLowerCase().split(' ').take(3).join(' ');
+            final pKey = pName.toLowerCase().split(' ').take(3).join(' ');
+            if (pKey.contains(seKey) || seKey.contains(pKey) ||
+                pName.toLowerCase().contains(seKey) ||
+                se.key.toLowerCase().contains(pKey)) {
               val = (se.value as num).toDouble();
               break;
             }
+          }
+          // Positional fallback when count matches
+          if (val == 0 && scores.values.length == productNames.length) {
+            val = (scores.values.elementAt(pIdx) as num).toDouble();
           }
         }
         rods.add(BarChartRodData(
@@ -2234,7 +2403,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             const Icon(Icons.recommend_rounded, color: Color(0xFF3B82F6), size: 20),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('RECOMMENDED', style: GoogleFonts.plusJakartaSans(
+              Text(_isTr ? 'ÖNERİLEN' : 'RECOMMENDED', style: GoogleFonts.plusJakartaSans(
                 fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6), letterSpacing: 0.5)),
               Text(recommended, style: GoogleFonts.plusJakartaSans(
                 fontSize: 13, fontWeight: FontWeight.w800, color: context.textPrimary),
@@ -2278,7 +2447,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                   Row(mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (s) => Icon(
                       s < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                      size: productCount > 3 ? 12 : 14,
+                      size: productCount > 3 ? 10 : 13,
                       color: s < rating ? const Color(0xFFFFD700) : context.textTertiaryColor))),
                   const SizedBox(height: 6),
                   // Product name
@@ -2302,7 +2471,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8)),
-                    child: Text('Detail', style: GoogleFonts.plusJakartaSans(
+                    child: Text(_isTr ? 'Detay' : 'Detail', style: GoogleFonts.plusJakartaSans(
                       fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                   ),
                 ]),
@@ -2351,14 +2520,52 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     ];
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Products in side-by-side columns
+      // Products in side-by-side columns — show ALL products, match by name
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: List.generate(products.length.clamp(0, productCount), (i) {
-          final p = products[i];
+        children: List.generate(productCount, (i) {
+          final wProduct = widget.products[i];
+          // Find matching AI product by name (first 3 words)
+          Map<String, dynamic>? p;
+          final wKey = wProduct.name.toLowerCase().split(' ').take(3).join(' ');
+          for (final ap in products) {
+            final aName = (ap['name'] as String? ?? '').toLowerCase();
+            if (aName.contains(wKey) || wKey.contains(aName.split(' ').take(3).join(' '))) {
+              p = ap;
+              break;
+            }
+          }
+          // Positional fallback
+          if (p == null && i < products.length) p = products[i];
+
+          if (p == null) {
+            // No prediction data — show placeholder
+            final color = barColors[i % barColors.length];
+            return Expanded(child: Container(
+              margin: EdgeInsets.only(left: i == 0 ? 0 : 3, right: i == productCount - 1 ? 0 : 3),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: context.surfaceElevatedColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withValues(alpha: 0.15))),
+              child: Column(children: [
+                Icon(Icons.trending_flat_rounded, color: color.withValues(alpha: 0.4), size: productCount > 3 ? 20 : 24),
+                const SizedBox(height: 4),
+                Text('—', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: color.withValues(alpha: 0.4))),
+                const SizedBox(height: 6),
+                Text(
+                  wProduct.name.length > (productCount > 2 ? 20 : 30)
+                    ? '${wProduct.name.substring(0, productCount > 2 ? 18 : 28)}…'
+                    : wProduct.name,
+                  style: GoogleFonts.plusJakartaSans(fontSize: productCount > 3 ? 8 : (productCount > 2 ? 9 : 10), fontWeight: FontWeight.w700, color: context.textPrimary),
+                  textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ]),
+            ));
+          }
+
           final trend = (p['trend'] as String? ?? 'stable').toLowerCase();
           final changePercent = (p['change_percent'] as num?)?.toDouble() ?? 0;
-          final name = p['name'] as String? ?? '';
+          final name = p['name'] as String? ?? wProduct.name;
           final bestTime = p['best_time_to_buy'] as String? ?? p['best_time'] as String? ?? '';
           final buyNow = p['buy_now'] as bool? ?? (bestTime == 'now' || trend == 'dropping');
           final reason = p['reason'] as String? ?? '';
@@ -2380,7 +2587,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             child: Container(
               margin: EdgeInsets.only(
                 left: i == 0 ? 0 : 3,
-                right: i == products.length - 1 ? 0 : 3),
+                right: i == productCount - 1 ? 0 : 3),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: context.surfaceElevatedColor,
@@ -2405,24 +2612,13 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                     fontSize: productCount > 3 ? 8 : (productCount > 2 ? 9 : 10),
                     fontWeight: FontWeight.w700, color: context.textPrimary),
                   textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                // Buy now badge
-                if (buyNow)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.scoreExcellent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6)),
-                    child: Text('🛒 Buy Now', style: GoogleFonts.plusJakartaSans(
-                      fontSize: 8, fontWeight: FontWeight.w700, color: AppTheme.scoreExcellent)),
-                  ),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8)),
-                  child: Text('Detail', style: GoogleFonts.plusJakartaSans(
+                  child: Text(_isTr ? 'Detay' : 'Detail', style: GoogleFonts.plusJakartaSans(
                     fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                 ),
               ]),
@@ -3420,8 +3616,9 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           content: _advisorResult,
           contentWidget: _advisorStructured != null ? _buildAdvisorVisual() : null,
           isError: _advisorError,
+          errorMsg: _advisorErrorMsg,
           onRetry: () {
-            setState(() { _advisorError = false; _advisorLoading = true; _advisorResult = null; _advisorStructured = null; });
+            setState(() { _advisorError = false; _advisorErrorMsg = null; _advisorLoading = true; _advisorResult = null; _advisorStructured = null; });
             _fetchAdvisor();
           },
           onTap: _toggleAdvisor,
@@ -3438,8 +3635,9 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           content: _deepAnalysisResult,
           contentWidget: _deepAnalysisStructured != null ? _buildDeepAnalysisVisual() : null,
           isError: _deepAnalysisError,
+          errorMsg: _deepAnalysisErrorMsg,
           onRetry: () {
-            setState(() { _deepAnalysisError = false; _deepAnalysisLoading = true; _deepAnalysisResult = null; _deepAnalysisStructured = null; });
+            setState(() { _deepAnalysisError = false; _deepAnalysisErrorMsg = null; _deepAnalysisLoading = true; _deepAnalysisResult = null; _deepAnalysisStructured = null; });
             _fetchDeepAnalysis();
           },
           onTap: _toggleDeepAnalysis,
@@ -3456,8 +3654,9 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           content: _alternativesResult,
           contentWidget: _alternativesStructured != null ? _buildAlternativesVisual() : null,
           isError: _alternativesError,
+          errorMsg: _alternativesErrorMsg,
           onRetry: () {
-            setState(() { _alternativesError = false; _alternativesLoading = true; _alternativesResult = null; _alternativesStructured = null; });
+            setState(() { _alternativesError = false; _alternativesErrorMsg = null; _alternativesLoading = true; _alternativesResult = null; _alternativesStructured = null; });
             _fetchAlternatives();
           },
           onTap: _toggleAlternatives,
@@ -3474,8 +3673,9 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           content: _predictionResult,
           contentWidget: _predictionStructured != null ? _buildPredictionVisual() : null,
           isError: _predictionError,
+          errorMsg: _predictionErrorMsg,
           onRetry: () {
-            setState(() { _predictionError = false; _predictionLoading = true; _predictionResult = null; _predictionStructured = null; });
+            setState(() { _predictionError = false; _predictionErrorMsg = null; _predictionLoading = true; _predictionResult = null; _predictionStructured = null; });
             _fetchPrediction();
           },
           onTap: _togglePrediction,
@@ -3588,7 +3788,9 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                         final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
                         final matchResult = matchAsync.valueOrNull;
                         final matchScore = matchResult?.matchScore;
-                        final reason = matchResult?.reason;
+                        final reason = matchResult?.reason ?? '';
+                        final topFactors = matchResult?.topMatchFactors ?? [];
+                        final missingFactors = matchResult?.missingFactors ?? [];
                         final isLoading = matchAsync is AsyncLoading;
                         final color = barColors[i % barColors.length];
 
@@ -3597,11 +3799,13 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                             matchScore >= 60 ? AppTheme.scoreAverage : AppTheme.error;
 
                         return Expanded(child: GestureDetector(
-                          onTap: (matchScore != null && reason != null) ? () => _showMatchDetailOverlay(
+                          onTap: matchScore != null ? () => _showMatchDetailOverlay(
                             productName: product.name,
                             matchScore: matchScore.toDouble(),
                             reason: reason,
                             color: color,
+                            topMatchFactors: topFactors,
+                            missingFactors: missingFactors,
                           ) : null,
                           child: Container(
                             margin: EdgeInsets.only(
@@ -3657,7 +3861,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                                   decoration: BoxDecoration(
                                     color: color.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(10)),
-                                  child: Text('Detail', style: GoogleFonts.plusJakartaSans(
+                                  child: Text(_isTr ? 'Detay' : 'Detail', style: GoogleFonts.plusJakartaSans(
                                     fontSize: 9, fontWeight: FontWeight.w700, color: color)),
                                 ),
                               ],
@@ -3688,6 +3892,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
     Widget? contentWidget,
     bool isError = false,
     VoidCallback? onRetry,
+    String? errorMsg,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
@@ -3738,7 +3943,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
           // Error state with retry
           if (isExpanded && isError && onRetry != null) ...[
             const SizedBox(height: 14),
-            _buildAiError(onRetry),
+            _buildAiError(onRetry, errorMsg: errorMsg),
           ]
           // Loading shimmer
           else if (isExpanded && isLoading) ...[
@@ -4705,4 +4910,4 @@ class _CompareRepliesSectionState extends ConsumerState<_CompareRepliesSection> 
       },
     );
   }
-}
+}
