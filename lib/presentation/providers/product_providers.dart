@@ -30,8 +30,8 @@ const pcCategoryAliases = <String, List<String>>{
 /// PC Builder product provider — loads products for a category.
 /// Strategy:
 ///   1. In-memory cache (instant)
-///   2. Try primary alias from disk cache (limited to 500 docs)
-///   3. Then default get() with timeout
+///   2. Paginated serverAndCache fetch (uses local cache if available, server otherwise)
+///   3. All aliases tried until one returns data
 final pcBuilderProductsProvider = FutureProvider.family<
     List<ProductEntity>, String>((ref, categoryId) async {
   final normalizedCategory = categoryId.toLowerCase().trim();
@@ -43,53 +43,62 @@ final pcBuilderProductsProvider = FutureProvider.family<
 
   final aliases = pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
   final db = FirebaseFirestore.instance;
-  const maxDocs = 500;
+  const batchSize = 500;
+  const maxTotal = 5000;
 
   List<ProductEntity> _parseDocs(QuerySnapshot snap) {
     final list = <ProductEntity>[];
     for (final d in snap.docs) {
       try { list.add(ProductModel.fromFirestore(d) as ProductEntity); } catch (_) {}
     }
-    list.sort((a, b) => b.techScore.compareTo(a.techScore));
     return list;
   }
 
-  // 2) Try each alias from DISK CACHE first (no network, limited docs)
-  for (final alias in aliases) {
-    try {
-      final snap = await db
-          .collection('products')
+  // Paginated loader — fetches ALL products for a given alias
+  Future<List<ProductEntity>> _paginatedLoad(String alias, Source source) async {
+    final all = <ProductEntity>[];
+    DocumentSnapshot? lastDoc;
+    while (all.length < maxTotal) {
+      var query = db.collection('products')
           .where('category', isEqualTo: alias)
-          .limit(maxDocs)
-          .get(const GetOptions(source: Source.cache));
-      if (snap.docs.isNotEmpty) {
-        final products = _parseDocs(snap);
-        _pcBuilderCacheMap[normalizedCategory] = products;
-        debugPrint('[PCBuilder] ✅ Cache "$alias": ${products.length}');
-        return products;
-      }
-    } catch (_) {}
+          .limit(batchSize);
+      if (lastDoc != null) query = query.startAfterDocument(lastDoc);
+      final snap = await query
+          .get(GetOptions(source: source))
+          .timeout(const Duration(seconds: 20));
+      if (snap.docs.isEmpty) break;
+      all.addAll(_parseDocs(snap));
+      lastDoc = snap.docs.last;
+      if (snap.docs.length < batchSize) break;
+    }
+    return all;
   }
 
-  // 3) No cache — try only primary alias with timeout
-  final primaryAlias = aliases.first;
-  try {
-    debugPrint('[PCBuilder] 📡 Fetch "$primaryAlias"...');
-    final snap = await db
-        .collection('products')
-        .where('category', isEqualTo: primaryAlias)
-        .limit(maxDocs)
-        .get()
-        .timeout(const Duration(seconds: 15));
-    debugPrint('[PCBuilder] 📡 Fetch "$primaryAlias": ${snap.docs.length} docs');
-    if (snap.docs.isNotEmpty) {
-      final products = _parseDocs(snap);
-      _pcBuilderCacheMap[normalizedCategory] = products;
-      debugPrint('[PCBuilder] ✅ Loaded "$primaryAlias": ${products.length}');
-      return products;
+  // 2) Try each alias — serverAndCache uses local disk if fresh, server otherwise
+  for (final alias in aliases) {
+    try {
+      final sw = Stopwatch()..start();
+      final products = await _paginatedLoad(alias, Source.serverAndCache);
+      sw.stop();
+      if (products.isNotEmpty) {
+        products.sort((a, b) => b.techScore.compareTo(a.techScore));
+        _pcBuilderCacheMap[normalizedCategory] = products;
+        debugPrint('[PCBuilder] ✅ "$alias": ${products.length} in ${sw.elapsedMilliseconds}ms');
+        return products;
+      }
+    } catch (e) {
+      debugPrint('[PCBuilder] ❌ "$alias": $e');
+      // Fallback: try cache-only for this alias (offline mode)
+      try {
+        final cached = await _paginatedLoad(alias, Source.cache);
+        if (cached.isNotEmpty) {
+          cached.sort((a, b) => b.techScore.compareTo(a.techScore));
+          _pcBuilderCacheMap[normalizedCategory] = cached;
+          debugPrint('[PCBuilder] ✅ Cache fallback "$alias": ${cached.length}');
+          return cached;
+        }
+      } catch (_) {}
     }
-  } catch (e) {
-    debugPrint('[PCBuilder] ❌ Fetch "$primaryAlias": $e');
   }
 
   debugPrint('[PCBuilder] ⚠️ Empty "$normalizedCategory" (tried: $aliases)');

@@ -21,6 +21,7 @@ import 'package:compair/presentation/widgets/subscription_logo_widget.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
 import 'package:compair/data/models/other_models.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // ============================================================================
 // HOME SCREEN
@@ -333,7 +334,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         : (context.l10n?.goodEvening ?? 'Good evening');
     final userName = userProfile.whenOrNull(
       data: (user) => user?.displayName?.split(' ').first,
-    ) as String?;
+    ) as String? ?? FirebaseAuth.instance.currentUser?.displayName?.split(' ').first;
     
     return SliverToBoxAdapter(
       child: SafeArea(
@@ -382,7 +383,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     onTap: () => _showNotificationsSheet(context),
                   ),
                   const SizedBox(width: 8),
-                  // Profile avatar button
+                  // Profile avatar button — uses Firebase Auth currentUser
+                  // for instant display, then upgrades from Firestore profile
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
@@ -396,18 +398,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(11),
-                        child: userProfile.whenOrNull(
-                          data: (user) {
-                            if (user?.photoURL != null) {
-                              return CachedNetworkImage(
-                                imageUrl: user!.photoURL!,
-                                width: 38, height: 38, fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) => _buildAvatarFallback(user.displayName),
-                              );
-                            }
-                            return _buildAvatarFallback(user?.displayName);
-                          },
-                        ) ?? _buildAvatarFallback(null),
+                        child: _buildAvatarWidget(userProfile),
                       ),
                     ),
                   ),
@@ -418,6 +409,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
       ),
     );
+  }
+
+  /// Avatar widget that instantly shows Firebase Auth user's photo (sync)
+  /// and upgrades to Firestore profile data when stream resolves.
+  Widget _buildAvatarWidget(AsyncValue userProfile) {
+    // Try Firestore profile first (has latest data)
+    final firestoreWidget = userProfile.whenOrNull(
+      data: (user) {
+        if (user?.photoURL != null) {
+          return CachedNetworkImage(
+            imageUrl: user!.photoURL!,
+            width: 38, height: 38, fit: BoxFit.cover,
+            errorWidget: (_, __, ___) => _buildAvatarFallback(user.displayName),
+          );
+        }
+        return _buildAvatarFallback(user?.displayName);
+      },
+    );
+    if (firestoreWidget != null) return firestoreWidget;
+
+    // Firestore not ready yet (loading) — use Firebase Auth currentUser (sync, instant)
+    final authUser = FirebaseAuth.instance.currentUser;
+    if (authUser != null) {
+      if (authUser.photoURL != null) {
+        return CachedNetworkImage(
+          imageUrl: authUser.photoURL!,
+          width: 38, height: 38, fit: BoxFit.cover,
+          errorWidget: (_, __, ___) => _buildAvatarFallback(authUser.displayName),
+        );
+      }
+      return _buildAvatarFallback(authUser.displayName);
+    }
+
+    return _buildAvatarFallback(null);
   }
 
   Widget _buildAvatarFallback(String? name) {
