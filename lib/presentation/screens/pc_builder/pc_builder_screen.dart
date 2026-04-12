@@ -2004,15 +2004,30 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
           ])),
           data: (products) => products.isEmpty
             ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.inventory_2_outlined, size: 40, color: context.textTertiaryColor),
+                Icon(Icons.search_off_rounded, size: 40, color: context.textTertiaryColor),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text('${widget.component.label(context)} products haven\'t been scraped yet',
+                  child: Text(
+                    context.l10n?.noProductsFound ?? 'No products found',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(color: context.textSecondary)),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: context.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'Try refreshing or use the search bar above',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () {
                     clearPcBuilderCache(widget.component.categoryId);

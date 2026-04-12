@@ -13,18 +13,34 @@ void clearPcBuilderCache([String? category]) {
 }
 /// All category aliases — shared between pcBuilder and category providers.
 const pcCategoryAliases = <String, List<String>>{
-  'cpus': ['cpus', 'cpu', 'processors', 'islemci', 'işlemci', 'işlemciler'],
-  'gpus': ['gpus', 'gpu', 'graphics-cards', 'ekran-karti', 'ekran kartı'],
-  'motherboards': ['motherboards', 'anakart', 'mainboard', 'motherboard'],
-  'ram': ['ram', 'bellek-ram', 'memory'],
-  'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama'],
-  'psu': ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı'],
-  'cases': ['cases', 'bilgisayar-kasasi', 'case', 'kasa'],
-  'coolers': ['coolers', 'islemci-sogutucu', 'cooler', 'soğutucu'],
-  'monitors': ['monitors', 'monitor', 'monitör'],
-  'keyboards': ['keyboards', 'keyboard', 'klavye'],
-  'mice': ['mice', 'mouse', 'fare'],
-  'headsets': ['headsets', 'headset', 'headphones', 'kulaklık'],
+  'cpus': ['cpus', 'cpu', 'processors', 'processor', 'islemci', 'işlemci', 'işlemciler', 'işlemci'],
+  'gpus': ['gpus', 'gpu', 'graphics-cards', 'graphics-card', 'ekran-karti', 'ekran kartı', 'ekran-kartlari'],
+  'motherboards': ['motherboards', 'motherboard', 'anakart', 'mainboard', 'anakartlar'],
+  'ram': ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram', 'bellek-ram'],
+  'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama', 'hard-disk', 'hdd-ssd'],
+  'psu': ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı', 'guc-kaynagi'],
+  'cases': ['cases', 'case', 'bilgisayar-kasasi', 'kasa', 'kasalar'],
+  'coolers': ['coolers', 'cooler', 'islemci-sogutucu', 'soğutucu', 'cpu-cooler'],
+  'monitors': ['monitors', 'monitor', 'monitör', 'monitörler'],
+  'keyboards': ['keyboards', 'keyboard', 'klavye', 'klavyeler'],
+  'mice': ['mice', 'mouse', 'fare', 'fareler'],
+  'headsets': ['headsets', 'headset', 'headphones', 'kulaklık', 'kulaklıklar'],
+};
+
+/// Cloud Function keyword search queries per PC component
+const _pcCategorySearchKeywords = <String, String>{
+  'cpus':        'cpu processor intel amd ryzen core i9 i7',
+  'gpus':        'gpu graphics card nvidia rtx amd radeon',
+  'motherboards':'motherboard anakart asus gigabyte msi',
+  'ram':         'ram memory ddr4 ddr5 corsair kingston',
+  'ssd':         'ssd nvme m.2 solid state samsung wd',
+  'psu':         'power supply psu corsair evga seasonic',
+  'cases':       'pc case tower atx corsair nzxt fractal',
+  'coolers':     'cpu cooler fan heatsink noctua be quiet',
+  'monitors':    'monitor display screen 4k 144hz ips',
+  'keyboards':   'keyboard mechanical gaming corsair razer',
+  'mice':        'mouse gaming optical wireless logitech razer',
+  'headsets':    'headset headphones gaming audio',
 };
 
 /// PC Builder product provider — loads products for a category.
@@ -101,7 +117,28 @@ final pcBuilderProductsProvider = FutureProvider.family<
     }
   }
 
-  debugPrint('[PCBuilder] ⚠️ Empty "$normalizedCategory" (tried: $aliases)');
+  debugPrint('[PCBuilder] ⚠️ Firestore empty for "$normalizedCategory", trying Cloud Function search...');
+
+  // 3) Firestore returned nothing — fall back to Cloud Function keyword search.
+  // This works even when category field in Firestore doesn't match our aliases.
+  final keyword = _pcCategorySearchKeywords[normalizedCategory];
+  if (keyword != null) {
+    try {
+      final ds = ref.read(firebaseDataSourceProvider);
+      final results = await ds.searchProducts(query: keyword, limit: 200);
+      if (results.isNotEmpty) {
+        final products = results.cast<ProductEntity>();
+        products.sort((a, b) => b.techScore.compareTo(a.techScore));
+        _pcBuilderCacheMap[normalizedCategory] = products;
+        debugPrint('[PCBuilder] ✅ CF fallback "$normalizedCategory": ${products.length}');
+        return products;
+      }
+    } catch (e) {
+      debugPrint('[PCBuilder] ❌ CF fallback "$normalizedCategory": $e');
+    }
+  }
+
+  debugPrint('[PCBuilder] ⚠️ All sources empty for "$normalizedCategory"');
   return [];
 });
 
