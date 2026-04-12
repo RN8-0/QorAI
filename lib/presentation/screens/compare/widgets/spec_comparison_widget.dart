@@ -622,7 +622,7 @@ Return ONLY valid JSON, no markdown, no explanation:
     final sw = Stopwatch()..start();
     try {
       // Check Firestore cache first
-      final cached = await _loadAiCache('prediction');
+      final cached = await _loadAiCache('prediction_v2');
       if (cached != null && cached['result'] != null) {
         final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
@@ -644,34 +644,41 @@ Return ONLY valid JSON, no markdown, no explanation:
 
       final lang = Localizations.localeOf(context).languageCode;
       final langName = lang == 'tr' ? 'Turkish' : 'English';
-      final productNames = widget.products.map((p) {
+
+      // Build numbered product list with prices
+      final productLines = widget.products.asMap().entries.map((e) {
+        final idx = e.key + 1;
+        final p = e.value;
         final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
-        return '${p.name} (current price: $price)';
-      }).join(', ');
+        return '$idx. ${p.name} — current price: $price';
+      }).join('\n');
 
-      final prompt = '''You are a price analyst. These products may be real or hypothetical. Make reasonable predictions based on market trends. Address the user directly using "you/your". ALL text in $langName.
+      // Build the expected products array template
+      final productTemplate = widget.products.asMap().entries.map((e) {
+        final p = e.value;
+        return '{"name": "${p.name}", "trend": "stable", "change_percent": 0, "best_time_to_buy": "now", "confidence": 70, "reason": "explanation"}';
+      }).join(',\n    ');
 
-Products: $productNames
+      final prompt = '''You are a tech price analyst. Predict price trends for ALL of the following products. Address the user as "you/your". ALL text in $langName.
 
-CRITICAL: You MUST include ALL ${widget.products.length} products in your response. Return exactly ${widget.products.length} entries in the products array, one for each product listed above.
+Products (you MUST analyze ALL ${widget.products.length}):
+$productLines
 
-Return ONLY valid JSON, no markdown, no explanation:
+Return ONLY valid JSON with exactly ${widget.products.length} items in the array, no markdown:
 {
   "products": [
-    {
-      "name": "exact product name as listed above",
-      "trend": "dropping",
-      "change_percent": -5,
-      "best_time_to_buy": "now",
-      "confidence": 75,
-      "reason": "1-2 sentence explanation of the prediction for you"
-    }
+    $productTemplate
   ]
 }
-Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must be one of "now", "wait_1_month", "wait_3_months". confidence is 0-100.''';
+Rules:
+- trend: "dropping", "stable", or "rising"
+- best_time_to_buy: "now", "wait_1_month", or "wait_3_months"
+- confidence: integer 0-100
+- reason: 1-2 sentences for the user
+- You MUST include all ${widget.products.length} products, one entry per product in the same order as listed above''';
 
       debugPrint('[Compair] Prediction starting');
-      final result = await _fetchWithRetry(prompt, 'Prediction', lang, maxTokens: 2048);
+      final result = await _fetchWithRetry(prompt, 'Prediction', lang, maxTokens: 4096);
       if (mounted) {
         if (result.data == null) {
           debugPrint('[Compair] Prediction FAILED: ${result.error}');
@@ -688,7 +695,7 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
             _predictionLoading = false;
           });
           _saveToSession();
-          _saveAiCache('prediction', {
+          _saveAiCache('prediction_v2', {
             'result': resultStr,
             'structured': result.data,
           });
@@ -1540,22 +1547,24 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeOutCubic,
                       builder: (_, value, __) => SizedBox(
-                        width: 84, height: 84,
+                        width: 80, height: 80,
                         child: Stack(alignment: Alignment.center, children: [
                           CircularProgressIndicator(
-                            value: value, strokeWidth: 7,
+                            value: value, strokeWidth: 6,
                             backgroundColor: matchColor.withValues(alpha: 0.12),
                             color: matchColor),
-                          RichText(text: TextSpan(children: [
-                            TextSpan(
-                              text: '${(value * 100).toInt()}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 20, fontWeight: FontWeight.w900, color: matchColor)),
-                            TextSpan(
-                              text: '%',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11, fontWeight: FontWeight.w700, color: matchColor)),
-                          ])),
+                          SizedBox(
+                            width: 48,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${(value * 100).toInt()}%',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 20, fontWeight: FontWeight.w900, color: matchColor),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
                         ]),
                       ),
                     ),
@@ -2523,17 +2532,26 @@ Note: trend must be one of "dropping", "stable", "rising". best_time_to_buy must
         crossAxisAlignment: CrossAxisAlignment.start,
         children: List.generate(productCount, (i) {
           final wProduct = widget.products[i];
-          // Find matching AI product by name (first 3 words)
+          // Find matching AI product by name (first 3 words, then any word overlap)
           Map<String, dynamic>? p;
-          final wKey = wProduct.name.toLowerCase().split(' ').take(3).join(' ');
+          final wWords = wProduct.name.toLowerCase().split(' ');
+          final wKey3 = wWords.take(3).join(' ');
           for (final ap in products) {
             final aName = (ap['name'] as String? ?? '').toLowerCase();
-            if (aName.contains(wKey) || wKey.contains(aName.split(' ').take(3).join(' '))) {
+            if (aName.contains(wKey3) || wKey3.contains(aName.split(' ').take(3).join(' '))) {
               p = ap;
               break;
             }
           }
-          // Positional fallback
+          // Secondary: any 2-word overlap
+          if (p == null) {
+            for (final ap in products) {
+              final aWords = (ap['name'] as String? ?? '').toLowerCase().split(' ');
+              final overlap = wWords.where((w) => w.length > 3 && aWords.contains(w)).length;
+              if (overlap >= 2) { p = ap; break; }
+            }
+          }
+          // Always positional fallback — ensures no placeholder if AI returned all products
           if (p == null && i < products.length) p = products[i];
 
           if (p == null) {
