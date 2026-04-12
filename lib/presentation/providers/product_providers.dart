@@ -18,14 +18,23 @@ final pcBuilderProductsProvider = FutureProvider.family<
     return _pcBuilderCacheMap[normalizedCategory]!;
   }
 
-  const pcCategoryAliases = <String, String>{
-    'cpus': 'cpus', 'gpus': 'gpus', 'motherboards': 'motherboards',
-    'ram': 'ram', 'ssd': 'ssd', 'psu': 'psu', 'cases': 'cases',
-    'coolers': 'coolers', 'monitors': 'monitors', 'keyboards': 'keyboards',
-    'mice': 'mice', 'headsets': 'headsets',
+  // Multiple aliases per category — same as productsByCategoryProvider
+  const pcCategoryAliases = <String, List<String>>{
+    'cpus': ['cpus', 'cpu', 'processors'],
+    'gpus': ['gpus', 'gpu', 'graphics-cards'],
+    'motherboards': ['motherboards', 'anakart', 'mainboard'],
+    'ram': ['ram', 'bellek-ram', 'memory'],
+    'ssd': ['ssd', 'ssds', 'storage'],
+    'psu': ['psu', 'power-supply-psu', 'power-supply'],
+    'cases': ['cases', 'bilgisayar-kasasi', 'case'],
+    'coolers': ['coolers', 'islemci-sogutucu', 'cooler'],
+    'monitors': ['monitors', 'monitor'],
+    'keyboards': ['keyboards', 'keyboard'],
+    'mice': ['mice', 'mouse'],
+    'headsets': ['headsets', 'headset'],
   };
 
-  final alias = pcCategoryAliases[normalizedCategory] ?? normalizedCategory;
+  final aliases = pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
   final db = FirebaseFirestore.instance;
 
   List<ProductEntity> _parseDocs(QuerySnapshot snap) {
@@ -37,43 +46,55 @@ final pcBuilderProductsProvider = FutureProvider.family<
     return list;
   }
 
-  // 2) Firestore disk cache — instant, no network round-trip
-  try {
-    final cacheSnap = await db
-        .collection('products')
-        .where('category', isEqualTo: alias)
-        .get(const GetOptions(source: Source.cache));
-    if (cacheSnap.docs.isNotEmpty) {
-      final products = _parseDocs(cacheSnap);
-      _pcBuilderCacheMap[normalizedCategory] = products;
-      debugPrint('[PCBuilder] ✅ Disk cache: ${products.length} "$alias"');
-      // Background refresh — won't block UI
-      Future.microtask(() async {
-        try {
-          final freshSnap = await db
-              .collection('products')
-              .where('category', isEqualTo: alias)
-              .get(const GetOptions(source: Source.serverAndCache))
-              .timeout(const Duration(seconds: 30));
-          if (freshSnap.docs.isNotEmpty) {
-            _pcBuilderCacheMap[normalizedCategory] = _parseDocs(freshSnap);
-          }
-        } catch (_) {}
-      });
-      return products;
-    }
-  } catch (_) {}
+  // Try each alias, return first non-empty result
+  for (final alias in aliases) {
+    // 2) Firestore disk cache — instant, no network round-trip
+    try {
+      final cacheSnap = await db
+          .collection('products')
+          .where('category', isEqualTo: alias)
+          .get(const GetOptions(source: Source.cache));
+      if (cacheSnap.docs.isNotEmpty) {
+        final products = _parseDocs(cacheSnap);
+        _pcBuilderCacheMap[normalizedCategory] = products;
+        debugPrint('[PCBuilder] ✅ Disk cache: ${products.length} "$alias"');
+        // Background refresh — won't block UI
+        Future.microtask(() async {
+          try {
+            final freshSnap = await db
+                .collection('products')
+                .where('category', isEqualTo: alias)
+                .get(const GetOptions(source: Source.serverAndCache))
+                .timeout(const Duration(seconds: 30));
+            if (freshSnap.docs.isNotEmpty) {
+              _pcBuilderCacheMap[normalizedCategory] = _parseDocs(freshSnap);
+            }
+          } catch (_) {}
+        });
+        return products;
+      }
+    } catch (_) {}
 
-  // 3) No cache — single server query, no pagination
-  final snap = await db
-      .collection('products')
-      .where('category', isEqualTo: alias)
-      .get(const GetOptions(source: Source.serverAndCache))
-      .timeout(const Duration(seconds: 30));
-  final products = _parseDocs(snap);
-  _pcBuilderCacheMap[normalizedCategory] = products;
-  debugPrint('[PCBuilder] ✅ Server: ${products.length} "$alias"');
-  return products;
+    // 3) No cache — single server query
+    try {
+      final snap = await db
+          .collection('products')
+          .where('category', isEqualTo: alias)
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 30));
+      if (snap.docs.isNotEmpty) {
+        final products = _parseDocs(snap);
+        _pcBuilderCacheMap[normalizedCategory] = products;
+        debugPrint('[PCBuilder] ✅ Server: ${products.length} "$alias"');
+        return products;
+      }
+    } catch (e) {
+      debugPrint('[PCBuilder] ❌ Failed "$alias": $e');
+    }
+  }
+
+  // All aliases exhausted
+  return [];
 });
 
 final productsByCategoryProvider = FutureProvider.family<

@@ -1516,8 +1516,12 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                 ]),
               )),
               // Bottom action buttons
-              SafeArea(child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              Container(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(ctx).padding.bottom + 16),
+                decoration: BoxDecoration(
+                  color: ctx.backgroundColor,
+                  border: Border(top: BorderSide(color: ctx.dividerColor)),
+                ),
                 child: Row(children: [
                   Expanded(child: OutlinedButton.icon(
                     onPressed: () {
@@ -1547,7 +1551,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                       padding: const EdgeInsets.symmetric(vertical: 12)),
                   )),
                 ]),
-              )),
+              ),
             ]),
           ),
         ),
