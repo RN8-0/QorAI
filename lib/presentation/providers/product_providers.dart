@@ -3,18 +3,21 @@ part of 'providers.dart';
 // ── In-memory cache for PC builder fast queries ──
 final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
 
-/// Fast single-query provider for PC Builder picker. No pagination.
-/// Returns top products sorted by techScore from Firebase directly.
+/// Fast paginated provider for PC Builder picker.
+/// Strategy (same as productsByCategoryProvider but optimised):
+///   1. In-memory cache (instant, survives hot reload)
+///   2. Firestore local cache (instant when previously fetched offline)
+///   3. serverAndCache with 400-doc batches (same as other category pages)
 final pcBuilderProductsProvider = FutureProvider.family<
     List<ProductEntity>, String>((ref, categoryId) async {
   final normalizedCategory = categoryId.toLowerCase().trim();
 
-  // Check in-memory cache first (instant)
+  // 1) In-memory cache — instant
   if (_pcBuilderCacheMap.containsKey(normalizedCategory)) {
+    debugPrint('[PCBuilder] ✅ Memory cache HIT for "$normalizedCategory"');
     return _pcBuilderCacheMap[normalizedCategory]!;
   }
 
-  // PC builder category → Firestore alias map
   const pcCategoryAliases = <String, String>{
     'cpus': 'cpus', 'gpus': 'gpus', 'motherboards': 'motherboards',
     'ram': 'ram', 'ssd': 'ssd', 'psu': 'psu', 'cases': 'cases',
@@ -24,27 +27,62 @@ final pcBuilderProductsProvider = FutureProvider.family<
 
   final alias = pcCategoryAliases[normalizedCategory] ?? normalizedCategory;
   final db = FirebaseFirestore.instance;
+  const batchSize = 400;
+  const maxTotal = 2000;
 
-  // Single direct Firestore query — no pagination, limit to top 200 by arrival
-  final snap = await db
-      .collection('products')
-      .where('category', isEqualTo: alias)
-      .limit(200)
-      .get(const GetOptions(source: Source.server))
-      .timeout(const Duration(seconds: 12));
-
-  final products = <ProductEntity>[];
-  for (final d in snap.docs) {
-    try {
-      products.add(ProductModel.fromFirestore(d) as ProductEntity);
-    } catch (_) {}
+  Future<List<ProductEntity>> _fetchBatched(Source source) async {
+    final all = <ProductEntity>[];
+    DocumentSnapshot? lastDoc;
+    while (all.length < maxTotal) {
+      var q = db.collection('products')
+          .where('category', isEqualTo: alias)
+          .limit(batchSize);
+      if (lastDoc != null) q = q.startAfterDocument(lastDoc);
+      final snap = await q
+          .get(GetOptions(source: source))
+          .timeout(const Duration(seconds: 20));
+      if (snap.docs.isEmpty) break;
+      for (final d in snap.docs) {
+        try { all.add(ProductModel.fromFirestore(d) as ProductEntity); } catch (_) {}
+      }
+      lastDoc = snap.docs.last;
+      if (snap.docs.length < batchSize) break;
+    }
+    return all;
   }
 
-  // Sort by techScore desc
-  products.sort((a, b) => b.techScore.compareTo(a.techScore));
-  _pcBuilderCacheMap[normalizedCategory] = products;
-  debugPrint('[PCBuilder] Loaded ${products.length} "$alias" products from server');
-  return products;
+  // 2) Try Firestore local cache first (instant if previously loaded)
+  try {
+    final cached = await _fetchBatched(Source.cache);
+    if (cached.isNotEmpty) {
+      cached.sort((a, b) => b.techScore.compareTo(a.techScore));
+      _pcBuilderCacheMap[normalizedCategory] = cached;
+      debugPrint('[PCBuilder] ✅ Firestore cache HIT: ${cached.length} "$alias"');
+      // Refresh from server in background (non-blocking)
+      Future.microtask(() async {
+        try {
+          final fresh = await _fetchBatched(Source.serverAndCache);
+          if (fresh.isNotEmpty) {
+            fresh.sort((a, b) => b.techScore.compareTo(a.techScore));
+            _pcBuilderCacheMap[normalizedCategory] = fresh;
+          }
+        } catch (_) {}
+      });
+      return cached;
+    }
+  } catch (_) {}
+
+  // 3) Fetch from server (with cache fallback on failure)
+  try {
+    final products = await _fetchBatched(Source.serverAndCache);
+    products.sort((a, b) => b.techScore.compareTo(a.techScore));
+    _pcBuilderCacheMap[normalizedCategory] = products;
+    debugPrint('[PCBuilder] ✅ Server loaded: ${products.length} "$alias"');
+    return products;
+  } catch (e) {
+    debugPrint('[PCBuilder] ❌ Server failed for "$alias": $e');
+    rethrow;
+  }
 });
 
 final productsByCategoryProvider = FutureProvider.family<
