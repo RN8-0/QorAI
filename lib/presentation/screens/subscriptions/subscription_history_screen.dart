@@ -32,23 +32,66 @@ class _SubscriptionHistoryScreenState
   @override
   void initState() {
     super.initState();
+    // Önce local pending listesini al (anında görünsün)
+    final pending = ref.read(pendingSubscriptionHistoryProvider);
+    // Sonra Firebase cache'i kontrol et
     final cached = ref.read(subscriptionHistoryProvider).valueOrNull;
-    if (cached != null) {
-      _history = List.from(cached);
+    if (cached != null || pending.isNotEmpty) {
+      // Pending + Firebase cache'i birleştir (deduplicate by timestamp)
+      final merged = _mergeHistory(pending, cached ?? []);
+      _history = merged;
       _isLoading = false;
+      // Arka planda tazele
+      _refreshSilently();
     } else {
+      // Hiç veri yok, hızlı fetch
+      _history = List.from(pending);
+      _isLoading = pending.isEmpty;
       _fetchFromFirestore();
     }
   }
 
-  Future<void> _fetchFromFirestore() async {
-    setState(() => _isLoading = true);
-    ref.invalidate(subscriptionHistoryProvider);
+  List<Map<String, dynamic>> _mergeHistory(
+      List<Map<String, dynamic>> pending,
+      List<Map<String, dynamic>> firebase) {
+    final seen = <String>{};
+    final merged = <Map<String, dynamic>>[];
+    for (final item in [...pending, ...firebase]) {
+      final key = (item['timestamp'] as String?) ?? '';
+      if (seen.add(key)) merged.add(item);
+    }
+    return merged;
+  }
+
+  Future<void> _refreshSilently() async {
     try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth == null) return;
       final result = await ref
-          .read(subscriptionHistoryProvider.future)
-          .timeout(const Duration(seconds: 10));
-      if (mounted) setState(() { _history = List.from(result); _isLoading = false; });
+          .read(firebaseDataSourceProvider)
+          .getSubscriptionHistory(auth.uid)
+          .timeout(const Duration(seconds: 6));
+      if (!mounted) return;
+      final pending = ref.read(pendingSubscriptionHistoryProvider);
+      final merged = _mergeHistory(pending, result);
+      setState(() { _history = merged; _isLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchFromFirestore() async {
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth == null) { if (mounted) setState(() => _isLoading = false); return; }
+      final result = await ref
+          .read(firebaseDataSourceProvider)
+          .getSubscriptionHistory(auth.uid)
+          .timeout(const Duration(seconds: 6));
+      if (!mounted) return;
+      final pending = ref.read(pendingSubscriptionHistoryProvider);
+      final merged = _mergeHistory(pending, result);
+      setState(() { _history = merged; _isLoading = false; });
     } catch (_) {
       if (mounted) setState(() { _history ??= []; _isLoading = false; });
     }
@@ -120,13 +163,11 @@ class _SubscriptionHistoryScreenState
     if (ts == null) return '';
     final dt = DateTime.tryParse(ts);
     if (dt == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'Az önce';
-    if (diff.inHours < 1) return '${diff.inMinutes}dk önce';
-    if (diff.inDays < 1) return '${diff.inHours}sa önce';
-    if (diff.inDays < 7) return '${diff.inDays}g önce';
-    return '${dt.day}/${dt.month}/${dt.year}';
+    const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+    final month = months[dt.month - 1];
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '${dt.day} $month ${dt.year}, $hour:$min';
   }
 
   @override
@@ -288,16 +329,14 @@ class _SubscriptionHistoryScreenState
       child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => _SubscriptionResultDetailScreen(
-              services: services,
-              scores: scores,
-              analysisResult: hasFullResult ? analysisResult : '',
-              structured: entry['structured'] as Map<String, dynamic>?,
-              winner: winner,
-              date: date,
-            ),
-          ));
+          // Analiz sonucunu geri yükle → subscriptions ekranı aynı result UI'ı gösterir
+          ref.read(subQuizProvider.notifier).restoreFromHistory(
+            services: services,
+            analysisResult: hasFullResult ? analysisResult! : '',
+            scores: scores,
+            structured: entry['structured'] as Map<String, dynamic>?,
+          );
+          Navigator.of(context).pop();
         },
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -399,9 +438,12 @@ class _SubscriptionHistoryScreenState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Result Detail Screen — tam ekran, alt bar yok, extra buton yok
+// (Removed: _SubscriptionResultDetailScreen)
+// Geçmişten açılınca artık restoreFromHistory + pop kullanılıyor,
+// böylece SubscriptionsScreen'in kendi _SubResultView'ı gösteriliyor.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _SubscriptionResultDetailScreen extends StatelessWidget {
   final List<String> services;
   final Map<String, double> scores;

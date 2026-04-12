@@ -1111,7 +1111,15 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
             'analysisResult': result['analysis'] as String? ?? '',
             'structured': result['structured'] as Map<String, dynamic>?,
           };
-          _ref.read(firebaseDataSourceProvider).saveSubscriptionHistory(authState.uid, entry);
+          // Anında yerel listeye ekle (optimistic update)
+          _ref.read(pendingSubscriptionHistoryProvider.notifier).update(
+            (list) => [entry, ...list.where((e) => e['timestamp'] != entry['timestamp'])],
+          );
+          // Firebase'e kaydet
+          _ref.read(firebaseDataSourceProvider)
+              .saveSubscriptionHistory(authState.uid, entry)
+              .then((_) => _ref.invalidate(subscriptionHistoryProvider))
+              .catchError((_) {});
         }
       } catch (_) {}
     } catch (e) {
@@ -1142,6 +1150,21 @@ final subscriptionHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((
   if (authState == null) return [];
   return ref.read(firebaseDataSourceProvider).getSubscriptionHistory(authState.uid);
 });
+
+/// Link analysis history for logged-in user (Firebase)
+final linkAnalysisHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final authState = ref.watch(authStateProvider).valueOrNull;
+  if (authState == null) return [];
+  return ref.read(firebaseDataSourceProvider).getLinkAnalysisHistory(authState.uid);
+});
+
+/// Optimistic (yerel, anlık) subscription geçmişi — analiz biter bitmez görünsün
+final pendingSubscriptionHistoryProvider =
+    StateProvider<List<Map<String, dynamic>>>((ref) => []);
+
+/// Optimistic (yerel, anlık) link analizi geçmişi — analiz biter bitmez görünsün
+final pendingLinkAnalysisHistoryProvider =
+    StateProvider<List<Map<String, dynamic>>>((ref) => []);
 
 // ════════════════════════════════════════════════════
 // ─── PROVIDER ALIASES ─── (Screen compatibility)

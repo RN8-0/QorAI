@@ -26,6 +26,7 @@ import 'package:compair/presentation/screens/legal/legal_screen.dart';
 import 'package:compair/presentation/screens/browse/category_browse_screen.dart';
 import 'package:compair/presentation/screens/profile/behavior_report_screen.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_screen.dart';
+import 'package:compair/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/core/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -56,6 +57,8 @@ class AppRoutes {
   static const String browse = '/browse';
   // PC Builder
   static const String pcBuilder = '/pc-builder';
+  // PC Builder — aktif build ekranı (shell dışı, bottom bar yok)
+  static const String pcBuilderStart = '/pc-builder-start';
   // Behavior Report
   static const String behaviorReport = '/behavior-report';
   // Premium Paywall
@@ -143,7 +146,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.pcBuilder,
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: PcBuilderScreen(),
+              child: PcBuilderLandingScreen(),
             ),
           ),
           GoRoute(
@@ -185,6 +188,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             transitionDuration: AppConstants.pageTransitionDuration,
           );
         },
+      ),
+      // PC Builder aktif ekranı — shell dışında (bottom bar görünmüyor)
+      GoRoute(
+        path: AppRoutes.pcBuilderStart,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          child: const PcBuilderScreen(),
+          transitionsBuilder: _slideUpTransition,
+          transitionDuration: AppConstants.pageTransitionDuration,
+        ),
       ),
       GoRoute(
         path: AppRoutes.settings,
@@ -301,6 +314,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         AppRoutes.termsOfService,
         AppRoutes.faq,
         AppRoutes.premium,
+        AppRoutes.pcBuilder,
+        AppRoutes.pcBuilderStart,
       ];
       final isPublicRoute = publicRoutes.contains(location) ||
           location.startsWith('/product/');

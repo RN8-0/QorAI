@@ -23,26 +23,29 @@ final userProfileStreamProvider = StreamProvider<UserEntity?>((ref) {
 });
 
 /// Updates user profile country + currency + language in Firestore from auto-detection
+/// Non-blocking — uses .listen() instead of await to avoid holding up the UI
 final countryInitProvider = FutureProvider<void>((ref) async {
   final authState = await ref.watch(authStateProvider.future);
   if (authState == null) return;
-  final location = await ref.watch(detectedLocationProvider.future);
-  if (location.countryCode.isEmpty) return;
-
-  try {
-    final user = await ref.read(userProfileProvider.future);
-    if (user != null && (user.country == 'US' || user.country.isEmpty)) {
-      final locale = ref.read(localeProvider);
-      final updates = <String, dynamic>{
-        'country': location.countryCode,
-        'currency': location.currency,
-      };
-      // Also save auto-detected language if user hasn't set one
-      if (user.language == 'en' && locale != null && locale.languageCode != 'en') {
-        updates['language'] = locale.languageCode;
-      }
-      await ref.read(firebaseDataSourceProvider).updateUser(authState.uid, updates);
-    }
-  } catch (_) {}
+  // Don't await IP detection — listen in background so profile loads instantly
+  ref.listen(detectedLocationProvider, (_, next) {
+    next.whenData((location) async {
+      if (location.countryCode.isEmpty) return;
+      try {
+        final user = await ref.read(userProfileProvider.future);
+        if (user != null && (user.country == 'US' || user.country.isEmpty)) {
+          final locale = ref.read(localeProvider);
+          final updates = <String, dynamic>{
+            'country': location.countryCode,
+            'currency': location.currency,
+          };
+          if (user.language == 'en' && locale != null && locale.languageCode != 'en') {
+            updates['language'] = locale.languageCode;
+          }
+          await ref.read(firebaseDataSourceProvider).updateUser(authState.uid, updates);
+        }
+      } catch (_) {}
+    });
+  });
 });
-
+

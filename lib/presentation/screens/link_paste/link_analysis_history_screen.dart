@@ -1,11 +1,12 @@
 /// Compair — Link Analysis History Screen
 ///
-/// Geçmiş link analizlerini listeleyen tam ekran.
-/// Bir öğeye basınca analiz sonucu yeniden yüklenir.
+/// Firebase'den gelen geçmiş link analizlerini listeleyen tam ekran.
+/// Bir öğeye basınca analiz sonucu yeniden yüklenir; sola kaydırınca silinir.
 library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
@@ -22,46 +23,169 @@ class LinkAnalysisHistoryScreen extends ConsumerStatefulWidget {
 
 class _LinkAnalysisHistoryScreenState
     extends ConsumerState<LinkAnalysisHistoryScreen> {
+  // Yerel cache key (yedek)
   static const _historyKey = 'link_analysis_history_v1';
 
-  List<Map<String, dynamic>> _history = [];
-  bool _loading = true;
+  List<Map<String, dynamic>>? _history;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    // Önce pending (optimistic) listesini al
+    final pending = ref.read(pendingLinkAnalysisHistoryProvider);
+    // Firebase cache kontrol
+    final cached = ref.read(linkAnalysisHistoryProvider).valueOrNull;
+    if (cached != null || pending.isNotEmpty) {
+      _history = _mergeHistory(pending, cached ?? []);
+      _isLoading = false;
+      _refreshSilently();
+    } else {
+      _history = List.from(pending);
+      _isLoading = pending.isEmpty;
+      _fetchFromFirebase();
+    }
   }
 
-  Future<void> _loadHistory() async {
+  List<Map<String, dynamic>> _mergeHistory(
+      List<Map<String, dynamic>> pending,
+      List<Map<String, dynamic>> firebase) {
+    final seen = <String>{};
+    final merged = <Map<String, dynamic>>[];
+    for (final item in [...pending, ...firebase]) {
+      final key = (item['id'] as String?) ?? (item['timestamp'] as String?) ?? '';
+      if (seen.add(key)) merged.add(item);
+    }
+    return merged;
+  }
+
+  Future<void> _refreshSilently() async {
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth == null) return;
+      final result = await ref
+          .read(firebaseDataSourceProvider)
+          .getLinkAnalysisHistory(auth.uid)
+          .timeout(const Duration(seconds: 6));
+      if (!mounted) return;
+      final pending = ref.read(pendingLinkAnalysisHistoryProvider);
+      final merged = _mergeHistory(pending, result);
+      if (merged.isNotEmpty) setState(() { _history = merged; _isLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchFromFirebase() async {
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth == null) {
+        final local = await _loadLocalCache();
+        if (mounted) setState(() { _history = local; _isLoading = false; });
+        return;
+      }
+      final result = await ref
+          .read(firebaseDataSourceProvider)
+          .getLinkAnalysisHistory(auth.uid)
+          .timeout(const Duration(seconds: 6));
+      if (!mounted) return;
+      final pending = ref.read(pendingLinkAnalysisHistoryProvider);
+      List<Map<String, dynamic>> merged = _mergeHistory(pending, result);
+      if (merged.isEmpty) merged = await _loadLocalCache();
+      setState(() { _history = merged; _isLoading = false; });
+    } catch (_) {
+      if (mounted) {
+        final local = await _loadLocalCache();
+        setState(() { _history = local; _isLoading = false; });
+      }
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadLocalCache() async {
     try {
       final cache = ref.read(cacheServiceProvider);
       final raw = await cache.get<String>(_historyKey);
       if (raw != null && raw.isNotEmpty) {
-        final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
-        if (mounted) setState(() { _history = list; _loading = false; });
-        return;
+        return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
       }
     } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    return [];
   }
 
-  Future<void> _clearHistory() async {
-    final cache = ref.read(cacheServiceProvider);
-    await cache.set<String>(_historyKey, '[]',
-        duration: const Duration(days: 30));
-    if (mounted) setState(() => _history = []);
+  Future<void> _deleteItem(int index) async {
+    final removed = _history![index];
+    setState(() => _history!.removeAt(index));
+
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        final allItems = await ref
+            .read(firebaseDataSourceProvider)
+            .getLinkAnalysisHistory(auth.uid);
+        final ts = removed['timestamp'] as String?;
+        final id = removed['id'] as String?;
+        final filtered = allItems.where((e) {
+          if (id != null && e['id'] != null) return e['id'] != id;
+          return e['timestamp'] != ts;
+        }).toList();
+        await ref
+            .read(firebaseDataSourceProvider)
+            .updateLinkAnalysisHistory(auth.uid, filtered);
+        ref.invalidate(linkAnalysisHistoryProvider);
+      }
+    } catch (_) {
+      // Geri al
+      if (mounted) setState(() => _history!.insert(index, removed));
+    }
   }
 
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'Az önce';
-    if (diff.inHours < 1) return '${diff.inMinutes}dk önce';
-    if (diff.inDays < 1) return '${diff.inHours}sa önce';
-    if (diff.inDays < 7) return '${diff.inDays}g önce';
-    return '${dt.day}/${dt.month}/${dt.year}';
+  Future<void> _clearAll() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.backgroundColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Geçmişi Temizle',
+          style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800, color: context.textPrimary),
+        ),
+        content: Text(
+          'Tüm analiz geçmişi silinecek. Emin misiniz?',
+          style: GoogleFonts.inter(
+              color: context.textTertiaryColor, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('İptal',
+                style: GoogleFonts.inter(color: context.textTertiaryColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Temizle',
+                style: GoogleFonts.inter(
+                    color: AppTheme.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _history = []);
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        await ref
+            .read(firebaseDataSourceProvider)
+            .updateLinkAnalysisHistory(auth.uid, []);
+        ref.invalidate(linkAnalysisHistoryProvider);
+      }
+      // Yerel cache'i de temizle
+      final cache = ref.read(cacheServiceProvider);
+      await cache.set<String>(_historyKey, '[]',
+          duration: const Duration(days: 30));
+    } catch (_) {}
   }
 
   void _openHistoryItem(Map<String, dynamic> item) {
@@ -74,7 +198,7 @@ class _LinkAnalysisHistoryScreenState
         return;
       } catch (_) {}
     }
-    // Fallback: sadece metadatadan kısmi sonuç oluştur
+    // Fallback: metadata'dan kısmi sonuç oluştur
     final url = item['url'] as String? ?? '';
     final productName = item['productName'] as String? ?? '';
     final score = (item['score'] as num?)?.toDouble() ?? 0.0;
@@ -94,20 +218,42 @@ class _LinkAnalysisHistoryScreenState
     Navigator.of(context).pop();
   }
 
+  String _formatDate(String? ts) {
+    if (ts == null) return '';
+    final dt = DateTime.tryParse(ts);
+    if (dt == null) return '';
+    const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+    final month = months[dt.month - 1];
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '${dt.day} $month ${dt.year}, $hour:$min';
+  }
+
+  String _hostFromUrl(String url) {
+    try {
+      return Uri.parse(url).host.replaceFirst('www.', '');
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bg = context.backgroundColor;
     final textPrimary = context.textPrimary;
     final textTertiary = context.textTertiaryColor;
+    final history = _history;
 
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 20, color: textPrimary),
         ),
         title: Row(
           children: [
@@ -132,82 +278,64 @@ class _LinkAnalysisHistoryScreenState
           ],
         ),
         actions: [
-          if (_history.isNotEmpty)
-            TextButton(
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: bg,
-                    title: Text('Geçmişi Temizle',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700, color: textPrimary)),
-                    content: Text(
-                        'Tüm analiz geçmişi silinecek. Emin misiniz?',
-                        style: GoogleFonts.inter(color: textTertiary)),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(false),
-                          child: const Text('İptal')),
-                      TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(true),
-                          child: Text('Temizle',
-                              style: TextStyle(color: AppTheme.error))),
-                    ],
-                  ),
-                );
-                if (confirm == true) await _clearHistory();
-              },
-              child: Text('Temizle',
-                  style: GoogleFonts.inter(
-                      fontSize: 13, color: AppTheme.error)),
+          if (history != null && history.isNotEmpty)
+            IconButton(
+              onPressed: _clearAll,
+              icon: Icon(Icons.delete_sweep_rounded,
+                  size: 22,
+                  color: AppTheme.error.withValues(alpha: 0.8)),
+              tooltip: 'Tamamını Sil',
             ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _history.isEmpty
-              ? _buildEmptyState(textPrimary, textTertiary)
-              : ListView.separated(
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.brandBlue))
+          : (history == null || history.isEmpty)
+              ? _buildEmpty(textPrimary, textTertiary)
+              : ListView.builder(
                   padding: EdgeInsets.only(
-                      top: 8,
-                      bottom: AppTheme.navBarTotalClearance +
-                          MediaQuery.of(context).padding.bottom +
-                          24),
-                  itemCount: _history.length,
-                  separatorBuilder: (a, b) =>
-                      const Divider(height: 1, indent: 72),
+                      top: 12,
+                      left: 16,
+                      right: 16,
+                      bottom: MediaQuery.of(context).padding.bottom + 24),
+                  itemCount: history.length,
                   itemBuilder: (_, i) =>
-                      _buildHistoryTile(_history[i], textPrimary, textTertiary),
+                      _buildCard(history[i], i, textPrimary, textTertiary),
                 ),
     );
   }
 
-  Widget _buildEmptyState(Color textPrimary, Color textTertiary) {
+  Widget _buildEmpty(Color textPrimary, Color textTertiary) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 48),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
-                color: AppTheme.brandBlue.withValues(alpha: 0.08),
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.brandBlue.withValues(alpha: 0.12),
+                    AppTheme.brandCyan.withValues(alpha: 0.06),
+                  ],
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.history_rounded,
-                  size: 40,
+                  size: 42,
                   color: AppTheme.brandBlue.withValues(alpha: 0.5)),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
               'Henüz analiz yapmadınız',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                   color: textPrimary),
               textAlign: TextAlign.center,
             ),
@@ -216,21 +344,18 @@ class _LinkAnalysisHistoryScreenState
               'Bir ürün URL\'si yapıştırarak AI analizini başlatın. '
               'Sonuçlar burada kaydedilecek.',
               style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: textTertiary,
-                  height: 1.5),
+                  fontSize: 14, color: textTertiary, height: 1.6),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
+            const SizedBox(height: 28),
+            FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.link_rounded, size: 18),
               label: const Text('İlk analizi yap'),
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.brandBlue,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
@@ -241,14 +366,22 @@ class _LinkAnalysisHistoryScreenState
     );
   }
 
-  Widget _buildHistoryTile(
-      Map<String, dynamic> item, Color textPrimary, Color textTertiary) {
+  Widget _buildCard(
+      Map<String, dynamic> item,
+      int index,
+      Color textPrimary,
+      Color textTertiary) {
     final name = item['productName'] as String? ?? 'Ürün';
     final url = item['url'] as String? ?? '';
     final score = (item['score'] as num?)?.toDouble() ?? 0.0;
-    final ts = item['timestamp'] as String?;
-    final date = _formatDate(ts != null ? DateTime.tryParse(ts) : null);
+    final date = _formatDate(item['timestamp'] as String?);
     final hasFullResult = item['result'] != null;
+
+    final resultJson = item['result'] as Map<String, dynamic>?;
+    final siteName =
+        (resultJson?['baseResult'] as Map<String, dynamic>?)?['metadata']
+                ?['siteName'] as String? ??
+            _hostFromUrl(url);
 
     final scoreColor = score >= 80
         ? AppTheme.green500
@@ -256,82 +389,125 @@ class _LinkAnalysisHistoryScreenState
             ? AppTheme.amber500
             : AppTheme.rose500;
 
-    // Show site name from saved result if available
-    final resultJson = item['result'] as Map<String, dynamic>?;
-    final siteName = (resultJson?['baseResult'] as Map<String, dynamic>?)?
-            ['metadata']?['siteName'] as String? ??
-        _hostFromUrl(url);
-
-    return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 48,
-        height: 48,
+    return Dismissible(
+      key: ValueKey(item['id'] ?? item['timestamp'] ?? index),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.brandBlue.withValues(alpha: 0.15),
-              AppTheme.brandCyan.withValues(alpha: 0.1),
+          color: AppTheme.error.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.delete_rounded,
+            color: AppTheme.error, size: 24),
+      ),
+      onDismissed: (_) {
+        HapticFeedback.mediumImpact();
+        _deleteItem(index);
+      },
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          _openHistoryItem(item);
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.surfaceElevatedColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: AppTheme.brandBlue.withValues(alpha: 0.08),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              // İkon
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.link_rounded,
+                    color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              // Bilgi
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (siteName.isNotEmpty) ...[
+                          Icon(Icons.language_rounded,
+                              size: 11, color: textTertiary),
+                          const SizedBox(width: 3),
+                          Text(siteName,
+                              style: GoogleFonts.inter(
+                                  fontSize: 11, color: textTertiary)),
+                          const SizedBox(width: 6),
+                        ],
+                        if (date.isNotEmpty)
+                          Text(date,
+                              style: GoogleFonts.inter(
+                                  fontSize: 11, color: textTertiary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Skor badge
+              if (score > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: scoreColor.withValues(alpha: 0.25)),
+                  ),
+                  child: Text(
+                    '${score.toInt()}%',
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: scoreColor),
+                  ),
+                )
+              else
+                Icon(
+                  hasFullResult
+                      ? Icons.arrow_forward_ios_rounded
+                      : Icons.replay_rounded,
+                  size: 14,
+                  color: textTertiary,
+                ),
             ],
           ),
-          borderRadius: BorderRadius.circular(14),
         ),
-        child: const Icon(Icons.link_rounded,
-            color: AppTheme.brandBlue, size: 22),
       ),
-      title: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: textPrimary),
-      ),
-      subtitle: Text(
-        [if (siteName.isNotEmpty) siteName, if (date.isNotEmpty) date]
-            .join(' • '),
-        style: GoogleFonts.inter(fontSize: 11, color: textTertiary),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (score > 0)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: scoreColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${score.toStringAsFixed(0)}%',
-                style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: scoreColor),
-              ),
-            ),
-          const SizedBox(width: 6),
-          Icon(
-            hasFullResult
-                ? Icons.arrow_forward_ios_rounded
-                : Icons.replay_rounded,
-            size: 14,
-            color: textTertiary,
-          ),
-        ],
-      ),
-      onTap: () => _openHistoryItem(item),
     );
-  }
-
-  String _hostFromUrl(String url) {
-    try {
-      return Uri.parse(url).host.replaceFirst('www.', '');
-    } catch (_) {
-      return '';
-    }
   }
 }

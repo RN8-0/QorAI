@@ -180,10 +180,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         state.phase == SubFlowPhase.analyzing)
                       _buildPhaseTimeline(state.phase),
 
-                    // Progress steps (non-idle)
-                    if (state.phase != SubFlowPhase.idle)
-                      _buildProgressSteps(state.phase),
-
                     // Idle: input + suggestions
                     if (state.phase == SubFlowPhase.idle) ...[
                       const SizedBox(height: 20),

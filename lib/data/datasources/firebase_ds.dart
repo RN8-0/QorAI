@@ -29,6 +29,26 @@ class FirebaseDataSource {
 
   Future<UserModel?> getUser(String uid) async {
     try {
+      // Cache-first: instant profile on app launch
+      try {
+        final cachedDoc = await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(uid)
+            .get(const GetOptions(source: Source.cache));
+        if (cachedDoc.exists) {
+          // Background refresh from server
+          Future.microtask(() async {
+            try {
+              await _firestore
+                  .collection(AppConstants.usersCollection)
+                  .doc(uid)
+                  .get(const GetOptions(source: Source.server));
+            } catch (_) {}
+          });
+          return UserModel.fromFirestore(cachedDoc);
+        }
+      } catch (_) {}
+      // No cache — fetch from server
       final doc = await _firestore
           .collection(AppConstants.usersCollection)
           .doc(uid)
@@ -223,6 +243,65 @@ class FirebaseDataSource {
           .toList();
     } catch (e) {
       debugPrint('[Firestore] Failed to read subscription history: $e');
+      return [];
+    }
+  }
+
+  // ─── Link Analysis History ───
+
+  /// Save a link analysis result to user's Firestore history
+  Future<void> saveLinkAnalysisHistory(String uid, Map<String, dynamic> entry) async {
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(uid);
+      // Fetch current list, deduplicate by url, then prepend new entry
+      final doc = await docRef.get();
+      final data = doc.data() ?? {};
+      final existing = (data['linkAnalysisHistory'] as List?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
+      final url = entry['url'] as String? ?? '';
+      final deduped = existing.where((e) => e['url'] != url).toList();
+      deduped.insert(0, entry);
+      final trimmed = deduped.take(30).toList();
+      await docRef.set({
+        'linkAnalysisHistory': trimmed,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('[Firestore] Saved link analysis history for $uid');
+    } catch (e) {
+      debugPrint('[Firestore] Failed to save link analysis history: $e');
+    }
+  }
+
+  /// Overwrite entire link analysis history (used for deletions)
+  Future<void> updateLinkAnalysisHistory(
+      String uid, List<Map<String, dynamic>> history) async {
+    try {
+      final docRef = _firestore.collection(AppConstants.usersCollection).doc(uid);
+      await docRef.update({
+        'linkAnalysisHistory': history,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('[Firestore] Failed to update link analysis history: $e');
+    }
+  }
+
+  /// Read link analysis history for a user
+  Future<List<Map<String, dynamic>>> getLinkAnalysisHistory(String uid) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .get();
+      final data = doc.data();
+      if (data == null || data['linkAnalysisHistory'] is! List) return [];
+      return (data['linkAnalysisHistory'] as List)
+          .cast<Map<String, dynamic>>()
+          .take(30)
+          .toList();
+    } catch (e) {
+      debugPrint('[Firestore] Failed to read link analysis history: $e');
       return [];
     }
   }

@@ -167,7 +167,19 @@ final productDetailProvider =
     if (match != null) return Success(match);
   }
 
-  // 2) Try from in-memory Hive/firestore cache (populated by browse/search)
+  // 2) Try PC Builder in-memory cache (populated when PC Builder categories are preloaded)
+  for (final products in _pcBuilderCacheMap.values) {
+    final match = products.where((p) => p.id == productId).firstOrNull;
+    if (match != null) return Success(match);
+  }
+
+  // 3) Try category cache (populated by browse/category screens)
+  for (final products in _categoryCacheMap.values) {
+    final match = products.where((p) => p.id == productId).firstOrNull;
+    if (match != null) return Success(match);
+  }
+
+  // 4) Try from in-memory Hive/firestore cache (populated by browse/search)
   final ds = ref.read(firebaseDataSourceProvider);
   if (ds.isCacheReady) {
     final allCached = await ds.getAllCachedProducts();
@@ -175,7 +187,7 @@ final productDetailProvider =
     if (match != null) return Success(match);
   }
 
-  // 3) Fall back to single Firestore doc fetch with timeout
+  // 5) Fall back to single Firestore doc fetch with timeout
   try {
     return await ref.read(productRepositoryProvider).getProduct(productId)
         .timeout(const Duration(seconds: 25));

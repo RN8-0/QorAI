@@ -12,6 +12,7 @@ import "package:go_router/go_router.dart";
 import "package:google_fonts/google_fonts.dart";
 import "package:compair/core/app_keys.dart";
 import "package:compair/presentation/providers/providers.dart";
+// pcBuilderProductsProvider buradan erişilir (providers.dart part file)
 import "package:compair/presentation/screens/ai_chat/ai_chat_screen.dart";
 import "package:compair/services/connectivity_service.dart";
 import "package:compair/routing/router.dart";
@@ -50,6 +51,17 @@ class _MainShellState extends ConsumerState<MainShell> {
     try {
       ref.read(countryInitProvider);
     } catch (_) {}
+    // Preload all PC Builder categories in background so picker is instant
+    // pcBuilderProductsProvider uses disk-cache-first → no blocking network call
+    Future.microtask(() {
+      const pcCats = [
+        'cpus', 'gpus', 'motherboards', 'ram', 'ssd',
+        'psu', 'cases', 'coolers', 'monitors', 'keyboards', 'mice', 'headsets',
+      ];
+      for (final cat in pcCats) {
+        try { ref.read(pcBuilderProductsProvider(cat)); } catch (_) {}
+      }
+    });
   }
 
   int _indexFromLocation(String location) {

@@ -341,11 +341,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       },
                       tooltip: context.l10n?.startOver ?? 'Start over',
                     ),
-                  if (quizState.phase == LinkFlowPhase.idle)
+                  // History butonu yalnızca her iki flow da idle iken gösterilir
+                  if (!showBack)
                     _buildAppBarAction(
-                      icon: Icons.history_rounded,
+                      icon: Icons.manage_history_rounded,
                       onPressed: _showAnalysisHistory,
-                      tooltip: 'Geçmiş',
+                      tooltip: 'Analiz Geçmişi',
                     ),
                   const SizedBox(width: 4),
                 ],
@@ -434,7 +435,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            _buildProgressSteps(LinkFlowPhase.quiz),
             _QuizView(
               quiz: compareState.quiz!,
               answeredQuestions: compareState.quizAnswers,
@@ -478,13 +478,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildPhaseTimeline(quizState.phase),
-                _buildProgressSteps(quizState.phase),
-              ],
-            ),
+            child: _buildPhaseTimeline(quizState.phase),
           ),
         );
       }
@@ -493,8 +487,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            _buildProgressSteps(quizState.phase),
-
             if (quizState.phase == LinkFlowPhase.quiz &&
                 quizState.quiz != null &&
                 quizState.baseResult != null)
@@ -2639,20 +2631,39 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     required double score,
     EnhancedAnalysisResult? result,
   }) async {
+    final entry = {
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'url': url,
+      'productName': productName,
+      'score': score,
+      'timestamp': DateTime.now().toIso8601String(),
+      if (result != null) 'result': result.toJson(),
+    };
+
+    // Anında yerel listeye ekle (optimistic update — geçmiş ekranı anında görsün)
+    try {
+      ref.read(pendingLinkAnalysisHistoryProvider.notifier).update(
+        (list) => [entry, ...list.where((e) => e['id'] != entry['id'])],
+      );
+    } catch (_) {}
+
+    // Firebase'e kaydet (giriş yapmış kullanıcı için)
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        ref.read(firebaseDataSourceProvider)
+            .saveLinkAnalysisHistory(auth.uid, entry)
+            .then((_) => ref.invalidate(linkAnalysisHistoryProvider))
+            .catchError((_) {});
+      }
+    } catch (_) {}
+
+    // Yerel cache'e de kaydet (yedek / çevrimdışı erişim için)
     try {
       final cache = ref.read(cacheServiceProvider);
       final history = await _loadHistory();
-      // Duplicate kontrolü
       history.removeWhere((e) => e['url'] == url);
-      history.insert(0, {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'url': url,
-        'productName': productName,
-        'score': score,
-        'timestamp': DateTime.now().toIso8601String(),
-        if (result != null) 'result': result.toJson(),
-      });
-      // Max 30 kayıt
+      history.insert(0, entry);
       final trimmed = history.take(30).toList();
       await cache.set<String>(_historyKey, jsonEncode(trimmed),
           duration: const Duration(days: 30));

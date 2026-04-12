@@ -3,12 +3,36 @@ part of 'providers.dart';
 // ── In-memory cache for PC builder ──
 final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
 
-/// PC Builder product provider — loads ALL products in a SINGLE Firestore query.
-/// No pagination loops (they cause sequential network waits → timeout).
+/// Clear PC Builder cache for a specific category (or all if null)
+void clearPcBuilderCache([String? category]) {
+  if (category != null) {
+    _pcBuilderCacheMap.remove(category.toLowerCase().trim());
+  } else {
+    _pcBuilderCacheMap.clear();
+  }
+}
+/// All category aliases — shared between pcBuilder and category providers.
+const pcCategoryAliases = <String, List<String>>{
+  'cpus': ['cpus', 'cpu', 'processors', 'islemci', 'işlemci', 'işlemciler'],
+  'gpus': ['gpus', 'gpu', 'graphics-cards', 'ekran-karti', 'ekran kartı'],
+  'motherboards': ['motherboards', 'anakart', 'mainboard', 'motherboard'],
+  'ram': ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram'],
+  'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama'],
+  'psu': ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı'],
+  'cases': ['cases', 'bilgisayar-kasasi', 'case', 'kasa'],
+  'coolers': ['coolers', 'islemci-sogutucu', 'cooler', 'soğutucu'],
+  'monitors': ['monitors', 'monitor', 'monitör'],
+  'keyboards': ['keyboards', 'keyboard', 'klavye'],
+  'mice': ['mice', 'mouse', 'fare'],
+  'headsets': ['headsets', 'headset', 'headphones', 'kulaklık'],
+};
+
+/// PC Builder product provider — loads ALL products for a category.
 /// Strategy:
 ///   1. In-memory cache (instant)
-///   2. Firestore disk cache — single query, no network (instant)
-///   3. serverAndCache — single query, all docs at once
+///   2. Parallel: Firestore disk cache for ALL aliases (instant, no network)
+///   3. Parallel: Server query for ALL aliases (network)
+///   Merges results from all aliases, deduplicates by product ID.
 final pcBuilderProductsProvider = FutureProvider.family<
     List<ProductEntity>, String>((ref, categoryId) async {
   final normalizedCategory = categoryId.toLowerCase().trim();
@@ -18,22 +42,6 @@ final pcBuilderProductsProvider = FutureProvider.family<
     return _pcBuilderCacheMap[normalizedCategory]!;
   }
 
-  // Multiple aliases per category — same as productsByCategoryProvider
-  const pcCategoryAliases = <String, List<String>>{
-    'cpus': ['cpus', 'cpu', 'processors'],
-    'gpus': ['gpus', 'gpu', 'graphics-cards'],
-    'motherboards': ['motherboards', 'anakart', 'mainboard'],
-    'ram': ['ram', 'bellek-ram', 'memory'],
-    'ssd': ['ssd', 'ssds', 'storage'],
-    'psu': ['psu', 'power-supply-psu', 'power-supply'],
-    'cases': ['cases', 'bilgisayar-kasasi', 'case'],
-    'coolers': ['coolers', 'islemci-sogutucu', 'cooler'],
-    'monitors': ['monitors', 'monitor'],
-    'keyboards': ['keyboards', 'keyboard'],
-    'mice': ['mice', 'mouse'],
-    'headsets': ['headsets', 'headset'],
-  };
-
   final aliases = pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
   final db = FirebaseFirestore.instance;
 
@@ -42,57 +50,80 @@ final pcBuilderProductsProvider = FutureProvider.family<
     for (final d in snap.docs) {
       try { list.add(ProductModel.fromFirestore(d) as ProductEntity); } catch (_) {}
     }
-    list.sort((a, b) => b.techScore.compareTo(a.techScore));
     return list;
   }
 
-  // Try each alias, return first non-empty result
-  for (final alias in aliases) {
-    // 2) Firestore disk cache — instant, no network round-trip
-    try {
-      final cacheSnap = await db
-          .collection('products')
-          .where('category', isEqualTo: alias)
-          .get(const GetOptions(source: Source.cache));
-      if (cacheSnap.docs.isNotEmpty) {
-        final products = _parseDocs(cacheSnap);
-        _pcBuilderCacheMap[normalizedCategory] = products;
-        debugPrint('[PCBuilder] ✅ Disk cache: ${products.length} "$alias"');
-        // Background refresh — won't block UI
-        Future.microtask(() async {
-          try {
-            final freshSnap = await db
-                .collection('products')
-                .where('category', isEqualTo: alias)
-                .get(const GetOptions(source: Source.serverAndCache))
-                .timeout(const Duration(seconds: 30));
-            if (freshSnap.docs.isNotEmpty) {
-              _pcBuilderCacheMap[normalizedCategory] = _parseDocs(freshSnap);
-            }
-          } catch (_) {}
-        });
-        return products;
-      }
-    } catch (_) {}
+  List<ProductEntity> _dedupeAndSort(List<ProductEntity> all) {
+    final seen = <String>{};
+    final deduped = <ProductEntity>[];
+    for (final p in all) {
+      if (seen.add(p.id)) deduped.add(p);
+    }
+    deduped.sort((a, b) => b.techScore.compareTo(a.techScore));
+    return deduped;
+  }
 
-    // 3) No cache — single server query
+  Future<List<ProductEntity>> _queryAlias(String alias, Source source) async {
     try {
       final snap = await db
           .collection('products')
           .where('category', isEqualTo: alias)
-          .get(const GetOptions(source: Source.serverAndCache))
+          .get(GetOptions(source: source))
           .timeout(const Duration(seconds: 30));
-      if (snap.docs.isNotEmpty) {
-        final products = _parseDocs(snap);
-        _pcBuilderCacheMap[normalizedCategory] = products;
-        debugPrint('[PCBuilder] ✅ Server: ${products.length} "$alias"');
-        return products;
-      }
-    } catch (e) {
-      debugPrint('[PCBuilder] ❌ Failed "$alias": $e');
+      return _parseDocs(snap);
+    } catch (_) {
+      return [];
     }
   }
 
+  // 2) Try ALL aliases in PARALLEL from disk cache — merge results
+  final allCached = <ProductEntity>[];
+  try {
+    final cacheResults = await Future.wait(
+      aliases.map((alias) => _queryAlias(alias, Source.cache)),
+    );
+    for (final r in cacheResults) allCached.addAll(r);
+  } catch (_) {}
+
+  if (allCached.isNotEmpty) {
+    final products = _dedupeAndSort(allCached);
+    _pcBuilderCacheMap[normalizedCategory] = products;
+    debugPrint('[PCBuilder] ✅ Cache: ${products.length} "$normalizedCategory"');
+    // Background refresh from server
+    Future.microtask(() async {
+      try {
+        final serverResults = await Future.wait(
+          aliases.map((alias) => _queryAlias(alias, Source.serverAndCache)),
+        );
+        final allServer = <ProductEntity>[];
+        for (final r in serverResults) allServer.addAll(r);
+        if (allServer.isNotEmpty) {
+          _pcBuilderCacheMap[normalizedCategory] = _dedupeAndSort(allServer);
+        }
+      } catch (_) {}
+    });
+    return products;
+  }
+
+  // 3) No cache — parallel server queries for ALL aliases
+  final allServer = <ProductEntity>[];
+  try {
+    final serverResults = await Future.wait(
+      aliases.map((alias) => _queryAlias(alias, Source.serverAndCache)),
+    );
+    for (final r in serverResults) allServer.addAll(r);
+  } catch (e) {
+    debugPrint('[PCBuilder] ❌ Server failed "$normalizedCategory": $e');
+  }
+
+  if (allServer.isNotEmpty) {
+    final products = _dedupeAndSort(allServer);
+    _pcBuilderCacheMap[normalizedCategory] = products;
+    debugPrint('[PCBuilder] ✅ Server: ${products.length} "$normalizedCategory"');
+    return products;
+  }
+
+  debugPrint('[PCBuilder] ⚠️ No products found for "$normalizedCategory" (aliases: $aliases)');
   // All aliases exhausted
   return [];
 });
@@ -102,9 +133,9 @@ final productsByCategoryProvider = FutureProvider.family<
   const categoryAliases = <String, List<String>>{
     'cpus':         ['cpus', 'cpu', 'processors', 'işlemciler', 'islemci'],
     'gpus':         ['gpus', 'gpu', 'graphics-cards', 'ekran-karti', 'ekran kartı'],
-    'motherboards': ['motherboards', 'anakart', 'mainboard'],
-    'ram':          ['ram', 'bellek-ram', 'memory'],
-    'ssd':          ['ssd', 'ssds', 'storage', 'disk'],
+    'motherboards': ['motherboards', 'anakart', 'mainboard', 'motherboard'],
+    'ram':          ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram'],
+    'ssd':          ['ssd', 'ssds', 'storage', 'disk', 'depolama'],
     'psu':          ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı'],
     'cases':        ['cases', 'bilgisayar-kasasi', 'case', 'kasa'],
     'coolers':      ['coolers', 'islemci-sogutucu', 'cooler', 'soğutucu'],

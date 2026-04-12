@@ -1,5 +1,7 @@
 import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:compair/domain/entities/user_entity.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -114,23 +116,38 @@ class ProfileScreen extends ConsumerWidget {
             ]);
           }),
 
-          // İçerik
+          // İçerik — show UI immediately, no spinner ever
           SafeArea(
             bottom: false,
             child: userProfile.when(
               data: (user) => _ProfileBody(user: user),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    context.l10n?.profileLoadError ?? 'Profile could not be loaded',
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.error,
-                    ),
-                  ),
-                ),
-              ),
+              // Loading: build minimal UserEntity from Firebase Auth (has displayName, email, photoURL)
+              loading: () {
+                final auth = FirebaseAuth.instance.currentUser;
+                if (auth == null) return const _ProfileBody(user: null);
+                final now = DateTime.now();
+                return _ProfileBody(user: UserEntity(
+                  uid: auth.uid,
+                  email: auth.email ?? '',
+                  displayName: auth.displayName ?? '',
+                  photoURL: auth.photoURL,
+                  createdAt: now,
+                  updatedAt: now,
+                ));
+              },
+              error: (_, __) {
+                final auth = FirebaseAuth.instance.currentUser;
+                if (auth == null) return const _ProfileBody(user: null);
+                final now = DateTime.now();
+                return _ProfileBody(user: UserEntity(
+                  uid: auth.uid,
+                  email: auth.email ?? '',
+                  displayName: auth.displayName ?? '',
+                  photoURL: auth.photoURL,
+                  createdAt: now,
+                  updatedAt: now,
+                ));
+              },
             ),
           ),
         ],
@@ -140,7 +157,7 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _ProfileBody extends ConsumerWidget {
-  final dynamic user;
+  final UserEntity? user;
 
   const _ProfileBody({required this.user});
 
