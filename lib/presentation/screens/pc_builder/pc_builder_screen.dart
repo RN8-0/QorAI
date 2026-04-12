@@ -18,9 +18,9 @@ import 'package:compair/core/errors.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/services/gemini_service.dart';
 
-/// Premium-style indigo/violet gradient matching subscription page.
+/// App-theme gradient (brandDeepBlue → brandBlue → brandCyan).
 const _accentGradient = LinearGradient(
-  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFF3B82F6)],
+  colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue, AppTheme.brandCyan],
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );
@@ -79,15 +79,15 @@ enum PcComponent {
   };
 
   Color get accentColor => switch (this) {
-    cpu => const Color(0xFF3B82F6),
+    cpu => AppTheme.brandBlue,
     motherboard => const Color(0xFF10B981),
-    ram => const Color(0xFF8B5CF6),
+    ram => AppTheme.brandDeepBlue,
     gpu => const Color(0xFFEF4444),
     storage => const Color(0xFFF59E0B),
     psu => const Color(0xFFF97316),
-    pcCase => const Color(0xFF06B6D4),
+    pcCase => AppTheme.brandCyan,
     cooler => const Color(0xFF14B8A6),
-    monitor => const Color(0xFF818CF8),
+    monitor => AppTheme.brandBlue,
     keyboard => const Color(0xFFEC4899),
     mouse => const Color(0xFF84CC16),
     headset => const Color(0xFF0EA5E9),
@@ -256,10 +256,10 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     }
     _aiAnalysis = ref.read(pcBuilderAiProvider);
     if (_selected.length == PcComponent.values.length) _showCelebration = true;
-    // Preload all PC component categories in background
+    // Preload all PC component categories for faster picking
     Future.microtask(() {
       for (final comp in PcComponent.values) {
-        ref.read(productsByCategoryProvider(comp.categoryId));
+        ref.read(pcBuilderProductsProvider(comp.categoryId));
       }
     });
   }
@@ -489,7 +489,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
   @override
   Widget build(BuildContext context) {
     final sc = _totalScore >= 80 ? AppTheme.success
-        : _totalScore >= 60 ? Color(0xFF6366F1)
+        : _totalScore >= 60 ? AppTheme.brandBlue
         : _totalScore >= 40 ? AppTheme.amber500 : AppTheme.rose500;
     final cnt = _selected.length;
 
@@ -521,9 +521,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
               margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [Color(0xFF6366F1).withValues(alpha: 0.08), Color(0xFF8B5CF6).withValues(alpha: 0.04)]),
+                gradient: LinearGradient(colors: [AppTheme.brandBlue.withValues(alpha: 0.08), AppTheme.brandDeepBlue.withValues(alpha: 0.04)]),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Color(0xFF6366F1).withValues(alpha: 0.15)),
+                border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
               ),
               child: Row(children: [
                 // Animated progress ring
@@ -561,7 +561,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   if (_selectedSocket != null || _selectedMemType != null) ...[
                     const SizedBox(height: 3),
                     Text('${_selectedSocket != null ? "Socket: $_selectedSocket" : ""}${_selectedSocket != null && _selectedMemType != null ? " \u00b7 " : ""}${_selectedMemType ?? ""}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Color(0xFF8B5CF6), fontWeight: FontWeight.w600)),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10, color: AppTheme.brandDeepBlue, fontWeight: FontWeight.w600)),
                   ],
                   if (cnt > 0) ...[
                     const SizedBox(height: 6),
@@ -591,7 +591,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
                       AppTheme.success.withValues(alpha: 0.15),
-                      Color(0xFF6366F1).withValues(alpha: 0.1),
+                      AppTheme.brandBlue.withValues(alpha: 0.1),
                     ]),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
@@ -664,10 +664,10 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+            color: AppTheme.brandBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(count, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF6366F1))),
+          child: Text(count, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.brandBlue)),
         ),
       ]),
     );
@@ -689,11 +689,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [
-          const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+          AppTheme.brandDeepBlue.withValues(alpha: 0.08),
           const Color(0xFF3B82F6).withValues(alpha: 0.04),
         ]),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.2)),
+        border: Border.all(color: AppTheme.brandDeepBlue.withValues(alpha: 0.2)),
       ),
       child: Column(children: [
         InkWell(
@@ -705,7 +705,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
               Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF3B82F6)]),
+                  gradient: const LinearGradient(colors: [AppTheme.brandDeepBlue, AppTheme.brandCyan]),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: _aiLoading
@@ -723,7 +723,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF3B82F6)]),
+                    gradient: const LinearGradient(colors: [AppTheme.brandDeepBlue, AppTheme.brandCyan]),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text('Analyze', style: GoogleFonts.plusJakartaSans(
@@ -788,7 +788,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     if (tierMatch != null) {
       final tier = tierMatch.group(1)!.trim();
       final tierColor = tier.contains('Ultra') || tier.contains('Enthusiast') ? AppTheme.success
-          : tier.contains('High') ? Color(0xFF6366F1)
+          : tier.contains('High') ? AppTheme.brandBlue
           : tier.contains('Mid') ? AppTheme.amber500 : AppTheme.rose500;
       sections.add(Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -820,15 +820,15 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Color(0xFF6366F1).withValues(alpha: 0.04),
+            color: AppTheme.brandBlue.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Color(0xFF6366F1).withValues(alpha: 0.15)),
+            border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Icon(Icons.videogame_asset_rounded, size: 16, color: Color(0xFF6366F1)),
+              Icon(Icons.videogame_asset_rounded, size: 16, color: AppTheme.brandBlue),
               const SizedBox(width: 6),
-              Text('Estimated FPS', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6366F1))),
+              Text('Estimated FPS', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.brandBlue)),
             ]),
             const SizedBox(height: 8),
             ...fpsLines.map((line) {
@@ -836,7 +836,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
               final fpsMatch = RegExp(r'(\d+)\s*FPS', caseSensitive: false).firstMatch(cleaned);
               final fps = fpsMatch != null ? int.tryParse(fpsMatch.group(1)!) ?? 0 : 0;
               final gameName = cleaned.replaceAll(RegExp(r'\d+\s*FPS.*', caseSensitive: false), '').replaceAll(RegExp(r'[:\-]$'), '').trim();
-              final fpsColor = fps >= 120 ? AppTheme.success : fps >= 60 ? Color(0xFF6366F1) : fps >= 30 ? AppTheme.amber500 : AppTheme.rose500;
+              final fpsColor = fps >= 120 ? AppTheme.success : fps >= 60 ? AppTheme.brandBlue : fps >= 30 ? AppTheme.amber500 : AppTheme.rose500;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(children: [
@@ -879,14 +879,14 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         margin: const EdgeInsets.only(bottom: 4),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: const Color(0xFF8B5CF6).withValues(alpha: 0.06),
+          color: AppTheme.brandDeepBlue.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('\u{1F3AF}', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 8),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Upgrade Priority', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF8B5CF6))),
+            Text('Upgrade Priority', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.brandDeepBlue)),
             const SizedBox(height: 2),
             Text(upgradeMatch.group(1)!.trim(), style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textSecondary, height: 1.3)),
           ])),
@@ -1006,7 +1006,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(children: [
-              Icon(Icons.summarize_rounded, size: 18, color: Color(0xFF8B5CF6)),
+              Icon(Icons.summarize_rounded, size: 18, color: AppTheme.brandDeepBlue),
               const SizedBox(width: 10),
               Expanded(child: Text('Build Summary',
                 style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary))),
@@ -1035,7 +1035,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     '${_psuHeadroom! >= 0 ? "+" : ""}${_psuHeadroom!.round()}W',
                     _psuHeadroom! >= 100 ? AppTheme.success : _psuHeadroom! >= 0 ? AppTheme.amber500 : AppTheme.rose500),
                 if (_totalPrice > 0)
-                  _summaryChip(context, 'Est. Price', '\$${_totalPrice.round()}', Color(0xFF6366F1)),
+                  _summaryChip(context, 'Est. Price', '\$${_totalPrice.round()}', AppTheme.brandBlue),
               ]),
               if (_selectedSocket != null || _selectedMemType != null) ...[
                 const SizedBox(height: 10),
@@ -1066,7 +1066,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     )),
                     if (p != null) Text('${p.techScore.round()}',
                       style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700,
-                        color: p.techScore >= 80 ? AppTheme.success : p.techScore >= 60 ? Color(0xFF6366F1) : AppTheme.amber500)),
+                        color: p.techScore >= 80 ? AppTheme.success : p.techScore >= 60 ? AppTheme.brandBlue : AppTheme.amber500)),
                   ]),
                 );
               }),
@@ -1198,7 +1198,7 @@ class _ComponentRow extends StatelessWidget {
   Widget _empty(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(component.label(context), style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: context.textPrimary)),
     const SizedBox(height: 2),
-    if (compatNote != null) Text('\u26a1 $compatNote', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Color(0xFF8B5CF6), fontWeight: FontWeight.w500))
+    if (compatNote != null) Text('\u26a1 $compatNote', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: AppTheme.brandDeepBlue, fontWeight: FontWeight.w500))
     else Text(context.l10n?.tapToChoose ?? 'Tap to choose', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: context.textTertiaryColor)),
   ]);
 
@@ -1218,7 +1218,7 @@ class _ComponentRow extends StatelessWidget {
   }
 
   Widget _badge(double score) {
-    final c = score >= 80 ? AppTheme.success : score >= 60 ? Color(0xFF6366F1) : score >= 40 ? AppTheme.amber500 : AppTheme.rose500;
+    final c = score >= 80 ? AppTheme.success : score >= 60 ? AppTheme.brandBlue : score >= 40 ? AppTheme.amber500 : AppTheme.rose500;
     return Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8), border: Border.all(color: c.withValues(alpha: 0.3))),
       child: Text(score.round().toString(), style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: c)));
@@ -1291,8 +1291,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
   Widget build(BuildContext context) {
     final accent = widget.component.accentColor;
     final hasCompat = widget.socketFilter != null || widget.memTypeFilter != null;
-    // Use cached productsByCategoryProvider for fast loading
-    final productsAsync = ref.watch(productsByCategoryProvider(widget.component.categoryId));
+    // Use pcBuilderProductsProvider for fast single-query loading
+    final productsAsync = ref.watch(pcBuilderProductsProvider(widget.component.categoryId));
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -1346,30 +1346,30 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
         // Compat toggle
         if (hasCompat)
           Padding(padding: const EdgeInsets.fromLTRB(16, 2, 16, 4), child: Row(children: [
-            Icon(Icons.link_rounded, size: 14, color: Color(0xFF8B5CF6)),
+            Icon(Icons.link_rounded, size: 14, color: AppTheme.brandDeepBlue),
             const SizedBox(width: 6),
             Expanded(child: Text('${context.l10n?.compatibleOnly ?? "Compatible only"}: ${widget.socketFilter ?? widget.memTypeFilter ?? ""}',
-              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Color(0xFF8B5CF6), fontWeight: FontWeight.w500))),
-            Switch(value: _compatOnly, onChanged: (v) => setState(() => _compatOnly = v), activeTrackColor: Color(0xFF8B5CF6), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.brandDeepBlue, fontWeight: FontWeight.w500))),
+            Switch(value: _compatOnly, onChanged: (v) => setState(() => _compatOnly = v), activeTrackColor: AppTheme.brandDeepBlue, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
           ])),
         // Brand chips — show when filter open and products are loaded
         if (_showFilters)
           Builder(builder: (_) {
-            final products = productsAsync.valueOrNull?.dataOrNull;
+            final products = productsAsync.valueOrNull;
             if (products == null) return const SizedBox.shrink();
             return _brandChipsFromList(context, products);
           }),
         // Count
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2), child: Row(children: [
           Builder(builder: (_) {
-            final products = productsAsync.valueOrNull?.dataOrNull;
+            final products = productsAsync.valueOrNull;
             if (products == null) return const SizedBox.shrink();
             return Text('${_applyFilters(products).length} ${context.l10n?.productsLabel ?? "products"}',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: context.textTertiaryColor));
           }),
           const Spacer(),
           if (_brands.isNotEmpty) GestureDetector(onTap: () => setState(() => _brands.clear()),
-            child: Text(context.l10n?.clearFilters ?? 'Clear', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Color(0xFF6366F1)))),
+            child: Text(context.l10n?.clearFilters ?? 'Clear', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: AppTheme.brandBlue))),
         ])),
         // List
         Expanded(child: productsAsync.when(
@@ -1383,12 +1383,9 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             const SizedBox(height: 8),
             Text(err.toString(), textAlign: TextAlign.center, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
             const SizedBox(height: 12),
-            ElevatedButton(onPressed: () => ref.invalidate(productsByCategoryProvider(widget.component.categoryId)), child: Text(context.l10n?.retry ?? 'Retry')),
+            ElevatedButton(onPressed: () => ref.invalidate(pcBuilderProductsProvider(widget.component.categoryId)), child: Text(context.l10n?.retry ?? 'Retry')),
           ])),
-          data: (result) => result.when(
-            failure: (err) => Center(child: Text(err.message ?? 'Error', style: GoogleFonts.plusJakartaSans(color: context.textSecondary))),
-            success: (products) => _list(context, products),
-          ),
+          data: (products) => _list(context, products),
         )),
       ]),
     );
@@ -1620,7 +1617,7 @@ class _ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = component.accentColor;
-    final sc = product.techScore >= 80 ? AppTheme.success : product.techScore >= 60 ? Color(0xFF6366F1) : product.techScore >= 40 ? AppTheme.amber500 : AppTheme.rose500;
+    final sc = product.techScore >= 80 ? AppTheme.success : product.techScore >= 60 ? AppTheme.brandBlue : product.techScore >= 40 ? AppTheme.amber500 : AppTheme.rose500;
     final ks = _keySpec();
     final isPopular = product.techScore > 85;
     final productPrice = product.prices['US'] ?? product.prices.values.firstOrNull ?? 0.0;
@@ -1647,7 +1644,7 @@ class _ProductCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Wrap(spacing: 4, children: [
                   if (isPopular) _tag('⭐ Popular', AppTheme.success),
-                  if (isBestValue) _tag('💎 Best Value', Color(0xFF6366F1)),
+                  if (isBestValue) _tag('💎 Best Value', AppTheme.brandBlue),
                 ]),
               ),
               Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary)),
@@ -1698,3 +1695,4 @@ class _ProductCard extends StatelessWidget {
     );
   }
 }
+

@@ -700,8 +700,9 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
     const fabBottom = _kNavBarHeight + 10.0;
     const fabRight = 14.0;
 
-    // Hide on compare page
-    if (widget.currentRoute.contains('compare')) {
+    // Hide when actively comparing (≥2 products selected — hideNavBarProvider=true)
+    final hideForCompare = ref.watch(hideNavBarProvider);
+    if (hideForCompare) {
       return const SizedBox.shrink();
     }
 

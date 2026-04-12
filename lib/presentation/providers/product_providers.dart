@@ -1,5 +1,52 @@
 part of 'providers.dart';
 
+// ── In-memory cache for PC builder fast queries ──
+final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
+
+/// Fast single-query provider for PC Builder picker. No pagination.
+/// Returns top products sorted by techScore from Firebase directly.
+final pcBuilderProductsProvider = FutureProvider.family<
+    List<ProductEntity>, String>((ref, categoryId) async {
+  final normalizedCategory = categoryId.toLowerCase().trim();
+
+  // Check in-memory cache first (instant)
+  if (_pcBuilderCacheMap.containsKey(normalizedCategory)) {
+    return _pcBuilderCacheMap[normalizedCategory]!;
+  }
+
+  // PC builder category → Firestore alias map
+  const pcCategoryAliases = <String, String>{
+    'cpus': 'cpus', 'gpus': 'gpus', 'motherboards': 'motherboards',
+    'ram': 'ram', 'ssd': 'ssd', 'psu': 'psu', 'cases': 'cases',
+    'coolers': 'coolers', 'monitors': 'monitors', 'keyboards': 'keyboards',
+    'mice': 'mice', 'headsets': 'headsets',
+  };
+
+  final alias = pcCategoryAliases[normalizedCategory] ?? normalizedCategory;
+  final db = FirebaseFirestore.instance;
+
+  // Single direct Firestore query — no pagination, limit to top 200 by arrival
+  final snap = await db
+      .collection('products')
+      .where('category', isEqualTo: alias)
+      .limit(200)
+      .get(const GetOptions(source: Source.server))
+      .timeout(const Duration(seconds: 12));
+
+  final products = <ProductEntity>[];
+  for (final d in snap.docs) {
+    try {
+      products.add(ProductModel.fromFirestore(d) as ProductEntity);
+    } catch (_) {}
+  }
+
+  // Sort by techScore desc
+  products.sort((a, b) => b.techScore.compareTo(a.techScore));
+  _pcBuilderCacheMap[normalizedCategory] = products;
+  debugPrint('[PCBuilder] Loaded ${products.length} "$alias" products from server');
+  return products;
+});
+
 final productsByCategoryProvider = FutureProvider.family<
     Result<List<ProductEntity>>, String>((ref, category) async {
   const categoryAliases = <String, List<String>>{
