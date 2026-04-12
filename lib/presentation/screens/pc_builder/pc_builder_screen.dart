@@ -259,7 +259,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     // Preload all PC component categories for faster picking
     Future.microtask(() {
       for (final comp in PcComponent.values) {
-        ref.read(pcBuilderProductsProvider(comp.categoryId));
+        ref.read(productsByCategoryProvider(comp.categoryId));
       }
     });
   }
@@ -640,7 +640,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           if (_selected.length >= 5)
             SliverToBoxAdapter(child: _buildAiSection(context)),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.bottom + 100)),
         ],
       ),
     );
@@ -1291,8 +1291,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
   Widget build(BuildContext context) {
     final accent = widget.component.accentColor;
     final hasCompat = widget.socketFilter != null || widget.memTypeFilter != null;
-    // Use pcBuilderProductsProvider for fast single-query loading
-    final productsAsync = ref.watch(pcBuilderProductsProvider(widget.component.categoryId));
+    // Use productsByCategoryProvider — handles full pagination, cache, and all aliases
+    final productsAsync = ref.watch(productsByCategoryProvider(widget.component.categoryId));
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -1355,14 +1355,14 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
         // Brand chips — show when filter open and products are loaded
         if (_showFilters)
           Builder(builder: (_) {
-            final products = productsAsync.valueOrNull;
+            final products = productsAsync.valueOrNull?.dataOrNull;
             if (products == null) return const SizedBox.shrink();
             return _brandChipsFromList(context, products);
           }),
         // Count
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2), child: Row(children: [
           Builder(builder: (_) {
-            final products = productsAsync.valueOrNull;
+            final products = productsAsync.valueOrNull?.dataOrNull;
             if (products == null) return const SizedBox.shrink();
             return Text('${_applyFilters(products).length} ${context.l10n?.productsLabel ?? "products"}',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: context.textTertiaryColor));
@@ -1383,9 +1383,12 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             const SizedBox(height: 8),
             Text(err.toString(), textAlign: TextAlign.center, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: context.textSecondary)),
             const SizedBox(height: 12),
-            ElevatedButton(onPressed: () => ref.invalidate(pcBuilderProductsProvider(widget.component.categoryId)), child: Text(context.l10n?.retry ?? 'Retry')),
+            ElevatedButton(onPressed: () => ref.invalidate(productsByCategoryProvider(widget.component.categoryId)), child: Text(context.l10n?.retry ?? 'Retry')),
           ])),
-          data: (products) => _list(context, products),
+          data: (result) => result.when(
+            failure: (err) => Center(child: Text(err.message ?? 'Error', style: GoogleFonts.plusJakartaSans(color: context.textSecondary))),
+            success: (products) => _list(context, products),
+          ),
         )),
       ]),
     );
@@ -1489,7 +1492,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
               // Specs list
               Expanded(child: SingleChildScrollView(
                 controller: sc,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(ctx).padding.bottom + 12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   if (p.description != null && p.description!.isNotEmpty) ...[
                     Text(p.description!, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: ctx.textSecondary, height: 1.5)),
