@@ -187,13 +187,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
   }
 
-  /// Fetch next page via PB pagination, called by scroll or background loop.
+  /// Fetch next page via Typesense pagination, called by scroll or background loop.
   Future<void> _fetchNextPage() async {
     if (_fetchingAll || _allLoaded || !mounted) return;
     setState(() => _fetchingAll = true);
     try {
       final ds = ref.read(firebaseDataSourceProvider);
-      final page = await ds.getProductsPage(
+      final page = await ds.getProductsPageTs(
         category: _activeCategoryId,
         limit: 200,
         page: _currentPage,
@@ -280,7 +280,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
     while (mounted) {
       try {
-        final result = await ds.getProductsPage(
+        final result = await ds.getProductsPageTs(
           category: _activeCategoryId,
           limit: 200,
           page: page,

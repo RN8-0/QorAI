@@ -59,59 +59,65 @@ final pcBuilderProductsProvider = FutureProvider.family<
 
   final aliases = pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
   final ds = ref.read(firebaseDataSourceProvider);
-  const batchSize = 500;
-  const maxTotal = 5000;
 
-  // Paginated loader — fetches ALL products for a given alias via PocketBase
-  Future<List<ProductEntity>> _paginatedLoad(String alias) async {
-    final all = <ProductEntity>[];
-    int page = 1;
-    while (all.length < maxTotal) {
-      final result = await ds.getProductsPage(
-        category: alias, limit: batchSize, page: page,
-      );
-      all.addAll(result.products.cast<ProductEntity>());
-      if (!result.hasMore || result.products.isEmpty) break;
-      page = result.nextPage;
-    }
-    return all;
-  }
-
-  // 2) Try each alias
+  // 2) Typesense: fetch ALL products for category in one go (~100-500ms vs 10+s PocketBase)
   for (final alias in aliases) {
     try {
       final sw = Stopwatch()..start();
-      final products = await _paginatedLoad(alias);
+      final products = await ds.getAllProductsInCategoryTs(
+        category: alias,
+        perPage: 250,
+        maxTotal: 250,
+      );
       sw.stop();
       if (products.isNotEmpty) {
-        products.sort((a, b) => b.techScore.compareTo(a.techScore));
-        _pcBuilderCacheMap[normalizedCategory] = products;
-        debugPrint('[PCBuilder] ✅ "$alias": ${products.length} in ${sw.elapsedMilliseconds}ms');
-        return products;
+        final entities = products.cast<ProductEntity>();
+        entities.sort((a, b) => b.techScore.compareTo(a.techScore));
+        _pcBuilderCacheMap[normalizedCategory] = entities;
+        debugPrint('[PCBuilder] ✅ TS "$alias": ${entities.length} in ${sw.elapsedMilliseconds}ms');
+        return entities;
       }
     } catch (e) {
-      debugPrint('[PCBuilder] ❌ "$alias": $e');
+      debugPrint('[PCBuilder] ❌ TS "$alias": $e');
     }
   }
 
-  debugPrint('[PCBuilder] ⚠️ Firestore empty for "$normalizedCategory", trying Cloud Function search...');
+  // 3) Fallback: PocketBase paginated load
+  debugPrint('[PCBuilder] ⚠️ TS empty, falling back to PB for "$normalizedCategory"');
+  for (final alias in aliases) {
+    try {
+      final all = <ProductEntity>[];
+      int page = 1;
+      while (all.length < 5000) {
+        final result = await ds.getProductsPage(
+          category: alias, limit: 500, page: page,
+        );
+        all.addAll(result.products.cast<ProductEntity>());
+        if (!result.hasMore || result.products.isEmpty) break;
+        page = result.nextPage;
+      }
+      if (all.isNotEmpty) {
+        all.sort((a, b) => b.techScore.compareTo(a.techScore));
+        _pcBuilderCacheMap[normalizedCategory] = all;
+        return all;
+      }
+    } catch (_) {}
+  }
 
-  // 3) Firestore returned nothing — fall back to Cloud Function keyword search.
-  // This works even when category field in Firestore doesn't match our aliases.
+  // 4) Last resort: Typesense text search
   final keyword = _pcCategorySearchKeywords[normalizedCategory];
   if (keyword != null) {
     try {
-      final ds = ref.read(firebaseDataSourceProvider);
       final results = await ds.searchProducts(query: keyword, limit: 200);
       if (results.isNotEmpty) {
         final products = results.cast<ProductEntity>();
         products.sort((a, b) => b.techScore.compareTo(a.techScore));
         _pcBuilderCacheMap[normalizedCategory] = products;
-        debugPrint('[PCBuilder] ✅ CF fallback "$normalizedCategory": ${products.length}');
+        debugPrint('[PCBuilder] ✅ TS search fallback "$normalizedCategory": ${products.length}');
         return products;
       }
     } catch (e) {
-      debugPrint('[PCBuilder] ❌ CF fallback "$normalizedCategory": $e');
+      debugPrint('[PCBuilder] ❌ search fallback "$normalizedCategory": $e');
     }
   }
 
@@ -198,35 +204,47 @@ final productsByCategoryProvider = FutureProvider.family<
     return _sortAndReturn(_categoryCacheMap[normalizedCategory]!);
   }
 
-  // ── 2) Paginated PocketBase query ──
+  // ── 2) Typesense: fetch all products for category ──
   final ds = ref.read(firebaseDataSourceProvider);
-  const batchSize = 500;
-  const maxTotal = 5000;
-
-  Future<List<ProductEntity>> _paginatedLoad(String alias) async {
-    final all = <ProductEntity>[];
-    int page = 1;
-    while (all.length < maxTotal) {
-      final result = await ds.getProductsPage(
-        category: alias, limit: batchSize, page: page,
-      );
-      all.addAll(result.products.cast<ProductEntity>());
-      if (!result.hasMore || result.products.isEmpty) break;
-      page = result.nextPage;
-    }
-    return all;
-  }
 
   for (final alias in aliases) {
     try {
-      final all = await _paginatedLoad(alias);
+      final all = await ds.getAllProductsInCategoryTs(
+        category: alias,
+        perPage: 250,
+        maxTotal: 250,
+      );
+      if (all.isNotEmpty) {
+        final entities = all.cast<ProductEntity>();
+        _categoryCacheMap[normalizedCategory] = entities;
+        debugPrint('CATEGORY: TS loaded ${entities.length} products for "$alias"');
+        return _sortAndReturn(entities);
+      }
+    } catch (e) {
+      debugPrint('CATEGORY: TS query failed for "$alias": $e');
+    }
+  }
+
+  // ── 2b) Fallback: PocketBase paginated query ──
+  for (final alias in aliases) {
+    try {
+      final all = <ProductEntity>[];
+      int page = 1;
+      while (all.length < 5000) {
+        final result = await ds.getProductsPage(
+          category: alias, limit: 500, page: page,
+        );
+        all.addAll(result.products.cast<ProductEntity>());
+        if (!result.hasMore || result.products.isEmpty) break;
+        page = result.nextPage;
+      }
       if (all.isNotEmpty) {
         _categoryCacheMap[normalizedCategory] = all;
-        debugPrint('CATEGORY: loaded ${all.length} products for "$alias"');
+        debugPrint('CATEGORY: PB fallback loaded ${all.length} products for "$alias"');
         return _sortAndReturn(all);
       }
     } catch (e) {
-      debugPrint('CATEGORY: query failed for "$alias": $e');
+      debugPrint('CATEGORY: PB fallback failed for "$alias": $e');
     }
   }
 
@@ -1087,7 +1105,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   return feed;
 }
 
-/// Core product fetching: BULK-FIRST strategy (single query, fast cold start)
+/// Core product fetching: TYPESENSE multi_search (all categories in ONE request)
 Future<List<ProductEntity>> _fetchAllProducts(
   ProductRepository repo,
   UserEntity? user,
@@ -1105,56 +1123,51 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   final sw = Stopwatch()..start();
 
-  // ── Multi-category parallel fetch (diverse results, composite index) ──────
-  // Fetch top products from priority categories in ONE parallel batch.
-  // All 20 run in parallel → total time = slowest single query (~1-2s).
-  // Secondary categories (projectors, microphones, etc.) load on-demand
-  // when user opens that category browse screen.
+  // ── Typesense multi_search: 20 categories in ONE HTTP request (~50-100ms) ────
   final categories = _feedCategories.take(20).toList();
-  debugPrint('=== COMPAIR: MULTI-CAT fetch — ${categories.length} categories, 80 each ===');
+  debugPrint('=== COMPAIR: TS MULTI-CAT fetch — ${categories.length} categories, 80 each ===');
 
   try {
-    final futures = categories.map((cat) => repo.getProducts(
-      category: cat, limit: 80, orderBy: 'techScore', descending: true,
-    ).timeout(const Duration(seconds: 45)).catchError((_) =>
-      const Success<List<ProductEntity>>([])));
-    final results = await Future.wait(futures.toList());
-    for (var j = 0; j < results.length; j++) {
-      final catName = categories[j];
-      switch (results[j]) {
-        case Success(data: final products):
-          debugPrint('=== COMPAIR: CAT $catName: ${products.length} products ===');
+    final tsResult = await repo.getProductsMultiCategoryTs(
+      categories: categories,
+      perCategory: 80,
+    ).timeout(const Duration(seconds: 15));
+
+    switch (tsResult) {
+      case Success(data: final catMap):
+        for (final cat in categories) {
+          final products = catMap[cat] ?? [];
+          debugPrint('=== COMPAIR: CAT $cat: ${products.length} products ===');
           addProducts(products);
-        default:
-          debugPrint('=== COMPAIR: CAT $catName: FAILED ===');
-      }
+        }
+      default:
+        debugPrint('=== COMPAIR: TS MULTI-CAT failed, falling back to PocketBase ===');
     }
   } catch (e) {
-    debugPrint('=== COMPAIR: MULTI-CAT error: $e ===');
+    debugPrint('=== COMPAIR: TS MULTI-CAT error: $e ===');
   }
-  debugPrint('=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
 
-  // If multi-cat returned nothing, try priority categories individually
+  // Fallback to PocketBase if Typesense returned nothing
   if (allProducts.isEmpty) {
-    debugPrint('=== COMPAIR: MULTI-CAT empty, trying priority categories ===');
-    for (final cat in const ['smartphones', 'laptops', 'tablets', 'headphones']) {
-      try {
-        final result = await repo.getProducts(
-          category: cat, limit: 80, orderBy: 'techScore', descending: true,
-        );
-        switch (result) {
+    debugPrint('=== COMPAIR: TS empty, falling back to PB parallel fetch ===');
+    try {
+      final futures = categories.map((cat) => repo.getProducts(
+        category: cat, limit: 80, orderBy: 'techScore', descending: true,
+      ).timeout(const Duration(seconds: 45)).catchError((_) =>
+        const Success<List<ProductEntity>>([])));
+      final results = await Future.wait(futures.toList());
+      for (var j = 0; j < results.length; j++) {
+        switch (results[j]) {
           case Success(data: final products):
             addProducts(products);
           default:
             break;
         }
-      } catch (_) {}
-      if (allProducts.length >= 50) break;
-    }
+      }
+    } catch (_) {}
   }
 
-  sw.stop();
-  debugPrint('=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+  debugPrint('=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
 
   // Fetch pinned products
   if (pinnedIds.isNotEmpty) {
@@ -1173,6 +1186,8 @@ Future<List<ProductEntity>> _fetchAllProducts(
     }
   }
 
+  sw.stop();
+  debugPrint('=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
   return allProducts;
 }
 

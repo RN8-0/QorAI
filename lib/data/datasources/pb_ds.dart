@@ -4,6 +4,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
@@ -1048,6 +1049,193 @@ class PbDataSource {
     } catch (e) {
       debugPrint('[PB] getAppConfig failed: $e');
       return {};
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── TYPESENSE CATEGORY QUERIES (fast product listing) ──────────────
+  // ────────────────────────────────────────────────────────────────────────
+
+  /// Parse a Typesense hit into ProductModel via the _raw JSON field.
+  ProductModel? _tsHitToProduct(Map<String, dynamic> hit) {
+    try {
+      final doc = hit['document'] as Map<String, dynamic>?;
+      if (doc == null) return null;
+      final rawStr = doc['_raw'] as String?;
+      if (rawStr == null || rawStr.isEmpty) {
+        // Fallback: use the Typesense doc fields directly
+        return ProductModel.fromMap(doc);
+      }
+      final raw = jsonDecode(rawStr) as Map<String, dynamic>;
+      return ProductModel.fromMap(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Fetch products for a single category from Typesense.
+  /// Much faster than PocketBase pagination (10-50ms vs 1-2s).
+  Future<List<ProductModel>> getProductsByCategoryTs({
+    required String category,
+    int limit = 80,
+    String sortBy = 'techScore:desc',
+  }) async {
+    try {
+      final sw = Stopwatch()..start();
+      final response = await _dio.get(
+        '/collections/products/documents/search',
+        queryParameters: {
+          'q': '*',
+          'filter_by': 'category:=$category',
+          'sort_by': sortBy,
+          'per_page': limit,
+          'page': 1,
+        },
+      );
+      sw.stop();
+      final hits = (response.data['hits'] as List?) ?? [];
+      final products = hits
+          .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
+          .whereType<ProductModel>()
+          .toList();
+      debugPrint(
+          '=== COMPAIR: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===');
+      return products;
+    } catch (e) {
+      debugPrint('=== COMPAIR: TS cat=$category FAILED: $e ===');
+      return [];
+    }
+  }
+
+  /// Fetch products for MULTIPLE categories in a single Typesense multi_search request.
+  /// Returns a Map<category, List<ProductModel>>.
+  /// This replaces 20 parallel PocketBase calls with 1 HTTP request (~50-100ms total).
+  Future<Map<String, List<ProductModel>>> getProductsMultiCategoryTs({
+    required List<String> categories,
+    int perCategory = 80,
+    String sortBy = 'techScore:desc',
+  }) async {
+    if (categories.isEmpty) return {};
+    try {
+      final sw = Stopwatch()..start();
+      final searches = categories.map((cat) => {
+            'collection': 'products',
+            'q': '*',
+            'filter_by': 'category:=$cat',
+            'sort_by': sortBy,
+            'per_page': perCategory,
+            'page': 1,
+            'exclude_fields': '_raw',
+          }).toList();
+
+      final response = await _dio.post(
+        '/multi_search',
+        data: {'searches': searches},
+      );
+      sw.stop();
+
+      final results = <String, List<ProductModel>>{};
+      final resultsList = (response.data['results'] as List?) ?? [];
+      for (var i = 0; i < resultsList.length && i < categories.length; i++) {
+        final catResult = resultsList[i] as Map<String, dynamic>;
+        final hits = (catResult['hits'] as List?) ?? [];
+        final products = hits
+            .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
+            .whereType<ProductModel>()
+            .toList();
+        results[categories[i]] = products;
+      }
+
+      final total = results.values.fold<int>(0, (s, l) => s + l.length);
+      debugPrint(
+          '=== COMPAIR: TS multi_search ${categories.length} cats → $total products in ${sw.elapsedMilliseconds}ms ===');
+      return results;
+    } catch (e) {
+      debugPrint('=== COMPAIR: TS multi_search FAILED: $e ===');
+      return {};
+    }
+  }
+
+  /// Paginated Typesense query for a category. Used by PCBuilder / category browse.
+  /// Returns all products in a category (up to maxTotal) using Typesense pagination.
+  Future<List<ProductModel>> getAllProductsInCategoryTs({
+    required String category,
+    int perPage = 250,
+    int maxTotal = 5000,
+    String sortBy = 'techScore:desc',
+  }) async {
+    final all = <ProductModel>[];
+    final seenIds = <String>{};
+    int page = 1;
+    try {
+      final sw = Stopwatch()..start();
+      while (all.length < maxTotal) {
+        final response = await _dio.get(
+          '/collections/products/documents/search',
+          queryParameters: {
+            'q': '*',
+            'filter_by': 'category:=$category',
+            'sort_by': sortBy,
+            'per_page': perPage,
+            'page': page,
+            'exclude_fields': '_raw',
+          },
+        );
+        final hits = (response.data['hits'] as List?) ?? [];
+        if (hits.isEmpty) break;
+        for (final h in hits) {
+          final p = _tsHitToProduct(h as Map<String, dynamic>);
+          if (p != null && seenIds.add(p.id)) all.add(p);
+        }
+        final found = (response.data['found'] as int?) ?? 0;
+        if (page * perPage >= found) break;
+        page++;
+      }
+      sw.stop();
+      debugPrint(
+          '=== COMPAIR: TS allInCat cat=$category → ${all.length} in ${sw.elapsedMilliseconds}ms ===');
+      return all;
+    } catch (e) {
+      debugPrint('=== COMPAIR: TS allInCat cat=$category FAILED: $e ===');
+      return [];
+    }
+  }
+
+  /// Paginated Typesense query matching getProductsPage signature for drop-in replacement.
+  Future<({List<ProductModel> products, int nextPage, bool hasMore})>
+      getProductsPageTs({
+    required String category,
+    int limit = 200,
+    int page = 1,
+  }) async {
+    try {
+      final sw = Stopwatch()..start();
+      final response = await _dio.get(
+        '/collections/products/documents/search',
+        queryParameters: {
+          'q': '*',
+          'filter_by': 'category:=$category',
+          'sort_by': 'techScore:desc',
+          'per_page': limit,
+          'page': page,
+          'exclude_fields': '_raw',
+        },
+      );
+      sw.stop();
+      final hits = (response.data['hits'] as List?) ?? [];
+      final products = hits
+          .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
+          .whereType<ProductModel>()
+          .toList();
+      final found = (response.data['found'] as int?) ?? 0;
+      final hasMore = (page * limit) < found;
+      debugPrint(
+          '=== COMPAIR: TS getProductsPage cat=$category page=$page → ${products.length} in ${sw.elapsedMilliseconds}ms ===');
+      return (products: products, nextPage: page + 1, hasMore: hasMore);
+    } catch (e) {
+      debugPrint('=== COMPAIR: TS getProductsPage FAILED cat=$category: $e ===');
+      // Fallback to PocketBase
+      return getProductsPage(category: category, limit: limit, page: page);
     }
   }
 

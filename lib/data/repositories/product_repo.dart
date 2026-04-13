@@ -79,6 +79,53 @@ class ProductRepository {
     }
   }
 
+  /// Typesense: multi-category fetch in a single HTTP request
+  Future<Result<Map<String, List<ProductEntity>>>> getProductsMultiCategoryTs({
+    required List<String> categories,
+    int perCategory = 80,
+  }) async {
+    try {
+      final result = await _firebaseDS.getProductsMultiCategoryTs(
+        categories: categories,
+        perCategory: perCategory,
+      );
+      return Success(result.map((k, v) =>
+          MapEntry(k, v.cast<ProductEntity>())));
+    } catch (e) {
+      return Failure(FirestoreException(message: e.toString()));
+    }
+  }
+
+  /// Typesense: all products in a category (for PCBuilder / full category loads)
+  Future<Result<List<ProductEntity>>> getAllProductsInCategoryTs(
+    String category, {
+    int maxTotal = 5000,
+  }) async {
+    try {
+      final products = await _firebaseDS.getAllProductsInCategoryTs(
+        category: category,
+        maxTotal: maxTotal,
+      );
+      return Success(products);
+    } catch (e) {
+      return Failure(FirestoreException(message: e.toString()));
+    }
+  }
+
+  /// Typesense: paginated products (drop-in getProductsPage replacement)
+  Future<({List<ProductModel> products, int nextPage, bool hasMore})>
+      getProductsPageTs({
+    required String category,
+    int limit = 200,
+    int page = 1,
+  }) async {
+    return _firebaseDS.getProductsPageTs(
+      category: category,
+      limit: limit,
+      page: page,
+    );
+  }
+
   /// Get products by IDs
   Future<Result<List<ProductEntity>>> getProductsByIds(
       List<String> ids) async {

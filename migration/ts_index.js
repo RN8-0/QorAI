@@ -14,13 +14,18 @@ const schema = {
     { name: 'slug', type: 'string' },
     { name: 'name', type: 'string' },
     { name: 'brand', type: 'string', facet: true, optional: true },
-    { name: 'category', type: 'string', facet: true, optional: true },
+    { name: 'category', type: 'string', facet: true },
+    { name: 'subcategory', type: 'string', facet: true, optional: true },
     { name: 'source', type: 'string', optional: true },
     { name: 'imageUrl', type: 'string', optional: true, index: false },
     { name: 'techScore', type: 'float' },
+    { name: 'trendScore', type: 'float', optional: true },
     { name: 'price_segment', type: 'string', facet: true, optional: true },
     { name: 'specsCount', type: 'int32', optional: true },
-    { name: 'keySpecsText', type: 'string', optional: true }, // flattened keySpecs for search
+    { name: 'keySpecsText', type: 'string', optional: true },
+    { name: 'tags', type: 'string[]', optional: true, facet: true },
+    // Full product data as JSON string — not indexed, just stored for hydration
+    { name: '_raw', type: 'string', index: false, optional: true },
   ],
   default_sorting_field: 'techScore',
   token_separators: ['-', '_', '/', ' '],
@@ -45,18 +50,24 @@ function flattenKeySpecs(ks) {
 }
 
 function toTsDoc(pb) {
+  // Build _raw: full PB record for client-side hydration
+  const raw = JSON.stringify(pb);
   return {
     id: pb.id,
     slug: pb.slug || '',
     name: pb.name || '',
     brand: pb.brand || '',
     category: pb.category || '',
+    subcategory: pb.subcategory || '',
     source: pb.source || '',
-    imageUrl: pb.imageUrl || '',
+    imageUrl: pb.imageUrl || pb.imageURL || '',
     techScore: typeof pb.techScore === 'number' ? pb.techScore : 0,
+    trendScore: typeof pb.trendScore === 'number' ? pb.trendScore : 0,
     price_segment: pb.price_segment || '',
     specsCount: pb.specsCount || 0,
     keySpecsText: flattenKeySpecs(pb.keySpecs),
+    tags: Array.isArray(pb.tags) ? pb.tags : [],
+    _raw: raw,
   };
 }
 
@@ -79,7 +90,7 @@ async function importBatch(docs) {
 }
 
 async function pbPage(page) {
-  const r = await pbReq('GET', `/api/collections/products/records?perPage=${BATCH}&page=${page}&fields=id,slug,name,brand,category,source,imageUrl,techScore,price_segment,specsCount,keySpecs`);
+  const r = await pbReq('GET', `/api/collections/products/records?perPage=${BATCH}&page=${page}`);
   if (r.status !== 200) throw new Error('pb list: ' + JSON.stringify(r.body));
   return r.body;
 }
