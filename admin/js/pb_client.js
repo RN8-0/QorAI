@@ -3,7 +3,7 @@
 //  Replaces Firebase Firestore + Auth
 // ═══════════════════════════════════════════════════════════════
 
-const PB_URL = 'http://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 const GOOGLE_CLIENT_ID = '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
 const PB_ADMIN_EMAIL = 'admin@compair.local';
 const PB_ADMIN_PASS = 'mx6I0zPE3HSaqbjlAY0p';
@@ -146,58 +146,57 @@ function _clean(data) {
   return clean;
 }
 
-// ─── GOOGLE IDENTITY SERVICES (GIS) ────────────────────────────
+// ─── FIREBASE AUTH (replaces GIS) ───────────────────────────────
 
-let _gisTokenClient = null;
-let _gisCallback = null;
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyA_YqZli9PSPeCzYl2x9FBv5SYK-m0kpEg',
+  appId: '1:510980756238:web:b21d1e3613561d7c69fd5f',
+  messagingSenderId: '510980756238',
+  projectId: 'compair-99b6e',
+  authDomain: 'compair-99b6e.firebaseapp.com',
+  storageBucket: 'compair-99b6e.firebasestorage.app',
+};
 
-// Call once at init with callback(userInfo: {email, name, picture})
-function initGIS(callback) {
-  _gisCallback = callback;
-  if (typeof google !== 'undefined' && google.accounts) {
-    _setupGIS();
-  } else {
-    // GIS script not yet loaded — set up onload handler
-    window._onGISLoad = _setupGIS;
-  }
+let _fbApp = null;
+let _fbAuth = null;
+let _adminAuthCallback = null;
+
+function _getFirebaseAuth() {
+  if (_fbAuth) return _fbAuth;
+  if (typeof firebase === 'undefined') throw new Error('Firebase SDK not loaded');
+  if (!_fbApp) _fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+  _fbAuth = firebase.auth();
+  return _fbAuth;
 }
 
-function _setupGIS() {
-  _gisTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: 'openid email profile',
-    callback: async (response) => {
-      if (response.error) {
-        if (_gisCallback) _gisCallback(null, response.error);
-        return;
-      }
-      try {
-        // Fetch user info from Google
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${response.access_token}` }
-        });
-        const info = await res.json();
-        if (_gisCallback) _gisCallback(info, null);
-      } catch (e) {
-        if (_gisCallback) _gisCallback(null, e.message);
-      }
-    }
+// Backward-compatible initGIS — stores the callback
+function initGIS(callback) {
+  _adminAuthCallback = callback;
+}
+
+// Backward-compatible gisSignIn — opens Firebase popup
+function gisSignIn() {
+  const auth = _getFirebaseAuth();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
+  auth.signInWithPopup(provider).then(result => {
+    const u = result.user;
+    if (_adminAuthCallback) _adminAuthCallback({
+      email: u.email,
+      name: u.displayName,
+      picture: u.photoURL,
+      uid: u.uid
+    }, null);
+  }).catch(err => {
+    const code = err.code || err.message || 'sign_in_failed';
+    const mapped = code === 'auth/popup-closed-by-user' ? 'popup_closed_by_user'
+                 : code === 'auth/user-cancelled'       ? 'access_denied'
+                 : code;
+    if (_adminAuthCallback) _adminAuthCallback(null, mapped);
   });
 }
 
-function gisSignIn() {
-  if (!_gisTokenClient) {
-    _setupGIS();
-    setTimeout(() => {
-      if (_gisTokenClient) _gisTokenClient.requestAccessToken({ prompt: 'select_account' });
-    }, 200);
-    return;
-  }
-  _gisTokenClient.requestAccessToken({ prompt: 'select_account' });
-}
-
 function gisRevoke(email) {
-  if (typeof google !== 'undefined' && google.accounts) {
-    google.accounts.oauth2.revoke(email, () => {});
-  }
+  try { _getFirebaseAuth().signOut(); } catch (_) {}
 }

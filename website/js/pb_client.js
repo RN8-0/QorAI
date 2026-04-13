@@ -3,7 +3,7 @@
 //  Replaces Firebase Firestore + Auth for public website
 // ═══════════════════════════════════════════════════════════════
 
-const PB_URL = 'http://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 
 let _pb = null;
 
@@ -70,9 +70,59 @@ async function pbRegister(email, password, name = '') {
   return user;
 }
 
-// Sign in with Google (uses PocketBase OAuth2)
+// ─── FIREBASE AUTH ───────────────────────────────────────────────
+
+const _FB_CONFIG = {
+  apiKey: 'AIzaSyA_YqZli9PSPeCzYl2x9FBv5SYK-m0kpEg',
+  appId: '1:510980756238:web:b21d1e3613561d7c69fd5f',
+  messagingSenderId: '510980756238',
+  projectId: 'compair-99b6e',
+  authDomain: 'compair-99b6e.firebaseapp.com',
+  storageBucket: 'compair-99b6e.firebasestorage.app',
+};
+
+let _wFbApp = null;
+let _wFbAuth = null;
+
+function _getWebFirebaseAuth() {
+  if (_wFbAuth) return _wFbAuth;
+  if (typeof firebase === 'undefined') throw new Error('Firebase SDK not loaded');
+  if (!_wFbApp) {
+    // Avoid duplicate app error if already initialized
+    try { _wFbApp = firebase.app(); } catch (_) { _wFbApp = firebase.initializeApp(_FB_CONFIG); }
+  }
+  _wFbAuth = firebase.auth();
+  return _wFbAuth;
+}
+
+// Sign in with Google — Firebase popup → auto create/login PocketBase user
 async function pbSignInWithGoogle() {
-  return await getPb().collection('users').authWithOAuth2({ provider: 'google' });
+  const auth = _getWebFirebaseAuth();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
+  const result = await auth.signInWithPopup(provider);
+  const fbUser = result.user;
+
+  const email = fbUser.email;
+  const password = fbUser.uid; // deterministic, consistent across sessions
+  const name = fbUser.displayName || email.split('@')[0];
+
+  try {
+    return await getPb().collection('users').authWithPassword(email, password);
+  } catch (e) {
+    if (e.status === 400 || e.status === 404) {
+      await getPb().collection('users').create({
+        email,
+        password,
+        passwordConfirm: password,
+        name,
+        emailVisibility: true
+      });
+      return await getPb().collection('users').authWithPassword(email, password);
+    }
+    throw e;
+  }
 }
 
 // Sign out
