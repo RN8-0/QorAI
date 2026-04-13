@@ -12,13 +12,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
 import 'package:compair/config/env_config.dart';
-import 'package:compair/data/datasources/firebase_ds.dart';
+import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/datasources/hive_ds.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/repositories/auth_repo.dart';
 import 'package:compair/data/repositories/product_repo.dart';
 import 'package:compair/data/repositories/comparison_repo.dart';
@@ -45,7 +45,6 @@ import 'package:compair/services/google_search_service.dart';
 import 'package:compair/services/behavior_tracking_service.dart';
 import 'package:compair/services/ip_location_service.dart';
 import 'package:compair/services/analytics_service.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/product_filter.dart';
 import 'package:compair/core/constants.dart';
@@ -67,9 +66,14 @@ part 'ai_providers.dart';
 // ─── CORE SERVICE PROVIDERS ─── (Provider tipi)
 // ════════════════════════════════════════════════════
 
-/// Firebase Data Source
-final firebaseDataSourceProvider = Provider<FirebaseDataSource>((ref) {
-  return FirebaseDataSource();
+/// PocketBase Data Source
+final pbDataSourceProvider = Provider<PbDataSource>((ref) {
+  return PbDataSource();
+});
+
+/// Alias for legacy references — points to PbDataSource
+final firebaseDataSourceProvider = Provider<PbDataSource>((ref) {
+  return ref.read(pbDataSourceProvider);
 });
 
 /// Hive Local Data Source
@@ -136,9 +140,9 @@ final googleSearchServiceProvider = Provider<GoogleSearchService>((ref) {
   );
 });
 
-/// Remote Config Service - Section 21.1
+/// Remote Config Service (PocketBase app_config tabanlı)
 final remoteConfigServiceProvider = Provider<RemoteConfigService>((ref) {
-  return RemoteConfigService(FirebaseRemoteConfig.instance);
+  return RemoteConfigService.fromPb(ref.read(pbDataSourceProvider));
 });
 
 /// Metadata Service - Section 9.2 (OG Tags, Web Scraping)
@@ -187,7 +191,7 @@ final techScoreServiceProvider = Provider<TechScoreService>((ref) {
 /// Auth Repository
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
-    firebaseDS: ref.read(firebaseDataSourceProvider),
+    pbDS: ref.read(pbDataSourceProvider),
   );
 });
 
@@ -267,4 +271,4 @@ final scraperStatusProvider = FutureProvider<ScraperStatus>((ref) {
 final calculateScoreUseCaseProvider = Provider<CalculateScoreUseCase>((ref) {
   return CalculateScoreUseCase();
 });
-
+

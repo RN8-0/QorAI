@@ -12,7 +12,7 @@ import 'package:compair/core/errors.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/presentation/providers/providers.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:compair/routing/router.dart';
 
@@ -132,21 +132,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   }
 
   void _handlePurchaseTap() {
-    // Auth gate: require Google or Apple account
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    // Auth gate: require logged-in user
+    final authRecord = pb.authStore.record;
+    if (authRecord == null || !pb.authStore.isValid) {
       context.push(AppRoutes.login);
       return;
     }
 
-    final providerIds = user.providerData.map((p) => p.providerId).toSet();
-    final hasGoogleOrApple =
-        providerIds.contains('google.com') || providerIds.contains('apple.com');
-
-    if (!hasGoogleOrApple) {
-      _showLinkAccountDialog();
-      return;
-    }
+    // PocketBase doesn't track provider data the same way — just check auth is valid
+    // The subscription service handles the rest
 
     final service = ref.read(subscriptionServiceProvider);
     final prods = service.products;

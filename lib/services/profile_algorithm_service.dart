@@ -1,3 +1,4 @@
+
 /// Compair - Profile Algorithm Service
 /// Blueprint Section 8, 10
 ///
@@ -6,7 +7,6 @@
 /// Foundation for dynamic home page and personalized recommendations.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 
@@ -40,111 +40,10 @@ class BehaviorSignals {
 
   static const empty = BehaviorSignals();
 
-  /// Load behavior signals from Firestore for a user.
-  /// Designed to run once per session (cheap: ~3 small doc reads).
+  /// Load behavior signals (stubbed — PocketBase behavior tracking TBD).
   static Future<BehaviorSignals> load(String uid) async {
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(uid);
-
-    final categoryViews = <String, int>{};
-    final productViews = <String, int>{};
-    final favorites = <String>{};
-    final recentSearches = <String>[];
-    final specFocus = <String, int>{};
-    final quizPreferences = <String, int>{};
-    final hourActivity = <int, int>{};
-
-    try {
-      final results = await Future.wait([
-        // 1. Product views (category aggregation)
-        userDoc.collection('behavior').doc('product_views')
-            .collection('items').orderBy('lastViewed', descending: true)
-            .limit(100).get().timeout(const Duration(seconds: 6)),
-        // 2. Favorites
-        userDoc.collection('behavior').doc('favorites')
-            .collection('items').where('isFavorited', isEqualTo: true)
-            .limit(50).get().timeout(const Duration(seconds: 6)),
-        // 3. Quiz preferences
-        userDoc.collection('behavior').doc('quiz_preferences')
-            .get().timeout(const Duration(seconds: 4)),
-        // 4. Time patterns
-        userDoc.collection('behavior').doc('time_patterns')
-            .get().timeout(const Duration(seconds: 4)),
-        // 5. Recent searches
-        userDoc.collection('behavior').doc('searches')
-            .collection('items').orderBy('at', descending: true)
-            .limit(20).get().timeout(const Duration(seconds: 4)),
-        // 6. Spec focus
-        userDoc.collection('behavior').doc('spec_focus')
-            .collection('items').orderBy('viewCount', descending: true)
-            .limit(30).get().timeout(const Duration(seconds: 4)),
-      ]);
-
-      // Parse product views
-      for (final doc in (results[0] as QuerySnapshot).docs) {
-        final d = doc.data() as Map<String, dynamic>;
-        final cat = d['category'] as String? ?? '';
-        final count = (d['viewCount'] as num?)?.toInt() ?? 1;
-        productViews[doc.id] = count;
-        if (cat.isNotEmpty) {
-          categoryViews[cat] = (categoryViews[cat] ?? 0) + count;
-        }
-      }
-
-      // Parse favorites
-      for (final doc in (results[1] as QuerySnapshot).docs) {
-        favorites.add(doc.id);
-      }
-
-      // Parse quiz preferences
-      final quizDoc = results[2] as DocumentSnapshot;
-      if (quizDoc.exists) {
-        final data = quizDoc.data() as Map<String, dynamic>? ?? {};
-        for (final e in data.entries) {
-          if (e.key.startsWith('pref_') && e.value is num) {
-            quizPreferences[e.key.substring(5)] = (e.value as num).toInt();
-          }
-        }
-      }
-
-      // Parse time patterns
-      final timeDoc = results[3] as DocumentSnapshot;
-      if (timeDoc.exists) {
-        final data = timeDoc.data() as Map<String, dynamic>? ?? {};
-        for (final e in data.entries) {
-          if (e.key.startsWith('hour_') && e.value is num) {
-            final hour = int.tryParse(e.key.substring(5));
-            if (hour != null) hourActivity[hour] = (e.value as num).toInt();
-          }
-        }
-      }
-
-      // Parse searches
-      for (final doc in (results[4] as QuerySnapshot).docs) {
-        final d = doc.data() as Map<String, dynamic>;
-        final q = d['query'] as String? ?? '';
-        if (q.isNotEmpty) recentSearches.add(q);
-      }
-
-      // Parse spec focus
-      for (final doc in (results[5] as QuerySnapshot).docs) {
-        final d = doc.data() as Map<String, dynamic>;
-        final key = d['specKey'] as String? ?? '';
-        final count = (d['viewCount'] as num?)?.toInt() ?? 1;
-        if (key.isNotEmpty) specFocus[key] = count;
-      }
-    } catch (_) {
-      // On any failure, return whatever we got so far
-    }
-
-    return BehaviorSignals(
-      categoryViews: categoryViews,
-      productViews: productViews,
-      favorites: favorites,
-      recentSearches: recentSearches,
-      specFocus: specFocus,
-      quizPreferences: quizPreferences,
-      hourActivity: hourActivity,
-    );
+    // TODO: implement PocketBase behavior signal aggregation
+    return empty;
   }
 }
 
@@ -163,25 +62,8 @@ class GlobalAlgorithmSignals {
   static const empty = GlobalAlgorithmSignals();
 
   static Future<GlobalAlgorithmSignals> load() async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('algorithm_signals').doc('global_aggregates')
-          .get().timeout(const Duration(seconds: 5));
-      if (!doc.exists) return empty;
-      final data = doc.data() ?? {};
-      final catPop = <String, int>{};
-      for (final e in data.entries) {
-        if (e.key.startsWith('cat_') && e.value is num) {
-          catPop[e.key.substring(4)] = (e.value as num).toInt();
-        }
-      }
-      return GlobalAlgorithmSignals(
-        categoryPopularity: catPop,
-        totalQuizzes: (data['total_quizzes'] as num?)?.toInt() ?? 0,
-      );
-    } catch (_) {
-      return empty;
-    }
+    // TODO: implement PocketBase global signals aggregation
+    return empty;
   }
 }
 

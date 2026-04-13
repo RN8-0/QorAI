@@ -3,10 +3,9 @@
 library;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:compair/core/pb_client.dart';
 
 /// Background message handler — must be top-level function
 @pragma('vm:entry-point')
@@ -19,7 +18,6 @@ class NotificationService {
   static final instance = NotificationService._();
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   String? _token;
   String? get token => _token;
@@ -80,20 +78,20 @@ class NotificationService {
     }
   }
 
-  /// Save FCM token to user's Firestore document
+  /// Save FCM token to user's PocketBase record
   Future<void> _saveTokenToFirestore() async {
     if (_token == null) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final uid = pb.authStore.isValid ? pb.authStore.record?.id : null;
+    if (uid == null) return;
 
     try {
-      await _db.collection('users').doc(user.uid).set({
+      await pb.collection('users').update(uid, body: {
         'fcmToken': _token,
-        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        'fcmTokenUpdatedAt': DateTime.now().toIso8601String(),
         'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
-      }, SetOptions(merge: true));
-      debugPrint('=== COMPAIR: FCM token saved to Firestore ===');
+      });
+      debugPrint('=== COMPAIR: FCM token saved to PocketBase ===');
     } catch (e) {
       debugPrint('=== COMPAIR: FCM token save error: $e ===');
     }
@@ -140,13 +138,13 @@ class NotificationService {
 
   /// Toggle push notifications on/off
   Future<void> setEnabled(bool enabled) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final uid = pb.authStore.isValid ? pb.authStore.record?.id : null;
+    if (uid == null) return;
 
     try {
-      await _db.collection('users').doc(user.uid).set({
+      await pb.collection('users').update(uid, body: {
         'notificationsEnabled': enabled,
-      }, SetOptions(merge: true));
+      });
 
       if (enabled) {
         await _messaging.subscribeToTopic('all');

@@ -1,12 +1,32 @@
 /// Compair - Environment Configuration
 /// Blueprint Section 2.1
 
-import 'package:firebase_remote_config/firebase_remote_config.dart';
+/// API keys for RemoteConfig/PocketBase bakımı yapılıyor (firebase_remote_config kaldırıldı).
+/// Öncelik sırası: 1) compile-time --dart-define  2) varsayılan (boş)
 
 enum Environment {
   development,
   staging,
   production,
+}
+
+// RemoteConfigService instance'ına dışarıdan erişim için global setter
+// (Providers yüklendikten sonra PocketBase'den gelen key'leri iletir)
+String _pbGeminiKey = '';
+String _pbDeepSeekKey = '';
+String _pbRcAppleKey = '';
+String _pbRcAndroidKey = '';
+
+void setPbApiKeys({
+  String gemini = '',
+  String deepSeek = '',
+  String rcApple = '',
+  String rcAndroid = '',
+}) {
+  _pbGeminiKey = gemini;
+  _pbDeepSeekKey = deepSeek;
+  _pbRcAppleKey = rcApple;
+  _pbRcAndroidKey = rcAndroid;
 }
 
 class EnvConfig {
@@ -18,78 +38,38 @@ class EnvConfig {
     _environment = env;
   }
 
-  /// Gemini API Key (for AI chatbot + subscription scraper)
-  /// Priority: 1) Firebase Remote Config  2) compile-time env var (--dart-define)
-  /// NEVER hardcode keys — use: flutter run --dart-define-from-file=.env
   static String get geminiApiKey {
-    try {
-      final rcKey = FirebaseRemoteConfig.instance.getString('gemini_api_key');
-      if (rcKey.isNotEmpty) return rcKey;
-    } catch (_) {}
-    const envKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
-    return envKey;
+    if (_pbGeminiKey.isNotEmpty) return _pbGeminiKey;
+    return const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
   }
 
-  /// DeepSeek API Key
-  /// Priority: 1) Firebase Remote Config  2) compile-time env var (--dart-define)
   static String get deepSeekApiKey {
-    // 1. Firebase Remote Config (set in Firebase Console for production)
-    try {
-      final rcKey = FirebaseRemoteConfig.instance.getString('deepseek_api_key');
-      if (rcKey.isNotEmpty) return rcKey;
-    } catch (_) {}
-
-    // 2. Compile-time env var (CI/CD build flag or --dart-define-from-file)
-    const envKey = String.fromEnvironment('DEEPSEEK_API_KEY', defaultValue: '');
-    return envKey;
+    if (_pbDeepSeekKey.isNotEmpty) return _pbDeepSeekKey;
+    return const String.fromEnvironment('DEEPSEEK_API_KEY', defaultValue: '');
   }
 
-  /// Firebase Project bilgileri
   static bool get isProduction => _environment == Environment.production;
   static bool get isDevelopment => _environment == Environment.development;
 
-  /// Algolia Config
-  static String get algoliaAppId =>
-      const String.fromEnvironment('ALGOLIA_APP_ID', defaultValue: '');
-  static String get algoliaApiKey =>
-      const String.fromEnvironment('ALGOLIA_API_KEY', defaultValue: '');
-
-  /// RevenueCat Config — keys are set in Firebase Remote Config (Firebase Console)
-  /// Apple key:   Remote Config key = 'revenuecat_apple_api_key'
-  /// Android key: Remote Config key = 'revenuecat_android_api_key'
   static String get revenueCatAppleKey {
-    try {
-      final rcKey = FirebaseRemoteConfig.instance.getString('revenuecat_apple_api_key');
-      if (rcKey.isNotEmpty) return rcKey;
-    } catch (_) {}
+    if (_pbRcAppleKey.isNotEmpty) return _pbRcAppleKey;
     return const String.fromEnvironment('REVENUECAT_API_KEY', defaultValue: '');
   }
 
   static String get revenueCatAndroidKey {
-    try {
-      final rcKey = FirebaseRemoteConfig.instance.getString('revenuecat_android_api_key');
-      if (rcKey.isNotEmpty) return rcKey;
-    } catch (_) {}
+    if (_pbRcAndroidKey.isNotEmpty) return _pbRcAndroidKey;
     return const String.fromEnvironment('REVENUECAT_ANDROID_API_KEY', defaultValue: '');
   }
 
-  /// Mixpanel Config - Section 2
-  static String get mixpanelToken =>
-      const String.fromEnvironment('MIXPANEL_TOKEN', defaultValue: '');
-
-  /// YouTube Data API v3 Key
   static String get youtubeApiKey =>
       const String.fromEnvironment('YOUTUBE_API_KEY', defaultValue: '');
 
-  /// Google Custom Search API Key
   static String get googleSearchApiKey =>
       const String.fromEnvironment('GOOGLE_SEARCH_API_KEY', defaultValue: '');
 
-  /// Google Custom Search Engine ID
   static String get googleSearchEngineId =>
       const String.fromEnvironment('GOOGLE_SEARCH_ENGINE_ID', defaultValue: '');
 
-  /// IP Geolocation API - Section 11.2
   static const String ipApiUrl = 'http://ip-api.com/json';
   static const String ipInfoUrl = 'https://ipinfo.io/json';
 }

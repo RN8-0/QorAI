@@ -4,18 +4,18 @@ library;
 
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
-import 'package:compair/data/datasources/firebase_ds.dart';
+import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/datasources/hive_ds.dart';
 import 'package:compair/data/models/product_model.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 
 class ProductRepository {
-  final FirebaseDataSource _firebaseDS;
+  final PbDataSource _firebaseDS;
   final HiveDataSource _hiveDS;
 
   ProductRepository({
-    required FirebaseDataSource firebaseDS,
+    required PbDataSource firebaseDS,
     required HiveDataSource hiveDS,
   })  : _firebaseDS = firebaseDS,
         _hiveDS = hiveDS;

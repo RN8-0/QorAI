@@ -3,7 +3,7 @@
 library;
 
 import 'package:compair/core/errors.dart';
-import 'package:compair/data/datasources/firebase_ds.dart';
+import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/models/comparison_model.dart';
 import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/domain/entities/comparison_entity.dart';
@@ -13,11 +13,11 @@ import 'package:compair/services/ai_service.dart';
 import 'package:uuid/uuid.dart';
 
 class ComparisonRepositoryImpl {
-  final FirebaseDataSource _firebaseDS;
+  final PbDataSource _firebaseDS;
   final AIService _aiService;
 
   ComparisonRepositoryImpl({
-    required FirebaseDataSource firebaseDS,
+    required PbDataSource firebaseDS,
     required AIService aiService,
   })  : _firebaseDS = firebaseDS,
         _aiService = aiService;

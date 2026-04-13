@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import 'package:compair/core/theme.dart';
@@ -14,7 +14,7 @@ class BehaviorReportScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = pb.authStore.record?.id;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,

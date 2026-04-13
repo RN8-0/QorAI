@@ -423,7 +423,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
                     onTap: () {
-                      final uid = currentUser.uid;
+                      final uid = currentUser;
                       _showWriteReviewSheet(context, uid);
                     },
                     child: Padding(
@@ -451,7 +451,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
   }
 
   Widget _buildReviewsContent(List<ReviewModel> reviews, dynamic currentUser) {
-    final currentUserId = currentUser?.uid as String?;
+    final currentUserId = currentUser as String?;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,7 +763,7 @@ class _LikeDislikeButton extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () async {
-        final uid = ref.read(authStateProvider).valueOrNull?.uid;
+        final uid = ref.read(authStateProvider).valueOrNull;
         if (uid == null) return;
         HapticFeedback.lightImpact();
         final repo = ref.read(productRepositoryProvider);
@@ -1199,7 +1199,7 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                         reply['displayName'] as String? ?? 'User';
                     final replyText = reply['text'] as String? ?? '';
                     final replyTs =
-                        (reply['createdAt'] as Timestamp?)?.toDate() ??
+                        DateTime.tryParse(reply['createdAt']?.toString() ?? '') ??
                             DateTime.now();
                     final diff = DateTime.now().difference(replyTs);
                     final timeStr = diff.inDays > 0

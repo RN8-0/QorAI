@@ -1,0 +1,1066 @@
+/// Compair — PocketBase Data Source
+/// firebase_ds.dart'ın birebir PocketBase karşılığı.
+/// Tüm metod imzaları korundu; Firestore-spesifik tipler kaldırıldı.
+library;
+
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:pocketbase/pocketbase.dart';
+import 'package:dio/dio.dart';
+import 'package:compair/core/pb_client.dart';
+import 'package:compair/core/constants.dart';
+import 'package:compair/core/errors.dart';
+import 'package:compair/core/product_filter.dart';
+import 'package:compair/data/models/user_model.dart';
+import 'package:compair/data/models/product_model.dart';
+import 'package:compair/data/models/comparison_model.dart';
+import 'package:compair/data/models/other_models.dart';
+import 'package:compair/data/models/chat_conversation.dart';
+
+class PbDataSource {
+  final PocketBase _pb;
+  late final Dio _dio;
+
+  // ─── Local search result cache (recent queries, max 30, 5 min TTL) ───
+  static final Map<String, ({List<ProductModel> results, DateTime time})>
+      _searchResultCache = {};
+  static const _searchResultCacheTtl = Duration(minutes: 5);
+  static const _searchResultCacheMaxSize = 30;
+
+  PbDataSource({PocketBase? client}) : _pb = client ?? pb {
+    _dio = Dio(BaseOptions(
+      baseUrl: kTypesenseUrl,
+      headers: {'X-TYPESENSE-API-KEY': kTypesenseApiKey},
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+    ));
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── USERS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<UserModel?> getUser(String uid) async {
+    try {
+      final record = await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      return UserModel.fromPb(record);
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) return null;
+      throw FirestoreException(message: 'User could not be retrieved: $e');
+    } catch (e) {
+      throw FirestoreException(message: 'User could not be retrieved: $e');
+    }
+  }
+
+  Stream<UserModel?> watchUser(String uid) {
+    final controller = StreamController<UserModel?>();
+    _pb.collection(AppConstants.usersCollection).subscribe(uid, (e) {
+      if (e.action == 'delete') {
+        controller.add(null);
+      } else {
+        try {
+          controller.add(UserModel.fromPb(e.record!));
+        } catch (_) {}
+      }
+    });
+    // Fetch initial value
+    getUser(uid).then((u) {
+      if (!controller.isClosed) controller.add(u);
+    }).catchError((_) {});
+    return controller.stream;
+  }
+
+  Future<void> createUser(UserModel user) async {
+    try {
+      await _pb.collection(AppConstants.usersCollection).create(
+        body: {
+          'id': user.uid,
+          ...user.toMap(),
+        },
+      );
+    } catch (e) {
+      throw FirestoreException(message: 'User could not be created: $e');
+    }
+  }
+
+  Future<void> updateUser(String uid, Map<String, dynamic> data) async {
+    try {
+      data.remove('updatedAt'); // PB auto-manages 'updated' field
+      await _pb.collection(AppConstants.usersCollection).update(uid, body: data);
+    } catch (e) {
+      throw FirestoreException(message: 'User could not be updated: $e');
+    }
+  }
+
+  Future<bool> toggleFavorite(String uid, String productId) async {
+    final user = await getUser(uid);
+    final favorites = List<String>.from(user?.favorites ?? []);
+    final isFav = favorites.contains(productId);
+    if (isFav) {
+      favorites.remove(productId);
+    } else {
+      favorites.add(productId);
+    }
+    await _pb.collection(AppConstants.usersCollection).update(uid, body: {
+      'favorites': favorites,
+    });
+    return !isFav;
+  }
+
+  // ─── Recently Viewed ───
+
+  Future<void> addRecentlyViewed(String uid, String productId) async {
+    try {
+      // recently_viewed is a separate PB collection
+      await _pb.collection('recently_viewed').create(body: {
+        'userId': uid,
+        'productId': productId,
+      });
+    } catch (_) {}
+  }
+
+  Future<List<String>> getRecentlyViewed(String uid) async {
+    try {
+      final result = await _pb.collection('recently_viewed').getList(
+        page: 1,
+        perPage: 50,
+        filter: 'userId = "$uid"',
+        sort: '-created',
+      );
+      return result.items.map((r) => r.data['productId'] as String).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Stream<List<String>> watchRecentlyViewed(String uid) {
+    final controller = StreamController<List<String>>();
+    getRecentlyViewed(uid).then((ids) {
+      if (!controller.isClosed) controller.add(ids);
+    });
+    _pb.collection('recently_viewed').subscribe('*', (e) {
+      if (e.record?.data['userId'] == uid) {
+        getRecentlyViewed(uid).then((ids) {
+          if (!controller.isClosed) controller.add(ids);
+        });
+      }
+    });
+    return controller.stream;
+  }
+
+  // ─── User Activity Arrays (stored in user document) ───
+
+  Future<void> _appendUserArray(
+      String uid, String field, Map<String, dynamic> entry) async {
+    try {
+      final user = await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final existing = List<dynamic>.from(user.data[field] ?? []);
+      existing.add(entry);
+      await _pb
+          .collection(AppConstants.usersCollection)
+          .update(uid, body: {field: existing});
+    } catch (e) {
+      debugPrint('[PB] _appendUserArray($field) failed: $e');
+    }
+  }
+
+  Future<void> saveQuizHistory(
+      String uid, Map<String, dynamic> entry) async =>
+      _appendUserArray(uid, 'quizHistory', entry);
+
+  Future<void> saveAnalyzedProduct(
+      String uid, Map<String, dynamic> entry) async =>
+      _appendUserArray(uid, 'analyzedProducts', entry);
+
+  Future<void> saveSearchHistory(
+      String uid, Map<String, dynamic> entry) async =>
+      _appendUserArray(uid, 'searchHistory', entry);
+
+  Future<void> saveSubscriptionHistory(
+      String uid, Map<String, dynamic> entry) async =>
+      _appendUserArray(uid, 'subscriptionHistory', entry);
+
+  Future<void> updateSubscriptionHistory(
+      String uid, List<Map<String, dynamic>> history) async {
+    try {
+      await _pb.collection(AppConstants.usersCollection).update(uid, body: {
+        'subscriptionHistory': history,
+      });
+    } catch (e) {
+      debugPrint('[PB] updateSubscriptionHistory failed: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getSubscriptionHistory(
+      String uid) async {
+    try {
+      final user =
+          await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final list = user.data['subscriptionHistory'];
+      if (list is! List) return [];
+      return list.cast<Map<String, dynamic>>().reversed.take(20).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveLinkAnalysisHistory(
+      String uid, Map<String, dynamic> entry) async {
+    try {
+      final user =
+          await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final data = user.data;
+      final existing =
+          (data['linkAnalysisHistory'] as List?)?.cast<Map<String, dynamic>>() ??
+              [];
+      final url = entry['url'] as String? ?? '';
+      final deduped = existing.where((e) => e['url'] != url).toList();
+      deduped.insert(0, entry);
+      final trimmed = deduped.take(30).toList();
+      await _pb.collection(AppConstants.usersCollection).update(uid, body: {
+        'linkAnalysisHistory': trimmed,
+      });
+    } catch (e) {
+      debugPrint('[PB] saveLinkAnalysisHistory failed: $e');
+    }
+  }
+
+  Future<void> updateLinkAnalysisHistory(
+      String uid, List<Map<String, dynamic>> history) async {
+    try {
+      await _pb.collection(AppConstants.usersCollection).update(uid, body: {
+        'linkAnalysisHistory': history,
+      });
+    } catch (e) {
+      debugPrint('[PB] updateLinkAnalysisHistory failed: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getLinkAnalysisHistory(
+      String uid) async {
+    try {
+      final user =
+          await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final list = user.data['linkAnalysisHistory'];
+      if (list is! List) return [];
+      return list.cast<Map<String, dynamic>>().take(30).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── PRODUCTS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<ProductModel?> getProduct(String id) async {
+    try {
+      final record = await _pb
+          .collection(AppConstants.productsCollection)
+          .getOne(id)
+          .timeout(const Duration(seconds: 20));
+      return ProductModel.fromPb(record);
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) return null;
+      throw FirestoreException(message: 'Product could not be retrieved: $e');
+    } catch (e) {
+      throw FirestoreException(message: 'Product could not be retrieved: $e');
+    }
+  }
+
+  Future<List<ProductModel>> getProducts({
+    String? category,
+    String? subcategory,
+    int limit = 20,
+    String orderBy = 'name',
+    bool descending = false,
+    bool activeOnly = false,
+  }) async {
+    try {
+      final filters = <String>[];
+      if (category != null) filters.add('category = "$category"');
+      if (subcategory != null) filters.add('subcategory = "$subcategory"');
+      if (activeOnly) filters.add('isActive = true');
+
+      final sortField =
+          (orderBy == 'trendScore' || orderBy == 'techScore') ? orderBy : 'name';
+      final sortDir = descending ? '-' : '';
+      final sort = '$sortDir$sortField';
+
+      final result = await _pb
+          .collection(AppConstants.productsCollection)
+          .getList(
+            page: 1,
+            perPage: limit,
+            filter: filters.isEmpty ? '' : filters.join(' && '),
+            sort: sort,
+          )
+          .timeout(const Duration(seconds: 30));
+
+      return result.items
+          .map((r) {
+            try {
+              return ProductModel.fromPb(r);
+            } catch (e) {
+              debugPrint('=== COMPAIR: fromPb FAILED for ${r.id}: $e ===');
+              return null;
+            }
+          })
+          .whereType<ProductModel>()
+          .toList();
+    } catch (e, st) {
+      debugPrint('=== COMPAIR: getProducts ERROR: $e\n$st ===');
+      throw FirestoreException(message: 'Products could not be retrieved: $e');
+    }
+  }
+
+  /// Paginated products — returns nextPage integer instead of DocumentSnapshot.
+  Future<({List<ProductModel> products, int nextPage, bool hasMore})>
+      getProductsPage({
+    required String category,
+    int limit = 200,
+    int page = 1,
+  }) async {
+    final result = await _getProductsPageForCategory(category,
+        limit: limit, page: page);
+    if (result.products.isNotEmpty) return result;
+
+    // Variant fallback
+    final lower = category.toLowerCase().trim();
+    final variants = <String>{};
+    if (lower != category) variants.add(lower);
+    if (lower.endsWith('s')) {
+      variants.add(lower.substring(0, lower.length - 1));
+    } else {
+      variants.add('${lower}s');
+    }
+    if (lower.isNotEmpty) {
+      final cap = lower[0].toUpperCase() + lower.substring(1);
+      if (cap != category) variants.add(cap);
+    }
+    if (variants.isEmpty) {
+      return (products: <ProductModel>[], nextPage: page + 1, hasMore: false);
+    }
+
+    for (final v in variants) {
+      final r =
+          await _getProductsPageForCategory(v, limit: limit, page: page);
+      if (r.products.isNotEmpty) return r;
+    }
+    return (products: <ProductModel>[], nextPage: page + 1, hasMore: false);
+  }
+
+  Future<({List<ProductModel> products, int nextPage, bool hasMore})>
+      _getProductsPageForCategory(
+    String category, {
+    int limit = 200,
+    int page = 1,
+  }) async {
+    try {
+      final sw = Stopwatch()..start();
+      final result = await _pb
+          .collection(AppConstants.productsCollection)
+          .getList(
+            page: page,
+            perPage: limit,
+            filter: 'category = "$category"',
+          )
+          .timeout(const Duration(seconds: 30));
+      sw.stop();
+      debugPrint(
+          '=== COMPAIR: getProductsPage cat=$category limit=$limit page=$page → ${result.items.length} docs in ${sw.elapsedMilliseconds}ms ===');
+
+      final products = result.items
+          .map((r) {
+            try {
+              return ProductModel.fromPb(r);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<ProductModel>()
+          .toList();
+
+      final hasMore = (page * limit) < result.totalItems;
+      return (products: products, nextPage: page + 1, hasMore: hasMore);
+    } catch (e, st) {
+      debugPrint(
+          '=== COMPAIR: getProductsPage ERROR cat=$category: $e\n$st ===');
+      return (products: <ProductModel>[], nextPage: page + 1, hasMore: false);
+    }
+  }
+
+  Future<void> incrementProductViewCount(String productId) async {
+    try {
+      final record = await _pb
+          .collection(AppConstants.productsCollection)
+          .getOne(productId);
+      final viewCount = (record.data['viewCount'] as num?)?.toInt() ?? 0;
+      await _pb
+          .collection(AppConstants.productsCollection)
+          .update(productId, body: {'viewCount': viewCount + 1});
+    } catch (e) {
+      debugPrint('=== COMPAIR: incrementViewCount failed: $e ===');
+    }
+  }
+
+  Future<List<ProductModel>> getProductsByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    try {
+      // PocketBase supports `id IN (id1, id2, ...)` filter
+      final chunks = _chunkList(ids, 50);
+      final results = <ProductModel>[];
+      for (final chunk in chunks) {
+        final idList = chunk.map((id) => '"$id"').join(',');
+        final result = await _pb
+            .collection(AppConstants.productsCollection)
+            .getList(
+              page: 1,
+              perPage: chunk.length,
+              filter: 'id IN ($idList)',
+            )
+            .timeout(const Duration(seconds: 15));
+        results.addAll(result.items.map(ProductModel.fromPb));
+      }
+      return results;
+    } catch (e) {
+      throw FirestoreException(message: 'Products could not be retrieved: $e');
+    }
+  }
+
+  Future<void> deleteProduct(String id) async {
+    try {
+      await _pb.collection(AppConstants.productsCollection).delete(id);
+    } catch (e) {
+      throw FirestoreException(message: 'Product could not be deleted: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── COMPARISONS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<String> createComparison(ComparisonModel comparison) async {
+    try {
+      final record = await _pb
+          .collection(AppConstants.comparisonsCollection)
+          .create(body: comparison.toMap());
+      // Increment user comparison count
+      final user = await _pb
+          .collection(AppConstants.usersCollection)
+          .getOne(comparison.userId);
+      final count =
+          (user.data['comparisonsCount'] as num?)?.toInt() ?? 0;
+      await _pb.collection(AppConstants.usersCollection).update(
+          comparison.userId,
+          body: {'comparisonsCount': count + 1});
+      return record.id;
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Comparison could not be created: $e');
+    }
+  }
+
+  Future<List<ComparisonModel>> getUserComparisons(
+    String userId, {
+    int limit = 20,
+    int page = 1,
+  }) async {
+    try {
+      final result = await _pb
+          .collection(AppConstants.comparisonsCollection)
+          .getList(
+            page: page,
+            perPage: limit,
+            filter: 'userId = "$userId"',
+            sort: '-created',
+          )
+          .timeout(const Duration(seconds: 15));
+      return result.items.map(ComparisonModel.fromPb).toList();
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Comparisons could not be retrieved: $e');
+    }
+  }
+
+  Future<List<ComparisonModel>> getPredefinedComparisons({
+    String? category,
+    int limit = 10,
+  }) async {
+    try {
+      final filters = ['isPredefined = true', 'isActive = true'];
+      if (category != null) filters.add('category = "$category"');
+      final result = await _pb
+          .collection(AppConstants.comparisonsCollection)
+          .getList(
+            page: 1,
+            perPage: limit,
+            filter: filters.join(' && '),
+            sort: '-updated',
+          )
+          .timeout(const Duration(seconds: 15));
+      return result.items.map(ComparisonModel.fromPb).toList();
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Predefined comparisons could not be retrieved: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── CATEGORIES ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<List<CategoryModel>> getCategories() async {
+    try {
+      final result = await _pb
+          .collection(AppConstants.categoriesCollection)
+          .getList(
+            page: 1,
+            perPage: 100,
+            sort: 'order',
+          )
+          .timeout(const Duration(seconds: 10));
+      return result.items.map((r) => CategoryModel.fromPb(r)).toList();
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Categories could not be retrieved: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── TRENDS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<List<TrendModel>> getTrends({
+    required String country,
+    String? category,
+  }) async {
+    try {
+      final filters = ['country = "$country"'];
+      if (category != null) filters.add('category = "$category"');
+      final result = await _pb
+          .collection(AppConstants.trendsCollection)
+          .getList(
+            page: 1,
+            perPage: 1,
+            filter: filters.join(' && '),
+            sort: '-weekStart',
+          )
+          .timeout(const Duration(seconds: 10));
+      return result.items.map((r) => TrendModel.fromPb(r)).toList();
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Trend data could not be retrieved: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── REVIEWS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<List<ReviewModel>> getProductReviews(String productId,
+      {int limit = 20}) async {
+    try {
+      final result = await _pb
+          .collection(AppConstants.reviewsCollection)
+          .getList(
+            page: 1,
+            perPage: limit,
+            filter: 'productId = "$productId"',
+            sort: '-created',
+          )
+          .timeout(const Duration(seconds: 10));
+      return result.items.map((r) => ReviewModel.fromPb(r)).toList();
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Reviews could not be retrieved: $e');
+    }
+  }
+
+  Future<void> createReview(ReviewModel review) async {
+    try {
+      await _pb
+          .collection(AppConstants.reviewsCollection)
+          .create(body: review.toMap());
+    } catch (e) {
+      throw FirestoreException(message: 'Review could not be created: $e');
+    }
+  }
+
+  Future<void> deleteReview(String reviewId) async {
+    await _pb.collection(AppConstants.reviewsCollection).delete(reviewId);
+  }
+
+  Future<void> toggleReviewLike(String reviewId, String userId) async {
+    final record =
+        await _pb.collection(AppConstants.reviewsCollection).getOne(reviewId);
+    final liked = List<String>.from(record.data['likedBy'] ?? []);
+    final disliked = List<String>.from(record.data['dislikedBy'] ?? []);
+    if (liked.contains(userId)) {
+      liked.remove(userId);
+    } else {
+      liked.add(userId);
+      disliked.remove(userId);
+    }
+    await _pb.collection(AppConstants.reviewsCollection).update(reviewId,
+        body: {'likedBy': liked, 'dislikedBy': disliked});
+  }
+
+  Future<void> toggleReviewDislike(String reviewId, String userId) async {
+    final record =
+        await _pb.collection(AppConstants.reviewsCollection).getOne(reviewId);
+    final liked = List<String>.from(record.data['likedBy'] ?? []);
+    final disliked = List<String>.from(record.data['dislikedBy'] ?? []);
+    if (disliked.contains(userId)) {
+      disliked.remove(userId);
+    } else {
+      disliked.add(userId);
+      liked.remove(userId);
+    }
+    await _pb.collection(AppConstants.reviewsCollection).update(reviewId,
+        body: {'likedBy': liked, 'dislikedBy': disliked});
+  }
+
+  Stream<List<ReviewModel>> watchProductReviews(String productId,
+      {int limit = 30}) {
+    final controller = StreamController<List<ReviewModel>>();
+    getProductReviews(productId, limit: limit).then((reviews) {
+      if (!controller.isClosed) controller.add(reviews);
+    });
+    _pb.collection(AppConstants.reviewsCollection).subscribe('*', (e) {
+      if (e.record?.data['productId'] == productId) {
+        getProductReviews(productId, limit: limit).then((reviews) {
+          if (!controller.isClosed) controller.add(reviews);
+        });
+      }
+    });
+    return controller.stream;
+  }
+
+  Stream<List<ReviewModel>> watchUserReviews(String userId,
+      {int limit = 50}) {
+    final controller = StreamController<List<ReviewModel>>();
+    _pb
+        .collection(AppConstants.reviewsCollection)
+        .getList(
+          page: 1,
+          perPage: limit,
+          filter: 'userId = "$userId"',
+          sort: '-created',
+        )
+        .then((r) {
+      if (!controller.isClosed) {
+        controller.add(r.items.map((r) => ReviewModel.fromPb(r)).toList());
+      }
+    });
+    return controller.stream;
+  }
+
+  // ─── Review Replies (sub-table via replies collection) ───
+
+  Stream<List<Map<String, dynamic>>> watchReviewReplies(
+      String collection, String reviewId) {
+    final controller = StreamController<List<Map<String, dynamic>>>();
+    _fetchReplies(reviewId).then((replies) {
+      if (!controller.isClosed) controller.add(replies);
+    });
+    _pb.collection('review_replies').subscribe('*', (e) {
+      if (e.record?.data['reviewId'] == reviewId) {
+        _fetchReplies(reviewId).then((replies) {
+          if (!controller.isClosed) controller.add(replies);
+        });
+      }
+    });
+    return controller.stream;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchReplies(String reviewId) async {
+    final result = await _pb.collection('review_replies').getList(
+          page: 1,
+          perPage: 100,
+          filter: 'reviewId = "$reviewId"',
+          sort: 'created',
+        );
+    return result.items.map((r) => {'id': r.id, ...r.data}).toList();
+  }
+
+  Future<void> addReviewReply({
+    required String collection,
+    required String reviewId,
+    required String userId,
+    required String displayName,
+    required String text,
+  }) async {
+    await _pb.collection('review_replies').create(body: {
+      'reviewId': reviewId,
+      'userId': userId,
+      'displayName': displayName,
+      'text': text,
+    });
+  }
+
+  Future<void> deleteReviewReply({
+    required String collection,
+    required String reviewId,
+    required String replyId,
+  }) async {
+    await _pb.collection('review_replies').delete(replyId);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── USER LINKS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<void> saveUserLink(UserLinkModel link) async {
+    try {
+      await _pb
+          .collection(AppConstants.userLinksCollection)
+          .create(body: link.toMap());
+    } catch (e) {
+      throw FirestoreException(message: 'Link could not be saved: $e');
+    }
+  }
+
+  Future<List<UserLinkModel>> getUserLinks(String userId,
+      {int limit = 20}) async {
+    try {
+      final result = await _pb
+          .collection(AppConstants.userLinksCollection)
+          .getList(
+            page: 1,
+            perPage: limit,
+            filter: 'userId = "$userId"',
+            sort: '-created',
+          )
+          .timeout(const Duration(seconds: 10));
+      return result.items.map((r) => UserLinkModel.fromPb(r)).toList();
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Links could not be retrieved: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── SEARCH (Typesense) ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  bool get isCacheReady =>
+      _homeFeedProducts != null && _homeFeedProducts!.isNotEmpty;
+
+  void warmUpCache() {}
+  void injectProductsIntoCache(List<ProductModel> products) {}
+
+  Future<List<ProductModel>> getAllCachedProducts() async =>
+      _homeFeedProducts ?? [];
+
+  static List<ProductModel>? _homeFeedProducts;
+
+  void setHomeFeedProducts(List<ProductModel> products) {
+    if (products.isNotEmpty) _homeFeedProducts = products;
+  }
+
+  void preWarmSearchFunction() {}
+
+  Future<List<ProductModel>> searchProducts({
+    required String query,
+    int limit = 50,
+    String? category,
+  }) async {
+    final q = query.trim();
+    if (q.isEmpty || q == '___warm___' || q == '_warmup_') return [];
+
+    final cacheKey = '${q.toLowerCase()}|${category ?? ''}|$limit';
+    final cached = _searchResultCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.time) < _searchResultCacheTtl) {
+      return cached.results;
+    }
+
+    try {
+      final params = <String, dynamic>{
+        'q': q,
+        'query_by': 'name,brand,subcategory,keySpecsText,tags',
+        'per_page': limit,
+        'sort_by': 'techScore:desc',
+        if (category != null) 'filter_by': 'category:=$category',
+      };
+
+      final response = await _dio.get(
+        '/collections/products/documents/search',
+        queryParameters: params,
+      );
+
+      final hits = (response.data['hits'] as List?) ?? [];
+      final results = hits.map((hit) {
+        final doc = Map<String, dynamic>.from(
+            hit['document'] as Map<dynamic, dynamic>);
+        // Typesense uses 'id' as the document id
+        return ProductModel.fromMap(doc);
+      }).toList();
+
+      final filtered = ProductFilter.filterRelaxed(results);
+
+      _evictSearchResultCache();
+      _searchResultCache[cacheKey] =
+          (results: filtered, time: DateTime.now());
+      return filtered;
+    } catch (e) {
+      debugPrint('SEARCH: Typesense failed: $e');
+    }
+
+    // Fallback: homeFeed products
+    if (_homeFeedProducts != null && _homeFeedProducts!.isNotEmpty) {
+      return _scoreAndRankProducts(_homeFeedProducts!, q, limit);
+    }
+
+    return [];
+  }
+
+  void _evictSearchResultCache() {
+    if (_searchResultCache.length >= _searchResultCacheMaxSize) {
+      final sorted = _searchResultCache.entries.toList()
+        ..sort((a, b) => a.value.time.compareTo(b.value.time));
+      for (final e in sorted
+          .take(_searchResultCache.length - _searchResultCacheMaxSize + 1)) {
+        _searchResultCache.remove(e.key);
+      }
+    }
+  }
+
+  List<ProductModel> searchProductsFromCache(String query,
+      {int limit = 50}) {
+    if (query.trim().isEmpty) return [];
+    final pool = _homeFeedProducts;
+    if (pool == null || pool.isEmpty) return [];
+    return _scoreAndRankProducts(pool, query, limit);
+  }
+
+  List<ProductModel> _scoreAndRankProducts(
+      List<ProductModel> products, String query, int limit) {
+    final filtered = ProductFilter.filter(products);
+    final q = query.trim().toLowerCase();
+    final words =
+        q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+
+    final scored = <({ProductModel product, int score})>[];
+    for (final p in filtered) {
+      final name = p.name.toLowerCase();
+      final brand = (p.brand ?? '').toLowerCase();
+      final category = p.category.toLowerCase();
+      final subcategory = p.subcategory.toLowerCase();
+      final tags = p.tags.map((t) => t.toLowerCase()).toList();
+      final keySpecValues =
+          p.keySpecs.values.map((v) => v.toLowerCase()).toList();
+
+      int score = 0;
+      if (name == q) score += 100;
+      else if (name.startsWith(q)) score += 80;
+      else if (name.contains(q)) score += 60;
+      if (words.length > 1 && words.every((w) => name.contains(w))) score += 50;
+      if (brand == q) score += 40;
+      else if (brand.startsWith(q)) score += 30;
+      else if (brand.contains(q)) score += 20;
+      if (category.contains(q) || subcategory.contains(q)) score += 15;
+      if (keySpecValues.any((v) => v.contains(q))) score += 15;
+      else if (words.length > 1 &&
+          keySpecValues.any((v) => words.any((w) => v.contains(w)))) {
+        score += 8;
+      }
+      for (final tag in tags) {
+        if (tag == q || words.any((w) => tag.contains(w))) {
+          score += 10;
+          break;
+        }
+      }
+      if (score == 0) {
+        final combined = '$name $brand';
+        if (words.every((w) => combined.contains(w))) score += 25;
+      }
+      if (score == 0 && words.length == 1) {
+        final combined = '$name $brand ${tags.join(' ')}';
+        if (combined.contains(q)) score += 20;
+      }
+      if (score > 0) {
+        final techBoost = (p.techScore / 100.0 * 5).round();
+        scored.add((product: p, score: score + techBoost));
+      }
+    }
+    scored.sort((a, b) {
+      final cmp = b.score.compareTo(a.score);
+      if (cmp != 0) return cmp;
+      return b.product.techScore.compareTo(a.product.techScore);
+    });
+    return scored.take(limit).map((s) => s.product).toList();
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── MISC ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<void> updateComparison({
+    required String comparisonId,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      await _pb
+          .collection(AppConstants.comparisonsCollection)
+          .update(comparisonId, body: data);
+    } catch (e) {
+      throw FirestoreException(
+          message: 'Comparison could not be updated: $e');
+    }
+  }
+
+  Future<void> saveLinkAnalysis({
+    required String userId,
+    required String url,
+    required String productName,
+    required double score,
+    required String analysis,
+    String? imageUrl,
+    String? category,
+  }) async {
+    try {
+      await _pb.collection('saved_analyses').create(body: {
+        'userId': userId,
+        'url': url,
+        'productName': productName,
+        'score': score,
+        'analysis': analysis,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (category != null) 'category': category,
+      });
+    } catch (e) {
+      throw FirestoreException(message: 'Could not save analysis: $e');
+    }
+  }
+
+  Future<void> addToUserOwnedProducts({
+    required String userId,
+    required String productId,
+  }) async {
+    try {
+      final user =
+          await _pb.collection(AppConstants.usersCollection).getOne(userId);
+      final owned = List<String>.from(user.data['ownedProducts'] ?? []);
+      if (!owned.contains(productId)) {
+        owned.add(productId);
+        await _pb.collection(AppConstants.usersCollection).update(userId,
+            body: {'ownedProducts': owned});
+      }
+    } catch (e) {
+      throw FirestoreException(
+          message: 'User product list could not be updated: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── CHAT CONVERSATIONS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<String> createChatConversation(ChatConversation conv) async {
+    final record = await _pb.collection('chat_conversations').create(body: {
+      'userId': conv.userId,
+      'title': conv.title,
+      'messages': conv.messages.map((m) => m.toMap()).toList(),
+      'messageCount': conv.messages.length,
+    });
+    return record.id;
+  }
+
+  Future<void> updateChatConversation(
+      String userId,
+      String convId,
+      List<PersistedChatMsg> messages,
+      String title) async {
+    await _pb.collection('chat_conversations').update(convId, body: {
+      'messages': messages.map((m) => m.toMap()).toList(),
+      'title': title,
+      'messageCount': messages.length,
+    });
+  }
+
+  Stream<List<ChatConversation>> streamChatConversations(String userId) {
+    final controller = StreamController<List<ChatConversation>>();
+    _pb
+        .collection('chat_conversations')
+        .getList(
+          page: 1,
+          perPage: 50,
+          filter: 'userId = "$userId"',
+          sort: '-updated',
+        )
+        .then((r) {
+      if (!controller.isClosed) {
+        controller.add(r.items.map(ChatConversation.fromPb).toList());
+      }
+    });
+    _pb.collection('chat_conversations').subscribe('*', (e) {
+      if (e.record?.data['userId'] == userId) {
+        _pb
+            .collection('chat_conversations')
+            .getList(
+              page: 1,
+              perPage: 50,
+              filter: 'userId = "$userId"',
+              sort: '-updated',
+            )
+            .then((r) {
+          if (!controller.isClosed) {
+            controller.add(r.items.map(ChatConversation.fromPb).toList());
+          }
+        });
+      }
+    });
+    return controller.stream;
+  }
+
+  Future<ChatConversation?> getChatConversation(
+      String userId, String convId) async {
+    try {
+      final record =
+          await _pb.collection('chat_conversations').getOne(convId);
+      return ChatConversation.fromPb(record);
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) return null;
+      return null;
+    }
+  }
+
+  Future<void> deleteChatConversation(String userId, String convId) async {
+    await _pb.collection('chat_conversations').delete(convId);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── APP CONFIG (Remote Config yerine) ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> getAppConfig() async {
+    try {
+      final result = await _pb.collection('app_config').getFullList(batch: 50);
+      final config = <String, dynamic>{};
+      for (final record in result) {
+        final key = record.data['key'] as String?;
+        final value = record.data['value'];
+        if (key != null) config[key] = value;
+      }
+      return config;
+    } catch (e) {
+      debugPrint('[PB] getAppConfig failed: $e');
+      return {};
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // ─── HELPERS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  List<List<T>> _chunkList<T>(List<T> list, int chunkSize) {
+    final chunks = <List<T>>[];
+    for (var i = 0; i < list.length; i += chunkSize) {
+      chunks.add(list.sublist(
+          i, i + chunkSize > list.length ? list.length : i + chunkSize));
+    }
+    return chunks;
+  }
+}

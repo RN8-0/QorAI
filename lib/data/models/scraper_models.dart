@@ -2,7 +2,7 @@
 /// Models for scraper management system
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 /// Scraper Source - Product data sources
 class ScraperSource {
@@ -26,31 +26,33 @@ class ScraperSource {
     this.failureCount = 0,
   });
 
-  factory ScraperSource.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ScraperSource.fromPb(RecordModel r) {
+    final data = r.data;
     return ScraperSource(
-      id: doc.id,
+      id: r.id,
       name: data['name'] ?? '',
       baseUrl: data['baseUrl'] ?? '',
       priority: data['priority'] ?? 99,
       isActive: data['isActive'] ?? true,
       supportedCategories: List<String>.from(data['supportedCategories'] ?? []),
-      lastSuccessfulScrape: (data['lastSuccessfulScrape'] as Timestamp?)?.toDate(),
+      lastSuccessfulScrape: DateTime.tryParse(data['lastSuccessfulScrape'] ?? ''),
       failureCount: data['failureCount'] ?? 0,
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory ScraperSource.fromFirestore(dynamic doc) => ScraperSource.fromPb(doc as RecordModel);
+
+  Map<String, dynamic> toMap() => {
     'name': name,
     'baseUrl': baseUrl,
     'priority': priority,
     'isActive': isActive,
     'supportedCategories': supportedCategories,
-    'lastSuccessfulScrape': lastSuccessfulScrape != null
-        ? Timestamp.fromDate(lastSuccessfulScrape!)
-        : null,
+    'lastSuccessfulScrape': lastSuccessfulScrape?.toIso8601String(),
     'failureCount': failureCount,
   };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 /// Scraper Brand - Brands to scrape (Apple, Samsung, etc.)
@@ -75,29 +77,33 @@ class ScraperBrand {
     this.productCount = 0,
   });
 
-  factory ScraperBrand.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ScraperBrand.fromPb(RecordModel r) {
+    final data = r.data;
     return ScraperBrand(
-      id: doc.id,
+      id: r.id,
       name: data['name'] ?? '',
       logoUrl: data['logoUrl'],
       websiteUrl: data['websiteUrl'],
       categories: List<String>.from(data['categories'] ?? []),
       isActive: data['isActive'] ?? true,
-      lastScraped: (data['lastScraped'] as Timestamp?)?.toDate(),
+      lastScraped: DateTime.tryParse(data['lastScraped'] ?? ''),
       productCount: data['productCount'] ?? 0,
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory ScraperBrand.fromFirestore(dynamic doc) => ScraperBrand.fromPb(doc as RecordModel);
+
+  Map<String, dynamic> toMap() => {
     'name': name,
     'logoUrl': logoUrl,
     'websiteUrl': websiteUrl,
     'categories': categories,
     'isActive': isActive,
-    'lastScraped': lastScraped != null ? Timestamp.fromDate(lastScraped!) : null,
+    'lastScraped': lastScraped?.toIso8601String(),
     'productCount': productCount,
   };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 /// Category Template - Spec fields for each category
@@ -116,25 +122,28 @@ class CategoryTemplate {
     required this.updatedAt,
   });
 
-  factory CategoryTemplate.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory CategoryTemplate.fromPb(RecordModel r) {
+    final data = r.data;
     return CategoryTemplate(
-      id: doc.id,
+      id: r.id,
       name: data['name'] ?? '',
       icon: data['icon'] ?? 'category',
       specFields: (data['specFields'] as List<dynamic>? ?? [])
-          .map((e) => SpecFieldTemplate.fromMap(e))
+          .map((e) => SpecFieldTemplate.fromMap(e as Map<String, dynamic>))
           .toList(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(data['updated'] ?? '') ?? DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory CategoryTemplate.fromFirestore(dynamic doc) => CategoryTemplate.fromPb(doc as RecordModel);
+
+  Map<String, dynamic> toMap() => {
     'name': name,
     'icon': icon,
     'specFields': specFields.map((e) => e.toMap()).toList(),
-    'updatedAt': Timestamp.now(),
   };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 /// Spec Field Template - Individual spec field definition
@@ -200,10 +209,10 @@ class ScraperSchedule {
     this.nextRun,
   });
 
-  factory ScraperSchedule.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ScraperSchedule.fromPb(RecordModel r) {
+    final data = r.data;
     return ScraperSchedule(
-      id: doc.id,
+      id: r.id,
       name: data['name'] ?? '',
       frequency: data['frequency'] ?? 'weekly',
       dayOfWeek: data['dayOfWeek'],
@@ -212,12 +221,14 @@ class ScraperSchedule {
       brandIds: List<String>.from(data['brandIds'] ?? []),
       categoryIds: List<String>.from(data['categoryIds'] ?? []),
       isActive: data['isActive'] ?? true,
-      lastRun: (data['lastRun'] as Timestamp?)?.toDate(),
-      nextRun: (data['nextRun'] as Timestamp?)?.toDate(),
+      lastRun: DateTime.tryParse(data['lastRun'] ?? ''),
+      nextRun: DateTime.tryParse(data['nextRun'] ?? ''),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory ScraperSchedule.fromFirestore(dynamic doc) => ScraperSchedule.fromPb(doc as RecordModel);
+
+  Map<String, dynamic> toMap() => {
     'name': name,
     'frequency': frequency,
     'dayOfWeek': dayOfWeek,
@@ -226,9 +237,11 @@ class ScraperSchedule {
     'brandIds': brandIds,
     'categoryIds': categoryIds,
     'isActive': isActive,
-    'lastRun': lastRun != null ? Timestamp.fromDate(lastRun!) : null,
-    'nextRun': nextRun != null ? Timestamp.fromDate(nextRun!) : null,
+    'lastRun': lastRun?.toIso8601String(),
+    'nextRun': nextRun?.toIso8601String(),
   };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 /// Scraper Log - Log of scraping operations
@@ -265,14 +278,14 @@ class ScraperLog {
     this.details = const [],
   });
 
-  factory ScraperLog.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ScraperLog.fromPb(RecordModel r) {
+    final data = r.data;
     return ScraperLog(
-      id: doc.id,
+      id: r.id,
       type: data['type'] ?? 'manual',
       status: data['status'] ?? 'running',
-      startedAt: (data['startedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      startedAt: DateTime.tryParse(data['startedAt'] ?? '') ?? DateTime.now(),
+      completedAt: DateTime.tryParse(data['completedAt'] ?? ''),
       sourceId: data['sourceId'],
       brandId: data['brandId'],
       categoryId: data['categoryId'],
@@ -285,11 +298,13 @@ class ScraperLog {
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory ScraperLog.fromFirestore(dynamic doc) => ScraperLog.fromPb(doc as RecordModel);
+
+  Map<String, dynamic> toMap() => {
     'type': type,
     'status': status,
-    'startedAt': Timestamp.fromDate(startedAt),
-    'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+    'startedAt': startedAt.toIso8601String(),
+    'completedAt': completedAt?.toIso8601String(),
     'sourceId': sourceId,
     'brandId': brandId,
     'categoryId': categoryId,
@@ -300,6 +315,8 @@ class ScraperLog {
     'errorMessage': errorMessage,
     'details': details,
   };
+
+  Map<String, dynamic> toFirestore() => toMap();
 
   Duration? get duration {
     if (completedAt == null) return null;
@@ -337,10 +354,10 @@ class StreamingService {
     required this.updatedAt,
   });
 
-  factory StreamingService.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory StreamingService.fromPb(RecordModel r) {
+    final data = r.data;
     return StreamingService(
-      id: doc.id,
+      id: r.id,
       name: data['name'] ?? '',
       category: data['category'] ?? '',
       logoUrl: data['logoUrl'],
@@ -351,11 +368,13 @@ class StreamingService {
       platforms: List<String>.from(data['platforms'] ?? []),
       advantages: List<String>.from(data['advantages'] ?? []),
       disadvantages: List<String>.from(data['disadvantages'] ?? []),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(data['updated'] ?? '') ?? DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory StreamingService.fromFirestore(dynamic doc) => StreamingService.fromPb(doc as RecordModel);
+
+  Map<String, dynamic> toMap() => {
     'name': name,
     'category': category,
     'logoUrl': logoUrl,
@@ -366,6 +385,7 @@ class StreamingService {
     'platforms': platforms,
     'advantages': advantages,
     'disadvantages': disadvantages,
-    'updatedAt': Timestamp.now(),
   };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }

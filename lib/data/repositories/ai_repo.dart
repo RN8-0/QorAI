@@ -3,7 +3,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:compair/core/errors.dart';
-import 'package:compair/data/datasources/firebase_ds.dart';
+import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/domain/entities/user_entity.dart';
@@ -12,12 +12,12 @@ import 'package:compair/services/metadata_service.dart';
 
 class AIRepository {
   final AIService _aiService;
-  final FirebaseDataSource _firebaseDS;
+  final PbDataSource _firebaseDS;
   final MetadataService? _metadataService;
 
   AIRepository({
     required AIService aiService,
-    required FirebaseDataSource firebaseDS,
+    required PbDataSource firebaseDS,
     MetadataService? metadataService,
   })  : _aiService = aiService,
         _firebaseDS = firebaseDS,

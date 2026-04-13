@@ -6,7 +6,6 @@
 library;
 
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -96,8 +95,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   String? _error;
   Timer? _searchDebounce;
 
-  // Cursor for Firestore pagination
-  DocumentSnapshot? _lastDoc;
+  // Page counter for PocketBase pagination
+  int _currentPage = 1;
 
   // ── Filter cache — computed once per products change, not on every build ──
   List<FilterDefinition>? _cachedFilterDefs;
@@ -188,7 +187,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
   }
 
-  /// Fetch next page via cursor, called by scroll or background loop.
+  /// Fetch next page via PB pagination, called by scroll or background loop.
   Future<void> _fetchNextPage() async {
     if (_fetchingAll || _allLoaded || !mounted) return;
     setState(() => _fetchingAll = true);
@@ -197,7 +196,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final page = await ds.getProductsPage(
         category: _activeCategoryId,
         limit: 200,
-        startAfter: _lastDoc,
+        page: _currentPage,
       );
       if (!mounted) return;
       final existingIds = _allProducts.map((p) => p.id).toSet();
@@ -207,8 +206,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           .toList();
       setState(() {
         _allProducts = [..._allProducts, ...newProducts];
-        _lastDoc = page.lastDoc;
-        _allLoaded = page.products.length < 200;
+        _currentPage = page.nextPage;
+        _allLoaded = !page.hasMore || page.products.length < 200;
       });
     } catch (_) {}
     if (mounted) setState(() => _fetchingAll = false);
@@ -216,7 +215,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   /// Load first page fast, then keep fetching all pages in background.
   Future<void> _loadProducts() async {
-    setState(() { _loading = true; _error = null; _allLoaded = false; _lastDoc = null; _allProducts = []; });
+    setState(() { _loading = true; _error = null; _allLoaded = false; _currentPage = 1; _allProducts = []; });
     final catKey = _activeCategoryId.toLowerCase().trim();
     final hiveCacheKey = 'cat_products_${catKey}_v2';
 
@@ -262,34 +261,34 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
     } catch (_) {}
 
-    // 2. Fetch ALL pages from Firestore via cursor pagination
-    _lastDoc = null;
+    // 2. Fetch ALL pages from PocketBase via page-based pagination
+    _currentPage = 1;
     _allLoaded = false;
     if (mounted && _loading) setState(() => _loading = false);
     _fetchAllPages(hiveCacheKey: hiveCacheKey);
   }
 
-  /// Fetches every page of products for this category using cursor pagination.
+  /// Fetches every page of products for this category using PocketBase pagination.
   /// Each page is merged into _allProducts immediately so filters stay fresh.
   Future<void> _fetchAllPages({String? hiveCacheKey}) async {
     if (_fetchingAll || !mounted) return;
     setState(() => _fetchingAll = true);
 
     final ds = ref.read(firebaseDataSourceProvider);
-    DocumentSnapshot? cursor;
+    int page = 1;
     final seenIds = _allProducts.map((p) => p.id).toSet();
 
     while (mounted) {
       try {
-        final page = await ds.getProductsPage(
+        final result = await ds.getProductsPage(
           category: _activeCategoryId,
           limit: 200,
-          startAfter: cursor,
+          page: page,
         );
 
         if (!mounted) break;
 
-        final newProducts = page.products
+        final newProducts = result.products
             .where((p) => !seenIds.contains(p.id))
             .cast<ProductEntity>()
             .toList();
@@ -302,14 +301,14 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           });
         }
 
-        if (page.products.length < 200 || page.lastDoc == null) {
+        if (!result.hasMore || result.products.isEmpty) {
           // Last page reached — save all to Hive for instant next-session load
           if (hiveCacheKey != null && mounted && _allProducts.isNotEmpty) {
             try {
               final cache = ref.read(cacheServiceProvider);
               final maps = _allProducts
                   .whereType<ProductModel>()
-                  .map((p) => p.toFirestore())
+                  .map((p) => p.toMap())
                   .toList();
               if (maps.isNotEmpty) {
                 cache.setLocal(hiveCacheKey, maps,
@@ -317,12 +316,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               }
             } catch (_) {}
           }
-          setState(() { _allLoaded = true; _lastDoc = null; });
+          setState(() { _allLoaded = true; _currentPage = 1; });
           break;
         }
 
-        cursor = page.lastDoc;
-        _lastDoc = cursor;
+        page = result.nextPage;
+        _currentPage = page;
       } catch (_) {
         break;
       }

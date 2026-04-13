@@ -69,7 +69,7 @@ class _SubscriptionHistoryScreenState
       if (auth == null) return;
       final result = await ref
           .read(firebaseDataSourceProvider)
-          .getSubscriptionHistory(auth.uid)
+          .getSubscriptionHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
       final pending = ref.read(pendingSubscriptionHistoryProvider);
@@ -86,7 +86,7 @@ class _SubscriptionHistoryScreenState
       if (auth == null) { if (mounted) setState(() => _isLoading = false); return; }
       final result = await ref
           .read(firebaseDataSourceProvider)
-          .getSubscriptionHistory(auth.uid)
+          .getSubscriptionHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
       final pending = ref.read(pendingSubscriptionHistoryProvider);
@@ -106,13 +106,13 @@ class _SubscriptionHistoryScreenState
       if (auth != null) {
         // Get full list from Firestore and remove by timestamp
         final allItems = await ref.read(firebaseDataSourceProvider)
-            .getSubscriptionHistory(auth.uid);
+            .getSubscriptionHistory(auth);
         final ts = removed['timestamp'] as String?;
         final filtered = allItems
             .where((e) => e['timestamp'] != ts)
             .toList();
         await ref.read(firebaseDataSourceProvider)
-            .updateSubscriptionHistory(auth.uid, filtered);
+            .updateSubscriptionHistory(auth, filtered);
         ref.invalidate(subscriptionHistoryProvider);
       }
     } catch (_) {
@@ -153,7 +153,7 @@ class _SubscriptionHistoryScreenState
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth != null) {
         await ref.read(firebaseDataSourceProvider)
-            .updateSubscriptionHistory(auth.uid, []);
+            .updateSubscriptionHistory(auth, []);
         ref.invalidate(subscriptionHistoryProvider);
       }
     } catch (_) {}

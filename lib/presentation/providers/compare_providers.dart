@@ -273,7 +273,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   final GeminiService _gemini;
   final SubscriptionService _subscriptionService;
   final BehaviorTrackingService _behaviorTracking;
-  final FirebaseDataSource _firebaseDs;
+  final PbDataSource _firebaseDs;
   final Ref _ref;
 
   LinkQuizNotifier({
@@ -281,7 +281,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     required GeminiService gemini,
     required SubscriptionService subscriptionService,
     required BehaviorTrackingService behaviorTracking,
-    required FirebaseDataSource firebaseDs,
+    required PbDataSource firebaseDs,
     required Ref ref,
   })  : _aiRepo = aiRepo,
         _gemini = gemini,
@@ -651,13 +651,13 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   final AIRepository _aiRepo;
   final GeminiService _gemini;
   final BehaviorTrackingService _behaviorTracking;
-  final FirebaseDataSource _firebaseDs;
+  final PbDataSource _firebaseDs;
 
   CompareAnalysisNotifier({
     required AIRepository aiRepo,
     required GeminiService gemini,
     required BehaviorTrackingService behaviorTracking,
-    required FirebaseDataSource firebaseDs,
+    required PbDataSource firebaseDs,
   })  : _aiRepo = aiRepo,
         _gemini = gemini,
         _behaviorTracking = behaviorTracking,
@@ -1047,7 +1047,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
             .where((q) => q.selectedOption != null)
             .map((q) => {'question': q.text, 'answer': q.selectedOption})
             .toList();
-        _ref.read(firebaseDataSourceProvider).saveQuizHistory(authState.uid, {
+        _ref.read(firebaseDataSourceProvider).saveQuizHistory(authState, {
           'timestamp': DateTime.now().toIso8601String(),
           'type': 'subscription',
           'services': state.subscriptionNames,
@@ -1117,7 +1117,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
           );
           // Firebase'e kaydet
           _ref.read(firebaseDataSourceProvider)
-              .saveSubscriptionHistory(authState.uid, entry)
+              .saveSubscriptionHistory(authState, entry)
               .then((_) => _ref.invalidate(subscriptionHistoryProvider))
               .catchError((_) {});
         }
@@ -1148,14 +1148,14 @@ final subQuizProvider =
 final subscriptionHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final authState = ref.watch(authStateProvider).valueOrNull;
   if (authState == null) return [];
-  return ref.read(firebaseDataSourceProvider).getSubscriptionHistory(authState.uid);
+  return ref.read(firebaseDataSourceProvider).getSubscriptionHistory(authState);
 });
 
 /// Link analysis history for logged-in user (Firebase)
 final linkAnalysisHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final authState = ref.watch(authStateProvider).valueOrNull;
   if (authState == null) return [];
-  return ref.read(firebaseDataSourceProvider).getLinkAnalysisHistory(authState.uid);
+  return ref.read(firebaseDataSourceProvider).getLinkAnalysisHistory(authState);
 });
 
 /// Optimistic (yerel, anlık) subscription geçmişi — analiz biter bitmez görünsün
@@ -1179,14 +1179,15 @@ final userProfileProvider = userProfileStreamProvider;
 /// Screens use comparisonNotifierProvider
 final comparisonNotifierProvider = comparisonStateProvider;
 
-/// Subscription services from Firestore (public read)
+/// Subscription services from PocketBase (public read)
 final subscriptionsProvider = FutureProvider<List<SubscriptionServiceModel>>((ref) async {
-  final snapshot = await FirebaseFirestore.instance
-      .collection('subscription_services')
-      .where('isActive', isEqualTo: true)
-      .get()
+  final result = await pb.collection('subscription_services')
+      .getList(
+        filter: 'isActive = true',
+        perPage: 100,
+      )
       .timeout(const Duration(seconds: 15));
-  return snapshot.docs.map((doc) => SubscriptionServiceModel.fromFirestore(doc)).toList();
+  return result.items.map((record) => SubscriptionServiceModel.fromPb(record)).toList();
 });
 
 /// Session-level compare screen state — survives tab switches and navigation
@@ -1319,7 +1320,7 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
     data: (user) {
       if (user == null) return Stream.value(<ReviewModel>[]);
       return ref.read(firebaseDataSourceProvider)
-          .watchUserReviews(user.uid);
+          .watchUserReviews(user);
     },
     loading: () => Stream.value(<ReviewModel>[]),
     error: (_, _) => Stream.value(<ReviewModel>[]),

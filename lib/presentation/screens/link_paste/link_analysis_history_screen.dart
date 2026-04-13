@@ -65,7 +65,7 @@ class _LinkAnalysisHistoryScreenState
       if (auth == null) return;
       final result = await ref
           .read(firebaseDataSourceProvider)
-          .getLinkAnalysisHistory(auth.uid)
+          .getLinkAnalysisHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
       final pending = ref.read(pendingLinkAnalysisHistoryProvider);
@@ -86,7 +86,7 @@ class _LinkAnalysisHistoryScreenState
       }
       final result = await ref
           .read(firebaseDataSourceProvider)
-          .getLinkAnalysisHistory(auth.uid)
+          .getLinkAnalysisHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
       final pending = ref.read(pendingLinkAnalysisHistoryProvider);
@@ -121,7 +121,7 @@ class _LinkAnalysisHistoryScreenState
       if (auth != null) {
         final allItems = await ref
             .read(firebaseDataSourceProvider)
-            .getLinkAnalysisHistory(auth.uid);
+            .getLinkAnalysisHistory(auth);
         final ts = removed['timestamp'] as String?;
         final id = removed['id'] as String?;
         final filtered = allItems.where((e) {
@@ -130,7 +130,7 @@ class _LinkAnalysisHistoryScreenState
         }).toList();
         await ref
             .read(firebaseDataSourceProvider)
-            .updateLinkAnalysisHistory(auth.uid, filtered);
+            .updateLinkAnalysisHistory(auth, filtered);
         ref.invalidate(linkAnalysisHistoryProvider);
       }
     } catch (_) {
@@ -178,7 +178,7 @@ class _LinkAnalysisHistoryScreenState
       if (auth != null) {
         await ref
             .read(firebaseDataSourceProvider)
-            .updateLinkAnalysisHistory(auth.uid, []);
+            .updateLinkAnalysisHistory(auth, []);
         ref.invalidate(linkAnalysisHistoryProvider);
       }
       // Yerel cache'i de temizle

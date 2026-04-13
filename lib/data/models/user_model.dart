@@ -4,7 +4,7 @@
 /// Extended model for Profile Algorithm
 /// Age, interests, and profile vector support
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 
 class UserModel extends UserEntity {
@@ -41,10 +41,10 @@ class UserModel extends UserEntity {
   });
 
   /// Read from Firestore
-  factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory UserModel.fromPb(RecordModel record) {
+    final data = record.data;
     return UserModel(
-      uid: doc.id,
+      uid: record.id,
       email: data['email'] ?? '',
       displayName: data['displayName'] ?? '',
       photoURL: data['photoURL'],
@@ -60,14 +60,14 @@ class UserModel extends UserEntity {
       favorites: List<String>.from(data['favorites'] ?? []),
       quizCompleted: data['quizCompleted'] ?? false,
       isPremium: data['isPremium'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDate(data['created']) ?? _parseDate(data['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDate(data['updated']) ?? _parseDate(data['updatedAt']) ?? DateTime.now(),
       affiliateClicks: data['affiliateClicks'] ?? 0,
       comparisonsCount: data['comparisonsCount'] ?? 0,
       primaryCategory: data['primaryCategory'],
       usageIntent: data['usageIntent'],
       // New fields
-      birthDate: (data['birthDate'] as Timestamp?)?.toDate(),
+      birthDate: _parseDate(data['birthDate']),
       gender: data['gender'],
       ageRange: data['ageRange'],
       profession: data['profession'],
@@ -93,8 +93,14 @@ class UserModel extends UserEntity {
     return result;
   }
 
-  /// Write to Firestore
-  Map<String, dynamic> toFirestore() {
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  /// Write to Map (PocketBase / cache)
+  Map<String, dynamic> toMap() {
     return {
       'email': email,
       'displayName': displayName,
@@ -111,14 +117,11 @@ class UserModel extends UserEntity {
       'favorites': favorites,
       'quizCompleted': quizCompleted,
       'isPremium': isPremium,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
       'affiliateClicks': affiliateClicks,
       'comparisonsCount': comparisonsCount,
       'primaryCategory': primaryCategory,
       'usageIntent': usageIntent,
-      // New fields
-      if (birthDate != null) 'birthDate': Timestamp.fromDate(birthDate!),
+      if (birthDate != null) 'birthDate': birthDate!.toIso8601String(),
       'gender': gender,
       'ageRange': ageRange,
       'profession': profession,
@@ -127,6 +130,8 @@ class UserModel extends UserEntity {
       'userSubscriptionDetails': userSubscriptionDetails,
     };
   }
+
+  Map<String, dynamic> toFirestore() => toMap();
 
   /// Convert Entity to Model
   factory UserModel.fromEntity(UserEntity entity) {

@@ -13,12 +13,12 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:compair/core/pb_client.dart';
 
 enum SpecDirection { higher, lower, neutral }
 
 class SpecDirectionService {
-  // Firestore overrides cache
+  // PocketBase overrides cache
   Map<String, SpecDirection> _firestoreOverrides = {};
   bool _loaded = false;
 
@@ -305,18 +305,15 @@ class SpecDirectionService {
   Future<void> loadFirestoreOverrides() async {
     if (_loaded) return;
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('spec_directions')
-          .doc('base')
-          .get();
-      if (doc.exists) {
-        final data = doc.data() ?? {};
-        _firestoreOverrides = {};
-        for (final entry in data.entries) {
-          final dir = _parseDirection(entry.value?.toString());
-          if (dir != null) {
-            _firestoreOverrides[entry.key] = dir;
-          }
+      final record = await pb.collection('spec_directions')
+          .getFirstListItem('key = "base"')
+          .timeout(const Duration(seconds: 5));
+      final data = record.data;
+      for (final entry in data.entries) {
+        if (entry.key == 'key') continue;
+        final dir = _parseDirection(entry.value?.toString());
+        if (dir != null) {
+          _firestoreOverrides[entry.key] = dir;
         }
       }
       _loaded = true;
@@ -331,7 +328,7 @@ class SpecDirectionService {
   SpecDirection getDirection(String specKey) {
     final normalized = _normalizeKey(specKey);
 
-    // 1. Firestore override
+    // 1. PocketBase override
     if (_firestoreOverrides.containsKey(normalized)) {
       return _firestoreOverrides[normalized]!;
     }
@@ -510,9 +507,15 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
         'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 2048},
       };
 
-      // Use cloud_firestore transaction to avoid duplicate calls
-      final docRef = FirebaseFirestore.instance.collection('spec_directions').doc('base');
-      final existing = (await docRef.get()).data() ?? {};
+      // Load existing overrides from PocketBase
+      Map<String, dynamic> existing = {};
+      String? recordId;
+      try {
+        final record = await pb.collection('spec_directions')
+            .getFirstListItem('key = "base"');
+        existing = Map<String, dynamic>.from(record.data);
+        recordId = record.id;
+      } catch (_) {}
 
       // Call Gemini
       final response = await _callGemini(endpoint, geminiApiKey, body);
@@ -535,7 +538,12 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
         }
       }
 
-      await docRef.set(updates);
+      // Save back to PocketBase
+      if (recordId != null) {
+        await pb.collection('spec_directions').update(recordId, body: updates);
+      } else {
+        await pb.collection('spec_directions').create(body: {...updates, 'key': 'base'});
+      }
       // Refresh local cache
       _firestoreOverrides = {};
       _loaded = false;

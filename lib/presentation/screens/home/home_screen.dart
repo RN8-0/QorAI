@@ -21,7 +21,7 @@ import 'package:compair/presentation/widgets/subscription_logo_widget.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
 import 'package:compair/data/models/other_models.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:compair/core/pb_client.dart';
 
 // ============================================================================
 // HOME SCREEN
@@ -334,7 +334,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         : (context.l10n?.goodEvening ?? 'Good evening');
     final userName = userProfile.whenOrNull(
       data: (user) => user?.displayName?.split(' ').first,
-    ) as String? ?? FirebaseAuth.instance.currentUser?.displayName?.split(' ').first;
+    ) as String? ?? pb.authStore.record?.getStringValue('displayName')?.split(' ').first;
     
     return SliverToBoxAdapter(
       child: SafeArea(
@@ -429,17 +429,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
     if (firestoreWidget != null) return firestoreWidget;
 
-    // Firestore not ready yet (loading) — use Firebase Auth currentUser (sync, instant)
-    final authUser = FirebaseAuth.instance.currentUser;
-    if (authUser != null) {
-      if (authUser.photoURL != null) {
+    // PB not ready yet (loading) — use pb.authStore.record (sync, instant)
+    final authRecord = pb.authStore.record;
+    if (authRecord != null) {
+      final photoURL = authRecord.getStringValue('photoURL');
+      final displayName = authRecord.getStringValue('displayName');
+      if (photoURL.isNotEmpty) {
         return CachedNetworkImage(
-          imageUrl: authUser.photoURL!,
+          imageUrl: photoURL,
           width: 38, height: 38, fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => _buildAvatarFallback(authUser.displayName),
+          errorWidget: (_, __, ___) => _buildAvatarFallback(displayName),
         );
       }
-      return _buildAvatarFallback(authUser.displayName);
+      return _buildAvatarFallback(displayName);
     }
 
     return _buildAvatarFallback(null);

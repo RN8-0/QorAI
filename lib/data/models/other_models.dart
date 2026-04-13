@@ -2,7 +2,7 @@
 /// Blueprint Section 4.4 - categories, affiliate_clicks, user_links, trends, reviews
 
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/domain/entities/category_entity.dart';
 
 // ─── Category Model ─── Section 4.4
@@ -18,10 +18,10 @@ class CategoryModel extends CategoryEntity {
     super.productCount,
   });
 
-  factory CategoryModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory CategoryModel.fromPb(RecordModel record) {
+    final data = record.data;
     return CategoryModel(
-      id: doc.id,
+      id: record.id,
       name: data['name'] ?? '',
       icon: data['icon'] ?? '',
       emoji: data['emoji'],
@@ -32,15 +32,9 @@ class CategoryModel extends CategoryEntity {
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
-        'name': name,
-        'icon': icon,
-        if (emoji != null) 'emoji': emoji,
-        'order': order,
-        'isActive': isActive,
-        'subcategories': subcategories,
-        'productCount': productCount,
-      };
+  factory CategoryModel.fromFirestore(dynamic doc) => CategoryModel.fromPb(doc as RecordModel);
+
+  Map<String, dynamic> toFirestore() => toMap();
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -87,27 +81,35 @@ class AffiliateClickModel {
     this.converted = false,
   });
 
-  factory AffiliateClickModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory AffiliateClickModel.fromPb(RecordModel record) {
+    final data = record.data;
     return AffiliateClickModel(
-      id: doc.id,
+      id: record.id,
       userId: data['userId'] ?? '',
       productId: data['productId'] ?? '',
       affiliateUrl: data['affiliateUrl'] ?? '',
       country: data['country'] ?? '',
-      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      timestamp: _parseDate(data['created']) ?? _parseDate(data['timestamp']) ?? DateTime.now(),
       converted: data['converted'] ?? false,
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  Map<String, dynamic> toMap() => {
         'userId': userId,
         'productId': productId,
         'affiliateUrl': affiliateUrl,
         'country': country,
-        'timestamp': Timestamp.fromDate(timestamp),
+        'timestamp': timestamp.toIso8601String(),
         'converted': converted,
       };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 // ─── User Link Model ─── Section 4.4 (Link Paste Feature)
@@ -132,31 +134,37 @@ class UserLinkModel {
     required this.createdAt,
   });
 
-  factory UserLinkModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory UserLinkModel.fromPb(RecordModel record) {
+    final data = record.data;
     final ogData = data['ogMetadata'] as Map<String, dynamic>?;
-
     return UserLinkModel(
-      id: doc.id,
+      id: record.id,
       userId: data['userId'] ?? '',
       url: data['url'] ?? '',
       ogMetadata: ogData != null ? OgMetadataModel.fromMap(ogData) : null,
       aiScore: (data['aiScore'] as num?)?.toDouble() ?? 0.0,
       aiAnalysis: data['aiAnalysis'] ?? '',
       category: data['category'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDate(data['created']) ?? _parseDate(data['createdAt']) ?? DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  Map<String, dynamic> toMap() => {
         'userId': userId,
         'url': url,
         'ogMetadata': ogMetadata?.toMap(),
         'aiScore': aiScore,
         'aiAnalysis': aiAnalysis,
         'category': category,
-        'createdAt': Timestamp.fromDate(createdAt),
       };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 class OgMetadataModel {
@@ -204,34 +212,43 @@ class TrendModel {
     required this.items,
     required this.weekStart,
     required this.weekEnd,
-    this.source = '',
+    required this.source,
   });
 
-  factory TrendModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory TrendModel.fromPb(RecordModel record) {
+    final data = record.data;
     final itemsList = (data['items'] as List<dynamic>? ?? [])
         .map((e) => TrendItem.fromMap(e as Map<String, dynamic>))
         .toList();
-
     return TrendModel(
-      id: doc.id,
+      id: record.id,
       category: data['category'] ?? '',
       country: data['country'] ?? '',
       items: itemsList,
-      weekStart: (data['weekStart'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      weekEnd: (data['weekEnd'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      weekStart: _parseDate(data['weekStart']) ?? DateTime.now(),
+      weekEnd: _parseDate(data['weekEnd']) ?? DateTime.now(),
       source: data['source'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory TrendModel.fromFirestore(dynamic doc) => TrendModel.fromPb(doc as RecordModel);
+
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  Map<String, dynamic> toMap() => {
         'category': category,
         'country': country,
         'items': items.map((e) => e.toMap()).toList(),
-        'weekStart': Timestamp.fromDate(weekStart),
-        'weekEnd': Timestamp.fromDate(weekEnd),
+        'weekStart': weekStart.toIso8601String(),
+        'weekEnd': weekEnd.toIso8601String(),
         'source': source,
       };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 class TrendItem {
@@ -292,33 +309,42 @@ class ReviewModel {
     this.dislikedBy = const [],
   });
 
-  factory ReviewModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ReviewModel.fromPb(RecordModel record) {
+    final data = record.data;
     return ReviewModel(
-      id: doc.id,
+      id: record.id,
       userId: data['userId'] ?? '',
       productId: data['productId'] ?? '',
       rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
       text: data['text'] ?? '',
       helpful: data['helpful'] ?? 0,
       reported: data['reported'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDate(data['created']) ?? DateTime.now(),
       likedBy: List<String>.from(data['likedBy'] ?? []),
       dislikedBy: List<String>.from(data['dislikedBy'] ?? []),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  factory ReviewModel.fromFirestore(dynamic doc) => ReviewModel.fromPb(doc as RecordModel);
+
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  Map<String, dynamic> toMap() => {
         'userId': userId,
         'productId': productId,
         'rating': rating,
         'text': text,
         'helpful': helpful,
         'reported': reported,
-        'createdAt': Timestamp.fromDate(createdAt),
         'likedBy': likedBy,
         'dislikedBy': dislikedBy,
       };
+
+  Map<String, dynamic> toFirestore() => toMap();
 }
 
 // ─── Subscription Service Model (Netflix, Spotify etc.) ───
@@ -383,12 +409,10 @@ class SubscriptionServiceModel {
     required this.plans,
   });
 
-  factory SubscriptionServiceModel.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final d = doc.data() ?? {};
+  factory SubscriptionServiceModel.fromPb(RecordModel record) {
+    final d = record.data;
     return SubscriptionServiceModel(
-      id: doc.id,
+      id: record.id,
       name: d['name'] as String? ?? '',
       category: d['category'] as String? ?? 'streaming',
       logo: d['logo'] as String? ?? '',
@@ -406,6 +430,9 @@ class SubscriptionServiceModel {
           .toList(),
     );
   }
+
+  factory SubscriptionServiceModel.fromFirestore(dynamic doc) =>
+      SubscriptionServiceModel.fromPb(doc as RecordModel);
 
   SubscriptionPlan? get cheapestPlan {
     if (plans.isEmpty) return null;
@@ -520,12 +547,8 @@ class UserSubscriptionDetail {
       serviceId: serviceId,
       serviceName: data['serviceName'] as String? ?? '',
       planName: data['planName'] as String? ?? '',
-      startDate: data['startDate'] is Timestamp
-          ? (data['startDate'] as Timestamp).toDate()
-          : DateTime.tryParse(data['startDate']?.toString() ?? '') ?? DateTime.now(),
-      renewalDate: data['renewalDate'] is Timestamp
-          ? (data['renewalDate'] as Timestamp).toDate()
-          : DateTime.tryParse(data['renewalDate']?.toString() ?? ''),
+      startDate: DateTime.tryParse(data['startDate']?.toString() ?? '') ?? DateTime.now(),
+      renewalDate: DateTime.tryParse(data['renewalDate']?.toString() ?? ''),
       monthlyCost: (data['monthlyCost'] as num?)?.toDouble() ?? 0.0,
       currency: data['currency'] as String? ?? 'USD',
       isActive: data['isActive'] as bool? ?? true,
@@ -536,8 +559,8 @@ class UserSubscriptionDetail {
     return {
       'serviceName': serviceName,
       'planName': planName,
-      'startDate': Timestamp.fromDate(startDate),
-      if (renewalDate != null) 'renewalDate': Timestamp.fromDate(renewalDate!),
+      'startDate': startDate.toIso8601String(),
+      if (renewalDate != null) 'renewalDate': renewalDate!.toIso8601String(),
       'monthlyCost': monthlyCost,
       'currency': currency,
       'isActive': isActive,

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 enum PersistedMsgRole { user, ai, system }
 enum PersistedMsgStatus { sent, error }
@@ -25,8 +25,8 @@ class PersistedChatMsg {
     text: m['text'] as String? ?? '',
     status: PersistedMsgStatus.values
         .byName(m['status'] as String? ?? 'sent'),
-    timestamp: m['timestamp'] is Timestamp
-        ? (m['timestamp'] as Timestamp).toDate()
+    timestamp: m['timestamp'] is String
+        ? DateTime.tryParse(m['timestamp'] as String) ?? DateTime.now()
         : DateTime.now(),
   );
 
@@ -35,7 +35,7 @@ class PersistedChatMsg {
     'role': role.name,
     'text': text,
     'status': status.name,
-    'timestamp': Timestamp.fromDate(timestamp),
+    'timestamp': timestamp.toIso8601String(),
   };
 }
 
@@ -60,31 +60,29 @@ class ChatConversation {
 
   int get messageCount => storedMessageCount ?? messages.length;
 
-  factory ChatConversation.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory ChatConversation.fromPb(RecordModel record) {
+    final d = record.data;
     return ChatConversation(
-      id: doc.id,
+      id: record.id,
       userId: d['userId'] as String? ?? '',
       title: d['title'] as String? ?? 'Chat',
       messages: (d['messages'] as List<dynamic>? ?? [])
           .map((m) => PersistedChatMsg.fromMap(m as Map<String, dynamic>))
           .toList(),
-      createdAt: d['createdAt'] is Timestamp
-          ? (d['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      updatedAt: d['updatedAt'] is Timestamp
-          ? (d['updatedAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      createdAt: DateTime.tryParse(d['created'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(d['updated'] as String? ?? '') ?? DateTime.now(),
       storedMessageCount: d['messageCount'] as int?,
     );
   }
+
+  /// Legacy alias for backward compatibility
+  factory ChatConversation.fromFirestore(dynamic doc) =>
+      ChatConversation.fromPb(doc as RecordModel);
 
   Map<String, dynamic> toFirestore() => {
     'userId': userId,
     'title': title,
     'messages': messages.map((m) => m.toMap()).toList(),
-    'createdAt': Timestamp.fromDate(createdAt),
-    'updatedAt': Timestamp.fromDate(updatedAt),
     'messageCount': messages.length,
   };
 

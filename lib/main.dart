@@ -16,7 +16,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:compair/firebase_options.dart';
@@ -26,8 +25,8 @@ import 'package:compair/services/remote_config_service.dart';
 import 'package:compair/services/spec_translation_service.dart';
 import 'package:compair/services/notification_service.dart';
 import 'package:compair/data/datasources/hive_ds.dart';
+import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/presentation/providers/providers.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -54,12 +53,6 @@ void main() {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       debugPrint('=== COMPAIR: Firebase initialized ===');
-
-      // Limit Firestore memory/disk cache to prevent OOM on mid-range devices
-      FirebaseFirestore.instance.settings = const Settings(
-        cacheSizeBytes: 50 * 1024 * 1024, // 50MB — covers ~10K products offline
-        persistenceEnabled: true,
-      );
 
       // Register background message handler
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -93,8 +86,8 @@ void main() {
       debugPrint('=== COMPAIR: CacheService FAILED: $e ===');
     }
 
-    // Initialize Remote Config - Section 21.1
-    final remoteConfigService = RemoteConfigService(FirebaseRemoteConfig.instance);
+    // Initialize Remote Config via PocketBase
+    final remoteConfigService = RemoteConfigService.fromPb(PbDataSource());
     await remoteConfigService.initialize();
 
     // Initialize spec translation dictionary (EN→TR, 7300+ entries)

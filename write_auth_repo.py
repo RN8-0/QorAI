@@ -1,4 +1,4 @@
-/// Compair - Auth Repository
+content = r"""/// Compair - Auth Repository
 library;
 
 import 'package:pocketbase/pocketbase.dart';
@@ -157,3 +157,8 @@ class AuthRepository {
     return 'An error occurred (${e.statusCode})';
   }
 }
+"""
+
+with open('lib/data/repositories/auth_repo.dart', 'w', encoding='utf-8') as f:
+    f.write(content)
+print('auth_repo.dart written OK')

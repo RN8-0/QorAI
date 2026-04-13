@@ -11,7 +11,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
-import 'package:compair/config/firebase_config.dart';
 import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/services/ai_service.dart';
@@ -52,7 +51,7 @@ class DeepSeekService implements AIService {
     }
 
     // Prompt building - Section 7.3
-    final systemPrompt = FirebaseConfig.getString('ai_comparison_system_prompt');
+    const systemPrompt = 'You are an expert product comparison assistant. Analyze products objectively based on specs, reviews, and value.';
     final userPrompt = _buildComparisonPrompt(req);
 
     final response = await _makeRequest(

@@ -492,7 +492,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     }
 
     final result = await ref.read(authRepositoryProvider).updateUserProfile(
-          uid: user.uid,
+          uid: user,
           quizData: quizData,
         );
 

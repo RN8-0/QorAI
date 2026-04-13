@@ -2652,7 +2652,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth != null) {
         ref.read(firebaseDataSourceProvider)
-            .saveLinkAnalysisHistory(auth.uid, entry)
+            .saveLinkAnalysisHistory(auth, entry)
             .then((_) => ref.invalidate(linkAnalysisHistoryProvider))
             .catchError((_) {});
       }

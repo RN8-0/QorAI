@@ -2,7 +2,7 @@
 /// Blueprint Section 4.2
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 
 class ProductModel extends ProductEntity {
@@ -34,11 +34,10 @@ class ProductModel extends ProductEntity {
     super.variantGroup,
   });
 
-  /// Read from Firestore
-  factory ProductModel.fromFirestore(DocumentSnapshot doc) {
-    final raw = doc.data();
-    if (raw == null) throw StateError('Product document is empty: ${doc.id}');
-    final data = (raw is Map) ? _deepCastMap(raw) : <String, dynamic>{};
+  /// Read from PocketBase
+  factory ProductModel.fromPb(RecordModel record) {
+    final data = _deepCastMap(record.data);
+    final id = record.id;
 
     // Handle prices from legacy 'prices' map or new 'priceRange'
     final prices = <String, double>{};
@@ -111,7 +110,7 @@ class ProductModel extends ProductEntity {
     );
 
     return ProductModel(
-      id: doc.id,
+      id: id,
       name: data['name'] ?? '',
       brand: data['brand'] ?? '',
       category: data['category'] ?? '',
@@ -141,16 +140,15 @@ class ProductModel extends ProductEntity {
     );
   }
 
-  /// Safely parse a Firestore field that could be Timestamp, String, or null
+  /// Safely parse a date field that could be an ISO String or null
   static DateTime? _parseOptionalDate(dynamic value) {
     if (value == null) return null;
-    if (value is Timestamp) return value.toDate();
     if (value is String) return DateTime.tryParse(value);
     return null;
   }
 
-  /// Write to Firestore
-  Map<String, dynamic> toFirestore() {
+  /// Write to Map (for PocketBase / cache)
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
@@ -176,12 +174,15 @@ class ProductModel extends ProductEntity {
       'techScore': techScore,
       'techSubscores': techSubscores,
       'images': images,
-      'lastUpdated': Timestamp.fromDate(lastUpdated),
-      if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+      'lastUpdated': lastUpdated.toIso8601String(),
+      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
       'isActive': isActive,
       'variantGroup': variantGroup,
     };
   }
+
+  /// Alias for backwards compat
+  Map<String, dynamic> toFirestore() => toMap();
 
   /// Convert Entity to Model
   factory ProductModel.fromEntity(ProductEntity entity) {

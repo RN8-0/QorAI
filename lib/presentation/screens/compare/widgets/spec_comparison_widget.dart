@@ -104,21 +104,17 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     return ids.join('_');
   }
 
-  /// Try to load a cached AI result from Firestore
+  /// Try to load a cached AI result from PocketBase
   Future<Map<String, dynamic>?> _loadAiCache(String feature) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('ai_compare_cache')
-          .doc(_aiCacheDocId)
-          .collection('features')
-          .doc(feature)
-          .get();
-      if (!doc.exists) return null;
-      final data = doc.data()!;
-      final ts = data['timestamp'] as Timestamp?;
+      final record = await pb.collection('ai_compare_cache')
+          .getFirstListItem('cacheKey = "$_aiCacheDocId" && feature = "$feature"')
+          .timeout(const Duration(seconds: 5));
+      final data = record.data;
+      final ts = DateTime.tryParse(data['timestamp']?.toString() ?? '');
       if (ts == null) return null;
       // 24h TTL
-      if (DateTime.now().difference(ts.toDate()).inHours > 24) return null;
+      if (DateTime.now().difference(ts).inHours > 24) return null;
       debugPrint('[Compair] ✅ Cache HIT for $feature');
       return data;
     } catch (e) {
@@ -127,15 +123,22 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  /// Save an AI result to Firestore cache
+  /// Save an AI result to PocketBase cache
   Future<void> _saveAiCache(String feature, Map<String, dynamic> data) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('ai_compare_cache')
-          .doc(_aiCacheDocId)
-          .collection('features')
-          .doc(feature)
-          .set({...data, 'timestamp': FieldValue.serverTimestamp()});
+      final body = {
+        ...data,
+        'cacheKey': _aiCacheDocId,
+        'feature': feature,
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      };
+      try {
+        final existing = await pb.collection('ai_compare_cache')
+            .getFirstListItem('cacheKey = "$_aiCacheDocId" && feature = "$feature"');
+        await pb.collection('ai_compare_cache').update(existing.id, body: body);
+      } catch (_) {
+        await pb.collection('ai_compare_cache').create(body: body);
+      }
     } catch (e) {
       debugPrint('[Compair] Cache write error ($feature): $e');
     }
@@ -4043,18 +4046,22 @@ Rules:
           ),
           const SizedBox(height: 14),
 
-          // Real-time review stream from comparison_reviews collection
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('comparison_reviews')
-                .where('docKey', isEqualTo: docKey)
-                .orderBy('timestamp', descending: true)
-                .limit(20)
-                .snapshots()
-                .timeout(
-                  const Duration(seconds: 10),
-                  onTimeout: (sink) => sink.close(),
-                ),
+          // Reviews from comparison_reviews collection (PocketBase)
+          FutureBuilder<List<RecordModel>>(
+            future: (() async {
+              try {
+                final result = await pb.collection('comparison_reviews')
+                    .getList(
+                      filter: 'docKey = "$docKey"',
+                      sort: '-timestamp',
+                      perPage: 20,
+                    )
+                    .timeout(const Duration(seconds: 10));
+                return result.items;
+              } catch (_) {
+                return <RecordModel>[];
+              }
+            })(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: Padding(
@@ -4064,16 +4071,16 @@ Rules:
               if (snapshot.hasError) {
                 return _buildEmptyReviews();
               }
-              final docs = snapshot.data?.docs ?? [];
-              if (docs.isEmpty) {
+              final records = snapshot.data ?? [];
+              if (records.isEmpty) {
                 return _buildEmptyReviews();
               }
               return Column(
-                children: docs.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
+                children: records.map((record) {
+                  final data = record.data;
                   return _CompareReviewCard(
                     data: data,
-                    docId: doc.id,
+                    docId: record.id,
                     onConfirmDelete: _confirmDeleteReview,
                   );
                 }).toList(),
@@ -4140,10 +4147,8 @@ Rules:
             onPressed: () async {
               Navigator.of(ctx).pop();
               try {
-                await FirebaseFirestore.instance
-                    .collection('comparison_reviews')
-                    .doc(docId)
-                    .delete();
+                await pb.collection('comparison_reviews')
+                    .delete(docId);
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -4255,14 +4260,13 @@ Rules:
                         try {
                           final docKey = _comparisonReviewDocKey();
                           final productIds = widget.products.map((p) => p.id).toList()..sort();
-                          await FirebaseFirestore.instance
-                              .collection('comparison_reviews')
-                              .add({
+                          await pb.collection('comparison_reviews')
+                              .create(body: {
                             'docKey': docKey,
                             'userId': userId,
                             'displayName': resolvedDisplayName,
                             'reviewText': textController.text.trim(),
-                            'timestamp': FieldValue.serverTimestamp(),
+                            'timestamp': DateTime.now().toUtc().toIso8601String(),
                             'productIds': productIds,
                           });
                           if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
@@ -4462,7 +4466,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     final displayName = widget.data['displayName'] as String? ?? '';
     final reviewText = widget.data['reviewText'] as String? ?? '';
     final timestamp =
-        (widget.data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+        DateTime.tryParse(widget.data['timestamp']?.toString() ?? '') ?? DateTime.now();
     final isAnonymous = userId == 'anonymous';
 
     String resolvedName;
@@ -4759,7 +4763,7 @@ class _CompareRepliesSectionState extends ConsumerState<_CompareRepliesSection> 
                         reply['displayName'] as String? ?? 'User';
                     final replyText = reply['text'] as String? ?? '';
                     final replyTs =
-                        (reply['createdAt'] as Timestamp?)?.toDate() ??
+                        DateTime.tryParse(reply['createdAt']?.toString() ?? '') ??
                             DateTime.now();
                     final diff = DateTime.now().difference(replyTs);
                     final timeStr = diff.inDays > 0

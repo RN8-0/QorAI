@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:flutter/material.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:flutter/services.dart';
@@ -121,29 +121,29 @@ class ProfileScreen extends ConsumerWidget {
             bottom: false,
             child: userProfile.when(
               data: (user) => _ProfileBody(user: user),
-              // Loading: build minimal UserEntity from Firebase Auth (has displayName, email, photoURL)
+              // Loading: build minimal UserEntity from PB auth store
               loading: () {
-                final auth = FirebaseAuth.instance.currentUser;
+                final auth = pb.authStore.record;
                 if (auth == null) return const _ProfileBody(user: null);
                 final now = DateTime.now();
                 return _ProfileBody(user: UserEntity(
-                  uid: auth.uid,
-                  email: auth.email ?? '',
-                  displayName: auth.displayName ?? '',
-                  photoURL: auth.photoURL,
+                  uid: auth.id,
+                  email: auth.getStringValue('email'),
+                  displayName: auth.getStringValue('displayName'),
+                  photoURL: auth.getStringValue('photoURL').isEmpty ? null : auth.getStringValue('photoURL'),
                   createdAt: now,
                   updatedAt: now,
                 ));
               },
               error: (_, __) {
-                final auth = FirebaseAuth.instance.currentUser;
+                final auth = pb.authStore.record;
                 if (auth == null) return const _ProfileBody(user: null);
                 final now = DateTime.now();
                 return _ProfileBody(user: UserEntity(
-                  uid: auth.uid,
-                  email: auth.email ?? '',
-                  displayName: auth.displayName ?? '',
-                  photoURL: auth.photoURL,
+                  uid: auth.id,
+                  email: auth.getStringValue('email'),
+                  displayName: auth.getStringValue('displayName'),
+                  photoURL: auth.getStringValue('photoURL').isEmpty ? null : auth.getStringValue('photoURL'),
                   createdAt: now,
                   updatedAt: now,
                 ));

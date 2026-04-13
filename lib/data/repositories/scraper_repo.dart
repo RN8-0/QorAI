@@ -1,42 +1,45 @@
 /// Compair - Scraper Repository
-/// Manages scraper operations and Cloud Functions integration
+/// Manages scraper operations via PocketBase
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:async';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/models/scraper_models.dart';
 
 class ScraperRepository {
-  final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
+  final PocketBase _pb;
 
-  ScraperRepository({
-    FirebaseFirestore? firestore,
-    FirebaseFunctions? functions,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? FirebaseFunctions.instanceFor(region: 'us-central1');
+  ScraperRepository({PocketBase? pbClient}) : _pb = pbClient ?? pb;
 
   // ─── Scraper Sources ───
 
   /// Get all scraper sources ordered by priority
   Stream<List<ScraperSource>> watchSources() {
-    return _firestore
-        .collection('scraper_sources')
-        .orderBy('priority')
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => ScraperSource.fromFirestore(d)).toList());
+    final controller = StreamController<List<ScraperSource>>();
+    UnsubscribeFunc? unsub;
+    _fetchSources().then(controller.add).catchError(controller.addError);
+    _pb.collection('scraper_sources').subscribe('*', (e) {
+      _fetchSources().then(controller.add).catchError(controller.addError);
+    }).then((fn) => unsub = fn);
+    controller.onCancel = () => unsub?.call();
+    return controller.stream;
+  }
+
+  Future<List<ScraperSource>> _fetchSources() async {
+    final result = await _pb.collection('scraper_sources').getFullList(sort: 'priority');
+    return result.map(ScraperSource.fromPb).toList();
   }
 
   /// Get active sources only
   Future<List<ScraperSource>> getActiveSources() async {
     try {
-      final snap = await _firestore
-          .collection('scraper_sources')
-          .where('isActive', isEqualTo: true)
-          .orderBy('priority')
-          .get();
-      return snap.docs.map((d) => ScraperSource.fromFirestore(d)).toList();
+      final result = await _pb.collection('scraper_sources').getFullList(
+        filter: 'isActive = true',
+        sort: 'priority',
+      );
+      return result.map(ScraperSource.fromPb).toList();
     } catch (e) {
       throw FirestoreException(message: 'Failed to get sources: $e');
     }
@@ -45,10 +48,13 @@ class ScraperRepository {
   /// Add or update a source
   Future<void> saveSource(ScraperSource source) async {
     try {
-      await _firestore
-          .collection('scraper_sources')
-          .doc(source.id)
-          .set(source.toFirestore(), SetOptions(merge: true));
+      if (source.id.isNotEmpty) {
+        try {
+          await _pb.collection('scraper_sources').update(source.id, body: source.toMap());
+          return;
+        } catch (_) {}
+      }
+      await _pb.collection('scraper_sources').create(body: source.toMap());
     } catch (e) {
       throw FirestoreException(message: 'Failed to save source: $e');
     }
@@ -57,10 +63,7 @@ class ScraperRepository {
   /// Toggle source active status
   Future<void> toggleSource(String sourceId, bool isActive) async {
     try {
-      await _firestore
-          .collection('scraper_sources')
-          .doc(sourceId)
-          .update({'isActive': isActive});
+      await _pb.collection('scraper_sources').update(sourceId, body: {'isActive': isActive});
     } catch (e) {
       throw FirestoreException(message: 'Failed to toggle source: $e');
     }
@@ -69,10 +72,7 @@ class ScraperRepository {
   /// Update source priority
   Future<void> updateSourcePriority(String sourceId, int priority) async {
     try {
-      await _firestore
-          .collection('scraper_sources')
-          .doc(sourceId)
-          .update({'priority': priority});
+      await _pb.collection('scraper_sources').update(sourceId, body: {'priority': priority});
     } catch (e) {
       throw FirestoreException(message: 'Failed to update source priority: $e');
     }
@@ -81,7 +81,7 @@ class ScraperRepository {
   /// Delete a source
   Future<void> deleteSource(String sourceId) async {
     try {
-      await _firestore.collection('scraper_sources').doc(sourceId).delete();
+      await _pb.collection('scraper_sources').delete(sourceId);
     } catch (e) {
       throw FirestoreException(message: 'Failed to delete source: $e');
     }
@@ -91,22 +91,29 @@ class ScraperRepository {
 
   /// Get all brands
   Stream<List<ScraperBrand>> watchBrands() {
-    return _firestore
-        .collection('scraper_brands')
-        .orderBy('name')
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => ScraperBrand.fromFirestore(d)).toList());
+    final controller = StreamController<List<ScraperBrand>>();
+    UnsubscribeFunc? unsub;
+    _fetchBrands().then(controller.add).catchError(controller.addError);
+    _pb.collection('scraper_brands').subscribe('*', (e) {
+      _fetchBrands().then(controller.add).catchError(controller.addError);
+    }).then((fn) => unsub = fn);
+    controller.onCancel = () => unsub?.call();
+    return controller.stream;
+  }
+
+  Future<List<ScraperBrand>> _fetchBrands() async {
+    final result = await _pb.collection('scraper_brands').getFullList(sort: 'name');
+    return result.map(ScraperBrand.fromPb).toList();
   }
 
   /// Get active brands
   Future<List<ScraperBrand>> getActiveBrands() async {
     try {
-      final snap = await _firestore
-          .collection('scraper_brands')
-          .where('isActive', isEqualTo: true)
-          .orderBy('name')
-          .get();
-      return snap.docs.map((d) => ScraperBrand.fromFirestore(d)).toList();
+      final result = await _pb.collection('scraper_brands').getFullList(
+        filter: 'isActive = true',
+        sort: 'name',
+      );
+      return result.map(ScraperBrand.fromPb).toList();
     } catch (e) {
       throw FirestoreException(message: 'Failed to get brands: $e');
     }
@@ -115,13 +122,13 @@ class ScraperRepository {
   /// Add or update a brand
   Future<void> saveBrand(ScraperBrand brand) async {
     try {
-      final id = brand.id.isNotEmpty
-          ? brand.id
-          : brand.name.toLowerCase().replaceAll(' ', '_');
-      await _firestore
-          .collection('scraper_brands')
-          .doc(id)
-          .set(brand.toFirestore(), SetOptions(merge: true));
+      if (brand.id.isNotEmpty) {
+        try {
+          await _pb.collection('scraper_brands').update(brand.id, body: brand.toMap());
+          return;
+        } catch (_) {}
+      }
+      await _pb.collection('scraper_brands').create(body: brand.toMap());
     } catch (e) {
       throw FirestoreException(message: 'Failed to save brand: $e');
     }
@@ -130,10 +137,7 @@ class ScraperRepository {
   /// Toggle brand active status
   Future<void> toggleBrand(String brandId, bool isActive) async {
     try {
-      await _firestore
-          .collection('scraper_brands')
-          .doc(brandId)
-          .update({'isActive': isActive});
+      await _pb.collection('scraper_brands').update(brandId, body: {'isActive': isActive});
     } catch (e) {
       throw FirestoreException(message: 'Failed to toggle brand: $e');
     }
@@ -142,7 +146,7 @@ class ScraperRepository {
   /// Delete a brand
   Future<void> deleteBrand(String brandId) async {
     try {
-      await _firestore.collection('scraper_brands').doc(brandId).delete();
+      await _pb.collection('scraper_brands').delete(brandId);
     } catch (e) {
       throw FirestoreException(message: 'Failed to delete brand: $e');
     }
@@ -152,23 +156,31 @@ class ScraperRepository {
 
   /// Get all schedules
   Stream<List<ScraperSchedule>> watchSchedules() {
-    return _firestore
-        .collection('scraper_schedules')
-        .orderBy('name')
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => ScraperSchedule.fromFirestore(d)).toList());
+    final controller = StreamController<List<ScraperSchedule>>();
+    UnsubscribeFunc? unsub;
+    _fetchSchedules().then(controller.add).catchError(controller.addError);
+    _pb.collection('scraper_schedules').subscribe('*', (e) {
+      _fetchSchedules().then(controller.add).catchError(controller.addError);
+    }).then((fn) => unsub = fn);
+    controller.onCancel = () => unsub?.call();
+    return controller.stream;
+  }
+
+  Future<List<ScraperSchedule>> _fetchSchedules() async {
+    final result = await _pb.collection('scraper_schedules').getFullList(sort: 'name');
+    return result.map(ScraperSchedule.fromPb).toList();
   }
 
   /// Add or update a schedule
   Future<void> saveSchedule(ScraperSchedule schedule) async {
     try {
-      final id = schedule.id.isNotEmpty
-          ? schedule.id
-          : DateTime.now().millisecondsSinceEpoch.toString();
-      await _firestore
-          .collection('scraper_schedules')
-          .doc(id)
-          .set(schedule.toFirestore(), SetOptions(merge: true));
+      if (schedule.id.isNotEmpty) {
+        try {
+          await _pb.collection('scraper_schedules').update(schedule.id, body: schedule.toMap());
+          return;
+        } catch (_) {}
+      }
+      await _pb.collection('scraper_schedules').create(body: schedule.toMap());
     } catch (e) {
       throw FirestoreException(message: 'Failed to save schedule: $e');
     }
@@ -177,10 +189,7 @@ class ScraperRepository {
   /// Toggle schedule active status
   Future<void> toggleSchedule(String scheduleId, bool isActive) async {
     try {
-      await _firestore
-          .collection('scraper_schedules')
-          .doc(scheduleId)
-          .update({'isActive': isActive});
+      await _pb.collection('scraper_schedules').update(scheduleId, body: {'isActive': isActive});
     } catch (e) {
       throw FirestoreException(message: 'Failed to toggle schedule: $e');
     }
@@ -189,7 +198,7 @@ class ScraperRepository {
   /// Delete a schedule
   Future<void> deleteSchedule(String scheduleId) async {
     try {
-      await _firestore.collection('scraper_schedules').doc(scheduleId).delete();
+      await _pb.collection('scraper_schedules').delete(scheduleId);
     } catch (e) {
       throw FirestoreException(message: 'Failed to delete schedule: $e');
     }
@@ -199,24 +208,33 @@ class ScraperRepository {
 
   /// Get recent logs
   Stream<List<ScraperLog>> watchLogs({int limit = 20}) {
-    return _firestore
-        .collection('scraper_logs')
-        .orderBy('startedAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => ScraperLog.fromFirestore(d)).toList());
+    final controller = StreamController<List<ScraperLog>>();
+    UnsubscribeFunc? unsub;
+    _fetchLogs(limit: limit).then(controller.add).catchError(controller.addError);
+    _pb.collection('scraper_logs').subscribe('*', (e) {
+      _fetchLogs(limit: limit).then(controller.add).catchError(controller.addError);
+    }).then((fn) => unsub = fn);
+    controller.onCancel = () => unsub?.call();
+    return controller.stream;
+  }
+
+  Future<List<ScraperLog>> _fetchLogs({int limit = 20}) async {
+    final result = await _pb.collection('scraper_logs').getList(
+      page: 1, perPage: limit,
+      sort: '-startedAt',
+    );
+    return result.items.map(ScraperLog.fromPb).toList();
   }
 
   /// Get logs for a specific source/brand
   Future<List<ScraperLog>> getLogsForSource(String sourceId, {int limit = 10}) async {
     try {
-      final snap = await _firestore
-          .collection('scraper_logs')
-          .where('sourceId', isEqualTo: sourceId)
-          .orderBy('startedAt', descending: true)
-          .limit(limit)
-          .get();
-      return snap.docs.map((d) => ScraperLog.fromFirestore(d)).toList();
+      final result = await _pb.collection('scraper_logs').getList(
+        page: 1, perPage: limit,
+        filter: 'sourceId = "$sourceId"',
+        sort: '-startedAt',
+      );
+      return result.items.map(ScraperLog.fromPb).toList();
     } catch (e) {
       throw FirestoreException(message: 'Failed to get logs: $e');
     }
@@ -226,33 +244,41 @@ class ScraperRepository {
 
   /// Get all category templates
   Stream<List<CategoryTemplate>> watchCategoryTemplates() {
-    return _firestore
-        .collection('category_templates')
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => CategoryTemplate.fromFirestore(d)).toList());
+    final controller = StreamController<List<CategoryTemplate>>();
+    UnsubscribeFunc? unsub;
+    _fetchCategoryTemplates().then(controller.add).catchError(controller.addError);
+    _pb.collection('category_templates').subscribe('*', (e) {
+      _fetchCategoryTemplates().then(controller.add).catchError(controller.addError);
+    }).then((fn) => unsub = fn);
+    controller.onCancel = () => unsub?.call();
+    return controller.stream;
+  }
+
+  Future<List<CategoryTemplate>> _fetchCategoryTemplates() async {
+    final result = await _pb.collection('category_templates').getFullList();
+    return result.map(CategoryTemplate.fromPb).toList();
   }
 
   /// Get a specific category template
   Future<CategoryTemplate?> getCategoryTemplate(String categoryId) async {
     try {
-      final doc = await _firestore
-          .collection('category_templates')
-          .doc(categoryId)
-          .get();
-      if (!doc.exists) return null;
-      return CategoryTemplate.fromFirestore(doc);
+      final record = await _pb.collection('category_templates').getOne(categoryId);
+      return CategoryTemplate.fromPb(record);
     } catch (e) {
-      throw FirestoreException(message: 'Failed to get category template: $e');
+      return null;
     }
   }
 
   /// Save category template
   Future<void> saveCategoryTemplate(CategoryTemplate template) async {
     try {
-      await _firestore
-          .collection('category_templates')
-          .doc(template.id)
-          .set(template.toFirestore(), SetOptions(merge: true));
+      if (template.id.isNotEmpty) {
+        try {
+          await _pb.collection('category_templates').update(template.id, body: template.toMap());
+          return;
+        } catch (_) {}
+      }
+      await _pb.collection('category_templates').create(body: template.toMap());
     } catch (e) {
       throw FirestoreException(message: 'Failed to save category template: $e');
     }
@@ -262,21 +288,28 @@ class ScraperRepository {
 
   /// Get all subscription services
   Stream<List<StreamingService>> watchStreamingServices() {
-    return _firestore
-        .collection('subscription_services')
-        .orderBy('category')
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => StreamingService.fromFirestore(d)).toList());
+    final controller = StreamController<List<StreamingService>>();
+    UnsubscribeFunc? unsub;
+    _fetchStreamingServices().then(controller.add).catchError(controller.addError);
+    _pb.collection('subscription_services').subscribe('*', (e) {
+      _fetchStreamingServices().then(controller.add).catchError(controller.addError);
+    }).then((fn) => unsub = fn);
+    controller.onCancel = () => unsub?.call();
+    return controller.stream;
+  }
+
+  Future<List<StreamingService>> _fetchStreamingServices() async {
+    final result = await _pb.collection('subscription_services').getFullList(sort: 'category');
+    return result.map(StreamingService.fromPb).toList();
   }
 
   /// Get services by category
   Future<List<StreamingService>> getServicesByCategory(String category) async {
     try {
-      final snap = await _firestore
-          .collection('subscription_services')
-          .where('category', isEqualTo: category)
-          .get();
-      return snap.docs.map((d) => StreamingService.fromFirestore(d)).toList();
+      final result = await _pb.collection('subscription_services').getFullList(
+        filter: 'category = "$category"',
+      );
+      return result.map(StreamingService.fromPb).toList();
     } catch (e) {
       throw FirestoreException(message: 'Failed to get services: $e');
     }
@@ -285,13 +318,13 @@ class ScraperRepository {
   /// Save subscription service
   Future<void> saveStreamingService(StreamingService service) async {
     try {
-      final id = service.id.isNotEmpty
-          ? service.id
-          : service.name.toLowerCase().replaceAll(' ', '_');
-      await _firestore
-          .collection('subscription_services')
-          .doc(id)
-          .set(service.toFirestore(), SetOptions(merge: true));
+      if (service.id.isNotEmpty) {
+        try {
+          await _pb.collection('subscription_services').update(service.id, body: service.toMap());
+          return;
+        } catch (_) {}
+      }
+      await _pb.collection('subscription_services').create(body: service.toMap());
     } catch (e) {
       throw FirestoreException(message: 'Failed to save service: $e');
     }
@@ -300,133 +333,53 @@ class ScraperRepository {
   /// Delete subscription service
   Future<void> deleteStreamingService(String serviceId) async {
     try {
-      await _firestore.collection('subscription_services').doc(serviceId).delete();
+      await _pb.collection('subscription_services').delete(serviceId);
     } catch (e) {
       throw FirestoreException(message: 'Failed to delete service: $e');
     }
   }
 
-  // ─── Cloud Functions Integration ───
+  // ─── Scraper Operations (stubbed — to be implemented as PB hooks) ───
 
-  /// Run scraper from admin panel
+  /// Run scraper
   Future<ScraperResult> runScraper({
     String? sourceId,
     String? brandId,
     String? categoryId,
     int maxDevices = 50,
   }) async {
-    try {
-      final callable = _functions.httpsCallable('runScraperFromAdmin');
-      final result = await callable.call<Map<String, dynamic>>({
-        'sourceId': sourceId,
-        'brandId': brandId,
-        'categoryId': categoryId,
-        'maxDevices': maxDevices,
-      });
-
-      return ScraperResult.fromMap(result.data);
-    } on FirebaseFunctionsException catch (e) {
-      throw FirestoreException(message: 'Scraper failed: ${e.message}');
-    } catch (e) {
-      throw FirestoreException(message: 'Scraper failed: $e');
-    }
+    // TODO: Implement via PocketBase custom endpoint or external service
+    return ScraperResult(success: false, found: 0, added: 0, skipped: 0, errors: 0);
   }
 
   /// Scrape a single URL
   Future<ScrapedProduct> scrapeUrl(String url) async {
-    try {
-      final callable = _functions.httpsCallable('scrapeFromUrl');
-      final result = await callable.call<Map<String, dynamic>>({
-        'url': url,
-      });
-
-      return ScrapedProduct.fromMap(result.data);
-    } on FirebaseFunctionsException catch (e) {
-      throw FirestoreException(message: 'URL scrape failed: ${e.message}');
-    } catch (e) {
-      throw FirestoreException(message: 'URL scrape failed: $e');
-    }
+    // TODO: Implement via PocketBase custom endpoint
+    return ScrapedProduct(success: false, name: '', source: '', sourceUrl: url);
   }
 
   /// Get scraper status
   Future<ScraperStatus> getStatus() async {
     try {
-      final callable = _functions.httpsCallable('scraperStatus');
-      final result = await callable.call<Map<String, dynamic>>();
-      return ScraperStatus.fromMap(result.data);
-    } catch (e) {
-      // Fallback to local Firestore query
-      final products = await _firestore.collection('products').count().get();
-      final sources = await _firestore.collection('scraper_sources').count().get();
-      final brands = await _firestore
-          .collection('scraper_brands')
-          .where('isActive', isEqualTo: true)
-          .count()
-          .get();
-
+      final products = await _pb.collection('products').getList(page: 1, perPage: 1);
+      final sources = await _pb.collection('scraper_sources').getFullList();
+      final activeBrands = await _pb.collection('scraper_brands').getFullList(
+        filter: 'isActive = true',
+      );
       return ScraperStatus(
-        totalProducts: products.count ?? 0,
-        activeSources: sources.count ?? 0,
-        activeBrands: brands.count ?? 0,
+        totalProducts: products.totalItems,
+        activeSources: sources.length,
+        activeBrands: activeBrands.length,
         recentLogs: [],
       );
+    } catch (e) {
+      return ScraperStatus(totalProducts: 0, activeSources: 0, activeBrands: 0, recentLogs: []);
     }
   }
 
   /// Initialize default scraper data
   Future<void> initializeDefaultData() async {
-    try {
-      // Add default sources
-      final defaultSources = [
-        ScraperSource(
-          id: 'epey',
-          name: 'Epey',
-          baseUrl: 'https://epey.com',
-          priority: 1,
-          isActive: true,
-          supportedCategories: [
-            'smartphones', 'tablets', 'laptops', 'desktops',
-            'cpus', 'gpus', 'ram', 'ssd', 'motherboards', 'psu', 'cases', 'coolers',
-            'tvs', 'monitors', 'projectors',
-            'headphones', 'speakers', 'soundbars',
-            'smartwatches',
-            'cameras', 'action-cameras', 'security-cameras',
-            'consoles', 'gamepads',
-            'keyboards', 'mice', 'printers', 'webcams',
-            'routers', 'robot-vacuums', 'powerbanks', 'e-readers', 'drones',
-          ],
-        ),
-      ];
-
-      final batch = _firestore.batch();
-
-      for (final source in defaultSources) {
-        final ref = _firestore.collection('scraper_sources').doc(source.id);
-        batch.set(ref, source.toFirestore(), SetOptions(merge: true));
-      }
-
-      // Add default brands
-      final defaultBrands = [
-        'Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Sony',
-        'Motorola', 'Nokia', 'Huawei', 'Oppo', 'Vivo', 'Realme',
-        'Asus', 'Nothing', 'Dell', 'Lenovo',
-      ];
-
-      for (final name in defaultBrands) {
-        final id = name.toLowerCase().replaceAll(' ', '_');
-        final ref = _firestore.collection('scraper_brands').doc(id);
-        batch.set(ref, {
-          'name': name,
-          'categories': ['phones', 'tablets'],
-          'isActive': true,
-          'productCount': 0,
-        }, SetOptions(merge: true));
-      }
-
-      await batch.commit();
-    } catch (e) {
-      throw FirestoreException(message: 'Failed to initialize data: $e');
-    }
+    // TODO: Implement default data seeding for PocketBase
   }
 }
 

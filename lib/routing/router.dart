@@ -29,7 +29,7 @@ import 'package:compair/presentation/screens/pc_builder/pc_builder_screen.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/core/constants.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:compair/core/pb_client.dart';
 
 // Route names
 class AppRoutes {
@@ -295,9 +295,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final location = state.matchedLocation;
 
-      // Check auth state
-      final user = FirebaseAuth.instance.currentUser;
-      final isLoggedIn = user != null;
+      // Check auth state (PocketBase)
+      final isLoggedIn = pb.authStore.isValid;
 
       // Public routes (no auth required)
       const publicRoutes = [

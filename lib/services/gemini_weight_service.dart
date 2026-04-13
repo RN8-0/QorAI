@@ -4,10 +4,10 @@
 library;
 
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
 import 'package:compair/config/env_config.dart';
+import 'package:compair/core/pb_client.dart';
 
 /// Fallback weight vector used when Gemini returns invalid JSON
 const Map<String, double> _kFallbackWeights = {
@@ -60,16 +60,13 @@ class GeminiWeightService {
       weights = Map<String, double>.from(_kFallbackWeights);
     }
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('profile')
-        .doc('weightVector')
-        .set({
-          ...weights,
-          'generated_at': FieldValue.serverTimestamp(),
-          'generated_by': 'gemini-2.5-flash',
-        });
+    await pb.collection('users').update(uid, body: {
+      'weightVector': {
+        ...weights,
+        'generated_at': DateTime.now().toIso8601String(),
+        'generated_by': 'gemini-2.5-flash',
+      },
+    });
   }
 
   Future<Map<String, double>> _callGemini({
@@ -178,31 +175,26 @@ Strict rules:
     }
   }
 
-  /// Convenience: read profile from Firestore then generate weights
+  /// Convenience: read profile from PocketBase then generate weights
   static Future<void> runForCurrentUser() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = pb.authStore.isValid ? pb.authStore.record?.id : null;
     if (uid == null) return;
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('profile')
-          .doc('data')
-          .get();
+      final record = await pb.collection('users').getOne(uid);
+      final data = record.data;
 
-      final data = doc.data() ?? {};
       const service = GeminiWeightService();
       await service.generateWeightVector(
         uid: uid,
-        ageGroup: data['age_group'] as String?,
+        ageGroup: data['ageRange'] as String?,
         ecosystem: data['ecosystem'] as String?,
-        budgetPreference: data['budget_preference'] as String?,
+        budgetPreference: data['budgetRange'] as String?,
         priorities: List<String>.from(data['priorities'] ?? []),
-        ownedDevices: List<String>.from(data['owned_devices'] ?? []),
-        activeSubscriptions: List<String>.from(data['active_subscriptions'] ?? []),
-        interestCategories: List<String>.from(data['interest_categories'] ?? []),
-        usageIntent: data['usage_intent'] as String?,
+        ownedDevices: List<String>.from(data['currentDevices'] ?? []),
+        activeSubscriptions: List<String>.from(data['subscriptions'] ?? []),
+        interestCategories: List<String>.from(data['interestCategories'] ?? []),
+        usageIntent: data['usageIntent'] as String?,
         country: data['country'] as String?,
       );
     } catch (_) {

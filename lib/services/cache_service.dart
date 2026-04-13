@@ -1,13 +1,12 @@
-/// Compair - Cache Service (Two-Layer Cache)
+/// Compair - Cache Service (Local-only Cache)
 /// Blueprint Section 7.4
 ///
-/// Hive local cache + Firestore server cache (two layers)
+/// Hive local cache (single layer — server cache removed in PB migration)
 /// Cache key: MD5(productIds + profileHash + country)
 /// Cache duration: 24 hours (products), 1 hour (trend analyses)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 
 class CacheService {
@@ -16,10 +15,8 @@ class CacheService {
   
   late Box<String> _localBox;
   late Box _settingsBox;
-  final FirebaseFirestore _firestore;
 
-  CacheService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  CacheService();
 
   /// Initialize cache
   Future<void> initialize() async {
@@ -77,9 +74,9 @@ class CacheService {
     return _settingsBox.get('country_manually_set', defaultValue: false) as bool;
   }
 
-  /// Get value (local first, then server) - Section 7.4
+  /// Get value (local cache only) - Section 7.4
   Future<T?> get<T>(String key) async {
-    // 1. Check Hive local cache
+    // Check Hive local cache
     if (!_localBox.isOpen) return null;
     final localData = _localBox.get(key);
     if (localData != null) {
@@ -93,47 +90,17 @@ class CacheService {
       }
     }
 
-    // 2. Check Firestore server cache
-    try {
-      final doc = await _firestore.collection('cache').doc(key).get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        final expiresAt = (data['expiresAt'] as Timestamp).toDate();
-
-        if (DateTime.now().isBefore(expiresAt)) {
-          // Also save to local cache
-          await _setLocal(key, data['data'], expiresAt);
-          return data['data'] as T;
-        }
-      }
-    } catch (_) {
-      // Firestore access error - silently skip
-    }
-
     return null;
   }
 
-  /// Save value (to both layers) - Section 7.4
+  /// Save value (local cache only) - Section 7.4
   Future<void> set<T>(
     String key,
     T value, {
     Duration duration = const Duration(hours: 24),
   }) async {
     final expiresAt = DateTime.now().add(duration);
-
-    // 1. Hive local cache
     await _setLocal(key, value, expiresAt);
-
-    // 2. Firestore server cache
-    try {
-      await _firestore.collection('cache').doc(key).set({
-        'data': value,
-        'expiresAt': Timestamp.fromDate(expiresAt),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (_) {
-      // Firestore write error - local cache is sufficient
-    }
   }
 
   Future<void> _setLocal<T>(String key, T value, DateTime expiresAt) async {
@@ -193,9 +160,6 @@ class CacheService {
   /// Delete a specific key
   Future<void> delete(String key) async {
     await _localBox.delete(key);
-    try {
-      await _firestore.collection('cache').doc(key).delete();
-    } catch (_) {}
   }
 
   /// Clear expired cache entries (batched to avoid UI jank)

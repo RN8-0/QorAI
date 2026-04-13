@@ -1,44 +1,49 @@
-import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
+import 'package:compair/data/datasources/pb_ds.dart';
 
+/// Remote Config servisi — Firebase Remote Config yerine PocketBase app_config koleksiyonu kullanır.
+/// app_config dökümanları: {key: string, value: any}
 class RemoteConfigService {
-  final FirebaseRemoteConfig _remoteConfig;
+  final Map<String, dynamic> _config = {
+    'show_paywall_on_start': false,
+    'ai_comparison_limit_free': 3,
+    'premium_price_display': '₺199.99 / year',
+    'feature_link_paste_enabled': true,
+    'deepseek_api_key': '',
+    'revenuecat_apple_api_key': '',
+    'revenuecat_android_api_key': '',
+    'gemini_api_key': '',
+  };
 
-  RemoteConfigService(this._remoteConfig);
+  RemoteConfigService._();
 
-  Future<void> initialize() async {
+  factory RemoteConfigService.fromPb(PbDataSource ds) {
+    final service = RemoteConfigService._();
+    // Arka planda yükle (app start'ı bloklamaz)
+    service._loadFromPb(ds);
+    return service;
+  }
+
+  Future<void> _loadFromPb(PbDataSource ds) async {
     try {
-      await _remoteConfig.setConfigSettings(RemoteConfigSettings(
-        fetchTimeout: const Duration(minutes: 1),
-        minimumFetchInterval: kDebugMode ? Duration.zero : const Duration(hours: 12),
-      ));
-      
-      await _remoteConfig.setDefaults({
-        'show_paywall_on_start': false,
-        'ai_comparison_limit_free': 3,
-        'premium_price_display': '₺199.99 / year',
-        'feature_link_paste_enabled': true,
-        // API keys — set real values in Firebase Console → Remote Config
-        'deepseek_api_key': '',
-        'revenuecat_apple_api_key': '',
-        'revenuecat_android_api_key': '',
-      });
-
-      await _remoteConfig.fetchAndActivate();
+      final remote = await ds.getAppConfig();
+      _config.addAll(remote);
+      debugPrint('[RemoteConfig] Loaded ${remote.length} keys from PocketBase');
     } catch (e) {
-      debugPrint('Remote Config initialization failed: $e');
+      debugPrint('[RemoteConfig] Failed to load from PocketBase: $e');
     }
   }
 
-  bool get showPaywallOnStart => _remoteConfig.getBool('show_paywall_on_start');
-  int get freeAiLimit => _remoteConfig.getInt('ai_comparison_limit_free');
-  String get premiumPriceText => _remoteConfig.getString('premium_price_display');
-  bool get isLinkPasteEnabled => _remoteConfig.getBool('feature_link_paste_enabled');
+  Future<void> initialize() async {
+    // No-op — yükleme constructor'da başladı
+  }
 
-  /// DeepSeek API key — set in Firebase Console Remote Config
-  String get deepSeekApiKey => _remoteConfig.getString('deepseek_api_key');
-
-  /// RevenueCat keys — set in Firebase Console Remote Config per platform
-  String get revenueCatAppleKey   => _remoteConfig.getString('revenuecat_apple_api_key');
-  String get revenueCatAndroidKey => _remoteConfig.getString('revenuecat_android_api_key');
+  bool   get showPaywallOnStart  => _config['show_paywall_on_start'] as bool?   ?? false;
+  int    get freeAiLimit         => (_config['ai_comparison_limit_free'] as num?)?.toInt() ?? 3;
+  String get premiumPriceText    => _config['premium_price_display']   as String? ?? '₺199.99 / year';
+  bool   get isLinkPasteEnabled  => _config['feature_link_paste_enabled'] as bool? ?? true;
+  String get deepSeekApiKey      => _config['deepseek_api_key']        as String? ?? '';
+  String get revenueCatAppleKey  => _config['revenuecat_apple_api_key'] as String? ?? '';
+  String get revenueCatAndroidKey=> _config['revenuecat_android_api_key'] as String? ?? '';
+  String get geminiApiKey        => _config['gemini_api_key']          as String? ?? '';
 }

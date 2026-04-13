@@ -1,0 +1,239 @@
+// Import NDJSON exports from firebase-export/ into PocketBase.
+// Usage: node pb_import.js            -> imports all known collections
+//        node pb_import.js products   -> imports only products
+// Skips docs that are already present (based on a `firestoreId` column convention: we store
+// the original Firestore doc id in a text field `slug` for products/categories/etc, and in
+// `firestoreId` fallback otherwise).
+const fs = require('fs');
+const path = require('path');
+const { raw, req, auth, BASE } = require('./pb');
+const http = require('http');
+
+const EXPORT_DIR = path.join(__dirname, 'firebase-export');
+const CONCURRENCY = 20;
+const BATCH_REPORT = 500;
+
+// Map firestore collection -> PB collection + row transformer
+// Each transformer receives {__id, ...data} and returns {row, idKey} where
+// idKey is the unique field PB uses to detect duplicates (for idempotent re-runs).
+const MAPPERS = {
+  products: {
+    pbName: 'products',
+    idKey: 'slug',
+    transform: (d) => ({
+      slug: d.__id,
+      name: d.name || '',
+      brand: d.brand || '',
+      category: d.category || '',
+      source: d.source || '',
+      sourceUrl: d.sourceUrl || '',
+      imageUrl: d.imageUrl || '',
+      images: d.images || null,
+      specs: d.specs || null,
+      specSections: d.specSections || null,
+      keySpecs: d.keySpecs || null,
+      techScore: typeof d.techScore === 'number' ? d.techScore : null,
+      price_raw: d.price_raw || '',
+      price_segment: d.price_segment || '',
+      specsCount: typeof d.specsCount === 'number' ? d.specsCount : null,
+      variantGroup: d.variantGroup || '',
+      scrapedAt: fsTs(d.scrapedAt),
+    }),
+  },
+  categories: {
+    pbName: 'categories',
+    idKey: 'slug',
+    transform: (d) => ({
+      slug: d.id || d.__id,
+      name: d.name || '',
+      nameEn: d.nameEn || '',
+      icon: d.icon || '',
+      emoji: d.emoji || '',
+      order: d.order ?? null,
+      isActive: !!d.isActive,
+      productCount: d.productCount ?? null,
+      subcategories: d.subcategories || null,
+    }),
+  },
+  category_templates: {
+    pbName: 'category_templates',
+    idKey: 'slug',
+    transform: (d) => ({
+      slug: d.id || d.__id,
+      name: d.name || '',
+      icon: d.icon || '',
+      specFields: d.specFields || null,
+    }),
+  },
+  subscriptions: {
+    pbName: 'subscriptions',
+    idKey: 'slug',
+    transform: (d) => ({
+      slug: d.id || d.__id,
+      name: d.name || '',
+      category: d.category || '',
+      logo: d.logo || '',
+      website: d.website || '',
+      affiliateUrl: d.affiliateUrl || '',
+      isActive: !!d.isActive,
+      description: d.description || '',
+      pros: d.pros || null,
+      cons: d.cons || null,
+      platforms: d.platforms || null,
+      plans: d.plans || null,
+    }),
+  },
+  subscription_services: {
+    pbName: 'subscription_services',
+    idKey: 'slug',
+    transform: (d) => ({
+      slug: d.id || d.__id,
+      name: d.name || '',
+      category: d.category || '',
+      logo: d.logo || '',
+      websiteUrl: d.websiteUrl || '',
+      website: d.website || '',
+      features: d.features || null,
+      pricing: d.pricing || null,
+      platforms: d.platforms || null,
+    }),
+  },
+  price_history: {
+    pbName: 'price_history',
+    idKey: 'productId',
+    transform: (d) => ({
+      productId: d.productId || d.__id,
+      productName: d.productName || '',
+      prices: d.prices || null,
+      lowestPrice: typeof d.lowestPrice === 'number' ? d.lowestPrice : null,
+      lowestStore: d.lowestStore || '',
+      scrapedAt: fsTs(d.scrapedAt),
+    }),
+  },
+  comparison_reviews: {
+    pbName: 'comparison_reviews',
+    idKey: null,
+    transform: (d) => ({
+      productIds: d.productIds || null,
+      displayName: d.displayName || '',
+      docKey: d.docKey || d.__id,
+      userId: d.userId || '',
+      reviewText: d.reviewText || '',
+      timestamp: fsTs(d.timestamp),
+    }),
+  },
+  app_config: {
+    pbName: 'app_config',
+    idKey: 'key',
+    transform: (d) => ({
+      key: d.__id,
+      value: { ...d },
+    }),
+  },
+};
+
+function fsTs(v) {
+  if (!v) return '';
+  if (typeof v === 'string') return v;
+  if (v && v.__type === 'timestamp') {
+    return new Date(v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6)).toISOString().replace('T', ' ').replace('Z', 'Z');
+  }
+  return '';
+}
+
+async function getExistingIds(pbName, idKey) {
+  if (!idKey) return new Set();
+  const existing = new Set();
+  let page = 1;
+  while (true) {
+    const r = await req('GET', `/api/collections/${pbName}/records?perPage=500&fields=${idKey}&page=${page}`);
+    if (r.status !== 200) throw new Error(`list ${pbName}: ${r.status} ${JSON.stringify(r.body)}`);
+    for (const row of r.body.items) existing.add(row[idKey]);
+    if (r.body.items.length < 500) break;
+    page++;
+  }
+  return existing;
+}
+
+// Persistent keep-alive HTTP agent + parallel POSTs (PB is fine with this)
+const agent = new http.Agent({ keepAlive: true, maxSockets: CONCURRENCY });
+
+function postRecord(pbName, row, token) {
+  return new Promise((resolve) => {
+    const data = JSON.stringify(row);
+    const u = new URL(BASE + `/api/collections/${pbName}/records`);
+    const r = http.request({
+      agent,
+      method: 'POST',
+      hostname: u.hostname,
+      port: u.port || 80,
+      path: u.pathname,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data),
+        'Authorization': token,
+      },
+    }, (res) => {
+      let buf = '';
+      res.on('data', c => buf += c);
+      res.on('end', () => resolve({ status: res.statusCode, body: buf }));
+    });
+    r.on('error', (e) => resolve({ status: 0, body: e.message }));
+    r.write(data); r.end();
+  });
+}
+
+async function importCollection(fsName) {
+  const mapper = MAPPERS[fsName];
+  if (!mapper) { console.log(`[${fsName}] no mapper, skip`); return; }
+  const file = path.join(EXPORT_DIR, `${fsName}.ndjson`);
+  if (!fs.existsSync(file)) { console.log(`[${fsName}] no file, skip`); return; }
+  const stat = fs.statSync(file);
+  if (stat.size === 0) { console.log(`[${fsName}] empty file, skip`); return; }
+
+  const token = await auth();
+  const existing = await getExistingIds(mapper.pbName, mapper.idKey);
+  console.log(`[${fsName}] ${existing.size} already in PB`);
+
+  const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
+  console.log(`[${fsName}] ${lines.length} rows in export`);
+
+  let done = 0, skipped = 0, failed = 0;
+  const t0 = Date.now();
+
+  // Parallel workers
+  let idx = 0;
+  const next = () => idx < lines.length ? lines[idx++] : null;
+  async function worker() {
+    while (true) {
+      const line = next(); if (!line) return;
+      let doc; try { doc = JSON.parse(line); } catch { failed++; continue; }
+      const row = mapper.transform(doc);
+      if (mapper.idKey && existing.has(row[mapper.idKey])) { skipped++; continue; }
+      const r = await postRecord(mapper.pbName, row, token);
+      if (r.status === 200 || r.status === 201) {
+        done++;
+      } else {
+        failed++;
+        if (failed < 5) console.error(`[${fsName}] fail:`, r.status, r.body.slice ? r.body.slice(0, 200) : r.body);
+      }
+      if ((done + skipped + failed) % BATCH_REPORT === 0) {
+        const rate = ((done + skipped + failed) / ((Date.now() - t0) / 1000)).toFixed(0);
+        process.stdout.write(`\r[${fsName}] ${done} imported, ${skipped} skipped, ${failed} failed (${rate}/s)`);
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+  console.log(`\r[${fsName}] DONE: ${done} imported, ${skipped} skipped, ${failed} failed in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+}
+
+(async () => {
+  const only = process.argv[2];
+  const order = only ? [only] : Object.keys(MAPPERS);
+  for (const c of order) {
+    try { await importCollection(c); }
+    catch (e) { console.error(`[${c}] ERROR:`, e.message); }
+  }
+  console.log('All done.');
+  process.exit(0);
+})();

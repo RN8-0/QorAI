@@ -1,7 +1,7 @@
 /// Compair - Comparison Model (Data Layer - Firestore)
 /// Blueprint Section 4.3
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/domain/entities/comparison_entity.dart';
 
 class ComparisonModel extends ComparisonEntity {
@@ -21,8 +21,8 @@ class ComparisonModel extends ComparisonEntity {
     super.isPredefined = false,
   });
 
-  factory ComparisonModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ComparisonModel.fromPb(RecordModel record) {
+    final data = Map<String, dynamic>.from(record.data);
 
     // Scores map'i
     final scoresData = data['scores'] as Map<String, dynamic>? ?? {};
@@ -49,7 +49,7 @@ class ComparisonModel extends ComparisonEntity {
     );
 
     return ComparisonModel(
-      id: doc.id,
+      id: record.id,
       userId: data['userId'] ?? '',
       itemIds: List<String>.from(data['items'] ?? []),
       scores: scores,
@@ -57,7 +57,7 @@ class ComparisonModel extends ComparisonEntity {
       winnerId: data['winner'],
       userChoiceId: data['userChoice'],
       category: data['category'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDate(data['created']) ?? _parseDate(data['createdAt']) ?? DateTime.now(),
       isPublic: data['isPublic'] ?? false,
       title: data['title'],
       isFeatured: data['isFeatured'] ?? false,
@@ -65,7 +65,13 @@ class ComparisonModel extends ComparisonEntity {
     );
   }
 
-  Map<String, dynamic> toFirestore() {
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  Map<String, dynamic> toMap() {
     final scoresMap = scores.map(
       (key, value) => MapEntry(key, {
         'totalScore': value.totalScore,
@@ -86,13 +92,14 @@ class ComparisonModel extends ComparisonEntity {
       'winner': winnerId,
       'userChoice': userChoiceId,
       'category': category,
-      'createdAt': Timestamp.fromDate(createdAt),
       'isPublic': isPublic,
       'title': title,
       'isFeatured': isFeatured,
       'isPredefined': isPredefined,
     };
   }
+
+  Map<String, dynamic> toFirestore() => toMap();
 
   factory ComparisonModel.fromEntity(ComparisonEntity entity) {
     return ComparisonModel(

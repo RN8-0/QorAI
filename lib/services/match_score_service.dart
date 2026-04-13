@@ -1,8 +1,9 @@
 import 'dart:convert';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
 import 'package:compair/config/env_config.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/services/behavior_analysis_service.dart';
 
@@ -26,7 +27,7 @@ class MatchScoreService {
   static Map<String, dynamic>? _algoConfig;
   static DateTime? _algoConfigFetchedAt;
 
-  /// Fetch algorithm config from Firestore (cached for 10 minutes)
+  /// Fetch algorithm config from PocketBase (cached for 10 minutes)
   Future<Map<String, dynamic>> _getAlgoConfig() async {
     if (_algoConfig != null &&
         _algoConfigFetchedAt != null &&
@@ -34,16 +35,12 @@ class MatchScoreService {
       return _algoConfig!;
     }
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('app_config')
-          .doc('algorithm')
-          .get()
-          .timeout(const Duration(seconds: 5));
-      if (snap.exists && snap.data() != null) {
-        _algoConfig = snap.data()!;
-        _algoConfigFetchedAt = DateTime.now();
-        return _algoConfig!;
-      }
+      final record = await pb.collection('app_config').getFirstListItem(
+        'key = "algorithm"',
+      );
+      _algoConfig = record.data;
+      _algoConfigFetchedAt = DateTime.now();
+      return _algoConfig!;
     } catch (_) {}
     return {};
   }
@@ -54,49 +51,47 @@ class MatchScoreService {
   }) async {
     try {
       // ── Step 0: Cache check (1 day + version) ──
-      final cacheRef = FirebaseFirestore.instance
-          .collection('users').doc(uid)
-          .collection('match_cache').doc(product.id);
-
-      final cacheSnap = await cacheRef.get();
-      if (cacheSnap.exists) {
-        final cacheData = cacheSnap.data()!;
-        final calculatedAt =
-            (cacheData['calculated_at'] as Timestamp?)?.toDate();
-        final cachedVersion = cacheData['version'] as int? ?? 0;
-        if (calculatedAt != null &&
-            cachedVersion == _cacheVersion &&
-            DateTime.now().difference(calculatedAt).inDays < 1) {
-          return MatchScoreResult(
-            score: (cacheData['score'] as num).toDouble(),
-            explanation: cacheData['explanation'] as String? ?? '',
-            fromCache: true,
-          );
+      try {
+        final cacheResult = await pb.collection('users').getFirstListItem(
+          'id = "$uid"',
+        );
+        final matchCache = (cacheResult.data['match_cache'] as Map<String, dynamic>?) ?? {};
+        final productCache = (matchCache[product.id] as Map<String, dynamic>?);
+        if (productCache != null) {
+          final calculatedAt = DateTime.tryParse(productCache['calculated_at'] ?? '');
+          final cachedVersion = productCache['version'] as int? ?? 0;
+          if (calculatedAt != null &&
+              cachedVersion == _cacheVersion &&
+              DateTime.now().difference(calculatedAt).inDays < 1) {
+            return MatchScoreResult(
+              score: (productCache['score'] as num).toDouble(),
+              explanation: productCache['explanation'] as String? ?? '',
+              fromCache: true,
+            );
+          }
         }
-      }
+      } catch (_) {}
 
       // ── Step 1: Gather User Context ──
 
       // Quiz weight vector — if absent, quiz not done → skip
-      final profileSnap = await FirebaseFirestore.instance
-          .collection('users').doc(uid)
-          .collection('profile').doc('weightVector').get();
-
-      if (!profileSnap.exists || profileSnap.data() == null) {
+      RecordModel? userRecord;
+      try {
+        userRecord = await pb.collection('users').getOne(uid);
+      } catch (_) {
         return null;
       }
 
-      final weights = _parseWeights(profileSnap.data());
+      final weightVector = (userRecord.data['weightVector'] as Map<String, dynamic>?);
+      if (weightVector == null) return null;
+
+      final weights = _parseWeights(weightVector);
 
       // Profile data (ecosystem, budget, priorities, country)
-      final profileDataSnap = await FirebaseFirestore.instance
-          .collection('users').doc(uid)
-          .collection('profile').doc('data').get();
-      final profileData = profileDataSnap.data() ?? {};
-      final ecosystem = profileData['ecosystem'] as String? ?? 'mixed';
-      final budgetPref = profileData['budget_preference'] as String?;
-      final priorities = List<String>.from(profileData['priorities'] ?? []);
-      final userCountry = profileData['country'] as String? ?? 'US';
+      final ecosystem = userRecord.data['ecosystem'] as String? ?? 'mixed';
+      final budgetPref = userRecord.data['budgetRange'] as String?;
+      final priorities = List<String>.from(userRecord.data['priorities'] ?? []);
+      final userCountry = userRecord.data['country'] as String? ?? 'US';
 
       // Behavior analysis
       final behaviorProfile =
@@ -197,13 +192,18 @@ class MatchScoreService {
           MatchScoreResult(score: finalScore, explanation: explanation);
 
       // ── Step 7: Cache ──
-      await cacheRef.set({
-        'score': finalScore,
-        'explanation': explanation,
-        'calculated_at': FieldValue.serverTimestamp(),
-        'product_id': product.id,
-        'version': _cacheVersion,
-      });
+      try {
+        // Store match cache as a field on the user record
+        final existingCache = (userRecord?.data['match_cache'] as Map<String, dynamic>?) ?? {};
+        existingCache[product.id] = {
+          'score': finalScore,
+          'explanation': explanation,
+          'calculated_at': DateTime.now().toIso8601String(),
+          'product_id': product.id,
+          'version': _cacheVersion,
+        };
+        await pb.collection('users').update(uid, body: {'match_cache': existingCache});
+      } catch (_) {}
 
       return result;
     } catch (_) {
@@ -543,21 +543,18 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
     if (recentIds.isEmpty) return null;
 
     try {
-      // Fetch prices for up to 20 recent products
       final idsToCheck = recentIds.take(20).toList();
       final prices = <double>[];
 
-      // Batch fetch in groups of 10 (Firestore whereIn limit)
-      for (var i = 0; i < idsToCheck.length; i += 10) {
+      // Batch fetch in groups of 20
+      for (var i = 0; i < idsToCheck.length; i += 20) {
         final batch = idsToCheck.sublist(
-            i, i + 10 > idsToCheck.length ? idsToCheck.length : i + 10);
-        final snap = await FirebaseFirestore.instance
-            .collection('products')
-            .where(FieldPath.documentId, whereIn: batch)
-            .get();
+            i, i + 20 > idsToCheck.length ? idsToCheck.length : i + 20);
+        final filter = batch.map((id) => 'id = "$id"').join(' || ');
+        final result = await pb.collection('products').getFullList(filter: filter);
 
-        for (final doc in snap.docs) {
-          final pricesMap = doc.data()['prices'] as Map<String, dynamic>?;
+        for (final record in result) {
+          final pricesMap = record.data['prices'] as Map<String, dynamic>?;
           if (pricesMap != null) {
             final price = (pricesMap[userCountry] as num?)?.toDouble() ??
                 (pricesMap.values.firstOrNull as num?)?.toDouble();
@@ -577,25 +574,8 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
 
   /// Fetch recent search queries from behavior data.
   Future<List<String>> _fetchRecentSearches(String uid) async {
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('behavior')
-          .doc('searches')
-          .collection('items')
-          .orderBy('at', descending: true)
-          .limit(5)
-          .get();
-
-      return snap.docs
-          .map((d) => d.data()['query'] as String?)
-          .where((q) => q != null && q.isNotEmpty)
-          .cast<String>()
-          .toList();
-    } catch (_) {
-      return [];
-    }
+    // TODO: Implement with PocketBase behavior tracking
+    return [];
   }
 
   // ─────────────────────────────────────────────────────────────────────────

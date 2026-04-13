@@ -788,22 +788,20 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
 
   Future<GeminiMatchResult?> _checkFirestoreCache(String uid) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users').doc(uid)
-          .collection('matchScores').doc(_productId)
-          .get();
-      if (!doc.exists) return null;
-      final data = doc.data()!;
-      final ts = data['timestamp'] as Timestamp?;
+      final userRecord = await pb.collection('users').getOne(uid);
+      final matchCache = userRecord.data['match_cache'] as Map<String, dynamic>? ?? {};
+      final cached = matchCache[_productId] as Map<String, dynamic>?;
+      if (cached == null) return null;
+      final ts = DateTime.tryParse(cached['timestamp']?.toString() ?? '');
       if (ts == null) return null;
-      final age = DateTime.now().difference(ts.toDate());
+      final age = DateTime.now().difference(ts);
       if (age.inHours >= 24) return null; // expired
       return GeminiMatchResult(
-        matchScore: _safeInt(data['matchScore'], 0),
-        reason: (data['reason'] as String?) ?? '',
-        topMatchFactors: (data['topMatchFactors'] as List?)
+        matchScore: _safeInt(cached['matchScore'], 0),
+        reason: (cached['reason'] as String?) ?? '',
+        topMatchFactors: (cached['topMatchFactors'] as List?)
             ?.map((e) => e.toString()).toList() ?? [],
-        missingFactors: (data['missingFactors'] as List?)
+        missingFactors: (cached['missingFactors'] as List?)
             ?.map((e) => e.toString()).toList() ?? [],
         isFromGemini: true,
       );
@@ -814,15 +812,18 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
 
   Future<void> _saveToFirestoreCache(String uid, GeminiMatchResult result) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('users').doc(uid)
-          .collection('matchScores').doc(_productId)
-          .set({
+      final userRecord = await pb.collection('users').getOne(uid);
+      final matchCache = Map<String, dynamic>.from(
+          userRecord.data['match_cache'] as Map? ?? {});
+      matchCache[_productId] = {
         'matchScore': result.matchScore,
         'reason': result.reason,
         'topMatchFactors': result.topMatchFactors,
         'missingFactors': result.missingFactors,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      };
+      await pb.collection('users').update(uid, body: {
+        'match_cache': matchCache,
       });
     } catch (_) {}
   }
@@ -879,4 +880,4 @@ Future<Result<void>> saveLinkAnalysis(
         FirestoreException(message: 'Could not save analysis: $e'));
   }
 }
-
+

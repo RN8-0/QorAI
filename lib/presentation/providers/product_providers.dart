@@ -58,43 +58,30 @@ final pcBuilderProductsProvider = FutureProvider.family<
   }
 
   final aliases = pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
-  final db = FirebaseFirestore.instance;
+  final ds = ref.read(firebaseDataSourceProvider);
   const batchSize = 500;
   const maxTotal = 5000;
 
-  List<ProductEntity> _parseDocs(QuerySnapshot snap) {
-    final list = <ProductEntity>[];
-    for (final d in snap.docs) {
-      try { list.add(ProductModel.fromFirestore(d) as ProductEntity); } catch (_) {}
-    }
-    return list;
-  }
-
-  // Paginated loader — fetches ALL products for a given alias
-  Future<List<ProductEntity>> _paginatedLoad(String alias, Source source) async {
+  // Paginated loader — fetches ALL products for a given alias via PocketBase
+  Future<List<ProductEntity>> _paginatedLoad(String alias) async {
     final all = <ProductEntity>[];
-    DocumentSnapshot? lastDoc;
+    int page = 1;
     while (all.length < maxTotal) {
-      var query = db.collection('products')
-          .where('category', isEqualTo: alias)
-          .limit(batchSize);
-      if (lastDoc != null) query = query.startAfterDocument(lastDoc);
-      final snap = await query
-          .get(GetOptions(source: source))
-          .timeout(const Duration(seconds: 20));
-      if (snap.docs.isEmpty) break;
-      all.addAll(_parseDocs(snap));
-      lastDoc = snap.docs.last;
-      if (snap.docs.length < batchSize) break;
+      final result = await ds.getProductsPage(
+        category: alias, limit: batchSize, page: page,
+      );
+      all.addAll(result.products.cast<ProductEntity>());
+      if (!result.hasMore || result.products.isEmpty) break;
+      page = result.nextPage;
     }
     return all;
   }
 
-  // 2) Try each alias — serverAndCache uses local disk if fresh, server otherwise
+  // 2) Try each alias
   for (final alias in aliases) {
     try {
       final sw = Stopwatch()..start();
-      final products = await _paginatedLoad(alias, Source.serverAndCache);
+      final products = await _paginatedLoad(alias);
       sw.stop();
       if (products.isNotEmpty) {
         products.sort((a, b) => b.techScore.compareTo(a.techScore));
@@ -104,16 +91,6 @@ final pcBuilderProductsProvider = FutureProvider.family<
       }
     } catch (e) {
       debugPrint('[PCBuilder] ❌ "$alias": $e');
-      // Fallback: try cache-only for this alias (offline mode)
-      try {
-        final cached = await _paginatedLoad(alias, Source.cache);
-        if (cached.isNotEmpty) {
-          cached.sort((a, b) => b.techScore.compareTo(a.techScore));
-          _pcBuilderCacheMap[normalizedCategory] = cached;
-          debugPrint('[PCBuilder] ✅ Cache fallback "$alias": ${cached.length}');
-          return cached;
-        }
-      } catch (_) {}
     }
   }
 
@@ -221,38 +198,28 @@ final productsByCategoryProvider = FutureProvider.family<
     return _sortAndReturn(_categoryCacheMap[normalizedCategory]!);
   }
 
-  // ── 2) Paginated Firestore query — always use serverAndCache for complete data ──
-  final db = FirebaseFirestore.instance;
+  // ── 2) Paginated PocketBase query ──
+  final ds = ref.read(firebaseDataSourceProvider);
   const batchSize = 500;
   const maxTotal = 5000;
 
-  Future<List<ProductEntity>> _paginatedLoad(String alias, Source source) async {
+  Future<List<ProductEntity>> _paginatedLoad(String alias) async {
     final all = <ProductEntity>[];
-    DocumentSnapshot? lastDoc;
+    int page = 1;
     while (all.length < maxTotal) {
-      var query = db.collection('products')
-          .where('category', isEqualTo: alias)
-          .limit(batchSize);
-      if (lastDoc != null) query = query.startAfterDocument(lastDoc);
-      final snap = await query
-          .get(GetOptions(source: source))
-          .timeout(const Duration(seconds: 20));
-      if (snap.docs.isEmpty) break;
-      for (final d in snap.docs) {
-        try {
-          all.add(ProductModel.fromFirestore(d) as ProductEntity);
-        } catch (_) {}
-      }
-      lastDoc = snap.docs.last;
-      if (snap.docs.length < batchSize) break;
+      final result = await ds.getProductsPage(
+        category: alias, limit: batchSize, page: page,
+      );
+      all.addAll(result.products.cast<ProductEntity>());
+      if (!result.hasMore || result.products.isEmpty) break;
+      page = result.nextPage;
     }
     return all;
   }
 
   for (final alias in aliases) {
     try {
-      // Always fetch from server (with cache fallback) to get ALL products
-      final all = await _paginatedLoad(alias, Source.serverAndCache);
+      final all = await _paginatedLoad(alias);
       if (all.isNotEmpty) {
         _categoryCacheMap[normalizedCategory] = all;
         debugPrint('CATEGORY: loaded ${all.length} products for "$alias"');
@@ -260,18 +227,10 @@ final productsByCategoryProvider = FutureProvider.family<
       }
     } catch (e) {
       debugPrint('CATEGORY: query failed for "$alias": $e');
-      // Try cache-only as last resort (offline mode)
-      try {
-        final cached = await _paginatedLoad(alias, Source.cache);
-        if (cached.isNotEmpty) {
-          _categoryCacheMap[normalizedCategory] = cached;
-          return _sortAndReturn(cached);
-        }
-      } catch (_) {}
     }
   }
 
-  // ── 3) Keyword fallback — search by product name/brand keywords ──
+  // ── 3) Keyword fallback — search via datasource ──
   const keywordMap = <String, List<String>>{
     'cpus':         ['işlemci', 'cpu', 'processor', 'ryzen', 'core i', 'intel core', 'amd ryzen'],
     'gpus':         ['ekran kartı', 'gpu', 'graphics', 'geforce', 'radeon', 'rtx', 'rx '],
@@ -289,30 +248,18 @@ final productsByCategoryProvider = FutureProvider.family<
   try {
     final keywords = keywordMap[normalizedCategory];
     if (keywords != null) {
-      // Broad query — get a large set and filter client-side
-      final all = <ProductEntity>[];
-      DocumentSnapshot? lastDoc;
-      while (all.length < 2000) {
-        var query = db.collection('products').limit(500);
-        if (lastDoc != null) query = query.startAfterDocument(lastDoc);
-        final snap = await query.get().timeout(const Duration(seconds: 20));
-        if (snap.docs.isEmpty) break;
-        for (final d in snap.docs) {
-          try {
-            final p = ProductModel.fromFirestore(d) as ProductEntity;
-            final name = p.name.toLowerCase();
-            final cat = p.category.toLowerCase();
-            if (keywords.any((k) => name.contains(k) || cat.contains(k))) {
-              all.add(p);
-            }
-          } catch (_) {}
+      // Search via datasource
+      final results = await ds.searchProducts(query: keywords.first, limit: 500);
+      if (results.isNotEmpty) {
+        final filtered = results.cast<ProductEntity>().where((p) {
+          final name = p.name.toLowerCase();
+          final cat = p.category.toLowerCase();
+          return keywords.any((k) => name.contains(k) || cat.contains(k));
+        }).toList();
+        if (filtered.isNotEmpty) {
+          _categoryCacheMap[normalizedCategory] = filtered;
+          return _sortAndReturn(filtered);
         }
-        lastDoc = snap.docs.last;
-        if (snap.docs.length < 500) break;
-      }
-      if (all.isNotEmpty) {
-        _categoryCacheMap[normalizedCategory] = all;
-        return _sortAndReturn(all);
       }
     }
   } catch (e) {
@@ -1063,17 +1010,15 @@ class _FeedConfig {
 
 Future<_FeedConfig> _fetchAdminConfig() async {
   try {
-    final configDoc = await FirebaseFirestore.instance
-        .collection('app_config').doc('algorithm').get()
+    final record = await pb.collection('app_config')
+        .getFirstListItem('key = "algorithm"')
         .timeout(const Duration(seconds: 5));
-    if (configDoc.exists) {
-      final data = configDoc.data() ?? {};
-      return _FeedConfig(
-        pinnedIds: List<String>.from(data['pinnedProducts'] ?? []),
-        hiddenIds: List<String>.from(data['hiddenProducts'] ?? []),
-        disabledCats: List<String>.from(data['disabledCategories'] ?? []),
-      );
-    }
+    final data = record.data;
+    return _FeedConfig(
+      pinnedIds: List<String>.from(data['pinnedProducts'] ?? []),
+      hiddenIds: List<String>.from(data['hiddenProducts'] ?? []),
+      disabledCats: List<String>.from(data['disabledCategories'] ?? []),
+    );
   } catch (_) {}
   return const _FeedConfig();
 }
@@ -1233,16 +1178,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
 void _saveProductsToCache(CacheService cache, List<ProductEntity> products, String cacheKey) {
   try {
-    final maps = products.map((p) {
-      final m = ProductModel.fromEntity(p).toFirestore();
-      if (m['lastUpdated'] is Timestamp) {
-        m['lastUpdated'] = (m['lastUpdated'] as Timestamp).toDate().toIso8601String();
-      }
-      if (m['createdAt'] is Timestamp) {
-        m['createdAt'] = (m['createdAt'] as Timestamp).toDate().toIso8601String();
-      }
-      return m;
-    }).toList();
+    final maps = products.map((p) => ProductModel.fromEntity(p).toMap()).toList();
     cache.setLocal(cacheKey, maps, duration: const Duration(hours: 12));
   } catch (_) {}
 }
@@ -1293,20 +1229,19 @@ final categoryCoversProvider = FutureProvider<Map<String, String>>((ref) async {
 final aiDailyTrendingProvider = FutureProvider<List<ProductEntity>>((ref) async {
   final repo = ref.read(productRepositoryProvider);
 
-  // 1. Check Firestore cache
+  // 1. Check PocketBase cache
   try {
-    final db = FirebaseFirestore.instance;
-    final cacheDoc = await db.collection('app_config').doc('trending_daily').get();
-    if (cacheDoc.exists) {
-      final data = cacheDoc.data() ?? {};
-      final lastUpdated = (data['lastUpdated'] as Timestamp?)?.toDate();
-      final cachedIds = List<String>.from(data['productIds'] ?? []);
-      if (lastUpdated != null &&
-          DateTime.now().difference(lastUpdated).inHours < 24 &&
-          cachedIds.isNotEmpty) {
-        final result = await repo.getProductsByIds(cachedIds);
-        return result.when(success: (p) => p, failure: (_) => []);
-      }
+    final cacheRecord = await pb.collection('app_config')
+        .getFirstListItem('key = "trending_daily"')
+        .timeout(const Duration(seconds: 5));
+    final data = cacheRecord.data;
+    final lastUpdated = DateTime.tryParse(data['lastUpdated']?.toString() ?? '');
+    final cachedIds = List<String>.from(data['productIds'] ?? []);
+    if (lastUpdated != null &&
+        DateTime.now().difference(lastUpdated).inHours < 24 &&
+        cachedIds.isNotEmpty) {
+      final result = await repo.getProductsByIds(cachedIds);
+      return result.when(success: (p) => p, failure: (_) => []);
     }
   } catch (_) {}
 
@@ -1378,16 +1313,24 @@ Return only the JSON array, no explanation.''';
       matched.addAll(remaining.take(10 - matched.length));
     }
 
-    // 5. Save to Firestore cache
+    // 5. Save to PocketBase cache
     try {
-      await FirebaseFirestore.instance
-          .collection('app_config')
-          .doc('trending_daily')
-          .set({
-        'productIds': matched.map((p) => p.id).toList(),
-        'lastUpdated': Timestamp.now(),
-        'source': 'gemini',
-      });
+      try {
+        final existing = await pb.collection('app_config')
+            .getFirstListItem('key = "trending_daily"');
+        await pb.collection('app_config').update(existing.id, body: {
+          'productIds': matched.map((p) => p.id).toList(),
+          'lastUpdated': DateTime.now().toUtc().toIso8601String(),
+          'source': 'gemini',
+        });
+      } catch (_) {
+        await pb.collection('app_config').create(body: {
+          'key': 'trending_daily',
+          'productIds': matched.map((p) => p.id).toList(),
+          'lastUpdated': DateTime.now().toUtc().toIso8601String(),
+          'source': 'gemini',
+        });
+      }
     } catch (_) {}
 
     return matched;
@@ -1429,10 +1372,9 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
   // ── Load analyzed product IDs to exclude re-recommendations ──
   final excludeIds = <String>{};
   try {
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users').doc(user.uid).get();
-    final data = userDoc.data();
-    if (data != null && data['analyzedProducts'] is List) {
+    final userRecord = await pb.collection('users').getOne(user.uid);
+    final data = userRecord.data;
+    if (data['analyzedProducts'] is List) {
       for (final entry in (data['analyzedProducts'] as List)) {
         if (entry is Map && entry['productId'] != null) {
           excludeIds.add(entry['productId'].toString());
@@ -1589,10 +1531,9 @@ final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((ref) async
   if (user == null) return [];
 
   try {
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users').doc(user.uid).get();
-    final data = userDoc.data();
-    if (data == null || data['analyzedProducts'] is! List) return [];
+    final userRecord = await pb.collection('users').getOne(user.uid);
+    final data = userRecord.data;
+    if (data['analyzedProducts'] is! List) return [];
 
     final analyzed = (data['analyzedProducts'] as List).cast<Map<String, dynamic>>();
     if (analyzed.isEmpty) return [];
@@ -1718,10 +1659,10 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
       final hiveDs = ref.read(hiveDataSourceProvider);
       final hiveIds = hiveDs.getViewedProducts();
 
-      return fireDs.watchRecentlyViewed(user.uid).asyncMap((firestoreIds) async {
+      return fireDs.watchRecentlyViewed(user).asyncMap((firestoreIds) async {
         if (firestoreIds.isEmpty && hiveIds.isNotEmpty) {
           for (final id in hiveIds.reversed) {
-            fireDs.addRecentlyViewed(user.uid, id);
+            fireDs.addRecentlyViewed(user, id);
           }
           return hiveIds;
         }
@@ -1791,7 +1732,7 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
     // Save to Firestore for persistence
     final user = ref.read(authStateProvider).valueOrNull;
     if (user != null) {
-      ref.read(firebaseDataSourceProvider).addRecentlyViewed(user.uid, productId);
+      ref.read(firebaseDataSourceProvider).addRecentlyViewed(user, productId);
     }
     // Get product info from cache (no network call)
     String category = '';
