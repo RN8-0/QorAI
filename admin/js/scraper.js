@@ -3,7 +3,7 @@
 //  Scrapes products from epey.com via local CORS proxy.
 //  Translates Turkish → English using CompairDict (dictionary.js).
 //  Uses CompairCategories / CompairBrands (categories.js).
-//  Persists to Firestore via global `db` (app.js).
+//  Persists to PocketBase via pb_client.js helpers.
 // ═══════════════════════════════════════════════════════════════════
 
 const PROXY_URL = 'http://localhost:3456';
@@ -1066,7 +1066,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
           product.techScore = item.techScore;
         }
 
-        // Save to Firestore
+        // Save to PocketBase
         await pbSetDoc('products', product.id, product);
         results.added++;
         errorStreak = 0;
@@ -1104,11 +1104,10 @@ async function computePriceSegments(categoryId) {
 
   let products;
   try {
-    const result = await getPb().collection('products').getList(1, 5000, {
-      filter: `category="${categoryId}" && price_raw>0`,
-      sort: 'price_raw'
-    });
-    products = result.items.filter(p => p.price_raw && p.price_raw > 0);
+    const items = await pbGetAll('products', { filter: `category="${categoryId}"` });
+    products = items
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p.price_raw && p.price_raw > 0);
   } catch (e) {
     slog(`Failed to load products for segments: ${e.message}`, 'error');
     return;
@@ -1159,47 +1158,9 @@ async function geminiTranslateBatch(terms) {
 
   slog(`AI translating ${batch.length} terms...`, 'info');
 
-  try {
-    // Try Cloud Function endpoint
-    const functionsUrl = `https://us-central1-compair-99b6e.cloudfunctions.net/translateTerms`;
-    const res = await fetch(functionsUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ terms: batch }),
-      signal: AbortSignal.timeout(10000)
-    });
-
-    if (!res.ok) throw new Error(`Function returned ${res.status}`);
-    const data = await res.json();
-    const translations = data.translations || {};
-
-    // Merge into runtime dictionary
-    const dict = getDict();
-    if (dict && dict.TR_EN) {
-      for (const [tr, en] of Object.entries(translations)) {
-        dict.TR_EN[tr.toLocaleLowerCase('tr')] = en;
-      }
-    }
-
-    // Save to Firestore for persistence
-    if (Object.keys(translations).length > 0) {
-      try {
-        await pbSetDoc('app_config', 'learned_translations', translations);
-        slog(`Saved ${Object.keys(translations).length} learned translations`, 'success');
-      } catch (e) {
-        slog(`Failed to save translations: ${e.message}`, 'warn');
-      }
-    }
-
-    return translations;
-  } catch (e) {
-    slog(`AI translation skipped (Cloud Function not deployed)`, 'info');
-    // Store untranslated terms for future reference
-    try {
-      await pbSetDoc('app_config', 'untranslated_terms', Object.fromEntries(batch.map(t => [t, true])));
-    } catch {}
-    return {};
-  }
+  // Cloud Function not available — skip AI translation
+  slog(`AI translation skipped (Cloud Function not available)`, 'info');
+  return {};
 }
 
 async function loadLearnedTranslations() {
@@ -1216,7 +1177,7 @@ async function loadLearnedTranslations() {
             count++;
           }
         }
-        if (count > 0) slog(`Loaded ${count} learned translations from Firestore`, 'info');
+        if (count > 0) slog(`Loaded ${count} learned translations from PocketBase`, 'info');
       }
     }
   } catch (e) {
@@ -1293,16 +1254,15 @@ async function startBulkScrape() {
     allProducts.forEach(p => { if (p.sourceUrl) existingUrls.add(p.sourceUrl); });
   } else {
     try {
-      const result = await getPb().collection('products').getList(1, 5000, {
-        filter: `category="${categoryId}"`
-      });
-      result.items.forEach(d => {
-        if (d.sourceUrl) existingUrls.add(d.sourceUrl);
+      const items = await pbGetAll('products', { filter: `category="${categoryId}"` });
+      items.forEach(d => {
+        const data = d.data();
+        if (data.sourceUrl) existingUrls.add(data.sourceUrl);
       });
     } catch {}
   }
 
-  const newItems = urlItems.filter(item => !existingUrls.has(item.url));
+  const newItems= urlItems.filter(item => !existingUrls.has(item.url));
   slog(`Found ${urlItems.length} total, ${newItems.length} new (${urlItems.length - newItems.length} existing)`);
 
   const toScrape = newItems.slice(0, maxProducts);
@@ -1429,7 +1389,7 @@ async function scrapeByUrl() {
     }
 
     await pbSetDoc('products', product.id, product);
-    slog('Product saved to Firestore!', 'success');
+    slog('Product saved to PocketBase!', 'success');
     toast(`${existingDoc?.exists ? 'Updated' : 'Added'}: ${product.name}`, 's');
 
     // Trigger AI translation
@@ -1470,10 +1430,8 @@ async function startScoreUpdate() {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
       products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('epey.com'));
     } else {
-      const result = await getPb().collection('products').getList(1, 5000, {
-        filter: `source="epey" || source="epey.com"`
-      });
-      products = result.items;
+      const items = await pbGetAll('products', { filter: `source="epey" || source="epey.com"` });
+      products = items.map(d => ({ id: d.id, ...d.data() }));
     }
   } catch (e) {
     slog(`Failed to load products: ${e.message}`, 'error');
@@ -1552,10 +1510,8 @@ async function startProductUpdate() {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
       products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('epey.com'));
     } else {
-      const result2 = await getPb().collection('products').getList(1, 5000, {
-        filter: `source="epey" || source="epey.com"`
-      });
-      products = result2.items;
+      const items = await pbGetAll('products', { filter: `source="epey" || source="epey.com"` });
+      products = items.map(d => ({ id: d.id, ...d.data() }));
     }
   } catch (e) {
     slog(`Failed to load products: ${e.message}`, 'error');
@@ -1690,11 +1646,10 @@ async function startInventoryScan() {
       .forEach(p => { if (p.sourceUrl) existingUrls.add(p.sourceUrl); });
   } else {
     try {
-      const r = await getPb().collection('products').getList(1, 5000, {
-        filter: `category="${categoryId}"`
-      });
-      r.items.forEach(d => {
-        if (d.sourceUrl) existingUrls.add(d.sourceUrl);
+      const items = await pbGetAll('products', { filter: `category="${categoryId}"` });
+      items.forEach(d => {
+        const data = d.data();
+        if (data.sourceUrl) existingUrls.add(data.sourceUrl);
       });
     } catch {}
   }
