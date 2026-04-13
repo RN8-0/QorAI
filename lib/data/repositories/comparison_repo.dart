@@ -13,13 +13,13 @@ import 'package:compair/services/ai_service.dart';
 import 'package:uuid/uuid.dart';
 
 class ComparisonRepositoryImpl {
-  final PbDataSource _firebaseDS;
+  final PbDataSource _pbDS;
   final AIService _aiService;
 
   ComparisonRepositoryImpl({
-    required PbDataSource firebaseDS,
+    required PbDataSource pbDS,
     required AIService aiService,
-  })  : _firebaseDS = firebaseDS,
+  })  : _pbDS = pbDS,
         _aiService = aiService;
 
   /// Compare products - using AI
@@ -68,7 +68,7 @@ class ComparisonRepositoryImpl {
         createdAt: DateTime.now(),
       );
 
-      await _firebaseDS.createComparison(comparison);
+      await _pbDS.createComparison(comparison);
 
       return Success(result);
     } on AIServiceException catch (e) {
@@ -85,13 +85,13 @@ class ComparisonRepositoryImpl {
     int limit = 20,
   }) async {
     try {
-      final comparisons = await _firebaseDS.getUserComparisons(
+      final comparisons = await _pbDS.getUserComparisons(
         userId,
         limit: limit,
       );
       return Success(comparisons);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -113,7 +113,7 @@ class ComparisonRepositoryImpl {
         createdAt: DateTime.now(),
         title: title,
       );
-      await _firebaseDS.createComparison(comparison);
+      await _pbDS.createComparison(comparison);
     } catch (e) {
       debugPrint('saveManualComparison error: $e');
       rethrow;
@@ -128,7 +128,7 @@ class ComparisonRepositoryImpl {
   }) async {
     try {
       // 1. Update user choice in comparison
-      await _firebaseDS.updateComparison(
+      await _pbDS.updateComparison(
         comparisonId: comparisonId,
         data: {
           'userChoiceId': productId,
@@ -137,14 +137,14 @@ class ComparisonRepositoryImpl {
       );
 
       // 2. Add product to user's ownedProducts list (profile enrichment)
-      await _firebaseDS.addToUserOwnedProducts(
+      await _pbDS.addToUserOwnedProducts(
         userId: userId,
         productId: productId,
       );
 
       return const Success(null);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -154,13 +154,13 @@ class ComparisonRepositoryImpl {
     int limit = 10,
   }) async {
     try {
-      final comparisons = await _firebaseDS.getPredefinedComparisons(
+      final comparisons = await _pbDS.getPredefinedComparisons(
         category: category,
         limit: limit,
       );
       return Success(comparisons);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 }

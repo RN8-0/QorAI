@@ -11,13 +11,13 @@ import 'package:compair/data/models/other_models.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 
 class ProductRepository {
-  final PbDataSource _firebaseDS;
+  final PbDataSource _pbDS;
   final HiveDataSource _hiveDS;
 
   ProductRepository({
-    required PbDataSource firebaseDS,
+    required PbDataSource pbDS,
     required HiveDataSource hiveDS,
-  })  : _firebaseDS = firebaseDS,
+  })  : _pbDS = pbDS,
         _hiveDS = hiveDS;
 
   /// Get single product — cache-first, network-fallback (Section 7.4, 15.2)
@@ -36,9 +36,9 @@ class ProductRepository {
 
     // 2. Network fetch (Firestore)
     try {
-      final product = await _firebaseDS.getProduct(id);
+      final product = await _pbDS.getProduct(id);
       if (product == null) {
-        return const Failure(FirestoreException(message: 'Product not found'));
+        return const Failure(ServerException(message: 'Product not found'));
       }
 
       // 3. Cache write (safe — never let this break the success path)
@@ -50,7 +50,7 @@ class ProductRepository {
 
       return Success(product);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -65,7 +65,7 @@ class ProductRepository {
     bool activeOnly = false,
   }) async {
     try {
-      final products = await _firebaseDS.getProducts(
+      final products = await _pbDS.getProducts(
         category: category,
         subcategory: subcategory,
         limit: limit,
@@ -75,7 +75,7 @@ class ProductRepository {
       );
       return Success(products);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -85,14 +85,14 @@ class ProductRepository {
     int perCategory = 80,
   }) async {
     try {
-      final result = await _firebaseDS.getProductsMultiCategoryTs(
+      final result = await _pbDS.getProductsMultiCategoryTs(
         categories: categories,
         perCategory: perCategory,
       );
       return Success(result.map((k, v) =>
           MapEntry(k, v.cast<ProductEntity>())));
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -102,13 +102,13 @@ class ProductRepository {
     int maxTotal = 5000,
   }) async {
     try {
-      final products = await _firebaseDS.getAllProductsInCategoryTs(
+      final products = await _pbDS.getAllProductsInCategoryTs(
         category: category,
         maxTotal: maxTotal,
       );
       return Success(products);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -119,7 +119,7 @@ class ProductRepository {
     int limit = 200,
     int page = 1,
   }) async {
-    return _firebaseDS.getProductsPageTs(
+    return _pbDS.getProductsPageTs(
       category: category,
       limit: limit,
       page: page,
@@ -130,32 +130,32 @@ class ProductRepository {
   Future<Result<List<ProductEntity>>> getProductsByIds(
       List<String> ids) async {
     try {
-      final products = await _firebaseDS.getProductsByIds(ids);
+      final products = await _pbDS.getProductsByIds(ids);
       return Success(products);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
   /// Get categories — cache-first
   Future<Result<List<CategoryModel>>> getCategories() async {
     try {
-      final categories = await _firebaseDS.getCategories();
+      final categories = await _pbDS.getCategories();
       return Success(categories);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
   /// Delete product
   Future<Result<void>> deleteProduct(String id) async {
     try {
-      await _firebaseDS.deleteProduct(id);
+      await _pbDS.deleteProduct(id);
       // Also delete from cache
       await _hiveDS.deleteSetting('product_$id');
       return const Success(null);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -165,13 +165,13 @@ class ProductRepository {
     String? category,
   }) async {
     try {
-      final trends = await _firebaseDS.getTrends(
+      final trends = await _pbDS.getTrends(
         country: country,
         category: category,
       );
       return Success(trends);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -181,63 +181,63 @@ class ProductRepository {
     int limit = 20,
   }) async {
     try {
-      final reviews = await _firebaseDS.getProductReviews(
+      final reviews = await _pbDS.getProductReviews(
         productId,
         limit: limit,
       );
       return Success(reviews);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
   /// Add review
   Future<Result<void>> addReview(ReviewModel review) async {
     try {
-      await _firebaseDS.createReview(review);
+      await _pbDS.createReview(review);
       return const Success(null);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
   /// Delete review
   Future<Result<void>> deleteReview(String reviewId) async {
     try {
-      await _firebaseDS.deleteReview(reviewId);
+      await _pbDS.deleteReview(reviewId);
       return const Success(null);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
   /// Toggle review like
   Future<Result<void>> toggleReviewLike(String reviewId, String userId) async {
     try {
-      await _firebaseDS.toggleReviewLike(reviewId, userId);
+      await _pbDS.toggleReviewLike(reviewId, userId);
       return const Success(null);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
   /// Toggle review dislike
   Future<Result<void>> toggleReviewDislike(String reviewId, String userId) async {
     try {
-      await _firebaseDS.toggleReviewDislike(reviewId, userId);
+      await _pbDS.toggleReviewDislike(reviewId, userId);
       return const Success(null);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
   /// Return all products via in-memory cache (fastest path)
   Future<Result<List<ProductEntity>>> getAllCachedProducts() async {
     try {
-      final models = await _firebaseDS.getAllCachedProducts();
+      final models = await _pbDS.getAllCachedProducts();
       return Success(models);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 
@@ -247,13 +247,13 @@ class ProductRepository {
     int limit = 20,
   }) async {
     try {
-      final products = await _firebaseDS.searchProducts(
+      final products = await _pbDS.searchProducts(
         query: query,
         limit: limit,
       );
       return Success(products);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 }

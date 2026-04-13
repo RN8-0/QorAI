@@ -64,7 +64,7 @@ class _LinkAnalysisHistoryScreenState
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth == null) return;
       final result = await ref
-          .read(firebaseDataSourceProvider)
+          .read(pbDataSourceProvider)
           .getLinkAnalysisHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
@@ -85,7 +85,7 @@ class _LinkAnalysisHistoryScreenState
         return;
       }
       final result = await ref
-          .read(firebaseDataSourceProvider)
+          .read(pbDataSourceProvider)
           .getLinkAnalysisHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
@@ -120,7 +120,7 @@ class _LinkAnalysisHistoryScreenState
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth != null) {
         final allItems = await ref
-            .read(firebaseDataSourceProvider)
+            .read(pbDataSourceProvider)
             .getLinkAnalysisHistory(auth);
         final ts = removed['timestamp'] as String?;
         final id = removed['id'] as String?;
@@ -129,7 +129,7 @@ class _LinkAnalysisHistoryScreenState
           return e['timestamp'] != ts;
         }).toList();
         await ref
-            .read(firebaseDataSourceProvider)
+            .read(pbDataSourceProvider)
             .updateLinkAnalysisHistory(auth, filtered);
         ref.invalidate(linkAnalysisHistoryProvider);
       }
@@ -177,7 +177,7 @@ class _LinkAnalysisHistoryScreenState
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth != null) {
         await ref
-            .read(firebaseDataSourceProvider)
+            .read(pbDataSourceProvider)
             .updateLinkAnalysisHistory(auth, []);
         ref.invalidate(linkAnalysisHistoryProvider);
       }

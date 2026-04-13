@@ -1093,7 +1093,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
           : (user?.email.isNotEmpty == true
               ? user!.email.split('@').first
               : 'User');
-      await ref.read(firebaseDataSourceProvider).addReviewReply(
+      await ref.read(pbDataSourceProvider).addReviewReply(
         collection: widget.firestoreCollection,
         reviewId: widget.reviewId,
         userId: uid,
@@ -1144,7 +1144,7 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
   @override
   void initState() {
     super.initState();
-    _repliesStream = ref.read(firebaseDataSourceProvider)
+    _repliesStream = ref.read(pbDataSourceProvider)
         .watchReviewReplies(widget.firestoreCollection, widget.reviewId);
   }
 
@@ -1268,7 +1268,7 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                                       onTap: () async {
                                         await ref
                                             .read(
-                                                firebaseDataSourceProvider)
+                                                pbDataSourceProvider)
                                             .deleteReviewReply(
                                           collection: widget.firestoreCollection,
                                           reviewId: widget.reviewId,

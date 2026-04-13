@@ -15,7 +15,7 @@ final userProfileStreamProvider = StreamProvider<UserEntity?>((ref) {
   return authState.when(
     data: (uid) {
       if (uid == null) return Stream.value(null);
-      return ref.read(firebaseDataSourceProvider).watchUser(uid);
+      return ref.read(pbDataSourceProvider).watchUser(uid);
     },
     loading: () => Stream.value(null),
     error: (_, __) => Stream.value(null),
@@ -41,7 +41,7 @@ final countryInitProvider = FutureProvider<void>((ref) async {
           if (user.language == 'en' && locale != null && locale.languageCode != 'en') {
             updates['language'] = locale.languageCode;
           }
-          await ref.read(firebaseDataSourceProvider).updateUser(uid, updates);
+          await ref.read(pbDataSourceProvider).updateUser(uid, updates);
         }
       } catch (_) {}
     });

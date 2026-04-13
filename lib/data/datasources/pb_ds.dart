@@ -57,9 +57,9 @@ class PbDataSource {
       return UserModel.fromPb(record);
     } on ClientException catch (e) {
       if (e.statusCode == 404) return null;
-      throw FirestoreException(message: 'User could not be retrieved: $e');
+      throw ServerException(message: 'User could not be retrieved: $e');
     } catch (e) {
-      throw FirestoreException(message: 'User could not be retrieved: $e');
+      throw ServerException(message: 'User could not be retrieved: $e');
     }
   }
 
@@ -90,7 +90,7 @@ class PbDataSource {
         },
       );
     } catch (e) {
-      throw FirestoreException(message: 'User could not be created: $e');
+      throw ServerException(message: 'User could not be created: $e');
     }
   }
 
@@ -99,7 +99,7 @@ class PbDataSource {
       data.remove('updatedAt'); // PB auto-manages 'updated' field
       await _pb.collection(AppConstants.usersCollection).update(uid, body: data);
     } catch (e) {
-      throw FirestoreException(message: 'User could not be updated: $e');
+      throw ServerException(message: 'User could not be updated: $e');
     }
   }
 
@@ -273,9 +273,9 @@ class PbDataSource {
       return ProductModel.fromPb(record);
     } on ClientException catch (e) {
       if (e.statusCode == 404) return null;
-      throw FirestoreException(message: 'Product could not be retrieved: $e');
+      throw ServerException(message: 'Product could not be retrieved: $e');
     } catch (e) {
-      throw FirestoreException(message: 'Product could not be retrieved: $e');
+      throw ServerException(message: 'Product could not be retrieved: $e');
     }
   }
 
@@ -322,7 +322,7 @@ class PbDataSource {
           .toList();
     } catch (e, st) {
       debugPrint('=== COMPAIR: getProducts ERROR: $e\n$st ===');
-      throw FirestoreException(message: 'Products could not be retrieved: $e');
+      throw ServerException(message: 'Products could not be retrieved: $e');
     }
   }
 
@@ -437,7 +437,7 @@ class PbDataSource {
       }
       return results;
     } catch (e) {
-      throw FirestoreException(message: 'Products could not be retrieved: $e');
+      throw ServerException(message: 'Products could not be retrieved: $e');
     }
   }
 
@@ -445,7 +445,7 @@ class PbDataSource {
     try {
       await _pb.collection(AppConstants.productsCollection).delete(id);
     } catch (e) {
-      throw FirestoreException(message: 'Product could not be deleted: $e');
+      throw ServerException(message: 'Product could not be deleted: $e');
     }
   }
 
@@ -469,7 +469,7 @@ class PbDataSource {
           body: {'comparisonsCount': count + 1});
       return record.id;
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Comparison could not be created: $e');
     }
   }
@@ -491,7 +491,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 15));
       return result.items.map(ComparisonModel.fromPb).toList();
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Comparisons could not be retrieved: $e');
     }
   }
@@ -514,7 +514,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 15));
       return result.items.map(ComparisonModel.fromPb).toList();
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Predefined comparisons could not be retrieved: $e');
     }
   }
@@ -535,7 +535,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => CategoryModel.fromPb(r)).toList();
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Categories could not be retrieved: $e');
     }
   }
@@ -562,7 +562,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => TrendModel.fromPb(r)).toList();
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Trend data could not be retrieved: $e');
     }
   }
@@ -585,7 +585,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => ReviewModel.fromPb(r)).toList();
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Reviews could not be retrieved: $e');
     }
   }
@@ -596,7 +596,7 @@ class PbDataSource {
           .collection(AppConstants.reviewsCollection)
           .create(body: review.toMap());
     } catch (e) {
-      throw FirestoreException(message: 'Review could not be created: $e');
+      throw ServerException(message: 'Review could not be created: $e');
     }
   }
 
@@ -730,7 +730,7 @@ class PbDataSource {
           .collection(AppConstants.userLinksCollection)
           .create(body: link.toMap());
     } catch (e) {
-      throw FirestoreException(message: 'Link could not be saved: $e');
+      throw ServerException(message: 'Link could not be saved: $e');
     }
   }
 
@@ -748,7 +748,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => UserLinkModel.fromPb(r)).toList();
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Links could not be retrieved: $e');
     }
   }
@@ -920,7 +920,7 @@ class PbDataSource {
           .collection(AppConstants.comparisonsCollection)
           .update(comparisonId, body: data);
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'Comparison could not be updated: $e');
     }
   }
@@ -945,7 +945,7 @@ class PbDataSource {
         if (category != null) 'category': category,
       });
     } catch (e) {
-      throw FirestoreException(message: 'Could not save analysis: $e');
+      throw ServerException(message: 'Could not save analysis: $e');
     }
   }
 
@@ -963,7 +963,7 @@ class PbDataSource {
             body: {'ownedProducts': owned});
       }
     } catch (e) {
-      throw FirestoreException(
+      throw ServerException(
           message: 'User product list could not be updated: $e');
     }
   }

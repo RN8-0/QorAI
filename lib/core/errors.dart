@@ -71,7 +71,8 @@ class AuthException extends AppException {
   });
 }
 
-/// Firestore errors
+/// @deprecated Use ServerException instead
+@Deprecated('Use ServerException instead')
 class FirestoreException extends AppException {
   const FirestoreException({
     required super.message,

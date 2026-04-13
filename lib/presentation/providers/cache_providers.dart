@@ -839,13 +839,13 @@ Future<Result<void>> addToCollection(WidgetRef ref, String productId) async {
     return const Failure(AuthException(message: 'You need to be signed in'));
   }
   try {
-    await ref.read(firebaseDataSourceProvider).addToUserOwnedProducts(
+    await ref.read(pbDataSourceProvider).addToUserOwnedProducts(
           userId: user.uid,
           productId: productId,
         );
     return const Success(null);
   } catch (e) {
-    return Failure(FirestoreException(message: 'Could not add to collection: $e'));
+    return Failure(ServerException(message: 'Could not add to collection: $e'));
   }
 }
 
@@ -865,7 +865,7 @@ Future<Result<void>> saveLinkAnalysis(
     return const Failure(AuthException(message: 'You need to be signed in'));
   }
   try {
-    await ref.read(firebaseDataSourceProvider).saveLinkAnalysis(
+    await ref.read(pbDataSourceProvider).saveLinkAnalysis(
           userId: user.uid,
           url: url,
           productName: productName,
@@ -877,7 +877,7 @@ Future<Result<void>> saveLinkAnalysis(
     return const Success(null);
   } catch (e) {
     return Failure(
-        FirestoreException(message: 'Could not save analysis: $e'));
+        ServerException(message: 'Could not save analysis: $e'));
   }
 }
 

@@ -152,7 +152,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     if (!mounted || query.isEmpty) return;
     setState(() => _remoteSearching = true);
     try {
-      final ds = ref.read(firebaseDataSourceProvider);
+      final ds = ref.read(pbDataSourceProvider);
       final results = await ds.searchProducts(
         query: query,
         limit: 150,
@@ -192,7 +192,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     if (_fetchingAll || _allLoaded || !mounted) return;
     setState(() => _fetchingAll = true);
     try {
-      final ds = ref.read(firebaseDataSourceProvider);
+      final ds = ref.read(pbDataSourceProvider);
       final page = await ds.getProductsPageTs(
         category: _activeCategoryId,
         limit: 200,
@@ -274,7 +274,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     if (_fetchingAll || !mounted) return;
     setState(() => _fetchingAll = true);
 
-    final ds = ref.read(firebaseDataSourceProvider);
+    final ds = ref.read(pbDataSourceProvider);
     int page = 1;
     final seenIds = _allProducts.map((p) => p.id).toSet();
 

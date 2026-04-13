@@ -71,11 +71,6 @@ final pbDataSourceProvider = Provider<PbDataSource>((ref) {
   return PbDataSource();
 });
 
-/// Alias for legacy references — points to PbDataSource
-final firebaseDataSourceProvider = Provider<PbDataSource>((ref) {
-  return ref.read(pbDataSourceProvider);
-});
-
 /// Hive Local Data Source
 final hiveDataSourceProvider = Provider<HiveDataSource>((ref) {
   return HiveDataSource();
@@ -198,7 +193,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 /// Product Repository
 final productRepositoryProvider = Provider<ProductRepository>((ref) {
   return ProductRepository(
-    firebaseDS: ref.read(firebaseDataSourceProvider),
+    pbDS: ref.read(pbDataSourceProvider),
     hiveDS: ref.read(hiveDataSourceProvider),
   );
 });
@@ -206,7 +201,7 @@ final productRepositoryProvider = Provider<ProductRepository>((ref) {
 /// Comparison Repository
 final comparisonRepositoryProvider = Provider<ComparisonRepositoryImpl>((ref) {
   return ComparisonRepositoryImpl(
-    firebaseDS: ref.read(firebaseDataSourceProvider),
+    pbDS: ref.read(pbDataSourceProvider),
     aiService: ref.read(aiServiceProvider),
   );
 });
@@ -215,7 +210,7 @@ final comparisonRepositoryProvider = Provider<ComparisonRepositoryImpl>((ref) {
 final aiRepositoryProvider = Provider<AIRepository>((ref) {
   return AIRepository(
     aiService: ref.read(aiServiceProvider),
-    firebaseDS: ref.read(firebaseDataSourceProvider),
+    pbDS: ref.read(pbDataSourceProvider),
     metadataService: ref.read(metadataServiceProvider),
   );
 });

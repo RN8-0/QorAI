@@ -175,7 +175,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       }
 
       // Persist to Firestore in background (fire-and-forget)
-      final ds = _ref.read(firebaseDataSourceProvider);
+      final ds = _ref.read(pbDataSourceProvider);
       final allMsgs = List<PersistedChatMsg>.from(state.messages.reversed);
       ds
           .updateChatConversation(user.uid, convId, allMsgs, title)
@@ -229,7 +229,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final localId = 'local_${DateTime.now().millisecondsSinceEpoch}';
     state = state.copyWith(conversationId: localId);
     // Fire-and-forget Firestore creation (don't block chat on it)
-    final ds = _ref.read(firebaseDataSourceProvider);
+    final ds = _ref.read(pbDataSourceProvider);
     final now = DateTime.now();
     final conv = ChatConversation(
       id: '',
@@ -310,7 +310,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
   Future<void> loadConversation(String userId, String convId) async {
     state = state.copyWith(isLoading: true);
     try {
-      final ds = _ref.read(firebaseDataSourceProvider);
+      final ds = _ref.read(pbDataSourceProvider);
       final conv = await ds.getChatConversation(userId, convId);
       if (conv != null) {
         state = ChatSessionState(
@@ -342,7 +342,7 @@ final chatHistoryProvider =
     StreamProvider.family<List<ChatConversation>, String>(
   (ref, userId) {
     return ref
-        .read(firebaseDataSourceProvider)
+        .read(pbDataSourceProvider)
         .streamChatConversations(userId);
   },
 );

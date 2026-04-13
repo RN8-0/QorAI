@@ -41,7 +41,7 @@ class ScraperRepository {
       );
       return result.map(ScraperSource.fromPb).toList();
     } catch (e) {
-      throw FirestoreException(message: 'Failed to get sources: $e');
+      throw ServerException(message: 'Failed to get sources: $e');
     }
   }
 
@@ -56,7 +56,7 @@ class ScraperRepository {
       }
       await _pb.collection('scraper_sources').create(body: source.toMap());
     } catch (e) {
-      throw FirestoreException(message: 'Failed to save source: $e');
+      throw ServerException(message: 'Failed to save source: $e');
     }
   }
 
@@ -65,7 +65,7 @@ class ScraperRepository {
     try {
       await _pb.collection('scraper_sources').update(sourceId, body: {'isActive': isActive});
     } catch (e) {
-      throw FirestoreException(message: 'Failed to toggle source: $e');
+      throw ServerException(message: 'Failed to toggle source: $e');
     }
   }
 
@@ -74,7 +74,7 @@ class ScraperRepository {
     try {
       await _pb.collection('scraper_sources').update(sourceId, body: {'priority': priority});
     } catch (e) {
-      throw FirestoreException(message: 'Failed to update source priority: $e');
+      throw ServerException(message: 'Failed to update source priority: $e');
     }
   }
 
@@ -83,7 +83,7 @@ class ScraperRepository {
     try {
       await _pb.collection('scraper_sources').delete(sourceId);
     } catch (e) {
-      throw FirestoreException(message: 'Failed to delete source: $e');
+      throw ServerException(message: 'Failed to delete source: $e');
     }
   }
 
@@ -115,7 +115,7 @@ class ScraperRepository {
       );
       return result.map(ScraperBrand.fromPb).toList();
     } catch (e) {
-      throw FirestoreException(message: 'Failed to get brands: $e');
+      throw ServerException(message: 'Failed to get brands: $e');
     }
   }
 
@@ -130,7 +130,7 @@ class ScraperRepository {
       }
       await _pb.collection('scraper_brands').create(body: brand.toMap());
     } catch (e) {
-      throw FirestoreException(message: 'Failed to save brand: $e');
+      throw ServerException(message: 'Failed to save brand: $e');
     }
   }
 
@@ -139,7 +139,7 @@ class ScraperRepository {
     try {
       await _pb.collection('scraper_brands').update(brandId, body: {'isActive': isActive});
     } catch (e) {
-      throw FirestoreException(message: 'Failed to toggle brand: $e');
+      throw ServerException(message: 'Failed to toggle brand: $e');
     }
   }
 
@@ -148,7 +148,7 @@ class ScraperRepository {
     try {
       await _pb.collection('scraper_brands').delete(brandId);
     } catch (e) {
-      throw FirestoreException(message: 'Failed to delete brand: $e');
+      throw ServerException(message: 'Failed to delete brand: $e');
     }
   }
 
@@ -182,7 +182,7 @@ class ScraperRepository {
       }
       await _pb.collection('scraper_schedules').create(body: schedule.toMap());
     } catch (e) {
-      throw FirestoreException(message: 'Failed to save schedule: $e');
+      throw ServerException(message: 'Failed to save schedule: $e');
     }
   }
 
@@ -191,7 +191,7 @@ class ScraperRepository {
     try {
       await _pb.collection('scraper_schedules').update(scheduleId, body: {'isActive': isActive});
     } catch (e) {
-      throw FirestoreException(message: 'Failed to toggle schedule: $e');
+      throw ServerException(message: 'Failed to toggle schedule: $e');
     }
   }
 
@@ -200,7 +200,7 @@ class ScraperRepository {
     try {
       await _pb.collection('scraper_schedules').delete(scheduleId);
     } catch (e) {
-      throw FirestoreException(message: 'Failed to delete schedule: $e');
+      throw ServerException(message: 'Failed to delete schedule: $e');
     }
   }
 
@@ -236,7 +236,7 @@ class ScraperRepository {
       );
       return result.items.map(ScraperLog.fromPb).toList();
     } catch (e) {
-      throw FirestoreException(message: 'Failed to get logs: $e');
+      throw ServerException(message: 'Failed to get logs: $e');
     }
   }
 
@@ -280,7 +280,7 @@ class ScraperRepository {
       }
       await _pb.collection('category_templates').create(body: template.toMap());
     } catch (e) {
-      throw FirestoreException(message: 'Failed to save category template: $e');
+      throw ServerException(message: 'Failed to save category template: $e');
     }
   }
 
@@ -311,7 +311,7 @@ class ScraperRepository {
       );
       return result.map(StreamingService.fromPb).toList();
     } catch (e) {
-      throw FirestoreException(message: 'Failed to get services: $e');
+      throw ServerException(message: 'Failed to get services: $e');
     }
   }
 
@@ -326,7 +326,7 @@ class ScraperRepository {
       }
       await _pb.collection('subscription_services').create(body: service.toMap());
     } catch (e) {
-      throw FirestoreException(message: 'Failed to save service: $e');
+      throw ServerException(message: 'Failed to save service: $e');
     }
   }
 
@@ -335,7 +335,7 @@ class ScraperRepository {
     try {
       await _pb.collection('subscription_services').delete(serviceId);
     } catch (e) {
-      throw FirestoreException(message: 'Failed to delete service: $e');
+      throw ServerException(message: 'Failed to delete service: $e');
     }
   }
 

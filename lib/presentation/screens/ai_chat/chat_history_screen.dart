@@ -66,7 +66,7 @@ class ChatHistoryScreen extends ConsumerWidget {
                     ),
                     onDismissed: (_) {
                       ref
-                          .read(firebaseDataSourceProvider)
+                          .read(pbDataSourceProvider)
                           .deleteChatConversation(user.uid, conv.id);
                     },
                     child: Container(

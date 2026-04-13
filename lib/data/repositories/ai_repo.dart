@@ -12,15 +12,15 @@ import 'package:compair/services/metadata_service.dart';
 
 class AIRepository {
   final AIService _aiService;
-  final PbDataSource _firebaseDS;
+  final PbDataSource _pbDS;
   final MetadataService? _metadataService;
 
   AIRepository({
     required AIService aiService,
-    required PbDataSource firebaseDS,
+    required PbDataSource pbDS,
     MetadataService? metadataService,
   })  : _aiService = aiService,
-        _firebaseDS = firebaseDS,
+        _pbDS = pbDS,
         _metadataService = metadataService;
 
   /// Get recommendations - Section 7.2
@@ -109,7 +109,7 @@ class AIRepository {
         createdAt: DateTime.now(),
       );
 
-      await _firebaseDS.saveUserLink(link);
+      await _pbDS.saveUserLink(link);
 
       return Success(enrichedResult);
     } on AIServiceException catch (e) {
@@ -142,10 +142,10 @@ class AIRepository {
     int limit = 20,
   }) async {
     try {
-      final links = await _firebaseDS.getUserLinks(userId, limit: limit);
+      final links = await _pbDS.getUserLinks(userId, limit: limit);
       return Success(links);
     } catch (e) {
-      return Failure(FirestoreException(message: e.toString()));
+      return Failure(ServerException(message: e.toString()));
     }
   }
 }

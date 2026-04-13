@@ -1,4 +1,4 @@
-﻿/// Compair — Subscription Analysis History Screen
+/// Compair — Subscription Analysis History Screen
 library;
 
 import 'package:flutter/material.dart';
@@ -68,7 +68,7 @@ class _SubscriptionHistoryScreenState
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth == null) return;
       final result = await ref
-          .read(firebaseDataSourceProvider)
+          .read(pbDataSourceProvider)
           .getSubscriptionHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
@@ -85,7 +85,7 @@ class _SubscriptionHistoryScreenState
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth == null) { if (mounted) setState(() => _isLoading = false); return; }
       final result = await ref
-          .read(firebaseDataSourceProvider)
+          .read(pbDataSourceProvider)
           .getSubscriptionHistory(auth)
           .timeout(const Duration(seconds: 6));
       if (!mounted) return;
@@ -105,13 +105,13 @@ class _SubscriptionHistoryScreenState
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth != null) {
         // Get full list from Firestore and remove by timestamp
-        final allItems = await ref.read(firebaseDataSourceProvider)
+        final allItems = await ref.read(pbDataSourceProvider)
             .getSubscriptionHistory(auth);
         final ts = removed['timestamp'] as String?;
         final filtered = allItems
             .where((e) => e['timestamp'] != ts)
             .toList();
-        await ref.read(firebaseDataSourceProvider)
+        await ref.read(pbDataSourceProvider)
             .updateSubscriptionHistory(auth, filtered);
         ref.invalidate(subscriptionHistoryProvider);
       }
@@ -152,7 +152,7 @@ class _SubscriptionHistoryScreenState
     try {
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth != null) {
-        await ref.read(firebaseDataSourceProvider)
+        await ref.read(pbDataSourceProvider)
             .updateSubscriptionHistory(auth, []);
         ref.invalidate(subscriptionHistoryProvider);
       }

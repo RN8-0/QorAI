@@ -273,7 +273,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   final GeminiService _gemini;
   final SubscriptionService _subscriptionService;
   final BehaviorTrackingService _behaviorTracking;
-  final PbDataSource _firebaseDs;
+  final PbDataSource _pbDs;
   final Ref _ref;
 
   LinkQuizNotifier({
@@ -281,13 +281,13 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     required GeminiService gemini,
     required SubscriptionService subscriptionService,
     required BehaviorTrackingService behaviorTracking,
-    required PbDataSource firebaseDs,
+    required PbDataSource pbDs,
     required Ref ref,
   })  : _aiRepo = aiRepo,
         _gemini = gemini,
         _subscriptionService = subscriptionService,
         _behaviorTracking = behaviorTracking,
-        _firebaseDs = firebaseDs,
+        _pbDs = pbDs,
         _ref = ref,
         super(const LinkQuizState());
 
@@ -477,7 +477,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
         .toList();
     if (quizData.isNotEmpty) {
-      _firebaseDs.saveQuizHistory(user.uid, {
+      _pbDs.saveQuizHistory(user.uid, {
         'timestamp': DateTime.now().toIso8601String(),
         'productUrl': base.url,
         'productTitle': base.metadata.title,
@@ -488,7 +488,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     }
 
     // Save analyzed product
-    _firebaseDs.saveAnalyzedProduct(user.uid, {
+    _pbDs.saveAnalyzedProduct(user.uid, {
       'timestamp': DateTime.now().toIso8601String(),
       'url': base.url,
       'title': base.metadata.title,
@@ -565,7 +565,7 @@ final linkQuizProvider =
     gemini: ref.read(geminiServiceProvider),
     subscriptionService: ref.read(subscriptionServiceProvider),
     behaviorTracking: ref.read(behaviorTrackingProvider),
-    firebaseDs: ref.read(firebaseDataSourceProvider),
+    pbDs: ref.read(pbDataSourceProvider),
     ref: ref,
   );
 });
@@ -651,17 +651,17 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   final AIRepository _aiRepo;
   final GeminiService _gemini;
   final BehaviorTrackingService _behaviorTracking;
-  final PbDataSource _firebaseDs;
+  final PbDataSource _pbDs;
 
   CompareAnalysisNotifier({
     required AIRepository aiRepo,
     required GeminiService gemini,
     required BehaviorTrackingService behaviorTracking,
-    required PbDataSource firebaseDs,
+    required PbDataSource pbDs,
   })  : _aiRepo = aiRepo,
         _gemini = gemini,
         _behaviorTracking = behaviorTracking,
-        _firebaseDs = firebaseDs,
+        _pbDs = pbDs,
         super(const CompareAnalysisState());
 
   /// Phase 1: Analyze first URL → generate quiz
@@ -840,7 +840,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
 
     // Save each analyzed product to Firestore
     for (final r in results) {
-      _firebaseDs.saveAnalyzedProduct(user.uid, {
+      _pbDs.saveAnalyzedProduct(user.uid, {
         'timestamp': DateTime.now().toIso8601String(),
         'url': r.baseResult.url,
         'title': r.baseResult.metadata.title,
@@ -858,7 +858,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
         .toList();
     if (answeredQs.isNotEmpty) {
-      _firebaseDs.saveQuizHistory(user.uid, {
+      _pbDs.saveQuizHistory(user.uid, {
         'timestamp': DateTime.now().toIso8601String(),
         'productUrls': urls,
         'mode': 'compare',
@@ -899,7 +899,7 @@ final compareAnalysisProvider =
     aiRepo: ref.read(aiRepositoryProvider),
     gemini: ref.read(geminiServiceProvider),
     behaviorTracking: ref.read(behaviorTrackingProvider),
-    firebaseDs: ref.read(firebaseDataSourceProvider),
+    pbDs: ref.read(pbDataSourceProvider),
   );
 });
 
@@ -1047,7 +1047,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
             .where((q) => q.selectedOption != null)
             .map((q) => {'question': q.text, 'answer': q.selectedOption})
             .toList();
-        _ref.read(firebaseDataSourceProvider).saveQuizHistory(authState, {
+        _ref.read(pbDataSourceProvider).saveQuizHistory(authState, {
           'timestamp': DateTime.now().toIso8601String(),
           'type': 'subscription',
           'services': state.subscriptionNames,
@@ -1116,7 +1116,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
             (list) => [entry, ...list.where((e) => e['timestamp'] != entry['timestamp'])],
           );
           // Firebase'e kaydet
-          _ref.read(firebaseDataSourceProvider)
+          _ref.read(pbDataSourceProvider)
               .saveSubscriptionHistory(authState, entry)
               .then((_) => _ref.invalidate(subscriptionHistoryProvider))
               .catchError((_) {});
@@ -1148,14 +1148,14 @@ final subQuizProvider =
 final subscriptionHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final authState = ref.watch(authStateProvider).valueOrNull;
   if (authState == null) return [];
-  return ref.read(firebaseDataSourceProvider).getSubscriptionHistory(authState);
+  return ref.read(pbDataSourceProvider).getSubscriptionHistory(authState);
 });
 
 /// Link analysis history for logged-in user (Firebase)
 final linkAnalysisHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final authState = ref.watch(authStateProvider).valueOrNull;
   if (authState == null) return [];
-  return ref.read(firebaseDataSourceProvider).getLinkAnalysisHistory(authState);
+  return ref.read(pbDataSourceProvider).getLinkAnalysisHistory(authState);
 });
 
 /// Optimistic (yerel, anlık) subscription geçmişi — analiz biter bitmez görünsün
@@ -1309,7 +1309,7 @@ final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((re
 /// Reviews for a product (realtime stream)
 final productReviewsProvider =
     StreamProvider.family<List<ReviewModel>, String>((ref, productId) {
-  return ref.read(firebaseDataSourceProvider)
+  return ref.read(pbDataSourceProvider)
       .watchProductReviews(productId);
 });
 
@@ -1319,7 +1319,7 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
   return authState.when(
     data: (user) {
       if (user == null) return Stream.value(<ReviewModel>[]);
-      return ref.read(firebaseDataSourceProvider)
+      return ref.read(pbDataSourceProvider)
           .watchUserReviews(user);
     },
     loading: () => Stream.value(<ReviewModel>[]),
@@ -1331,7 +1331,7 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
 Future<bool> toggleFavorite(WidgetRef ref, String productId) async {
   final user = ref.read(userProfileProvider).valueOrNull;
   if (user == null) return false;
-  final ds = ref.read(firebaseDataSourceProvider);
+  final ds = ref.read(pbDataSourceProvider);
   final result = await ds.toggleFavorite(user.uid, productId);
   ref.invalidate(userProfileProvider);
   return result;

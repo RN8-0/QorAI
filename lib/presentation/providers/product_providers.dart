@@ -58,7 +58,7 @@ final pcBuilderProductsProvider = FutureProvider.family<
   }
 
   final aliases = pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
-  final ds = ref.read(firebaseDataSourceProvider);
+  final ds = ref.read(pbDataSourceProvider);
 
   // 2) Typesense: fetch ALL products for category in one go (~100-500ms vs 10+s PocketBase)
   for (final alias in aliases) {
@@ -205,7 +205,7 @@ final productsByCategoryProvider = FutureProvider.family<
   }
 
   // ── 2) Typesense: fetch all products for category ──
-  final ds = ref.read(firebaseDataSourceProvider);
+  final ds = ref.read(pbDataSourceProvider);
 
   for (final alias in aliases) {
     try {
@@ -973,7 +973,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       // Await admin config only after cache hit (fast path)
       final config = await configFuture;
 
-      ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
+      ref.read(pbDataSourceProvider).setHomeFeedProducts(
           products.whereType<ProductModel>().toList());
       final feed = _buildHomeFeed(products, country, user: user,
           hiddenIds: config.hiddenIds, disabledCats: config.disabledCats);
@@ -1058,7 +1058,7 @@ Future<void> _backgroundRefreshFeed(
     final products = await _fetchAllProducts(repo, user, disabledCats, pinnedIds);
     if (products.isNotEmpty && products.length > (_inMemoryFeed?.all.length ?? 0) * 0.5) {
       _saveProductsToCache(cache, products, cacheKey);
-      ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
+      ref.read(pbDataSourceProvider).setHomeFeedProducts(
           products.whereType<ProductModel>().toList());
       _inMemoryFeed = _buildHomeFeed(products, country, user: user,
           hiddenIds: hiddenIds, disabledCats: disabledCats);
@@ -1095,7 +1095,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   // Save to cache asynchronously — don't block feed building
   Future.microtask(() => _saveProductsToCache(cache, products, cacheKey));
 
-  ref.read(firebaseDataSourceProvider).setHomeFeedProducts(
+  ref.read(pbDataSourceProvider).setHomeFeedProducts(
       products.whereType<ProductModel>().toList());
   debugPrint('=== COMPAIR: setHomeFeedProducts done, building HomeFeed... ===');
   final feed = _buildHomeFeed(products, country, user: user,
@@ -1670,18 +1670,18 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
   return authState.when(
     data: (user) {
       if (user == null) return Stream.value(<String>[]);
-      final fireDs = ref.read(firebaseDataSourceProvider);
+      final pbDs = ref.read(pbDataSourceProvider);
       final hiveDs = ref.read(hiveDataSourceProvider);
       final hiveIds = hiveDs.getViewedProducts();
 
-      return fireDs.watchRecentlyViewed(user).asyncMap((firestoreIds) async {
-        if (firestoreIds.isEmpty && hiveIds.isNotEmpty) {
+      return pbDs.watchRecentlyViewed(user).asyncMap((pbIds) async {
+        if (pbIds.isEmpty && hiveIds.isNotEmpty) {
           for (final id in hiveIds.reversed) {
-            fireDs.addRecentlyViewed(user, id);
+            pbDs.addRecentlyViewed(user, id);
           }
           return hiveIds;
         }
-        return firestoreIds;
+        return pbIds;
       }).handleError((_) => <String>[]);
     },
     loading: () => Stream.value(<String>[]),
@@ -1747,7 +1747,7 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
     // Save to Firestore for persistence
     final user = ref.read(authStateProvider).valueOrNull;
     if (user != null) {
-      ref.read(firebaseDataSourceProvider).addRecentlyViewed(user, productId);
+      ref.read(pbDataSourceProvider).addRecentlyViewed(user, productId);
     }
     // Get product info from cache (no network call)
     String category = '';
@@ -1762,7 +1762,7 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
     ref.read(behaviorTrackingProvider).trackProductView(productId, category);
     ref.read(behaviorTrackingProvider).trackActiveHour();
     // Increment Firestore viewCount (fire-and-forget, non-blocking)
-    ref.read(firebaseDataSourceProvider).incrementProductViewCount(productId);
+    ref.read(pbDataSourceProvider).incrementProductViewCount(productId);
     // Firebase Analytics
     AnalyticsService.instance.logProductView(productId, category, brand);
   } catch (_) {}
@@ -1893,7 +1893,7 @@ final similarProductsProvider = FutureProvider.family<List<ProductEntity>, Produ
 
       // 1) Build product pool from multiple sources
       List<ProductEntity> pool = [];
-      final ds = ref.read(firebaseDataSourceProvider);
+      final ds = ref.read(pbDataSourceProvider);
       
       try {
         if (ds.isCacheReady) {

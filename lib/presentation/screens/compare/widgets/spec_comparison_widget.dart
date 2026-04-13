@@ -4659,7 +4659,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
           : (user?.email.isNotEmpty == true
               ? user!.email.split('@').first
               : 'User');
-      await ref.read(firebaseDataSourceProvider).addReviewReply(
+      await ref.read(pbDataSourceProvider).addReviewReply(
         collection: 'comparison_reviews',
         reviewId: widget.docId,
         userId: uid,
@@ -4708,7 +4708,7 @@ class _CompareRepliesSectionState extends ConsumerState<_CompareRepliesSection> 
   @override
   void initState() {
     super.initState();
-    _repliesStream = ref.read(firebaseDataSourceProvider)
+    _repliesStream = ref.read(pbDataSourceProvider)
         .watchReviewReplies('comparison_reviews', widget.reviewId);
   }
 
@@ -4832,7 +4832,7 @@ class _CompareRepliesSectionState extends ConsumerState<_CompareRepliesSection> 
                                       onTap: () async {
                                         await ref
                                             .read(
-                                                firebaseDataSourceProvider)
+                                                pbDataSourceProvider)
                                             .deleteReviewReply(
                                           collection: 'comparison_reviews',
                                           reviewId: widget.reviewId,

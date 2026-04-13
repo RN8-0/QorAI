@@ -523,7 +523,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _updateFirestoreCountry(WidgetRef ref, String countryCode, String currency) {
     final authState = ref.read(authStateProvider).valueOrNull;
     if (authState != null) {
-      ref.read(firebaseDataSourceProvider).updateUser(authState, {
+      ref.read(pbDataSourceProvider).updateUser(authState, {
         'country': countryCode,
         'currency': currency,
       });
@@ -533,7 +533,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _updateFirestoreLanguage(WidgetRef ref, String languageCode) {
     final authState = ref.read(authStateProvider).valueOrNull;
     if (authState != null) {
-      ref.read(firebaseDataSourceProvider).updateUser(authState, {
+      ref.read(pbDataSourceProvider).updateUser(authState, {
         'language': languageCode,
       });
     }

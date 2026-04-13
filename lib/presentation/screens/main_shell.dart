@@ -45,8 +45,8 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   Future<void> _warmCache() async {
     try {
-      ref.read(firebaseDataSourceProvider).preWarmSearchFunction();
-      ref.read(firebaseDataSourceProvider).warmUpCache();
+      ref.read(pbDataSourceProvider).preWarmSearchFunction();
+      ref.read(pbDataSourceProvider).warmUpCache();
     } catch (_) {}
     // Kick off IP-based country detection in background
     try {
