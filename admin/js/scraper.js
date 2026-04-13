@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════════
 //  COMPAIR SCRAPER MODULE — Full-Featured Browser Scraper
 //  Scrapes products from epey.com via local CORS proxy.
 //  Translates Turkish → English using CompairDict (dictionary.js).
@@ -1067,7 +1067,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
         }
 
         // Save to Firestore
-        await db.collection('products').doc(product.id).set(product, { merge: true });
+        await pbSetDoc('products', product.id, product);
         results.added++;
         errorStreak = 0;
         slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
@@ -1104,12 +1104,11 @@ async function computePriceSegments(categoryId) {
 
   let products;
   try {
-    const snap = await db.collection('products')
-      .where('category', '==', categoryId)
-      .get();
-    products = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => p.price_raw && p.price_raw > 0);
+    const result = await getPb().collection('products').getList(1, 5000, {
+      filter: `category="${categoryId}" && price_raw>0`,
+      sort: 'price_raw'
+    });
+    products = result.items.filter(p => p.price_raw && p.price_raw > 0);
   } catch (e) {
     slog(`Failed to load products for segments: ${e.message}`, 'error');
     return;
@@ -1121,8 +1120,8 @@ async function computePriceSegments(categoryId) {
   }
 
   products.sort((a, b) => a.price_raw - b.price_raw);
-  const batch = db.batch();
   let updated = 0;
+  const toUpdate = [];
 
   for (let i = 0; i < products.length; i++) {
     const percentile = i / (products.length - 1);
@@ -1133,17 +1132,14 @@ async function computePriceSegments(categoryId) {
     else segment = 'flagship';
 
     if (products[i].priceSegment !== segment) {
-      batch.update(
-        db.collection('products').doc(products[i].id),
-        { priceSegment: segment }
-      );
+      toUpdate.push({ id: products[i].id, segment });
       updated++;
     }
   }
 
   if (updated > 0) {
     try {
-      await batch.commit();
+      await Promise.all(toUpdate.map(({ id, segment }) => pbUpdateDoc('products', id, { priceSegment: segment })));
       slog(`Updated ${updated} price segments (${products.length} products)`, 'success');
     } catch (e) {
       slog(`Failed to update price segments: ${e.message}`, 'error');
@@ -1188,10 +1184,7 @@ async function geminiTranslateBatch(terms) {
     // Save to Firestore for persistence
     if (Object.keys(translations).length > 0) {
       try {
-        await db.collection('app_config').doc('learned_translations').set(
-          translations,
-          { merge: true }
-        );
+        await pbSetDoc('app_config', 'learned_translations', translations);
         slog(`Saved ${Object.keys(translations).length} learned translations`, 'success');
       } catch (e) {
         slog(`Failed to save translations: ${e.message}`, 'warn');
@@ -1203,10 +1196,7 @@ async function geminiTranslateBatch(terms) {
     slog(`AI translation skipped (Cloud Function not deployed)`, 'info');
     // Store untranslated terms for future reference
     try {
-      await db.collection('app_config').doc('untranslated_terms').set(
-        Object.fromEntries(batch.map(t => [t, true])),
-        { merge: true }
-      );
+      await pbSetDoc('app_config', 'untranslated_terms', Object.fromEntries(batch.map(t => [t, true])));
     } catch {}
     return {};
   }
@@ -1214,7 +1204,7 @@ async function geminiTranslateBatch(terms) {
 
 async function loadLearnedTranslations() {
   try {
-    const doc = await db.collection('app_config').doc('learned_translations').get();
+    const doc = await pbGetDoc('app_config', 'learned_translations');
     if (doc.exists) {
       const translations = doc.data();
       const dict = getDict();
@@ -1303,12 +1293,11 @@ async function startBulkScrape() {
     allProducts.forEach(p => { if (p.sourceUrl) existingUrls.add(p.sourceUrl); });
   } else {
     try {
-      const snap = await db.collection('products')
-        .where('category', '==', categoryId)
-        .get();
-      snap.docs.forEach(d => {
-        const data = d.data();
-        if (data.sourceUrl) existingUrls.add(data.sourceUrl);
+      const result = await getPb().collection('products').getList(1, 5000, {
+        filter: `category="${categoryId}"`
+      });
+      result.items.forEach(d => {
+        if (d.sourceUrl) existingUrls.add(d.sourceUrl);
       });
     } catch {}
   }
@@ -1385,7 +1374,7 @@ async function scrapeByUrl() {
     slog(`ID: ${product.id}`);
 
     // Check if product already exists — merge missing data
-    const existingDoc = await db.collection('products').doc(product.id).get();
+    const existingDoc = await pbGetDoc('products', product.id);
     if (existingDoc.exists) {
       const existing = existingDoc.data();
       slog('⚡ Product already exists — merging missing data...', 'info');
@@ -1439,7 +1428,7 @@ async function scrapeByUrl() {
       slog('Merging complete — saving updated product', 'info');
     }
 
-    await db.collection('products').doc(product.id).set(product, { merge: true });
+    await pbSetDoc('products', product.id, product);
     slog('Product saved to Firestore!', 'success');
     toast(`${existingDoc?.exists ? 'Updated' : 'Added'}: ${product.name}`, 's');
 
@@ -1481,9 +1470,10 @@ async function startScoreUpdate() {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
       products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('epey.com'));
     } else {
-      let query = db.collection('products').where('source', 'in', ['epey', 'epey.com']);
-      const snap = await query.get();
-      products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const result = await getPb().collection('products').getList(1, 5000, {
+        filter: `source="epey" || source="epey.com"`
+      });
+      products = result.items;
     }
   } catch (e) {
     slog(`Failed to load products: ${e.message}`, 'error');
@@ -1510,7 +1500,7 @@ async function startScoreUpdate() {
       }
       const score = extractTechScore(html);
       if (score !== null && score !== p.techScore) {
-        await db.collection('products').doc(p.id).update({
+        await pbUpdateDoc('products', p.id, {
           techScore: score,
           scoreUpdatedAt: new Date().toISOString()
         });
@@ -1562,8 +1552,10 @@ async function startProductUpdate() {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
       products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('epey.com'));
     } else {
-      const snap = await db.collection('products').where('source', 'in', ['epey', 'epey.com']).get();
-      products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const result2 = await getPb().collection('products').getList(1, 5000, {
+        filter: `source="epey" || source="epey.com"`
+      });
+      products = result2.items;
     }
   } catch (e) {
     slog(`Failed to load products: ${e.message}`, 'error');
@@ -1591,7 +1583,7 @@ async function startProductUpdate() {
       if (!html) {
         slog(`  → Page gone (404). Deleting from DB.`, 'warn');
         try {
-          await db.collection('products').doc(existing.id).delete();
+          await pbDeleteDoc('products', existing.id);
           deleted++;
           if (typeof allProducts !== 'undefined') {
             const idx = allProducts.findIndex(p => p.id === existing.id);
@@ -1605,7 +1597,7 @@ async function startProductUpdate() {
       if (!freshProduct || freshProduct.name === 'Unknown Product' || freshProduct.specsCount === 0) {
         slog(`  → Garbage page detected. Deleting from DB.`, 'warn');
         try {
-          await db.collection('products').doc(existing.id).delete();
+          await pbDeleteDoc('products', existing.id);
           deleted++;
         } catch {}
         continue;
@@ -1637,7 +1629,7 @@ async function startProductUpdate() {
       if (Object.keys(changes).length > 0) {
         changes.updatedAt = new Date().toISOString();
         changes._originalName = freshProduct._originalName;
-        await db.collection('products').doc(existing.id).update(changes);
+        await pbUpdateDoc('products', existing.id, changes);
         const changedKeys = Object.keys(changes).filter(k => !k.startsWith('_') && k !== 'updatedAt');
         slog(`  → Updated: ${changedKeys.join(', ')}`, 'success');
         updated++;
@@ -1698,11 +1690,11 @@ async function startInventoryScan() {
       .forEach(p => { if (p.sourceUrl) existingUrls.add(p.sourceUrl); });
   } else {
     try {
-      const snap = await db.collection('products')
-        .where('category', '==', categoryId).get();
-      snap.docs.forEach(d => {
-        const data = d.data();
-        if (data.sourceUrl) existingUrls.add(data.sourceUrl);
+      const r = await getPb().collection('products').getList(1, 5000, {
+        filter: `category="${categoryId}"`
+      });
+      r.items.forEach(d => {
+        if (d.sourceUrl) existingUrls.add(d.sourceUrl);
       });
     } catch {}
   }
@@ -1879,13 +1871,12 @@ async function startQualityScan() {
   slog(`Kategori: ${cat || 'Tümü'} | Min spec: ${minSpecs} | Min görsel: ${minImages}`, 'info');
 
   // ── Load all products ──
-  slog('\n[1/4] Firestore\'dan ürünler yükleniyor...', 'info');
+  slog('\n[1/4] PocketBase\'den ürünler yükleniyor...', 'info');
   let products = [];
   try {
-    let query = db.collection('products');
-    if (cat) query = query.where('category', '==', cat);
-    const snap = await query.get();
-    products = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    const filter = cat ? `category="${cat}"` : '';
+    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-techScore' });
+    products = r.items.map(d => ({ _docId: d.id, ...d }));
     slog(`✓ ${products.length} ürün yüklendi`, 'success');
   } catch (e) {
     slog(`Ürünler yüklenemedi: ${e.message}`, 'error');
@@ -1960,7 +1951,7 @@ async function startQualityScan() {
         const html = await proxyFetch(p.sourceUrl);
         if (!html) {
           slog(`  → 404/yok. Siliniyor...`, 'warn');
-          await db.collection('products').doc(p._docId).delete();
+          await pbDeleteDoc('products', p._docId);
           deleted++;
           continue;
         }
@@ -1997,7 +1988,7 @@ async function startQualityScan() {
         if (!p.techScore && fresh.techScore) update.techScore = fresh.techScore;
         if (!p.brand && fresh.brand) update.brand = fresh.brand;
 
-        await db.collection('products').doc(p._docId).update(update);
+        await pbUpdateDoc('products', p._docId, update);
 
         const improvements = [];
         if (update.images) improvements.push(`${mergedImages.length} görsel`);
@@ -2044,13 +2035,12 @@ async function startDeduplicateOnly() {
   slog('══ Duplikasyon Temizliği Başladı ══', 'info');
   slog(`Kategori: ${cat || 'Tümü'}`, 'info');
 
-  slog('\nFirestore\'dan ürünler yükleniyor...', 'info');
+  slog('\nPocketBase\'den ürünler yükleniyor...', 'info');
   let products = [];
   try {
-    let query = db.collection('products');
-    if (cat) query = query.where('category', '==', cat);
-    const snap = await query.get();
-    products = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    const filter = cat ? `category="${cat}"` : '';
+    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-techScore' });
+    products = r.items.map(d => ({ _docId: d.id, ...d }));
     slog(`✓ ${products.length} ürün yüklendi`, 'success');
   } catch (e) {
     slog(`Yüklenemedi: ${e.message}`, 'error');
@@ -2151,8 +2141,7 @@ async function _mergeAndDelete(keeper, dup) {
   const mergedImages = [...new Set([...keeperImages, ...dupImages])].filter(Boolean);
 
   if (mergedImages.length > keeperImages.length) {
-    const keeperRef = db.collection('products').doc(keeper._docId);
-    await keeperRef.update({
+    await pbUpdateDoc('products', keeper._docId, {
       images: mergedImages,
       imageUrl: mergedImages[0] || keeper.imageUrl || '',
       imageURL: mergedImages[0] || keeper.imageURL || '',
@@ -2161,7 +2150,7 @@ async function _mergeAndDelete(keeper, dup) {
     slog(`    + ${mergedImages.length - keeperImages.length} görsel taşındı`, 'info');
   }
 
-  await db.collection('products').doc(dup._docId).delete();
+  await pbDeleteDoc('products', dup._docId);
 }
 
 function _finishQualityScan() {
