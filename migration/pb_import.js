@@ -130,6 +130,68 @@ const MAPPERS = {
       value: { ...d },
     }),
   },
+  reviews: {
+    pbName: 'reviews',
+    idKey: null,
+    transform: (d) => ({
+      firestoreId: d.__id,
+      productId: d.productId || '',
+      userId: d.userId || '',
+      rating: typeof d.rating === 'number' ? d.rating : null,
+      text: d.text || '',
+      helpful: d.helpful ?? null,
+      reported: !!d.reported,
+      createdAt: fsTs(d.createdAt),
+    }),
+  },
+  trends: {
+    pbName: 'trends',
+    idKey: 'slug',
+    transform: (d) => ({
+      slug: d.id || d.__id,
+      category: d.category || '',
+      country: d.country || '',
+      period: d.period || '',
+      weekStart: d.weekStart || '',
+      weekEnd: d.weekEnd || '',
+      items: d.items || null,
+      source: d.source || '',
+      createdAt: fsTs(d.createdAt),
+    }),
+  },
+  user_links: {
+    pbName: 'user_links',
+    idKey: null,
+    transform: (d) => ({
+      firestoreId: d.__id,
+      userId: d.userId || '',
+      url: d.url || '',
+      category: d.category || '',
+      aiScore: typeof d.aiScore === 'number' ? d.aiScore : null,
+      aiAnalysis: d.aiAnalysis || null,
+      ogMetadata: d.ogMetadata || null,
+      createdAt: fsTs(d.createdAt),
+    }),
+  },
+  scraper_sources: {
+    pbName: 'scraper_sources',
+    idKey: null,
+    transform: (d) => ({
+      firestoreId: d.__id,
+      failureCount: typeof d.failureCount === 'number' ? d.failureCount : 0,
+      lastSuccessfulScrape: fsTs(d.lastSuccessfulScrape),
+    }),
+  },
+  users: {
+    pbName: 'users',
+    idKey: null,
+    transform: (d) => ({
+      firestoreId: d.__id,
+      fcmToken: d.fcmToken || '',
+      platform: d.platform || '',
+      country: d.country || '',
+    }),
+  },
 };
 
 function fsTs(v) {
