@@ -111,7 +111,7 @@ class AuthRepository {
       // Native Google Sign-In → verify identity → PB user create/login.
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        return const Failure(AuthException(message: 'Google login cancelled'));
+        return const Failure(AuthException(message: 'Google girişi iptal edildi'));
       }
 
       // Verify Google identity by obtaining authentication tokens.
@@ -119,66 +119,50 @@ class AuthRepository {
       if (googleAuth.idToken == null && googleAuth.accessToken == null) {
         await _googleSignIn.signOut();
         return const Failure(
-            AuthException(message: 'Google authentication failed'));
+            AuthException(message: 'Google doğrulaması başarısız'));
       }
 
-      final email = googleUser.email;
+      final realEmail = googleUser.email;
       final displayName =
-          googleUser.displayName ?? email.split('@').first;
+          googleUser.displayName ?? realEmail.split('@').first;
       final googleId = googleUser.id;
       final avatarUrl = googleUser.photoUrl ?? '';
 
       await _googleSignIn.signOut();
 
-      // Derive deterministic password from Google credentials.
-      final password = _deriveOAuthPassword(googleId, email);
+      // Use a unique PB-only email to avoid collision with email/password users.
+      // Real Google email is stored separately in 'googleEmail' field.
+      final pbEmail = 'g_$googleId@oauth.compair.app';
+      final password = _deriveOAuthPassword(googleId, realEmail);
 
-      // Try to sign in (returning user).
+      // Try to sign in (returning Google user).
       try {
-        await _pb.collection('users').authWithPassword(email, password);
+        await _pb.collection('users').authWithPassword(pbEmail, password);
         return Success(UserModel.fromPb(_pb.authStore.record!));
       } on ClientException catch (signInErr) {
-        // 401 = wrong password (email exists with different auth method)
-        // 400 = bad request
-        if (signInErr.statusCode == 401) {
-          // User exists but with email/password registration — can't merge.
-          return const Failure(AuthException(
-            message:
-                'Bu email ile zaten bir hesap var. Lütfen email/şifre ile giriş yapın.',
-          ));
-        }
-        // Any other error (e.g. 404 = user not found) → try creating
-        if (signInErr.statusCode != 400 && signInErr.statusCode != 404) {
+        // Not 400/404 → unexpected error, rethrow
+        if (signInErr.statusCode != 400 &&
+            signInErr.statusCode != 401 &&
+            signInErr.statusCode != 404) {
           rethrow;
         }
       }
 
-      // Create new user.
-      try {
-        final body = <String, dynamic>{
-          'email': email,
-          'password': password,
-          'passwordConfirm': password,
-          'name': displayName,
-          'emailVisibility': true,
-          'verified': true,
-        };
-        if (avatarUrl.isNotEmpty) body['avatar'] = avatarUrl;
+      // User doesn't exist yet → create new PB user for this Google account.
+      final body = <String, dynamic>{
+        'email': pbEmail,
+        'password': password,
+        'passwordConfirm': password,
+        'name': displayName,
+        'googleEmail': realEmail,
+        'emailVisibility': true,
+        'verified': true,
+      };
+      if (avatarUrl.isNotEmpty) body['photoURL'] = avatarUrl;
 
-        await _pb.collection('users').create(body: body);
-        await _pb.collection('users').authWithPassword(email, password);
-        return Success(UserModel.fromPb(_pb.authStore.record!));
-      } on ClientException catch (createErr) {
-        debugPrint('=== Google Create Error: ${createErr.response} ===');
-        // 400 = email uniqueness violation (edge case race condition)
-        if (createErr.statusCode == 400) {
-          return const Failure(AuthException(
-            message:
-                'Bu email ile zaten bir hesap var. Lütfen email/şifre ile giriş yapın.',
-          ));
-        }
-        rethrow;
-      }
+      await _pb.collection('users').create(body: body);
+      await _pb.collection('users').authWithPassword(pbEmail, password);
+      return Success(UserModel.fromPb(_pb.authStore.record!));
     } on ClientException catch (e) {
       debugPrint('=== Google Sign-In PB Error: ${e.statusCode} ===');
       debugPrint('Response: ${e.response}');
@@ -187,7 +171,7 @@ class AuthRepository {
     } catch (e) {
       debugPrint('=== Google Sign-In Error: $e ===');
       return Failure(AuthException(
-          message: 'Google login failed: ${e.toString()}',
+          message: 'Google girişi başarısız: ${e.toString()}',
           originalError: e));
     }
   }

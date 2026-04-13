@@ -433,7 +433,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final authRecord = pb.authStore.record;
     if (authRecord != null) {
       final photoURL = authRecord.getStringValue('photoURL');
-      final displayName = authRecord.getStringValue('displayName');
+      var displayName = authRecord.getStringValue('displayName');
+      if (displayName.isEmpty) displayName = authRecord.getStringValue('name');
       if (photoURL.isNotEmpty) {
         return CachedNetworkImage(
           imageUrl: photoURL,
@@ -448,6 +449,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildAvatarFallback(String? name) {
+    final initial = (name != null && name.isNotEmpty) ? name[0].toUpperCase() : '?';
     return Container(
       width: 38, height: 38,
       decoration: const BoxDecoration(
@@ -455,7 +457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       child: Center(
         child: Text(
-          (name ?? '?')[0].toUpperCase(),
+          initial,
           style: GoogleFonts.plusJakartaSans(
             color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700,
           ),

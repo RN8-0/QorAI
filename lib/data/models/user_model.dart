@@ -45,8 +45,8 @@ class UserModel extends UserEntity {
     final data = record.data;
     return UserModel(
       uid: record.id,
-      email: data['email'] ?? '',
-      displayName: data['displayName'] ?? '',
+      email: data['googleEmail'] ?? data['email'] ?? '',
+      displayName: data['displayName'] ?? data['name'] ?? '',
       photoURL: data['photoURL'],
       country: data['country'] ?? 'US',
       language: data['language'] ?? 'en',
@@ -85,7 +85,7 @@ class UserModel extends UserEntity {
   static Map<String, Map<String, dynamic>> _parseSubscriptionDetails(dynamic raw) {
     if (raw == null || raw is! Map) return {};
     final result = <String, Map<String, dynamic>>{};
-    for (final entry in (raw as Map).entries) {
+    for (final entry in raw.entries) {
       if (entry.value is Map) {
         result[entry.key.toString()] = Map<String, dynamic>.from(entry.value as Map);
       }
