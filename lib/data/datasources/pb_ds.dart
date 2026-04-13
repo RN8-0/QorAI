@@ -28,6 +28,16 @@ class PbDataSource {
   static const _searchResultCacheTtl = Duration(minutes: 5);
   static const _searchResultCacheMaxSize = 30;
 
+  // Lean field projection for product list queries (feed/grid cards).
+  // Excludes heavy fields (specs, specSections, keySpecs, description,
+  // affiliateLinks, images[], pros, cons) — detail view refetches via getOne().
+  static const _productListFields =
+      'id,collectionId,collectionName,created,updated,'
+      'name,brand,category,subcategory,'
+      'imageUrl,imageURL,techScore,trendScore,techSubscores,'
+      'price_segment,priceRange,prices,tags,ratings,'
+      'isActive,variantGroup,scrapedAt,lastUpdated';
+
   PbDataSource({PocketBase? client}) : _pb = client ?? pb {
     _dio = Dio(BaseOptions(
       baseUrl: kTypesenseUrl,
@@ -295,6 +305,7 @@ class PbDataSource {
             perPage: limit,
             filter: filters.isEmpty ? '' : filters.join(' && '),
             sort: sort,
+            fields: _productListFields,
           )
           .timeout(const Duration(seconds: 30));
 
@@ -365,6 +376,7 @@ class PbDataSource {
             page: page,
             perPage: limit,
             filter: 'category = "$category"',
+            fields: _productListFields,
           )
           .timeout(const Duration(seconds: 30));
       sw.stop();
@@ -783,6 +795,7 @@ class PbDataSource {
         'query_by': 'name,brand,subcategory,keySpecsText,tags',
         'per_page': limit,
         'sort_by': 'techScore:desc',
+        'exclude_fields': '_raw,keySpecsText',
         if (category != null) 'filter_by': 'category:=$category',
       };
 
@@ -1090,6 +1103,7 @@ class PbDataSource {
           'sort_by': sortBy,
           'per_page': limit,
           'page': 1,
+          'exclude_fields': '_raw,keySpecsText',
         },
       );
       sw.stop();
@@ -1125,7 +1139,7 @@ class PbDataSource {
             'sort_by': sortBy,
             'per_page': perCategory,
             'page': 1,
-            'exclude_fields': '_raw',
+            'exclude_fields': '_raw,keySpecsText',
           }).toList();
 
       final response = await _dio.post(
@@ -1178,7 +1192,7 @@ class PbDataSource {
             'sort_by': sortBy,
             'per_page': perPage,
             'page': page,
-            'exclude_fields': '_raw',
+            'exclude_fields': '_raw,keySpecsText',
           },
         );
         final hits = (response.data['hits'] as List?) ?? [];
@@ -1218,7 +1232,7 @@ class PbDataSource {
           'sort_by': 'techScore:desc',
           'per_page': limit,
           'page': page,
-          'exclude_fields': '_raw',
+          'exclude_fields': '_raw,keySpecsText',
         },
       );
       sw.stop();
