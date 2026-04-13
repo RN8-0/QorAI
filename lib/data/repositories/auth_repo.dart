@@ -94,22 +94,53 @@ class AuthRepository {
 
   Future<Result<UserEntity>> signInWithGoogle() async {
     try {
+      // Native Google Sign-In → get auth code → PB code exchange.
+      // This avoids browser redirect (PB HTTPS not configured for OAuth redirect).
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         return const Failure(AuthException(message: 'Google login cancelled'));
       }
+
+      final serverAuthCode = googleUser.serverAuthCode;
+      if (serverAuthCode == null) {
+        await _googleSignIn.signOut();
+        return const Failure(
+            AuthException(message: 'Failed to get Google auth code'));
+      }
+
+      // Exchange the mobile auth code with PocketBase.
+      // Empty redirectURL + codeVerifier for mobile-sourced codes.
+      final authData = await _pb.collection('users').authWithOAuth2Code(
+        'google',
+        serverAuthCode,
+        '', // no PKCE for mobile codes
+        '', // empty redirect for mobile auth codes
+        createData: {
+          'name': googleUser.displayName ?? googleUser.email.split('@').first,
+        },
+      );
+
+      await _googleSignIn.signOut(); // Clear Google session (PB manages auth)
+      return Success(UserModel.fromPb(authData.record!));
+    } on ClientException catch (e) {
       await _googleSignIn.signOut();
-      return const Failure(
-          AuthException(message: 'Google login coming soon. Please use email/password'));
+      if (e.originalError.toString().contains('missing provider')) {
+        return const Failure(
+            AuthException(message: 'Google login is not configured yet'));
+      }
+      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
     } catch (e) {
+      await _googleSignIn.signOut();
       return Failure(
           AuthException(message: 'Google login failed: ${e.toString()}', originalError: e));
     }
   }
 
   Future<Result<UserEntity>> signInWithApple() async {
+    // Apple Sign-In requires PB HTTPS + Apple provider configuration.
+    // Will be enabled when SSL is configured on the PocketBase server.
     return const Failure(
-        AuthException(message: 'Apple login coming soon. Please use email/password'));
+        AuthException(message: 'Apple login will be available soon'));
   }
 
   Future<Result<UserEntity>> signInAnonymously() async {
@@ -140,7 +171,7 @@ class AuthRepository {
       return const Success(null);
     } catch (e) {
       return Failure(
-          FirestoreException(message: 'Profile could not be updated: $e'));
+          ServerException(message: 'Profile could not be updated: $e'));
     }
   }
 

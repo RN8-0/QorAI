@@ -157,37 +157,10 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 // ════════════════════════════════════════════════════
 
 /// Product detail - Section 3.3 FutureProvider
+/// Always fetches the full product record (with specs, images, description etc.)
+/// from PocketBase. List/feed caches use lean field projection and lack detail fields.
 final productDetailProvider =
     FutureProvider.family<Result<ProductEntity>, String>((ref, productId) async {
-  // 1) Try from already-cached homeFeed (instant, no network)
-  final feedAsync = ref.read(homeFeedProvider);
-  final cached = feedAsync.valueOrNull;
-  if (cached != null) {
-    final match = cached.all.where((p) => p.id == productId).firstOrNull;
-    if (match != null) return Success(match);
-  }
-
-  // 2) Try PC Builder in-memory cache (populated when PC Builder categories are preloaded)
-  for (final products in _pcBuilderCacheMap.values) {
-    final match = products.where((p) => p.id == productId).firstOrNull;
-    if (match != null) return Success(match);
-  }
-
-  // 3) Try category cache (populated by browse/category screens)
-  for (final products in _categoryCacheMap.values) {
-    final match = products.where((p) => p.id == productId).firstOrNull;
-    if (match != null) return Success(match);
-  }
-
-  // 4) Try from in-memory Hive/firestore cache (populated by browse/search)
-  final ds = ref.read(firebaseDataSourceProvider);
-  if (ds.isCacheReady) {
-    final allCached = await ds.getAllCachedProducts();
-    final match = allCached.where((p) => p.id == productId).firstOrNull;
-    if (match != null) return Success(match);
-  }
-
-  // 5) Fall back to single Firestore doc fetch with timeout
   try {
     return await ref.read(productRepositoryProvider).getProduct(productId)
         .timeout(const Duration(seconds: 25));
@@ -323,4 +296,4 @@ final _categoryCacheMap = <String, List<ProductEntity>>{};
 
 /// Son aramalar (local state)
 final recentSearchesProvider = StateProvider<List<String>>((ref) => []);
-
+
