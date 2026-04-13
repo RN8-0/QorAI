@@ -216,22 +216,50 @@ const collections = [
   },
 ];
 
+// All custom fields required on the PocketBase "users" auth collection
+const USER_EXTRA_FIELDS = [
+  T('googleEmail', { max: 500 }),
+  { name: 'photoURL', type: 'url' },
+  T('displayName', { max: 200 }),
+  T('language', { max: 10 }),
+  T('currency', { max: 10 }),
+  T('ecosystem', { max: 50 }),
+  T('budgetRange', { max: 50 }),
+  J('priorities'),
+  J('currentDevices'),
+  J('subscriptions'),
+  J('ownedProducts'),
+  J('favorites'),
+  B('quizCompleted'),
+  B('isPremium'),
+  N('affiliateClicks'),
+  N('comparisonsCount'),
+  T('primaryCategory', { max: 100 }),
+  T('usageIntent', { max: 100 }),
+  D('birthDate'),
+  T('gender', { max: 50 }),
+  T('ageRange', { max: 20 }),
+  T('profession', { max: 100 }),
+  J('interestCategories'),
+  J('profileVector'),
+  J('userSubscriptionDetails'),
+  T('fcmToken'),
+  T('platform', { max: 50 }),
+  T('country', { max: 10 }),
+  D('fcmTokenUpdatedAt'),
+];
+
 // Extend the default "users" auth collection with Compair-specific fields
 async function extendUsers() {
   const r = await req('GET', '/api/collections/users');
   if (r.status !== 200) { console.log('[users] not found, skipping extension'); return; }
   const col = r.body;
-  const extra = ['fcmToken', 'platform', 'country', 'fcmTokenUpdatedAt'];
   const existing = new Set(col.fields.map(f => f.name));
-  const toAdd = [];
-  if (!existing.has('fcmToken')) toAdd.push(T('fcmToken'));
-  if (!existing.has('platform')) toAdd.push(T('platform', { max: 50 }));
-  if (!existing.has('country')) toAdd.push(T('country', { max: 10 }));
-  if (!existing.has('fcmTokenUpdatedAt')) toAdd.push(D('fcmTokenUpdatedAt'));
+  const toAdd = USER_EXTRA_FIELDS.filter(f => !existing.has(f.name));
   if (toAdd.length === 0) { console.log('[users] already extended'); return; }
   const patched = { fields: [...col.fields, ...toAdd] };
   const p = await req('PATCH', `/api/collections/${col.id}`, patched);
-  console.log('[users] extend:', p.status, p.body?.message || 'ok');
+  console.log('[users] extend:', p.status, toAdd.map(f=>f.name).join(', '), p.body?.message || 'ok');
 }
 
 (async () => {
