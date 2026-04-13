@@ -2,26 +2,17 @@
 //  COMPAIR ADMIN WEB
 // ═══════════════════════════════════════
 
-firebase.initializeApp({
-  apiKey: 'AIzaSyA_YqZli9PSPeCzYl2x9FBv5SYK-m0kpEg',
-  authDomain: 'compair-99b6e.firebaseapp.com',
-  projectId: 'compair-99b6e',
-  storageBucket: 'compair-99b6e.firebasestorage.app',
-  messagingSenderId: '510980756238',
-  appId: '1:510980756238:web:b21d1e3613561d7c69fd5f'
-});
-
-const db = firebase.firestore();
-const auth = firebase.auth();
+// PocketBase client initialized in pb_client.js
+let _currentAdminEmail = '';
 
 // ── ADMIN AUTH ──
 
-async function checkAdmin(user) {
+async function checkAdmin(email) {
   try {
-    const doc = await db.collection('app_config').doc('admins').get();
+    const doc = await pbGetDoc('app_config', 'admins');
     if (!doc.exists) return false;
     const emails = doc.data().emails || [];
-    return emails.includes(user.email);
+    return emails.includes(email);
   } catch (e) {
     console.error('Admin check failed:', e);
     return false;
@@ -31,7 +22,6 @@ async function checkAdmin(user) {
 function showUnauthorized(email) {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'none';
-  // Create unauthorized screen
   let el = document.getElementById('unauthScreen');
   if (!el) {
     el = document.createElement('div');
@@ -41,66 +31,83 @@ function showUnauthorized(email) {
       <div style="font-size:48px;margin-bottom:16px">🚫</div>
       <h2>Access Denied</h2>
       <p>The account <strong>${email}</strong> is not authorized to access the admin panel.</p>
-      <button class="btn btn-primary" onclick="auth.signOut()" style="margin-right:8px">Sign Out</button>
+      <button class="btn btn-primary" onclick="logoutAdmin()" style="margin-right:8px">Sign Out</button>
     </div>`;
     document.body.appendChild(el);
   }
   el.style.display = 'flex';
 }
 
-// Don't persist auth across sessions — require explicit login each time
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
-
-auth.onAuthStateChanged(async user => {
-  // Always hide loading
-  document.getElementById('loginLoading').style.display = 'none';
-
+function logoutAdmin() {
+  const emailToRevoke = _currentAdminEmail;
+  _currentAdminEmail = '';
+  sessionStorage.removeItem('admin_email');
+  if (emailToRevoke) gisRevoke(emailToRevoke);
+  getPb().authStore.clear();
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appContainer').style.display = 'none';
   const unauthEl = document.getElementById('unauthScreen');
   if (unauthEl) unauthEl.style.display = 'none';
+}
 
-  if (user) {
-    try {
-      const isAdm = await checkAdmin(user);
-      if (!isAdm) { showUnauthorized(user.email); return; }
+function logout() { logoutAdmin(); }
 
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appContainer').style.display = '';
-      document.getElementById('sidebarUser').textContent = user.email;
-      refreshDashboard();
-    } catch (e) {
-      console.error('Auth error:', e);
-      document.getElementById('loginError').textContent = 'Error: ' + e.message;
+// Session restore: if previously logged in, restore session
+document.addEventListener('DOMContentLoaded', () => {
+  const savedEmail = sessionStorage.getItem('admin_email');
+  if (savedEmail) {
+    document.getElementById('loginLoading').style.display = 'flex';
+    checkAdmin(savedEmail).then(isAdm => {
+      document.getElementById('loginLoading').style.display = 'none';
+      if (isAdm) {
+        _currentAdminEmail = savedEmail;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appContainer').style.display = '';
+        document.getElementById('sidebarUser').textContent = savedEmail;
+        refreshDashboard();
+      } else {
+        sessionStorage.removeItem('admin_email');
+        document.getElementById('loginScreen').style.display = 'flex';
+      }
+    }).catch(() => {
+      document.getElementById('loginLoading').style.display = 'none';
       document.getElementById('loginScreen').style.display = 'flex';
-    }
+    });
   } else {
+    document.getElementById('loginLoading').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('appContainer').style.display = 'none';
+  }
+});
+
+// Google Identity Services auth callback
+initGIS(async (userInfo, err) => {
+  document.getElementById('loginLoading').style.display = 'none';
+  if (err || !userInfo) {
+    if (err !== 'access_denied' && err !== 'popup_closed_by_user') {
+      document.getElementById('loginError').textContent = err || 'Login failed';
+    }
+    return;
+  }
+  try {
+    const isAdm = await checkAdmin(userInfo.email);
+    if (!isAdm) { showUnauthorized(userInfo.email); return; }
+    _currentAdminEmail = userInfo.email;
+    sessionStorage.setItem('admin_email', userInfo.email);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = '';
+    document.getElementById('sidebarUser').textContent = userInfo.email;
+    refreshDashboard();
+  } catch (e) {
+    document.getElementById('loginError').textContent = 'Error: ' + e.message;
+    console.error('GIS callback error:', e);
   }
 });
 
 async function loginWithGoogle() {
   document.getElementById('loginError').textContent = '';
   document.getElementById('loginLoading').style.display = 'flex';
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const result = await auth.signInWithPopup(provider);
-    console.log('Google login success:', result.user.email);
-  } catch (e) {
-    document.getElementById('loginLoading').style.display = 'none';
-    const msg = e.message || '';
-    if (msg.includes('unauthorized-domain')) {
-      document.getElementById('loginError').textContent = 'Domain not authorized. Go to Firebase Console > Authentication > Settings > Authorized domains and add: ' + window.location.hostname;
-    } else if (msg.includes('popup-closed') || msg.includes('cancelled')) {
-      document.getElementById('loginError').textContent = 'Login cancelled';
-    } else {
-      document.getElementById('loginError').textContent = msg.replace('Firebase: ', '');
-    }
-    console.error('Google login error:', e);
-  }
+  gisSignIn();
 }
-
-function logout() { auth.signOut(); }
 
 // ── THEME ──
 (function(){const t=localStorage.getItem('theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');const i=document.getElementById('themeIcon');const l=document.getElementById('themeLabel');if(i)i.textContent='☀️';if(l)l.textContent='Light'}})();
@@ -139,18 +146,19 @@ let catChart=null,trendChart=null;
 async function refreshDashboard(){
   try{
     let users;
-    const [uSnap,cSnap]=await Promise.all([db.collection('users').get(),db.collection('comparisons').get()]);
-    users=uSnap.docs.map(d=>({uid:d.id,...d.data()}));
+    const [userDocs,compDocs]=await Promise.all([pbGetAll('users',{sort:'id'}),pbGetAll('comparisons',{sort:'id'})]);
+    const users=userDocs.map(d=>({uid:d.id,...d.data()}));
+    const cSnap={size:compDocs.length};
 
     // Load 500 recent products for charts
-    const sSnap=await db.collection('products').orderBy('scrapedAt','desc').limit(500).get();
-    const sampleProducts=sSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const sRes=await pbGetList('products',1,500,{sort:'-scrapedAt'});
+    const sampleProducts=sRes.items;
     dashSampleProducts=sampleProducts;
 
     // Don't show sample count as total — wait for real count
     document.getElementById('dashTotalProducts').textContent='...';
     anim('dashTotalUsers',users.length);
-    anim('dashTotalComparisons',cSnap.size);
+    anim('dashTotalComparisons',cSnap.size||0);
 
     // Background: count all products and update (once, no flickering)
     countAllProductsInBackground();
@@ -194,44 +202,35 @@ async function refreshDashboard(){
 function anim(id,target){const el=document.getElementById(id);if(!el)return;const start=parseInt(el.textContent.replace(/,/g,''))||0;if(start===target){el.textContent=target.toLocaleString();return}const t0=performance.now();(function step(now){const p=Math.min((now-t0)/500,1);el.textContent=Math.round(start+(target-start)*(1-Math.pow(1-p,3))).toLocaleString();if(p<1)requestAnimationFrame(step)})(t0)}
 function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
 
-// Background product counter — always does a fresh count (no stale cache)
+// Background product counter
 let _bgCountRunning=false;
 async function countAllProductsInBackground(){
   if(_bgCountRunning)return;
   _bgCountRunning=true;
   try{
-    // Always do a fresh count to avoid stale cache issues
-    let cnt=0,lastD=null;
-    const catCounts={};
-    const brandCounts={};
-    while(true){
-      let q=db.collection('products').orderBy('__name__').limit(1000);
-      if(lastD)q=q.startAfter(lastD);
-      const snap=await q.get();
-      if(snap.empty)break;
-      cnt+=snap.size;
-      snap.docs.forEach(d=>{
-        const data=d.data();
-        if(data.category)catCounts[data.category]=(catCounts[data.category]||0)+1;
-        if(data.brand)brandCounts[data.brand]=(brandCounts[data.brand]||0)+1;
-      });
-      lastD=snap.docs[snap.docs.length-1];
-      document.getElementById('dashTotalProducts').textContent=cnt.toLocaleString();
-      if(snap.size<1000)break;
-    }
-    totalProductCount=cnt;
-    dashProductTotal=cnt;
-    document.getElementById('dashTotalProducts').textContent=cnt.toLocaleString();
+    const firstRes=await pbGetList('products',1,1,{});
+    const total=firstRes.totalItems;
+    totalProductCount=total;
+    dashProductTotal=total;
+    document.getElementById('dashTotalProducts').textContent=total.toLocaleString();
     const el=document.getElementById('productCount');
-    if(el)el.textContent=cnt.toLocaleString();
-    // Update category chart with REAL data from all products
+    if(el)el.textContent=total.toLocaleString();
+
+    // Fetch all pages for per-category/brand breakdown
+    const catCounts={};const brandCounts={};
+    const totalPages=Math.ceil(total/500);
+    for(let page=1;page<=totalPages;page++){
+      const res=await pbGetList('products',page,500,{});
+      res.items.forEach(p=>{
+        if(p.category)catCounts[p.category]=(catCounts[p.category]||0)+1;
+        if(p.brand)brandCounts[p.brand]=(brandCounts[p.brand]||0)+1;
+      });
+      if(res.items.length<500)break;
+    }
     updateCategoryChart(catCounts);
-    // Update top brands with REAL data
     updateTopBrands(brandCounts);
-    // Update insights with REAL data
-    updateInsights(cnt,Object.keys(catCounts).length);
-    // Cache for faster initial load next time
-    db.collection('app_config').doc('stats').set({productCount:cnt,categoryCounts:catCounts,brandCounts:brandCounts,updatedAt:new Date().toISOString()},{merge:true}).catch(()=>{});
+    updateInsights(total,Object.keys(catCounts).length);
+    pbSetDoc('app_config','stats',{productCount:total,categoryCounts:catCounts,brandCounts:brandCounts,updatedAt:new Date().toISOString()}).catch(()=>{});
   }catch(e){console.error('Count error:',e)}
   _bgCountRunning=false;
 }
@@ -306,7 +305,7 @@ function updateCategoryChart(catCounts){
 // ═══════════════════════════════════════
 let allProducts=[],filteredProducts=[],displayProducts=[],currentPage=1,selectedIds=new Set(),viewMode='grid';
 let dashSampleProducts=null,dashProductTotal=0;
-let lastDoc=null,firstDoc=null,pageStack=[],totalProductCount=0;
+let totalProductCount=0;
 const PER=50;
 
 async function loadProducts(){
@@ -314,7 +313,7 @@ async function loadProducts(){
   g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Ürünler yükleniyor...</div>';
   try{
     // Load first page IMMEDIATELY — no counting, no blocking
-    currentPage=1;pageStack=[];lastDoc=null;firstDoc=null;
+    currentPage=1;
     await loadPage();
     // Show cached count if available
     if(totalProductCount){
@@ -355,58 +354,46 @@ function populateFiltersFromData(){
   if(cf)cf.innerHTML='<option value="">Tüm Kategoriler</option>'+cats.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
 }
 
-function buildQuery(simpleSort){
-  let q=db.collection('products');
+function buildQuery(){
   const brand=document.getElementById('brandFilter')?.value||'';
   const cat=document.getElementById('categoryFilter')?.value||'';
   const sort=document.getElementById('sortFilter')?.value||'newest';
-
-  if(brand)q=q.where('brand','==',brand);
-  if(cat)q=q.where('category','==',cat);
-
-  if(simpleSort){
-    q=q.orderBy('__name__');
-  }else{
-    switch(sort){
-      case'newest':q=q.orderBy('scrapedAt','desc');break;
-      case'oldest':q=q.orderBy('scrapedAt','asc');break;
-      case'name-az':q=q.orderBy('name','asc');break;
-      case'score-high':q=q.orderBy('techScore','desc');break;
-      default:q=q.orderBy('__name__');
-    }
+  const filters=[];
+  if(brand)filters.push(`brand="${brand.replace(/"/g,'\\"')}"`);
+  if(cat)filters.push(`category="${cat.replace(/"/g,'\\"')}"`);
+  const filter=filters.join(' && ');
+  let pbSort;
+  switch(sort){
+    case'newest':pbSort='-scrapedAt';break;
+    case'oldest':pbSort='scrapedAt';break;
+    case'name-az':pbSort='name';break;
+    case'score-high':pbSort='-techScore';break;
+    default:pbSort='id';
   }
-  return q;
+  return{filter,sort:pbSort};
 }
 
 async function loadPage(direction){
   const g=document.getElementById('productGrid');
   try{
-    let q=buildQuery();
+    const {filter,sort}=buildQuery();
 
-    if(direction==='next'&&lastDoc){
-      q=q.startAfter(lastDoc);
-    }else if(direction==='prev'&&pageStack.length>1){
-      pageStack.pop();
-      const prevFirst=pageStack[pageStack.length-1];
-      q=q.startAt(prevFirst);
-    }
+    if(direction==='next')currentPage++;
+    else if(direction==='prev'&&currentPage>1)currentPage--;
 
-    q=q.limit(PER);
-    const snap=await q.get();
+    const result=await pbGetList('products',currentPage,PER,{filter,sort});
 
-    if(snap.empty&&direction==='next'){toast('Son sayfa','i');return}
-    if(snap.empty){
+    if(result.empty&&direction==='next'){currentPage--;toast('Son sayfa','i');return}
+    if(result.empty){
       g.innerHTML='<div class="placeholder">Ürün bulunamadı. Filtreleri değiştirmeyi deneyin.</div>';
       document.getElementById('pagination').innerHTML='';
       return;
     }
 
-    allProducts=snap.docs.map(d=>({id:d.id,...d.data()}));
+    allProducts=result.items;
     displayProducts=allProducts;
 
-    firstDoc=snap.docs[0];
-    lastDoc=snap.docs[snap.docs.length-1];
-    if(direction!=='prev'){pageStack.push(firstDoc)}
+    totalProductCount=result.totalItems||totalProductCount;
 
     // Client-side search filter
     const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
@@ -420,36 +407,6 @@ async function loadPage(direction){
 
     renderProductsPage();
   }catch(e){
-    if((e.code===9||e.message?.includes('index'))&&!direction){
-      // Index missing — retry with __name__ sort, then apply client-side sort
-      console.warn('Index error, retrying with simple sort + client-side sort...');
-      try{
-        let q2=buildQuery(true);
-        q2=q2.limit(PER*4); // fetch more for better client-side sort
-        const snap2=await q2.get();
-        if(!snap2.empty){
-          allProducts=snap2.docs.map(d=>({id:d.id,...d.data()}));
-          // Apply client-side sort matching the dropdown
-          const sort=document.getElementById('sortFilter')?.value||'newest';
-          allProducts.sort((a,b)=>{
-            switch(sort){
-              case'newest':return(pDate(b)-pDate(a));
-              case'oldest':return(pDate(a)-pDate(b));
-              case'name-az':return(a.name||'').localeCompare(b.name||'');
-              case'score-high':return(b.techScore||0)-(a.techScore||0);
-              default:return 0;
-            }
-          });
-          allProducts=allProducts.slice(0,PER);
-          displayProducts=allProducts;
-          firstDoc=snap2.docs[0];
-          lastDoc=snap2.docs[snap2.docs.length-1];
-          pageStack.push(firstDoc);
-          renderProductsPage();
-          return;
-        }
-      }catch(e2){console.error('Fallback also failed:',e2)}
-    }
     g.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+e.message+'</div>';
     console.error('loadPage error:',e);
   }

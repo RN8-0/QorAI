@@ -2,14 +2,7 @@
    Compair — app.js  (EPEY-style layout)
    ═══════════════════════════════════════════════════════════════ */
 
-const firebaseConfig = {
-  apiKey: "AIzaSyA_YqZli9PSPeCzYl2x9FBv5SYK-m0kpEg",
-  authDomain: "compair-99b6e.firebaseapp.com",
-  projectId: "compair-99b6e",
-  storageBucket: "compair-99b6e.firebasestorage.app",
-  messagingSenderId: "510980756238",
-  appId: "1:510980756238:web:b21d1e3613561d7c69fd5f"
-};
+// Firebase config removed — using PocketBase (pb_client.js)
 
 const CAT_META = {
   smartphones:  { icon: '📱', label: 'Telefonlar' },
@@ -42,14 +35,13 @@ let activeFilters = {
   scores: []
 };
 
-/* ── Firebase Init ──────────────────────────────────────────────── */
-function initFirebase() {
+/* ── Firebase Init (removed — using PocketBase) ─────────────── */
+async function initFirebase() {
   try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    loadProducts();
+    db = {}; // stub for backward compat
+    await loadProducts();
   } catch (e) {
-    console.error('Firebase init failed', e);
+    console.error('Init failed', e);
     showError('Bağlantı hatası. Lütfen sayfayı yenileyin.');
   }
 }
@@ -57,9 +49,8 @@ function initFirebase() {
 /* ── Load Products ──────────────────────────────────────────────── */
 async function loadProducts() {
   try {
-    const snap = await db.collection('products').limit(500).get();
-    allProducts = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
+    const items = await pbLoadProducts(500);
+    allProducts = items
       .filter(p => p.name && p.imageUrl);
     allProducts.sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
     filteredProducts = [...allProducts];
@@ -86,18 +77,9 @@ async function doSearch(query) {
     return name.includes(q) || brand.includes(q) || cat.includes(q);
   });
 
-  if (local.length < 5 && db) {
+  if (local.length < 5) {
     try {
-      const cap = query.charAt(0).toUpperCase() + query.slice(1);
-      const snap = await db.collection('products')
-        .orderBy('name')
-        .startAt(cap)
-        .endAt(cap + '\uf8ff')
-        .limit(50)
-        .get();
-      const remote = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(p => p.name && p.imageUrl);
+      const remote = await pbSearchProducts(query, 50);
       const ids = new Set(local.map(p => p.id));
       remote.forEach(p => { if (!ids.has(p.id)) local.push(p); });
     } catch (e) {

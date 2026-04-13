@@ -1,8 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
-   Compair — Firebase Authentication
+   Compair — PocketBase Authentication (replaces Firebase Auth)
    ═══════════════════════════════════════════════════════════════ */
 
-let auth = null;
 let authMode = 'signin';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,19 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initAuth() {
   try {
-    if (typeof firebase === 'undefined') return;
-    if (!firebase.apps.length) {
-      firebase.initializeApp({
-        apiKey: "AIzaSyA_YqZli9PSPeCzYl2x9FBv5SYK-m0kpEg",
-        authDomain: "compair-99b6e.firebaseapp.com",
-        projectId: "compair-99b6e",
-        storageBucket: "compair-99b6e.firebasestorage.app",
-        messagingSenderId: "510980756238",
-        appId: "1:510980756238:web:b21d1e3613561d7c69fd5f"
-      });
-    }
-    auth = firebase.auth();
-    auth.onAuthStateChanged(handleAuthStateChange);
+    pbOnAuthChange(handleAuthStateChange);
   } catch (e) {
     console.warn('Auth init error:', e);
   }
@@ -41,10 +28,11 @@ function renderAuthButton(user) {
   if (!container) return;
 
   if (user) {
-    const avatarHtml = user.photoURL
-      ? `<img src="${user.photoURL}" alt="${user.displayName || 'User'}" class="auth-avatar">`
-      : `<div class="auth-avatar-placeholder">${((user.displayName || user.email || 'U')[0]).toUpperCase()}</div>`;
-    const displayName = user.displayName || (user.email ? user.email.split('@')[0] : 'User');
+    const displayName = user.name || (user.email ? user.email.split('@')[0] : 'User');
+    const initial = displayName[0].toUpperCase();
+    const avatarHtml = user.avatar
+      ? `<img src="${getPb().getFileUrl(user, user.avatar)}" alt="${displayName}" class="auth-avatar">`
+      : `<div class="auth-avatar-placeholder">${initial}</div>`;
     container.innerHTML = `
       <div style="position:relative;">
         <button class="auth-user-btn" onclick="toggleUserMenu(event)">
@@ -54,7 +42,7 @@ function renderAuthButton(user) {
         </button>
         <div class="auth-user-menu" id="auth-user-menu">
           <div class="auth-user-info">
-            ${user.displayName ? `<div style="font-size:13px;font-weight:700;margin-bottom:2px;">${user.displayName}</div>` : ''}
+            <div style="font-size:13px;font-weight:700;margin-bottom:2px;">${displayName}</div>
             <div class="auth-user-email">${user.email || ''}</div>
           </div>
           <button class="auth-signout-btn" onclick="signOutUser()">Sign Out</button>
@@ -157,21 +145,19 @@ function closeAuthModal() {
 }
 
 async function signInWithGoogle() {
-  if (!auth) { showAuthError('Authentication not available'); return; }
   try {
     hideAuthError();
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
+    await pbSignInWithGoogle();
     closeAuthModal();
   } catch (e) {
-    if (e.code !== 'auth/popup-closed-by-user') {
-      showAuthError(getAuthErrorMessage(e.code));
+    console.warn('Google sign-in error:', e);
+    if (!String(e.message).includes('closed') && !String(e.message).includes('cancel')) {
+      showAuthError('Google sign-in failed. Please try email/password.');
     }
   }
 }
 
 async function submitAuth() {
-  if (!auth) { showAuthError('Authentication not available'); return; }
   const email = document.getElementById('auth-email')?.value?.trim();
   const password = document.getElementById('auth-password')?.value;
   if (!email || !password) { showAuthError('Please enter your email and password'); return; }
@@ -182,13 +168,13 @@ async function submitAuth() {
   try {
     hideAuthError();
     if (authMode === 'signin') {
-      await auth.signInWithEmailAndPassword(email, password);
+      await pbSignIn(email, password);
     } else {
-      await auth.createUserWithEmailAndPassword(email, password);
+      await pbRegister(email, password);
     }
     closeAuthModal();
   } catch (e) {
-    showAuthError(getAuthErrorMessage(e.code));
+    showAuthError(getPbAuthErrorMessage(e));
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -198,8 +184,7 @@ async function submitAuth() {
 }
 
 async function signOutUser() {
-  if (!auth) return;
-  try { await auth.signOut(); } catch (e) { console.warn('Sign out error:', e); }
+  try { pbSignOut(); } catch (e) { console.warn('Sign out error:', e); }
 }
 
 function showAuthError(msg) {
@@ -212,22 +197,26 @@ function hideAuthError() {
   if (el) el.style.display = 'none';
 }
 
-function getAuthErrorMessage(code) {
-  const messages = {
-    'auth/user-not-found': 'No account found with this email',
-    'auth/wrong-password': 'Incorrect password',
-    'auth/email-already-in-use': 'An account already exists with this email',
-    'auth/invalid-email': 'Please enter a valid email address',
-    'auth/weak-password': 'Password must be at least 6 characters',
-    'auth/too-many-requests': 'Too many attempts. Please try again later',
-    'auth/popup-closed-by-user': 'Sign-in popup was closed',
-    'auth/network-request-failed': 'Network error. Check your connection',
-    'auth/invalid-credential': 'Invalid email or password',
-  };
-  return messages[code] || 'An error occurred. Please try again';
+function getPbAuthErrorMessage(error) {
+  const msg = (error?.message || error?.data?.message || '').toLowerCase();
+  if (msg.includes('invalid email') || msg.includes('email')) return 'Please enter a valid email address';
+  if (msg.includes('password') && msg.includes('short')) return 'Password must be at least 8 characters';
+  if (msg.includes('invalid credentials') || msg.includes('wrong')) return 'Invalid email or password';
+  if (msg.includes('already exists') || msg.includes('unique')) return 'An account already exists with this email';
+  if (msg.includes('network') || msg.includes('failed to fetch')) return 'Network error. Check your connection';
+  return 'An error occurred. Please try again';
 }
 
 // Expose
+window.openAuthModal = openAuthModal;
+window.closeAuthModal = closeAuthModal;
+window.signInWithGoogle = signInWithGoogle;
+window.submitAuth = submitAuth;
+window.signOutUser = signOutUser;
+window.switchAuthTab = switchAuthTab;
+window.toggleUserMenu = toggleUserMenu;
+
+
 window.openAuthModal = openAuthModal;
 window.closeAuthModal = closeAuthModal;
 window.signInWithGoogle = signInWithGoogle;

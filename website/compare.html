@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -158,22 +158,13 @@
   </a>
 </nav>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<!-- PocketBase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
+<script src="/js/pb_client.js"></script>
 <script src="/js/auth.js"></script>
 
 <script>
 /* ── Compare Page JS ──────────────────────────────────────── */
-const FB_CONFIG = {
-  apiKey: "AIzaSyA_YqZli9PSPeCzYl2x9FBv5SYK-m0kpEg",
-  authDomain: "compair-99b6e.firebaseapp.com",
-  projectId: "compair-99b6e",
-  storageBucket: "compair-99b6e.firebasestorage.app",
-  messagingSenderId: "510980756238",
-  appId: "1:510980756238:web:b21d1e3613561d7c69fd5f"
-};
 
 const CAT_META_C = {
   smartphones:  { icon: '📱', label: 'Smartphones' },
@@ -190,7 +181,6 @@ const CAT_META_C = {
   mice:         { icon: '🖱️', label: 'Mice' },
 };
 
-let cDb = null;
 let cAllProducts = [];
 let cFiltered = [];
 let cSelected = []; // array of product IDs (max 3)
@@ -208,20 +198,13 @@ function cScoreBadge(score) {
 
 /* ── Init ─────────────────────────────────────────────────── */
 (function initCompare() {
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-    cDb = firebase.firestore();
-    loadCompareProducts();
-  } catch (e) {
-    console.error('Compare Firebase init error:', e);
-  }
+  loadCompareProducts();
 })();
 
 async function loadCompareProducts() {
   try {
-    const snap = await cDb.collection('products').limit(200).get();
-    cAllProducts = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
+    const items = await pbLoadProducts(200);
+    cAllProducts = items
       .filter(p => p.name && p.imageUrl)
       .sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
 
@@ -237,7 +220,6 @@ async function loadCompareProducts() {
     console.error('Compare load error:', e);
   }
 }
-
 function initCompareControls() {
   const searchEl = document.getElementById('compare-search');
   const catEl = document.getElementById('compare-cat-filter');
