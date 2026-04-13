@@ -149,6 +149,8 @@ class AuthRepository {
       }
 
       // User doesn't exist yet → create new PB user for this Google account.
+      // Note: 'verified' cannot be set client-side (admin-only field in PB).
+      // 'authRule' is empty so unverified users can still log in.
       final body = <String, dynamic>{
         'email': pbEmail,
         'password': password,
@@ -156,12 +158,12 @@ class AuthRepository {
         'name': displayName,
         'googleEmail': realEmail,
         'emailVisibility': true,
-        'verified': true,
       };
       if (avatarUrl.isNotEmpty) body['photoURL'] = avatarUrl;
 
       await _pb.collection('users').create(body: body);
       await _pb.collection('users').authWithPassword(pbEmail, password);
+
       return Success(UserModel.fromPb(_pb.authStore.record!));
     } on ClientException catch (e) {
       debugPrint('=== Google Sign-In PB Error: ${e.statusCode} ===');
