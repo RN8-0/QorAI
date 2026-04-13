@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════
+﻿// ═══════════════════════════════════════
 //  COMPAIR ADMIN WEB
 // ═══════════════════════════════════════
 
@@ -421,8 +421,9 @@ function renderProductsPage(){
   }).join('');
 
   const pEl=document.getElementById('pagination');
-  const hasNext=displayProducts.length>=PER;
-  const hasPrev=pageStack.length>1;
+  const totalPages=totalProductCount?Math.ceil(totalProductCount/PER):0;
+  const hasNext=currentPage<totalPages||displayProducts.length>=PER;
+  const hasPrev=currentPage>1;
   let h='';
   if(hasPrev||hasNext){
     h+=`<button class="pg-btn" ${hasPrev?'':`disabled`} onclick="prevPage()">◀ Önceki</button>`;
@@ -433,90 +434,28 @@ function renderProductsPage(){
   pEl.innerHTML=h;
 }
 
-async function nextPage(){currentPage++;await loadPage('next');scrollTop()}
-async function prevPage(){if(currentPage>1){currentPage--;await loadPage('prev');scrollTop()}}
+async function nextPage(){await loadPage('next');scrollTop()}
+async function prevPage(){await loadPage('prev');scrollTop()}
 
 async function serverSearch(){
   const q=(document.getElementById('searchInput')?.value||'').trim();
-  if(!q){currentPage=1;pageStack=[];lastDoc=null;firstDoc=null;await loadPage();return}
-  // Cancel any previous search
-  if(searchAbort)searchAbort.cancelled=true;
-  const thisSearch={cancelled:false};
-  searchAbort=thisSearch;
+  if(!q){currentPage=1;await loadPage();return}
   const g=document.getElementById('productGrid');
   g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Aranıyor...</div>';
   try{
-    const ql=q.toLowerCase();
-    const slug=ql.replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
-    const seen=new Set();
-    const results=[];
-
-    // Strategy 1: Parallel ID prefix queries (fast — uses primary index)
-    const idQueries=[];
-    // Direct slug prefix
-    idQueries.push(db.collection('products').orderBy('__name__').startAt(slug).endAt(slug+'\uf8ff').limit(50).get());
-    // Brand-slug prefix for top brands
-    const brands=(typeof CompairBrands!=='undefined'?CompairBrands:[]).map(b=>typeof b==='string'?b:b.name||'');
-    for(const brand of brands){
-      const bs=brand.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
-      if(!bs)continue;
-      const combined=bs+'-'+slug;
-      idQueries.push(db.collection('products').orderBy('__name__').startAt(combined).endAt(combined+'\uf8ff').limit(50).get());
-    }
-
-    const snaps=await Promise.all(idQueries);
-    if(thisSearch.cancelled)return;
-    for(const snap of snaps){
-      for(const doc of snap.docs){
-        if(!seen.has(doc.id)){
-          seen.add(doc.id);
-          results.push({id:doc.id,...doc.data()});
-        }
-      }
-    }
-
-    // Strategy 2: If few results, do a limited scan for substring match
-    if(results.length<10&&!thisSearch.cancelled){
-      let query2=db.collection('products').orderBy('__name__').limit(2000);
-      let scanned=0;
-      while(results.length<50&&scanned<8000&&!thisSearch.cancelled){
-        const snap2=await query2.get();
-        if(thisSearch.cancelled)return;
-        if(snap2.empty)break;
-        scanned+=snap2.size;
-        for(const doc of snap2.docs){
-          if(seen.has(doc.id))continue;
-          const d=doc.data();
-          if(doc.id.includes(slug)||(d.name||'').toLowerCase().includes(ql)||(d.brand||'').toLowerCase().includes(ql)){
-            seen.add(doc.id);
-            results.push({id:doc.id,...d});
-          }
-        }
-        if(snap2.size<2000)break;
-        query2=db.collection('products').orderBy('__name__').startAfter(snap2.docs[snap2.docs.length-1]).limit(2000);
-      }
-    }
-
-    if(thisSearch.cancelled)return;
-
-    // Sort results — exact ID match first, then by name
-    results.sort((a,b)=>{
-      const aExact=a.id.startsWith(slug)?0:1;
-      const bExact=b.id.startsWith(slug)?0:1;
-      if(aExact!==bExact)return aExact-bExact;
-      return(a.name||'').localeCompare(b.name||'');
-    });
-
-    displayProducts=results;
-    allProducts=results;
+    const esc=q.replace(/"/g,'\\"');
+    const filter=`name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${esc.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}"`;
+    const result=await pbGetList('products',1,200,{filter,sort:'-techScore'});
+    displayProducts=result.items;
+    allProducts=result.items;
     renderProductsPage();
-    document.getElementById('productCount').textContent=results.length+' sonuç';
-    if(!results.length)toast('"'+q+'" için sonuç bulunamadı','i');
-  }catch(e){if(!thisSearch.cancelled)g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+e.message+'</div>'}
+    document.getElementById('productCount').textContent=result.totalItems+' sonuç';
+    if(!result.items.length)toast('"'+q+'" için sonuç bulunamadı','i');
+  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+e.message+'</div>'}
 }
 
 function filterProducts(){
-  currentPage=1;pageStack=[];lastDoc=null;firstDoc=null;
+  currentPage=1;
   loadPage();
 }
 function pDate(p){return p.scrapedAt?new Date(p.scrapedAt).getTime():p.updatedAt?.seconds?p.updatedAt.seconds*1e3:0}
@@ -527,7 +466,7 @@ function handleCardClick(e,id){if(e.target.type==='checkbox')return;if(selectedI
 function toggleSel(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);renderProductsPage();const bar=document.getElementById('selectionBar');if(selectedIds.size>0){bar.style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' seçildi'}else bar.style.display='none'}
 function selectAll(){displayProducts.forEach(p=>selectedIds.add(p.id));renderProductsPage();document.getElementById('selectionBar').style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' seçildi'}
 function deselectAll(){selectedIds.clear();renderProductsPage();document.getElementById('selectionBar').style.display='none'}
-async function deleteSelected(){if(!selectedIds.size||!confirm(selectedIds.size+' ürünü silmek istediğinize emin misiniz?'))return;const b=db.batch();selectedIds.forEach(id=>b.delete(db.collection('products').doc(id)));try{await b.commit();logActivity('product_delete',`${selectedIds.size} ürün toplu silindi`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Silindi','s')}catch(e){toast('Hata: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
+async function deleteSelected(){if(!selectedIds.size||!confirm(selectedIds.size+' ürünü silmek istediğinize emin misiniz?'))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} ürün toplu silindi`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Silindi','s')}catch(e){toast('Hata: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
 // Search debounce — server-side search with cancellation
@@ -597,18 +536,18 @@ async function saveProductEdit(id){
   if(category)updates.category=category;
   if(!isNaN(price)&&price>0)updates.price_raw=price;
   if(!isNaN(score)&&score>=0&&score<=100)updates.techScore=score;
-  if(imageUrl){updates.imageUrl=imageUrl;updates.images=firebase.firestore.FieldValue.arrayUnion(imageUrl)}
-  updates.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
-  updates.updatedBy=auth.currentUser?.email||'admin';
+  if(imageUrl){updates.imageUrl=imageUrl;const existing=allProducts.find(p=>p.id===id)?.images||[];if(!existing.includes(imageUrl))updates.images=[...existing,imageUrl]}
+  updates.updatedAt=serverTimestamp();
+  updates.updatedBy=_currentAdminEmail||'admin';
   try{
-    await db.collection('products').doc(id).update(updates);
+    await pbUpdateDoc('products',id,updates);
     logActivity('product_edit',`Ürün düzenlendi: ${name||id}`,{productId:id,changes:Object.keys(updates)});
     const mem=allProducts.find(p=>p.id===id);
     if(mem)Object.assign(mem,{name,brand,category,price_raw:price,techScore:score});
     toast('Ürün güncellendi','s');closeModal();renderProductsPage();
   }catch(e){toast('Hata: '+e.message,'e')}
 }
-async function deleteProduct(id){if(!confirm('Bu ürünü silmek istediğinize emin misiniz?'))return;try{await db.collection('products').doc(id).delete();logActivity('product_delete',`Ürün silindi: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;loadPage();toast('Silindi','s')}catch(e){toast('Hata: '+e.message,'e')}}
+async function deleteProduct(id){if(!confirm('Bu ürünü silmek istediğinize emin misiniz?'))return;try{await pbDeleteDoc('products',id);logActivity('product_delete',`Ürün silindi: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;loadPage();toast('Silindi','s')}catch(e){toast('Hata: '+e.message,'e')}}
 
 // ═══════════════════════════════════════
 //  USERS
@@ -616,7 +555,7 @@ async function deleteProduct(id){if(!confirm('Bu ürünü silmek istediğinize e
 let allUsers=[],filteredUsers=[],userPage=1;const UPER=50;
 
 async function loadUsers(){
-  try{const snap=await db.collection('users').get();allUsers=snap.docs.map(d=>({uid:d.id,...d.data()}));const prem=allUsers.filter(u=>u.isPremium).length;const active=allUsers.filter(u=>{const la=u.lastActive?.seconds?new Date(u.lastActive.seconds*1e3):null;return la&&la>new Date(Date.now()-30*864e5)}).length;
+  try{const items=await pbGetAll('users',{sort:'id'});allUsers=items.map(d=>({uid:d.id,...d.data()}));const prem=allUsers.filter(u=>u.isPremium).length;const active=allUsers.filter(u=>{const la=u.lastActive?new Date(u.lastActive):null;return la&&la>new Date(Date.now()-30*864e5)}).length;
   document.getElementById('usTotalCount').textContent=allUsers.length;document.getElementById('usPremiumCount').textContent=prem;document.getElementById('usFreeCount').textContent=allUsers.length-prem;document.getElementById('usActiveCount').textContent=active;document.getElementById('usersCount').textContent=allUsers.length;
   const countries=[...new Set(allUsers.map(u=>u.country).filter(Boolean))].sort();document.getElementById('userCountryFilter').innerHTML='<option value="">All Countries</option>'+countries.map(c=>`<option>${c}</option>`).join('');
   filterUsers()}catch(e){toast('Users error: '+e.message,'e')}
@@ -631,13 +570,13 @@ function filterUsers(){
   filteredUsers.sort((a,b)=>{switch(sort){case'newest':return uDate(b)-uDate(a);case'oldest':return uDate(a)-uDate(b);case'name':return(a.displayName||'').localeCompare(b.displayName||'');default:return 0}});
   userPage=1;renderUsers();
 }
-function uDate(u){return u.createdAt?.seconds?u.createdAt.seconds*1e3:0}
+function uDate(u){return u.createdAt?new Date(u.createdAt).getTime():0}
 
 function renderUsers(){
   const list=document.getElementById('userList'),start=(userPage-1)*UPER,page=filteredUsers.slice(start,start+UPER);
   if(!page.length){list.innerHTML='<div class="placeholder">No users</div>';return}
   let h='<div class="user-hdr"><span></span><span>User</span><span>Country</span><span>Status</span><span>Joined</span></div>';
-  h+=page.map(u=>{const av=u.photoURL?`<img src="${u.photoURL}">`:(u.displayName||u.email||'?').charAt(0).toUpperCase();const j=u.createdAt?.seconds?new Date(u.createdAt.seconds*1e3).toLocaleDateString():'';return`<div class="user-row" onclick="openUserDetail('${u.uid}')"><div class="user-avatar">${av}</div><div><div class="user-name">${u.displayName||'Anonymous'}</div><div class="user-email">${u.email||''}</div></div><span style="font-size:12px">${u.country||'—'}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
+  h+=page.map(u=>{const av=u.photoURL?`<img src="${u.photoURL}">`:(u.displayName||u.email||'?').charAt(0).toUpperCase();const j=u.createdAt?new Date(u.createdAt).toLocaleDateString():'';return`<div class="user-row" onclick="openUserDetail('${u.uid}')"><div class="user-avatar">${av}</div><div><div class="user-name">${u.displayName||'Anonymous'}</div><div class="user-email">${u.email||''}</div></div><span style="font-size:12px">${u.country||'—'}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
   list.innerHTML=h;
   const total=Math.ceil(filteredUsers.length/UPER),pe=document.getElementById('userPagination');
   if(total<=1){pe.innerHTML='';return}
@@ -650,8 +589,8 @@ function openUserDetail(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   document.getElementById('userModalTitle').textContent=u.displayName||'Kullanıcı';
   const b=document.getElementById('userModalBody');
-  const j=u.createdAt?.seconds?new Date(u.createdAt.seconds*1e3):'';
-  const la=u.lastActive?.seconds?new Date(u.lastActive.seconds*1e3):'';
+  const j=u.createdAt?new Date(u.createdAt):'';
+  const la=u.lastActive?new Date(u.lastActive):'';
   const jStr=j?j.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
   const laStr=la?la.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
 
@@ -772,103 +711,42 @@ async function loadUserBehavior(uid){
   const el=document.getElementById('behaviorContent');
   if(el.dataset.loaded)return;
   try{
-    // Load behavior subcollections in parallel
-    const [prefs, views, searches, linkPastes, favorites]=await Promise.all([
-      db.collection('users').doc(uid).collection('behavior').doc('quiz_preferences').get(),
-      db.collection('users').doc(uid).collection('behavior').doc('product_views').collection('items').orderBy('at','desc').limit(20).get(),
-      db.collection('users').doc(uid).collection('behavior').doc('searches').collection('items').orderBy('at','desc').limit(20).get(),
-      db.collection('users').doc(uid).collection('behavior').doc('link_pastes').collection('items').orderBy('at','desc').limit(20).get(),
-      db.collection('users').doc(uid).collection('behavior').doc('favorites').collection('items').orderBy('at','desc').limit(20).get()
+    const [rvRes,compRes]=await Promise.all([
+      pbGetList('recently_viewed',1,20,{filter:`user="${uid}"`,sort:'-created'}),
+      pbGetList('comparisons',1,20,{filter:`user="${uid}"`,sort:'-created'})
     ]);
-
-    const prefData=prefs.exists?prefs.data():{};
-    const totalQuizzes=prefData.totalQuizzes||0;
-
-    // Extract category interests
+    const views=rvRes.items;
+    const comps=compRes.items;
+    const u=allUsers.find(x=>x.uid===uid)||{};
+    const prefData=u.quizPreferences||{};
     const catInterests=Object.entries(prefData).filter(([k])=>k.startsWith('cat_')).map(([k,v])=>({cat:k.replace('cat_',''),count:v})).sort((a,b)=>b.count-a.count);
-
-    // Extract preference weights
     const prefWeights=Object.entries(prefData).filter(([k])=>k.startsWith('pref_')).map(([k,v])=>({pref:k.replace('pref_','').replace(/_/g,' '),count:v})).sort((a,b)=>b.count-a.count).slice(0,10);
 
-    let html=`
-      <div class="form-grid" style="margin-bottom:16px">
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Quiz Sayısı</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:var(--primary)">${totalQuizzes}</div></div>
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ürün Görüntüleme</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#22c55e">${views.size}</div></div>
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Arama</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f59e0b">${searches.size}</div></div>
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Link Analiz</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#8b5cf6">${linkPastes.size}</div></div>
-      </div>`;
+    let html=`<div class="form-grid" style="margin-bottom:16px">
+      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ürün Görüntüleme</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#22c55e">${views.length}</div></div>
+      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f59e0b">${comps.length}</div></div>
+    </div>`;
 
-    // Category Interests
     if(catInterests.length){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Kategori İlgi Alanları</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
-      for(const ci of catInterests){
-        html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${ci.cat} (${ci.count})</span>`;
-      }
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Kategori İlgi Alanları</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      for(const ci of catInterests)html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${ci.cat} (${ci.count})</span>`;
       html+=`</div></div>`;
     }
 
-    // Preference Weights
     if(prefWeights.length){
       const maxW=prefWeights[0]?.count||1;
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⚖️ Tercih Ağırlıkları</div>`;
-      for(const pw of prefWeights){
-        const pct=Math.round(pw.count/maxW*100);
-        html+=`<div style="margin-bottom:6px">
-          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${pw.pref}</span><span style="color:var(--text3)">${pw.count}</span></div>
-          <div style="background:var(--bg3);border-radius:4px;height:6px"><div style="background:var(--primary);border-radius:4px;height:6px;width:${pct}%"></div></div>
-        </div>`;
-      }
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⚖️ Tercih Ağırlıkları</div>`;
+      for(const pw of prefWeights){const pct=Math.round(pw.count/maxW*100);html+=`<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${pw.pref}</span><span style="color:var(--text3)">${pw.count}</span></div><div style="background:var(--bg3);border-radius:4px;height:6px"><div style="background:var(--primary);border-radius:4px;height:6px;width:${pct}%"></div></div></div>`;}
       html+=`</div>`;
     }
 
-    // Recent Product Views
-    if(views.size){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">👁️ Son Görüntülenen Ürünler</div>
-        <div style="max-height:200px;overflow-y:auto">`;
-      views.forEach(doc=>{
-        const d=doc.data();
-        const date=d.at?.toDate?d.at.toDate().toLocaleDateString('tr-TR'):'—';
-        html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.productName||d.productId||'—'}</span>
-          <span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span>
-        </div>`;
-      });
+    if(views.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">👁️ Son Görüntülenen Ürünler</div><div style="max-height:200px;overflow-y:auto">`;
+      views.forEach(v=>{const date=v.created?new Date(v.created).toLocaleDateString('tr-TR'):'—';html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.productName||v.product||'—'}</span><span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span></div>`;});
       html+=`</div></div>`;
     }
 
-    // Recent Searches
-    if(searches.size){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔍 Son Aramalar</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
-      searches.forEach(doc=>{
-        const d=doc.data();
-        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${d.query||'—'}</span>`;
-      });
-      html+=`</div></div>`;
-    }
-
-    // Recent Link Pastes
-    if(linkPastes.size){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔗 Son Link Analizleri</div>
-        <div style="max-height:150px;overflow-y:auto">`;
-      linkPastes.forEach(doc=>{
-        const d=doc.data();
-        const date=d.at?.toDate?d.at.toDate().toLocaleDateString('tr-TR'):'—';
-        html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--primary)">${d.url||'—'}</span>
-          <span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span>
-        </div>`;
-      });
-      html+=`</div></div>`;
-    }
-
-    if(!catInterests.length&&!views.size&&!searches.size&&!linkPastes.size){
+    if(!catInterests.length&&!views.length&&!comps.length){
       html+=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">📭</div><div>Henüz davranış verisi yok</div></div>`;
     }
 
@@ -883,99 +761,34 @@ async function loadUserQuizzes(uid){
   const el=document.getElementById('quizContent');
   if(el.dataset.loaded)return;
   try{
-    // Load from both old subcollection and new user-doc field
-    const [snap, userDoc]=await Promise.all([
-      db.collection('users').doc(uid).collection('behavior').doc('quiz_answers').collection('sessions').orderBy('at','desc').limit(30).get(),
-      db.collection('users').doc(uid).get()
-    ]);
-    const userData=userDoc.data()||{};
-    const newQuizHistory=userData.quizHistory||[];
+    const u=allUsers.find(x=>x.uid===uid)||{};
+    const newQuizHistory=u.quizHistory||[];
 
-    if(snap.empty&&!newQuizHistory.length){
+    if(!newQuizHistory.length){
       el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🧠</div><div>Henüz quiz çözülmemiş</div></div>`;
       el.dataset.loaded='1';
       return;
     }
 
-    const totalCount=snap.size+newQuizHistory.length;
-    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${totalCount} quiz oturumu bulundu</div>`;
+    newQuizHistory.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${newQuizHistory.length} quiz oturumu bulundu</div>`;
 
-    // New quiz history entries (from user doc)
-    if(newQuizHistory.length){
-      newQuizHistory.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
-      for(const d of newQuizHistory){
-        const date=d.timestamp?new Date(d.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-        const score=d.score?Math.round(d.score):'—';
-        const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
-        const answers=d.answers||[];
-        const mode=d.mode==='compare'?'🔀 Compare':'🔍 Single';
-
-        html+=`<div class="card" style="margin:0 0 12px;padding:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div>
-              <div style="font-size:12px;font-weight:700">${d.category||'AI Analiz'} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode}</span></div>
-              <div style="font-size:10px;color:var(--text3)">${date}</div>
-            </div>
-            <div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div>
-          </div>`;
-
-        if(d.productUrl){
-          html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.productUrl}</div>`;
-        }
-        if(d.productUrls&&d.productUrls.length){
-          for(const url of d.productUrls){
-            html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</div>`;
-          }
-        }
-
-        if(answers.length){
-          html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
-          for(const a of answers){
-            html+=`<div style="margin-bottom:4px;font-size:11px">
-              <span style="color:var(--text2)">${a.question||'—'}</span>
-              <span style="color:var(--primary);font-weight:600;margin-left:6px">${a.answer||a.selectedOption||'—'}</span>
-            </div>`;
-          }
-          html+=`</div>`;
-        }
-        html+=`</div>`;
-      }
-    }
-
-    // Old behavior subcollection entries
-    snap.forEach(doc=>{
-      const d=doc.data();
-      const date=d.at?.toDate?d.at.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-      const score=d.matchScore?Math.round(d.matchScore):'—';
+    for(const d of newQuizHistory){
+      const date=d.timestamp?new Date(d.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      const score=d.score?Math.round(d.score):'—';
       const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
       const answers=d.answers||[];
-
-      html+=`<div class="card" style="margin:0 0 12px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div>
-            <div style="font-size:12px;font-weight:700">${d.category||'Genel'}</div>
-            <div style="font-size:10px;color:var(--text3)">${date}</div>
-          </div>
-          <div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div>
-        </div>`;
-
-      if(d.url){
-        html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.url}</div>`;
-      }
-
+      const mode=d.mode==='compare'?'🔀 Compare':'🔍 Single';
+      html+=`<div class="card" style="margin:0 0 12px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-size:12px;font-weight:700">${d.category||'AI Analiz'} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode}</span></div><div style="font-size:10px;color:var(--text3)">${date}</div></div><div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div></div>`;
+      if(d.productUrl)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.productUrl}</div>`;
+      if(d.productUrls&&d.productUrls.length)for(const url of d.productUrls)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</div>`;
       if(answers.length){
         html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
-        for(const a of answers){
-          html+=`<div style="margin-bottom:4px;font-size:11px">
-            <span style="color:var(--text2)">${a.question||'—'}</span>
-            <span style="color:var(--primary);font-weight:600;margin-left:6px">${a.selectedOption||'—'}</span>
-          </div>`;
-        }
+        for(const a of answers)html+=`<div style="margin-bottom:4px;font-size:11px"><span style="color:var(--text2)">${a.question||'—'}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${a.answer||a.selectedOption||'—'}</span></div>`;
         html+=`</div>`;
       }
       html+=`</div>`;
-    });
-
+    }
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
@@ -988,8 +801,8 @@ async function loadUserAnalysis(uid){
   const el=document.getElementById('analysisContent');
   if(el.dataset.loaded)return;
   try{
-    const userDoc=await db.collection('users').doc(uid).get();
-    const data=userDoc.data()||{};
+    const userDocRef=await pbGetDoc('users',uid);
+    const data=userDocRef.exists?userDocRef.data():{};
     const analyzedProducts=data.analyzedProducts||[];
     const quizHistory=data.quizHistory||[];
 
@@ -1106,39 +919,39 @@ async function loadUserProfile(uid){
     el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
   }
 }
-async function togglePremium(uid,v){try{await db.collection('users').doc(uid).update({isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
+async function togglePremium(uid,v){try{await pbUpdateDoc('users',uid,{isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
 async function deleteUser(uid){
-  if(!confirm('Delete this user? This will remove their account from both Firestore and Firebase Authentication.'))return;
+  if(!confirm('Delete this user? This will permanently remove their account.'))return;
   try{
-    const fn=firebase.app().functions('europe-west1');
-    const del=fn.httpsCallable('deleteUserAccount');
-    await del({uid});
-    allUsers=allUsers.filter(u=>u.uid!==uid);closeUserModal();filterUsers();toast('User fully deleted','s');
+    await pbDeleteDoc('users',uid);
+    allUsers=allUsers.filter(u=>u.uid!==uid);closeUserModal();filterUsers();toast('User deleted','s');
+    logActivity('user_delete',`User deleted: ${uid}`);
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
 // ═══════════════════════════════════════
 //  APP CONTROL
 // ═══════════════════════════════════════
-async function loadAppConfig(){try{const d=await db.collection('app_config').doc('main').get();if(!d.exists)return;const c=d.data();const f=['adsEnabled','adBannerUnitId','adInterstitialUnitId','adRewardedUnitId','adFrequency','adsPremiumFree','homeBannerTitle','homeBannerSubtitle','homeFeaturedCategories','homeFeaturedCount','maintenanceEnabled','maintenanceMessage','appMinVersion','appForceUpdate','appLatestVersion','appUpdateUrl'];f.forEach(k=>{const el=document.getElementById(k);if(!el)return;if(el.type==='checkbox')el.checked=!!c[k];else el.value=c[k]||''})}catch(e){toast('Config error: '+e.message,'e')}}
+async function loadAppConfig(){try{const d=await pbGetDoc('app_config','main');if(!d.exists)return;const c=d.data();const f=['adsEnabled','adBannerUnitId','adInterstitialUnitId','adRewardedUnitId','adFrequency','adsPremiumFree','homeBannerTitle','homeBannerSubtitle','homeFeaturedCategories','homeFeaturedCount','maintenanceEnabled','maintenanceMessage','appMinVersion','appForceUpdate','appLatestVersion','appUpdateUrl'];f.forEach(k=>{const el=document.getElementById(k);if(!el)return;if(el.type==='checkbox')el.checked=!!c[k];else el.value=c[k]||''})}catch(e){toast('Config error: '+e.message,'e')}}
 
 async function saveAppConfig(){
   const c={};['adBannerUnitId','adInterstitialUnitId','adRewardedUnitId','homeBannerTitle','homeBannerSubtitle','homeFeaturedCategories','maintenanceMessage','appMinVersion','appLatestVersion','appUpdateUrl'].forEach(k=>{const el=document.getElementById(k);if(el)c[k]=el.value});
   ['adsEnabled','adsPremiumFree','maintenanceEnabled','appForceUpdate'].forEach(k=>{const el=document.getElementById(k);if(el)c[k]=el.checked});
   ['adFrequency','homeFeaturedCount'].forEach(k=>{const el=document.getElementById(k);if(el)c[k]=parseInt(el.value)||0});
-  c.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
-  try{await db.collection('app_config').doc('main').set(c,{merge:true});toast('Saved','s')}catch(e){toast('Error: '+e.message,'e')}
+  c.updatedAt=serverTimestamp();
+  try{await pbSetDoc('app_config','main',c);toast('Saved','s')}catch(e){toast('Error: '+e.message,'e')}
 }
 
 async function sendPushNotification(){
   const title=document.getElementById('pushTitle').value,body=document.getElementById('pushBody').value,topic=document.getElementById('pushTopic').value;
   if(!title||!body){toast('Title & message required','w');return}
-  try{await db.collection('notifications').add({title,body,topic,sentAt:firebase.firestore.FieldValue.serverTimestamp(),sentBy:auth.currentUser?.email||'admin'});toast('Notification queued','s');document.getElementById('pushTitle').value='';document.getElementById('pushBody').value='';document.getElementById('pushResult').innerHTML='<span style="color:var(--green)">Sent!</span>'}catch(e){toast('Error: '+e.message,'e')}
+  try{await pbAddDoc('notifications',{title,body,topic,sentAt:serverTimestamp(),sentBy:_currentAdminEmail||'admin'});toast('Notification queued','s');document.getElementById('pushTitle').value='';document.getElementById('pushBody').value='';document.getElementById('pushResult').innerHTML='<span style="color:var(--green)">Sent!</span>'}catch(e){toast('Error: '+e.message,'e')}
 }
 
 async function loadNotificationHistory(){
-  try{const snap=await db.collection('notifications').orderBy('sentAt','desc').limit(50).get();const el=document.getElementById('notificationHistory');if(snap.empty){el.innerHTML='<p class="text-muted">No notifications yet</p>';return}
-  el.innerHTML=snap.docs.map(d=>{const n=d.data();const dt=n.sentAt?.seconds?new Date(n.sentAt.seconds*1e3).toLocaleString():'—';return`<div class="notif-item"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:13px">${n.title||''}</strong><span style="font-size:10px;color:var(--text3)">${dt}</span></div><div style="font-size:12px;color:var(--text2)">${n.body||''}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${n.topic||'all'} · ${n.sentBy||''}</div></div>`}).join('')}catch(e){toast('Error: '+e.message,'e')}
+  try{const notifResult=await pbGetList('notifications',1,50,{sort:'-sentAt'});const el=document.getElementById('notificationHistory');if(!notifResult.items.length){el.innerHTML='<p class="text-muted">No notifications yet</p>';return}
+  el.innerHTML=notifResult.items.map(n=>{const dt=n.sentAt?new Date(n.sentAt).toLocaleString():'—';return<div class="notif-item"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:13px"></strong><span style="font-size:10px;color:var(--text3)"></span></div><div style="font-size:12px;color:var(--text2)"></div><div style="font-size:10px;color:var(--text3);margin-top:2px"> · </div></div>}).join('')}catch(e){toast('Error: '+e.message,'e')}
+};const dt=n.sentAt?.seconds?new Date(n.sentAt.seconds*1e3).toLocaleString():'—';return`<div class="notif-item"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:13px">${n.title||''}</strong><span style="font-size:10px;color:var(--text3)">${dt}</span></div><div style="font-size:12px;color:var(--text2)">${n.body||''}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${n.topic||'all'} · ${n.sentBy||''}</div></div>`}).join('')}catch(e){toast('Error: '+e.message,'e')}
 }
 
 // ═══════════════════════════════════════
@@ -1146,14 +959,14 @@ async function loadNotificationHistory(){
 // ═══════════════════════════════════════
 function updateAlgoLabel(input){const id=input.id.replace(/^(weight|boost)/,'label');const el=document.getElementById(id);if(el)el.textContent=input.value+'%'}
 
-async function loadAlgorithmConfig(){try{const d=await db.collection('app_config').doc('algorithm').get();if(!d.exists)return;const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist)document.getElementById('brandBlacklist').value=c.brandBlacklist;if(c.brandBoost)document.getElementById('brandBoost').value=c.brandBoost;loadPinnedProducts(c.pinnedProducts||[]);loadHiddenProducts(c.hiddenProducts||[]);loadCategoryToggles(c.disabledCategories||[])}catch(e){console.error(e)}}
+async function loadAlgorithmConfig(){try{const d=await pbGetDoc('app_config','algorithm');if(!d.exists)return;const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist)document.getElementById('brandBlacklist').value=c.brandBlacklist;if(c.brandBoost)document.getElementById('brandBoost').value=c.brandBoost;loadPinnedProducts(c.pinnedProducts||[]);loadHiddenProducts(c.hiddenProducts||[]);loadCategoryToggles(c.disabledCategories||[])}catch(e){console.error(e)}}
 
 async function saveAlgorithmConfig(){
   const c={};['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el)c[f]=parseInt(el.value)||0});
   c.brandBlacklist=document.getElementById('brandBlacklist').value;c.brandBoost=document.getElementById('brandBoost').value;
   c.pinnedProducts=_pinnedProducts||[];c.hiddenProducts=_hiddenProducts||[];c.disabledCategories=_disabledCategories||[];
-  c.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
-  try{await db.collection('app_config').doc('algorithm').set(c,{merge:true});toast('Saved','s');logActivity('algorithm_update','Algorithm config updated')}catch(e){toast('Error: '+e.message,'e')}
+  c.updatedAt=serverTimestamp();
+  try{await pbSetDoc('app_config','algorithm',c);toast('Saved','s');logActivity('algorithm_update','Algorithm config updated')}catch(e){toast('Error: '+e.message,'e')}
 }
 
 // ═══════════════════════════════════════
@@ -1273,14 +1086,9 @@ async function previewFeedStats() {
     const counts = {};
     let total = 0;
     for (const cat of ALL_CATEGORIES) {
-      const snap = await db.collection('products')
-        .where('category', '==', cat)
-        .limit(1).get();
-      // Use count aggregation or estimate
-      const countSnap = await db.collection('products')
-        .where('category', '==', cat).get();
-      counts[cat] = countSnap.size;
-      total += countSnap.size;
+      const cnt = await pbCountWhere('products', `category="${cat}"`);
+      counts[cat] = cnt;
+      total += cnt;
     }
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
     const empty = sorted.filter(([, c]) => c === 0).map(([n]) => n);
@@ -1307,10 +1115,10 @@ async function clearAllUserCaches() {
   if (!confirm('This will force all users to reload their home feed on next app open. Continue?')) return;
   try {
     // Bump the cache version in app_config so the app knows to refresh
-    await db.collection('app_config').doc('algorithm').set({
+    await pbSetDoc('app_config','algorithm',{
       cacheVersion: Date.now(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+      updatedAt: serverTimestamp()
+    });
     toast('Cache invalidated — users will see fresh feed on next open', 's');
     logActivity('cache_clear', 'Cleared all user feed caches');
   } catch (e) {
@@ -1323,10 +1131,10 @@ async function clearAllUserCaches() {
 // ═══════════════════════════════════════
 async function logActivity(action,detail,meta={}){
   try{
-    await db.collection('admin_logs').add({
+    await pbAddDoc('admin_logs',{
       action,detail,...meta,
-      admin:auth.currentUser?.email||'unknown',
-      timestamp:firebase.firestore.FieldValue.serverTimestamp()
+      admin:_currentAdminEmail||'unknown',
+      timestamp:serverTimestamp()
     });
   }catch(e){console.warn('Log error:',e)}
 }
@@ -1337,9 +1145,9 @@ async function loadActivityLog(){
   if(!el)return;
   el.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Yükleniyor...</div>';
   try{
-    const snap=await db.collection('admin_logs').orderBy('timestamp','desc').limit(100).get();
-    if(snap.empty){el.innerHTML='<div class="placeholder">Henüz aktivite yok</div>';return}
-    const logs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const result=await pbGetList('admin_logs',1,100,{sort:'-timestamp'});
+    if(!result.items.length){el.innerHTML='<div class="placeholder">Henüz aktivite yok</div>';return}
+    const logs=result.items;
     const actionIcons={product_edit:'✏️',product_delete:'🗑️',product_add:'➕',user_delete:'👤',user_premium:'⭐',bulk_category:'📂',bulk_brand:'🏷️',export:'📤',import:'📥'};
     el.innerHTML=logs.map(l=>{
       const ts=l.timestamp?.seconds?new Date(l.timestamp.seconds*1e3).toLocaleString('tr-TR'):'—';
@@ -1355,15 +1163,12 @@ async function loadActivityLog(){
 async function exportProductsJSON(){
   toast('JSON export başlıyor...','i');
   try{
-    let all=[];let lastD=null;
+    let all=[];let page=1;
     while(true){
-      let q=db.collection('products').orderBy('__name__').limit(1000);
-      if(lastD)q=q.startAfter(lastD);
-      const snap=await q.get();
-      if(snap.empty)break;
-      snap.docs.forEach(d=>all.push({id:d.id,...d.data()}));
-      lastD=snap.docs[snap.docs.length-1];
-      if(snap.size<1000)break;
+      const result=await getPb().collection('products').getList(page,1000,{sort:'id'});
+      all.push(...result.items);
+      if(page>=result.totalPages)break;
+      page++;
     }
     const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
@@ -1377,15 +1182,12 @@ async function exportProductsJSON(){
 async function exportProductsCSV(){
   toast('CSV export başlıyor...','i');
   try{
-    let all=[];let lastD=null;
+    let all=[];let page=1;
     while(true){
-      let q=db.collection('products').orderBy('__name__').limit(1000);
-      if(lastD)q=q.startAfter(lastD);
-      const snap=await q.get();
-      if(snap.empty)break;
-      snap.docs.forEach(d=>all.push({id:d.id,...d.data()}));
-      lastD=snap.docs[snap.docs.length-1];
-      if(snap.size<1000)break;
+      const result=await getPb().collection('products').getList(page,1000,{sort:'id'});
+      all.push(...result.items);
+      if(page>=result.totalPages)break;
+      page++;
     }
     const fields=['id','name','brand','category','techScore','price_raw','specsCount','scrapedAt','sourceUrl','imageUrl'];
     const header=fields.join(',');
@@ -1410,22 +1212,18 @@ async function importProducts(){
       if(!Array.isArray(products)){toast('Geçersiz JSON formatı','e');return}
       if(!confirm(`${products.length} ürün içe aktarılacak. Devam edilsin mi?`))return;
       toast('İçe aktarma başlıyor...','i');
-      let added=0,updated=0,failed=0;
-      // Batch write in chunks of 500
-      for(let i=0;i<products.length;i+=500){
-        const batch=db.batch();
-        const chunk=products.slice(i,i+500);
-        for(const p of chunk){
-          if(!p.id||!p.name){failed++;continue}
-          const ref=db.collection('products').doc(p.id);
-          // Remove Firestore-incompatible fields
+      let added=0,failed=0;
+      // Write in parallel chunks of 50
+      for(let i=0;i<products.length;i+=50){
+        const chunk=products.slice(i,i+50);
+        await Promise.all(chunk.map(async p=>{
+          if(!p.id||!p.name){failed++;return}
           const clean={...p};
           delete clean._originalName;delete clean._originalSpecs;
           delete clean._originalSections;delete clean._originalKeySpecs;
-          batch.set(ref,clean,{merge:true});
+          await pbSetDoc('products',p.id,clean);
           added++;
-        }
-        await batch.commit();
+        }));
       }
       logActivity('import',`JSON import: ${added} ürün eklendi/güncellendi, ${failed} başarısız`);
       toast(`İçe aktarma tamamlandı: ${added} ürün`,'s');
@@ -1450,9 +1248,7 @@ async function bulkChangeCategory(){
     const newCat=document.getElementById('bulkCatSelect').value;
     if(!newCat)return;
     try{
-      const batch=db.batch();
-      selectedIds.forEach(id=>batch.update(db.collection('products').doc(id),{category:newCat,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
-      await batch.commit();
+      await Promise.all([...selectedIds].map(id=>pbUpdateDoc('products',id,{category:newCat,updatedAt:serverTimestamp()})));
       allProducts.forEach(p=>{if(selectedIds.has(p.id))p.category=newCat});
       logActivity('bulk_category',`${selectedIds.size} ürünün kategorisi "${newCat}" olarak değiştirildi`);
       toast(`${selectedIds.size} ürün güncellendi`,'s');
@@ -1473,9 +1269,7 @@ async function bulkChangeBrand(){
     const newBrand=document.getElementById('bulkBrandSelect').value;
     if(!newBrand)return;
     try{
-      const batch=db.batch();
-      selectedIds.forEach(id=>batch.update(db.collection('products').doc(id),{brand:newBrand,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
-      await batch.commit();
+      await Promise.all([...selectedIds].map(id=>pbUpdateDoc('products',id,{brand:newBrand,updatedAt:serverTimestamp()})));
       allProducts.forEach(p=>{if(selectedIds.has(p.id))p.brand=newBrand});
       logActivity('bulk_brand',`${selectedIds.size} ürünün markası "${newBrand}" olarak değiştirildi`);
       toast(`${selectedIds.size} ürün güncellendi`,'s');
@@ -1523,8 +1317,11 @@ async function scanBrokenImages(){
 // ═══════════════════════════════════════
 async function loadPriceHistory(productId){
   try{
-    const snap=await db.collection('products').doc(productId).collection('price_history').orderBy('date','desc').limit(30).get();
-    if(snap.empty)return null;
-    return snap.docs.map(d=>d.data());
+    const result=await getPb().collection('price_history').getList(1,30,{
+      filter:`product="${productId}"`,
+      sort:'-date'
+    });
+    if(!result.items.length)return null;
+    return result.items;
   }catch{return null}
 }
