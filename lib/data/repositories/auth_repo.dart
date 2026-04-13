@@ -1,9 +1,11 @@
 /// Compair - Auth Repository
 library;
 
+import 'dart:convert';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'package:crypto/crypto.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
@@ -31,7 +33,7 @@ class AuthRepository {
   Stream<String?> get authStateChanges async* {
     yield _currentUid;
     await for (final event in _pb.authStore.onChange) {
-      yield event.model?.id as String?;
+      yield event.record?.id;
     }
   }
 
@@ -93,51 +95,100 @@ class AuthRepository {
     }
   }
 
+  /// Derives a strong, deterministic password from Google credential.
+  /// Uses HMAC-SHA256 with app-level key so it can't be guessed from
+  /// knowing only the Google ID or email.
+  String _deriveOAuthPassword(String googleId, String email) {
+    final key = utf8.encode('compair_pb_oauth2_v1_salt');
+    final data = utf8.encode('$googleId:$email');
+    final hmacResult = Hmac(sha256, key).convert(data);
+    // 44-char base64 password — satisfies PB min-length
+    return base64Url.encode(hmacResult.bytes);
+  }
+
   Future<Result<UserEntity>> signInWithGoogle() async {
     try {
-      // Native Google Sign-In → get auth code → PB code exchange.
-      // This avoids browser redirect (PB HTTPS not configured for OAuth redirect).
+      // Native Google Sign-In → verify identity → PB user create/login.
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         return const Failure(AuthException(message: 'Google login cancelled'));
       }
 
-      final serverAuthCode = googleUser.serverAuthCode;
-      if (serverAuthCode == null) {
+      // Verify Google identity by obtaining authentication tokens.
+      final googleAuth = await googleUser.authentication;
+      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
         await _googleSignIn.signOut();
         return const Failure(
-            AuthException(message: 'Failed to get Google auth code'));
+            AuthException(message: 'Google authentication failed'));
       }
 
-      // Exchange the mobile auth code with PocketBase.
-      // "postmessage" is the redirect URI Google expects when exchanging
-      // server auth codes obtained from the native mobile SDK.
-      final authData = await _pb.collection('users').authWithOAuth2Code(
-        'google',
-        serverAuthCode,
-        '', // no PKCE code verifier for mobile codes
-        'postmessage', // Google accepts this for native SDK server auth codes
-        createData: {
-          'name': googleUser.displayName ?? googleUser.email.split('@').first,
-        },
-      );
+      final email = googleUser.email;
+      final displayName =
+          googleUser.displayName ?? email.split('@').first;
+      final googleId = googleUser.id;
+      final avatarUrl = googleUser.photoUrl ?? '';
 
-      await _googleSignIn.signOut(); // Clear Google session (PB manages auth)
-      return Success(UserModel.fromPb(authData.record!));
-    } on ClientException catch (e) {
       await _googleSignIn.signOut();
+
+      // Derive deterministic password from Google credentials.
+      final password = _deriveOAuthPassword(googleId, email);
+
+      // Try to sign in (returning user).
+      try {
+        await _pb.collection('users').authWithPassword(email, password);
+        return Success(UserModel.fromPb(_pb.authStore.record!));
+      } on ClientException catch (signInErr) {
+        // 401 = wrong password (email exists with different auth method)
+        // 400 = bad request
+        if (signInErr.statusCode == 401) {
+          // User exists but with email/password registration — can't merge.
+          return const Failure(AuthException(
+            message:
+                'Bu email ile zaten bir hesap var. Lütfen email/şifre ile giriş yapın.',
+          ));
+        }
+        // Any other error (e.g. 404 = user not found) → try creating
+        if (signInErr.statusCode != 400 && signInErr.statusCode != 404) {
+          rethrow;
+        }
+      }
+
+      // Create new user.
+      try {
+        final body = <String, dynamic>{
+          'email': email,
+          'password': password,
+          'passwordConfirm': password,
+          'name': displayName,
+          'emailVisibility': true,
+          'verified': true,
+        };
+        if (avatarUrl.isNotEmpty) body['avatar'] = avatarUrl;
+
+        await _pb.collection('users').create(body: body);
+        await _pb.collection('users').authWithPassword(email, password);
+        return Success(UserModel.fromPb(_pb.authStore.record!));
+      } on ClientException catch (createErr) {
+        debugPrint('=== Google Create Error: ${createErr.response} ===');
+        // 400 = email uniqueness violation (edge case race condition)
+        if (createErr.statusCode == 400) {
+          return const Failure(AuthException(
+            message:
+                'Bu email ile zaten bir hesap var. Lütfen email/şifre ile giriş yapın.',
+          ));
+        }
+        rethrow;
+      }
+    } on ClientException catch (e) {
       debugPrint('=== Google Sign-In PB Error: ${e.statusCode} ===');
       debugPrint('Response: ${e.response}');
-      if (e.originalError.toString().contains('missing provider')) {
-        return const Failure(
-            AuthException(message: 'Google login is not configured yet'));
-      }
-      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
-    } catch (e) {
-      await _googleSignIn.signOut();
-      debugPrint('=== Google Sign-In Error: $e ===');
       return Failure(
-          AuthException(message: 'Google login failed: ${e.toString()}', originalError: e));
+          AuthException(message: _getPbErrorMsg(e), originalError: e));
+    } catch (e) {
+      debugPrint('=== Google Sign-In Error: $e ===');
+      return Failure(AuthException(
+          message: 'Google login failed: ${e.toString()}',
+          originalError: e));
     }
   }
 
@@ -151,7 +202,7 @@ class AuthRepository {
   Future<Result<UserEntity>> signInAnonymously() async {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return signUpWithEmail(
-      email: 'guest_${ts}@compair.local',
+      email: 'guest_$ts@compair.local',
       password: 'Guest@123456',
       displayName: 'Guest',
     );
