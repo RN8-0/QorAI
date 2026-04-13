@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 //  COMPAIR ADMIN WEB
 // ═══════════════════════════════════════
 
@@ -145,7 +145,6 @@ let catChart=null,trendChart=null;
 
 async function refreshDashboard(){
   try{
-    let users;
     const [userDocs,compDocs]=await Promise.all([pbGetAll('users',{sort:'id'}),pbGetAll('comparisons',{sort:'id'})]);
     const users=userDocs.map(d=>({uid:d.id,...d.data()}));
     const cSnap={size:compDocs.length};
@@ -458,7 +457,7 @@ function filterProducts(){
   currentPage=1;
   loadPage();
 }
-function pDate(p){return p.scrapedAt?new Date(p.scrapedAt).getTime():p.updatedAt?.seconds?p.updatedAt.seconds*1e3:0}
+function pDate(p){return p.scrapedAt?new Date(p.scrapedAt).getTime():p.updatedAt?new Date(p.updatedAt).getTime():0}
 
 // Old renderProducts replaced by renderProductsPage above
 function scrollTop(){document.querySelector('.main-content').scrollTo(0,0)}
@@ -470,8 +469,8 @@ async function deleteSelected(){if(!selectedIds.size||!confirm(selectedIds.size+
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
 // Search debounce — server-side search with cancellation
-let sTimer,searchAbort=null;
-document.addEventListener('DOMContentLoaded',()=>{const si=document.getElementById('searchInput');if(si)si.addEventListener('input',()=>{clearTimeout(sTimer);if(searchAbort){searchAbort.cancelled=true}sTimer=setTimeout(serverSearch,800)})});
+let sTimer;
+document.addEventListener('DOMContentLoaded',()=>{const si=document.getElementById('searchInput');if(si)si.addEventListener('input',()=>{clearTimeout(sTimer);sTimer=setTimeout(serverSearch,800)})});
 
 // ── PRODUCT MODAL ──
 const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Camera':'📸','Core Hardware':'⚙️','Performance':'⚡','Memory':'💾','Storage':'💿','Design':'📐','Network':'📡','Connectivity':'🔌','Operating System':'💻','Audio':'🔊','Features':'✨','Sensors':'📡','Processor':'🧠','Power':'⚡','General':'ℹ️'};
@@ -949,12 +948,9 @@ async function sendPushNotification(){
 }
 
 async function loadNotificationHistory(){
-  try{const notifResult=await pbGetList('notifications',1,50,{sort:'-sentAt'});const el=document.getElementById('notificationHistory');if(!notifResult.items.length){el.innerHTML='<p class="text-muted">No notifications yet</p>';return}
-  el.innerHTML=notifResult.items.map(n=>{const dt=n.sentAt?new Date(n.sentAt).toLocaleString():'—';return<div class="notif-item"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:13px"></strong><span style="font-size:10px;color:var(--text3)"></span></div><div style="font-size:12px;color:var(--text2)"></div><div style="font-size:10px;color:var(--text3);margin-top:2px"> · </div></div>}).join('')}catch(e){toast('Error: '+e.message,'e')}
-};const dt=n.sentAt?.seconds?new Date(n.sentAt.seconds*1e3).toLocaleString():'—';return`<div class="notif-item"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:13px">${n.title||''}</strong><span style="font-size:10px;color:var(--text3)">${dt}</span></div><div style="font-size:12px;color:var(--text2)">${n.body||''}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${n.topic||'all'} · ${n.sentBy||''}</div></div>`}).join('')}catch(e){toast('Error: '+e.message,'e')}
-}
-
-// ═══════════════════════════════════════
+  try{const res=await pbGetList('notifications',1,50,{sort:'-sentAt'});const el=document.getElementById('notificationHistory');if(res.empty){el.innerHTML='<p class="text-muted">No notifications yet</p>';return}
+  el.innerHTML=res.items.map(n=>{const dt=n.sentAt?new Date(n.sentAt).toLocaleString():'—';return`<div class="notif-item"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:13px">${n.title||''}</strong><span style="font-size:10px;color:var(--text3)">${dt}</span></div><div style="font-size:12px;color:var(--text2)">${n.body||''}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${n.topic||'all'} · ${n.sentBy||''}</div></div>`}).join('')}catch(e){toast('Error: '+e.message,'e')}
+}// ═══════════════════════════════════════
 //  ALGORITHM
 // ═══════════════════════════════════════
 function updateAlgoLabel(input){const id=input.id.replace(/^(weight|boost)/,'label');const el=document.getElementById(id);if(el)el.textContent=input.value+'%'}
@@ -1150,7 +1146,7 @@ async function loadActivityLog(){
     const logs=result.items;
     const actionIcons={product_edit:'✏️',product_delete:'🗑️',product_add:'➕',user_delete:'👤',user_premium:'⭐',bulk_category:'📂',bulk_brand:'🏷️',export:'📤',import:'📥'};
     el.innerHTML=logs.map(l=>{
-      const ts=l.timestamp?.seconds?new Date(l.timestamp.seconds*1e3).toLocaleString('tr-TR'):'—';
+      const ts=l.timestamp?new Date(l.timestamp).toLocaleString('tr-TR'):'—';
       const icon=actionIcons[l.action]||'📋';
       return`<div class="log-row"><span class="log-icon">${icon}</span><div class="log-info"><div class="log-detail">${l.detail||l.action}</div><div class="log-meta">${l.admin||''} · ${ts}</div></div></div>`;
     }).join('');
@@ -1316,12 +1312,6 @@ async function scanBrokenImages(){
 //  PRICE HISTORY (simple view)
 // ═══════════════════════════════════════
 async function loadPriceHistory(productId){
-  try{
-    const result=await getPb().collection('price_history').getList(1,30,{
-      filter:`product="${productId}"`,
-      sort:'-date'
-    });
-    if(!result.items.length)return null;
-    return result.items;
-  }catch{return null}
+  // Price history subcollections not available in PocketBase
+  return null;
 }
