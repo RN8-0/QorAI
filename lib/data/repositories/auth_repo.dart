@@ -3,6 +3,7 @@ library;
 
 import 'package:pocketbase/pocketbase.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
@@ -109,12 +110,13 @@ class AuthRepository {
       }
 
       // Exchange the mobile auth code with PocketBase.
-      // Empty redirectURL + codeVerifier for mobile-sourced codes.
+      // "postmessage" is the redirect URI Google expects when exchanging
+      // server auth codes obtained from the native mobile SDK.
       final authData = await _pb.collection('users').authWithOAuth2Code(
         'google',
         serverAuthCode,
-        '', // no PKCE for mobile codes
-        '', // empty redirect for mobile auth codes
+        '', // no PKCE code verifier for mobile codes
+        'postmessage', // Google accepts this for native SDK server auth codes
         createData: {
           'name': googleUser.displayName ?? googleUser.email.split('@').first,
         },
@@ -124,6 +126,8 @@ class AuthRepository {
       return Success(UserModel.fromPb(authData.record!));
     } on ClientException catch (e) {
       await _googleSignIn.signOut();
+      debugPrint('=== Google Sign-In PB Error: ${e.statusCode} ===');
+      debugPrint('Response: ${e.response}');
       if (e.originalError.toString().contains('missing provider')) {
         return const Failure(
             AuthException(message: 'Google login is not configured yet'));
@@ -131,6 +135,7 @@ class AuthRepository {
       return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
     } catch (e) {
       await _googleSignIn.signOut();
+      debugPrint('=== Google Sign-In Error: $e ===');
       return Failure(
           AuthException(message: 'Google login failed: ${e.toString()}', originalError: e));
     }
@@ -177,9 +182,21 @@ class AuthRepository {
 
   String _getPbErrorMsg(ClientException e) {
     final data = (e.response['data'] as Map?)?.cast<String, dynamic>() ?? {};
+    final message = e.response['message'] as String? ?? '';
     if (e.statusCode == 400) {
       if (data['email'] != null) return 'This email address is already in use';
       if (data['password'] != null) return 'Password is too short (min 8 chars)';
+      // Show PB's own message for OAuth/other 400 errors
+      if (message.isNotEmpty && message != 'Something went wrong while processing your request.') {
+        return message;
+      }
+      // Fallback: show first field-level error
+      for (final entry in data.entries) {
+        final fieldErr = entry.value;
+        if (fieldErr is Map && fieldErr['message'] != null) {
+          return '${entry.key}: ${fieldErr['message']}';
+        }
+      }
       return 'Invalid data provided';
     }
     if (e.statusCode == 401) return 'Incorrect email or password';
