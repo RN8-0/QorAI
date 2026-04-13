@@ -11,7 +11,9 @@ async function checkAdmin(email) {
   try {
     const doc = await pbGetDoc('app_config', 'admins');
     if (!doc.exists) return false;
-    const emails = doc.data().emails || [];
+    const data = doc.data();
+    // emails may be at top level or nested inside value object (PocketBase migration)
+    const emails = data.emails || data.value?.emails || [];
     return emails.includes(email);
   } catch (e) {
     console.error('Admin check failed:', e);
