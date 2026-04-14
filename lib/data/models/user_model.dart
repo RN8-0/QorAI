@@ -47,7 +47,9 @@ class UserModel extends UserEntity {
       uid: record.id,
       email: data['googleEmail'] ?? data['email'] ?? '',
       displayName: data['displayName'] ?? data['name'] ?? '',
-      photoURL: data['photoURL'],
+      photoURL: (data['photoURL'] is String && (data['photoURL'] as String).isNotEmpty)
+          ? data['photoURL'] as String
+          : null,
       country: data['country'] ?? 'US',
       language: data['language'] ?? 'en',
       currency: data['currency'] ?? 'USD',

@@ -24,6 +24,7 @@ dependencies:
 
   # AI & Networking
   dio: ^5.7.0
+  http: ^1.2.0
   retrofit: ^4.4.1
 
   # Local Cache

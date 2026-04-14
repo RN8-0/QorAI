@@ -417,7 +417,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Try Firestore profile first (has latest data)
     final firestoreWidget = userProfile.whenOrNull(
       data: (user) {
-        if (user?.photoURL != null) {
+        if ((user?.photoURL ?? '').isNotEmpty) {
           return CachedNetworkImage(
             imageUrl: user!.photoURL!,
             width: 38, height: 38, fit: BoxFit.cover,

@@ -185,10 +185,10 @@ class _ProfileBody extends ConsumerWidget {
                       child: CircleAvatar(
                         radius: 36,
                         backgroundColor: context.surfaceElevatedColor,
-                        backgroundImage: user?.photoURL != null
+                        backgroundImage: (user?.photoURL ?? '').isNotEmpty
                             ? NetworkImage(user!.photoURL!)
                             : null,
-                        child: user?.photoURL == null
+                        child: (user?.photoURL ?? '').isEmpty
                             ? Text(
                                 (user?.displayName ?? 'U').substring(0, 1).toUpperCase(),
                                 style: GoogleFonts.inter(
