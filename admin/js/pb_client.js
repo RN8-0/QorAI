@@ -3,7 +3,7 @@
 //  Replaces Firebase Firestore + Auth
 // ═══════════════════════════════════════════════════════════════
 
-const PB_URL = 'http://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 const GOOGLE_CLIENT_ID = '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
 const PB_ADMIN_EMAIL = 'admin@compair.local';
 const PB_ADMIN_PASS = 'mx6I0zPE3HSaqbjlAY0p';

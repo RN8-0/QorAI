@@ -3,7 +3,7 @@
 //  Replaces Firebase Firestore + Auth for public website
 // ═══════════════════════════════════════════════════════════════
 
-const PB_URL = 'http://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 
 let _pb = null;
 

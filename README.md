@@ -16,7 +16,7 @@
 - Algorithm sorts recommendations by relevance using `ProfileAlgorithmService`
 
 ### 🔍 Intelligent Search
-- Cloud Function-powered server-side search with result caching (30 min TTL, 1 GiB memory)
+- Typesense-backed product search with PocketBase data sync
 - 400 ms debounce for smooth typing experience
 - Pre-loaded popular searches (iPhone 16, Galaxy S25, MacBook Pro M4, PS5, etc.)
 
@@ -29,7 +29,7 @@
 - **Grouped Specifications** — all spec groups collapsed by default; tap to expand; 20+ admin-defined group types with custom icons and colors
 - **YouTube Reviews** (YouTube Data API v3) — top 3 most-viewed review videos in the user's device language, with view counts
 - **AI Review Analysis** (Google Custom Search + DeepSeek) — crawls real web reviews, summarizes sentiment: satisfaction %, praised features, common criticisms
-- **User Reviews** — star rating + comment system; write a review via a bottom sheet; live Firestore sync
+- **User Reviews** — star rating + comment system; write a review via a bottom sheet; PocketBase-backed sync
 
 ### 🎨 Theme
 - Defaults to **light/white theme** on first launch
@@ -38,7 +38,7 @@
 
 ### 🔐 Authentication
 - Email/password, Google Sign-In, Apple Sign-In
-- Firebase Auth + Firestore user profiles
+- PocketBase user profiles and auth flows
 
 ### ⚖️ Product Comparison (Battles)
 - Admin-curated and user-initiated head-to-head comparisons
@@ -48,13 +48,13 @@
 
 ## 🛡️ Admin Panel (Web)
 
-Full-featured web admin panel hosted on Firebase:
+Full-featured web admin panel hosted on Coolify / Hetzner:
 
 | Feature | Description |
 |---------|-------------|
 | **Dashboard** | Product/user/comparison stats, category charts, daily trends, top brands |
 | **Products** | Full CRUD, search, filters, bulk delete, variant deduplication, spec viewer |
-| **Users** | List, search, premium toggle, full deletion (Auth + Firestore + subcollections) |
+| **Users** | List, search, premium toggle, full deletion from PocketBase |
 | **Scraper** | Bulk scrape from epey.com, single URL, score update, inventory scan |
 | **App Control** | Ads, homepage, push notifications, maintenance mode, versioning |
 | **Algorithm** | Match score weights, brand controls, behavior signals, home feed config |
@@ -70,10 +70,9 @@ node scripts/scraper-proxy.js
 Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 
 ### Security
-- Admin access restricted to email whitelist in `app_config/admins`
-- User deletion via Cloud Function (`deleteUserAccount`) removes Auth + Firestore + subcollections
-- Firestore rules enforce admin-only writes for products, users, and app config
-- No auto-admin creation — admins must be manually added
+- Admin access restricted to PocketBase superuser credentials and app-level controls
+- User deletion and product/app management are handled directly through PocketBase
+- No Firebase Auth / Firestore dependency remains in runtime flows
 
 ---
 
@@ -83,14 +82,14 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 |-------|-----------|
 | Framework | Flutter 3.x (Dart) |
 | State Management | Riverpod (flutter_riverpod) |
-| Backend | Firebase (Firestore, Auth, Storage, Cloud Functions) |
+| Backend | PocketBase + Typesense + Hetzner/Coolify |
 | AI / LLM | DeepSeek API (`deepseek-chat`) |
 | Video | YouTube Data API v3 |
 | Web Search | Google Custom Search API |
 | Local Cache | Hive |
 | Routing | GoRouter |
 | Image Loading | CachedNetworkImage |
-| Admin Panel | Vanilla JS + Firebase Hosting |
+| Admin Panel | Vanilla JS + Coolify static hosting |
 | Scraper | Node.js local proxy + browser-side parsing |
 
 ---
@@ -98,20 +97,18 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 ## 📁 Project Structure
 
 ```
-├── admin/                  # Web admin panel (Firebase Hosting)
+├── admin/                  # Web admin panel (Coolify static app)
 │   ├── index.html
 │   ├── css/style.css
 │   └── js/
 │       ├── app.js          # Core admin logic
 │       └── scraper.js      # Scraper module
-├── functions/              # Cloud Functions (europe-west1)
-│   └── index.js            # AI, search, user deletion, scoring
 ├── lib/                    # Flutter app
 │   ├── config/             # Environment config
 │   ├── core/               # Theme, constants, utilities
 │   ├── data/
-│   │   ├── datasources/    # Firebase & Hive data sources
-│   │   ├── models/         # Firestore model classes
+│   │   ├── datasources/    # PocketBase & Hive data sources
+│   │   ├── models/         # Data models
 │   │   └── repositories/   # Repository pattern
 │   ├── domain/
 │   │   └── entities/       # Pure domain entities
@@ -121,26 +118,25 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 │   └── services/           # YouTube, Google Search, DeepSeek, Cache
 ├── scripts/                # Utility & scraper scripts
 │   └── scraper-proxy.js    # Local CORS proxy for admin scraper
-├── website/                # Public website (Firebase Hosting)
-├── firebase.json           # Firebase config
-├── firestore.rules         # Firestore security rules
+├── website/                # Public website (Coolify static app)
+├── migration/              # One-off migration and infra scripts
 └── pubspec.yaml            # Flutter dependencies
 ```
 
 ---
 
-## 🔥 Firebase Hosting
+## 🌐 Web Deployments
 
 | Site | URL | Content |
 |------|-----|---------|
-| `compair-website` | https://compair-website.web.app | Public website |
-| `compair-admin-panel` | https://compair-admin-panel.web.app | Admin panel |
+| `compair-website` | https://qpq5eb1emz17386uh8jgj76q.46.225.95.201.sslip.io | Public website |
+| `compair-admin` | https://z1221ae58okr865xdquykps8.46.225.95.201.sslip.io | Admin panel |
 
 Deploy:
 ```bash
-firebase deploy --only hosting        # Both sites
-firebase deploy --only hosting:admin  # Admin panel only
-firebase deploy --only hosting:website # Website only
+npm run deploy:web       # Website + admin
+npm run deploy:website   # Website only
+npm run deploy:admin     # Admin only
 ```
 
 ---
@@ -150,8 +146,6 @@ firebase deploy --only hosting:website # Website only
 ### Prerequisites
 - Flutter SDK ≥ 3.0
 - Node.js ≥ 18
-- Firebase CLI (`npm i -g firebase-tools`)
-- Firebase project with Firestore, Auth, and Storage enabled
 - API keys for: YouTube Data API v3, Google Custom Search API, DeepSeek
 
 ### Setup
@@ -163,9 +157,9 @@ firebase deploy --only hosting:website # Website only
    flutter pub get
    ```
 
-2. **Firebase setup**
-   - Add `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)
-   - Deploy rules & functions: `firebase deploy --only "firestore:rules,functions"`
+2. **Backend setup**
+   - Configure PocketBase URL / auth hook on your target environment
+   - Keep `migration/.env` updated for Coolify deployment automation
 
 3. **Run with API keys**
    ```bash

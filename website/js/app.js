@@ -2,7 +2,7 @@
    Compair — app.js  (EPEY-style layout)
    ═══════════════════════════════════════════════════════════════ */
 
-// Firebase config removed — using PocketBase (pb_client.js)
+// PocketBase config lives in pb_client.js
 
 const CAT_META = {
   smartphones:  { icon: '📱', label: 'Telefonlar' },
@@ -35,8 +35,8 @@ let activeFilters = {
   scores: []
 };
 
-/* ── Firebase Init (removed — using PocketBase) ─────────────── */
-async function initFirebase() {
+/* ── App Init ───────────────────────────────────────────────── */
+async function initApp() {
   try {
     db = {}; // stub for backward compat
     await loadProducts();
@@ -485,7 +485,7 @@ function showError(msg) {
 
 /* ── DOMContentLoaded ────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-  initFirebase();
+  initApp();
 
   const theme = localStorage.getItem('compair-theme') || 'dark';
   const themeBtn = document.getElementById('theme-toggle');

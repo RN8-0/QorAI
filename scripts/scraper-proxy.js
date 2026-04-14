@@ -27,8 +27,7 @@ puppeteerExtra.use(require(path.join(rootDir, 'node_modules', 'puppeteer-extra-p
 
 const PORT = parseInt(process.argv[2]) || 3456;
 const ALLOWED_ORIGINS = [
-  'https://compair-admin-panel.web.app',
-  'https://compair-admin-panel.firebaseapp.com',
+  'https://z1221ae58okr865xdquykps8.46.225.95.201.sslip.io',
   'http://localhost:5000',
   'http://localhost:5002',
   'http://127.0.0.1:5000',
