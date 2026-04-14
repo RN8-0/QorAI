@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -33,34 +34,35 @@ class UsageCounter {
   final int comparisons;
   final int aiQuestions;
   final int linkPastes;
-  final DateTime date;
+  final String comparisonPeriodKey;
+  final String aiPeriodKey;
+  final String linkPeriodKey;
 
   const UsageCounter({
     this.comparisons = 0,
     this.aiQuestions = 0,
     this.linkPastes = 0,
-    required this.date,
+    required this.comparisonPeriodKey,
+    required this.aiPeriodKey,
+    required this.linkPeriodKey,
   });
 
   UsageCounter copyWith({
     int? comparisons,
     int? aiQuestions,
     int? linkPastes,
+    String? comparisonPeriodKey,
+    String? aiPeriodKey,
+    String? linkPeriodKey,
   }) {
     return UsageCounter(
       comparisons: comparisons ?? this.comparisons,
       aiQuestions: aiQuestions ?? this.aiQuestions,
       linkPastes: linkPastes ?? this.linkPastes,
-      date: date,
+      comparisonPeriodKey: comparisonPeriodKey ?? this.comparisonPeriodKey,
+      aiPeriodKey: aiPeriodKey ?? this.aiPeriodKey,
+      linkPeriodKey: linkPeriodKey ?? this.linkPeriodKey,
     );
-  }
-
-  /// Reset if day has changed
-  bool get isExpired {
-    final now = DateTime.now();
-    return date.year != now.year ||
-        date.month != now.month ||
-        date.day != now.day;
   }
 }
 
@@ -69,7 +71,7 @@ class SubscriptionService extends ChangeNotifier {
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
 
   SubscriptionStatus _status = SubscriptionStatus.free;
-  UsageCounter _usage = UsageCounter(date: DateTime.now());
+  late UsageCounter _usage;
   bool _initialized = false;
 
   List<ProductDetails> _products = [];
@@ -80,6 +82,13 @@ class SubscriptionService extends ChangeNotifier {
   bool get isPremium => _status.isPremium;
   bool get isInitialized => _initialized;
   List<ProductDetails> get products => _products;
+  int get comparisonsUsed => _normalizedUsage().comparisons;
+  int get aiQuestionsUsed => _normalizedUsage().aiQuestions;
+  int get linkPastesUsed => _normalizedUsage().linkPastes;
+
+  SubscriptionService() {
+    _usage = _emptyUsage();
+  }
 
   /// Initialize Google Play Billing
   Future<void> initialize() async {
@@ -88,9 +97,12 @@ class SubscriptionService extends ChangeNotifier {
     _initCompleter = Completer<void>();
 
     try {
+      await _restoreUsageFromLocal();
+
       final available = await _iap.isAvailable();
       if (!available) {
         debugPrint('⚠️ In-app purchases not available on this device');
+        await _restoreFromLocal();
         _initialized = true;
         _initCompleter!.complete();
         return;
@@ -128,7 +140,9 @@ class SubscriptionService extends ChangeNotifier {
         debugPrint('⚠️ Product query error: ${response.error}');
       }
       if (response.notFoundIDs.isNotEmpty) {
-        debugPrint('⚠️ Products not found in Play Store: ${response.notFoundIDs}');
+        debugPrint(
+          '⚠️ Products not found in Play Store: ${response.notFoundIDs}',
+        );
       }
       _products = response.productDetails;
 
@@ -151,7 +165,9 @@ class SubscriptionService extends ChangeNotifier {
   /// Handle purchase stream updates
   void _handlePurchaseUpdates(List<PurchaseDetails> purchases) {
     for (final purchase in purchases) {
-      debugPrint('📱 Purchase update: ${purchase.productID} → ${purchase.status}');
+      debugPrint(
+        '📱 Purchase update: ${purchase.productID} → ${purchase.status}',
+      );
       switch (purchase.status) {
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
@@ -160,9 +176,11 @@ class SubscriptionService extends ChangeNotifier {
         case PurchaseStatus.error:
           debugPrint('❌ Purchase error: ${purchase.error?.message}');
           _purchaseCompleter?.complete(
-            Failure(ServerException(
-              message: purchase.error?.message ?? 'Purchase failed',
-            )),
+            Failure(
+              ServerException(
+                message: purchase.error?.message ?? 'Purchase failed',
+              ),
+            ),
           );
           _purchaseCompleter = null;
           if (purchase.pendingCompletePurchase) {
@@ -207,17 +225,54 @@ class SubscriptionService extends ChangeNotifier {
     await prefs.setString('active_product_id', productId);
   }
 
+  Future<void> _saveUsageToLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'freemium_usage_v2',
+      jsonEncode({
+        'comparisons': _usage.comparisons,
+        'aiQuestions': _usage.aiQuestions,
+        'linkPastes': _usage.linkPastes,
+        'comparisonPeriodKey': _usage.comparisonPeriodKey,
+        'aiPeriodKey': _usage.aiPeriodKey,
+        'linkPeriodKey': _usage.linkPeriodKey,
+      }),
+    );
+  }
+
   /// Restore from local storage
   Future<void> _restoreFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final premium = prefs.getBool('is_premium') ?? false;
     final productId = prefs.getString('active_product_id');
     if (premium && productId != null) {
-      _status = SubscriptionStatus(
-        isPremium: true,
-        activeProductId: productId,
-      );
+      _status = SubscriptionStatus(isPremium: true, activeProductId: productId);
       notifyListeners();
+    }
+  }
+
+  Future<void> _restoreUsageFromLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('freemium_usage_v2');
+    if (raw == null || raw.isEmpty) {
+      _usage = _emptyUsage();
+      return;
+    }
+
+    try {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      _usage = UsageCounter(
+        comparisons: data['comparisons'] as int? ?? 0,
+        aiQuestions: data['aiQuestions'] as int? ?? 0,
+        linkPastes: data['linkPastes'] as int? ?? 0,
+        comparisonPeriodKey:
+            data['comparisonPeriodKey'] as String? ?? _dailyPeriodKey(),
+        aiPeriodKey: data['aiPeriodKey'] as String? ?? _dailyPeriodKey(),
+        linkPeriodKey: data['linkPeriodKey'] as String? ?? _weeklyPeriodKey(),
+      );
+      _usage = _normalizedUsage();
+    } catch (_) {
+      _usage = _emptyUsage();
     }
   }
 
@@ -240,9 +295,7 @@ class SubscriptionService extends ChangeNotifier {
         const Duration(minutes: 5),
         onTimeout: () {
           _purchaseCompleter = null;
-          return const Failure(
-            ServerException(message: 'Purchase timed out'),
-          );
+          return const Failure(ServerException(message: 'Purchase timed out'));
         },
       );
     } catch (e) {
@@ -271,87 +324,138 @@ class SubscriptionService extends ChangeNotifier {
 
   // ─── Free Tier Limit Control ───
 
-  /// Get daily counter (reset if day has changed)
-  UsageCounter get _currentUsage {
-    if (_usage.isExpired) {
-      _usage = UsageCounter(date: DateTime.now());
+  UsageCounter _emptyUsage() {
+    return UsageCounter(
+      comparisonPeriodKey: _dailyPeriodKey(),
+      aiPeriodKey: _dailyPeriodKey(),
+      linkPeriodKey: _weeklyPeriodKey(),
+    );
+  }
+
+  String _dailyPeriodKey([DateTime? now]) {
+    final date = now ?? DateTime.now();
+    return '${date.year}-${date.month}-${date.day}';
+  }
+
+  String _weeklyPeriodKey([DateTime? now]) {
+    final date = now ?? DateTime.now();
+    final startOfWeek = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: date.weekday - 1));
+    return '${startOfWeek.year}-${startOfWeek.month}-${startOfWeek.day}';
+  }
+
+  UsageCounter _normalizedUsage() {
+    final dailyKey = _dailyPeriodKey();
+    final weeklyKey = _weeklyPeriodKey();
+    var changed = false;
+    var next = _usage;
+
+    if (next.comparisonPeriodKey != dailyKey) {
+      next = next.copyWith(comparisons: 0, comparisonPeriodKey: dailyKey);
+      changed = true;
     }
-    return _usage;
+    if (next.aiPeriodKey != dailyKey) {
+      next = next.copyWith(aiQuestions: 0, aiPeriodKey: dailyKey);
+      changed = true;
+    }
+    if (next.linkPeriodKey != weeklyKey) {
+      next = next.copyWith(linkPastes: 0, linkPeriodKey: weeklyKey);
+      changed = true;
+    }
+
+    if (changed) {
+      _usage = next;
+      unawaited(_saveUsageToLocal());
+    }
+
+    return next;
   }
 
   /// Can a comparison be made?
   bool get canCompare {
     if (isPremium) return true;
-    return _currentUsage.comparisons < AppConstants.freeComparisonLimit;
+    return _normalizedUsage().comparisons < AppConstants.freeComparisonLimit;
   }
 
   /// Can an AI question be asked?
   bool get canAskAI {
     if (isPremium) return true;
-    return _currentUsage.aiQuestions < AppConstants.freeAiQuestionLimit;
+    return _normalizedUsage().aiQuestions < AppConstants.freeAiQuestionLimit;
   }
 
   /// Can a link be pasted?
   bool get canPasteLink {
     if (isPremium) return true;
-    return _currentUsage.linkPastes < AppConstants.freeLinkPasteLimit;
+    return _normalizedUsage().linkPastes < AppConstants.freeLinkPasteLimit;
   }
 
   /// Record comparison usage
   Result<void> recordComparison() {
+    final currentUsage = _normalizedUsage();
     if (!canCompare) {
-      return Failure(UsageLimitException(
-        featureName: 'comparison',
-        currentUsage: _currentUsage.comparisons,
-        limit: AppConstants.freeComparisonLimit,
-      ));
+      return Failure(
+        UsageLimitException(
+          featureName: 'comparison',
+          currentUsage: currentUsage.comparisons,
+          limit: AppConstants.freeComparisonLimit,
+        ),
+      );
     }
-    _usage = _currentUsage.copyWith(
-      comparisons: _currentUsage.comparisons + 1,
-    );
+    _usage = currentUsage.copyWith(comparisons: currentUsage.comparisons + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
     return const Success(null);
   }
 
   /// Record AI question usage
   Result<void> recordAIQuestion() {
+    final currentUsage = _normalizedUsage();
     if (!canAskAI) {
-      return Failure(UsageLimitException(
-        featureName: 'ai_question',
-        currentUsage: _currentUsage.aiQuestions,
-        limit: AppConstants.freeAiQuestionLimit,
-      ));
+      return Failure(
+        UsageLimitException(
+          featureName: 'ai_question',
+          currentUsage: currentUsage.aiQuestions,
+          limit: AppConstants.freeAiQuestionLimit,
+        ),
+      );
     }
-    _usage = _currentUsage.copyWith(
-      aiQuestions: _currentUsage.aiQuestions + 1,
-    );
+    _usage = currentUsage.copyWith(aiQuestions: currentUsage.aiQuestions + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
     return const Success(null);
   }
 
   /// Record link paste usage
   Result<void> recordLinkPaste() {
+    final currentUsage = _normalizedUsage();
     if (!canPasteLink) {
-      return Failure(UsageLimitException(
-        featureName: 'link_paste',
-        currentUsage: _currentUsage.linkPastes,
-        limit: AppConstants.freeLinkPasteLimit,
-      ));
+      return Failure(
+        UsageLimitException(
+          featureName: 'link_paste',
+          currentUsage: currentUsage.linkPastes,
+          limit: AppConstants.freeLinkPasteLimit,
+        ),
+      );
     }
-    _usage = _currentUsage.copyWith(
-      linkPastes: _currentUsage.linkPastes + 1,
-    );
+    _usage = currentUsage.copyWith(linkPastes: currentUsage.linkPastes + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
     return const Success(null);
   }
 
   /// Remaining usage allowances
   int get remainingComparisons => isPremium
       ? -1 // Unlimited
-      : AppConstants.freeComparisonLimit - _currentUsage.comparisons;
+      : AppConstants.freeComparisonLimit - _normalizedUsage().comparisons;
 
   int get remainingAIQuestions => isPremium
       ? -1
-      : AppConstants.freeAiQuestionLimit - _currentUsage.aiQuestions;
+      : AppConstants.freeAiQuestionLimit - _normalizedUsage().aiQuestions;
 
   int get remainingLinkPastes => isPremium
       ? -1
-      : AppConstants.freeLinkPasteLimit - _currentUsage.linkPastes;
+      : AppConstants.freeLinkPasteLimit - _normalizedUsage().linkPastes;
 }

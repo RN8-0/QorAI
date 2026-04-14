@@ -12,7 +12,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pocketbase/pocketbase.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
 import 'package:compair/config/env_config.dart';
@@ -60,7 +59,6 @@ part 'compare_providers.dart';
 part 'cache_providers.dart';
 part 'ai_providers.dart';
 
-
 // ════════════════════════════════════════════════════
 // ─── CORE SERVICE PROVIDERS ─── (Provider tipi)
 // ════════════════════════════════════════════════════
@@ -99,21 +97,26 @@ final geminiServiceProvider = Provider<GeminiService>((ref) {
 });
 
 /// Subscription Service (Google Play Billing)
-final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>((ref) {
-  final service = SubscriptionService();
-  // Initialize when user auth state is available
-  final authState = ref.watch(authStateProvider);
-  authState.whenData((user) {
-    if (user != null && !service.isInitialized) {
-      service.initialize();
-    }
-  });
-  return service;
-});
+final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
+  (ref) {
+    final service = SubscriptionService();
+    // Initialize when user auth state is available
+    final authState = ref.watch(authStateProvider);
+    authState.whenData((user) {
+      if (user != null && !service.isInitialized) {
+        service.initialize();
+      }
+    });
+    return service;
+  },
+);
 
 /// Whether the current user has an active premium subscription
 final premiumProvider = Provider<bool>((ref) {
-  return ref.watch(subscriptionServiceProvider).isPremium;
+  final localPremium = ref.watch(subscriptionServiceProvider).isPremium;
+  final profilePremium =
+      ref.watch(userProfileProvider).valueOrNull?.isPremium == true;
+  return localPremium || profilePremium;
 });
 
 /// YouTube Data API v3 Service
@@ -139,7 +142,9 @@ final metadataServiceProvider = Provider<MetadataService>((ref) {
 
 /// Profile Algorithm Service - Section 8, 10
 /// User profile vector calculation and product fit score algorithm
-final profileAlgorithmServiceProvider = Provider<ProfileAlgorithmService>((ref) {
+final profileAlgorithmServiceProvider = Provider<ProfileAlgorithmService>((
+  ref,
+) {
   return ProfileAlgorithmService();
 });
 
@@ -158,8 +163,9 @@ final behaviorSignalsProvider = FutureProvider<BehaviorSignals>((ref) async {
 });
 
 /// Global algorithm aggregates (cross-user collaborative signals)
-final globalAlgorithmSignalsProvider =
-    FutureProvider<GlobalAlgorithmSignals>((ref) async {
+final globalAlgorithmSignalsProvider = FutureProvider<GlobalAlgorithmSignals>((
+  ref,
+) async {
   return GlobalAlgorithmSignals.load();
 });
 
@@ -174,9 +180,7 @@ final techScoreServiceProvider = Provider<TechScoreService>((ref) {
 
 /// Auth Repository
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    pbDS: ref.read(pbDataSourceProvider),
-  );
+  return AuthRepository(pbDS: ref.read(pbDataSourceProvider));
 });
 
 /// Product Repository
@@ -239,7 +243,9 @@ final categoryTemplatesProvider = StreamProvider<List<CategoryTemplate>>((ref) {
 });
 
 /// Streaming services stream (for services like Spotify, Netflix)
-final streamingServicesStreamProvider = StreamProvider<List<StreamingService>>((ref) {
+final streamingServicesStreamProvider = StreamProvider<List<StreamingService>>((
+  ref,
+) {
   return ref.read(scraperRepositoryProvider).watchStreamingServices();
 });
 
@@ -255,4 +261,3 @@ final scraperStatusProvider = FutureProvider<ScraperStatus>((ref) {
 final calculateScoreUseCaseProvider = Provider<CalculateScoreUseCase>((ref) {
   return CalculateScoreUseCase();
 });
-

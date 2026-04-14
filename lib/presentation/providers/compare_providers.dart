@@ -7,11 +7,11 @@ part of 'providers.dart';
 /// Comparison state - Section 3.3
 final comparisonStateProvider =
     StateNotifierProvider<ComparisonNotifier, ComparisonState>((ref) {
-  return ComparisonNotifier(
-    comparisonRepo: ref.read(comparisonRepositoryProvider),
-    subscriptionService: ref.read(subscriptionServiceProvider),
-  );
-});
+      return ComparisonNotifier(
+        comparisonRepo: ref.read(comparisonRepositoryProvider),
+        subscriptionService: ref.read(subscriptionServiceProvider),
+      );
+    });
 
 /// Comparison state
 class ComparisonState {
@@ -54,9 +54,9 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   ComparisonNotifier({
     required ComparisonRepositoryImpl comparisonRepo,
     required SubscriptionService subscriptionService,
-  })  : _comparisonRepo = comparisonRepo,
-        _subscriptionService = subscriptionService,
-        super(const ComparisonState());
+  }) : _comparisonRepo = comparisonRepo,
+       _subscriptionService = subscriptionService,
+       super(const ComparisonState());
 
   /// Select/remove product
   void toggleProduct(String productId) {
@@ -82,21 +82,22 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     final limitResult = _subscriptionService.recordComparison();
     if (limitResult.isFailure) {
       state = state.copyWith(
-        error: 'You have reached the daily comparison limit. Upgrade to Pro for unlimited usage!',
+        error:
+            'You have reached the daily comparison limit. Upgrade to Premium for unlimited usage!',
         isLoading: false,
       );
       return;
     }
 
     state = state.copyWith(
-      isLoading: true, 
+      isLoading: true,
       error: null,
       loadingMessage: 'Gathering product data...',
     );
 
     // AI Decision Engine Steps (Simulated progress)
     _updateLoadingMessage('AI is comparing features...');
-    
+
     final result = await _comparisonRepo.compareProducts(
       productIds: state.selectedProductIds,
       user: user,
@@ -105,14 +106,14 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     result.when(
       success: (data) {
         state = state.copyWith(
-          result: data, 
-          isLoading: false, 
+          result: data,
+          isLoading: false,
           loadingMessage: null,
         );
       },
       failure: (error) {
         state = state.copyWith(
-          error: error.message, 
+          error: error.message,
           isLoading: false,
           loadingMessage: null,
         );
@@ -131,14 +132,14 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
 // ─── LINK PASTE PROVIDER ─── Section 9
 // ════════════════════════════════════════════════════
 
-final linkAnalysisProvider = StateNotifierProvider<LinkAnalysisNotifier,
-    LinkAnalysisState>((ref) {
-  return LinkAnalysisNotifier(
-    aiRepo: ref.read(aiRepositoryProvider),
-    subscriptionService: ref.read(subscriptionServiceProvider),
-    ref: ref,
-  );
-});
+final linkAnalysisProvider =
+    StateNotifierProvider<LinkAnalysisNotifier, LinkAnalysisState>((ref) {
+      return LinkAnalysisNotifier(
+        aiRepo: ref.read(aiRepositoryProvider),
+        subscriptionService: ref.read(subscriptionServiceProvider),
+        ref: ref,
+      );
+    });
 
 class LinkAnalysisState {
   final List<LinkAnalysisResult> results;
@@ -173,10 +174,10 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
     required AIRepository aiRepo,
     required SubscriptionService subscriptionService,
     required Ref ref,
-  })  : _aiRepo = aiRepo,
-        _subscriptionService = subscriptionService,
-        _ref = ref,
-        super(const LinkAnalysisState());
+  }) : _aiRepo = aiRepo,
+       _subscriptionService = subscriptionService,
+       _ref = ref,
+       super(const LinkAnalysisState());
 
   String get _appLang => _ref.read(localeProvider)?.languageCode ?? 'en';
 
@@ -186,7 +187,8 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
     final limitResult = _subscriptionService.recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
-        error: 'You have reached the daily link analysis limit. Upgrade to Pro for unlimited usage!',
+        error:
+            'You have reached the weekly link analysis limit. Upgrade to Premium for unlimited usage!',
         isLoading: false,
       );
       return;
@@ -260,8 +262,7 @@ class LinkQuizState {
       answeredQuestions: answeredQuestions ?? this.answeredQuestions,
       enhancedResult: enhancedResult ?? this.enhancedResult,
       error: error,
-      currentQuestionIndex:
-          currentQuestionIndex ?? this.currentQuestionIndex,
+      currentQuestionIndex: currentQuestionIndex ?? this.currentQuestionIndex,
       databaseMatch: databaseMatch ?? this.databaseMatch,
       similarProducts: similarProducts ?? this.similarProducts,
     );
@@ -283,13 +284,13 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     required BehaviorTrackingService behaviorTracking,
     required PbDataSource pbDs,
     required Ref ref,
-  })  : _aiRepo = aiRepo,
-        _gemini = gemini,
-        _subscriptionService = subscriptionService,
-        _behaviorTracking = behaviorTracking,
-        _pbDs = pbDs,
-        _ref = ref,
-        super(const LinkQuizState());
+  }) : _aiRepo = aiRepo,
+       _gemini = gemini,
+       _subscriptionService = subscriptionService,
+       _behaviorTracking = behaviorTracking,
+       _pbDs = pbDs,
+       _ref = ref,
+       super(const LinkQuizState());
 
   String get _appLang => _ref.read(localeProvider)?.languageCode ?? 'en';
 
@@ -300,7 +301,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     if (limitResult.isFailure) {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
-        error: 'Daily link analysis limit reached. Upgrade to Pro!',
+        error: 'Weekly link analysis limit reached. Upgrade to Premium!',
       );
       return;
     }
@@ -314,14 +315,13 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     final LinkAnalysisResult? baseResult;
     switch (result) {
       case Success<LinkAnalysisResult>(data: final data):
-        debugPrint('[LinkQuiz] Analysis succeeded: score=${data.aiScore}, category=${data.category}');
+        debugPrint(
+          '[LinkQuiz] Analysis succeeded: score=${data.aiScore}, category=${data.category}',
+        );
         baseResult = data;
       case Failure<LinkAnalysisResult>(error: final error):
         debugPrint('[LinkQuiz] Analysis failed: ${error.message}');
-        state = state.copyWith(
-          phase: LinkFlowPhase.idle,
-          error: error.message,
-        );
+        state = state.copyWith(phase: LinkFlowPhase.idle, error: error.message);
         baseResult = null;
     }
     if (baseResult == null) return;
@@ -354,7 +354,9 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         return;
       }
 
-      debugPrint('[LinkQuiz] Quiz generated: ${quiz.questions.length} questions');
+      debugPrint(
+        '[LinkQuiz] Quiz generated: ${quiz.questions.length} questions',
+      );
       state = state.copyWith(
         phase: LinkFlowPhase.quiz,
         quiz: quiz,
@@ -386,8 +388,9 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     final nextIndex = questionIndex + 1;
     state = state.copyWith(
       answeredQuestions: updated,
-      currentQuestionIndex:
-          nextIndex < updated.length ? nextIndex : questionIndex,
+      currentQuestionIndex: nextIndex < updated.length
+          ? nextIndex
+          : questionIndex,
     );
   }
 
@@ -404,7 +407,9 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         profile: user.copyWith(language: _appLang),
       );
 
-      debugPrint('[LinkQuiz] Enhanced analysis done: score=${enhanced.enhancedScore}');
+      debugPrint(
+        '[LinkQuiz] Enhanced analysis done: score=${enhanced.enhancedScore}',
+      );
 
       // Save to Firestore
       _saveAnalysisToFirestore(user, enhanced);
@@ -415,11 +420,13 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
           url: state.baseResult!.url,
           category: state.baseResult!.category,
           answeredQuestions: state.answeredQuestions
-              .map((q) => {
-                    'question': q.text,
-                    'selectedOption': q.selectedOption,
-                    'options': q.options,
-                  })
+              .map(
+                (q) => {
+                  'question': q.text,
+                  'selectedOption': q.selectedOption,
+                  'options': q.options,
+                },
+              )
               .toList(),
           matchScore: enhanced.enhancedScore,
         );
@@ -430,7 +437,9 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         enhancedResult: enhanced,
       );
     } catch (e) {
-      debugPrint('[LinkQuiz] submitQuiz failed: $e — falling back to base result');
+      debugPrint(
+        '[LinkQuiz] submitQuiz failed: $e — falling back to base result',
+      );
       // Fallback to base result (guard against null)
       final base = state.baseResult;
       if (base != null) {
@@ -467,7 +476,10 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   }
 
   /// Save analysis data to Firestore for user activity tracking
-  void _saveAnalysisToFirestore(UserEntity user, EnhancedAnalysisResult enhanced) {
+  void _saveAnalysisToFirestore(
+    UserEntity user,
+    EnhancedAnalysisResult enhanced,
+  ) {
     final base = state.baseResult;
     if (base == null) return;
 
@@ -494,8 +506,10 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       'title': base.metadata.title,
       'category': base.category,
       'score': enhanced.enhancedScore,
-      'verdict': enhanced.detailedVerdict?.substring(
-          0, (enhanced.detailedVerdict?.length ?? 0).clamp(0, 200)),
+      'verdict': enhanced.detailedVerdict.substring(
+        0,
+        enhanced.detailedVerdict.length.clamp(0, 200),
+      ),
       'factorCount': enhanced.factors.length,
     });
   }
@@ -523,8 +537,9 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       for (final word in titleWords) {
         if (pName.contains(word)) matchCount++;
       }
-      final matchRatio =
-          titleWords.isNotEmpty ? matchCount / titleWords.length : 0.0;
+      final matchRatio = titleWords.isNotEmpty
+          ? matchCount / titleWords.length
+          : 0.0;
 
       if (matchRatio >= 0.6) {
         if (matchRatio > bestScore) {
@@ -538,10 +553,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       }
     }
 
-    state = state.copyWith(
-      databaseMatch: bestMatch,
-      similarProducts: similar,
-    );
+    state = state.copyWith(databaseMatch: bestMatch, similarProducts: similar);
   }
 
   void reset() {
@@ -558,17 +570,18 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   }
 }
 
-final linkQuizProvider =
-    StateNotifierProvider<LinkQuizNotifier, LinkQuizState>((ref) {
-  return LinkQuizNotifier(
-    aiRepo: ref.read(aiRepositoryProvider),
-    gemini: ref.read(geminiServiceProvider),
-    subscriptionService: ref.read(subscriptionServiceProvider),
-    behaviorTracking: ref.read(behaviorTrackingProvider),
-    pbDs: ref.read(pbDataSourceProvider),
-    ref: ref,
-  );
-});
+final linkQuizProvider = StateNotifierProvider<LinkQuizNotifier, LinkQuizState>(
+  (ref) {
+    return LinkQuizNotifier(
+      aiRepo: ref.read(aiRepositoryProvider),
+      gemini: ref.read(geminiServiceProvider),
+      subscriptionService: ref.read(subscriptionServiceProvider),
+      behaviorTracking: ref.read(behaviorTrackingProvider),
+      pbDs: ref.read(pbDataSourceProvider),
+      ref: ref,
+    );
+  },
+);
 
 // ════════════════════════════════════════════════════
 // ─── COMPARE ANALYSIS FLOW ─── (Background-safe)
@@ -585,8 +598,13 @@ class AnalysisStep {
   final bool isDone;
   final bool isActive;
   final bool hasError;
-  const AnalysisStep(this.label, this.type,
-      {this.isDone = false, this.isActive = false, this.hasError = false});
+  const AnalysisStep(
+    this.label,
+    this.type, {
+    this.isDone = false,
+    this.isActive = false,
+    this.hasError = false,
+  });
   AnalysisStep withDone() => AnalysisStep(label, type, isDone: true);
   AnalysisStep withActive() => AnalysisStep(label, type, isActive: true);
   AnalysisStep withError() => AnalysisStep(label, type, hasError: true);
@@ -658,15 +676,18 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     required GeminiService gemini,
     required BehaviorTrackingService behaviorTracking,
     required PbDataSource pbDs,
-  })  : _aiRepo = aiRepo,
-        _gemini = gemini,
-        _behaviorTracking = behaviorTracking,
-        _pbDs = pbDs,
-        super(const CompareAnalysisState());
+  }) : _aiRepo = aiRepo,
+       _gemini = gemini,
+       _behaviorTracking = behaviorTracking,
+       _pbDs = pbDs,
+       super(const CompareAnalysisState());
 
   /// Phase 1: Analyze first URL → generate quiz
   Future<void> startAnalysis(
-      List<String> urls, UserEntity user, String lang) async {
+    List<String> urls,
+    UserEntity user,
+    String lang,
+  ) async {
     state = CompareAnalysisState(
       phase: ComparePhase.analyzingFirst,
       validUrls: urls,
@@ -677,8 +698,10 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     try {
       _behaviorTracking.trackLinkPaste(urls[0], null);
       debugPrint('[Compare] Phase 1: Analyzing first URL for quiz: ${urls[0]}');
-      final Result<LinkAnalysisResult> firstResult =
-          await _aiRepo.analyzeLink(url: urls[0], user: localizedUser);
+      final Result<LinkAnalysisResult> firstResult = await _aiRepo.analyzeLink(
+        url: urls[0],
+        user: localizedUser,
+      );
 
       LinkAnalysisResult? firstData;
       switch (firstResult) {
@@ -759,7 +782,9 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
           AnalysisStep('Scanning Link ${i + 1}', AnalysisStepType.scanLink),
         const AnalysisStep('Running AI analysis', AnalysisStepType.aiAnalysis),
         const AnalysisStep(
-            'Matching with your profile', AnalysisStepType.profileMatch),
+          'Matching with your profile',
+          AnalysisStepType.profileMatch,
+        ),
       ],
       progress: 0,
     );
@@ -776,8 +801,10 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         } else {
           _behaviorTracking.trackLinkPaste(urls[i], null);
           debugPrint('[Compare] Analyzing: ${urls[i]}');
-          final Result<LinkAnalysisResult> result =
-              await _aiRepo.analyzeLink(url: urls[i], user: user);
+          final Result<LinkAnalysisResult> result = await _aiRepo.analyzeLink(
+            url: urls[i],
+            user: user,
+          );
           switch (result) {
             case Success<LinkAnalysisResult>(data: final d):
               data = d;
@@ -816,16 +843,19 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
           profile: user,
         );
         debugPrint(
-            '[Compare] Score for "${data.metadata.title}": enhanced=${enhanced.enhancedScore}');
+          '[Compare] Score for "${data.metadata.title}": enhanced=${enhanced.enhancedScore}',
+        );
         results.add(enhanced);
       } catch (e) {
         debugPrint('[Compare] Enhanced analysis fallback: $e');
-        results.add(EnhancedAnalysisResult(
-          baseResult: data,
-          enhancedScore: data.aiScore,
-          factors: const [],
-          detailedVerdict: data.aiAnalysis,
-        ));
+        results.add(
+          EnhancedAnalysisResult(
+            baseResult: data,
+            enhancedScore: data.aiScore,
+            factors: const [],
+            detailedVerdict: data.aiAnalysis,
+          ),
+        );
       }
     }
     _updateStep(aiIdx, (s) => s.withDone());
@@ -846,8 +876,10 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         'title': r.baseResult.metadata.title,
         'category': r.baseResult.category,
         'score': r.enhancedScore,
-        'verdict': r.detailedVerdict?.substring(
-            0, (r.detailedVerdict?.length ?? 0).clamp(0, 200)),
+        'verdict': r.detailedVerdict.substring(
+          0,
+          r.detailedVerdict.length.clamp(0, 200),
+        ),
         'mode': 'compare',
       });
     }
@@ -872,8 +904,8 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       results: results,
       error: results.length < 2
           ? (results.isEmpty
-              ? 'Could not analyze any of the provided links.'
-              : 'Only 1 link could be analyzed — need at least 2 for comparison')
+                ? 'Could not analyze any of the provided links.'
+                : 'Only 1 link could be analyzed — need at least 2 for comparison')
           : null,
     );
   }
@@ -895,13 +927,13 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
 
 final compareAnalysisProvider =
     StateNotifierProvider<CompareAnalysisNotifier, CompareAnalysisState>((ref) {
-  return CompareAnalysisNotifier(
-    aiRepo: ref.read(aiRepositoryProvider),
-    gemini: ref.read(geminiServiceProvider),
-    behaviorTracking: ref.read(behaviorTrackingProvider),
-    pbDs: ref.read(pbDataSourceProvider),
-  );
-});
+      return CompareAnalysisNotifier(
+        aiRepo: ref.read(aiRepositoryProvider),
+        gemini: ref.read(geminiServiceProvider),
+        behaviorTracking: ref.read(behaviorTrackingProvider),
+        pbDs: ref.read(pbDataSourceProvider),
+      );
+    });
 
 // ─── Subscription Intelligence Provider ────────────────────────────────────
 
@@ -962,10 +994,10 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     required GeminiService gemini,
     required SubscriptionService subService,
     required Ref ref,
-  })  : _gemini = gemini,
-        _subService = subService,
-        _ref = ref,
-        super(const SubQuizState());
+  }) : _gemini = gemini,
+       _subService = subService,
+       _ref = ref,
+       super(const SubQuizState());
 
   String get _appLang => _ref.read(localeProvider)?.languageCode ?? 'en';
 
@@ -992,7 +1024,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (!_subService.canAskAI) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: 'Daily AI limit reached. Upgrade to Pro!',
+        error: 'Daily AI limit reached. Upgrade to Premium!',
       );
       return;
     }
@@ -1003,10 +1035,12 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     );
 
     try {
-      final quiz = await _gemini.generateSubscriptionQuiz(
-        subscriptionNames: names,
-        language: _appLang,
-      ).timeout(const Duration(seconds: 25));
+      final quiz = await _gemini
+          .generateSubscriptionQuiz(
+            subscriptionNames: names,
+            language: _appLang,
+          )
+          .timeout(const Duration(seconds: 25));
 
       if (quiz.questions.isEmpty) throw Exception('No questions generated');
 
@@ -1018,7 +1052,14 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       );
     } catch (_) {
       // Fallback: skip quiz, go straight to analysis
-      _subService.recordAIQuestion();
+      final quota = _subService.recordAIQuestion();
+      if (quota.isFailure) {
+        state = state.copyWith(
+          phase: SubFlowPhase.idle,
+          error: 'Daily AI limit reached. Upgrade to Premium!',
+        );
+        return;
+      }
       state = state.copyWith(phase: SubFlowPhase.analyzing);
       await _runAnalysis(names, []);
     }
@@ -1037,7 +1078,14 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Step 3: Submit quiz + run enhanced grounded analysis.
   Future<void> submitQuiz() async {
-    _subService.recordAIQuestion();
+    final quota = _subService.recordAIQuestion();
+    if (quota.isFailure) {
+      state = state.copyWith(
+        phase: SubFlowPhase.idle,
+        error: 'Daily AI limit reached. Upgrade to Premium!',
+      );
+      return;
+    }
 
     // Save quiz answers to Firestore
     try {
@@ -1062,34 +1110,47 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Skip quiz → analyze with no quiz context.
   Future<void> skipQuiz() async {
-    _subService.recordAIQuestion();
+    final quota = _subService.recordAIQuestion();
+    if (quota.isFailure) {
+      state = state.copyWith(
+        phase: SubFlowPhase.idle,
+        error: 'Daily AI limit reached. Upgrade to Premium!',
+      );
+      return;
+    }
     state = state.copyWith(phase: SubFlowPhase.analyzing);
     await _runAnalysis(state.subscriptionNames, []);
   }
 
   Future<void> _runAnalysis(
-      List<String> names, List<QuizQuestion> answered) async {
+    List<String> names,
+    List<QuizQuestion> answered,
+  ) async {
     try {
       final user = _ref.read(userProfileProvider).valueOrNull;
       // Create a minimal profile if user is not loaded yet
-      final profile = user ?? UserEntity(
-        uid: 'anonymous',
-        email: '',
-        displayName: 'User',
-        country: _ref.read(selectedCountryProvider),
-        language: _appLang,
-        currency: _ref.read(currencyProvider),
-        priorities: const [],
-        subscriptions: const [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      final profile =
+          user ??
+          UserEntity(
+            uid: 'anonymous',
+            email: '',
+            displayName: 'User',
+            country: _ref.read(selectedCountryProvider),
+            language: _appLang,
+            currency: _ref.read(currencyProvider),
+            priorities: const [],
+            subscriptions: const [],
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
 
-      final result = await _gemini.enhancedSubscriptionAnalysis(
-        subscriptionNames: names,
-        answeredQuestions: answered,
-        profile: profile.copyWith(language: _appLang),
-      ).timeout(const Duration(seconds: 120));
+      final result = await _gemini
+          .enhancedSubscriptionAnalysis(
+            subscriptionNames: names,
+            answeredQuestions: answered,
+            profile: profile.copyWith(language: _appLang),
+          )
+          .timeout(const Duration(seconds: 120));
 
       state = state.copyWith(
         phase: SubFlowPhase.result,
@@ -1102,7 +1163,8 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       try {
         final authState = _ref.read(authStateProvider).valueOrNull;
         if (authState != null) {
-          final winnerData = (result['structured'] as Map<String, dynamic>?)?['winner'];
+          final winnerData =
+              (result['structured'] as Map<String, dynamic>?)?['winner'];
           final entry = {
             'timestamp': DateTime.now().toIso8601String(),
             'services': names,
@@ -1112,11 +1174,17 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
             'structured': result['structured'] as Map<String, dynamic>?,
           };
           // Anında yerel listeye ekle (optimistic update)
-          _ref.read(pendingSubscriptionHistoryProvider.notifier).update(
-            (list) => [entry, ...list.where((e) => e['timestamp'] != entry['timestamp'])],
-          );
+          _ref
+              .read(pendingSubscriptionHistoryProvider.notifier)
+              .update(
+                (list) => [
+                  entry,
+                  ...list.where((e) => e['timestamp'] != entry['timestamp']),
+                ],
+              );
           // Firebase'e kaydet
-          _ref.read(pbDataSourceProvider)
+          _ref
+              .read(pbDataSourceProvider)
               .saveSubscriptionHistory(authState, entry)
               .then((_) => _ref.invalidate(subscriptionHistoryProvider))
               .catchError((_) {});
@@ -1127,16 +1195,14 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       final errMsg = e.toString().contains('timeout')
           ? 'Analysis timed out. Check your connection.'
           : 'Analysis failed: ${e.toString().replaceAll('Exception: ', '')}';
-      state = state.copyWith(
-        phase: SubFlowPhase.idle,
-        error: errMsg,
-      );
+      state = state.copyWith(phase: SubFlowPhase.idle, error: errMsg);
     }
   }
 }
 
-final subQuizProvider =
-    StateNotifierProvider<SubQuizNotifier, SubQuizState>((ref) {
+final subQuizProvider = StateNotifierProvider<SubQuizNotifier, SubQuizState>((
+  ref,
+) {
   return SubQuizNotifier(
     gemini: ref.read(geminiServiceProvider),
     subService: ref.read(subscriptionServiceProvider),
@@ -1145,14 +1211,18 @@ final subQuizProvider =
 });
 
 /// Subscription comparison history for logged-in user
-final subscriptionHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final subscriptionHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
   final authState = ref.watch(authStateProvider).valueOrNull;
   if (authState == null) return [];
   return ref.read(pbDataSourceProvider).getSubscriptionHistory(authState);
 });
 
 /// Link analysis history for logged-in user (Firebase)
-final linkAnalysisHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final linkAnalysisHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
   final authState = ref.watch(authStateProvider).valueOrNull;
   if (authState == null) return [];
   return ref.read(pbDataSourceProvider).getLinkAnalysisHistory(authState);
@@ -1180,14 +1250,16 @@ final userProfileProvider = userProfileStreamProvider;
 final comparisonNotifierProvider = comparisonStateProvider;
 
 /// Subscription services from PocketBase (public read)
-final subscriptionsProvider = FutureProvider<List<SubscriptionServiceModel>>((ref) async {
-  final result = await pb.collection('subscription_services')
-      .getList(
-        filter: 'isActive = true',
-        perPage: 100,
-      )
+final subscriptionsProvider = FutureProvider<List<SubscriptionServiceModel>>((
+  ref,
+) async {
+  final result = await pb
+      .collection('subscription_services')
+      .getList(filter: 'isActive = true', perPage: 100)
       .timeout(const Duration(seconds: 15));
-  return result.items.map((record) => SubscriptionServiceModel.fromPb(record)).toList();
+  return result.items
+      .map((record) => SubscriptionServiceModel.fromPb(record))
+      .toList();
 });
 
 /// Session-level compare screen state — survives tab switches and navigation
@@ -1245,19 +1317,39 @@ class CompareSessionData {
   }) {
     return CompareSessionData(
       selectedProductIds: selectedProductIds ?? this.selectedProductIds,
-      comparedProducts: clearProducts ? null : (comparedProducts ?? this.comparedProducts),
+      comparedProducts: clearProducts
+          ? null
+          : (comparedProducts ?? this.comparedProducts),
       lockedCategory: lockedCategory ?? this.lockedCategory,
       lockedSubcategory: lockedSubcategory ?? this.lockedSubcategory,
       aiAnalysis: clearAiAnalysis ? null : (aiAnalysis ?? this.aiAnalysis),
-      aiStructured: clearAiAnalysis ? null : (aiStructured ?? this.aiStructured),
-      deepAnalysisResult: clearAiAnalysis ? null : (deepAnalysisResult ?? this.deepAnalysisResult),
-      alternativesResult: clearAiAnalysis ? null : (alternativesResult ?? this.alternativesResult),
-      alternativesStructured: clearAiAnalysis ? null : (alternativesStructured ?? this.alternativesStructured),
-      advisorResult: clearAiAnalysis ? null : (advisorResult ?? this.advisorResult),
-      advisorStructured: clearAiAnalysis ? null : (advisorStructured ?? this.advisorStructured),
-      predictionResult: clearAiAnalysis ? null : (predictionResult ?? this.predictionResult),
-      predictionStructured: clearAiAnalysis ? null : (predictionStructured ?? this.predictionStructured),
-      quickVerdictResult: clearAiAnalysis ? null : (quickVerdictResult ?? this.quickVerdictResult),
+      aiStructured: clearAiAnalysis
+          ? null
+          : (aiStructured ?? this.aiStructured),
+      deepAnalysisResult: clearAiAnalysis
+          ? null
+          : (deepAnalysisResult ?? this.deepAnalysisResult),
+      alternativesResult: clearAiAnalysis
+          ? null
+          : (alternativesResult ?? this.alternativesResult),
+      alternativesStructured: clearAiAnalysis
+          ? null
+          : (alternativesStructured ?? this.alternativesStructured),
+      advisorResult: clearAiAnalysis
+          ? null
+          : (advisorResult ?? this.advisorResult),
+      advisorStructured: clearAiAnalysis
+          ? null
+          : (advisorStructured ?? this.advisorStructured),
+      predictionResult: clearAiAnalysis
+          ? null
+          : (predictionResult ?? this.predictionResult),
+      predictionStructured: clearAiAnalysis
+          ? null
+          : (predictionStructured ?? this.predictionStructured),
+      quickVerdictResult: clearAiAnalysis
+          ? null
+          : (quickVerdictResult ?? this.quickVerdictResult),
     );
   }
 
@@ -1274,7 +1366,9 @@ final compareSessionProvider = StateProvider<CompareSessionData>((ref) {
 
 /// Persists PC Builder selections across tab switches.
 /// Keys are PcComponent.name strings, values are ProductEntity.
-final pcBuilderSessionProvider = StateProvider<Map<String, ProductEntity>>((ref) {
+final pcBuilderSessionProvider = StateProvider<Map<String, ProductEntity>>((
+  ref,
+) {
   return {};
 });
 
@@ -1285,21 +1379,24 @@ final pcBuilderAiProvider = StateProvider<String?>((ref) => null);
 final linkAnalysisNotifierProvider = linkAnalysisProvider;
 
 /// User comparison history
-final userComparisonsProvider = FutureProvider<Result<List<ComparisonEntity>>>((ref) async {
+final userComparisonsProvider = FutureProvider<Result<List<ComparisonEntity>>>((
+  ref,
+) async {
   final userAsync = ref.watch(userProfileProvider);
   final user = userAsync.valueOrNull;
   if (user == null) return const Success([]);
-  
+
   return ref.read(comparisonRepositoryProvider).getUserComparisons(user.uid);
 });
 
 /// Admin-curated comparisons (Battles)
-final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((ref) async {
+final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((
+  ref,
+) async {
   final category = ref.watch(selectedCategoryProvider);
-  final result = await ref.read(comparisonRepositoryProvider).getPredefinedComparisons(
-    category: category,
-    limit: 10,
-  );
+  final result = await ref
+      .read(comparisonRepositoryProvider)
+      .getPredefinedComparisons(category: category, limit: 10);
   return result.when(
     success: (comparisons) => comparisons,
     failure: (_) => <ComparisonEntity>[],
@@ -1307,11 +1404,11 @@ final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((re
 });
 
 /// Reviews for a product (realtime stream)
-final productReviewsProvider =
-    StreamProvider.family<List<ReviewModel>, String>((ref, productId) {
-  return ref.read(pbDataSourceProvider)
-      .watchProductReviews(productId);
-});
+final productReviewsProvider = StreamProvider.family<List<ReviewModel>, String>(
+  (ref, productId) {
+    return ref.read(pbDataSourceProvider).watchProductReviews(productId);
+  },
+);
 
 /// Current user's reviews
 final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
@@ -1319,8 +1416,7 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
   return authState.when(
     data: (user) {
       if (user == null) return Stream.value(<ReviewModel>[]);
-      return ref.read(pbDataSourceProvider)
-          .watchUserReviews(user);
+      return ref.read(pbDataSourceProvider).watchUserReviews(user);
     },
     loading: () => Stream.value(<ReviewModel>[]),
     error: (_, _) => Stream.value(<ReviewModel>[]),
@@ -1343,4 +1439,3 @@ bool isFavorite(WidgetRef ref, String productId) {
   if (user == null) return false;
   return user.favorites.contains(productId);
 }
-

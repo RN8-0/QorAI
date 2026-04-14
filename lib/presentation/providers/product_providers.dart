@@ -11,16 +11,52 @@ void clearPcBuilderCache([String? category]) {
     _pcBuilderCacheMap.clear();
   }
 }
+
 /// All category aliases — shared between pcBuilder and category providers.
 const pcCategoryAliases = <String, List<String>>{
-  'cpus': ['cpus', 'cpu', 'processors', 'processor', 'islemci', 'işlemci', 'işlemciler', 'işlemci'],
-  'gpus': ['gpus', 'gpu', 'graphics-cards', 'graphics-card', 'ekran-karti', 'ekran kartı', 'ekran-kartlari'],
-  'motherboards': ['motherboards', 'motherboard', 'anakart', 'mainboard', 'anakartlar'],
+  'cpus': [
+    'cpus',
+    'cpu',
+    'processors',
+    'processor',
+    'islemci',
+    'işlemci',
+    'işlemciler',
+    'işlemci',
+  ],
+  'gpus': [
+    'gpus',
+    'gpu',
+    'graphics-cards',
+    'graphics-card',
+    'ekran-karti',
+    'ekran kartı',
+    'ekran-kartlari',
+  ],
+  'motherboards': [
+    'motherboards',
+    'motherboard',
+    'anakart',
+    'mainboard',
+    'anakartlar',
+  ],
   'ram': ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram', 'bellek-ram'],
   'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama', 'hard-disk', 'hdd-ssd'],
-  'psu': ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı', 'guc-kaynagi'],
+  'psu': [
+    'psu',
+    'power-supply-psu',
+    'power-supply',
+    'güç kaynağı',
+    'guc-kaynagi',
+  ],
   'cases': ['cases', 'case', 'bilgisayar-kasasi', 'kasa', 'kasalar'],
-  'coolers': ['coolers', 'cooler', 'islemci-sogutucu', 'soğutucu', 'cpu-cooler'],
+  'coolers': [
+    'coolers',
+    'cooler',
+    'islemci-sogutucu',
+    'soğutucu',
+    'cpu-cooler',
+  ],
   'monitors': ['monitors', 'monitor', 'monitör', 'monitörler'],
   'keyboards': ['keyboards', 'keyboard', 'klavye', 'klavyeler'],
   'mice': ['mice', 'mouse', 'fare', 'fareler'],
@@ -29,18 +65,18 @@ const pcCategoryAliases = <String, List<String>>{
 
 /// Cloud Function keyword search queries per PC component
 const _pcCategorySearchKeywords = <String, String>{
-  'cpus':        'cpu processor intel amd ryzen core i9 i7',
-  'gpus':        'gpu graphics card nvidia rtx amd radeon',
-  'motherboards':'motherboard anakart asus gigabyte msi',
-  'ram':         'ram memory ddr4 ddr5 corsair kingston',
-  'ssd':         'ssd nvme m.2 solid state samsung wd',
-  'psu':         'power supply psu corsair evga seasonic',
-  'cases':       'pc case tower atx corsair nzxt fractal',
-  'coolers':     'cpu cooler fan heatsink noctua be quiet',
-  'monitors':    'monitor display screen 4k 144hz ips',
-  'keyboards':   'keyboard mechanical gaming corsair razer',
-  'mice':        'mouse gaming optical wireless logitech razer',
-  'headsets':    'headset headphones gaming audio',
+  'cpus': 'cpu processor intel amd ryzen core i9 i7',
+  'gpus': 'gpu graphics card nvidia rtx amd radeon',
+  'motherboards': 'motherboard anakart asus gigabyte msi',
+  'ram': 'ram memory ddr4 ddr5 corsair kingston',
+  'ssd': 'ssd nvme m.2 solid state samsung wd',
+  'psu': 'power supply psu corsair evga seasonic',
+  'cases': 'pc case tower atx corsair nzxt fractal',
+  'coolers': 'cpu cooler fan heatsink noctua be quiet',
+  'monitors': 'monitor display screen 4k 144hz ips',
+  'keyboards': 'keyboard mechanical gaming corsair razer',
+  'mice': 'mouse gaming optical wireless logitech razer',
+  'headsets': 'headset headphones gaming audio',
 };
 
 /// PC Builder product provider — loads products for a category.
@@ -48,8 +84,10 @@ const _pcCategorySearchKeywords = <String, String>{
 ///   1. In-memory cache (instant)
 ///   2. Paginated serverAndCache fetch (uses local cache if available, server otherwise)
 ///   3. All aliases tried until one returns data
-final pcBuilderProductsProvider = FutureProvider.family<
-    List<ProductEntity>, String>((ref, categoryId) async {
+final pcBuilderProductsProvider = FutureProvider.family<List<ProductEntity>, String>((
+  ref,
+  categoryId,
+) async {
   final normalizedCategory = categoryId.toLowerCase().trim();
 
   // 1) In-memory cache — instant
@@ -74,7 +112,9 @@ final pcBuilderProductsProvider = FutureProvider.family<
         final entities = products.cast<ProductEntity>();
         entities.sort((a, b) => b.techScore.compareTo(a.techScore));
         _pcBuilderCacheMap[normalizedCategory] = entities;
-        debugPrint('[PCBuilder] ✅ TS "$alias": ${entities.length} in ${sw.elapsedMilliseconds}ms');
+        debugPrint(
+          '[PCBuilder] ✅ TS "$alias": ${entities.length} in ${sw.elapsedMilliseconds}ms',
+        );
         return entities;
       }
     } catch (e) {
@@ -83,14 +123,18 @@ final pcBuilderProductsProvider = FutureProvider.family<
   }
 
   // 3) Fallback: PocketBase paginated load
-  debugPrint('[PCBuilder] ⚠️ TS empty, falling back to PB for "$normalizedCategory"');
+  debugPrint(
+    '[PCBuilder] ⚠️ TS empty, falling back to PB for "$normalizedCategory"',
+  );
   for (final alias in aliases) {
     try {
       final all = <ProductEntity>[];
       int page = 1;
       while (all.length < 5000) {
         final result = await ds.getProductsPage(
-          category: alias, limit: 500, page: page,
+          category: alias,
+          limit: 500,
+          page: page,
         );
         all.addAll(result.products.cast<ProductEntity>());
         if (!result.hasMore || result.products.isEmpty) break;
@@ -113,7 +157,9 @@ final pcBuilderProductsProvider = FutureProvider.family<
         final products = results.cast<ProductEntity>();
         products.sort((a, b) => b.techScore.compareTo(a.techScore));
         _pcBuilderCacheMap[normalizedCategory] = products;
-        debugPrint('[PCBuilder] ✅ TS search fallback "$normalizedCategory": ${products.length}');
+        debugPrint(
+          '[PCBuilder] ✅ TS search fallback "$normalizedCategory": ${products.length}',
+        );
         return products;
       }
     } catch (e) {
@@ -125,301 +171,389 @@ final pcBuilderProductsProvider = FutureProvider.family<
   return [];
 });
 
-final productsByCategoryProvider = FutureProvider.family<
-    Result<List<ProductEntity>>, String>((ref, category) async {
-  const categoryAliases = <String, List<String>>{
-    'cpus':         ['cpus', 'cpu', 'processors', 'işlemciler', 'islemci'],
-    'gpus':         ['gpus', 'gpu', 'graphics-cards', 'ekran-karti', 'ekran kartı'],
-    'motherboards': ['motherboards', 'anakart', 'mainboard', 'motherboard'],
-    'ram':          ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram'],
-    'ssd':          ['ssd', 'ssds', 'storage', 'disk', 'depolama'],
-    'psu':          ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı'],
-    'cases':        ['cases', 'bilgisayar-kasasi', 'case', 'kasa'],
-    'coolers':      ['coolers', 'islemci-sogutucu', 'cooler', 'soğutucu'],
-    'monitors':     ['monitors', 'monitor', 'monitör'],
-    'keyboards':    ['keyboards', 'keyboard', 'klavye'],
-    'mice':         ['mice', 'mouse', 'fare'],
-    'headsets':     ['headsets', 'headset', 'kulaklık', 'headphones'],
-    'laptops':      ['laptops', 'laptop', 'dizüstü'],
-    'smartphones':  ['smartphones', 'smartphone', 'telefon', 'cep-telefonu'],
-    'tablets':      ['tablets', 'tablet'],
-    'smartwatches': ['smartwatches', 'smartwatch', 'akıllı saat'],
-    'cameras':      ['cameras', 'camera', 'kamera', 'fotoğraf makinesi'],
-    'tvs':          ['tvs', 'tv', 'televizyon'],
-    'speakers':     ['speakers', 'speaker', 'hoparlör'],
-    'consoles':     ['consoles', 'console', 'oyun konsolu'],
-    'routers':      ['routers', 'router', 'modem'],
-    'dashcams':     ['dashcams', 'dashcam', 'araç kamerası'],
-    'drones':       ['drones', 'drone'],
-    'desktops':     ['desktops', 'desktop', 'masaüstü'],
-    'earphones':    ['earphones', 'earphone', 'kulak içi kulaklık'],
-    'printers':     ['printers', 'printer', 'yazıcı'],
-    'projectors':   ['projectors', 'projector', 'projeksiyon'],
-    'robot-vacuums':['robot-vacuums', 'robot vacuum', 'robot süpürge'],
-    'webcams':      ['webcams', 'webcam', 'web kamerası'],
-    'gamepads':     ['gamepads', 'gamepad', 'oyun kolu'],
-    'media-players':['media-players', 'media player'],
-    'action-cameras':['action-cameras', 'aksiyon-kamera', 'action camera'],
-    'ip-cameras':   ['ip-cameras', 'ip-kamera', 'ip camera'],
-    'smart-rings':  ['smart-rings', 'akıllı yüzük', 'smart ring'],
-    'soundbars':    ['soundbars', 'soundbar'],
-    'microphones':  ['microphones', 'microphone', 'mikrofon'],
-    'vr-headsets':  ['vr-headsets', 'sanal gerçeklik', 'vr headset'],
-    'gimbals':      ['gimbals', 'gimbal'],
-    'tripods':      ['tripods', 'tripod'],
-    'lenses':       ['lenses', 'lens'],
-  };
+final productsByCategoryProvider =
+    FutureProvider.family<Result<List<ProductEntity>>, String>((
+      ref,
+      category,
+    ) async {
+      const categoryAliases = <String, List<String>>{
+        'cpus': ['cpus', 'cpu', 'processors', 'işlemciler', 'islemci'],
+        'gpus': ['gpus', 'gpu', 'graphics-cards', 'ekran-karti', 'ekran kartı'],
+        'motherboards': ['motherboards', 'anakart', 'mainboard', 'motherboard'],
+        'ram': ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram'],
+        'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama'],
+        'psu': ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı'],
+        'cases': ['cases', 'bilgisayar-kasasi', 'case', 'kasa'],
+        'coolers': ['coolers', 'islemci-sogutucu', 'cooler', 'soğutucu'],
+        'monitors': ['monitors', 'monitor', 'monitör'],
+        'keyboards': ['keyboards', 'keyboard', 'klavye'],
+        'mice': ['mice', 'mouse', 'fare'],
+        'headsets': ['headsets', 'headset', 'kulaklık', 'headphones'],
+        'laptops': ['laptops', 'laptop', 'dizüstü'],
+        'smartphones': ['smartphones', 'smartphone', 'telefon', 'cep-telefonu'],
+        'tablets': ['tablets', 'tablet'],
+        'smartwatches': ['smartwatches', 'smartwatch', 'akıllı saat'],
+        'cameras': ['cameras', 'camera', 'kamera', 'fotoğraf makinesi'],
+        'tvs': ['tvs', 'tv', 'televizyon'],
+        'speakers': ['speakers', 'speaker', 'hoparlör'],
+        'consoles': ['consoles', 'console', 'oyun konsolu'],
+        'routers': ['routers', 'router', 'modem'],
+        'dashcams': ['dashcams', 'dashcam', 'araç kamerası'],
+        'drones': ['drones', 'drone'],
+        'desktops': ['desktops', 'desktop', 'masaüstü'],
+        'earphones': ['earphones', 'earphone', 'kulak içi kulaklık'],
+        'printers': ['printers', 'printer', 'yazıcı'],
+        'projectors': ['projectors', 'projector', 'projeksiyon'],
+        'robot-vacuums': ['robot-vacuums', 'robot vacuum', 'robot süpürge'],
+        'webcams': ['webcams', 'webcam', 'web kamerası'],
+        'gamepads': ['gamepads', 'gamepad', 'oyun kolu'],
+        'media-players': ['media-players', 'media player'],
+        'action-cameras': ['action-cameras', 'aksiyon-kamera', 'action camera'],
+        'ip-cameras': ['ip-cameras', 'ip-kamera', 'ip camera'],
+        'smart-rings': ['smart-rings', 'akıllı yüzük', 'smart ring'],
+        'soundbars': ['soundbars', 'soundbar'],
+        'microphones': ['microphones', 'microphone', 'mikrofon'],
+        'vr-headsets': ['vr-headsets', 'sanal gerçeklik', 'vr headset'],
+        'gimbals': ['gimbals', 'gimbal'],
+        'tripods': ['tripods', 'tripod'],
+        'lenses': ['lenses', 'lens'],
+      };
 
-  final normalizedCategory = category.toLowerCase().trim();
-  final aliases = categoryAliases[normalizedCategory] ?? [normalizedCategory];
+      final normalizedCategory = category.toLowerCase().trim();
+      final aliases =
+          categoryAliases[normalizedCategory] ?? [normalizedCategory];
 
-  // Defunct brands to suppress
-  const defunctBrands = {
-    'alcatel', 'micromax', 'karbonn', 'lava', 'intex', 'xolo',
-    'coolpad', 'leeco', 'le eco', 'gionee', 'panasonic mobile',
-    'blackberry', 'htc', 'zte', 'wiko', 'meizu', 'sharp mobile',
-    'vernee', 'doogee', 'oukitel', 'umidigi', 'ulefone', 'cubot',
-    'homtom', 'bluboo', 'elephone', 'leagoo', 'maze', 'nomu',
-    'altus', 'vestel', 'casper', 'reeder', 'general mobile', 'turkcell',
-    'grundig', 'beko', 'arçelik', 'hometech', 'vorcom', 'tcl mobile',
-  };
+      // Defunct brands to suppress
+      const defunctBrands = {
+        'alcatel',
+        'micromax',
+        'karbonn',
+        'lava',
+        'intex',
+        'xolo',
+        'coolpad',
+        'leeco',
+        'le eco',
+        'gionee',
+        'panasonic mobile',
+        'blackberry',
+        'htc',
+        'zte',
+        'wiko',
+        'meizu',
+        'sharp mobile',
+        'vernee',
+        'doogee',
+        'oukitel',
+        'umidigi',
+        'ulefone',
+        'cubot',
+        'homtom',
+        'bluboo',
+        'elephone',
+        'leagoo',
+        'maze',
+        'nomu',
+        'altus',
+        'vestel',
+        'casper',
+        'reeder',
+        'general mobile',
+        'turkcell',
+        'grundig',
+        'beko',
+        'arçelik',
+        'hometech',
+        'vorcom',
+        'tcl mobile',
+      };
 
-  Result<List<ProductEntity>> _sortAndReturn(List<ProductEntity> products) {
-    final deduped = deduplicateVariants(products);
-    final filtered = deduped.where((p) {
-      final brand = (p.brand ?? '').toLowerCase().trim();
-      return !defunctBrands.contains(brand);
-    }).toList();
-    final sorted = List<ProductEntity>.from(filtered)
-      ..sort((a, b) {
-        final tsCmp = b.techScore.compareTo(a.techScore);
-        if (tsCmp != 0) return tsCmp;
-        return b.trendScore.compareTo(a.trendScore);
-      });
-    return Success(sorted);
-  }
-
-  // ── 1) Check static in-memory category cache (instant) ──
-  if (_categoryCacheMap.containsKey(normalizedCategory)) {
-    return _sortAndReturn(_categoryCacheMap[normalizedCategory]!);
-  }
-
-  // ── 2) Typesense: fetch all products for category ──
-  final ds = ref.read(pbDataSourceProvider);
-
-  for (final alias in aliases) {
-    try {
-      final all = await ds.getAllProductsInCategoryTs(
-        category: alias,
-        perPage: 250,
-        maxTotal: 250,
-      );
-      if (all.isNotEmpty) {
-        final entities = all.cast<ProductEntity>();
-        _categoryCacheMap[normalizedCategory] = entities;
-        debugPrint('CATEGORY: TS loaded ${entities.length} products for "$alias"');
-        return _sortAndReturn(entities);
-      }
-    } catch (e) {
-      debugPrint('CATEGORY: TS query failed for "$alias": $e');
-    }
-  }
-
-  // ── 2b) Fallback: PocketBase paginated query ──
-  for (final alias in aliases) {
-    try {
-      final all = <ProductEntity>[];
-      int page = 1;
-      while (all.length < 5000) {
-        final result = await ds.getProductsPage(
-          category: alias, limit: 500, page: page,
-        );
-        all.addAll(result.products.cast<ProductEntity>());
-        if (!result.hasMore || result.products.isEmpty) break;
-        page = result.nextPage;
-      }
-      if (all.isNotEmpty) {
-        _categoryCacheMap[normalizedCategory] = all;
-        debugPrint('CATEGORY: PB fallback loaded ${all.length} products for "$alias"');
-        return _sortAndReturn(all);
-      }
-    } catch (e) {
-      debugPrint('CATEGORY: PB fallback failed for "$alias": $e');
-    }
-  }
-
-  // ── 3) Keyword fallback — search via datasource ──
-  const keywordMap = <String, List<String>>{
-    'cpus':         ['işlemci', 'cpu', 'processor', 'ryzen', 'core i', 'intel core', 'amd ryzen'],
-    'gpus':         ['ekran kartı', 'gpu', 'graphics', 'geforce', 'radeon', 'rtx', 'rx '],
-    'motherboards': ['anakart', 'motherboard', 'mainboard'],
-    'ram':          ['ram', 'bellek', 'memory', 'ddr4', 'ddr5'],
-    'ssd':          ['ssd', 'nvme', 'm.2', 'solid state'],
-    'psu':          ['power supply', 'psu', 'güç kaynağı'],
-    'cases':        ['kasa', 'case', 'tower', 'chassis'],
-    'coolers':      ['soğutucu', 'cooler', 'fan', 'heatsink'],
-    'monitors':     ['monitor', 'monitör'],
-    'keyboards':    ['keyboard', 'klavye', 'mechanical'],
-    'mice':         ['mouse', 'fare', 'gaming mouse'],
-    'headsets':     ['headset', 'kulaklık', 'headphone'],
-  };
-  try {
-    final keywords = keywordMap[normalizedCategory];
-    if (keywords != null) {
-      // Search via datasource
-      final results = await ds.searchProducts(query: keywords.first, limit: 500);
-      if (results.isNotEmpty) {
-        final filtered = results.cast<ProductEntity>().where((p) {
-          final name = p.name.toLowerCase();
-          final cat = p.category.toLowerCase();
-          return keywords.any((k) => name.contains(k) || cat.contains(k));
+      Result<List<ProductEntity>> _sortAndReturn(List<ProductEntity> products) {
+        final deduped = deduplicateVariants(products);
+        final filtered = deduped.where((p) {
+          final brand = (p.brand ?? '').toLowerCase().trim();
+          return !defunctBrands.contains(brand);
         }).toList();
-        if (filtered.isNotEmpty) {
-          _categoryCacheMap[normalizedCategory] = filtered;
-          return _sortAndReturn(filtered);
+        final sorted = List<ProductEntity>.from(filtered)
+          ..sort((a, b) {
+            final tsCmp = b.techScore.compareTo(a.techScore);
+            if (tsCmp != 0) return tsCmp;
+            return b.trendScore.compareTo(a.trendScore);
+          });
+        return Success(sorted);
+      }
+
+      // ── 1) Check static in-memory category cache (instant) ──
+      if (_categoryCacheMap.containsKey(normalizedCategory)) {
+        return _sortAndReturn(_categoryCacheMap[normalizedCategory]!);
+      }
+
+      // ── 2) Typesense: fetch all products for category ──
+      final ds = ref.read(pbDataSourceProvider);
+
+      for (final alias in aliases) {
+        try {
+          final all = await ds.getAllProductsInCategoryTs(
+            category: alias,
+            perPage: 250,
+            maxTotal: 250,
+          );
+          if (all.isNotEmpty) {
+            final entities = all.cast<ProductEntity>();
+            _categoryCacheMap[normalizedCategory] = entities;
+            debugPrint(
+              'CATEGORY: TS loaded ${entities.length} products for "$alias"',
+            );
+            return _sortAndReturn(entities);
+          }
+        } catch (e) {
+          debugPrint('CATEGORY: TS query failed for "$alias": $e');
         }
       }
-    }
-  } catch (e) {
-    debugPrint('CATEGORY: keyword fallback failed: $e');
-  }
 
-  return const Success(<ProductEntity>[]);
-});
+      // ── 2b) Fallback: PocketBase paginated query ──
+      for (final alias in aliases) {
+        try {
+          final all = <ProductEntity>[];
+          int page = 1;
+          while (all.length < 5000) {
+            final result = await ds.getProductsPage(
+              category: alias,
+              limit: 500,
+              page: page,
+            );
+            all.addAll(result.products.cast<ProductEntity>());
+            if (!result.hasMore || result.products.isEmpty) break;
+            page = result.nextPage;
+          }
+          if (all.isNotEmpty) {
+            _categoryCacheMap[normalizedCategory] = all;
+            debugPrint(
+              'CATEGORY: PB fallback loaded ${all.length} products for "$alias"',
+            );
+            return _sortAndReturn(all);
+          }
+        } catch (e) {
+          debugPrint('CATEGORY: PB fallback failed for "$alias": $e');
+        }
+      }
+
+      // ── 3) Keyword fallback — search via datasource ──
+      const keywordMap = <String, List<String>>{
+        'cpus': [
+          'işlemci',
+          'cpu',
+          'processor',
+          'ryzen',
+          'core i',
+          'intel core',
+          'amd ryzen',
+        ],
+        'gpus': [
+          'ekran kartı',
+          'gpu',
+          'graphics',
+          'geforce',
+          'radeon',
+          'rtx',
+          'rx ',
+        ],
+        'motherboards': ['anakart', 'motherboard', 'mainboard'],
+        'ram': ['ram', 'bellek', 'memory', 'ddr4', 'ddr5'],
+        'ssd': ['ssd', 'nvme', 'm.2', 'solid state'],
+        'psu': ['power supply', 'psu', 'güç kaynağı'],
+        'cases': ['kasa', 'case', 'tower', 'chassis'],
+        'coolers': ['soğutucu', 'cooler', 'fan', 'heatsink'],
+        'monitors': ['monitor', 'monitör'],
+        'keyboards': ['keyboard', 'klavye', 'mechanical'],
+        'mice': ['mouse', 'fare', 'gaming mouse'],
+        'headsets': ['headset', 'kulaklık', 'headphone'],
+      };
+      try {
+        final keywords = keywordMap[normalizedCategory];
+        if (keywords != null) {
+          // Search via datasource
+          final results = await ds.searchProducts(
+            query: keywords.first,
+            limit: 500,
+          );
+          if (results.isNotEmpty) {
+            final filtered = results.cast<ProductEntity>().where((p) {
+              final name = p.name.toLowerCase();
+              final cat = p.category.toLowerCase();
+              return keywords.any((k) => name.contains(k) || cat.contains(k));
+            }).toList();
+            if (filtered.isNotEmpty) {
+              _categoryCacheMap[normalizedCategory] = filtered;
+              return _sortAndReturn(filtered);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('CATEGORY: keyword fallback failed: $e');
+      }
+
+      return const Success(<ProductEntity>[]);
+    });
 
 /// Trend veriler - Section 6.1
 final trendsProvider = FutureProvider<Result<List<TrendModel>>>((ref) {
   final country = ref.watch(selectedCountryProvider);
   final category = ref.watch(selectedCategoryProvider);
-  return ref.read(productRepositoryProvider).getTrends(
-        country: country,
-        category: category,
-      );
+  return ref
+      .read(productRepositoryProvider)
+      .getTrends(country: country, category: category);
 });
 
 /// Search results (FutureProvider) - Section 10
 final searchResultsProvider =
-    FutureProvider.family<Result<List<ProductEntity>>, String>((ref, query) async {
-  // Ignore the warm-up sentinel
-  if (query == '___warm___') {
-    return ref.read(productRepositoryProvider).searchProducts(query: '');
-  }
-  if (query.isEmpty) {
-    // Show personalized products from homeFeed cache
-    final feedAsync = ref.read(homeFeedProvider);
-    final cached = feedAsync.valueOrNull;
-    if (cached != null && cached.all.isNotEmpty) {
-      // Personalize order using user profile
-      final user = ref.read(userProfileProvider).valueOrNull;
-      final products = cached.all.toList();
+    FutureProvider.family<Result<List<ProductEntity>>, String>((
+      ref,
+      query,
+    ) async {
+      // Ignore the warm-up sentinel
+      if (query == '___warm___') {
+        return ref.read(productRepositoryProvider).searchProducts(query: '');
+      }
+      if (query.isEmpty) {
+        // Show personalized products from homeFeed cache
+        final feedAsync = ref.read(homeFeedProvider);
+        final cached = feedAsync.valueOrNull;
+        if (cached != null && cached.all.isNotEmpty) {
+          // Personalize order using user profile
+          final user = ref.read(userProfileProvider).valueOrNull;
+          final products = cached.all.toList();
 
-      if (user != null) {
-        final algo = ref.read(profileAlgorithmServiceProvider);
-        final behavior = ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
-        products.sort((a, b) {
-          final scoreA = algo.calculateTotalFitScore(
-              user: user, product: a, behavior: behavior);
-          final scoreB = algo.calculateTotalFitScore(
-              user: user, product: b, behavior: behavior);
-          return scoreB.compareTo(scoreA);
-        });
+          if (user != null) {
+            final algo = ref.read(profileAlgorithmServiceProvider);
+            final behavior =
+                ref.read(behaviorSignalsProvider).valueOrNull ??
+                BehaviorSignals.empty;
+            products.sort((a, b) {
+              final scoreA = algo.calculateTotalFitScore(
+                user: user,
+                product: a,
+                behavior: behavior,
+              );
+              final scoreB = algo.calculateTotalFitScore(
+                user: user,
+                product: b,
+                behavior: behavior,
+              );
+              return scoreB.compareTo(scoreA);
+            });
+          }
+
+          // Dedup before returning — homeFeed pool can have storage/color variants
+          final deduped = deduplicateVariants(products);
+          return Success(deduped.take(500).toList());
+        }
+        return ref.read(productRepositoryProvider).getProducts(limit: 200);
       }
 
-      // Dedup before returning — homeFeed pool can have storage/color variants
-      final deduped = deduplicateVariants(products);
-      return Success(deduped.take(500).toList());
-    }
-    return ref.read(productRepositoryProvider).getProducts(limit: 200);
-  }
+      // Require at least 2 characters for search
+      if (query.trim().length < 2) return const Success(<ProductEntity>[]);
 
-  // Require at least 2 characters for search
-  if (query.trim().length < 2) return const Success(<ProductEntity>[]);
+      // INSTANT LOCAL SEARCH: search homeFeed cache first (< 5ms)
+      final normalizedQuery = query.toLowerCase().trim();
+      final queryWords = normalizedQuery.split(RegExp(r'\s+'));
+      List<ProductEntity> localResults = [];
 
-  // INSTANT LOCAL SEARCH: search homeFeed cache first (< 5ms)
-  final normalizedQuery = query.toLowerCase().trim();
-  final queryWords = normalizedQuery.split(RegExp(r'\s+'));
-  List<ProductEntity> localResults = [];
+      final feedAsync = ref.read(homeFeedProvider);
+      final cached = feedAsync.valueOrNull;
+      if (cached != null && cached.all.isNotEmpty) {
+        localResults = cached.all.where((p) {
+          final name = p.name.toLowerCase();
+          final brand = (p.brand ?? '').toLowerCase();
+          final category = p.category.toLowerCase();
+          final searchable = '$name $brand $category';
+          return queryWords.every((w) => searchable.contains(w));
+        }).toList();
+      }
 
-  final feedAsync = ref.read(homeFeedProvider);
-  final cached = feedAsync.valueOrNull;
-  if (cached != null && cached.all.isNotEmpty) {
-    localResults = cached.all.where((p) {
-      final name = p.name.toLowerCase();
-      final brand = (p.brand ?? '').toLowerCase();
-      final category = p.category.toLowerCase();
-      final searchable = '$name $brand $category';
-      return queryWords.every((w) => searchable.contains(w));
-    }).toList();
-  }
+      // ALWAYS call Cloud Function — don't short-circuit on local results
+      try {
+        final cloudResult = await ref
+            .read(productRepositoryProvider)
+            .searchProducts(query: query, limit: 100)
+            .timeout(const Duration(seconds: 10));
+        // Merge: deduplicate local + cloud
+        final localIds = localResults.map((p) => p.id).toSet();
+        final cloudProducts = cloudResult.when(
+          success: (products) =>
+              products.where((p) => !localIds.contains(p.id)).toList(),
+          failure: (_) => <ProductEntity>[],
+        );
+        final merged = [...localResults, ...cloudProducts];
 
-  // ALWAYS call Cloud Function — don't short-circuit on local results
-  try {
-    final cloudResult = await ref.read(productRepositoryProvider)
-        .searchProducts(query: query, limit: 100)
-        .timeout(const Duration(seconds: 10));
-    // Merge: deduplicate local + cloud
-    final localIds = localResults.map((p) => p.id).toSet();
-    final cloudProducts = cloudResult.when(
-      success: (products) => products.where((p) => !localIds.contains(p.id)).toList(),
-      failure: (_) => <ProductEntity>[],
-    );
-    final merged = [...localResults, ...cloudProducts];
+        // Deduplicate variants (same product, different storage/color)
+        final deduped = deduplicateVariants(merged);
 
-    // Deduplicate variants (same product, different storage/color)
-    final deduped = deduplicateVariants(merged);
+        // Personalize results using match score
+        final user = ref.read(userProfileProvider).valueOrNull;
+        if (user != null && deduped.isNotEmpty) {
+          final algo = ref.read(profileAlgorithmServiceProvider);
+          final behavior =
+              ref.read(behaviorSignalsProvider).valueOrNull ??
+              BehaviorSignals.empty;
+          // Blend relevance + personalization
+          deduped.sort((a, b) {
+            final nameA = a.name.toLowerCase();
+            final nameB = b.name.toLowerCase();
+            double relA = 0, relB = 0;
+            // Relevance scoring
+            if (nameA.contains(normalizedQuery)) relA += 100;
+            if (nameB.contains(normalizedQuery)) relB += 100;
+            if (nameA.startsWith(normalizedQuery)) relA += 30;
+            if (nameB.startsWith(normalizedQuery)) relB += 30;
+            if ((a.brand ?? '').toLowerCase().contains(normalizedQuery))
+              relA += 50;
+            if ((b.brand ?? '').toLowerCase().contains(normalizedQuery))
+              relB += 50;
+            relA += a.trendScore * 5;
+            relB += b.trendScore * 5;
+            // Personalization scoring (0-100 scale, blended at 40%)
+            final matchA = algo.calculateTotalFitScore(
+              user: user,
+              product: a,
+              behavior: behavior,
+            );
+            final matchB = algo.calculateTotalFitScore(
+              user: user,
+              product: b,
+              behavior: behavior,
+            );
+            final finalA = relA * 0.6 + matchA * 0.4;
+            final finalB = relB * 0.6 + matchB * 0.4;
+            return finalB.compareTo(finalA);
+          });
+        } else {
+          // No user profile — sort by relevance only
+          deduped.sort((a, b) {
+            final nameA = a.name.toLowerCase();
+            final nameB = b.name.toLowerCase();
+            int scoreA = 0, scoreB = 0;
+            if (nameA.contains(normalizedQuery)) scoreA += 100;
+            if (nameB.contains(normalizedQuery)) scoreB += 100;
+            if ((a.brand ?? '').toLowerCase().contains(normalizedQuery))
+              scoreA += 50;
+            if ((b.brand ?? '').toLowerCase().contains(normalizedQuery))
+              scoreB += 50;
+            scoreA += (a.trendScore * 10).toInt();
+            scoreB += (b.trendScore * 10).toInt();
+            return scoreB.compareTo(scoreA);
+          });
+        }
 
-    // Personalize results using match score
-    final user = ref.read(userProfileProvider).valueOrNull;
-    if (user != null && deduped.isNotEmpty) {
-      final algo = ref.read(profileAlgorithmServiceProvider);
-      final behavior = ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
-      // Blend relevance + personalization
-      deduped.sort((a, b) {
-        final nameA = a.name.toLowerCase();
-        final nameB = b.name.toLowerCase();
-        double relA = 0, relB = 0;
-        // Relevance scoring
-        if (nameA.contains(normalizedQuery)) relA += 100;
-        if (nameB.contains(normalizedQuery)) relB += 100;
-        if (nameA.startsWith(normalizedQuery)) relA += 30;
-        if (nameB.startsWith(normalizedQuery)) relB += 30;
-        if ((a.brand ?? '').toLowerCase().contains(normalizedQuery)) relA += 50;
-        if ((b.brand ?? '').toLowerCase().contains(normalizedQuery)) relB += 50;
-        relA += a.trendScore * 5;
-        relB += b.trendScore * 5;
-        // Personalization scoring (0-100 scale, blended at 40%)
-        final matchA = algo.calculateTotalFitScore(
-            user: user, product: a, behavior: behavior);
-        final matchB = algo.calculateTotalFitScore(
-            user: user, product: b, behavior: behavior);
-        final finalA = relA * 0.6 + matchA * 0.4;
-        final finalB = relB * 0.6 + matchB * 0.4;
-        return finalB.compareTo(finalA);
-      });
-    } else {
-      // No user profile — sort by relevance only
-      deduped.sort((a, b) {
-        final nameA = a.name.toLowerCase();
-        final nameB = b.name.toLowerCase();
-        int scoreA = 0, scoreB = 0;
-        if (nameA.contains(normalizedQuery)) scoreA += 100;
-        if (nameB.contains(normalizedQuery)) scoreB += 100;
-        if ((a.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreA += 50;
-        if ((b.brand ?? '').toLowerCase().contains(normalizedQuery)) scoreB += 50;
-        scoreA += (a.trendScore * 10).toInt();
-        scoreB += (b.trendScore * 10).toInt();
-        return scoreB.compareTo(scoreA);
-      });
-    }
-
-    AnalyticsService.instance.logProductSearch(query, deduped.length);
-    return Success(deduped.take(100).toList());
-  } catch (_) {
-    // Timeout — return local results if any
-    if (localResults.isNotEmpty) return Success(localResults.take(100).toList());
-    return const Success(<ProductEntity>[]);
-  }
-});
+        AnalyticsService.instance.logProductSearch(query, deduped.length);
+        return Success(deduped.take(100).toList());
+      } catch (_) {
+        // Timeout — return local results if any
+        if (localResults.isNotEmpty)
+          return Success(localResults.take(100).toList());
+        return const Success(<ProductEntity>[]);
+      }
+    });
 
 // ════════════════════════════════════════════════════
 // ─── HOME FEED PROVIDER (single query) ─── Section 6
@@ -435,6 +569,7 @@ class HomeFeed {
   final List<ProductEntity> newArrivals;
   final List<ProductEntity> discover;
   final List<ProductEntity> all;
+
   /// Categories ordered by user interest (strongest first)
   final List<String> priorityCategories;
 
@@ -449,13 +584,19 @@ class HomeFeed {
   });
 }
 
-HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
-    {UserEntity? user, List<String> hiddenIds = const [], List<String> disabledCats = const []}) {
+HomeFeed _buildHomeFeed(
+  List<ProductEntity> products,
+  String country, {
+  UserEntity? user,
+  List<String> hiddenIds = const [],
+  List<String> disabledCats = const [],
+}) {
   final deduped = deduplicateVariants(products);
   final currentYear = DateTime.now().year;
 
   // ── Helper: extract release year (delegates to ProductFilter) ────────────
-  int? getExactReleaseYear(ProductEntity p) => ProductFilter.getExactReleaseYear(p);
+  int? getExactReleaseYear(ProductEntity p) =>
+      ProductFilter.getExactReleaseYear(p);
 
   // Relaxed year: either exact or estimated (for scoring only, NOT filtering)
   int estimateYear(ProductEntity p) {
@@ -486,13 +627,24 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
 
   // ── HARD FILTER: year >= 2020, known brands, no old products ──────────────
   final hiddenSet = hiddenIds.toSet();
-  int filteredByHidden = 0, filteredByOldProduct = 0, filteredByBrand = 0, filteredByYear = 0;
+  int filteredByHidden = 0,
+      filteredByOldProduct = 0,
+      filteredByBrand = 0,
+      filteredByYear = 0;
   final rejectedBrands = <String>{};
   var pool = deduped.where((p) {
-    if (hiddenSet.contains(p.id)) { filteredByHidden++; return false; }
-    if (isKnownOldProduct(p)) { filteredByOldProduct++; return false; }
+    if (hiddenSet.contains(p.id)) {
+      filteredByHidden++;
+      return false;
+    }
+    if (isKnownOldProduct(p)) {
+      filteredByOldProduct++;
+      return false;
+    }
     if (!ProductFilter.isAllowed(p)) {
-      final brand = ProductFilter.normalizeBrand((p.brand ?? '').toLowerCase().trim());
+      final brand = ProductFilter.normalizeBrand(
+        (p.brand ?? '').toLowerCase().trim(),
+      );
       if (ProductFilter.defunctBrands.contains(brand)) {
         filteredByBrand++;
       } else if (!ProductFilter.allowedBrands.contains(brand)) {
@@ -506,26 +658,87 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     return true;
   }).toList();
 
-  debugPrint('=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===');
-  debugPrint('=== COMPAIR: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===');
+  debugPrint(
+    '=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===',
+  );
+  debugPrint(
+    '=== COMPAIR: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===',
+  );
   if (rejectedBrands.isNotEmpty) {
-    debugPrint('=== COMPAIR: rejected unknown brands: ${rejectedBrands.take(30).join(", ")} ===');
+    debugPrint(
+      '=== COMPAIR: rejected unknown brands: ${rejectedBrands.take(30).join(", ")} ===',
+    );
   }
 
   // ── Brand tier boost multiplier ────────────────────────────────────────────
   const tier1Brands = {
-    'apple', 'samsung', 'sony', 'asus', 'msi', 'lg', 'dell', 'hp',
-    'lenovo', 'acer', 'google', 'microsoft', 'nvidia', 'amd', 'intel',
+    'apple',
+    'samsung',
+    'sony',
+    'asus',
+    'msi',
+    'lg',
+    'dell',
+    'hp',
+    'lenovo',
+    'acer',
+    'google',
+    'microsoft',
+    'nvidia',
+    'amd',
+    'intel',
   };
   const tier2Brands = {
-    'xiaomi', 'huawei', 'oneplus', 'oppo', 'realme', 'honor', 'nothing',
-    'razer', 'logitech', 'corsair', 'bose', 'sennheiser', 'jbl', 'marshall',
-    'canon', 'nikon', 'fujifilm', 'dji', 'gopro', 'anker', 'garmin',
-    'bang & olufsen', 'dyson', 'steelseries', 'hyperx', 'benq', 'viewsonic',
-    'gigabyte', 'asrock', 'nzxt', 'cooler master', 'be quiet', 'crucial',
-    'western digital', 'seagate', 'kingston', 'thermaltake', 'evga',
-    'tp-link', 'netgear', 'arlo', 'ring', 'sonos', 'philips',
-    'panasonic', 'tcl', 'hisense', 'vizio', 'roku', 'amazon',
+    'xiaomi',
+    'huawei',
+    'oneplus',
+    'oppo',
+    'realme',
+    'honor',
+    'nothing',
+    'razer',
+    'logitech',
+    'corsair',
+    'bose',
+    'sennheiser',
+    'jbl',
+    'marshall',
+    'canon',
+    'nikon',
+    'fujifilm',
+    'dji',
+    'gopro',
+    'anker',
+    'garmin',
+    'bang & olufsen',
+    'dyson',
+    'steelseries',
+    'hyperx',
+    'benq',
+    'viewsonic',
+    'gigabyte',
+    'asrock',
+    'nzxt',
+    'cooler master',
+    'be quiet',
+    'crucial',
+    'western digital',
+    'seagate',
+    'kingston',
+    'thermaltake',
+    'evga',
+    'tp-link',
+    'netgear',
+    'arlo',
+    'ring',
+    'sonos',
+    'philips',
+    'panasonic',
+    'tcl',
+    'hisense',
+    'vizio',
+    'roku',
+    'amazon',
   };
   double brandBoost(ProductEntity p) {
     final brand = (p.brand ?? '').toLowerCase().trim();
@@ -549,18 +762,26 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
         // Recency weight: more recent views = stronger signal (exponential decay)
         final recencyWeight = 1.0 / (1 + i * 0.1);
         if (cat.isNotEmpty) {
-          viewedCategoryScores[cat] = (viewedCategoryScores[cat] ?? 0) + recencyWeight;
+          viewedCategoryScores[cat] =
+              (viewedCategoryScores[cat] ?? 0) + recencyWeight;
         }
         if (brand.isNotEmpty) {
-          viewedBrandScores[brand] = (viewedBrandScores[brand] ?? 0) + recencyWeight;
+          viewedBrandScores[brand] =
+              (viewedBrandScores[brand] ?? 0) + recencyWeight;
         }
       }
     }
   } catch (_) {}
 
   // Normalize scores to 0-1 range
-  final maxCatScore = viewedCategoryScores.values.fold(1.0, (a, b) => a > b ? a : b);
-  final maxBrandScore = viewedBrandScores.values.fold(1.0, (a, b) => a > b ? a : b);
+  final maxCatScore = viewedCategoryScores.values.fold(
+    1.0,
+    (a, b) => a > b ? a : b,
+  );
+  final maxBrandScore = viewedBrandScores.values.fold(
+    1.0,
+    (a, b) => a > b ? a : b,
+  );
   viewedCategoryScores.updateAll((k, v) => v / maxCatScore);
   viewedBrandScores.updateAll((k, v) => v / maxBrandScore);
 
@@ -574,18 +795,21 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     // Recently viewed categories get significant boost
     final viewedCatScore = viewedCategoryScores[cat] ?? 0.0;
     if (viewedCatScore > 0) {
-      boost *= 1.0 + (viewedCatScore * 0.5); // Up to 1.5× for most viewed category
+      boost *=
+          1.0 + (viewedCatScore * 0.5); // Up to 1.5× for most viewed category
     }
     // Recently viewed brands get boost
     final viewedBrandScore = viewedBrandScores[brand] ?? 0.0;
     if (viewedBrandScore > 0) {
-      boost *= 1.0 + (viewedBrandScore * 0.3); // Up to 1.3× for most viewed brand
+      boost *=
+          1.0 + (viewedBrandScore * 0.3); // Up to 1.3× for most viewed brand
     }
 
     // ── PROFILE-BASED BOOST ──────────────────────────────────────────────
     // Boost products in user's interest categories
     for (final interest in user.interestCategories) {
-      if (cat == interest.toLowerCase() || cat.contains(interest.toLowerCase())) {
+      if (cat == interest.toLowerCase() ||
+          cat.contains(interest.toLowerCase())) {
         boost *= 1.35;
         break;
       }
@@ -599,8 +823,18 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
 
     // Ecosystem match (apple user → apple products boosted, android → android brands)
     if (user.ecosystem == 'apple' && brand == 'apple') boost *= 1.3;
-    if (user.ecosystem == 'android' && {'samsung', 'xiaomi', 'oneplus', 'oppo',
-        'realme', 'huawei', 'honor', 'nothing', 'google'}.contains(brand)) {
+    if (user.ecosystem == 'android' &&
+        {
+          'samsung',
+          'xiaomi',
+          'oneplus',
+          'oppo',
+          'realme',
+          'huawei',
+          'honor',
+          'nothing',
+          'google',
+        }.contains(brand)) {
       boost *= 1.15;
     }
 
@@ -609,8 +843,10 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     if (price > 0) {
       switch (user.budgetRange) {
         case 'low':
-          if (price < 300) boost *= 1.2;
-          else if (price > 1000) boost *= 0.7;
+          if (price < 300)
+            boost *= 1.2;
+          else if (price > 1000)
+            boost *= 0.7;
           break;
         case 'mid':
           if (price >= 200 && price <= 800) boost *= 1.15;
@@ -619,8 +855,10 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
           if (price >= 500 && price <= 2000) boost *= 1.15;
           break;
         case 'premium':
-          if (price >= 800) boost *= 1.2;
-          else if (price < 300) boost *= 0.7;
+          if (price >= 800)
+            boost *= 1.2;
+          else if (price < 300)
+            boost *= 0.7;
           break;
       }
     }
@@ -630,7 +868,15 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
       'student': ['laptops', 'tablets', 'headphones', 'e-readers'],
       'engineer': ['laptops', 'monitors', 'keyboards', 'mice', 'gpus', 'cpus'],
       'designer': ['laptops', 'monitors', 'tablets', 'cameras', 'mice'],
-      'gamer': ['gpus', 'monitors', 'keyboards', 'mice', 'headphones', 'gamepads', 'desktops'],
+      'gamer': [
+        'gpus',
+        'monitors',
+        'keyboards',
+        'mice',
+        'headphones',
+        'gamepads',
+        'desktops',
+      ],
       'healthcare': ['tablets', 'smartwatches', 'smartphones'],
       'teacher': ['laptops', 'tablets', 'projectors', 'webcams'],
       'finance': ['laptops', 'monitors', 'smartphones'],
@@ -654,25 +900,35 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
     final year = estimateYear(p);
     final yearDiff = currentYear - year;
     double recency;
-    if (yearDiff <= 0)      recency = 1.00;
-    else if (yearDiff == 1) recency = 0.95;
-    else if (yearDiff == 2) recency = 0.80;
-    else if (yearDiff == 3) recency = 0.55;
-    else if (yearDiff == 4) recency = 0.30;
-    else if (yearDiff <= 6) recency = 0.15;
-    else                    recency = 0.05;
+    if (yearDiff <= 0)
+      recency = 1.00;
+    else if (yearDiff == 1)
+      recency = 0.95;
+    else if (yearDiff == 2)
+      recency = 0.80;
+    else if (yearDiff == 3)
+      recency = 0.55;
+    else if (yearDiff == 4)
+      recency = 0.30;
+    else if (yearDiff <= 6)
+      recency = 0.15;
+    else
+      recency = 0.05;
 
     // Bonus for products with recent createdAt (freshly scraped = up-to-date)
     if (p.createdAt != null) {
       final daysSinceCreated = DateTime.now().difference(p.createdAt!).inDays;
-      if (daysSinceCreated < 90) recency = (recency + 0.15).clamp(0.0, 1.0);
-      else if (daysSinceCreated < 180) recency = (recency + 0.08).clamp(0.0, 1.0);
+      if (daysSinceCreated < 90)
+        recency = (recency + 0.15).clamp(0.0, 1.0);
+      else if (daysSinceCreated < 180)
+        recency = (recency + 0.08).clamp(0.0, 1.0);
     }
 
     final quality = (p.techScore / 100.0).clamp(0.0, 1.0);
 
     return ((engagement * 0.30) + (recency * 0.30) + (quality * 0.25) + 0.15) *
-        brandBoost(p) * userBoost(p);
+        brandBoost(p) *
+        userBoost(p);
   }
 
   // ── By category: scored, top 60 each with brand diversity ─────────────────
@@ -709,15 +965,16 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
       }
       if (diverse.length >= 80) break;
     }
-    debugPrint('=== COMPAIR:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===');
+    debugPrint(
+      '=== COMPAIR:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===',
+    );
     byCategory[cat] = diverse;
   }
 
   // ── TRENDING: YouTube-style top products (max 2 per brand, 3 per category) ─
-  final allScored = pool
-      .map((p) => (product: p, score: youtubeScore(p)))
-      .toList()
-    ..sort((a, b) => b.score.compareTo(a.score));
+  final allScored =
+      pool.map((p) => (product: p, score: youtubeScore(p))).toList()
+        ..sort((a, b) => b.score.compareTo(a.score));
 
   final trendingCatCount = <String, int>{};
   final trendingBrandCount = <String, int>{};
@@ -725,7 +982,13 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   for (final s in allScored) {
     final cat = s.product.category.toLowerCase().trim();
     final brand = (s.product.brand ?? '').toLowerCase().trim();
-    const nicheCategories = {'dashcams', 'gimbals', 'tripods', 'lenses', 'soundbars'};
+    const nicheCategories = {
+      'dashcams',
+      'gimbals',
+      'tripods',
+      'lenses',
+      'soundbars',
+    };
     if (nicheCategories.contains(cat) && trending.length > 40) continue;
     final catCount = trendingCatCount[cat] ?? 0;
     final brandCnt = trendingBrandCount[brand] ?? 0;
@@ -741,12 +1004,20 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   final featured = <ProductEntity>[];
   final seenBrands = <String>{};
   // Prioritize user's interest categories first
-  final userInterests = user?.interestCategories
-      .map((c) => c.toLowerCase().trim())
-      .toList() ?? [];
+  final userInterests =
+      user?.interestCategories.map((c) => c.toLowerCase().trim()).toList() ??
+      [];
   final featuredCategoriesBase = [
-    'smartphones', 'laptops', 'tablets', 'headphones', 'smartwatches',
-    'gpus', 'monitors', 'cameras', 'speakers', 'tvs',
+    'smartphones',
+    'laptops',
+    'tablets',
+    'headphones',
+    'smartwatches',
+    'gpus',
+    'monitors',
+    'cameras',
+    'speakers',
+    'tvs',
   ];
   // Put user interest categories first
   final featuredCategories = <String>[
@@ -782,19 +1053,19 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   // ── NEW ARRIVALS: recent products with decent quality ─────────────────────
   // Prefer createdAt for genuinely new additions to the database
   final now = DateTime.now();
-  var arrivalCandidates = allScored
-      .where((s) {
-        final p = s.product;
-        // Truly new: added to DB in last 6 months
-        if (p.createdAt != null && now.difference(p.createdAt!).inDays < 180) return true;
-        // Fallback: estimated recent release with decent quality
-        return estimateYear(p) >= currentYear - 1 && p.techScore >= 20;
-      })
-      .toList();
+  var arrivalCandidates = allScored.where((s) {
+    final p = s.product;
+    // Truly new: added to DB in last 6 months
+    if (p.createdAt != null && now.difference(p.createdAt!).inDays < 180)
+      return true;
+    // Fallback: estimated recent release with decent quality
+    return estimateYear(p) >= currentYear - 1 && p.techScore >= 20;
+  }).toList();
   if (arrivalCandidates.length < 10) {
     arrivalCandidates = allScored
         .where((s) => estimateYear(s.product) >= currentYear - 2)
-        .take(200).toList();
+        .take(200)
+        .toList();
   }
   // Sort by createdAt DESC, then by score
   arrivalCandidates.sort((a, b) {
@@ -828,14 +1099,20 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   final shownIds = {...trendingIds, ...featuredIds, ...arrivalIds};
 
   final discoverCandidates = allScored
-      .where((s) => !shownIds.contains(s.product.id)
-                 && s.product.techScore >= 10)
+      .where(
+        (s) => !shownIds.contains(s.product.id) && s.product.techScore >= 10,
+      )
       .toList();
   if (discoverCandidates.length < 10) {
-    discoverCandidates.addAll(allScored
-        .where((s) => !shownIds.contains(s.product.id)
-                   && !discoverCandidates.any((d) => d.product.id == s.product.id))
-        .toList());
+    discoverCandidates.addAll(
+      allScored
+          .where(
+            (s) =>
+                !shownIds.contains(s.product.id) &&
+                !discoverCandidates.any((d) => d.product.id == s.product.id),
+          )
+          .toList(),
+    );
   }
   // Shuffle for discovery feel with user-seed
   final userSeed = user?.uid.hashCode ?? DateTime.now().day;
@@ -865,7 +1142,9 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   final sortedViewedCats = viewedCategoryScores.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
   for (final e in sortedViewedCats) {
-    if (byCategory.containsKey(e.key) && hasSufficientProducts(e.key) && !priorityCats.contains(e.key)) {
+    if (byCategory.containsKey(e.key) &&
+        hasSufficientProducts(e.key) &&
+        !priorityCats.contains(e.key)) {
       priorityCats.add(e.key);
     }
   }
@@ -873,25 +1152,32 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
   if (user != null) {
     for (final interest in user.interestCategories) {
       final cat = interest.toLowerCase().trim();
-      if (byCategory.containsKey(cat) && hasSufficientProducts(cat) && !priorityCats.contains(cat)) {
+      if (byCategory.containsKey(cat) &&
+          hasSufficientProducts(cat) &&
+          !priorityCats.contains(cat)) {
         priorityCats.add(cat);
       }
     }
     // Primary category
     if (user.primaryCategory != null) {
       final primary = user.primaryCategory!.toLowerCase().trim();
-      if (byCategory.containsKey(primary) && hasSufficientProducts(primary) && !priorityCats.contains(primary)) {
+      if (byCategory.containsKey(primary) &&
+          hasSufficientProducts(primary) &&
+          !priorityCats.contains(primary)) {
         priorityCats.insert(0, primary);
       }
     }
   }
   // Finally: remaining categories by product count
   for (final cat in byCategory.keys) {
-    if (!priorityCats.contains(cat) && hasSufficientProducts(cat)) priorityCats.add(cat);
+    if (!priorityCats.contains(cat) && hasSufficientProducts(cat))
+      priorityCats.add(cat);
   }
 
-  debugPrint('=== COMPAIR: homeFeed built — cats:${byCategory.keys.join(",")} '
-             'newArrivals:${newArrivals.length} trending:${trending.length} discover:${discover.length} ===');
+  debugPrint(
+    '=== COMPAIR: homeFeed built — cats:${byCategory.keys.join(",")} '
+    'newArrivals:${newArrivals.length} trending:${trending.length} discover:${discover.length} ===',
+  );
 
   return HomeFeed(
     trending: trending,
@@ -906,13 +1192,44 @@ HomeFeed _buildHomeFeed(List<ProductEntity> products, String country,
 
 // Known Firestore categories (ALL from scraper SOURCES config)
 const _feedCategories = [
-  'laptops', 'smartphones', 'tablets', 'headphones', 'smartwatches',
-  'gpus', 'monitors', 'keyboards', 'mice', 'desktops', 'cameras',
-  'speakers', 'tvs', 'consoles', 'routers', 'gamepads', 'webcams',
-  'dashcams', 'media-players', 'cases', 'cpus', 'drones', 'robot-vacuums',
-  'soundbars', 'microphones', 'smart-rings', 'e-readers', 'vr-headsets',
-  'motherboards', 'ram', 'ssd', 'psu', 'coolers', 'printers',
-  'projectors', 'gimbals', 'tripods', 'lenses',
+  'laptops',
+  'smartphones',
+  'tablets',
+  'headphones',
+  'smartwatches',
+  'gpus',
+  'monitors',
+  'keyboards',
+  'mice',
+  'desktops',
+  'cameras',
+  'speakers',
+  'tvs',
+  'consoles',
+  'routers',
+  'gamepads',
+  'webcams',
+  'dashcams',
+  'media-players',
+  'cases',
+  'cpus',
+  'drones',
+  'robot-vacuums',
+  'soundbars',
+  'microphones',
+  'smart-rings',
+  'e-readers',
+  'vr-headsets',
+  'motherboards',
+  'ram',
+  'ssd',
+  'psu',
+  'coolers',
+  'printers',
+  'projectors',
+  'gimbals',
+  'tripods',
+  'lenses',
 ];
 
 /// In-memory feed cache for instant access across providers
@@ -936,11 +1253,15 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final cache = ref.read(cacheServiceProvider);
   final user = ref.read(userProfileProvider).valueOrNull;
   final feedSw = Stopwatch()..start();
-  debugPrint('=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===');
+  debugPrint(
+    '=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===',
+  );
 
   // 0. In-memory cache (instant, < 1ms) — survives tab switches
   if (_inMemoryFeed != null && _inMemoryFeed!.all.isNotEmpty) {
-    debugPrint('=== COMPAIR: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products in ${feedSw.elapsedMilliseconds}ms ===');
+    debugPrint(
+      '=== COMPAIR: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products in ${feedSw.elapsedMilliseconds}ms ===',
+    );
     return _inMemoryFeed!;
   }
 
@@ -949,8 +1270,23 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   // Clear ALL old cache versions
   try {
-    for (final ver in ['v17_modern', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25', 'v26', 'v27', 'v28']) {
-      final key = ver == 'v17_modern' ? 'home_feed_$ver' : 'home_feed_${ver}_${user?.uid ?? "anon"}';
+    for (final ver in [
+      'v17_modern',
+      'v18',
+      'v19',
+      'v20',
+      'v21',
+      'v22',
+      'v23',
+      'v24',
+      'v25',
+      'v26',
+      'v27',
+      'v28',
+    ]) {
+      final key = ver == 'v17_modern'
+          ? 'home_feed_$ver'
+          : 'home_feed_${ver}_${user?.uid ?? "anon"}';
       cache.delete(key);
     }
   } catch (_) {}
@@ -964,28 +1300,50 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     if (staleResult.data != null && (staleResult.data as List).isNotEmpty) {
       final sw = Stopwatch()..start();
       final products = (staleResult.data as List)
-          .map((item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)))
+          .map(
+            (item) =>
+                ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
+          )
           .cast<ProductEntity>()
           .toList();
       sw.stop();
-      debugPrint('=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${products.length} products in ${sw.elapsedMilliseconds}ms ===');
+      debugPrint(
+        '=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${products.length} products in ${sw.elapsedMilliseconds}ms ===',
+      );
 
       // Await admin config only after cache hit (fast path)
       final config = await configFuture;
 
-      ref.read(pbDataSourceProvider).setHomeFeedProducts(
-          products.whereType<ProductModel>().toList());
-      final feed = _buildHomeFeed(products, country, user: user,
-          hiddenIds: config.hiddenIds, disabledCats: config.disabledCats);
+      ref
+          .read(pbDataSourceProvider)
+          .setHomeFeedProducts(products.whereType<ProductModel>().toList());
+      final feed = _buildHomeFeed(
+        products,
+        country,
+        user: user,
+        hiddenIds: config.hiddenIds,
+        disabledCats: config.disabledCats,
+      );
       _inMemoryFeed = feed;
 
-      debugPrint('=== COMPAIR: homeFeed READY (cache path) in ${feedSw.elapsedMilliseconds}ms ===');
+      debugPrint(
+        '=== COMPAIR: homeFeed READY (cache path) in ${feedSw.elapsedMilliseconds}ms ===',
+      );
 
       // If stale, trigger background refresh (fire-and-forget)
       if (staleResult.isStale && !_isRefreshingFeed) {
         _isRefreshingFeed = true;
-        _backgroundRefreshFeed(ref, repo, cache, country, user, cacheKey,
-            config.pinnedIds, config.hiddenIds, config.disabledCats).whenComplete(() {
+        _backgroundRefreshFeed(
+          ref,
+          repo,
+          cache,
+          country,
+          user,
+          cacheKey,
+          config.pinnedIds,
+          config.hiddenIds,
+          config.disabledCats,
+        ).whenComplete(() {
           _isRefreshingFeed = false;
         });
       }
@@ -1005,9 +1363,20 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   _pendingFeedFetch = Completer<HomeFeed>();
   try {
     final config = await configFuture;
-    final feed = await _fetchFeedFromNetwork(ref, repo, cache, country, user, cacheKey,
-        config.pinnedIds, config.hiddenIds, config.disabledCats);
-    debugPrint('=== COMPAIR: homeFeed READY (network path) in ${feedSw.elapsedMilliseconds}ms ===');
+    final feed = await _fetchFeedFromNetwork(
+      ref,
+      repo,
+      cache,
+      country,
+      user,
+      cacheKey,
+      config.pinnedIds,
+      config.hiddenIds,
+      config.disabledCats,
+    );
+    debugPrint(
+      '=== COMPAIR: homeFeed READY (network path) in ${feedSw.elapsedMilliseconds}ms ===',
+    );
     _pendingFeedFetch!.complete(feed);
     _pendingFeedFetch = null;
     return feed;
@@ -1023,12 +1392,17 @@ class _FeedConfig {
   final List<String> pinnedIds;
   final List<String> hiddenIds;
   final List<String> disabledCats;
-  const _FeedConfig({this.pinnedIds = const [], this.hiddenIds = const [], this.disabledCats = const []});
+  const _FeedConfig({
+    this.pinnedIds = const [],
+    this.hiddenIds = const [],
+    this.disabledCats = const [],
+  });
 }
 
 Future<_FeedConfig> _fetchAdminConfig() async {
   try {
-    final record = await pb.collection('app_config')
+    final record = await pb
+        .collection('app_config')
         .getFirstListItem('key = "algorithm"')
         .timeout(const Duration(seconds: 5));
     final data = record.data;
@@ -1055,14 +1429,28 @@ Future<void> _backgroundRefreshFeed(
 ) async {
   debugPrint('=== COMPAIR: Background feed refresh started ===');
   try {
-    final products = await _fetchAllProducts(repo, user, disabledCats, pinnedIds);
-    if (products.isNotEmpty && products.length > (_inMemoryFeed?.all.length ?? 0) * 0.5) {
+    final products = await _fetchAllProducts(
+      repo,
+      user,
+      disabledCats,
+      pinnedIds,
+    );
+    if (products.isNotEmpty &&
+        products.length > (_inMemoryFeed?.all.length ?? 0) * 0.5) {
       _saveProductsToCache(cache, products, cacheKey);
-      ref.read(pbDataSourceProvider).setHomeFeedProducts(
-          products.whereType<ProductModel>().toList());
-      _inMemoryFeed = _buildHomeFeed(products, country, user: user,
-          hiddenIds: hiddenIds, disabledCats: disabledCats);
-      debugPrint('=== COMPAIR: Background refresh done: ${products.length} products ===');
+      ref
+          .read(pbDataSourceProvider)
+          .setHomeFeedProducts(products.whereType<ProductModel>().toList());
+      _inMemoryFeed = _buildHomeFeed(
+        products,
+        country,
+        user: user,
+        hiddenIds: hiddenIds,
+        disabledCats: disabledCats,
+      );
+      debugPrint(
+        '=== COMPAIR: Background refresh done: ${products.length} products ===',
+      );
     }
   } catch (e) {
     debugPrint('=== COMPAIR: Background refresh error: $e ===');
@@ -1087,21 +1475,37 @@ Future<HomeFeed> _fetchFeedFromNetwork(
 
   if (products.isEmpty) {
     debugPrint('=== COMPAIR: homeFeed EMPTY — all queries returned 0 docs ===');
-    return const HomeFeed(trending: [], featured: [], byCategory: {}, newArrivals: [], all: []);
+    return const HomeFeed(
+      trending: [],
+      featured: [],
+      byCategory: {},
+      newArrivals: [],
+      all: [],
+    );
   }
 
-  debugPrint('=== COMPAIR: Building feed from ${products.length} products... ===');
+  debugPrint(
+    '=== COMPAIR: Building feed from ${products.length} products... ===',
+  );
 
   // Save to cache asynchronously — don't block feed building
   Future.microtask(() => _saveProductsToCache(cache, products, cacheKey));
 
-  ref.read(pbDataSourceProvider).setHomeFeedProducts(
-      products.whereType<ProductModel>().toList());
+  ref
+      .read(pbDataSourceProvider)
+      .setHomeFeedProducts(products.whereType<ProductModel>().toList());
   debugPrint('=== COMPAIR: setHomeFeedProducts done, building HomeFeed... ===');
-  final feed = _buildHomeFeed(products, country, user: user,
-      hiddenIds: hiddenIds, disabledCats: disabledCats);
+  final feed = _buildHomeFeed(
+    products,
+    country,
+    user: user,
+    hiddenIds: hiddenIds,
+    disabledCats: disabledCats,
+  );
   _inMemoryFeed = feed;
-  debugPrint('=== COMPAIR: HomeFeed built — trending:${feed.trending.length} cats:${feed.byCategory.length} all:${feed.all.length} ===');
+  debugPrint(
+    '=== COMPAIR: HomeFeed built — trending:${feed.trending.length} cats:${feed.byCategory.length} all:${feed.all.length} ===',
+  );
   return feed;
 }
 
@@ -1125,13 +1529,14 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   // ── Typesense multi_search: 20 categories in ONE HTTP request (~50-100ms) ────
   final categories = _feedCategories.take(20).toList();
-  debugPrint('=== COMPAIR: TS MULTI-CAT fetch — ${categories.length} categories, 80 each ===');
+  debugPrint(
+    '=== COMPAIR: TS MULTI-CAT fetch — ${categories.length} categories, 80 each ===',
+  );
 
   try {
-    final tsResult = await repo.getProductsMultiCategoryTs(
-      categories: categories,
-      perCategory: 80,
-    ).timeout(const Duration(seconds: 15));
+    final tsResult = await repo
+        .getProductsMultiCategoryTs(categories: categories, perCategory: 80)
+        .timeout(const Duration(seconds: 15));
 
     switch (tsResult) {
       case Success(data: final catMap):
@@ -1141,7 +1546,9 @@ Future<List<ProductEntity>> _fetchAllProducts(
           addProducts(products);
         }
       default:
-        debugPrint('=== COMPAIR: TS MULTI-CAT failed, falling back to PocketBase ===');
+        debugPrint(
+          '=== COMPAIR: TS MULTI-CAT failed, falling back to PocketBase ===',
+        );
     }
   } catch (e) {
     debugPrint('=== COMPAIR: TS MULTI-CAT error: $e ===');
@@ -1151,10 +1558,17 @@ Future<List<ProductEntity>> _fetchAllProducts(
   if (allProducts.isEmpty) {
     debugPrint('=== COMPAIR: TS empty, falling back to PB parallel fetch ===');
     try {
-      final futures = categories.map((cat) => repo.getProducts(
-        category: cat, limit: 80, orderBy: 'techScore', descending: true,
-      ).timeout(const Duration(seconds: 45)).catchError((_) =>
-        const Success<List<ProductEntity>>([])));
+      final futures = categories.map(
+        (cat) => repo
+            .getProducts(
+              category: cat,
+              limit: 80,
+              orderBy: 'techScore',
+              descending: true,
+            )
+            .timeout(const Duration(seconds: 45))
+            .catchError((_) => const Success<List<ProductEntity>>([])),
+      );
       final results = await Future.wait(futures.toList());
       for (var j = 0; j < results.length; j++) {
         switch (results[j]) {
@@ -1167,14 +1581,19 @@ Future<List<ProductEntity>> _fetchAllProducts(
     } catch (_) {}
   }
 
-  debugPrint('=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+  debugPrint(
+    '=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
+  );
 
   // Fetch pinned products
   if (pinnedIds.isNotEmpty) {
-    final missingPinned = pinnedIds.where((id) => !seenIds.contains(id)).toList();
+    final missingPinned = pinnedIds
+        .where((id) => !seenIds.contains(id))
+        .toList();
     if (missingPinned.isNotEmpty) {
       try {
-        final pinnedResult = await repo.getProductsByIds(missingPinned)
+        final pinnedResult = await repo
+            .getProductsByIds(missingPinned)
             .timeout(const Duration(seconds: 8));
         switch (pinnedResult) {
           case Success(data: final products):
@@ -1187,26 +1606,39 @@ Future<List<ProductEntity>> _fetchAllProducts(
   }
 
   sw.stop();
-  debugPrint('=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===');
+  debugPrint(
+    '=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
+  );
   return allProducts;
 }
 
-void _saveProductsToCache(CacheService cache, List<ProductEntity> products, String cacheKey) {
+void _saveProductsToCache(
+  CacheService cache,
+  List<ProductEntity> products,
+  String cacheKey,
+) {
   try {
-    final maps = products.map((p) => ProductModel.fromEntity(p).toMap()).toList();
+    final maps = products
+        .map((p) => ProductModel.fromEntity(p).toMap())
+        .toList();
     cache.setLocal(cacheKey, maps, duration: const Duration(hours: 12));
   } catch (_) {}
 }
 
 /// Convenience: trending products derived from home feed
-final trendingProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
-  final feed = await ref.watch(homeFeedProvider.future)
+final trendingProductsProvider = FutureProvider<List<ProductEntity>>((
+  ref,
+) async {
+  final feed = await ref
+      .watch(homeFeedProvider.future)
       .timeout(const Duration(seconds: 20));
   return feed.trending;
 });
 
 /// Convenience: featured products derived from home feed
-final featuredProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
+final featuredProductsProvider = FutureProvider<List<ProductEntity>>((
+  ref,
+) async {
   final feed = await ref.watch(homeFeedProvider.future);
   return feed.featured;
 });
@@ -1218,7 +1650,9 @@ final newArrivalsProvider = FutureProvider<List<ProductEntity>>((ref) async {
 });
 
 /// Convenience: discover products derived from home feed (hidden gems)
-final discoverProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
+final discoverProductsProvider = FutureProvider<List<ProductEntity>>((
+  ref,
+) async {
   final feed = await ref.watch(homeFeedProvider.future);
   return feed.discover;
 });
@@ -1241,16 +1675,21 @@ final categoryCoversProvider = FutureProvider<Map<String, String>>((ref) async {
 
 /// Daily AI trending provider — daily queries Gemini for the most searched tech products,
 /// matches with Firestore products and returns them. Cached in Firestore (24 hours).
-final aiDailyTrendingProvider = FutureProvider<List<ProductEntity>>((ref) async {
+final aiDailyTrendingProvider = FutureProvider<List<ProductEntity>>((
+  ref,
+) async {
   final repo = ref.read(productRepositoryProvider);
 
   // 1. Check PocketBase cache
   try {
-    final cacheRecord = await pb.collection('app_config')
+    final cacheRecord = await pb
+        .collection('app_config')
         .getFirstListItem('key = "trending_daily"')
         .timeout(const Duration(seconds: 5));
     final data = cacheRecord.data;
-    final lastUpdated = DateTime.tryParse(data['lastUpdated']?.toString() ?? '');
+    final lastUpdated = DateTime.tryParse(
+      data['lastUpdated']?.toString() ?? '',
+    );
     final cachedIds = List<String>.from(data['productIds'] ?? []);
     if (lastUpdated != null &&
         DateTime.now().difference(lastUpdated).inHours < 24 &&
@@ -1268,7 +1707,8 @@ final aiDailyTrendingProvider = FutureProvider<List<ProductEntity>>((ref) async 
   // 3. Call Gemini via PB proxy to get trending tech product types
   try {
     final dio = Dio();
-    const prompt = '''List the top 10 most searched and trending consumer technology products right now in 2025.
+    const prompt =
+        '''List the top 10 most searched and trending consumer technology products right now in 2025.
 Return ONLY a JSON array of product name keywords (short, search-friendly). Example: ["iPhone 16 Pro", "Samsung Galaxy S25", "MacBook Air M4"]
 Return only the JSON array, no explanation.''';
 
@@ -1276,20 +1716,33 @@ Return only the JSON array, no explanation.''';
       '$kPbBaseUrl/api/ai/gemini',
       data: {
         'model': 'gemini-2.5-flash',
-        'contents': [{'parts': [{'text': prompt}]}],
+        'contents': [
+          {
+            'parts': [
+              {'text': prompt},
+            ],
+          },
+        ],
         'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 512},
       },
       options: Options(receiveTimeout: const Duration(seconds: 15)),
     );
 
-    final text = response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String? ?? '[]';
+    final text =
+        response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+            as String? ??
+        '[]';
     final match = RegExp(r'\[.*?\]', dotAll: true).firstMatch(text);
     if (match == null) throw Exception('No JSON in response');
     final jsonStr = match.group(0)!;
 
     // Parse list from simple JSON array (no dart:convert needed for simple string arrays)
     final keywords = <String>[];
-    final cleaned = jsonStr.replaceAll('[', '').replaceAll(']', '').replaceAll('"', '').replaceAll("'", '');
+    final cleaned = jsonStr
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll('"', '')
+        .replaceAll("'", '');
     for (final item in cleaned.split(',')) {
       final kw = item.trim().toLowerCase();
       if (kw.isNotEmpty) keywords.add(kw);
@@ -1301,12 +1754,20 @@ Return only the JSON array, no explanation.''';
       final parts = kw.split(' ').where((s) => s.length > 2).toList();
       if (parts.isEmpty) continue;
       final product = allProducts.firstWhere(
-        (p) => parts.every((part) =>
-            p.name.toLowerCase().contains(part) ||
-            (p.brand?.toLowerCase().contains(part) ?? false)),
+        (p) => parts.every(
+          (part) =>
+              p.name.toLowerCase().contains(part) ||
+              (p.brand?.toLowerCase().contains(part) ?? false),
+        ),
         orElse: () => allProducts.firstWhere(
           (p) => p.name.toLowerCase().contains(parts.first),
-          orElse: () => ProductEntity(id: '', name: '', category: '', subcategory: '', lastUpdated: DateTime(2000)),
+          orElse: () => ProductEntity(
+            id: '',
+            name: '',
+            category: '',
+            subcategory: '',
+            lastUpdated: DateTime(2000),
+          ),
         ),
       );
       if (product.id.isNotEmpty && !matched.any((m) => m.id == product.id)) {
@@ -1317,35 +1778,48 @@ Return only the JSON array, no explanation.''';
 
     // Fill remaining with top trendScore
     if (matched.length < 10) {
-      final remaining = allProducts
-          .where((p) => !matched.any((m) => m.id == p.id))
-          .toList()..sort((a, b) => b.trendScore.compareTo(a.trendScore));
+      final remaining =
+          allProducts.where((p) => !matched.any((m) => m.id == p.id)).toList()
+            ..sort((a, b) => b.trendScore.compareTo(a.trendScore));
       matched.addAll(remaining.take(10 - matched.length));
     }
 
     // 5. Save to PocketBase cache
     try {
       try {
-        final existing = await pb.collection('app_config')
+        final existing = await pb
+            .collection('app_config')
             .getFirstListItem('key = "trending_daily"');
-        await pb.collection('app_config').update(existing.id, body: {
-          'productIds': matched.map((p) => p.id).toList(),
-          'lastUpdated': DateTime.now().toUtc().toIso8601String(),
-          'source': 'gemini',
-        });
+        await pb
+            .collection('app_config')
+            .update(
+              existing.id,
+              body: {
+                'productIds': matched.map((p) => p.id).toList(),
+                'lastUpdated': DateTime.now().toUtc().toIso8601String(),
+                'source': 'gemini',
+              },
+            );
       } catch (_) {
-        await pb.collection('app_config').create(body: {
-          'key': 'trending_daily',
-          'productIds': matched.map((p) => p.id).toList(),
-          'lastUpdated': DateTime.now().toUtc().toIso8601String(),
-          'source': 'gemini',
-        });
+        await pb
+            .collection('app_config')
+            .create(
+              body: {
+                'key': 'trending_daily',
+                'productIds': matched.map((p) => p.id).toList(),
+                'lastUpdated': DateTime.now().toUtc().toIso8601String(),
+                'source': 'gemini',
+              },
+            );
       }
     } catch (_) {}
 
     return matched;
   } catch (_) {
-    return (allProducts.toList()..sort((a, b) => b.trendScore.compareTo(a.trendScore))).take(10).toList();
+    return (allProducts.toList()
+          ..sort((a, b) => b.trendScore.compareTo(a.trendScore)))
+        .take(10)
+        .toList();
   }
 });
 
@@ -1355,7 +1829,9 @@ Return only the JSON array, no explanation.''';
 
 /// Personalized product recommendations - Section 6.1 "For You"
 /// Uses home feed data — no extra Firestore queries.
-final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>((ref) async {
+final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>((
+  ref,
+) async {
   final userAsync = ref.watch(userProfileProvider);
   final user = userAsync.valueOrNull;
   final feed = await ref.watch(homeFeedProvider.future);
@@ -1402,7 +1878,10 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
   final existingIds = <String>{};
 
   // Get behavior-boosted category priorities
-  final priorityCats = algorithmService.getCategoryPriority(user, behavior: behavior);
+  final priorityCats = algorithmService.getCategoryPriority(
+    user,
+    behavior: behavior,
+  );
 
   // ── Ecosystem affinity filter ──
   final eco = user.ecosystem.toLowerCase();
@@ -1410,8 +1889,19 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     final brand = (p.brand ?? '').toLowerCase();
     if (eco == 'apple') return brand == 'apple';
     if (eco == 'android') {
-      return const {'samsung','xiaomi','oneplus','oppo','vivo','realme','google','motorola','huawei','honor','nothing'}
-          .contains(brand);
+      return const {
+        'samsung',
+        'xiaomi',
+        'oneplus',
+        'oppo',
+        'vivo',
+        'realme',
+        'google',
+        'motorola',
+        'huawei',
+        'honor',
+        'nothing',
+      }.contains(brand);
     }
     return true; // mixed = no filter
   }
@@ -1427,7 +1917,9 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     final catProducts = feed.byCategory[catLower] ?? [];
     int added = 0;
     for (final p in catProducts) {
-      if (!existingIds.contains(p.id) && !excludeIds.contains(p.id) && isEcoMatch(p)) {
+      if (!existingIds.contains(p.id) &&
+          !excludeIds.contains(p.id) &&
+          isEcoMatch(p)) {
         allProducts.add(p);
         existingIds.add(p.id);
         added++;
@@ -1503,39 +1995,48 @@ final userCategoryPriorityProvider = FutureProvider<List<String>>((ref) async {
 // ════════════════════════════════════════════════════
 
 /// "Top in [Category]" — products from user's most viewed category
-final topInCategoryProvider = FutureProvider<({String category, List<ProductEntity> products})>((ref) async {
-  final behavior = await ref.watch(behaviorSignalsProvider.future);
-  final feed = await ref.watch(homeFeedProvider.future);
+final topInCategoryProvider =
+    FutureProvider<({String category, List<ProductEntity> products})>((
+      ref,
+    ) async {
+      final behavior = await ref.watch(behaviorSignalsProvider.future);
+      final feed = await ref.watch(homeFeedProvider.future);
 
-  // Find the most viewed category
-  String topCat = '';
-  int maxViews = 0;
-  for (final entry in behavior.categoryViews.entries) {
-    if (entry.value > maxViews) {
-      maxViews = entry.value;
-      topCat = entry.key.toLowerCase().trim();
-    }
-  }
+      // Find the most viewed category
+      String topCat = '';
+      int maxViews = 0;
+      for (final entry in behavior.categoryViews.entries) {
+        if (entry.value > maxViews) {
+          maxViews = entry.value;
+          topCat = entry.key.toLowerCase().trim();
+        }
+      }
 
-  if (topCat.isEmpty || maxViews < 2) {
-    return (category: '', products: <ProductEntity>[]);
-  }
+      if (topCat.isEmpty || maxViews < 2) {
+        return (category: '', products: <ProductEntity>[]);
+      }
 
-  final catProducts = feed.byCategory[topCat] ?? [];
-  if (catProducts.isEmpty) return (category: '', products: <ProductEntity>[]);
+      final catProducts = feed.byCategory[topCat] ?? [];
+      if (catProducts.isEmpty)
+        return (category: '', products: <ProductEntity>[]);
 
-  // Return top products, exclude first few they've likely already seen
-  final viewedIds = behavior.productViews.keys.toSet();
-  final fresh = catProducts.where((p) => !viewedIds.contains(p.id)).take(30).toList();
-  if (fresh.length < 5) {
-    // Not enough fresh products, show top ones
-    return (category: topCat, products: catProducts.take(30).toList());
-  }
-  return (category: topCat, products: fresh);
-});
+      // Return top products, exclude first few they've likely already seen
+      final viewedIds = behavior.productViews.keys.toSet();
+      final fresh = catProducts
+          .where((p) => !viewedIds.contains(p.id))
+          .take(30)
+          .toList();
+      if (fresh.length < 5) {
+        // Not enough fresh products, show top ones
+        return (category: topCat, products: catProducts.take(30).toList());
+      }
+      return (category: topCat, products: fresh);
+    });
 
 /// "Recently Analyzed" — products user has analyzed with AI
-final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((ref) async {
+final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((
+  ref,
+) async {
   final userAsync = ref.watch(userProfileProvider);
   final user = userAsync.valueOrNull;
   if (user == null) return [];
@@ -1545,7 +2046,8 @@ final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((ref) async
     final data = userRecord.data;
     if (data['analyzedProducts'] is! List) return [];
 
-    final analyzed = (data['analyzedProducts'] as List).cast<Map<String, dynamic>>();
+    final analyzed = (data['analyzedProducts'] as List)
+        .cast<Map<String, dynamic>>();
     if (analyzed.isEmpty) return [];
 
     // Get product IDs from analyzed history (most recent first)
@@ -1570,14 +2072,15 @@ final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((ref) async
 
     // If not enough in cache, fetch from Firestore
     if (result.length < productIds.length) {
-      final missingIds = productIds.where((id) => !feedMap.containsKey(id)).toList();
+      final missingIds = productIds
+          .where((id) => !feedMap.containsKey(id))
+          .toList();
       for (final id in missingIds.take(5)) {
         try {
-          final pResult = await ref.read(productRepositoryProvider).getProduct(id);
-          pResult.when(
-            success: (p) => result.add(p),
-            failure: (_) {},
-          );
+          final pResult = await ref
+              .read(productRepositoryProvider)
+              .getProduct(id);
+          pResult.when(success: (p) => result.add(p), failure: (_) {});
         } catch (_) {}
       }
     }
@@ -1592,12 +2095,11 @@ final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((ref) async
 /// "Price Drop" / Value Picks — high techScore at lower price tiers
 final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
   final feed = await ref.watch(homeFeedProvider.future);
-  final user = ref.read(userProfileProvider).valueOrNull;
   final country = ref.read(selectedCountryProvider);
 
   // Find products with high techScore but relatively low price
   final candidates = feed.all.where((p) {
-    final score = p.techScore ?? 0;
+    final score = p.techScore;
     final price = p.getPriceForCountry(country) ?? 0;
     // Good value: high score, reasonable price
     return score >= 60 && price > 0 && price < 2000;
@@ -1607,8 +2109,8 @@ final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
   candidates.sort((a, b) {
     final priceA = a.getPriceForCountry(country) ?? 1;
     final priceB = b.getPriceForCountry(country) ?? 1;
-    final ratioA = (a.techScore ?? 0) / priceA;
-    final ratioB = (b.techScore ?? 0) / priceB;
+    final ratioA = a.techScore / priceA;
+    final ratioB = b.techScore / priceB;
     return ratioB.compareTo(ratioA);
   });
 
@@ -1628,20 +2130,28 @@ final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
 });
 
 /// Calculate fit score for a specific product
-final productFitScoreProvider = FutureProvider.family<double, String>((ref, productId) async {
+final productFitScoreProvider = FutureProvider.family<double, String>((
+  ref,
+  productId,
+) async {
   final userAsync = ref.watch(userProfileProvider);
   final user = userAsync.valueOrNull;
 
   if (user == null) return 0.0;
 
   final behavior = await ref.watch(behaviorSignalsProvider.future);
-  final productResult = await ref.read(productRepositoryProvider).getProduct(productId);
+  final productResult = await ref
+      .read(productRepositoryProvider)
+      .getProduct(productId);
 
   return productResult.when(
     success: (product) {
       final algorithmService = ref.read(profileAlgorithmServiceProvider);
       return algorithmService.calculateTotalFitScore(
-          user: user, product: product, behavior: behavior);
+        user: user,
+        product: product,
+        behavior: behavior,
+      );
     },
     failure: (_) => 0.0,
   );
@@ -1669,15 +2179,18 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
       final hiveDs = ref.read(hiveDataSourceProvider);
       final hiveIds = hiveDs.getViewedProducts();
 
-      return pbDs.watchRecentlyViewed(user).asyncMap((pbIds) async {
-        if (pbIds.isEmpty && hiveIds.isNotEmpty) {
-          for (final id in hiveIds.reversed) {
-            pbDs.addRecentlyViewed(user, id);
-          }
-          return hiveIds;
-        }
-        return pbIds;
-      }).handleError((_) => <String>[]);
+      return pbDs
+          .watchRecentlyViewed(user)
+          .asyncMap((pbIds) async {
+            if (pbIds.isEmpty && hiveIds.isNotEmpty) {
+              for (final id in hiveIds.reversed) {
+                pbDs.addRecentlyViewed(user, id);
+              }
+              return hiveIds;
+            }
+            return pbIds;
+          })
+          .handleError((_) => <String>[]);
     },
     loading: () => Stream.value(<String>[]),
     error: (_, __) => Stream.value(<String>[]),
@@ -1686,12 +2199,16 @@ final viewedProductsProvider = StreamProvider<List<String>>((ref) {
 
 /// Recently viewed products — feed + Firestore fallback for missing items.
 /// Reactive: rebuilds when viewedProducts or homeFeed change.
-final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((ref) async {
+final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((
+  ref,
+) async {
   // Prefer Firestore stream data, fall back to Hive
   final firestoreIds = ref.watch(viewedProductsProvider).valueOrNull;
   final hiveDs = ref.read(hiveDataSourceProvider);
   final hiveIds = hiveDs.getViewedProducts();
-  final viewedIds = (firestoreIds != null && firestoreIds.isNotEmpty) ? firestoreIds : hiveIds;
+  final viewedIds = (firestoreIds != null && firestoreIds.isNotEmpty)
+      ? firestoreIds
+      : hiveIds;
   if (viewedIds.isEmpty) return [];
 
   final feed = ref.watch(homeFeedProvider);
@@ -1732,7 +2249,10 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((ref)
   }
 
   // Return in original viewedIds order
-  return limitedIds.where((id) => results.containsKey(id)).map((id) => results[id]!).toList();
+  return limitedIds
+      .where((id) => results.containsKey(id))
+      .map((id) => results[id]!)
+      .toList();
 });
 
 /// Record a product view (non-blocking, uses cached data)
@@ -1772,35 +2292,31 @@ class FreemiumLimits {
 }
 
 final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
-  try {
-    final period = feature == 'link_analysis' ? 'weekly' : 'daily';
-    return ref.watch(hiveDataSourceProvider).getUsageCount(feature, period: period);
-  } catch (_) {
-    return 0;
-  }
+  final subscription = ref.watch(subscriptionServiceProvider);
+  return switch (feature) {
+    'comparison' => subscription.comparisonsUsed,
+    'ai_chat' => subscription.aiQuestionsUsed,
+    'link_analysis' => subscription.linkPastesUsed,
+    _ => 0,
+  };
 });
 
 Future<bool> checkAndIncrementUsage(WidgetRef ref, String feature) async {
-  final isPremium = ref.read(premiumProvider);
-  if (isPremium) return true;
-
-  final period = feature == 'link_analysis' ? 'weekly' : 'daily';
-  final current = ref.read(hiveDataSourceProvider).getUsageCount(feature, period: period);
-  final limit = switch (feature) {
-    'comparison' => FreemiumLimits.comparisonsPerDay,
-    'ai_chat' => FreemiumLimits.aiChatsPerDay,
-    'link_analysis' => FreemiumLimits.linkAnalysesPerWeek,
-    _ => 999,
+  final subscription = ref.read(subscriptionServiceProvider);
+  final result = switch (feature) {
+    'comparison' => subscription.recordComparison(),
+    'ai_chat' => subscription.recordAIQuestion(),
+    'link_analysis' => subscription.recordLinkPaste(),
+    _ => const Success<void>(null),
   };
-  if (current >= limit) return false;
-  await ref.read(hiveDataSourceProvider).incrementUsage(feature, period: period);
-  ref.invalidate(freemiumUsageProvider(feature));
-  return true;
+  return result.isSuccess;
 }
 
 // ─── Spec Direction Service ───────────────────────────────────────────────────
 
-final specDirectionServiceProvider = FutureProvider<SpecDirectionService>((ref) async {
+final specDirectionServiceProvider = FutureProvider<SpecDirectionService>((
+  ref,
+) async {
   final service = SpecDirectionService();
   try {
     await service.loadFirestoreOverrides().timeout(const Duration(seconds: 5));
@@ -1811,49 +2327,55 @@ final specDirectionServiceProvider = FutureProvider<SpecDirectionService>((ref) 
 });
 
 /// Returns variants of a product (same base name, different storage/RAM)
-final productVariantsProvider = FutureProvider.family<List<ProductEntity>, ProductEntity>((ref, product) async {
-  final baseName = normalizeProductName(product.name);
-  final baseGroup = product.variantGroup;
+final productVariantsProvider =
+    FutureProvider.family<List<ProductEntity>, ProductEntity>((
+      ref,
+      product,
+    ) async {
+      final baseName = normalizeProductName(product.name);
+      final baseGroup = product.variantGroup;
 
-  List<ProductEntity> _filterVariants(List<ProductEntity> products) {
-    final variants = products.where((p) {
-      if (p.id == product.id) return false;
-      if (baseGroup.isNotEmpty && p.variantGroup.isNotEmpty) {
-        return p.variantGroup == baseGroup;
+      List<ProductEntity> _filterVariants(List<ProductEntity> products) {
+        final variants = products.where((p) {
+          if (p.id == product.id) return false;
+          if (baseGroup.isNotEmpty && p.variantGroup.isNotEmpty) {
+            return p.variantGroup == baseGroup;
+          }
+          return normalizeProductName(p.name) == baseName;
+        }).toList();
+        variants.sort(
+          (a, b) => _storageCapacityMB(a).compareTo(_storageCapacityMB(b)),
+        );
+        return variants;
       }
-      return normalizeProductName(p.name) == baseName;
-    }).toList();
-    variants.sort((a, b) => _storageCapacityMB(a).compareTo(_storageCapacityMB(b)));
-    return variants;
-  }
 
-  // 1) Try from already-cached homeFeed (instant, no network)
-  final feedAsync = ref.read(homeFeedProvider);
-  final cached = feedAsync.valueOrNull;
-  if (cached != null) {
-    final catKey = (product.category ?? '').toLowerCase().trim();
-    final catProducts = cached.byCategory[catKey] ?? [];
-    // Also search all products in case category key doesn't match
-    final allProducts = cached.trending;
-    final pool = {...catProducts, ...allProducts}.toList();
-    final variants = _filterVariants(pool);
-    if (variants.isNotEmpty) return variants;
-  }
+      // 1) Try from already-cached homeFeed (instant, no network)
+      final feedAsync = ref.read(homeFeedProvider);
+      final cached = feedAsync.valueOrNull;
+      if (cached != null) {
+        final catKey = product.category.toLowerCase().trim();
+        final catProducts = cached.byCategory[catKey] ?? [];
+        // Also search all products in case category key doesn't match
+        final allProducts = cached.trending;
+        final pool = {...catProducts, ...allProducts}.toList();
+        final variants = _filterVariants(pool);
+        if (variants.isNotEmpty) return variants;
+      }
 
-  // 2) Fallback: small Firestore query (limit 30, not 200!)
-  try {
-    final result = await ref.read(productRepositoryProvider).getProducts(
-      category: product.category,
-      limit: 30,
-    ).timeout(const Duration(seconds: 8));
-    return result.when(
-      success: (products) => _filterVariants(products),
-      failure: (_) => [],
-    );
-  } catch (_) {
-    return [];
-  }
-});
+      // 2) Fallback: small Firestore query (limit 30, not 200!)
+      try {
+        final result = await ref
+            .read(productRepositoryProvider)
+            .getProducts(category: product.category, limit: 30)
+            .timeout(const Duration(seconds: 8));
+        return result.when(
+          success: (products) => _filterVariants(products),
+          failure: (_) => [],
+        );
+      } catch (_) {
+        return [];
+      }
+    });
 
 // End of file
 
@@ -1863,263 +2385,302 @@ final productVariantsProvider = FutureProvider.family<List<ProductEntity>, Produ
 
 /// Finds truly similar products: same category, persona-aware scoring,
 /// variant exclusion, brand diversity. Uses homeFeed cache + Firestore.
-final similarProductsProvider = FutureProvider.family<List<ProductEntity>, ProductEntity>(
-  (ref, product) async {
-    try {
-      final catKey = product.category.toLowerCase().trim();
-
-      // Load user profile + behavior for persona-aware scoring
-      final userAsync = ref.read(userProfileProvider);
-      final user = userAsync.valueOrNull;
-      BehaviorSignals behavior = BehaviorSignals.empty;
-      ProfileAlgorithmService? algorithmService;
-      if (user != null) {
-        try {
-          behavior = await ref.read(behaviorSignalsProvider.future)
-              .timeout(const Duration(seconds: 4), onTimeout: () => BehaviorSignals.empty);
-        } catch (_) {}
-        algorithmService = ref.read(profileAlgorithmServiceProvider);
-      }
-
-      // Recently viewed product IDs for boosting/awareness
-      final viewedAsync = ref.read(viewedProductsProvider);
-      final viewedIds = viewedAsync.valueOrNull ?? [];
-      final recentViewedSet = viewedIds.take(10).toSet();
-
-      // 1) Build product pool from multiple sources
-      List<ProductEntity> pool = [];
-      final ds = ref.read(pbDataSourceProvider);
-      
+final similarProductsProvider =
+    FutureProvider.family<List<ProductEntity>, ProductEntity>((
+      ref,
+      product,
+    ) async {
       try {
-        if (ds.isCacheReady) {
-          final cached = await ds.getAllCachedProducts();
-          pool = cached.cast<ProductEntity>().toList();
+        final catKey = product.category.toLowerCase().trim();
+
+        // Load user profile + behavior for persona-aware scoring
+        final userAsync = ref.read(userProfileProvider);
+        final user = userAsync.valueOrNull;
+        BehaviorSignals behavior = BehaviorSignals.empty;
+        ProfileAlgorithmService? algorithmService;
+        if (user != null) {
+          try {
+            behavior = await ref
+                .read(behaviorSignalsProvider.future)
+                .timeout(
+                  const Duration(seconds: 4),
+                  onTimeout: () => BehaviorSignals.empty,
+                );
+          } catch (_) {}
+          algorithmService = ref.read(profileAlgorithmServiceProvider);
         }
-      } catch (_) {}
-      
-      // 2) Parallel: homeFeed cache + Firestore query
-      final futures = <Future>[];
-      
-      futures.add((() async {
+
+        // Recently viewed product IDs for boosting/awareness
+        final viewedAsync = ref.read(viewedProductsProvider);
+        final viewedIds = viewedAsync.valueOrNull ?? [];
+        final recentViewedSet = viewedIds.take(10).toSet();
+
+        // 1) Build product pool from multiple sources
+        List<ProductEntity> pool = [];
+        final ds = ref.read(pbDataSourceProvider);
+
         try {
-          final feed = await ref.read(homeFeedProvider.future)
-              .timeout(const Duration(seconds: 3));
-          final ids = pool.map((p) => p.id).toSet();
-          for (final p in feed.all) {
-            if (!ids.contains(p.id)) pool.add(p);
+          if (ds.isCacheReady) {
+            final cached = await ds.getAllCachedProducts();
+            pool = cached.cast<ProductEntity>().toList();
           }
         } catch (_) {}
-      })());
 
-      futures.add((() async {
-        try {
-          final result = await ref.read(productRepositoryProvider)
-              .getProducts(category: product.category, limit: 80)
-              .timeout(const Duration(seconds: 8));
-          result.when(
-            success: (products) {
+        // 2) Parallel: homeFeed cache + Firestore query
+        final futures = <Future>[];
+
+        futures.add(
+          (() async {
+            try {
+              final feed = await ref
+                  .read(homeFeedProvider.future)
+                  .timeout(const Duration(seconds: 3));
               final ids = pool.map((p) => p.id).toSet();
-              for (final p in products) {
+              for (final p in feed.all) {
                 if (!ids.contains(p.id)) pool.add(p);
               }
-            },
-            failure: (_) {},
-          );
-        } catch (_) {}
-      })());
+            } catch (_) {}
+          })(),
+        );
 
-      await Future.wait(futures);
+        futures.add(
+          (() async {
+            try {
+              final result = await ref
+                  .read(productRepositoryProvider)
+                  .getProducts(category: product.category, limit: 80)
+                  .timeout(const Duration(seconds: 8));
+              result.when(
+                success: (products) {
+                  final ids = pool.map((p) => p.id).toSet();
+                  for (final p in products) {
+                    if (!ids.contains(p.id)) pool.add(p);
+                  }
+                },
+                failure: (_) {},
+              );
+            } catch (_) {}
+          })(),
+        );
 
-      if (pool.isEmpty) return [];
+        await Future.wait(futures);
 
-      // Remove self from pool
-      pool.removeWhere((p) => p.id == product.id);
+        if (pool.isEmpty) return [];
 
-      // ── Variant exclusion: remove same variantGroup and similar names ──
-      final selfVariantGroup = product.variantGroup;
-      final selfNormName = normalizeProductName(product.name);
-      pool.removeWhere((p) {
-        // Exclude same variant group
-        if (selfVariantGroup.isNotEmpty && p.variantGroup.isNotEmpty &&
-            p.variantGroup == selfVariantGroup) {
-          return true;
-        }
-        // Exclude products with same normalized name (storage/RAM variants)
-        if (normalizeProductName(p.name) == selfNormName) {
-          return true;
-        }
-        return false;
-      });
+        // Remove self from pool
+        pool.removeWhere((p) => p.id == product.id);
 
-      // Deduplicate remaining pool by variantGroup (keep best techScore representative)
-      final variantBest = <String, ProductEntity>{};
-      final nameBest = <String, ProductEntity>{};
-      final deduped = <ProductEntity>[];
-      final dedupeIds = <String>{};
-      for (final p in pool) {
-        bool dominated = false;
-        if (p.variantGroup.isNotEmpty) {
-          final existing = variantBest[p.variantGroup];
-          if (existing != null) {
-            dominated = true;
-            // Keep the one with higher techScore
-            if (p.techScore > existing.techScore) {
-              dedupeIds.remove(existing.id);
-              deduped.removeWhere((x) => x.id == existing.id);
+        // ── Variant exclusion: remove same variantGroup and similar names ──
+        final selfVariantGroup = product.variantGroup;
+        final selfNormName = normalizeProductName(product.name);
+        pool.removeWhere((p) {
+          // Exclude same variant group
+          if (selfVariantGroup.isNotEmpty &&
+              p.variantGroup.isNotEmpty &&
+              p.variantGroup == selfVariantGroup) {
+            return true;
+          }
+          // Exclude products with same normalized name (storage/RAM variants)
+          if (normalizeProductName(p.name) == selfNormName) {
+            return true;
+          }
+          return false;
+        });
+
+        // Deduplicate remaining pool by variantGroup (keep best techScore representative)
+        final variantBest = <String, ProductEntity>{};
+        final nameBest = <String, ProductEntity>{};
+        final deduped = <ProductEntity>[];
+        final dedupeIds = <String>{};
+        for (final p in pool) {
+          bool dominated = false;
+          if (p.variantGroup.isNotEmpty) {
+            final existing = variantBest[p.variantGroup];
+            if (existing != null) {
+              dominated = true;
+              // Keep the one with higher techScore
+              if (p.techScore > existing.techScore) {
+                dedupeIds.remove(existing.id);
+                deduped.removeWhere((x) => x.id == existing.id);
+                variantBest[p.variantGroup] = p;
+              } else {
+                continue;
+              }
+            } else {
               variantBest[p.variantGroup] = p;
-            } else {
-              continue;
             }
-          } else {
-            variantBest[p.variantGroup] = p;
           }
-        }
-        if (!dominated) {
-          final normName = normalizeProductName(p.name);
-          if (nameBest.containsKey(normName)) {
-            final existing = nameBest[normName]!;
-            if (p.techScore > existing.techScore) {
-              dedupeIds.remove(existing.id);
-              deduped.removeWhere((x) => x.id == existing.id);
+          if (!dominated) {
+            final normName = normalizeProductName(p.name);
+            if (nameBest.containsKey(normName)) {
+              final existing = nameBest[normName]!;
+              if (p.techScore > existing.techScore) {
+                dedupeIds.remove(existing.id);
+                deduped.removeWhere((x) => x.id == existing.id);
+                nameBest[normName] = p;
+              } else {
+                continue;
+              }
+            } else {
               nameBest[normName] = p;
-            } else {
-              continue;
-            }
-          } else {
-            nameBest[normName] = p;
-          }
-        }
-        if (dedupeIds.add(p.id)) deduped.add(p);
-      }
-
-      // Separate same-category products — accept singular/plural/case variants
-      final sameCat = deduped.where((p) {
-        final pCat = p.category.toLowerCase().trim();
-        if (pCat == catKey) return true;
-        // singular ↔ plural
-        if (catKey.endsWith('s') && pCat == catKey.substring(0, catKey.length - 1)) return true;
-        if (!catKey.endsWith('s') && pCat == '${catKey}s') return true;
-        return false;
-      }).toList();
-
-      // Graduated expansion to find at least 4 results
-      List<ProductEntity> candidates = [];
-      final techScore = product.techScore;
-
-      // Step 1: same category + techScore ±20
-      if (candidates.length < 4) {
-        final step = sameCat.where((p) =>
-            (p.techScore - techScore).abs() <= 20 && p.techScore > 0).toList();
-        _addUnique(candidates, step);
-      }
-
-      // Step 2: same category + techScore ±40
-      if (candidates.length < 4) {
-        final step = sameCat.where((p) =>
-            (p.techScore - techScore).abs() <= 40 && p.techScore > 0).toList();
-        _addUnique(candidates, step);
-      }
-
-      // Step 3: same category, no techScore filter
-      if (candidates.length < 4) {
-        _addUnique(candidates, sameCat);
-      }
-
-      // Step 4: parent category match (peripherals grouping)
-      if (candidates.length < 4) {
-        final parentCats = _getRelatedCategories(catKey);
-        if (parentCats.isNotEmpty) {
-          final related = deduped.where((p) {
-            final pCat = p.category.toLowerCase().trim();
-            return parentCats.contains(pCat) && pCat != catKey;
-          }).toList();
-          _addUnique(candidates, related);
-        }
-      }
-
-      if (candidates.isEmpty) return [];
-
-      // ── Score candidates with persona-aware algorithm ──
-      List<MapEntry<ProductEntity, double>> scored = candidates.map((p) {
-        double score = 0;
-
-        // Persona fit score (0-100 range, weighted to 0-35)
-        if (user != null && algorithmService != null) {
-          final fitScore = algorithmService.calculateTotalFitScore(
-            user: user, product: p, behavior: behavior);
-          score += fitScore * 0.35;
-        }
-
-        // Category match bonus
-        if (p.category.toLowerCase().trim() == catKey) score += 15;
-
-        // Tech score similarity (important for "similar" products)
-        final techDiff = (p.techScore - techScore).abs();
-        if (techDiff <= 5) score += 20;
-        else if (techDiff <= 10) score += 15;
-        else if (techDiff <= 15) score += 10;
-        else if (techDiff <= 25) score += 5;
-        else score += 1;
-
-        // Brand diversity bonus — strongly prefer different brands
-        if (p.brand?.toLowerCase() != product.brand?.toLowerCase()) {
-          score += 12;
-        }
-
-        // Recently viewed category boost (user is interested in this type)
-        if (recentViewedSet.isNotEmpty) {
-          final viewedCats = <String>{};
-          final feed = ref.read(homeFeedProvider).valueOrNull;
-          if (feed != null) {
-            for (final vid in recentViewedSet) {
-              final vp = feed.all.where((x) => x.id == vid).firstOrNull;
-              if (vp != null) viewedCats.add(vp.category.toLowerCase().trim());
             }
           }
-          if (viewedCats.contains(p.category.toLowerCase().trim())) {
+          if (dedupeIds.add(p.id)) deduped.add(p);
+        }
+
+        // Separate same-category products — accept singular/plural/case variants
+        final sameCat = deduped.where((p) {
+          final pCat = p.category.toLowerCase().trim();
+          if (pCat == catKey) return true;
+          // singular ↔ plural
+          if (catKey.endsWith('s') &&
+              pCat == catKey.substring(0, catKey.length - 1))
+            return true;
+          if (!catKey.endsWith('s') && pCat == '${catKey}s') return true;
+          return false;
+        }).toList();
+
+        // Graduated expansion to find at least 4 results
+        List<ProductEntity> candidates = [];
+        final techScore = product.techScore;
+
+        // Step 1: same category + techScore ±20
+        if (candidates.length < 4) {
+          final step = sameCat
+              .where(
+                (p) => (p.techScore - techScore).abs() <= 20 && p.techScore > 0,
+              )
+              .toList();
+          _addUnique(candidates, step);
+        }
+
+        // Step 2: same category + techScore ±40
+        if (candidates.length < 4) {
+          final step = sameCat
+              .where(
+                (p) => (p.techScore - techScore).abs() <= 40 && p.techScore > 0,
+              )
+              .toList();
+          _addUnique(candidates, step);
+        }
+
+        // Step 3: same category, no techScore filter
+        if (candidates.length < 4) {
+          _addUnique(candidates, sameCat);
+        }
+
+        // Step 4: parent category match (peripherals grouping)
+        if (candidates.length < 4) {
+          final parentCats = _getRelatedCategories(catKey);
+          if (parentCats.isNotEmpty) {
+            final related = deduped.where((p) {
+              final pCat = p.category.toLowerCase().trim();
+              return parentCats.contains(pCat) && pCat != catKey;
+            }).toList();
+            _addUnique(candidates, related);
+          }
+        }
+
+        if (candidates.isEmpty) return [];
+
+        // ── Score candidates with persona-aware algorithm ──
+        List<MapEntry<ProductEntity, double>> scored = candidates.map((p) {
+          double score = 0;
+
+          // Persona fit score (0-100 range, weighted to 0-35)
+          if (user != null && algorithmService != null) {
+            final fitScore = algorithmService.calculateTotalFitScore(
+              user: user,
+              product: p,
+              behavior: behavior,
+            );
+            score += fitScore * 0.35;
+          }
+
+          // Category match bonus
+          if (p.category.toLowerCase().trim() == catKey) score += 15;
+
+          // Tech score similarity (important for "similar" products)
+          final techDiff = (p.techScore - techScore).abs();
+          if (techDiff <= 5)
+            score += 20;
+          else if (techDiff <= 10)
+            score += 15;
+          else if (techDiff <= 15)
+            score += 10;
+          else if (techDiff <= 25)
             score += 5;
+          else
+            score += 1;
+
+          // Brand diversity bonus — strongly prefer different brands
+          if (p.brand?.toLowerCase() != product.brand?.toLowerCase()) {
+            score += 12;
           }
+
+          // Recently viewed category boost (user is interested in this type)
+          if (recentViewedSet.isNotEmpty) {
+            final viewedCats = <String>{};
+            final feed = ref.read(homeFeedProvider).valueOrNull;
+            if (feed != null) {
+              for (final vid in recentViewedSet) {
+                final vp = feed.all.where((x) => x.id == vid).firstOrNull;
+                if (vp != null)
+                  viewedCats.add(vp.category.toLowerCase().trim());
+              }
+            }
+            if (viewedCats.contains(p.category.toLowerCase().trim())) {
+              score += 5;
+            }
+          }
+
+          // Trend score bonus
+          if (p.trendScore > 75)
+            score += 4;
+          else if (p.trendScore > 50)
+            score += 2;
+
+          // Price proximity bonus
+          final pAnyPrice = p.prices.values.isNotEmpty
+              ? p.prices.values.first
+              : 0.0;
+          final prodAnyPrice = product.prices.values.isNotEmpty
+              ? product.prices.values.first
+              : 0.0;
+          if (pAnyPrice > 0 && prodAnyPrice > 0) {
+            final priceDiff = ((pAnyPrice - prodAnyPrice) / prodAnyPrice).abs();
+            if (priceDiff <= 0.15)
+              score += 8;
+            else if (priceDiff <= 0.3)
+              score += 5;
+            else if (priceDiff <= 0.5)
+              score += 2;
+          }
+
+          return MapEntry(p, score);
+        }).toList();
+
+        scored.sort((a, b) => b.value.compareTo(a.value));
+
+        // Take top results with strict brand diversity (max 3 per brand)
+        final result = <ProductEntity>[];
+        final brandCount = <String, int>{};
+        for (final entry in scored) {
+          final brand = entry.key.brand?.toLowerCase() ?? 'unknown';
+          if ((brandCount[brand] ?? 0) >= 3) continue;
+          brandCount[brand] = (brandCount[brand] ?? 0) + 1;
+          result.add(entry.key);
+          if (result.length >= 12) break;
         }
 
-        // Trend score bonus
-        if (p.trendScore > 75) score += 4;
-        else if (p.trendScore > 50) score += 2;
-
-        // Price proximity bonus
-        final pAnyPrice = p.prices.values.isNotEmpty ? p.prices.values.first : 0.0;
-        final prodAnyPrice = product.prices.values.isNotEmpty ? product.prices.values.first : 0.0;
-        if (pAnyPrice > 0 && prodAnyPrice > 0) {
-          final priceDiff = ((pAnyPrice - prodAnyPrice) / prodAnyPrice).abs();
-          if (priceDiff <= 0.15) score += 8;
-          else if (priceDiff <= 0.3) score += 5;
-          else if (priceDiff <= 0.5) score += 2;
-        }
-
-        return MapEntry(p, score);
-      }).toList();
-
-      scored.sort((a, b) => b.value.compareTo(a.value));
-
-      // Take top results with strict brand diversity (max 3 per brand)
-      final result = <ProductEntity>[];
-      final brandCount = <String, int>{};
-      for (final entry in scored) {
-        final brand = entry.key.brand?.toLowerCase() ?? 'unknown';
-        if ((brandCount[brand] ?? 0) >= 3) continue;
-        brandCount[brand] = (brandCount[brand] ?? 0) + 1;
-        result.add(entry.key);
-        if (result.length >= 12) break;
+        // Çift sayı garantisi: tek sayıysa son elemanı düş (minimum 2)
+        return result.length.isOdd && result.length > 1
+            ? result.sublist(0, result.length - 1)
+            : result;
+      } catch (_) {
+        return [];
       }
-
-      // Çift sayı garantisi: tek sayıysa son elemanı düş (minimum 2)
-      return result.length.isOdd && result.length > 1
-          ? result.sublist(0, result.length - 1)
-          : result;
-    } catch (_) {
-      return [];
-    }
-  },
-);
+    });
 
 /// Add unique products to candidates list (by id)
 void _addUnique(List<ProductEntity> target, List<ProductEntity> source) {
@@ -2136,37 +2697,93 @@ void _addUnique(List<ProductEntity> target, List<ProductEntity> source) {
 Set<String> _getRelatedCategories(String category) {
   const groups = <Set<String>>[
     // Peripherals
-    {'mouse', 'mice', 'fare', 'keyboard', 'klavye', 'keyboards',
-     'mousepad', 'webcam', 'headset'},
+    {
+      'mouse',
+      'mice',
+      'fare',
+      'keyboard',
+      'klavye',
+      'keyboards',
+      'mousepad',
+      'webcam',
+      'headset',
+    },
     // Mobile
-    {'smartphone', 'smartphones', 'akıllı telefon', 'phone', 'telefon',
-     'tablet', 'tablets'},
+    {
+      'smartphone',
+      'smartphones',
+      'akıllı telefon',
+      'phone',
+      'telefon',
+      'tablet',
+      'tablets',
+    },
     // Computing
-    {'laptop', 'laptops', 'dizüstü', 'notebook', 'chromebook',
-     'desktop', 'masaüstü'},
+    {
+      'laptop',
+      'laptops',
+      'dizüstü',
+      'notebook',
+      'chromebook',
+      'desktop',
+      'masaüstü',
+    },
     // Display
-    {'monitor', 'monitors', 'monitör', 'tv', 'tvs', 'televizyon',
-     'television'},
+    {'monitor', 'monitors', 'monitör', 'tv', 'tvs', 'televizyon', 'television'},
     // Audio
-    {'headphone', 'headphones', 'kulaklık', 'earbuds', 'earphone',
-     'speaker', 'speakers', 'hoparlör', 'soundbar'},
+    {
+      'headphone',
+      'headphones',
+      'kulaklık',
+      'earbuds',
+      'earphone',
+      'speaker',
+      'speakers',
+      'hoparlör',
+      'soundbar',
+    },
     // Storage
-    {'ssd', 'ssds', 'hdd', 'hdds', 'hard disk', 'external storage',
-     'usb flash', 'nas'},
+    {
+      'ssd',
+      'ssds',
+      'hdd',
+      'hdds',
+      'hard disk',
+      'external storage',
+      'usb flash',
+      'nas',
+    },
     // Components
-    {'gpu', 'gpus', 'ekran kartı', 'graphics card',
-     'cpu', 'cpus', 'işlemci', 'processor',
-     'ram', 'memory', 'motherboard', 'anakart',
-     'psu', 'power supply', 'case', 'kasa'},
+    {
+      'gpu',
+      'gpus',
+      'ekran kartı',
+      'graphics card',
+      'cpu',
+      'cpus',
+      'işlemci',
+      'processor',
+      'ram',
+      'memory',
+      'motherboard',
+      'anakart',
+      'psu',
+      'power supply',
+      'case',
+      'kasa',
+    },
     // Wearables
-    {'smartwatch', 'smartwatches', 'akıllı saat', 'fitness tracker',
-     'wearable'},
+    {
+      'smartwatch',
+      'smartwatches',
+      'akıllı saat',
+      'fitness tracker',
+      'wearable',
+    },
     // Cameras
-    {'camera', 'cameras', 'fotoğraf makinesi', 'action camera',
-     'drone'},
+    {'camera', 'cameras', 'fotoğraf makinesi', 'action camera', 'drone'},
     // Networking
-    {'router', 'routers', 'modem', 'mesh', 'access point',
-     'network switch'},
+    {'router', 'routers', 'modem', 'mesh', 'access point', 'network switch'},
     // Power
     {'power bank', 'power banks', 'charger', 'şarj cihazı'},
   ];

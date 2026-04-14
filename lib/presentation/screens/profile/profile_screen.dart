@@ -12,7 +12,6 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/core/errors.dart';
-import 'package:compair/data/models/other_models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -190,6 +189,7 @@ class _ProfileBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isPremium = ref.watch(premiumProvider);
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
@@ -223,7 +223,7 @@ class _ProfileBody extends ConsumerWidget {
                             ? Text(
                                 ((user?.displayName ?? '').isEmpty
                                         ? 'U'
-                                        : user!.displayName!)
+                                        : user!.displayName)
                                     .substring(0, 1)
                                     .toUpperCase(),
                                 style: GoogleFonts.inter(
@@ -256,7 +256,7 @@ class _ProfileBody extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (user?.isPremium == true) ...[
+                              if (isPremium) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -340,7 +340,7 @@ class _ProfileBody extends ConsumerWidget {
         ),
 
         // ─── Upgrade Banner (if free) ───
-        if (user?.isPremium != true)
+        if (!isPremium)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -419,7 +419,7 @@ class _ProfileBody extends ConsumerWidget {
           ),
 
         // ─── Freemium Usage (if free) ───
-        if (user?.isPremium != true)
+        if (!isPremium)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),

@@ -3,7 +3,6 @@
 library;
 
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,18 +44,30 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   void initState() {
     super.initState();
 
-    _floatController = AnimationController(vsync: this, duration: const Duration(seconds: 3))
-      ..repeat(reverse: true);
-    _shimmerController = AnimationController(vsync: this, duration: const Duration(seconds: 2))
-      ..repeat();
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
-      ..repeat(reverse: true);
-    _enterController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))
-      ..forward();
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _enterController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..forward();
 
-    _floatAnim = Tween<double>(begin: -6, end: 6)
-        .animate(CurvedAnimation(parent: _floatController, curve: Curves.easeInOut));
-    _enterAnim = CurvedAnimation(parent: _enterController, curve: Curves.easeOutCubic);
+    _floatAnim = Tween<double>(begin: -6, end: 6).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
+    );
+    _enterAnim = CurvedAnimation(
+      parent: _enterController,
+      curve: Curves.easeOutCubic,
+    );
 
     _loadOfferings();
   }
@@ -75,7 +86,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     if (!service.isInitialized) {
       await service.initialize();
     }
-    if (mounted) setState(() { _isLoading = false; });
+    if (mounted)
+      setState(() {
+        _isLoading = false;
+      });
   }
 
   Future<void> _purchase(ProductDetails product) async {
@@ -87,17 +101,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     switch (result) {
       case Success():
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(context.l10n?.paywallPurchaseSuccess ?? 'Welcome to Compair Premium! 🎉'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF10B981),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n?.paywallPurchaseSuccess ??
+                  'Welcome to Compair Premium! 🎉',
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
       case Failure(error: final e):
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.message),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.error,
+          ),
+        );
     }
   }
 
@@ -111,23 +132,35 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       case Success(data: final isPremium):
         if (isPremium) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n?.paywallRestoreSuccess ?? 'Subscription restored! ✅'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF10B981),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.l10n?.paywallRestoreSuccess ??
+                    'Subscription restored! ✅',
+              ),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n?.paywallNoSubscription ?? 'No active subscription found'),
-            behavior: SnackBarBehavior.floating,
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.l10n?.paywallNoSubscription ??
+                    'No active subscription found',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       case Failure(error: final e):
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.message),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.error,
+          ),
+        );
     }
   }
 
@@ -145,12 +178,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final service = ref.read(subscriptionServiceProvider);
     final prods = service.products;
     if (prods.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text(
-            'Products could not be loaded. Please try again later.'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppTheme.error,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Products could not be loaded. Please try again later.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.error,
+        ),
+      );
       return;
     }
 
@@ -166,8 +202,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.account_circle_rounded,
-                color: Color(0xFF6366F1), size: 24),
+            const Icon(
+              Icons.account_circle_rounded,
+              color: Color(0xFF6366F1),
+              size: 24,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -183,7 +222,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         ),
         content: Text(
           'You need to connect your Google or Apple account to purchase a subscription.',
-          style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 14),
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white70,
+            fontSize: 14,
+          ),
         ),
         actions: [
           TextButton(
@@ -207,7 +249,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               backgroundColor: const Color(0xFF6366F1),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -221,32 +264,37 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     if (!mounted) return;
     switch (result) {
       case Success():
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text(
-              'Google account connected successfully! ✅'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF10B981),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Google account connected successfully! ✅'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
       case Failure(error: final e):
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.message),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.error,
+          ),
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bg = context.backgroundColor;
+    final textPrimary = context.textPrimary;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A14),
+      backgroundColor: bg,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -255,14 +303,27 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         child: Stack(
           children: [
             // Ambient glow orbs
-            Positioned(top: -60, right: -40, child: _buildOrb(200, const Color(0xFF6366F1), 0.18)),
-            Positioned(top: 80, left: -60, child: _buildOrb(180, const Color(0xFF8B5CF6), 0.14)),
-            Positioned(bottom: 120, right: 20, child: _buildOrb(140, const Color(0xFF3B82F6), 0.12)),
+            Positioned(
+              top: -50,
+              right: -40,
+              child: _buildOrb(180, AppTheme.brandBlue, 0.10),
+            ),
+            Positioned(
+              top: 120,
+              left: -70,
+              child: _buildOrb(150, AppTheme.brandCyan, 0.08),
+            ),
+            Positioned(
+              bottom: 150,
+              right: -20,
+              child: _buildOrb(130, AppTheme.brandDeepBlue, 0.08),
+            ),
 
             // Content
             SingleChildScrollView(
               padding: EdgeInsets.only(
-                left: 20, right: 20,
+                left: 20,
+                right: 20,
                 top: MediaQuery.of(context).padding.top + kToolbarHeight,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               ),
@@ -299,11 +360,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       builder: (_, __) => Transform.translate(
         offset: Offset(0, _floatAnim.value),
         child: Container(
-          width: size, height: size,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: color.withValues(alpha: opacity),
-            boxShadow: [BoxShadow(color: color.withValues(alpha: opacity * 0.6), blurRadius: size * 0.6)],
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: opacity * 0.6),
+                blurRadius: size * 0.6,
+              ),
+            ],
           ),
         ),
       ),
@@ -311,54 +378,75 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   }
 
   Widget _buildHeroSection() {
-    return Column(
-      children: [
-        // App logo in glowing circle
-        AnimatedBuilder(
-          animation: _floatAnim,
-          builder: (_, __) => Transform.translate(
-            offset: Offset(0, _floatAnim.value * 0.5),
-            child: Container(
-              width: 80, height: 80,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFF3B82F6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.10),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          AnimatedBuilder(
+            animation: _floatAnim,
+            builder: (_, __) => Transform.translate(
+              offset: Offset(0, _floatAnim.value * 0.4),
+              child: Container(
+                width: 74,
+                height: 74,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.28),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFF6366F1).withValues(alpha: 0.55), blurRadius: 28, offset: const Offset(0, 8)),
-                ],
+                child: const Icon(
+                  Icons.diamond_rounded,
+                  color: Colors.white,
+                  size: 34,
+                ),
               ),
-              padding: const EdgeInsets.all(12),
-              child: const Icon(Icons.diamond_rounded, color: Colors.white, size: 36),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // PRO badge with shimmer
-        _buildShimmerBadge(),
-        const SizedBox(height: 14),
-
-        Text(
-          context.l10n?.paywallHeadline ?? 'Unlock the Full Experience',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 26, fontWeight: FontWeight.w800,
-            color: Colors.white, letterSpacing: -0.5, height: 1.2,
+          const SizedBox(height: 14),
+          _buildShimmerBadge(),
+          const SizedBox(height: 14),
+          Text(
+            context.l10n?.paywallHeadline ?? 'Unlock Compair Premium',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary,
+              letterSpacing: -0.5,
+              height: 1.15,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.l10n?.paywallSubheading ?? 'AI-powered product intelligence, unlimited',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 15, color: Colors.white.withValues(alpha: 0.6), height: 1.4,
+          const SizedBox(height: 8),
+          Text(
+            'Unlimited compare, AI chat, link analysis and a cleaner advanced experience.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: context.textSecondary,
+              height: 1.45,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -385,23 +473,31 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF6366F1).withValues(alpha: 0.3),
-                    const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                    AppTheme.brandBlue.withValues(alpha: 0.18),
+                    AppTheme.brandCyan.withValues(alpha: 0.14),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
+                border: Border.all(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.28),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.auto_awesome, color: Color(0xFFA78BFA), size: 14),
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: AppTheme.brandCyan,
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'COMPAIR PREMIUM',
                     style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFFA78BFA),
-                      fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 2,
+                      color: context.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
                     ),
                   ),
                 ],
@@ -414,55 +510,56 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   }
 
   Widget _buildTrialBanner() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF10B981).withValues(alpha: 0.15),
-                const Color(0xFF059669).withValues(alpha: 0.1),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.success.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.success.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.workspace_premium_rounded,
+              color: AppTheme.success,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n?.paywallTrialBanner ??
+                      '${AppConstants.trialDays}-Day Free Trial',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'No charge for ${AppConstants.trialDays} days, then your selected plan starts.',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.textSecondary,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.35)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.card_giftcard_rounded, color: Color(0xFF10B981), size: 18),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n?.paywallTrialBanner ?? '${AppConstants.trialDays}-Day Free Trial',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF10B981),
-                      fontWeight: FontWeight.w700, fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    'No charge for ${AppConstants.trialDays} days • Cancel anytime',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white.withValues(alpha: 0.55), fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -490,7 +587,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       final perMonth = yearlyProduct.rawPrice / 12;
       yearlyMonthly =
           '${perMonth.toStringAsFixed(2)} ${yearlyProduct.currencyCode}/mo';
-      savingsPct = ((monthlyProduct.rawPrice * 12 - yearlyProduct.rawPrice) /
+      savingsPct =
+          ((monthlyProduct.rawPrice * 12 - yearlyProduct.rawPrice) /
                   (monthlyProduct.rawPrice * 12) *
                   100)
               .round();
@@ -499,32 +597,36 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       monthlyPrice = '\$${AppConstants.monthlyProPrice.toStringAsFixed(2)}';
       yearlyMonthly =
           '\$${(AppConstants.yearlyProPrice / 12).toStringAsFixed(2)}/mo';
-      savingsPct = (((AppConstants.monthlyProPrice * 12 -
-                      AppConstants.yearlyProPrice) /
-                  (AppConstants.monthlyProPrice * 12)) *
-              100)
-          .round();
+      savingsPct =
+          (((AppConstants.monthlyProPrice * 12 - AppConstants.yearlyProPrice) /
+                      (AppConstants.monthlyProPrice * 12)) *
+                  100)
+              .round();
     }
 
     return Row(
       children: [
-        Expanded(child: _buildPlanCard(
-          index: 0,
-          label: context.l10n?.paywallYearly ?? 'Yearly',
-          price: yearlyPrice,
-          sub: yearlyMonthly,
-          badge: 'SAVE $savingsPct%',
-          badgeColor: const Color(0xFFF59E0B),
-        )),
+        Expanded(
+          child: _buildPlanCard(
+            index: 0,
+            label: context.l10n?.paywallYearly ?? 'Yearly',
+            price: yearlyPrice,
+            sub: yearlyMonthly,
+            badge: 'SAVE $savingsPct%',
+            badgeColor: const Color(0xFFF59E0B),
+          ),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: _buildPlanCard(
-          index: 1,
-          label: context.l10n?.paywallMonthly ?? 'Monthly',
-          price: monthlyPrice,
-          sub: context.l10n?.paywallBilledMonthly ?? 'billed monthly',
-          badge: null,
-          badgeColor: Colors.transparent,
-        )),
+        Expanded(
+          child: _buildPlanCard(
+            index: 1,
+            label: context.l10n?.paywallMonthly ?? 'Monthly',
+            price: monthlyPrice,
+            sub: context.l10n?.paywallBilledMonthly ?? 'billed monthly',
+            badge: null,
+            badgeColor: Colors.transparent,
+          ),
+        ),
       ],
     );
   }
@@ -548,16 +650,19 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           gradient: isSelected
               ? LinearGradient(
                   colors: [
-                    const Color(0xFF6366F1).withValues(alpha: 0.25),
-                    const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                    AppTheme.brandDeepBlue.withValues(alpha: 0.28),
+                    AppTheme.brandBlue.withValues(alpha: 0.20),
+                    AppTheme.brandCyan.withValues(alpha: 0.14),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
               : null,
-          color: isSelected ? null : Colors.white.withValues(alpha: 0.05),
+          color: isSelected ? null : context.surfaceVariantColor,
           border: Border.all(
-            color: isSelected ? const Color(0xFF6366F1) : Colors.white.withValues(alpha: 0.12),
+            color: isSelected
+                ? AppTheme.brandCyan.withValues(alpha: 0.6)
+                : context.dividerColor,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -572,40 +677,64 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
                 ),
-                child: Text(badge, style: GoogleFonts.plusJakartaSans(
-                  color: badgeColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.8,
-                )),
+                child: Text(
+                  badge,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: badgeColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
               )
             else
               const SizedBox(height: 21),
 
-            Text(label, style: GoogleFonts.plusJakartaSans(
-              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6),
-              fontSize: 13, fontWeight: FontWeight.w600,
-            )),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: isSelected ? context.textPrimary : context.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(price, style: GoogleFonts.plusJakartaSans(
-              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.8),
-              fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5,
-            )),
-            Text(sub, style: GoogleFonts.plusJakartaSans(
-              color: Colors.white.withValues(alpha: 0.45), fontSize: 11,
-            )),
+            Text(
+              price,
+              style: GoogleFonts.plusJakartaSans(
+                color: context.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              sub,
+              style: GoogleFonts.plusJakartaSans(
+                color: context.textTertiaryColor,
+                fontSize: 11,
+              ),
+            ),
 
             const SizedBox(height: 8),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 24, height: 24,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? const Color(0xFF6366F1) : Colors.transparent,
+                color: isSelected ? AppTheme.brandBlue : Colors.transparent,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF6366F1) : Colors.white.withValues(alpha: 0.2),
+                  color: isSelected ? AppTheme.brandBlue : context.dividerColor,
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    )
                   : null,
             ),
           ],
@@ -617,67 +746,110 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget _buildComparisonTable() {
     final l = context.l10n;
     final rows = [
-      _TableRow(l?.productComparisons ?? 'Product Comparisons', '5/day', l?.unlimited ?? 'Unlimited', Icons.compare_arrows_rounded),
-      _TableRow(l?.aiChatMessages ?? 'AI Chat Messages', '15/day', l?.unlimited ?? 'Unlimited', Icons.smart_toy_rounded),
-      _TableRow(l?.linkAnalysis ?? 'Link Analysis', '3/week', l?.unlimited ?? 'Unlimited', Icons.link_rounded),
-      _TableRow(l?.priceHistory ?? 'Price History', '7 days', '90 days', Icons.show_chart_rounded),
-      _TableRow(l?.youtubeReviews ?? 'YouTube Reviews', true, true, Icons.play_circle_rounded),
+      _TableRow(
+        l?.productComparisons ?? 'Product Comparisons',
+        '${AppConstants.freeComparisonLimit}/day',
+        l?.unlimited ?? 'Unlimited',
+        Icons.compare_arrows_rounded,
+      ),
+      _TableRow(
+        l?.aiChatMessages ?? 'AI Chat Messages',
+        '${AppConstants.freeAiQuestionLimit}/day',
+        l?.unlimited ?? 'Unlimited',
+        Icons.smart_toy_rounded,
+      ),
+      _TableRow(
+        l?.linkAnalysis ?? 'Link Analysis',
+        '${AppConstants.freeLinkPasteLimit}/week',
+        l?.unlimited ?? 'Unlimited',
+        Icons.link_rounded,
+      ),
+      _TableRow(
+        l?.priceHistory ?? 'Price History',
+        '${AppConstants.freePriceHistoryDays} days',
+        '${AppConstants.proPriceHistoryDays} days',
+        Icons.show_chart_rounded,
+      ),
+      _TableRow(
+        l?.youtubeReviews ?? 'YouTube Reviews',
+        true,
+        true,
+        Icons.play_circle_rounded,
+      ),
       _TableRow(l?.pcBuilder ?? 'PC Builder', true, true, Icons.memory_rounded),
-      _TableRow(l?.saveProducts ?? 'Save Products', '10 items', l?.unlimited ?? 'Unlimited', Icons.bookmark_rounded),
-      _TableRow(l?.prioritySupport ?? 'Priority Support', false, true, Icons.support_agent_rounded),
+      _TableRow(
+        l?.saveProducts ?? 'Save Products',
+        '${AppConstants.freeCollectionLimit} items',
+        l?.unlimited ?? 'Unlimited',
+        Icons.bookmark_rounded,
+      ),
+      _TableRow(
+        l?.prioritySupport ?? 'Priority Support',
+        false,
+        true,
+        Icons.support_agent_rounded,
+      ),
     ];
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-          child: Column(
-            children: [
-              // Header row
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Row(
-                  children: [
-                    const Expanded(flex: 5, child: SizedBox()),
-                    Expanded(flex: 3, child: Text('Free',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontWeight: FontWeight.w700, fontSize: 12,
-                      ), textAlign: TextAlign.center,
-                    )),
-                    Expanded(flex: 3, child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('Premium',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12,
-                        ), textAlign: TextAlign.center,
-                      ),
-                    )),
-                  ],
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: context.surfaceElevatedColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
               ),
-
-              for (int i = 0; i < rows.length; i++)
-                _buildTableRow(rows[i], i == rows.length - 1),
-            ],
+            ),
+            child: Row(
+              children: [
+                const Expanded(flex: 5, child: SizedBox()),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'Free',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: context.textSecondary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Premium',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          for (int i = 0; i < rows.length; i++)
+            _buildTableRow(rows[i], i == rows.length - 1),
+        ],
       ),
     );
   }
@@ -686,9 +858,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        border: isLast ? null : Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-        ),
+        border: isLast
+            ? null
+            : Border(bottom: BorderSide(color: context.dividerColor)),
       ),
       child: Row(
         children: [
@@ -696,24 +868,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             flex: 5,
             child: Row(
               children: [
-                Icon(row.icon, color: Colors.white.withValues(alpha: 0.4), size: 15),
+                Icon(row.icon, color: context.textSecondary, size: 15),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(row.feature, style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white.withValues(alpha: 0.75), fontSize: 12,
-                  )),
+                  child: Text(
+                    row.feature,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: context.textPrimary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          Expanded(
-            flex: 3,
-            child: _buildCellValue(row.free, false),
-          ),
-          Expanded(
-            flex: 3,
-            child: _buildCellValue(row.pro, true),
-          ),
+          Expanded(flex: 3, child: _buildCellValue(row.free, false)),
+          Expanded(flex: 3, child: _buildCellValue(row.pro, true)),
         ],
       ),
     );
@@ -725,17 +895,21 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         child: Icon(
           value ? Icons.check_circle_rounded : Icons.cancel_rounded,
           color: value
-              ? (isPro ? const Color(0xFF10B981) : Colors.white.withValues(alpha: 0.25))
-              : Colors.white.withValues(alpha: 0.15),
+              ? (isPro
+                    ? AppTheme.success
+                    : context.textTertiaryColor.withValues(alpha: 0.6))
+              : context.textTertiaryColor.withValues(alpha: 0.4),
           size: 18,
         ),
       );
     }
     return Center(
-      child: Text(value.toString(),
+      child: Text(
+        value.toString(),
         style: GoogleFonts.plusJakartaSans(
-          color: isPro ? const Color(0xFFA78BFA) : Colors.white.withValues(alpha: 0.35),
-          fontSize: 11, fontWeight: isPro ? FontWeight.w700 : FontWeight.w500,
+          color: isPro ? AppTheme.brandCyan : context.textSecondary,
+          fontSize: 11,
+          fontWeight: isPro ? FontWeight.w700 : FontWeight.w500,
         ),
         textAlign: TextAlign.center,
       ),
@@ -744,43 +918,74 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
 
   Widget _buildFeatureHighlights() {
     final features = [
-      (Icons.link_rounded, const Color(0xFF3B82F6), 'Smart Link Analysis', 'Paste any product URL for instant AI analysis'),
-      (Icons.compare_arrows_rounded, const Color(0xFF8B5CF6), 'Side-by-Side Compare', 'Unlimited product comparisons with AI scoring'),
-      (Icons.trending_down_rounded, const Color(0xFF10B981), '90-Day Price History', 'Never miss a price drop again'),
+      (
+        Icons.link_rounded,
+        AppTheme.brandBlue,
+        'Smart Link Analysis',
+        'Paste any product URL for instant AI product analysis.',
+      ),
+      (
+        Icons.compare_arrows_rounded,
+        AppTheme.brandDeepBlue,
+        'Side-by-Side Compare',
+        'Compare more products with AI summaries and better context.',
+      ),
+      (
+        Icons.trending_down_rounded,
+        AppTheme.success,
+        '90-Day Price History',
+        'Spot trends and catch drops before you buy.',
+      ),
     ];
 
     return Row(
-      children: List.generate(features.length, (i) => Expanded(
-        child: Container(
-          margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: features[i].$2.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: features[i].$2.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: features[i].$2.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+      children: List.generate(
+        features.length,
+        (i) => Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: context.surfaceVariantColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: features[i].$2.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: features[i].$2.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(features[i].$1, color: features[i].$2, size: 18),
                 ),
-                child: Icon(features[i].$1, color: features[i].$2, size: 18),
-              ),
-              const SizedBox(height: 6),
-              Text(features[i].$3, style: GoogleFonts.plusJakartaSans(
-                color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700,
-              ), textAlign: TextAlign.center),
-              const SizedBox(height: 2),
-              Text(features[i].$4, style: GoogleFonts.plusJakartaSans(
-                color: Colors.white.withValues(alpha: 0.45), fontSize: 9,
-              ), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  features[i].$3,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.textPrimary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  features[i].$4,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.textSecondary,
+                    fontSize: 9,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
-      )),
+      ),
     );
   }
 
@@ -807,7 +1012,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.35 + pulse * 0.15),
+                color: AppTheme.brandBlue.withValues(
+                  alpha: 0.22 + pulse * 0.08,
+                ),
                 blurRadius: 20 + pulse * 12,
                 offset: const Offset(0, 6),
               ),
@@ -821,35 +1028,48 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         height: 58,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFF3B82F6)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
+            gradient: AppTheme.primaryGradient,
             borderRadius: BorderRadius.circular(18),
           ),
           child: ElevatedButton(
-            onPressed: (_isPurchasing || _isLoading) ? null : _handlePurchaseTap,
+            onPressed: (_isPurchasing || _isLoading)
+                ? null
+                : _handlePurchaseTap,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
             ),
             child: _isPurchasing
                 ? const SizedBox(
-                    width: 22, height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                    ),
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.diamond_rounded, color: Colors.white, size: 18),
+                      const Icon(
+                        Icons.diamond_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        _isLoading ? (context.l10n?.paywallStartYearly ?? 'Start Free Trial') : label,
+                        _isLoading
+                            ? (context.l10n?.paywallStartYearly ??
+                                  'Start Free Trial')
+                            : label,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15, fontWeight: FontWeight.w800,
-                          color: Colors.white, letterSpacing: 0.2,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ],
@@ -868,15 +1088,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           child: Text(
             context.l10n?.paywallRestoreButton ?? 'Restore purchases',
             style: GoogleFonts.plusJakartaSans(
-              color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 13, fontWeight: FontWeight.w500,
+              color: context.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
         Text(
-          context.l10n?.paywallLegalText ?? 'Auto-renews. Cancel anytime. ${AppConstants.trialDays}-day free trial.',
+          context.l10n?.paywallLegalText ??
+              'Auto-renews. Cancel anytime. ${AppConstants.trialDays}-day free trial.',
           style: GoogleFonts.plusJakartaSans(
-            color: Colors.white.withValues(alpha: 0.3), fontSize: 11,
+            color: context.textTertiaryColor,
+            fontSize: 11,
           ),
           textAlign: TextAlign.center,
         ),
