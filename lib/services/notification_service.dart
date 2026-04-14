@@ -1,25 +1,25 @@
 /// Compair - Push Notification Service
-/// Firebase Messaging removed. This is a no-op stub kept so existing
-/// call sites compile until we wire up a non-Google push provider.
+/// Push provider not wired yet. This is a no-op stub kept so existing
+/// call sites compile until a future notification provider is added.
 library;
 
 import 'package:flutter/foundation.dart';
 
-class _NotificationInner {
+class NotificationInner {
   final String? title;
   final String? body;
-  const _NotificationInner({this.title, this.body});
+  const NotificationInner({this.title, this.body});
 }
 
 class StubMessage {
-  final _NotificationInner? notification;
+  final NotificationInner? notification;
   final Map<String, dynamic> data;
   const StubMessage({this.notification, this.data = const {}});
 }
 
 /// Legacy top-level handler kept as no-op for backwards compat.
 @pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(StubMessage message) async {}
+Future<void> notificationBackgroundHandler(StubMessage message) async {}
 
 class NotificationService {
   NotificationService._();

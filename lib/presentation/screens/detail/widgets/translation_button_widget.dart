@@ -1,15 +1,15 @@
 part of '../product_detail_screen.dart';
 
 // ── See Translation Button (Instagram-style per-review translation) ──
-class _SeeTranslationButton extends StatefulWidget {
+class _SeeTranslationButton extends ConsumerStatefulWidget {
   final String text;
   const _SeeTranslationButton({required this.text});
 
   @override
-  State<_SeeTranslationButton> createState() => _SeeTranslationButtonState();
+  ConsumerState<_SeeTranslationButton> createState() => _SeeTranslationButtonState();
 }
 
-class _SeeTranslationButtonState extends State<_SeeTranslationButton> {
+class _SeeTranslationButtonState extends ConsumerState<_SeeTranslationButton> {
   String? _translated;
   bool _loading = false;
   bool _showOriginal = false;
@@ -23,35 +23,22 @@ class _SeeTranslationButtonState extends State<_SeeTranslationButton> {
     setState(() => _loading = true);
     try {
       final locale = Localizations.localeOf(context).languageCode;
-      final dio = Dio();
-      final resp = await dio.get(
-        'https://translate.googleapis.com/translate_a/single',
-        queryParameters: {
-          'client': 'gtx',
-          'sl': 'auto',
-          'tl': locale,
-          'dt': 't',
-          'q': widget.text,
-        },
-      ).timeout(const Duration(seconds: 8));
+      final gemini = ref.read(geminiServiceProvider);
+      final translated = await gemini.freeTextQuery(
+        'Translate the following product review into the user language. '
+        'Preserve meaning, tone, product names, and line breaks. '
+        'Return only the translated text with no quotes or extra commentary. '
+        'If the text is already in the target language, return it unchanged.\n\n'
+        '${widget.text}',
+        language: locale,
+      ).timeout(const Duration(seconds: 20));
 
-      final data = resp.data;
-      if (data is List && data.isNotEmpty && data[0] is List) {
-        final sb = StringBuffer();
-        for (final segment in data[0]) {
-          if (segment is List && segment.isNotEmpty) {
-            sb.write(segment[0]);
-          }
-        }
-        if (mounted) {
-          setState(() {
-            _translated = sb.toString();
-            _showOriginal = false;
-            _loading = false;
-          });
-        }
-      } else {
-        if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _translated = translated.trim();
+          _showOriginal = false;
+          _loading = false;
+        });
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);

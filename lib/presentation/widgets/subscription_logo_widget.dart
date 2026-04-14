@@ -254,15 +254,14 @@ class _SubscriptionLogoWidgetState extends State<SubscriptionLogoWidget> {
     final guessedDomain = nameSlug.isNotEmpty ? '$nameSlug.com' : null;
 
     final logoUrl = widget.service.logo;
-    final isStorageLogo = logoUrl.isNotEmpty &&
+    final isLegacyStorageLogo = logoUrl.isNotEmpty &&
         (logoUrl.contains('storage.googleapis.com') ||
             logoUrl.contains('firebasestorage.googleapis.com'));
     _isSvgLogo = logoUrl.toLowerCase().endsWith('.svg');
     final isHttpLogo = logoUrl.startsWith('http') && !_isSvgLogo;
 
     _urls = <String>[
-      if (isHttpLogo && !isStorageLogo) logoUrl,
-      if (isStorageLogo) logoUrl,
+      if (isHttpLogo && !isLegacyStorageLogo) logoUrl,
       if (domain != null) ...[
         'https://logo.clearbit.com/$domain',
         'https://icons.duckduckgo.com/ip3/$domain.ico',

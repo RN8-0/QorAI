@@ -70,7 +70,7 @@ class AppConstants {
   static const String monthlySubscriptionId = 'aylik_abonelik';
   static const String yearlySubscriptionId = 'yillik_abonelik';
 
-  // Firestore Collection Names
+  // Collection names
   static const String usersCollection = 'users';
   static const String productsCollection = 'products';
   static const String comparisonsCollection = 'comparisons';

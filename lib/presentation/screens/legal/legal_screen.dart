@@ -188,9 +188,10 @@ class _PrivacyPolicyContent extends StatelessWidget {
           title: '5. Third-Party Services',
           body:
               'Our application uses the following third-party services, each with their own privacy policies:\n\n'
-              '• Firebase (Google): Authentication, database, analytics, and crash reporting.\n'
+              '• Google Sign-In: Optional account authentication.\n'
+              '• PocketBase: Authentication and application database.\n'
               '• RevenueCat: Subscription management and payment processing.\n'
-              '• DeepSeek AI: AI-powered product analysis.\n'
+              '• Gemini / DeepSeek AI: AI-powered product analysis.\n'
               '• YouTube: Product review videos (subject to YouTube\'s Terms of Service).\n\n'
               'We do not sell your personal data to third parties.',
         ),
@@ -390,7 +391,7 @@ class _FaqContent extends StatelessWidget {
         const _FaqItem(
           question: 'Is my data safe?',
           answer:
-              'Yes. We use Firebase infrastructure with industry-standard encryption. Your personal data is never sold to third parties. '
+              'Yes. We use PocketBase-backed infrastructure with industry-standard encryption. Your personal data is never sold to third parties. '
               'We collect usage data only to improve your recommendations. You can request data deletion at any time.',
         ),
         const _FaqItem(

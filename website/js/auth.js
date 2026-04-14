@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   Compair — PocketBase Authentication (replaces Firebase Auth)
+   Compair — PocketBase Authentication
    ═══════════════════════════════════════════════════════════════ */
 
 let authMode = 'signin';

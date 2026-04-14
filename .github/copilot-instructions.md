@@ -23,7 +23,7 @@
 - **Proje:** Compair — Flutter AI Product Advisor uygulaması
 - **State Management:** Riverpod
 - **Routing:** GoRouter
-- **Backend:** Firebase (Firestore, Auth, Functions)
+- **Backend:** PocketBase
 - **AI:** Gemini / DeepSeek
 - **Search:** Algolia
 - **SDK:** Flutter ^3.10.4

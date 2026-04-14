@@ -960,8 +960,11 @@ class _LogoImageState extends State<_LogoImage> {
 
   void _buildUrls() {
     final domain = _domainOf(widget.service.website);
+    final logoUrl = widget.service.logo;
+    final isLegacyStorageLogo = logoUrl.contains('storage.googleapis.com') ||
+        logoUrl.contains('firebasestorage.googleapis.com');
     _urls = [
-      if (widget.service.logo.isNotEmpty) widget.service.logo,
+      if (logoUrl.isNotEmpty && !isLegacyStorageLogo) logoUrl,
       if (domain.isNotEmpty) ...[
         'https://logo.clearbit.com/$domain',
         'https://cdn.brandfetch.io/$domain/w/400/h/400',

@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  COMPAIR WEBSITE — PocketBase Client
-//  Replaces Firebase Firestore + Auth for public website
+//  Public website data/auth client backed by PocketBase
 // ═══════════════════════════════════════════════════════════════
 
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
