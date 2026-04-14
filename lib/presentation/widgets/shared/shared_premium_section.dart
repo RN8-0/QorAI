@@ -39,6 +39,12 @@ class SharedPremiumFeaturesSectionState
   bool _advisorUserCollapsed = false;
   bool _predictionUserCollapsed = false;
 
+  bool get _isTurkish => Localizations.localeOf(context).languageCode == 'tr';
+
+  String _txt({required String tr, required String en}) {
+    return _isTurkish ? tr : en;
+  }
+
   @override
   Widget build(BuildContext context) {
     final pid = widget.product.id;
@@ -59,12 +65,16 @@ class SharedPremiumFeaturesSectionState
     final predictionResult = predictionAsync.valueOrNull;
     final isLoadingPrediction = predictionAsync is AsyncLoading;
 
-    if (deepAnalysis != null && !_deepAnalysisExpanded && !_deepAnalysisUserCollapsed) {
+    if (deepAnalysis != null &&
+        !_deepAnalysisExpanded &&
+        !_deepAnalysisUserCollapsed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _deepAnalysisExpanded = true);
       });
     }
-    if (alternatives != null && !_alternativesExpanded && !_alternativesUserCollapsed) {
+    if (alternatives != null &&
+        !_alternativesExpanded &&
+        !_alternativesUserCollapsed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _alternativesExpanded = true);
       });
@@ -74,7 +84,9 @@ class SharedPremiumFeaturesSectionState
         if (mounted) setState(() => _advisorExpanded = true);
       });
     }
-    if (predictionResult != null && !_predictionExpanded && !_predictionUserCollapsed) {
+    if (predictionResult != null &&
+        !_predictionExpanded &&
+        !_predictionUserCollapsed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _predictionExpanded = true);
       });
@@ -87,13 +99,17 @@ class SharedPremiumFeaturesSectionState
         _buildCollapsibleHeader(
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Derin Analizi',
-          subtitle: context.l10n?.aiDeepAnalysisDesc ?? 'Kapsamlı AI destekli ürün değerlendirmesi',
+          subtitle:
+              context.l10n?.aiDeepAnalysisDesc ??
+              'Kapsamlı AI destekli ürün değerlendirmesi',
           gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
           isExpanded: _deepAnalysisExpanded,
           isLoading: isLoadingAnalysis,
           hasContent: deepAnalysis != null,
           onTap: _toggleDeepAnalysis,
-          expandedChild: deepAnalysis != null ? _buildDeepAnalysisVisual(deepAnalysis) : null,
+          expandedChild: deepAnalysis != null
+              ? _buildDeepAnalysisVisual(deepAnalysis)
+              : null,
         ),
         const SizedBox(height: 10),
 
@@ -101,41 +117,55 @@ class SharedPremiumFeaturesSectionState
         _buildCollapsibleHeader(
           icon: Icons.swap_horizontal_circle_rounded,
           title: context.l10n?.smartAlternatives ?? 'Akıllı Alternatifler',
-          subtitle: context.l10n?.smartAlternativesDesc ?? 'AI tarafından seçilmiş benzer ürünler',
+          subtitle:
+              context.l10n?.smartAlternativesDesc ??
+              'AI tarafından seçilmiş benzer ürünler',
           gradient: const [AppTheme.warning, Color(0xFFF97316)],
           isExpanded: _alternativesExpanded,
           isLoading: isLoadingAlternatives,
           hasContent: alternatives != null,
           onTap: _toggleAlternatives,
-          expandedChild: alternatives != null ? _buildAlternativesVisual(alternatives) : null,
+          expandedChild: alternatives != null
+              ? _buildAlternativesVisual(alternatives)
+              : null,
         ),
         const SizedBox(height: 10),
 
         // AI Product Advisor
         _buildCollapsibleHeader(
           icon: Icons.support_agent_rounded,
-          title: 'AI Ürün Danışmanı',
-          subtitle: 'İhtiyaçlarınıza özel satın alma tavsiyeleri',
+          title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
+          subtitle: _txt(
+            tr: 'Ihtiyaclariniza ozel satin alma tavsiyeleri',
+            en: 'Tailored buying advice for your needs',
+          ),
           gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
           isExpanded: _advisorExpanded,
           isLoading: isLoadingAdvisor,
           hasContent: advisorResult != null,
           onTap: _toggleAdvisor,
-          expandedChild: advisorResult != null ? _buildAdvisorVisual(advisorResult) : null,
+          expandedChild: advisorResult != null
+              ? _buildAdvisorVisual(advisorResult)
+              : null,
         ),
         const SizedBox(height: 10),
 
         // Price Prediction
         _buildCollapsibleHeader(
           icon: Icons.trending_down_rounded,
-          title: 'Fiyat Tahmini',
-          subtitle: 'AI destekli fiyat trendi analizi ve en iyi alım zamanı',
+          title: context.l10n?.pricePrediction ?? 'Price Prediction',
+          subtitle: _txt(
+            tr: 'AI destekli fiyat trendi analizi ve en iyi alim zamani',
+            en: 'AI-powered price trend analysis and best time to buy',
+          ),
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
           isExpanded: _predictionExpanded,
           isLoading: isLoadingPrediction,
           hasContent: predictionResult != null,
           onTap: _togglePrediction,
-          expandedChild: predictionResult != null ? _buildPredictionVisual(predictionResult) : null,
+          expandedChild: predictionResult != null
+              ? _buildPredictionVisual(predictionResult)
+              : null,
         ),
       ],
     );
@@ -161,41 +191,71 @@ class SharedPremiumFeaturesSectionState
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: gradient[0].withValues(alpha: 0.15)),
-          boxShadow: [BoxShadow(
-            color: gradient[0].withValues(alpha: 0.08),
-            blurRadius: 12, offset: const Offset(0, 4))]),
+          border: Border.all(color: gradient[0].withValues(alpha: 0.15)),
+          boxShadow: [
+            BoxShadow(
+              color: gradient[0].withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: gradient),
-                  borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: context.surfaceVariantColor, size: 20)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15, fontWeight: FontWeight.w700,
-                    color: context.textPrimary)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, color: context.textSecondary)),
-                ])),
-              if (isLoading)
-                const SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              else
-                Icon(isExpanded
-                    ? Icons.expand_less_rounded
-                    : Icons.expand_more_rounded,
-                  color: gradient[0]),
-            ]),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: gradient),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: context.surfaceVariantColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Icon(
+                    isExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: gradient[0],
+                  ),
+              ],
+            ),
             if (isExpanded && expandedChild != null) ...[
               const SizedBox(height: 14),
               expandedChild,
@@ -207,7 +267,8 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildDeepAnalysisVisual(DeepAnalysisResult r) {
-    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, AppTheme.premiumPurple);
+    if (r.rawFallback != null)
+      return _buildRichContent(r.rawFallback!, AppTheme.premiumPurple);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,29 +281,51 @@ class SharedPremiumFeaturesSectionState
               curve: Curves.easeOutCubic,
               builder: (context, value, _) {
                 final score = (value * 100).round();
-                final scoreColor = score >= 80 ? AppTheme.green500
-                    : score >= 60 ? AppTheme.amber500
+                final scoreColor = score >= 80
+                    ? AppTheme.green500
+                    : score >= 60
+                    ? AppTheme.amber500
                     : AppTheme.rose500;
                 return SizedBox(
-                  width: 100, height: 100,
-                  child: Stack(alignment: Alignment.center, children: [
-                    SizedBox(
-                      width: 100, height: 100,
-                      child: CircularProgressIndicator(
-                        value: value,
-                        strokeWidth: 8,
-                        backgroundColor: scoreColor.withValues(alpha: 0.12),
-                        valueColor: AlwaysStoppedAnimation(scoreColor),
-                        strokeCap: StrokeCap.round,
+                  width: 100,
+                  height: 100,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        height: 100,
+                        child: CircularProgressIndicator(
+                          value: value,
+                          strokeWidth: 8,
+                          backgroundColor: scoreColor.withValues(alpha: 0.12),
+                          valueColor: AlwaysStoppedAnimation(scoreColor),
+                          strokeCap: StrokeCap.round,
+                        ),
                       ),
-                    ),
-                    Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text('$score', style: GoogleFonts.plusJakartaSans(
-                        fontSize: 28, fontWeight: FontWeight.w800, color: scoreColor)),
-                      Text('/ 100', style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11, fontWeight: FontWeight.w500, color: context.textSecondary)),
-                    ]),
-                  ]),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '$score',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: scoreColor,
+                            ),
+                          ),
+                          Text(
+                            '/ 100',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -251,14 +334,22 @@ class SharedPremiumFeaturesSectionState
         ],
 
         if (r.strengths.isNotEmpty) ...[
-          _buildSectionLabel(Icons.trending_up_rounded, 'Güçlü Yönler', AppTheme.green500),
+          _buildSectionLabel(
+            Icons.trending_up_rounded,
+            _txt(tr: 'Guclu Yonler', en: 'Strengths'),
+            AppTheme.green500,
+          ),
           const SizedBox(height: 8),
           ...r.strengths.map((s) => _buildAttributeBar(s, AppTheme.green500)),
           const SizedBox(height: 14),
         ],
 
         if (r.weaknesses.isNotEmpty) ...[
-          _buildSectionLabel(Icons.trending_down_rounded, 'Zayıf Yönler', AppTheme.rose500),
+          _buildSectionLabel(
+            Icons.trending_down_rounded,
+            _txt(tr: 'Zayif Yonler', en: 'Weaknesses'),
+            AppTheme.rose500,
+          ),
           const SizedBox(height: 8),
           ...r.weaknesses.map((w) => _buildAttributeBar(w, AppTheme.rose500)),
           const SizedBox(height: 14),
@@ -269,20 +360,25 @@ class SharedPremiumFeaturesSectionState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (r.pros.isNotEmpty)
-                Expanded(child: _buildProConCard(
-                  icon: Icons.check_circle_rounded,
-                  title: 'Artılar',
-                  items: r.pros,
-                  color: AppTheme.green500,
-                )),
-              if (r.pros.isNotEmpty && r.cons.isNotEmpty) const SizedBox(width: 8),
+                Expanded(
+                  child: _buildProConCard(
+                    icon: Icons.check_circle_rounded,
+                    title: _txt(tr: 'Artilar', en: 'Pros'),
+                    items: r.pros,
+                    color: AppTheme.green500,
+                  ),
+                ),
+              if (r.pros.isNotEmpty && r.cons.isNotEmpty)
+                const SizedBox(width: 8),
               if (r.cons.isNotEmpty)
-                Expanded(child: _buildProConCard(
-                  icon: Icons.cancel_rounded,
-                  title: 'Eksiler',
-                  items: r.cons,
-                  color: AppTheme.rose500,
-                )),
+                Expanded(
+                  child: _buildProConCard(
+                    icon: Icons.cancel_rounded,
+                    title: _txt(tr: 'Eksiler', en: 'Cons'),
+                    items: r.cons,
+                    color: AppTheme.rose500,
+                  ),
+                ),
             ],
           ),
 
@@ -294,17 +390,29 @@ class SharedPremiumFeaturesSectionState
             decoration: BoxDecoration(
               color: AppTheme.premiumPurple.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.premiumPurple.withValues(alpha: 0.15)),
+              border: Border.all(
+                color: AppTheme.premiumPurple.withValues(alpha: 0.15),
+              ),
             ),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('💡', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 8),
-              Expanded(child: Text(r.verdict,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12.5, fontWeight: FontWeight.w500,
-                  color: context.textPrimary, height: 1.5,
-                  fontStyle: FontStyle.italic))),
-            ]),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('💡', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    r.verdict,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: context.textPrimary,
+                      height: 1.5,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ],
@@ -312,12 +420,20 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildSectionLabel(IconData icon, String label, Color color) {
-    return Row(children: [
-      Icon(icon, size: 16, color: color),
-      const SizedBox(width: 6),
-      Text(label, style: GoogleFonts.plusJakartaSans(
-        fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-    ]);
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildAttributeBar(AnalysisAttribute attr, Color color) {
@@ -326,13 +442,28 @@ class SharedPremiumFeaturesSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Expanded(child: Text(attr.name,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary))),
-            Text('${attr.score}', style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, fontWeight: FontWeight.w800, color: color)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  attr.name,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                '${attr.score}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: (attr.score / 100).clamp(0, 1)),
@@ -340,19 +471,37 @@ class SharedPremiumFeaturesSectionState
             curve: Curves.easeOutCubic,
             builder: (_, v, __) => ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: SizedBox(height: 6, child: Stack(children: [
-                Container(color: color.withValues(alpha: 0.1)),
-                FractionallySizedBox(widthFactor: v,
-                  child: Container(decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [color.withValues(alpha: 0.5), color]),
-                    borderRadius: BorderRadius.circular(4)))),
-              ])),
+              child: SizedBox(
+                height: 6,
+                child: Stack(
+                  children: [
+                    Container(color: color.withValues(alpha: 0.1)),
+                    FractionallySizedBox(
+                      widthFactor: v,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [color.withValues(alpha: 0.5), color],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           if (attr.detail.isNotEmpty) ...[
             const SizedBox(height: 2),
-            Text(attr.detail, style: GoogleFonts.plusJakartaSans(
-              fontSize: 11, color: context.textSecondary, height: 1.3)),
+            Text(
+              attr.detail,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: context.textSecondary,
+                height: 1.3,
+              ),
+            ),
           ],
         ],
       ),
@@ -375,29 +524,58 @@ class SharedPremiumFeaturesSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(title, style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-          ]),
-          const SizedBox(height: 6),
-          ...items.map((item) => Padding(
-            padding: const EdgeInsets.only(bottom: 3),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('•', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
               const SizedBox(width: 4),
-              Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
-                fontSize: 11, color: context.textPrimary, height: 1.3))),
-            ]),
-          )),
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '•',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: context.textPrimary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildAlternativesVisual(AlternativesResult r) {
-    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, AppTheme.warning);
+    if (r.rawFallback != null)
+      return _buildRichContent(r.rawFallback!, AppTheme.warning);
     if (r.alternatives.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
@@ -411,13 +589,13 @@ class SharedPremiumFeaturesSectionState
           final priceColor = alt.priceComparison.toLowerCase().contains('cheap')
               ? AppTheme.green500
               : alt.priceComparison.toLowerCase().contains('pric')
-                  ? AppTheme.rose500
-                  : AppTheme.amber500;
+              ? AppTheme.rose500
+              : AppTheme.amber500;
           final priceIcon = alt.priceComparison.toLowerCase().contains('cheap')
               ? Icons.arrow_downward_rounded
               : alt.priceComparison.toLowerCase().contains('pric')
-                  ? Icons.arrow_upward_rounded
-                  : Icons.remove_rounded;
+              ? Icons.arrow_upward_rounded
+              : Icons.remove_rounded;
 
           return Container(
             width: 220,
@@ -425,63 +603,118 @@ class SharedPremiumFeaturesSectionState
             decoration: BoxDecoration(
               color: context.surfaceVariantColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.warning.withValues(alpha: 0.2)),
-              boxShadow: [BoxShadow(
-                color: AppTheme.warning.withValues(alpha: 0.06),
-                blurRadius: 8, offset: const Offset(0, 2))],
+              border: Border.all(
+                color: AppTheme.warning.withValues(alpha: 0.2),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.warning.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Expanded(child: Text(alt.name,
-                    maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12.5, fontWeight: FontWeight.w700,
-                      color: context.textPrimary, height: 1.3))),
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: priceColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(priceIcon, size: 10, color: priceColor),
-                      const SizedBox(width: 2),
-                      Text(alt.priceComparison, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9, fontWeight: FontWeight.w700, color: priceColor)),
-                    ]),
-                  ),
-                ]),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        alt.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: priceColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(priceIcon, size: 10, color: priceColor),
+                          const SizedBox(width: 2),
+                          Text(
+                            alt.priceComparison,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: priceColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 if (alt.advantage.isNotEmpty)
-                  _buildAltInfoRow(Icons.check_circle_outline_rounded, alt.advantage, AppTheme.green500),
+                  _buildAltInfoRow(
+                    Icons.check_circle_outline_rounded,
+                    alt.advantage,
+                    AppTheme.green500,
+                  ),
                 const SizedBox(height: 4),
                 if (alt.tradeoff.isNotEmpty)
-                  _buildAltInfoRow(Icons.warning_amber_rounded, alt.tradeoff, AppTheme.amber500),
+                  _buildAltInfoRow(
+                    Icons.warning_amber_rounded,
+                    alt.tradeoff,
+                    AppTheme.amber500,
+                  ),
                 const Spacer(),
                 if (alt.whyBetter.isNotEmpty)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        AppTheme.warning.withValues(alpha: 0.1),
-                        const Color(0xFFF97316).withValues(alpha: 0.06),
-                      ]),
-                      borderRadius: BorderRadius.circular(6)),
-                    child: Text('⭐ ${alt.whyBetter}',
-                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.warning.withValues(alpha: 0.1),
+                          const Color(0xFFF97316).withValues(alpha: 0.06),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '⭐ ${alt.whyBetter}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10, fontWeight: FontWeight.w600,
-                        color: context.textPrimary, height: 1.3)),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                        height: 1.3,
+                      ),
+                    ),
                   ),
                 if (alt.bestFor.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text('🎯 ${alt.bestFor}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  Text(
+                    '🎯 ${alt.bestFor}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10, color: context.textSecondary, fontWeight: FontWeight.w500)),
+                      fontSize: 10,
+                      color: context.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -492,54 +725,100 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildAltInfoRow(IconData icon, String text, Color color) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, size: 13, color: color),
-      const SizedBox(width: 4),
-      Expanded(child: Text(text,
-        maxLines: 2, overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 11, color: context.textPrimary, height: 1.3))),
-    ]);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: context.textPrimary,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildAdvisorVisual(AdvisorResult r) {
-    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, const Color(0xFF3B82F6));
+    if (r.rawFallback != null)
+      return _buildRichContent(r.rawFallback!, const Color(0xFF3B82F6));
 
-    final ratingColor = r.valueRating >= 7 ? AppTheme.green500
-        : r.valueRating >= 5 ? AppTheme.amber500 : AppTheme.rose500;
+    final ratingColor = r.valueRating >= 7
+        ? AppTheme.green500
+        : r.valueRating >= 5
+        ? AppTheme.amber500
+        : AppTheme.rose500;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (r.valueRating > 0) ...[
           Center(
-            child: Column(children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: r.valueRating / 10),
-                duration: const Duration(milliseconds: 1000),
-                curve: Curves.easeOutCubic,
-                builder: (_, v, __) {
-                  final stars = (v * 10).clamp(0, 10);
-                  return Row(mainAxisSize: MainAxisSize.min, children: [
-                    ...List.generate(5, (i) {
-                      final starVal = stars - (i * 2);
-                      if (starVal >= 2) return Icon(Icons.star_rounded, size: 24, color: ratingColor);
-                      if (starVal >= 1) return Icon(Icons.star_half_rounded, size: 24, color: ratingColor);
-                      return Icon(Icons.star_outline_rounded, size: 24, color: ratingColor.withValues(alpha: 0.3));
-                    }),
-                    const SizedBox(width: 8),
-                    Text('${r.valueRating.toStringAsFixed(1)}/10', style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16, fontWeight: FontWeight.w800, color: ratingColor)),
-                  ]);
-                },
-              ),
-              if (r.ratingExplanation.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(r.ratingExplanation, textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, color: context.textSecondary, fontStyle: FontStyle.italic)),
+            child: Column(
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: r.valueRating / 10),
+                  duration: const Duration(milliseconds: 1000),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, v, __) {
+                    final stars = (v * 10).clamp(0, 10);
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...List.generate(5, (i) {
+                          final starVal = stars - (i * 2);
+                          if (starVal >= 2)
+                            return Icon(
+                              Icons.star_rounded,
+                              size: 24,
+                              color: ratingColor,
+                            );
+                          if (starVal >= 1)
+                            return Icon(
+                              Icons.star_half_rounded,
+                              size: 24,
+                              color: ratingColor,
+                            );
+                          return Icon(
+                            Icons.star_outline_rounded,
+                            size: 24,
+                            color: ratingColor.withValues(alpha: 0.3),
+                          );
+                        }),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${r.valueRating.toStringAsFixed(1)}/10',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: ratingColor,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                if (r.ratingExplanation.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    r.ratingExplanation,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: context.textSecondary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ],
-            ]),
+            ),
           ),
           const SizedBox(height: 14),
         ],
@@ -547,7 +826,7 @@ class SharedPremiumFeaturesSectionState
         if (r.whoShouldBuy.isNotEmpty)
           _buildAdvisorBox(
             icon: Icons.person_add_rounded,
-            title: 'Kimler Almalı',
+            title: _txt(tr: 'Kimler Almali', en: 'Who Should Buy'),
             text: r.whoShouldBuy,
             color: AppTheme.green500,
           ),
@@ -556,30 +835,60 @@ class SharedPremiumFeaturesSectionState
         if (r.whoShouldAvoid.isNotEmpty)
           _buildAdvisorBox(
             icon: Icons.person_off_rounded,
-            title: 'Kimler Almamalı',
+            title: _txt(tr: 'Kimler Almamali', en: 'Who Should Avoid'),
             text: r.whoShouldAvoid,
             color: AppTheme.rose500,
           ),
 
         if (r.reasonsToBuy.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _buildSectionLabel(Icons.thumb_up_rounded, 'Alma Nedenleri', AppTheme.green500),
+          _buildSectionLabel(
+            Icons.thumb_up_rounded,
+            _txt(tr: 'Alma Nedenleri', en: 'Reasons to Buy'),
+            AppTheme.green500,
+          ),
           const SizedBox(height: 6),
-          ...r.reasonsToBuy.map((reason) => _buildReasonItem(reason, AppTheme.green500, Icons.add_circle_rounded)),
+          ...r.reasonsToBuy.map(
+            (reason) => _buildReasonItem(
+              reason,
+              AppTheme.green500,
+              Icons.add_circle_rounded,
+            ),
+          ),
         ],
 
         if (r.reasonsToSkip.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _buildSectionLabel(Icons.thumb_down_rounded, 'Almama Nedenleri', AppTheme.rose500),
+          _buildSectionLabel(
+            Icons.thumb_down_rounded,
+            _txt(tr: 'Almama Nedenleri', en: 'Reasons to Skip'),
+            AppTheme.rose500,
+          ),
           const SizedBox(height: 6),
-          ...r.reasonsToSkip.map((reason) => _buildReasonItem(reason, AppTheme.rose500, Icons.remove_circle_rounded)),
+          ...r.reasonsToSkip.map(
+            (reason) => _buildReasonItem(
+              reason,
+              AppTheme.rose500,
+              Icons.remove_circle_rounded,
+            ),
+          ),
         ],
 
         if (r.proTips.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _buildSectionLabel(Icons.lightbulb_rounded, 'Profesyonel İpuçları', AppTheme.amber500),
+          _buildSectionLabel(
+            Icons.lightbulb_rounded,
+            _txt(tr: 'Profesyonel Ipuclari', en: 'Pro Tips'),
+            AppTheme.amber500,
+          ),
           const SizedBox(height: 6),
-          ...r.proTips.map((tip) => _buildReasonItem(tip, AppTheme.amber500, Icons.auto_awesome_rounded)),
+          ...r.proTips.map(
+            (tip) => _buildReasonItem(
+              tip,
+              AppTheme.amber500,
+              Icons.auto_awesome_rounded,
+            ),
+          ),
         ],
       ],
     );
@@ -602,15 +911,29 @@ class SharedPremiumFeaturesSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(title, style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-          ]),
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
-          Text(text, style: GoogleFonts.plusJakartaSans(
-            fontSize: 12, color: context.textPrimary, height: 1.4)),
+          Text(
+            text,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              color: context.textPrimary,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
@@ -619,89 +942,155 @@ class SharedPremiumFeaturesSectionState
   Widget _buildReasonItem(String text, Color color, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 6),
-        Expanded(child: Text(text, style: GoogleFonts.plusJakartaSans(
-          fontSize: 12, color: context.textPrimary, height: 1.3))),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: context.textPrimary,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPredictionVisual(PredictionResult r) {
-    if (r.rawFallback != null) return _buildRichContent(r.rawFallback!, const Color(0xFF10B981));
+    if (r.rawFallback != null)
+      return _buildRichContent(r.rawFallback!, const Color(0xFF10B981));
 
     final trendLower = r.trend.toLowerCase();
-    final trendColor = trendLower == 'down' ? AppTheme.green500
-        : trendLower == 'up' ? AppTheme.rose500 : AppTheme.amber500;
-    final trendIcon = trendLower == 'down' ? Icons.trending_down_rounded
-        : trendLower == 'up' ? Icons.trending_up_rounded : Icons.trending_flat_rounded;
-    final trendLabel = trendLower == 'down' ? 'Fiyat Düşüyor'
-        : trendLower == 'up' ? 'Fiyat Yükseliyor'
-        : 'Fiyat Sabit';
+    final trendColor = trendLower == 'down'
+        ? AppTheme.green500
+        : trendLower == 'up'
+        ? AppTheme.rose500
+        : AppTheme.amber500;
+    final trendIcon = trendLower == 'down'
+        ? Icons.trending_down_rounded
+        : trendLower == 'up'
+        ? Icons.trending_up_rounded
+        : Icons.trending_flat_rounded;
+    final trendLabel = trendLower == 'down'
+        ? _txt(tr: 'Fiyat Dusuyor', en: 'Price Falling')
+        : trendLower == 'up'
+        ? _txt(tr: 'Fiyat Yukseliyor', en: 'Price Rising')
+        : _txt(tr: 'Fiyat Sabit', en: 'Price Stable');
 
     final isBuy = r.buyOrWait.toLowerCase().contains('buy');
     final decisionColor = isBuy ? AppTheme.green500 : AppTheme.amber500;
-    final decisionIcon = isBuy ? Icons.shopping_cart_rounded : Icons.hourglass_top_rounded;
-    final decisionLabel = isBuy ? 'Şimdi Al' : 'Bekle';
+    final decisionIcon = isBuy
+        ? Icons.shopping_cart_rounded
+        : Icons.hourglass_top_rounded;
+    final decisionLabel = isBuy
+        ? _txt(tr: 'Simdi Al', en: 'Buy Now')
+        : _txt(tr: 'Bekle', en: 'Wait');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: trendColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: trendColor.withValues(alpha: 0.2)),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: trendColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: trendColor.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(trendIcon, size: 28, color: trendColor),
+                    const SizedBox(height: 4),
+                    Text(
+                      trendLabel,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: trendColor,
+                      ),
+                    ),
+                    if (r.trendPercentage > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '${trendLower == 'down'
+                            ? '-'
+                            : trendLower == 'up'
+                            ? '+'
+                            : '~'}${r.trendPercentage}%',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: trendColor,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              child: Column(children: [
-                Icon(trendIcon, size: 28, color: trendColor),
-                const SizedBox(height: 4),
-                Text(trendLabel, textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, fontWeight: FontWeight.w700, color: trendColor)),
-                if (r.trendPercentage > 0) ...[
-                  const SizedBox(height: 2),
-                  Text('${trendLower == 'down' ? '-' : trendLower == 'up' ? '+' : '~'}${r.trendPercentage}%',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18, fontWeight: FontWeight.w800, color: trendColor)),
-                ],
-              ]),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  decisionColor.withValues(alpha: 0.12),
-                  decisionColor.withValues(alpha: 0.06),
-                ]),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: decisionColor.withValues(alpha: 0.3)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      decisionColor.withValues(alpha: 0.12),
+                      decisionColor.withValues(alpha: 0.06),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: decisionColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(decisionIcon, size: 28, color: decisionColor),
+                    const SizedBox(height: 4),
+                    Text(
+                      decisionLabel,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: decisionColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(children: [
-                Icon(decisionIcon, size: 28, color: decisionColor),
-                const SizedBox(height: 4),
-                Text(decisionLabel,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w800, color: decisionColor)),
-              ]),
             ),
-          ),
-        ]),
+          ],
+        ),
 
         if (r.trendPercentage > 0) ...[
           const SizedBox(height: 16),
-          Text('Tahmini Fiyat Trendi (6 Ay)',
+          Text(
+            _txt(
+              tr: 'Tahmini Fiyat Trendi (6 Ay)',
+              en: 'Estimated Price Trend (6 Months)',
+            ),
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary)),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: context.textSecondary,
+            ),
+          ),
           const SizedBox(height: 8),
-          _buildPriceTrendChart(r.trendPercentage.toDouble(), trendLower, trendColor),
+          _buildPriceTrendChart(
+            r.trendPercentage.toDouble(),
+            trendLower,
+            trendColor,
+          ),
           const SizedBox(height: 4),
         ],
 
@@ -712,34 +1101,64 @@ class SharedPremiumFeaturesSectionState
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: trendColor.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8)),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('💰', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 6),
-              Expanded(child: Text(r.expectedDrop,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12, color: context.textPrimary, height: 1.4))),
-            ]),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('💰', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    r.expectedDrop,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: context.textPrimary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
 
         if (r.bestTimeToBuy.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.schedule_rounded, size: 14, color: const Color(0xFF06B6D4)),
-            const SizedBox(width: 6),
-            Expanded(child: Text(r.bestTimeToBuy,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: context.textPrimary, height: 1.3))),
-          ]),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.schedule_rounded,
+                size: 14,
+                color: const Color(0xFF06B6D4),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  r.bestTimeToBuy,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: context.textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
 
         if (r.reasoning.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Text(r.reasoning,
+          Text(
+            r.reasoning,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 11.5, color: context.textSecondary,
-              height: 1.4, fontStyle: FontStyle.italic)),
+              fontSize: 11.5,
+              color: context.textSecondary,
+              height: 1.4,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
         ],
       ],
     );
@@ -748,7 +1167,11 @@ class SharedPremiumFeaturesSectionState
   /// Ham JSON veya fallback metni hiçbir zaman kullanıcıya JSON formatında göstermez.
   /// JSON ise parse edip anlamlı kartlara dönüştürür, değilse temiz metin olarak render eder.
   /// fl_chart ile basit fiyat trend grafiği (6 aylık projeksiyon)
-  Widget _buildPriceTrendChart(double trendPct, String direction, Color trendColor) {
+  Widget _buildPriceTrendChart(
+    double trendPct,
+    String direction,
+    Color trendColor,
+  ) {
     // 100 baz fiyat kabul edip trendi uygula
     final isDown = direction == 'down';
     final isUp = direction == 'up';
@@ -766,8 +1189,11 @@ class SharedPremiumFeaturesSectionState
       return FlSpot(i.toDouble(), y);
     });
 
-    final minY = (spots.map((s) => s.y).reduce((a, b) => a < b ? a : b) - 5).clamp(0, 9999).toDouble();
-    final maxY = (spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) + 5).toDouble();
+    final minY = (spots.map((s) => s.y).reduce((a, b) => a < b ? a : b) - 5)
+        .clamp(0, 9999)
+        .toDouble();
+    final maxY = (spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) + 5)
+        .toDouble();
 
     return SizedBox(
       height: 110,
@@ -786,19 +1212,33 @@ class SharedPremiumFeaturesSectionState
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 interval: 1,
                 getTitlesWidget: (val, _) {
-                  const months = ['Şu an', '1A', '2A', '3A', '4A', '5A', '6A'];
+                  final months = _isTurkish
+                      ? const ['Su an', '1A', '2A', '3A', '4A', '5A', '6A']
+                      : const ['Now', '1M', '2M', '3M', '4M', '5M', '6M'];
                   final idx = val.toInt();
-                  if (idx < 0 || idx >= months.length) return const SizedBox.shrink();
-                  return Text(months[idx], style: GoogleFonts.plusJakartaSans(
-                    fontSize: 9, color: context.textSecondary));
+                  if (idx < 0 || idx >= months.length)
+                    return const SizedBox.shrink();
+                  return Text(
+                    months[idx],
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9,
+                      color: context.textSecondary,
+                    ),
+                  );
                 },
               ),
             ),
@@ -815,7 +1255,12 @@ class SharedPremiumFeaturesSectionState
                 show: true,
                 getDotPainter: (spot, pct, bar, idx) {
                   if (idx != 0 && idx != spots.length - 1) {
-                    return FlDotCirclePainter(radius: 0, color: Colors.transparent, strokeColor: Colors.transparent, strokeWidth: 0);
+                    return FlDotCirclePainter(
+                      radius: 0,
+                      color: Colors.transparent,
+                      strokeColor: Colors.transparent,
+                      strokeWidth: 0,
+                    );
                   }
                   return FlDotCirclePainter(
                     radius: 4,
@@ -867,19 +1312,56 @@ class SharedPremiumFeaturesSectionState
   Widget _buildJsonVisualCards(dynamic data, Color accentColor) {
     if (data is Map<String, dynamic>) {
       // Bilinen alanları çıkar
-      final List<String> pros = _extractStringList(data, ['pros', 'strengths', 'artılar', 'güçlüYönler']);
-      final List<String> cons = _extractStringList(data, ['cons', 'weaknesses', 'eksiler', 'zayıfYönler']);
-      final String verdict = _extractString(data, ['verdict', 'karar', 'summary', 'özet', 'conclusion']);
-      final String text = _extractString(data, ['text', 'description', 'analysis', 'content', 'message', 'result']);
+      final List<String> pros = _extractStringList(data, [
+        'pros',
+        'strengths',
+        'artılar',
+        'güçlüYönler',
+      ]);
+      final List<String> cons = _extractStringList(data, [
+        'cons',
+        'weaknesses',
+        'eksiler',
+        'zayıfYönler',
+      ]);
+      final String verdict = _extractString(data, [
+        'verdict',
+        'karar',
+        'summary',
+        'özet',
+        'conclusion',
+      ]);
+      final String text = _extractString(data, [
+        'text',
+        'description',
+        'analysis',
+        'content',
+        'message',
+        'result',
+      ]);
 
       final widgets = <Widget>[];
 
       if (pros.isNotEmpty) {
-        widgets.add(_buildSimpleListCard(Icons.check_circle_rounded, 'Artılar', pros, AppTheme.green500));
+        widgets.add(
+          _buildSimpleListCard(
+            Icons.check_circle_rounded,
+            'Artılar',
+            pros,
+            AppTheme.green500,
+          ),
+        );
         widgets.add(const SizedBox(height: 8));
       }
       if (cons.isNotEmpty) {
-        widgets.add(_buildSimpleListCard(Icons.cancel_rounded, 'Eksiler', cons, AppTheme.rose500));
+        widgets.add(
+          _buildSimpleListCard(
+            Icons.cancel_rounded,
+            'Eksiler',
+            cons,
+            AppTheme.rose500,
+          ),
+        );
         widgets.add(const SizedBox(height: 8));
       }
       if (verdict.isNotEmpty) {
@@ -902,28 +1384,55 @@ class SharedPremiumFeaturesSectionState
         return const SizedBox.shrink();
       }
 
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: widgets,
+      );
     }
 
     if (data is List) {
-      final items = data.map((e) {
-        if (e is String) return e;
-        if (e is Map<String, dynamic>) {
-          return _extractString(e, ['name', 'title', 'text', 'description', 'item'])
-              .isNotEmpty
-              ? _extractString(e, ['name', 'title', 'text', 'description', 'item'])
-              : e.values.whereType<String>().firstOrNull ?? '';
-        }
-        return e.toString();
-      }).where((s) => s.isNotEmpty).toList();
+      final items = data
+          .map((e) {
+            if (e is String) return e;
+            if (e is Map<String, dynamic>) {
+              return _extractString(e, [
+                    'name',
+                    'title',
+                    'text',
+                    'description',
+                    'item',
+                  ]).isNotEmpty
+                  ? _extractString(e, [
+                      'name',
+                      'title',
+                      'text',
+                      'description',
+                      'item',
+                    ])
+                  : e.values.whereType<String>().firstOrNull ?? '';
+            }
+            return e.toString();
+          })
+          .where((s) => s.isNotEmpty)
+          .toList();
 
-      return _buildSimpleListCard(Icons.info_outline_rounded, 'Analiz', items, accentColor);
+      return _buildSimpleListCard(
+        Icons.info_outline_rounded,
+        'Analiz',
+        items,
+        accentColor,
+      );
     }
 
     return const SizedBox.shrink();
   }
 
-  Widget _buildSimpleListCard(IconData icon, String title, List<String> items, Color color) {
+  Widget _buildSimpleListCard(
+    IconData icon,
+    String title,
+    List<String> items,
+    Color color,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -935,22 +1444,43 @@ class SharedPremiumFeaturesSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Text(title, style: GoogleFonts.plusJakartaSans(
-              fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-          ]),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
-          ...items.map((item) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.arrow_right_rounded, size: 16, color: color),
-              const SizedBox(width: 4),
-              Expanded(child: Text(item, style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: context.textPrimary, height: 1.3))),
-            ]),
-          )),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.arrow_right_rounded, size: 16, color: color),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: context.textPrimary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -965,25 +1495,50 @@ class SharedPremiumFeaturesSectionState
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('💡', style: TextStyle(fontSize: 16)),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: GoogleFonts.plusJakartaSans(
-          fontSize: 12.5, fontWeight: FontWeight.w500,
-          color: context.textPrimary, height: 1.5, fontStyle: FontStyle.italic))),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('💡', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: context.textPrimary,
+                height: 1.5,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildCleanTextContent(String text, Color accentColor) {
-    final paragraphs = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final paragraphs = text
+        .split('\n')
+        .where((l) => l.trim().isNotEmpty)
+        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: paragraphs.map((p) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(p.trim(), style: GoogleFonts.plusJakartaSans(
-          fontSize: 13, height: 1.6, color: context.textPrimary)),
-      )).toList(),
+      children: paragraphs
+          .map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                p.trim(),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  height: 1.6,
+                  color: context.textPrimary,
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -1001,14 +1556,19 @@ class SharedPremiumFeaturesSectionState
     return s;
   }
 
-  static List<String> _extractStringList(Map<String, dynamic> map, List<String> keys) {
+  static List<String> _extractStringList(
+    Map<String, dynamic> map,
+    List<String> keys,
+  ) {
     for (final key in keys) {
       final val = map[key];
       if (val is List) return val.whereType<String>().toList();
     }
     // Case-insensitive search
     for (final key in keys) {
-      final entry = map.entries.where((e) => e.key.toLowerCase() == key.toLowerCase()).firstOrNull;
+      final entry = map.entries
+          .where((e) => e.key.toLowerCase() == key.toLowerCase())
+          .firstOrNull;
       if (entry != null && entry.value is List) {
         return (entry.value as List).whereType<String>().toList();
       }
@@ -1022,8 +1582,12 @@ class SharedPremiumFeaturesSectionState
       if (val is String && val.isNotEmpty) return val;
     }
     for (final key in keys) {
-      final entry = map.entries.where((e) => e.key.toLowerCase() == key.toLowerCase()).firstOrNull;
-      if (entry != null && entry.value is String && (entry.value as String).isNotEmpty) {
+      final entry = map.entries
+          .where((e) => e.key.toLowerCase() == key.toLowerCase())
+          .firstOrNull;
+      if (entry != null &&
+          entry.value is String &&
+          (entry.value as String).isNotEmpty) {
         return entry.value as String;
       }
     }
@@ -1040,9 +1604,13 @@ class SharedPremiumFeaturesSectionState
       matchReason = matchResult.reason;
     }
     final displayScore = matchScore != null ? '$matchScore%' : '--';
-    final matchColor = matchScore == null ? AppTheme.premiumPurple :
-        matchScore >= 80 ? AppTheme.green500 :
-        matchScore >= 60 ? AppTheme.amber500 : AppTheme.rose500;
+    final matchColor = matchScore == null
+        ? AppTheme.premiumPurple
+        : matchScore >= 80
+        ? AppTheme.green500
+        : matchScore >= 60
+        ? AppTheme.amber500
+        : AppTheme.rose500;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1054,36 +1622,61 @@ class SharedPremiumFeaturesSectionState
             const Color(0xFFEC4899).withValues(alpha: 0.06),
           ],
           begin: Alignment.topLeft,
-          end: Alignment.bottomRight),
-        border: Border.all(
-          color: matchColor.withValues(alpha: 0.15))),
-      child: Row(children: [
-        Container(
-          width: 56, height: 56,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [matchColor, const Color(0xFFEC4899)])),
-          child: Center(child: Text(
-            displayScore,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 18, fontWeight: FontWeight.w900,
-              color: context.surfaceVariantColor))),
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(width: 14),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(context.l10n?.personalizedMatch ?? 'Kişisel Eşleşme', style: GoogleFonts.plusJakartaSans(
-              fontSize: 15, fontWeight: FontWeight.w700,
-              color: context.textPrimary)),
-            const SizedBox(height: 4),
-            Text(matchReason ?? (context.l10n?.basedOnBehavior ?? 'Göz atma geçmişinize ve tercihlerinize göre'),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: context.textSecondary,
-                height: 1.4)),
-          ])),
-      ]),
+        border: Border.all(color: matchColor.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [matchColor, const Color(0xFFEC4899)],
+              ),
+            ),
+            child: Center(
+              child: Text(
+                displayScore,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: context.surfaceVariantColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n?.personalizedMatch ?? 'Kişisel Eşleşme',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  matchReason ??
+                      (context.l10n?.basedOnBehavior ??
+                          'Göz atma geçmişinize ve tercihlerinize göre'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: context.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1100,7 +1693,8 @@ class SharedPremiumFeaturesSectionState
       _deepAnalysisUserCollapsed = false;
     });
     final lang = Localizations.localeOf(context).languageCode;
-    ref.read(deepAnalysisCacheProvider(widget.product.id).notifier)
+    ref
+        .read(deepAnalysisCacheProvider(widget.product.id).notifier)
         .startAnalysis(
           widget.product.name,
           lang,
@@ -1122,7 +1716,8 @@ class SharedPremiumFeaturesSectionState
       _alternativesUserCollapsed = false;
     });
     final lang = Localizations.localeOf(context).languageCode;
-    ref.read(alternativesCacheProvider(widget.product.id).notifier)
+    ref
+        .read(alternativesCacheProvider(widget.product.id).notifier)
         .startQuery(widget.product.name, widget.product.category, lang);
   }
 
@@ -1141,10 +1736,16 @@ class SharedPremiumFeaturesSectionState
     final lang = Localizations.localeOf(context).languageCode;
     final country = ref.read(selectedCountryProvider);
     final currency = ref.read(currencyProvider);
-    final priceVal = widget.product.getPriceForCountry(country)
-        ?? (widget.product.prices.isNotEmpty ? widget.product.prices.values.first : 0.0);
-    final price = priceVal > 0 ? AppUtils.formatCurrency(priceVal, currency) : 'unknown price';
-    ref.read(advisorCacheProvider(widget.product.id).notifier)
+    final priceVal =
+        widget.product.getPriceForCountry(country) ??
+        (widget.product.prices.isNotEmpty
+            ? widget.product.prices.values.first
+            : 0.0);
+    final price = priceVal > 0
+        ? AppUtils.formatCurrency(priceVal, currency)
+        : 'unknown price';
+    ref
+        .read(advisorCacheProvider(widget.product.id).notifier)
         .startQuery(widget.product.name, widget.product.category, price, lang);
   }
 
@@ -1163,10 +1764,16 @@ class SharedPremiumFeaturesSectionState
     final lang = Localizations.localeOf(context).languageCode;
     final country = ref.read(selectedCountryProvider);
     final currency = ref.read(currencyProvider);
-    final priceVal = widget.product.getPriceForCountry(country)
-        ?? (widget.product.prices.isNotEmpty ? widget.product.prices.values.first : 0.0);
-    final price = priceVal > 0 ? AppUtils.formatCurrency(priceVal, currency) : 'unknown price';
-    ref.read(predictionCacheProvider(widget.product.id).notifier)
+    final priceVal =
+        widget.product.getPriceForCountry(country) ??
+        (widget.product.prices.isNotEmpty
+            ? widget.product.prices.values.first
+            : 0.0);
+    final price = priceVal > 0
+        ? AppUtils.formatCurrency(priceVal, currency)
+        : 'unknown price';
+    ref
+        .read(predictionCacheProvider(widget.product.id).notifier)
         .startQuery(widget.product.name, widget.product.category, price, lang);
   }
 }

@@ -21,19 +21,22 @@ import 'package:compair/services/cache_service.dart';
 class GeminiService implements AIService {
   final Dio _dio;
   final CacheService _cacheService;
+  DateTime? _preferFallbackUntil;
 
   // All Gemini calls now go through the PocketBase proxy hook
   // (pb_hooks/gemini.pb.js). The API key lives only on the server —
   // clients never see it.
   static const _proxyUrl = '$kPbBaseUrl/api/ai/gemini';
-  static const _model = 'gemini-2.5-flash';
+  static const _primaryModel = 'gemini-2.5-flash';
+  static const List<String> _fallbackModels = ['gemini-2.5-flash-lite'];
 
   GeminiService({
     required Dio dio,
     required CacheService cacheService,
-    @Deprecated('No longer used — key is server-side via PB proxy') String? apiKey,
-  })  : _dio = dio,
-        _cacheService = cacheService;
+    @Deprecated('No longer used — key is server-side via PB proxy')
+    String? apiKey,
+  }) : _dio = dio,
+       _cacheService = cacheService;
 
   // ─────────────────────────────────────────────────────────────────────────
   //  PUBLIC API — implements [AIService]
@@ -56,8 +59,11 @@ class GeminiService implements AIService {
       }),
     );
 
-    await _cacheService.set(cacheKey, response,
-        duration: AppConstants.productCacheDuration);
+    await _cacheService.set(
+      cacheKey,
+      response,
+      duration: AppConstants.productCacheDuration,
+    );
     return _parseComparisonResult(response);
   }
 
@@ -70,7 +76,8 @@ class GeminiService implements AIService {
     final lang = req.userProfile['language'] as String? ?? 'en';
     final langName = _languageName(lang);
     final response = await _jsonRequest(
-      system: 'You are Compair AI recommendation engine. '
+      system:
+          'You are Compair AI recommendation engine. '
           'Suggest the best products based on the user profile. '
           'Write the "reason" field in $langName. '
           'Return JSON: {"recommendations":[{"productId":"…","score":0-100,"reason":"…"}]}',
@@ -82,14 +89,16 @@ class GeminiService implements AIService {
       }),
     );
 
-    await _cacheService.set(cacheKey, response,
-        duration: AppConstants.trendCacheDuration);
+    await _cacheService.set(
+      cacheKey,
+      response,
+      duration: AppConstants.trendCacheDuration,
+    );
     return _parseRecommendationResult(response);
   }
 
   @override
-  Future<LinkAnalysisResult> analyzeLink(
-      String url, UserEntity profile) async {
+  Future<LinkAnalysisResult> analyzeLink(String url, UserEntity profile) async {
     debugPrint('[Gemini] analyzeLink called for: $url');
     final response = await _jsonRequest(
       system: _linkAnalysisSystemPrompt(profile.language),
@@ -125,7 +134,8 @@ class GeminiService implements AIService {
   @override
   Future<double> calculateScore(ScoreRequest req) async {
     final response = await _jsonRequest(
-      system: 'Calculate a product compatibility score (0-100) for the given '
+      system:
+          'Calculate a product compatibility score (0-100) for the given '
           'user profile. Return JSON: {"score": <number>}',
       user: jsonEncode({
         'product': req.productData,
@@ -154,24 +164,25 @@ class GeminiService implements AIService {
   ) async {
     final currentYear = DateTime.now().year;
 
-    final contents = messages.map((m) => {
-          'role': m['role'] == 'user' ? 'user' : 'model',
-          'parts': [
-            {'text': m['text'] ?? ''}
-          ],
-        }).toList();
+    final contents = messages
+        .map(
+          (m) => {
+            'role': m['role'] == 'user' ? 'user' : 'model',
+            'parts': [
+              {'text': m['text'] ?? ''},
+            ],
+          },
+        )
+        .toList();
 
     final body = {
       'contents': contents,
       'systemInstruction': {
         'parts': [
-          {'text': _chatSystemPrompt(profile, currentYear)}
-        ]
+          {'text': _chatSystemPrompt(profile, currentYear)},
+        ],
       },
-      'generationConfig': {
-        'temperature': 0.7,
-        'maxOutputTokens': 1024,
-      },
+      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
     };
 
     final text = await _rawRequest(body);
@@ -185,31 +196,34 @@ class GeminiService implements AIService {
   ) async* {
     final currentYear = DateTime.now().year;
 
-    final contents = messages.map((m) => {
-          'role': m['role'] == 'user' ? 'user' : 'model',
-          'parts': [
-            {'text': m['text'] ?? ''}
-          ],
-        }).toList();
+    final contents = messages
+        .map(
+          (m) => {
+            'role': m['role'] == 'user' ? 'user' : 'model',
+            'parts': [
+              {'text': m['text'] ?? ''},
+            ],
+          },
+        )
+        .toList();
 
     final body = {
       'contents': contents,
       'systemInstruction': {
         'parts': [
-          {'text': _chatSystemPrompt(profile, currentYear)}
-        ]
+          {'text': _chatSystemPrompt(profile, currentYear)},
+        ],
       },
-      'generationConfig': {
-        'temperature': 0.7,
-        'maxOutputTokens': 1024,
-      },
+      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
     };
 
     try {
       // Streaming is not supported through the PB proxy (JS hooks can't
       // easily passthrough SSE). Fall back to single-shot.
-      final text = await _rawRequest(body,
-          receiveTimeout: const Duration(seconds: 60));
+      final text = await _rawRequest(
+        body,
+        receiveTimeout: const Duration(seconds: 60),
+      );
       if (text.isNotEmpty) yield text;
     } catch (e) {
       throw AIServiceException(message: 'Chat failed: $e');
@@ -230,34 +244,29 @@ class GeminiService implements AIService {
     final lang = profile?.language ?? 'en';
     final langName = _languageName(lang);
     final langSuffix = lang != 'en' ? ' Respond in $langName.' : '';
-    final textPrompt = prompt ??
+    final textPrompt =
+        prompt ??
         'Identify this product and provide detailed specifications, '
             'pros/cons, and suggest suitable alternatives.$langSuffix';
 
     final parts = <Map<String, dynamic>>[
       {'text': textPrompt},
       {
-        'inline_data': {
-          'mime_type': mimeType,
-          'data': base64Image,
-        }
+        'inline_data': {'mime_type': mimeType, 'data': base64Image},
       },
     ];
 
     final body = {
       'contents': [
-        {'parts': parts}
+        {'parts': parts},
       ],
       if (lang != 'en')
         'systemInstruction': {
           'parts': [
-            {'text': 'IMPORTANT: Respond entirely in $langName.'}
-          ]
+            {'text': 'IMPORTANT: Respond entirely in $langName.'},
+          ],
         },
-      'generationConfig': {
-        'temperature': 0.4,
-        'maxOutputTokens': 2048,
-      },
+      'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 2048},
     };
 
     final text = await _rawRequest(body);
@@ -272,27 +281,31 @@ class GeminiService implements AIService {
       'contents': [
         {
           'parts': [
-            {'text': prompt}
-          ]
-        }
+            {'text': prompt},
+          ],
+        },
       ],
       if (langCode != 'en')
         'systemInstruction': {
           'parts': [
-            {'text': 'IMPORTANT: You MUST respond entirely in $langName. All text, analysis, recommendations, and explanations must be in $langName.'}
-          ]
+            {
+              'text':
+                  'IMPORTANT: You MUST respond entirely in $langName. All text, analysis, recommendations, and explanations must be in $langName.',
+            },
+          ],
         },
-      'generationConfig': {
-        'temperature': 0.7,
-        'maxOutputTokens': 2048,
-      },
+      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 2048},
     };
     return _rawRequest(body);
   }
 
   /// JSON-enforced free text query — returns a clean JSON string (no markdown wrapping).
   /// Use this when the prompt requests a JSON response structure.
-  Future<String> jsonFreeTextQuery(String prompt, {String? language, int maxTokens = 2048}) async {
+  Future<String> jsonFreeTextQuery(
+    String prompt, {
+    String? language,
+    int maxTokens = 2048,
+  }) async {
     final langCode = language ?? 'en';
     final langName = _languageName(langCode);
     final systemText = langCode != 'en'
@@ -302,14 +315,14 @@ class GeminiService implements AIService {
       'contents': [
         {
           'parts': [
-            {'text': prompt}
-          ]
-        }
+            {'text': prompt},
+          ],
+        },
       ],
       'systemInstruction': {
         'parts': [
-          {'text': systemText}
-        ]
+          {'text': systemText},
+        ],
       },
       'generationConfig': {
         'temperature': 0.3,
@@ -326,17 +339,14 @@ class GeminiService implements AIService {
       'contents': [
         {
           'parts': [
-            {'text': prompt}
-          ]
-        }
+            {'text': prompt},
+          ],
+        },
       ],
       'tools': [
-        {'googleSearch': {}}
+        {'googleSearch': {}},
       ],
-      'generationConfig': {
-        'temperature': 0.1,
-        'maxOutputTokens': maxTokens,
-      },
+      'generationConfig': {'temperature': 0.1, 'maxOutputTokens': maxTokens},
     };
     // Grounded queries with web search need more time — use 90s timeout
     return _rawRequest(body, receiveTimeout: const Duration(seconds: 90));
@@ -370,17 +380,18 @@ class GeminiService implements AIService {
     final serviceDetails = knownDetails.join('\n');
     final unknownSection = unknownNames.isNotEmpty
         ? '\n\nUNKNOWN SERVICES (use your knowledge to identify them):\n'
-          '${unknownNames.map((n) => '- $n').join('\n')}\n'
-          'For each unknown service: determine what type of service it is '
-          '(streaming, music, gaming, productivity, AI, cloud, fitness, news, etc.) '
-          'and generate questions appropriate for that service type. '
-          'If you cannot identify the service, generate questions about: '
-          'frequency of use, main use case, what features matter most, '
-          'and whether they use similar alternatives.'
+              '${unknownNames.map((n) => '- $n').join('\n')}\n'
+              'For each unknown service: determine what type of service it is '
+              '(streaming, music, gaming, productivity, AI, cloud, fitness, news, etc.) '
+              'and generate questions appropriate for that service type. '
+              'If you cannot identify the service, generate questions about: '
+              'frequency of use, main use case, what features matter most, '
+              'and whether they use similar alternatives.'
         : '';
 
     final response = await _jsonRequest(
-      system: '''
+      system:
+          '''
 You are Compair's subscription quiz engine. Generate a SHORT personalized quiz
 (4-5 questions) to understand the user's needs for: $names.
 
@@ -427,11 +438,13 @@ Return valid JSON:
     final questions = (response['questions'] as List<dynamic>? ?? [])
         .asMap()
         .entries
-        .map((e) => QuizQuestion(
-              id: 'sq${e.key}',
-              text: e.value['question'] as String? ?? '',
-              options: List<String>.from(e.value['options'] ?? []),
-            ))
+        .map(
+          (e) => QuizQuestion(
+            id: 'sq${e.key}',
+            text: e.value['question'] as String? ?? '',
+            options: List<String>.from(e.value['options'] ?? []),
+          ),
+        )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
         .toList();
 
@@ -460,7 +473,8 @@ Return valid JSON:
         .toList();
 
     // Step 1: Research phase — use googleSearch to gather real-time data
-    final researchPrompt = '''
+    final researchPrompt =
+        '''
 Research the following subscription services: $names
 
 Find for each service:
@@ -479,24 +493,24 @@ Provide a comprehensive research summary.
         'contents': [
           {
             'parts': [
-              {'text': researchPrompt}
-            ]
-          }
+              {'text': researchPrompt},
+            ],
+          },
         ],
         'tools': [
-          {'googleSearch': {}}
+          {'googleSearch': {}},
         ],
-        'generationConfig': {
-          'temperature': 0.2,
-          'maxOutputTokens': 2048,
-        },
+        'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 2048},
       }, receiveTimeout: const Duration(seconds: 60));
     } catch (e) {
-      debugPrint('=== COMPAIR: Research phase failed, continuing without: $e ===');
+      debugPrint(
+        '=== COMPAIR: Research phase failed, continuing without: $e ===',
+      );
     }
 
     // Step 2: Analysis phase — structured JSON output (NO googleSearch, forces JSON)
-    final jsonSchema = isCompare ? '''{
+    final jsonSchema = isCompare
+        ? '''{
   "subscriptions": {
     "<service_name>": {
       "price": "string - monthly price in ${profile.currency}",
@@ -526,7 +540,8 @@ Provide a comprehensive research summary.
     "feature_comparison": "string - 2-3 sentences about feature differences",
     "user_experience": "string - 2-3 sentences about UX differences"
   }
-}''' : '''{
+}'''
+        : '''{
   "subscriptions": {
     "$names": {
       "price": "string - monthly price in ${profile.currency}",
@@ -553,7 +568,8 @@ Provide a comprehensive research summary.
       return _subscriptionContext[name.toLowerCase().trim()] == null;
     }).toList();
 
-    final analysisPrompt = '''
+    final analysisPrompt =
+        '''
 You are Compair's subscription intelligence analyst.
 Analyze: $names
 
@@ -569,9 +585,9 @@ ${qaPairs.map((q) => '- ${q['question']}: ${q['answer']}').join('\n')}
 
 ${researchData.isNotEmpty ? 'Research Data:\n$researchData\n' : ''}
 ${unknownForAnalysis.isNotEmpty ? 'NOTE: The following service(s) may not be well-known: ${unknownForAnalysis.join(', ')}. '
-    'Use the research data above and your knowledge to identify what they are. '
-    'If you cannot identify a service, still analyze it based on available context '
-    'and clearly state in the compatibility_explanation that limited data was available.\n' : ''}
+                  'Use the research data above and your knowledge to identify what they are. '
+                  'If you cannot identify a service, still analyze it based on available context '
+                  'and clearly state in the compatibility_explanation that limited data was available.\n' : ''}
 
 CRITICAL RULES:
 - ALL text values MUST be in $langName language
@@ -591,9 +607,9 @@ $jsonSchema
       'contents': [
         {
           'parts': [
-            {'text': analysisPrompt}
-          ]
-        }
+            {'text': analysisPrompt},
+          ],
+        },
       ],
       'generationConfig': {
         'responseMimeType': 'application/json',
@@ -608,7 +624,9 @@ $jsonSchema
       var clean = text.trim();
       // Strip markdown code fences if present
       if (clean.startsWith('```')) {
-        clean = clean.replaceFirst(RegExp(r'^```\w*\n?'), '').replaceFirst(RegExp(r'\n?```$'), '');
+        clean = clean
+            .replaceFirst(RegExp(r'^```\w*\n?'), '')
+            .replaceFirst(RegExp(r'\n?```$'), '');
       }
       // Try parsing entire response as JSON
       parsed = jsonDecode(clean) as Map<String, dynamic>?;
@@ -642,8 +660,9 @@ $jsonSchema
     if (scores.isEmpty) {
       for (final name in subscriptionNames) {
         final pattern = RegExp(
-            RegExp.escape(name) + r'[^\n]*?(\d{1,3})\s*%',
-            caseSensitive: false);
+          RegExp.escape(name) + r'[^\n]*?(\d{1,3})\s*%',
+          caseSensitive: false,
+        );
         final m = pattern.firstMatch(text);
         if (m != null) {
           final v = double.tryParse(m.group(1) ?? '');
@@ -686,11 +705,7 @@ $jsonSchema
           : 'Analysis could not be fully parsed. Please try again.';
     }
 
-    return {
-      'analysis': analysisText,
-      'scores': scores,
-      'structured': parsed,
-    };
+    return {'analysis': analysisText, 'scores': scores, 'structured': parsed};
   }
 
   /// Generate a short personalized quiz for a product category.
@@ -716,11 +731,13 @@ $jsonSchema
     final questions = (response['questions'] as List<dynamic>? ?? [])
         .asMap()
         .entries
-        .map((e) => QuizQuestion(
-              id: 'q${e.key}',
-              text: e.value['question'] as String? ?? '',
-              options: List<String>.from(e.value['options'] ?? []),
-            ))
+        .map(
+          (e) => QuizQuestion(
+            id: 'q${e.key}',
+            text: e.value['question'] as String? ?? '',
+            options: List<String>.from(e.value['options'] ?? []),
+          ),
+        )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
         .toList();
 
@@ -742,9 +759,13 @@ $jsonSchema
     required UserEntity profile,
   }) async {
     debugPrint('[Gemini] enhancedAnalysis for: ${baseResult.metadata.title}');
-    debugPrint('[Gemini] quiz answers count: ${answeredQuestions.where((q) => q.selectedOption != null).length}');
-    debugPrint('[Gemini] user profile: ecosystem=${profile.ecosystem}, budget=${profile.budgetRange}, '
-        'devices=${profile.currentDevices}, priorities=${profile.priorities}');
+    debugPrint(
+      '[Gemini] quiz answers count: ${answeredQuestions.where((q) => q.selectedOption != null).length}',
+    );
+    debugPrint(
+      '[Gemini] user profile: ecosystem=${profile.ecosystem}, budget=${profile.budgetRange}, '
+      'devices=${profile.currentDevices}, priorities=${profile.priorities}',
+    );
     final qaPairs = answeredQuestions
         .where((q) => q.selectedOption != null)
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
@@ -784,7 +805,9 @@ $jsonSchema
     }
 
     final rawFactors = response['factors'];
-    debugPrint('[Gemini] raw factors type: ${rawFactors.runtimeType}, value: $rawFactors');
+    debugPrint(
+      '[Gemini] raw factors type: ${rawFactors.runtimeType}, value: $rawFactors',
+    );
     final factors = (rawFactors is List ? rawFactors : <dynamic>[])
         .map((f) {
           if (f is! Map) return null;
@@ -799,21 +822,37 @@ $jsonSchema
         .toList();
 
     final enhancedScore = _parseScore(
-        response['enhancedScore'] ?? response['enhanced_score'] ?? response['score']);
-    debugPrint('[Gemini] enhancedAnalysis for "${baseResult.metadata.title}": score=$enhancedScore, factors=${factors.length}, '
-        'factorScores=[${factors.map((f) => '${f.label}:${f.score}').join(', ')}]');
+      response['enhancedScore'] ??
+          response['enhanced_score'] ??
+          response['score'],
+    );
+    debugPrint(
+      '[Gemini] enhancedAnalysis for "${baseResult.metadata.title}": score=$enhancedScore, factors=${factors.length}, '
+      'factorScores=[${factors.map((f) => '${f.label}:${f.score}').join(', ')}]',
+    );
 
     return EnhancedAnalysisResult(
       baseResult: baseResult,
       enhancedScore: enhancedScore > 0 ? enhancedScore : baseResult.aiScore,
       factors: factors,
-      detailedVerdict: (response['verdict'] ?? response['detailed_verdict'] ??
-              response['analysis'] ?? baseResult.aiAnalysis)
-          as String,
+      detailedVerdict:
+          (response['verdict'] ??
+                  response['detailed_verdict'] ??
+                  response['analysis'] ??
+                  baseResult.aiAnalysis)
+              as String,
       prosForUser: List<String>.from(
-          response['prosForUser'] ?? response['pros_for_user'] ?? response['pros'] ?? []),
+        response['prosForUser'] ??
+            response['pros_for_user'] ??
+            response['pros'] ??
+            [],
+      ),
       consForUser: List<String>.from(
-          response['consForUser'] ?? response['cons_for_user'] ?? response['cons'] ?? []),
+        response['consForUser'] ??
+            response['cons_for_user'] ??
+            response['cons'] ??
+            [],
+      ),
       alternatives: List<String>.from(response['alternatives'] ?? []),
     );
   }
@@ -833,14 +872,14 @@ $jsonSchema
       'contents': [
         {
           'parts': [
-            {'text': user}
-          ]
-        }
+            {'text': user},
+          ],
+        },
       ],
       'systemInstruction': {
         'parts': [
-          {'text': system}
-        ]
+          {'text': system},
+        ],
       },
       'generationConfig': {
         'temperature': 0.7,
@@ -857,12 +896,17 @@ $jsonSchema
       };
     }
 
-    final text = await _rawRequest(body, receiveTimeout: timeout ?? const Duration(seconds: 60));
+    final text = await _rawRequest(
+      body,
+      receiveTimeout: timeout ?? const Duration(seconds: 60),
+    );
 
     try {
       return jsonDecode(text) as Map<String, dynamic>;
     } catch (e) {
-      debugPrint('[Gemini] JSON parse error: $e — raw text: ${text.length > 500 ? text.substring(0, 500) : text}');
+      debugPrint(
+        '[Gemini] JSON parse error: $e — raw text: ${text.length > 500 ? text.substring(0, 500) : text}',
+      );
       // Try to extract JSON from the response
       final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
       if (match != null) {
@@ -875,124 +919,194 @@ $jsonSchema
   }
 
   /// Low-level POST against the PocketBase Gemini proxy with retry.
-  Future<String> _rawRequest(Map<String, dynamic> body,
-      {Duration receiveTimeout = const Duration(seconds: 60)}) async {
+  Future<String> _rawRequest(
+    Map<String, dynamic> body, {
+    Duration receiveTimeout = const Duration(seconds: 60),
+  }) async {
     int retryCount = 0;
 
-    // PB proxy expects {model, contents, generationConfig, systemInstruction}
-    final proxyBody = {
-      'model': _model,
-      ...body,
-    };
-
     while (retryCount < AppConstants.deepSeekMaxRetries) {
-      try {
-        final response = await _dio.post(
-          _proxyUrl,
-          data: proxyBody,
-          options: Options(
-            receiveTimeout: receiveTimeout,
-            sendTimeout: const Duration(seconds: 15),
-            headers: {'Content-Type': 'application/json'},
-          ),
-        );
+      final models = _candidateModels();
 
-        // Check for prompt feedback / safety blocks first
-        final promptFeedback = response.data['promptFeedback'] as Map<String, dynamic>?;
-        if (promptFeedback != null) {
-          final blockReason = promptFeedback['blockReason'] as String?;
-          if (blockReason != null) {
-            debugPrint('[Gemini] Request blocked: $blockReason');
-            throw AIServiceException(
-              message: 'Content was blocked by safety filter ($blockReason).',
+      for (var i = 0; i < models.length; i++) {
+        final model = models[i];
+        final isLastModel = i == models.length - 1;
+        final proxyBody = {'model': model, ...body};
+
+        try {
+          final response = await _dio.post(
+            _proxyUrl,
+            data: proxyBody,
+            options: Options(
+              receiveTimeout: receiveTimeout,
+              sendTimeout: const Duration(seconds: 15),
+              headers: {'Content-Type': 'application/json'},
+            ),
+          );
+
+          // Check for prompt feedback / safety blocks first
+          final promptFeedback =
+              response.data['promptFeedback'] as Map<String, dynamic>?;
+          if (promptFeedback != null) {
+            final blockReason = promptFeedback['blockReason'] as String?;
+            if (blockReason != null) {
+              debugPrint('[Gemini] Request blocked: $blockReason');
+              throw AIServiceException(
+                message: 'Content was blocked by safety filter ($blockReason).',
+              );
+            }
+          }
+
+          final candidates = response.data['candidates'] as List?;
+          if (candidates == null || candidates.isEmpty) {
+            debugPrint(
+              '[Gemini] Empty candidates from $model. Full response: ${response.data}',
+            );
+            throw const AIServiceException(
+              message: 'AI returned an empty response.',
             );
           }
-        }
 
-        final candidates = response.data['candidates'] as List?;
-        if (candidates == null || candidates.isEmpty) {
-          debugPrint('[Gemini] Empty candidates. Full response: ${response.data}');
-          throw const AIServiceException(
-              message: 'AI returned an empty response.');
-        }
+          final finishReason = candidates[0]['finishReason'] as String?;
+          debugPrint('[Gemini] model=$model finishReason: $finishReason');
+          if (finishReason == 'SAFETY') {
+            debugPrint('[Gemini] Response blocked by safety filter');
+            throw const AIServiceException(
+              message: 'Response was blocked by safety filter.',
+            );
+          }
+          if (finishReason == 'MAX_TOKENS') {
+            debugPrint(
+              '[Gemini] ⚠️ Response TRUNCATED — finishReason=MAX_TOKENS',
+            );
+          }
 
-        // Check for finish reason that indicates issues
-        final finishReason = candidates[0]['finishReason'] as String?;
-        debugPrint('[Gemini] finishReason: $finishReason');
-        if (finishReason == 'SAFETY') {
-          debugPrint('[Gemini] Response blocked by safety filter');
-          throw const AIServiceException(
-            message: 'Response was blocked by safety filter.',
-          );
-        }
-        if (finishReason == 'MAX_TOKENS') {
-          debugPrint('[Gemini] ⚠️ Response TRUNCATED — finishReason=MAX_TOKENS');
-        }
+          final content = candidates[0]['content'];
+          if (content == null) {
+            debugPrint(
+              '[Gemini] No content in candidate. Finish reason: $finishReason',
+            );
+            throw const AIServiceException(message: 'AI returned no content.');
+          }
+          final parts = content['parts'] as List?;
+          if (parts == null || parts.isEmpty) {
+            debugPrint(
+              '[Gemini] No parts in content. Candidate: ${candidates[0]}',
+            );
+            throw const AIServiceException(message: 'AI returned no content.');
+          }
 
-        final content = candidates[0]['content'];
-        if (content == null) {
-          debugPrint('[Gemini] No content in candidate. Finish reason: $finishReason');
-          throw const AIServiceException(
-              message: 'AI returned no content.');
-        }
-        final parts = content['parts'] as List?;
-        if (parts == null || parts.isEmpty) {
-          debugPrint('[Gemini] No parts in content. Candidate: ${candidates[0]}');
-          throw const AIServiceException(
-              message: 'AI returned no content.');
-        }
+          if (model != _primaryModel) {
+            _preferFallbackUntil = DateTime.now().add(
+              const Duration(minutes: 30),
+            );
+            debugPrint(
+              '[Gemini] Falling back to $model for better availability.',
+            );
+          } else {
+            _preferFallbackUntil = null;
+          }
 
-        // Concatenate all parts in case response is split
-        final buffer = StringBuffer();
-        for (final part in parts) {
-          final text = part['text'] as String?;
-          if (text != null) buffer.write(text);
-        }
-        return buffer.toString();
-      } on DioException catch (e) {
-        retryCount++;
-        final statusCode = e.response?.statusCode;
-        final responseBody = e.response?.data;
-        debugPrint('[Gemini] DioException (attempt $retryCount/${ AppConstants.deepSeekMaxRetries}): '
+          final buffer = StringBuffer();
+          for (final part in parts) {
+            final text = part['text'] as String?;
+            if (text != null) {
+              buffer.write(text);
+            }
+          }
+          return buffer.toString();
+        } on DioException catch (e) {
+          final statusCode = e.response?.statusCode;
+          final responseBody = e.response?.data;
+          debugPrint(
+            '[Gemini] DioException model=$model (attempt ${retryCount + 1}/${AppConstants.deepSeekMaxRetries}): '
             'status=$statusCode, type=${e.type}, '
             'message=${e.message}, '
-            'body=${responseBody is String ? (responseBody.length > 300 ? responseBody.substring(0, 300) : responseBody) : responseBody}');
-
-        if (statusCode == 429) {
-          throw const AIServiceException(
-            message: 'AI is busy right now. Please try again shortly.',
-            isRateLimited: true,
+            'body=${responseBody is String ? (responseBody.length > 300 ? responseBody.substring(0, 300) : responseBody) : responseBody}',
           );
-        }
 
-        // Don't retry on 400 (bad request) or 403 (forbidden) — they won't succeed
-        if (statusCode == 400 || statusCode == 403) {
-          String detail = 'AI request failed (HTTP $statusCode).';
-          if (responseBody is Map) {
-            final errorMsg = responseBody['error']?['message'] as String?;
-            if (errorMsg != null) detail = errorMsg;
+          final shouldTryFallback =
+              !isLastModel && _shouldFallbackModel(statusCode, responseBody);
+          if (shouldTryFallback) {
+            if (model == _primaryModel) {
+              _preferFallbackUntil = DateTime.now().add(
+                const Duration(minutes: 30),
+              );
+            }
+            debugPrint(
+              '[Gemini] Retrying with fallback model after $model failed.',
+            );
+            continue;
           }
-          debugPrint('[Gemini] Non-retryable error: $detail');
-          throw AIServiceException(message: detail);
-        }
 
-        if (retryCount < AppConstants.deepSeekMaxRetries) {
-          await Future.delayed(AppConstants.retryDelays[retryCount - 1]);
+          if (statusCode == 429) {
+            throw const AIServiceException(
+              message: 'AI is busy right now. Please try again shortly.',
+              isRateLimited: true,
+            );
+          }
+
+          if (statusCode == 400 || statusCode == 403 || statusCode == 404) {
+            String detail = 'AI request failed (HTTP $statusCode).';
+            if (responseBody is Map) {
+              final errorMsg = responseBody['error']?['message'] as String?;
+              if (errorMsg != null) {
+                detail = errorMsg;
+              }
+            }
+            debugPrint('[Gemini] Non-retryable error: $detail');
+            throw AIServiceException(message: detail);
+          }
+        } on AIServiceException {
+          rethrow;
+        } catch (e) {
+          debugPrint(
+            '[Gemini] Unexpected error on $model (attempt ${retryCount + 1}/${AppConstants.deepSeekMaxRetries}): $e',
+          );
+          if (!isLastModel) {
+            continue;
+          }
         }
-      } on AIServiceException {
-        rethrow; // Don't retry AI-level errors (safety blocks, etc.)
-      } catch (e) {
-        retryCount++;
-        debugPrint('[Gemini] Unexpected error (attempt $retryCount/${AppConstants.deepSeekMaxRetries}): $e');
-        if (retryCount < AppConstants.deepSeekMaxRetries) {
-          await Future.delayed(AppConstants.retryDelays[retryCount - 1]);
-        }
+      }
+
+      retryCount++;
+      if (retryCount < AppConstants.deepSeekMaxRetries) {
+        await Future.delayed(AppConstants.retryDelays[retryCount - 1]);
       }
     }
 
     throw const AIServiceException(
       message: 'AI service is temporarily unavailable.',
     );
+  }
+
+  List<String> _candidateModels() {
+    final fallbackFirst =
+        _preferFallbackUntil != null &&
+        DateTime.now().isBefore(_preferFallbackUntil!);
+    final ordered = <String>[
+      if (!fallbackFirst) _primaryModel,
+      ..._fallbackModels,
+      if (fallbackFirst) _primaryModel,
+    ];
+    return ordered.toSet().toList();
+  }
+
+  bool _shouldFallbackModel(int? statusCode, dynamic responseBody) {
+    if (statusCode == 429 ||
+        statusCode == 500 ||
+        statusCode == 502 ||
+        statusCode == 503 ||
+        statusCode == 504) {
+      return true;
+    }
+
+    final text = responseBody?.toString().toLowerCase() ?? '';
+    return text.contains('resource_exhausted') ||
+        text.contains('quota exceeded') ||
+        text.contains('temporarily unavailable') ||
+        text.contains('high demand') ||
+        text.contains('unavailable');
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1028,11 +1142,13 @@ $jsonSchema
 
   RecommendationResult _parseRecommendationResult(Map<String, dynamic> data) {
     final items = (data['recommendations'] as List<dynamic>? ?? [])
-        .map((e) => RecommendedProduct(
-              productId: e['productId'] ?? '',
-              score: (e['score'] as num?)?.toDouble() ?? 0.0,
-              reason: e['reason'] ?? '',
-            ))
+        .map(
+          (e) => RecommendedProduct(
+            productId: e['productId'] ?? '',
+            score: (e['score'] as num?)?.toDouble() ?? 0.0,
+            reason: e['reason'] ?? '',
+          ),
+        )
         .toList();
 
     return RecommendationResult(
@@ -1102,7 +1218,8 @@ Return valid JSON:
 ''';
   }
 
-  static String _chatSystemPrompt(UserEntity profile, int currentYear) => '''
+  static String _chatSystemPrompt(UserEntity profile, int currentYear) =>
+      '''
 You are Compair AI — a witty, knowledgeable tech consultant and the user's friendly advisor.
 
 ## YOUR PERSONALITY
@@ -1221,42 +1338,81 @@ Important:
 
   static String _languageName(String code) {
     const map = {
-      'en': 'English', 'tr': 'Turkish', 'de': 'German', 'fr': 'French',
-      'es': 'Spanish', 'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese',
-      'ko': 'Korean', 'zh': 'Chinese', 'ar': 'Arabic', 'ru': 'Russian',
-      'hi': 'Hindi', 'nl': 'Dutch', 'pl': 'Polish', 'sv': 'Swedish',
+      'en': 'English',
+      'tr': 'Turkish',
+      'de': 'German',
+      'fr': 'French',
+      'es': 'Spanish',
+      'pt': 'Portuguese',
+      'it': 'Italian',
+      'ja': 'Japanese',
+      'ko': 'Korean',
+      'zh': 'Chinese',
+      'ar': 'Arabic',
+      'ru': 'Russian',
+      'hi': 'Hindi',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'sv': 'Swedish',
     };
     return map[code] ?? 'English';
   }
 
   /// Known subscription service context for better quiz generation
   static const _subscriptionContext = <String, String>{
-    'netflix': 'Video streaming: movies, series, documentaries, anime. Originals like Stranger Things, Squid Game. Multiple profiles, offline download, 4K/HDR support.',
-    'spotify': 'Music & podcast streaming. 100M+ tracks, AI playlists (Discover Weekly, Daily Mix), offline mode, lyrics, social sharing, Spotify Wrapped.',
-    'apple music': 'Music streaming with lossless/spatial audio, 100M+ songs, Apple ecosystem integration, radio stations, music videos, karaoke mode.',
-    'youtube premium': 'Ad-free YouTube, background play, YouTube Music included, offline downloads, YouTube Originals.',
-    'youtube music': 'Music streaming from YouTube catalog, smart recommendations, music videos, live performances, covers.',
-    'disney+': 'Video streaming: Disney, Marvel, Star Wars, Pixar, National Geographic. Family content, IMAX Enhanced, GroupWatch.',
-    'amazon prime': 'Video streaming + fast delivery + Prime Gaming + Prime Reading. Thursday Night Football, Originals like The Boys, Rings of Power.',
-    'hbo max': 'Premium video streaming: HBO originals (Game of Thrones, The Last of Us), Warner Bros movies, DC content.',
-    'apple tv+': 'Apple original content: Ted Lasso, Severance, Foundation. Small but high-quality library, Apple ecosystem perks.',
-    'chatgpt plus': 'OpenAI GPT-4 access, faster responses, priority access, DALL-E image generation, Advanced Data Analysis, plugins, GPTs.',
-    'claude pro': 'Anthropic Claude AI: longer conversations, priority access, larger context window, better for coding and analysis.',
-    'gemini advanced': 'Google Gemini Ultra: deep reasoning, multimodal (text+image+code), Google Workspace integration.',
-    'xbox game pass': 'Gaming subscription: 100+ games on Xbox/PC/cloud, day-one releases, EA Play included in Ultimate, online multiplayer.',
-    'ps plus': 'PlayStation subscription: online multiplayer, monthly free games, game catalog (Extra/Premium tiers), cloud streaming.',
-    'ea play': 'EA games subscription: FIFA, Battlefield, Madden, early access to new releases, 10-hour trials.',
-    'apple one': 'Apple bundle: Apple Music + TV+ + Arcade + iCloud+ (+ Fitness/News in Premium). Ecosystem savings.',
-    'icloud+': 'Apple cloud storage: device backup, photos sync, Private Relay VPN, Hide My Email, custom email domain.',
-    'google one': 'Google cloud storage: Drive/Gmail/Photos storage, VPN, enhanced Google support, family sharing.',
-    'dropbox': 'Cloud storage & file sync, team collaboration, Smart Sync, document scanning, eSign.',
-    'adobe cc': 'Creative Cloud: Photoshop, Illustrator, Premiere Pro, After Effects, Lightroom. Industry-standard creative tools.',
-    'notion': 'All-in-one workspace: notes, docs, databases, project management, wikis, AI assistant.',
-    'figma': 'Collaborative design tool: UI/UX design, prototyping, design systems, FigJam whiteboard, Dev Mode.',
-    'crunchyroll': 'Anime streaming: largest anime library, simulcasts from Japan, manga, offline viewing.',
-    'paramount+': 'Video streaming: CBS content, Paramount movies, NFL, Champions League, Originals like Yellowstone.',
-    'peacock': 'NBCUniversal streaming: The Office, live sports, news, Bravo reality TV, Peacock Originals.',
-    'deezer': 'Music streaming: Flow AI recommendations, lyrics, podcasts, HiFi lossless audio, SongCatcher.',
-    'tidal': 'Music streaming: HiFi/Master quality, artist-owned, exclusive content, Dolby Atmos, Sony 360 Reality Audio.',
+    'netflix':
+        'Video streaming: movies, series, documentaries, anime. Originals like Stranger Things, Squid Game. Multiple profiles, offline download, 4K/HDR support.',
+    'spotify':
+        'Music & podcast streaming. 100M+ tracks, AI playlists (Discover Weekly, Daily Mix), offline mode, lyrics, social sharing, Spotify Wrapped.',
+    'apple music':
+        'Music streaming with lossless/spatial audio, 100M+ songs, Apple ecosystem integration, radio stations, music videos, karaoke mode.',
+    'youtube premium':
+        'Ad-free YouTube, background play, YouTube Music included, offline downloads, YouTube Originals.',
+    'youtube music':
+        'Music streaming from YouTube catalog, smart recommendations, music videos, live performances, covers.',
+    'disney+':
+        'Video streaming: Disney, Marvel, Star Wars, Pixar, National Geographic. Family content, IMAX Enhanced, GroupWatch.',
+    'amazon prime':
+        'Video streaming + fast delivery + Prime Gaming + Prime Reading. Thursday Night Football, Originals like The Boys, Rings of Power.',
+    'hbo max':
+        'Premium video streaming: HBO originals (Game of Thrones, The Last of Us), Warner Bros movies, DC content.',
+    'apple tv+':
+        'Apple original content: Ted Lasso, Severance, Foundation. Small but high-quality library, Apple ecosystem perks.',
+    'chatgpt plus':
+        'OpenAI GPT-4 access, faster responses, priority access, DALL-E image generation, Advanced Data Analysis, plugins, GPTs.',
+    'claude pro':
+        'Anthropic Claude AI: longer conversations, priority access, larger context window, better for coding and analysis.',
+    'gemini advanced':
+        'Google Gemini Ultra: deep reasoning, multimodal (text+image+code), Google Workspace integration.',
+    'xbox game pass':
+        'Gaming subscription: 100+ games on Xbox/PC/cloud, day-one releases, EA Play included in Ultimate, online multiplayer.',
+    'ps plus':
+        'PlayStation subscription: online multiplayer, monthly free games, game catalog (Extra/Premium tiers), cloud streaming.',
+    'ea play':
+        'EA games subscription: FIFA, Battlefield, Madden, early access to new releases, 10-hour trials.',
+    'apple one':
+        'Apple bundle: Apple Music + TV+ + Arcade + iCloud+ (+ Fitness/News in Premium). Ecosystem savings.',
+    'icloud+':
+        'Apple cloud storage: device backup, photos sync, Private Relay VPN, Hide My Email, custom email domain.',
+    'google one':
+        'Google cloud storage: Drive/Gmail/Photos storage, VPN, enhanced Google support, family sharing.',
+    'dropbox':
+        'Cloud storage & file sync, team collaboration, Smart Sync, document scanning, eSign.',
+    'adobe cc':
+        'Creative Cloud: Photoshop, Illustrator, Premiere Pro, After Effects, Lightroom. Industry-standard creative tools.',
+    'notion':
+        'All-in-one workspace: notes, docs, databases, project management, wikis, AI assistant.',
+    'figma':
+        'Collaborative design tool: UI/UX design, prototyping, design systems, FigJam whiteboard, Dev Mode.',
+    'crunchyroll':
+        'Anime streaming: largest anime library, simulcasts from Japan, manga, offline viewing.',
+    'paramount+':
+        'Video streaming: CBS content, Paramount movies, NFL, Champions League, Originals like Yellowstone.',
+    'peacock':
+        'NBCUniversal streaming: The Office, live sports, news, Bravo reality TV, Peacock Originals.',
+    'deezer':
+        'Music streaming: Flow AI recommendations, lyrics, podcasts, HiFi lossless audio, SongCatcher.',
+    'tidal':
+        'Music streaming: HiFi/Master quality, artist-owned, exclusive content, Dolby Atmos, Sony 360 Reality Audio.',
   };
 }

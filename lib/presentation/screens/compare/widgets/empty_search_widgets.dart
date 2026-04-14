@@ -13,27 +13,31 @@ class _EmptyCompareState extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userComparisons = ref.watch(userComparisonsProvider);
-    final recentlyViewed  = ref.watch(recentlyViewedProductsProvider);
-    final trending        = ref.watch(trendingProductsProvider);
-    final feedAsync       = ref.watch(homeFeedProvider);
-    final theme           = Theme.of(context);
-    final cs              = theme.colorScheme;
+    final recentlyViewed = ref.watch(recentlyViewedProductsProvider);
+    final trending = ref.watch(trendingProductsProvider);
+    final feedAsync = ref.watch(homeFeedProvider);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 4, 16,
-          MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance + 24),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        4,
+        16,
+        MediaQuery.of(context).padding.bottom +
+            AppTheme.navBarTotalClearance +
+            24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           // ── Geçmiş Karşılaştırmalar ──────────────────────────────────────
           userComparisons.when(
             data: (result) {
               final comps = result.when(
-                success: (list) => list
-                    .where((c) => c.itemIds.length >= 2)
-                    .take(5)
-                    .toList(),
+                success: (list) =>
+                    list.where((c) => c.itemIds.length >= 2).take(5).toList(),
                 failure: (_) => <ComparisonEntity>[],
               );
               if (comps.isEmpty) return const SizedBox.shrink();
@@ -42,17 +46,21 @@ class _EmptyCompareState extends ConsumerWidget {
                 children: [
                   _SectionHeader(
                     icon: Icons.history_rounded,
-                    label: 'Geçmiş Karşılaştırmalarınız',
+                    label: isTurkish
+                        ? 'Geçmiş Karşılaştırmalarınız'
+                        : 'Your Comparison History',
                     color: cs.primary,
                   ),
                   const SizedBox(height: 10),
-                  ...comps.asMap().entries.map((e) =>
-                    _PastComparisonCard(
-                      comparison: e.value,
-                      onTap: onDirectCompare,
-                    ).animate()
-                      .fadeIn(delay: (50 * e.key).ms, duration: 300.ms)
-                      .slideX(begin: 0.04),
+                  ...comps.asMap().entries.map(
+                    (e) =>
+                        _PastComparisonCard(
+                              comparison: e.value,
+                              onTap: onDirectCompare,
+                            )
+                            .animate()
+                            .fadeIn(delay: (50 * e.key).ms, duration: 300.ms)
+                            .slideX(begin: 0.04),
                   ),
                   const SizedBox(height: 20),
                 ],
@@ -74,7 +82,7 @@ class _EmptyCompareState extends ConsumerWidget {
                 children: [
                   _SectionHeader(
                     icon: Icons.remove_red_eye_rounded,
-                    label: 'Son İncelenenler',
+                    label: context.l10n?.recentlyViewed ?? 'Recently Viewed',
                     color: AppTheme.brandDeepBlue,
                   ),
                   const SizedBox(height: 10),
@@ -85,15 +93,19 @@ class _EmptyCompareState extends ConsumerWidget {
                       padding: EdgeInsets.zero,
                       itemCount: top.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 10),
-                      itemBuilder: (ctx, i) => _RecentProductChip(
-                        product: top[i],
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          ref.read(comparisonStateProvider.notifier).toggleProduct(top[i].id);
-                        },
-                      ).animate()
-                        .fadeIn(delay: (40 * i).ms, duration: 280.ms)
-                        .slideX(begin: 0.06),
+                      itemBuilder: (ctx, i) =>
+                          _RecentProductChip(
+                                product: top[i],
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  ref
+                                      .read(comparisonStateProvider.notifier)
+                                      .toggleProduct(top[i].id);
+                                },
+                              )
+                              .animate()
+                              .fadeIn(delay: (40 * i).ms, duration: 280.ms)
+                              .slideX(begin: 0.06),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -107,7 +119,7 @@ class _EmptyCompareState extends ConsumerWidget {
           // ── Popüler Karşılaştırmalar ─────────────────────────────────────
           _SectionHeader(
             icon: Icons.local_fire_department_rounded,
-            label: 'Popüler Karşılaştırmalar',
+            label: context.l10n?.popularComparisons ?? 'Popular Comparisons',
             color: const Color(0xFFFF6B35),
           ),
           const SizedBox(height: 10),
@@ -117,7 +129,7 @@ class _EmptyCompareState extends ConsumerWidget {
           // ── Trend Ürünler ─────────────────────────────────────────────────
           _SectionHeader(
             icon: Icons.trending_up_rounded,
-            label: 'Trend Ürünler',
+            label: context.l10n?.trendingProducts ?? 'Trending Products',
             color: cs.primary,
           ),
           const SizedBox(height: 10),
@@ -136,24 +148,28 @@ class _EmptyCompareState extends ConsumerWidget {
               }
               if (diverse.isEmpty) return const SizedBox.shrink();
               return Wrap(
-                spacing: 8, runSpacing: 8,
+                spacing: 8,
+                runSpacing: 8,
                 children: diverse.asMap().entries.map((e) {
                   final p = e.value;
                   return _TrendChip(
                     product: p,
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      ref.read(comparisonStateProvider.notifier).toggleProduct(p.id);
+                      ref
+                          .read(comparisonStateProvider.notifier)
+                          .toggleProduct(p.id);
                     },
-                  ).animate()
-                    .fadeIn(delay: (50 * e.key).ms, duration: 280.ms);
+                  ).animate().fadeIn(delay: (50 * e.key).ms, duration: 280.ms);
                 }).toList(),
               );
             },
             loading: () => const Center(
               child: Padding(
                 padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(strokeWidth: 2))),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
             error: (_, __) => const SizedBox.shrink(),
           ),
         ],
@@ -166,24 +182,42 @@ class _EmptyCompareState extends ConsumerWidget {
     WidgetRef ref,
     HomeFeed? feed,
   ) {
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
     if (feed == null) {
-      return [const Center(child: Padding(
-        padding: EdgeInsets.all(16),
-        child: CircularProgressIndicator(strokeWidth: 2)))];
+      return [
+        const Center(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ];
     }
 
     final comparisons = <Map<String, dynamic>>[];
     final categoryMeta = <String, Map<String, String>>{
-      'smartphones':   {'icon': '📱', 'label': 'Akıllı Telefon'},
-      'laptops':       {'icon': '💻', 'label': 'Laptop'},
-      'tablets':       {'icon': '�', 'label': 'Tablet'},
-      'headphones':    {'icon': '🎧', 'label': 'Ses Sistemi'},
-      'smartwatches':  {'icon': '⌚', 'label': 'Giyilebilir'},
-      'tvs':           {'icon': '📺', 'label': 'Televizyon'},
-      'gpus':          {'icon': '🎮', 'label': 'Ekran Kartı'},
-      'cameras':       {'icon': '📷', 'label': 'Kamera'},
-      'monitors':      {'icon': '🖥️', 'label': 'Monitör'},
-      'keyboards':     {'icon': '⌨️', 'label': 'Klavye'},
+      'smartphones': {
+        'icon': '📱',
+        'label': isTurkish ? 'Akıllı Telefon' : 'Smartphone',
+      },
+      'laptops': {'icon': '💻', 'label': 'Laptop'},
+      'tablets': {'icon': '�', 'label': 'Tablet'},
+      'headphones': {
+        'icon': '🎧',
+        'label': isTurkish ? 'Ses Sistemi' : 'Audio',
+      },
+      'smartwatches': {
+        'icon': '⌚',
+        'label': isTurkish ? 'Giyilebilir' : 'Wearables',
+      },
+      'tvs': {'icon': '📺', 'label': isTurkish ? 'Televizyon' : 'TV'},
+      'gpus': {
+        'icon': '🎮',
+        'label': isTurkish ? 'Ekran Kartı' : 'Graphics Card',
+      },
+      'cameras': {'icon': '📷', 'label': isTurkish ? 'Kamera' : 'Camera'},
+      'monitors': {'icon': '🖥️', 'label': isTurkish ? 'Monitör' : 'Monitor'},
+      'keyboards': {'icon': '⌨️', 'label': isTurkish ? 'Klavye' : 'Keyboard'},
     };
 
     // ── Behavior-based category ordering ──────────────────────────────────
@@ -193,7 +227,8 @@ class _EmptyCompareState extends ConsumerWidget {
     if (behavior != null) {
       for (final entry in behavior.categoryViews.entries) {
         categoryViewScore[entry.key.toLowerCase()] =
-            (categoryViewScore[entry.key.toLowerCase()] ?? 0) + entry.value.toDouble();
+            (categoryViewScore[entry.key.toLowerCase()] ?? 0) +
+            entry.value.toDouble();
       }
     }
     // Sort categories: user's most viewed first, then by available products
@@ -233,7 +268,8 @@ class _EmptyCompareState extends ConsumerWidget {
       // Pick B: strongly prefer different brand
       ProductEntity? b;
       for (final candidate in shuffled.skip(1)) {
-        if ((candidate.brand ?? '').toLowerCase() != (a.brand ?? '').toLowerCase()) {
+        if ((candidate.brand ?? '').toLowerCase() !=
+            (a.brand ?? '').toLowerCase()) {
           b = candidate;
           break;
         }
@@ -241,7 +277,8 @@ class _EmptyCompareState extends ConsumerWidget {
       // Fallback: find any B from full catProducts with different name
       if (b == null) {
         for (int i = 1; i < catProducts.length; i++) {
-          if (normalizeProductName(catProducts[i].name) != normalizeProductName(a.name)) {
+          if (normalizeProductName(catProducts[i].name) !=
+              normalizeProductName(a.name)) {
             b = catProducts[i];
             break;
           }
@@ -249,22 +286,32 @@ class _EmptyCompareState extends ConsumerWidget {
       }
       if (b == null) continue;
       // Skip if A and B have the same normalized name
-      if (normalizeProductName(a.name) == normalizeProductName(b.name)) continue;
+      if (normalizeProductName(a.name) == normalizeProductName(b.name))
+        continue;
       comparisons.add({
-        'a': a, 'b': b,
+        'a': a,
+        'b': b,
         'icon': categoryMeta[cat]!['icon']!,
-        'cat': categoryMeta[cat]!['label']!
+        'cat': categoryMeta[cat]!['label']!,
       });
       if (comparisons.length >= 6) break;
     }
 
     if (comparisons.isEmpty) {
-      return [Padding(
-        padding: const EdgeInsets.all(12),
-        child: Text('Yükleniyor...',
-          style: GoogleFonts.plusJakartaSans(fontSize: 13,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4))),
-      )];
+      return [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            isTurkish ? 'Yükleniyor...' : 'Loading...',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
+          ),
+        ),
+      ];
     }
 
     return comparisons.asMap().entries.map((e) {
@@ -273,15 +320,20 @@ class _EmptyCompareState extends ConsumerWidget {
       final b = c['b'] as ProductEntity;
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: _PopularPairCard(
-          productA: a,
-          productB: b,
-          icon: c['icon'] as String,
-          category: c['cat'] as String,
-          onTap: () { HapticFeedback.mediumImpact(); onDirectCompare([a, b]); },
-        ).animate()
-          .fadeIn(delay: (70 * e.key).ms, duration: 300.ms)
-          .slideX(begin: 0.04),
+        child:
+            _PopularPairCard(
+                  productA: a,
+                  productB: b,
+                  icon: c['icon'] as String,
+                  category: c['cat'] as String,
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    onDirectCompare([a, b]);
+                  },
+                )
+                .animate()
+                .fadeIn(delay: (70 * e.key).ms, duration: 300.ms)
+                .slideX(begin: 0.04),
       );
     }).toList();
   }
@@ -293,24 +345,36 @@ class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _SectionHeader({required this.icon, required this.label, required this.color});
+  const _SectionHeader({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      Container(
-        width: 30, height: 30,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8)),
-        child: Icon(icon, size: 16, color: color),
-      ),
-      const SizedBox(width: 10),
-      Text(label,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 15, fontWeight: FontWeight.w700,
-          color: context.textPrimary)),
-    ]);
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: context.textPrimary,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -332,10 +396,8 @@ class _PastComparisonCard extends ConsumerWidget {
     for (final id in ids) {
       final async = ref.watch(productDetailProvider(id));
       async.when(
-        data: (result) => result.when(
-          success: (p) => products.add(p),
-          failure: (_) {},
-        ),
+        data: (result) =>
+            result.when(success: (p) => products.add(p), failure: (_) {}),
         loading: () => loading = true,
         error: (_, __) {},
       );
@@ -344,8 +406,8 @@ class _PastComparisonCard extends ConsumerWidget {
     final title = comparison.title?.isNotEmpty == true
         ? comparison.title!
         : products.isNotEmpty
-            ? products.map((p) => p.name).join(' vs ')
-            : ids.join(' vs ');
+        ? products.map((p) => p.name).join(' vs ')
+        : ids.join(' vs ');
 
     return GestureDetector(
       onTap: () {
@@ -358,85 +420,137 @@ class _PastComparisonCard extends ConsumerWidget {
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: context.dividerColor),
-          boxShadow: [BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Row(children: [
-          // Product images
-          SizedBox(
-            width: 64,
-            height: 40,
-            child: Stack(
-              children: products.take(2).toList().asMap().entries.map((e) {
-                return Positioned(
-                  left: e.key * 22.0,
-                  child: Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      color: context.surfaceColor,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: context.dividerColor)),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(9),
-                      child: e.value.imageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: e.value.imageUrl!,
-                              width: 40, height: 40, fit: BoxFit.contain,
-                              errorWidget: (_, __, ___) => Icon(
-                                Icons.devices, size: 18,
-                                color: context.textTertiaryColor))
-                          : Icon(Icons.devices, size: 18,
-                              color: context.textTertiaryColor),
+        child: Row(
+          children: [
+            // Product images
+            SizedBox(
+              width: 64,
+              height: 40,
+              child: Stack(
+                children: products.take(2).toList().asMap().entries.map((e) {
+                  return Positioned(
+                    left: e.key * 22.0,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: context.surfaceColor,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: context.dividerColor),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(9),
+                        child: e.value.imageUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: e.value.imageUrl!,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.contain,
+                                errorWidget: (_, __, ___) => Icon(
+                                  Icons.devices,
+                                  size: 18,
+                                  color: context.textTertiaryColor,
+                                ),
+                              )
+                            : Icon(
+                                Icons.devices,
+                                size: 18,
+                                color: context.textTertiaryColor,
+                              ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary,
                     ),
                   ),
-                );
-              }).toList(),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 11,
+                        color: context.textTertiaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _timeAgo(context, comparison.createdAt),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: context.textTertiaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    color: context.textPrimary)),
-                const SizedBox(height: 3),
-                Row(children: [
-                  Icon(Icons.schedule_rounded, size: 11,
-                    color: context.textTertiaryColor),
-                  const SizedBox(width: 4),
-                  Text(_timeAgo(comparison.createdAt),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textTertiaryColor)),
-                ]),
-              ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _timeAgoLabel(context),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: cs.primary,
+                ),
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10)),
-            child: Text('Tekrar',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11, fontWeight: FontWeight.w700,
-                color: cs.primary)),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
 
-  String _timeAgo(DateTime dt) {
+  String _timeAgo(BuildContext context, DateTime dt) {
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
+    return _timeAgoForLocale(isTurkish, dt);
+  }
+
+  String _timeAgoLabel(BuildContext context) {
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
+    return isTurkish ? 'Tekrar' : 'Replay';
+  }
+
+  String _timeAgoForLocale(bool isTurkish, DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()} ay önce';
-    if (diff.inDays >= 1) return '${diff.inDays} gün önce';
-    if (diff.inHours >= 1) return '${diff.inHours} saat önce';
-    return 'Az önce';
+    if (diff.inDays >= 30) {
+      final months = (diff.inDays / 30).floor();
+      return isTurkish ? '$months ay önce' : '$months mo ago';
+    }
+    if (diff.inDays >= 1) {
+      return isTurkish ? '${diff.inDays} gün önce' : '${diff.inDays}d ago';
+    }
+    if (diff.inHours >= 1) {
+      return isTurkish ? '${diff.inHours} saat önce' : '${diff.inHours}h ago';
+    }
+    return isTurkish ? 'Az önce' : 'Just now';
   }
 }
 
@@ -459,9 +573,13 @@ class _RecentProductChip extends StatelessWidget {
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: context.dividerColor),
-          boxShadow: [BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -471,31 +589,47 @@ class _RecentProductChip extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
                   imageUrl: product.imageUrl!,
-                  width: 44, height: 44, fit: BoxFit.contain,
-                  errorWidget: (_, __, ___) =>
-                    Icon(Icons.devices, size: 24, color: context.textTertiaryColor)),
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.contain,
+                  errorWidget: (_, __, ___) => Icon(
+                    Icons.devices,
+                    size: 24,
+                    color: context.textTertiaryColor,
+                  ),
+                ),
               )
             else
               Icon(Icons.devices, size: 28, color: context.textTertiaryColor),
             const SizedBox(height: 6),
-            Text(product.name,
-              maxLines: 2, overflow: TextOverflow.ellipsis,
+            Text(
+              product.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 9, fontWeight: FontWeight.w600,
-                color: context.textSecondary)),
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
+            ),
             const SizedBox(height: 4),
             if (product.techScore > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6)),
-              child: Text('${product.techScore.toInt()}',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 9, fontWeight: FontWeight.w700,
-                  color: cs.primary)),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${product.techScore.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -530,49 +664,77 @@ class _PopularPairCard extends StatelessWidget {
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: context.dividerColor),
-          boxShadow: [BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8, offset: const Offset(0, 2))],
-        ),
-        child: Row(children: [
-          // Product images side by side
-          Row(mainAxisSize: MainAxisSize.min, children: [
-            _ProductMini(product: productA),
-            Container(
-              width: 24, height: 24,
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle),
-              child: Icon(Icons.compare_arrows_rounded,
-                size: 13, color: cs.primary),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            _ProductMini(product: productB),
-          ]),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+        child: Row(
+          children: [
+            // Product images side by side
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('${productA.name} vs ${productB.name}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, fontWeight: FontWeight.w700,
-                    color: context.textPrimary)),
-                const SizedBox(height: 3),
-                Row(children: [
-                  Text(icon, style: const TextStyle(fontSize: 11)),
-                  const SizedBox(width: 4),
-                  Text(category,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textTertiaryColor)),
-                ]),
+                _ProductMini(product: productA),
+                Container(
+                  width: 24,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.compare_arrows_rounded,
+                    size: 13,
+                    color: cs.primary,
+                  ),
+                ),
+                _ProductMini(product: productB),
               ],
             ),
-          ),
-          Icon(Icons.chevron_right_rounded,
-            size: 18, color: context.textTertiaryColor),
-        ]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${productA.name} vs ${productB.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Text(icon, style: const TextStyle(fontSize: 11)),
+                      const SizedBox(width: 4),
+                      Text(
+                        category,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: context.textTertiaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: context.textTertiaryColor,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -585,19 +747,27 @@ class _ProductMini extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40, height: 40,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.dividerColor)),
+        border: Border.all(color: context.dividerColor),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(9),
         child: product.imageUrl != null
             ? CachedNetworkImage(
                 imageUrl: product.imageUrl!,
-                width: 40, height: 40, fit: BoxFit.contain,
+                width: 40,
+                height: 40,
+                fit: BoxFit.contain,
                 errorWidget: (_, __, ___) => Icon(
-                  Icons.devices, size: 18, color: context.textTertiaryColor))
+                  Icons.devices,
+                  size: 18,
+                  color: context.textTertiaryColor,
+                ),
+              )
             : Icon(Icons.devices, size: 18, color: context.textTertiaryColor),
       ),
     );
@@ -622,41 +792,66 @@ class _TrendChip extends StatelessWidget {
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: context.dividerColor),
-          boxShadow: [BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6, offset: const Offset(0, 2))],
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (product.imageUrl != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: CachedNetworkImage(
-                imageUrl: product.imageUrl!,
-                width: 26, height: 26, fit: BoxFit.contain,
-                errorWidget: (_, __, ___) => Icon(
-                  Icons.devices, size: 16, color: context.textTertiaryColor))),
-          if (product.imageUrl != null) const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 130),
-            child: Text(product.name,
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, fontWeight: FontWeight.w600,
-                color: context.textSecondary)),
-          ),
-          if (product.techScore > 0) ...[
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8)),
-            child: Text('${product.techScore.toInt()}',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 10, fontWeight: FontWeight.w700, color: cs.primary)),
-          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
           ],
-        ]),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (product.imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: CachedNetworkImage(
+                  imageUrl: product.imageUrl!,
+                  width: 26,
+                  height: 26,
+                  fit: BoxFit.contain,
+                  errorWidget: (_, __, ___) => Icon(
+                    Icons.devices,
+                    size: 16,
+                    color: context.textTertiaryColor,
+                  ),
+                ),
+              ),
+            if (product.imageUrl != null) const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 130),
+              child: Text(
+                product.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.textSecondary,
+                ),
+              ),
+            ),
+            if (product.techScore > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${product.techScore.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -710,7 +905,11 @@ class _ProductSearchList extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.search_off, size: 48, color: context.textTertiaryColor),
+                  Icon(
+                    Icons.search_off,
+                    size: 48,
+                    color: context.textTertiaryColor,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     context.l10n?.noProductsFound ?? 'No products found',
@@ -729,20 +928,28 @@ class _ProductSearchList extends ConsumerWidget {
               return _SearchProductTile(
                 product: product,
                 isSelected: isSelected,
-                onTap: () => isSelected ? onRemove(product.id) : onSelect(product.id),
+                onTap: () =>
+                    isSelected ? onRemove(product.id) : onSelect(product.id),
               );
             },
           );
         },
         failure: (error) => Center(
-          child: Text(context.l10n?.errorPrefix(error.message ?? '') ?? 'Error: ${error.message}',
-            style: TextStyle(color: context.textPrimary)),
+          child: Text(
+            context.l10n?.errorPrefix(error.message ?? '') ??
+                'Error: ${error.message}',
+            style: TextStyle(color: context.textPrimary),
+          ),
         ),
       ),
-      loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.brandBlue)),
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppTheme.brandBlue),
+      ),
       error: (err, _) => Center(
-        child: Text(context.l10n?.anErrorOccurred('$err') ?? 'An error occurred: $err',
-          style: TextStyle(color: context.textPrimary)),
+        child: Text(
+          context.l10n?.anErrorOccurred('$err') ?? 'An error occurred: $err',
+          style: TextStyle(color: context.textPrimary),
+        ),
       ),
     );
   }
@@ -779,12 +986,18 @@ class _SearchProductTile extends StatelessWidget {
         color: isSelected ? null : context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(14),
         border: isSelected
-            ? Border.all(color: AppTheme.brandDeepBlue.withValues(alpha: 0.5), width: 1.5)
+            ? Border.all(
+                color: AppTheme.brandDeepBlue.withValues(alpha: 0.5),
+                width: 1.5,
+              )
             : Border.all(color: context.dividerColor),
         boxShadow: isSelected
             ? [
-                BoxShadow(color: AppTheme.brandBlue.withValues(alpha: 0.18),
-                  blurRadius: 12, offset: const Offset(0, 3)),
+                BoxShadow(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
                 ..._cardShadow,
               ]
             : _cardShadow,
@@ -803,7 +1016,8 @@ class _SearchProductTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   child: ProductImageBox(
                     imageUrl: product.imageUrl,
-                    width: 48, height: 48,
+                    width: 48,
+                    height: 48,
                     borderRadius: BorderRadius.circular(10),
                     padding: const EdgeInsets.all(4),
                   ),
@@ -814,39 +1028,66 @@ class _SearchProductTile extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product.name,
+                      Text(
+                        product.name,
                         style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600,
-                          color: context.textPrimary),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: context.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: 2),
-                      Text(product.brand ?? product.subcategory,
-                        style: TextStyle(fontSize: 13, color: context.textSecondary)),
+                      Text(
+                        product.brand ?? product.subcategory,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: context.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 if (product.techScore > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppTheme.brandDeepBlue.withValues(alpha: 0.15)
-                        : AppTheme.brandBlue.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppTheme.brandDeepBlue.withValues(alpha: 0.15)
+                          : AppTheme.brandBlue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${product.techScore.round()}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isSelected
+                            ? AppTheme.brandDeepBlue
+                            : AppTheme.brandBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  child: Text('${product.techScore.round()}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isSelected ? AppTheme.brandDeepBlue : AppTheme.brandBlue,
-                      fontWeight: FontWeight.w600)),
-                ),
                 const SizedBox(width: 8),
                 isSelected
                     ? ShaderMask(
-                        shaderCallback: (bounds) => _accentGradient.createShader(bounds),
-                        child: const Icon(Icons.check_circle, color: Colors.white, size: 24))
-                    : Icon(Icons.add_circle_outline,
-                        color: context.textTertiaryColor, size: 22),
+                        shaderCallback: (bounds) =>
+                            _accentGradient.createShader(bounds),
+                        child: const Icon(
+                          Icons.check_circle,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      )
+                    : Icon(
+                        Icons.add_circle_outline,
+                        color: context.textTertiaryColor,
+                        size: 22,
+                      ),
               ],
             ),
           ),
@@ -862,9 +1103,15 @@ class _SearchProductTile extends StatelessWidget {
 String normalizeProductName(String name) {
   return name
       .toLowerCase()
-      .replaceAll(RegExp(r'\s*\(\d+\s*(?:gb|tb|mb)\)', caseSensitive: false), '')
+      .replaceAll(
+        RegExp(r'\s*\(\d+\s*(?:gb|tb|mb)\)', caseSensitive: false),
+        '',
+      )
       .replaceAll(RegExp(r'\b\d+\s*(?:gb|tb|mb)\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\bwi-fi\s*\+\s*cellular\b', caseSensitive: false), '')
+      .replaceAll(
+        RegExp(r'\bwi-fi\s*\+\s*cellular\b', caseSensitive: false),
+        '',
+      )
       .replaceAll(RegExp(r'\bwi-fi\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\bcellular\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b5g\b', caseSensitive: false), '')

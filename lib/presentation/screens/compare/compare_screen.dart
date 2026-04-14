@@ -46,7 +46,6 @@ part 'widgets/empty_search_widgets.dart';
 part 'widgets/spec_comparison_widget.dart';
 part 'widgets/youtube_widgets.dart';
 
-
 /// 3-layer card shadow used throughout the screen.
 const _cardShadow = [
   BoxShadow(color: Color(0x0A6366F1), blurRadius: 4, offset: Offset(0, 1)),
@@ -64,21 +63,28 @@ const _accentGradient = LinearGradient(
 class CompareScreen extends ConsumerStatefulWidget {
   final Object? initialComparison;
   final int initialMode; // 0 = Products, 1 = Subscriptions
-  const CompareScreen({super.key, this.initialComparison, this.initialMode = 0});
+  const CompareScreen({
+    super.key,
+    this.initialComparison,
+    this.initialMode = 0,
+  });
 
   @override
   ConsumerState<CompareScreen> createState() => _CompareScreenState();
 }
 
 class _CompareScreenState extends ConsumerState<CompareScreen> {
-  List<String> get _selectedProductIds => ref.read(compareSessionProvider).selectedProductIds;
-  List<ProductEntity>? get _comparedProducts => ref.read(compareSessionProvider).comparedProducts;
-  String? get _lockedCategory => ref.read(compareSessionProvider).lockedCategory;
-  String? get _lockedSubcategory => ref.read(compareSessionProvider).lockedSubcategory;
+  List<String> get _selectedProductIds =>
+      ref.read(compareSessionProvider).selectedProductIds;
+  List<ProductEntity>? get _comparedProducts =>
+      ref.read(compareSessionProvider).comparedProducts;
+  String? get _lockedCategory =>
+      ref.read(compareSessionProvider).lockedCategory;
+  String? get _lockedSubcategory =>
+      ref.read(compareSessionProvider).lockedSubcategory;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounce;
-
 
   @override
   void initState() {
@@ -102,9 +108,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       final comp = comparison as dynamic;
       final ids = (comp.itemIds as List).cast<String>();
       if (ids.isNotEmpty) {
-        ref.read(compareSessionProvider.notifier).state = ref.read(compareSessionProvider).copyWith(
-          selectedProductIds: ids,
-        );
+        ref.read(compareSessionProvider.notifier).state = ref
+            .read(compareSessionProvider)
+            .copyWith(selectedProductIds: ids);
         setState(() {});
         // Auto-compare if 2+ products
         if (ids.length >= 2) {
@@ -130,9 +136,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     ref.read(comparisonStateProvider.notifier).clearSelection();
 
     // Add all product IDs to session
-    ref.read(compareSessionProvider.notifier).state = ref.read(compareSessionProvider).copyWith(
-      selectedProductIds: globalIds,
-    );
+    ref.read(compareSessionProvider.notifier).state = ref
+        .read(compareSessionProvider)
+        .copyWith(selectedProductIds: globalIds);
     setState(() {});
 
     // Ensure products are loaded, then auto-start comparison
@@ -161,7 +167,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       await Future.delayed(const Duration(milliseconds: 500));
     }
     // Timeout - try anyway
-    if (mounted && _comparedProducts == null && _selectedProductIds.length >= 2) {
+    if (mounted &&
+        _comparedProducts == null &&
+        _selectedProductIds.length >= 2) {
       _startComparison();
     }
   }
@@ -192,10 +200,11 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       result.when(
         success: (product) {
           if (mounted) {
-            final newIds = List<String>.from(_selectedProductIds)..add(productId);
-            ref.read(compareSessionProvider.notifier).state = ref.read(compareSessionProvider).copyWith(
-              selectedProductIds: newIds,
-            );
+            final newIds = List<String>.from(_selectedProductIds)
+              ..add(productId);
+            ref.read(compareSessionProvider.notifier).state = ref
+                .read(compareSessionProvider)
+                .copyWith(selectedProductIds: newIds);
             setState(() {});
           }
         },
@@ -205,9 +214,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
     if (!productAsync.hasValue) {
       final newIds = List<String>.from(_selectedProductIds)..add(productId);
-      ref.read(compareSessionProvider.notifier).state = ref.read(compareSessionProvider).copyWith(
-        selectedProductIds: newIds,
-      );
+      ref.read(compareSessionProvider.notifier).state = ref
+          .read(compareSessionProvider)
+          .copyWith(selectedProductIds: newIds);
       setState(() {});
     }
   }
@@ -215,12 +224,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   void _removeProduct(String productId) {
     final newIds = List<String>.from(_selectedProductIds)..remove(productId);
     if (newIds.isEmpty) {
-      ref.read(compareSessionProvider.notifier).state = const CompareSessionData();
+      ref.read(compareSessionProvider.notifier).state =
+          const CompareSessionData();
     } else {
-      ref.read(compareSessionProvider.notifier).state = ref.read(compareSessionProvider).copyWith(
-        selectedProductIds: newIds,
-        clearProducts: true,
-      );
+      ref.read(compareSessionProvider.notifier).state = ref
+          .read(compareSessionProvider)
+          .copyWith(selectedProductIds: newIds, clearProducts: true);
     }
     setState(() {});
   }
@@ -228,7 +237,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   Future<void> _startComparison() async {
     if (_selectedProductIds.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n?.selectAtLeast2 ?? 'Select at least 2 products'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(
+            context.l10n?.selectAtLeast2 ?? 'Select at least 2 products',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -248,7 +262,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         error: (_, __) {},
       );
     }
-    
+
     if (hasLoading) {
       // Products still loading, retry after delay
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -256,10 +270,15 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       });
       return;
     }
-    
+
     if (products.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n?.couldNotLoadProduct ?? 'Could not load product data'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(
+            context.l10n?.couldNotLoadProduct ?? 'Could not load product data',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -269,16 +288,19 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     if (categories.length > 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n?.mustBeSameCategory ?? 'Products must be from the same category to compare'),
+          content: Text(
+            context.l10n?.mustBeSameCategory ??
+                'Products must be from the same category to compare',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
 
-    ref.read(compareSessionProvider.notifier).state = ref.read(compareSessionProvider).copyWith(
-      comparedProducts: products,
-    );
+    ref.read(compareSessionProvider.notifier).state = ref
+        .read(compareSessionProvider)
+        .copyWith(comparedProducts: products);
     setState(() {});
 
     // Save comparison to Firestore for history
@@ -286,12 +308,14 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     if (user != null) {
       final title = products.map((p) => p.name).join(' vs ');
       try {
-        await ref.read(comparisonRepositoryProvider).saveManualComparison(
-          userId: user.uid,
-          productIds: _selectedProductIds.toList(),
-          category: products.first.category,
-          title: title,
-        );
+        await ref
+            .read(comparisonRepositoryProvider)
+            .saveManualComparison(
+              userId: user.uid,
+              productIds: _selectedProductIds.toList(),
+              category: products.first.category,
+              title: title,
+            );
         // Invalidate comparisons cache so history updates
         ref.invalidate(userComparisonsProvider);
       } catch (e) {
@@ -300,20 +324,25 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     }
 
     // Track comparison behavior
-    ref.read(behaviorTrackingProvider)
+    ref
+        .read(behaviorTrackingProvider)
         .trackComparison(_selectedProductIds.toList());
   }
 
   void _resetComparison() {
-    ref.read(compareSessionProvider.notifier).state = const CompareSessionData();
+    ref.read(compareSessionProvider.notifier).state =
+        const CompareSessionData();
     ref.read(hideNavBarProvider.notifier).state = false;
     setState(() {});
   }
 
   void _removeProductFromComparison(String productId) {
     final session = ref.read(compareSessionProvider);
-    final newIds = List<String>.from(session.selectedProductIds)..remove(productId);
-    final newProducts = session.comparedProducts?.where((p) => p.id != productId).toList();
+    final newIds = List<String>.from(session.selectedProductIds)
+      ..remove(productId);
+    final newProducts = session.comparedProducts
+        ?.where((p) => p.id != productId)
+        .toList();
     if (newIds.length < 2) {
       // Not enough products for comparison, reset
       _resetComparison();
@@ -334,7 +363,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       comparedProducts: products,
     );
     setState(() {});
-    ref.read(behaviorTrackingProvider)
+    ref
+        .read(behaviorTrackingProvider)
         .trackComparison(_selectedProductIds.toList());
   }
 
@@ -363,7 +393,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           shaderCallback: (bounds) => _accentGradient.createShader(bounds),
           child: Text(
             widget.initialMode == 1
-                ? (context.l10n?.compareSubscriptions ?? 'Compare Subscriptions')
+                ? (context.l10n?.compareSubscriptions ??
+                      'Compare Subscriptions')
                 : (context.l10n?.compare ?? 'Compare'),
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
@@ -380,7 +411,11 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               padding: const EdgeInsets.only(right: 8),
               child: TextButton.icon(
                 onPressed: _resetComparison,
-                icon: const Icon(Icons.refresh_rounded, size: 16, color: AppTheme.error),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  size: 16,
+                  color: AppTheme.error,
+                ),
                 label: Text(
                   'Clear',
                   style: GoogleFonts.plusJakartaSans(
@@ -410,7 +445,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     );
   }
 
-
   Widget _buildSelectionView() {
     final count = _selectedProductIds.length;
     final canCompare = count >= 2;
@@ -419,152 +453,255 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Column(children: [
-          // ── Premium header card ────────────────────────────────────────────
-          Container(
-            margin: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF0F1724), Color(0xFF141C2E), Color(0xFF0A1020)],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
-              boxShadow: [
-                BoxShadow(color: AppTheme.brandDeepBlue.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 8)),
-                BoxShadow(color: AppTheme.brandCyan.withValues(alpha: 0.06), blurRadius: 40, spreadRadius: -4),
-              ],
-            ),
-            child: Column(children: [
-              // Tagline row
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-                child: Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue]),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 13),
-                      const SizedBox(width: 5),
-                      Text(
-                        count < 2 ? '${count + 1} ürün daha ekle' : 'Hazır — karşılaştırın!',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                    ]),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '$count / 4',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: count >= 2 ? AppTheme.brandCyan : Colors.white38),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 14),
-
-              // Slot row with VS connectors
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: _buildPremiumSlotWidgets(),
+        Column(
+          children: [
+            // ── Premium header card ────────────────────────────────────────────
+            Container(
+              margin: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF0F1724),
+                    Color(0xFF141C2E),
+                    Color(0xFF0A1020),
+                  ],
                 ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.brandDeepBlue.withValues(alpha: 0.3),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: AppTheme.brandCyan.withValues(alpha: 0.06),
+                    blurRadius: 40,
+                    spreadRadius: -4,
+                  ),
+                ],
               ),
-
-              // Compare button — only when ≥ 2 selected
-              if (canCompare)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: GestureDetector(
-                  onTap: () { HapticFeedback.mediumImpact(); _startComparison(); },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandBlue],
-                        begin: Alignment.topLeft, end: Alignment.bottomRight),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(color: AppTheme.brandDeepBlue.withValues(alpha: 0.45), blurRadius: 14, offset: const Offset(0, 5)),
+              child: Column(
+                children: [
+                  // Tagline row
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppTheme.brandBlue,
+                                AppTheme.brandDeepBlue,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.compare_arrows_rounded,
+                                color: Colors.white,
+                                size: 13,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                count < 2
+                                    ? (context.l10n?.selectAtLeast2 ??
+                                          'Select at least 2 products')
+                                    : (Localizations.localeOf(
+                                                context,
+                                              ).languageCode ==
+                                              'tr'
+                                          ? 'Hazır — karşılaştırın!'
+                                          : 'Ready to compare!'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '$count / 4',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: count >= 2
+                                ? AppTheme.brandCyan
+                                : Colors.white38,
+                          ),
+                        ),
                       ],
                     ),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Karşılaştır${count > 2 ? " ($count ürün)" : ""}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white,
-                          letterSpacing: 0.3),
-                      ),
-                    ]),
                   ),
-                ).animate().fadeIn(duration: 220.ms).scale(begin: const Offset(0.95, 0.95)),
-              ),
-            ]),
-          ),
+                  const SizedBox(height: 14),
 
-          const SizedBox(height: 10),
-
-          // Search bar — hide when all 4 slots filled
-          if (!allFilled)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Container(
-              decoration: BoxDecoration(
-                color: context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.dividerColor),
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: _onSearchChanged,
-                style: TextStyle(color: context.textPrimary, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: context.l10n?.searchCompareHint ?? 'Karşılaştırmak için ürün ara...',
-                  hintStyle: TextStyle(color: context.textTertiaryColor, fontSize: 14),
-                  prefixIcon: ShaderMask(
-                    shaderCallback: (bounds) => _accentGradient.createShader(bounds),
-                    child: const Icon(Icons.search, color: Colors.white, size: 20),
+                  // Slot row with VS connectors
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: _buildPremiumSlotWidgets(),
+                    ),
                   ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.close_rounded, size: 18, color: context.textSecondary),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        })
-                    : null,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
+
+                  // Compare button — only when ≥ 2 selected
+                  if (canCompare)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                      child:
+                          GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  _startComparison();
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        AppTheme.brandBlue,
+                                        AppTheme.brandDeepBlue,
+                                        AppTheme.brandBlue,
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.brandDeepBlue
+                                            .withValues(alpha: 0.45),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.compare_arrows_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        count > 2
+                                            ? (context.l10n?.compareCount(
+                                                    count,
+                                                  ) ??
+                                                  'Compare $count')
+                                            : (context.l10n?.compareAction ??
+                                                  'Compare'),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .animate()
+                              .fadeIn(duration: 220.ms)
+                              .scale(begin: const Offset(0.95, 0.95)),
+                    ),
+                ],
               ),
             ),
-          ),
 
-          const SizedBox(height: 6),
+            const SizedBox(height: 10),
 
-          Expanded(
-            child: allFilled
-                ? const SizedBox.shrink()
-                : _ProductSearchList(
-                    selectedIds: _selectedProductIds,
-                    onSelect: _addProduct,
-                    onRemove: _removeProduct,
+            // Search bar — hide when all 4 slots filled
+            if (!allFilled)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: context.surfaceVariantColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: context.dividerColor),
                   ),
-          ),
-        ]),
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    onChanged: _onSearchChanged,
+                    style: TextStyle(color: context.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText:
+                          context.l10n?.searchCompareHint ??
+                          'Search products to compare...',
+                      hintStyle: TextStyle(
+                        color: context.textTertiaryColor,
+                        fontSize: 14,
+                      ),
+                      prefixIcon: ShaderMask(
+                        shaderCallback: (bounds) =>
+                            _accentGradient.createShader(bounds),
+                        child: const Icon(
+                          Icons.search,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: context.textSecondary,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 6),
+
+            Expanded(
+              child: allFilled
+                  ? const SizedBox.shrink()
+                  : _ProductSearchList(
+                      selectedIds: _selectedProductIds,
+                      onSelect: _addProduct,
+                      onRemove: _removeProduct,
+                    ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -577,31 +714,43 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     for (int i = 0; i < totalSlots; i++) {
       // VS connector between slots
       if (i > 0) {
-        items.add(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: Text('VS',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10, fontWeight: FontWeight.w900,
-              color: AppTheme.brandCyan.withValues(alpha: 0.7),
-              letterSpacing: 1)),
-        ));
+        items.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              'VS',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.brandCyan.withValues(alpha: 0.7),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        );
       }
       if (i < filledCount) {
         final productId = _selectedProductIds[i];
         final productAsync = ref.watch(productDetailProvider(productId));
         items.add(
-          Expanded(child: productAsync.when(
-            data: (result) => result.when(
-              success: (product) => _buildPremiumFilledSlot(product),
-              failure: (_) => _buildPremiumEmptySlot(i + 1),
+          Expanded(
+            child: productAsync.when(
+              data: (result) => result.when(
+                success: (product) => _buildPremiumFilledSlot(product),
+                failure: (_) => _buildPremiumEmptySlot(i + 1),
+              ),
+              loading: () => SizedBox(
+                height: 80,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: AppTheme.brandCyan.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+              error: (_, __) => _buildPremiumEmptySlot(i + 1),
             ),
-            loading: () => SizedBox(
-              height: 80,
-              child: Center(child: CircularProgressIndicator(
-                strokeWidth: 1.5, color: AppTheme.brandCyan.withValues(alpha: 0.7))),
-            ),
-            error: (_, __) => _buildPremiumEmptySlot(i + 1),
-          )),
+          ),
         );
       } else {
         items.add(Expanded(child: _buildPremiumEmptySlot(i + 1)));
@@ -611,94 +760,134 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   }
 
   Widget _buildPremiumEmptySlot(int slotNumber) {
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
     return GestureDetector(
-      onTap: () { _searchFocusNode.requestFocus(); HapticFeedback.selectionClick(); },
-      child: Column(children: [
-        Container(
-          width: 66, height: 66,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppTheme.brandCyan.withValues(alpha: 0.2), width: 1.5,
-              strokeAlign: BorderSide.strokeAlignOutside),
-            color: Colors.white.withValues(alpha: 0.03),
-          ),
-          child: Center(
-            child: Container(
-              width: 30, height: 30,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue]),
-                boxShadow: [BoxShadow(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.4),
-                  blurRadius: 10, offset: const Offset(0, 3))],
+      onTap: () {
+        _searchFocusNode.requestFocus();
+        HapticFeedback.selectionClick();
+      },
+      child: Column(
+        children: [
+          Container(
+            width: 66,
+            height: 66,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppTheme.brandCyan.withValues(alpha: 0.2),
+                width: 1.5,
+                strokeAlign: BorderSide.strokeAlignOutside,
               ),
-              child: const Icon(Icons.add_rounded, color: Colors.white, size: 17),
+              color: Colors.white.withValues(alpha: 0.03),
+            ),
+            child: Center(
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 17,
+                ),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 5),
-        Text('Ürün $slotNumber',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 9, fontWeight: FontWeight.w600,
-            color: AppTheme.brandCyan.withValues(alpha: 0.5))),
-      ]),
+          const SizedBox(height: 5),
+          Text(
+            '${isTurkish ? 'Ürün' : 'Product'} $slotNumber',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.brandCyan.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPremiumFilledSlot(ProductEntity product) {
-    return Column(children: [
-      Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-        Container(
-          width: 66, height: 66,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.3)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: ProductImageBox(
-              imageUrl: product.imageUrl,
-              fallbackUrls: product.images,
-              width: 60, height: 60,
-              borderRadius: BorderRadius.circular(15), padding: const EdgeInsets.all(4),
-            ),
-          ),
-        ),
-        Positioned(
-          top: -6, right: -6,
-          child: GestureDetector(
-            onTap: () => _removeProduct(product.id),
-            child: Container(
-              width: 20, height: 20,
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 66,
+              height: 66,
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF0A1020), width: 1.5)),
-              child: const Icon(Icons.close, size: 10, color: Colors.white),
+                color: Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.3),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: ProductImageBox(
+                  imageUrl: product.imageUrl,
+                  fallbackUrls: product.images,
+                  width: 60,
+                  height: 60,
+                  borderRadius: BorderRadius.circular(15),
+                  padding: const EdgeInsets.all(4),
+                ),
+              ),
+            ),
+            Positioned(
+              top: -6,
+              right: -6,
+              child: GestureDetector(
+                onTap: () => _removeProduct(product.id),
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF0A1020),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: const Icon(Icons.close, size: 10, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        SizedBox(
+          width: 66,
+          child: Text(
+            product.brand?.isNotEmpty == true ? product.brand! : product.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: Colors.white70,
             ),
           ),
         ),
-      ]),
-      const SizedBox(height: 5),
-      SizedBox(
-        width: 66,
-        child: Text(
-          product.brand?.isNotEmpty == true ? product.brand! : product.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white70),
-        ),
-      ),
-    ]);
+      ],
+    );
   }
 
   // Legacy slot methods removed — replaced by _buildPremiumSlotWidgets
-
 }
-
-
