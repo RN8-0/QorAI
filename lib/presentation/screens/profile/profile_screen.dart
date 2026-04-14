@@ -190,7 +190,7 @@ class _ProfileBody extends ConsumerWidget {
                             : null,
                         child: (user?.photoURL ?? '').isEmpty
                             ? Text(
-                                (user?.displayName ?? 'U').substring(0, 1).toUpperCase(),
+                                ((user?.displayName ?? '').isEmpty ? 'U' : user!.displayName!).substring(0, 1).toUpperCase(),
                                 style: GoogleFonts.inter(
                                   fontSize: 28, fontWeight: FontWeight.w800,
                                   color: const Color(0xFF6366F1)),
