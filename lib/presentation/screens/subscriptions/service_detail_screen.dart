@@ -12,7 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:compair/config/env_config.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -1058,8 +1058,9 @@ Respond in JSON: {"rating": "X/10", "bestFor": "short description of ideal user"
 
       final dio = Dio();
       final resp = await dio.post(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${EnvConfig.geminiApiKey}',
+        '$kPbBaseUrl/api/ai/gemini',
         data: {
+          'model': 'gemini-2.5-flash',
           'contents': [{'parts': [{'text': prompt}]}],
           'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 300},
         },

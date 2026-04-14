@@ -3,7 +3,7 @@
 //  Replaces Firebase Firestore + Auth
 // ═══════════════════════════════════════════════════════════════
 
-const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const PB_URL = 'http://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 const GOOGLE_CLIENT_ID = '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
 const PB_ADMIN_EMAIL = 'admin@compair.local';
 const PB_ADMIN_PASS = 'mx6I0zPE3HSaqbjlAY0p';
@@ -146,57 +146,47 @@ function _clean(data) {
   return clean;
 }
 
-// ─── FIREBASE AUTH (replaces GIS) ───────────────────────────────
+// ─── PB SUPERUSER AUTH (replaces Firebase Auth) ──────────────────
+// Admin panel authenticates directly against PocketBase _superusers.
+// No Google popup, no Firebase SDK. Works fully offline from Google.
 
-const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyA_YqZli9PSPeCzYl2x9FBv5SYK-m0kpEg',
-  appId: '1:510980756238:web:b21d1e3613561d7c69fd5f',
-  messagingSenderId: '510980756238',
-  projectId: 'compair-99b6e',
-  authDomain: 'compair-99b6e.firebaseapp.com',
-  storageBucket: 'compair-99b6e.firebasestorage.app',
-};
-
-let _fbApp = null;
-let _fbAuth = null;
 let _adminAuthCallback = null;
 
-function _getFirebaseAuth() {
-  if (_fbAuth) return _fbAuth;
-  if (typeof firebase === 'undefined') throw new Error('Firebase SDK not loaded');
-  if (!_fbApp) _fbApp = firebase.initializeApp(FIREBASE_CONFIG);
-  _fbAuth = firebase.auth();
-  return _fbAuth;
-}
-
-// Backward-compatible initGIS — stores the callback
 function initGIS(callback) {
+  // Legacy name kept so app.js doesn't need rewriting everywhere.
   _adminAuthCallback = callback;
 }
 
-// Backward-compatible gisSignIn — opens Firebase popup
-function gisSignIn() {
-  const auth = _getFirebaseAuth();
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope('email');
-  provider.addScope('profile');
-  auth.signInWithPopup(provider).then(result => {
-    const u = result.user;
-    if (_adminAuthCallback) _adminAuthCallback({
-      email: u.email,
-      name: u.displayName,
-      picture: u.photoURL,
-      uid: u.uid
-    }, null);
-  }).catch(err => {
-    const code = err.code || err.message || 'sign_in_failed';
-    const mapped = code === 'auth/popup-closed-by-user' ? 'popup_closed_by_user'
-                 : code === 'auth/user-cancelled'       ? 'access_denied'
-                 : code;
-    if (_adminAuthCallback) _adminAuthCallback(null, mapped);
-  });
+// Admin login form handler — called by #loginForm submit.
+async function loginWithPb() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  document.getElementById('loginLoading').style.display = 'flex';
+  try {
+    const pb = getPb();
+    const auth = await pb.collection('_superusers').authWithPassword(email, password);
+    const user = {
+      email: auth.record.email,
+      name: auth.record.email.split('@')[0],
+      picture: '',
+      uid: auth.record.id,
+    };
+    if (_adminAuthCallback) _adminAuthCallback(user, null);
+  } catch (e) {
+    document.getElementById('loginLoading').style.display = 'none';
+    errEl.textContent = 'Invalid email or password';
+    if (_adminAuthCallback) _adminAuthCallback(null, 'invalid_credentials');
+  }
 }
 
-function gisRevoke(email) {
-  try { _getFirebaseAuth().signOut(); } catch (_) {}
+// Backwards-compatible shim — old app.js may still call this.
+function gisSignIn() {
+  document.getElementById('loginError').textContent =
+    'Please sign in with your admin email and password above.';
+}
+
+function gisRevoke(_email) {
+  try { getPb().authStore.clear(); } catch (_) {}
 }

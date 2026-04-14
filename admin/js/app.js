@@ -8,11 +8,17 @@ let _currentAdminEmail = '';
 // ── ADMIN AUTH ──
 
 async function checkAdmin(email) {
+  // PB _superusers are implicitly admins — no whitelist check needed.
+  try {
+    const pb = getPb();
+    const rec = pb.authStore.record;
+    if (rec && rec.collectionName === '_superusers') return true;
+  } catch (_) {}
+  // Legacy whitelist check (for non-superuser admin emails stored in app_config).
   try {
     const doc = await pbGetDoc('app_config', 'admins');
     if (!doc.exists) return false;
     const data = doc.data();
-    // emails may be at top level or nested inside value object (PocketBase migration)
     const emails = data.emails || data.value?.emails || [];
     return emails.includes(email);
   } catch (e) {
@@ -105,10 +111,10 @@ initGIS(async (userInfo, err) => {
   }
 });
 
+// Legacy button handler — the new login form calls loginWithPb() directly
+// from pb_client.js via its onsubmit. Kept for any stray references.
 async function loginWithGoogle() {
-  document.getElementById('loginError').textContent = '';
-  document.getElementById('loginLoading').style.display = 'flex';
-  gisSignIn();
+  if (typeof loginWithPb === 'function') return loginWithPb();
 }
 
 // ── THEME ──

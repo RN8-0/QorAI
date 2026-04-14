@@ -1265,22 +1265,17 @@ final aiDailyTrendingProvider = FutureProvider<List<ProductEntity>>((ref) async 
   final allProducts = feed.all;
   if (allProducts.isEmpty) return allProducts;
 
-  // 3. Call Gemini to get trending tech product types
-  final apiKey = EnvConfig.geminiApiKey;
-  if (apiKey.isEmpty) {
-    return (allProducts.toList()..sort((a, b) => b.trendScore.compareTo(a.trendScore))).take(10).toList();
-  }
-
+  // 3. Call Gemini via PB proxy to get trending tech product types
   try {
     final dio = Dio();
-    const prompt = '''List the top 10 most searched and trending consumer technology products right now in 2025. 
+    const prompt = '''List the top 10 most searched and trending consumer technology products right now in 2025.
 Return ONLY a JSON array of product name keywords (short, search-friendly). Example: ["iPhone 16 Pro", "Samsung Galaxy S25", "MacBook Air M4"]
 Return only the JSON array, no explanation.''';
 
     final response = await dio.post(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-      queryParameters: {'key': apiKey},
+      '$kPbBaseUrl/api/ai/gemini',
       data: {
+        'model': 'gemini-2.5-flash',
         'contents': [{'parts': [{'text': prompt}]}],
         'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 512},
       },

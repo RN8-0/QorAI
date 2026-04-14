@@ -41,7 +41,6 @@ import 'package:compair/services/metadata_service.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
 import 'package:compair/services/tech_score_service.dart';
 import 'package:compair/services/youtube_service.dart';
-import 'package:compair/services/google_search_service.dart';
 import 'package:compair/services/behavior_tracking_service.dart';
 import 'package:compair/services/ip_location_service.dart';
 import 'package:compair/services/analytics_service.dart';
@@ -91,7 +90,6 @@ final aiServiceProvider = Provider<AIService>((ref) {
   return GeminiService(
     dio: ref.read(dioProvider),
     cacheService: ref.read(cacheServiceProvider),
-    apiKey: EnvConfig.geminiApiKey,
   );
 });
 
@@ -123,15 +121,6 @@ final youtubeServiceProvider = Provider<YouTubeService>((ref) {
   return YouTubeService(
     dio: ref.read(dioProvider),
     apiKey: EnvConfig.youtubeApiKey,
-  );
-});
-
-/// Google Custom Search API Service
-final googleSearchServiceProvider = Provider<GoogleSearchService>((ref) {
-  return GoogleSearchService(
-    dio: ref.read(dioProvider),
-    apiKey: EnvConfig.googleSearchApiKey,
-    searchEngineId: EnvConfig.googleSearchEngineId,
   );
 });
 

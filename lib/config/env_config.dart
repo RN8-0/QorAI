@@ -64,12 +64,6 @@ class EnvConfig {
   static String get youtubeApiKey =>
       const String.fromEnvironment('YOUTUBE_API_KEY', defaultValue: '');
 
-  static String get googleSearchApiKey =>
-      const String.fromEnvironment('GOOGLE_SEARCH_API_KEY', defaultValue: '');
-
-  static String get googleSearchEngineId =>
-      const String.fromEnvironment('GOOGLE_SEARCH_ENGINE_ID', defaultValue: '');
-
   static const String ipApiUrl = 'http://ip-api.com/json';
   static const String ipInfoUrl = 'https://ipinfo.io/json';
 }

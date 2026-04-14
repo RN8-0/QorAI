@@ -482,12 +482,13 @@ class SpecDirectionService {
 
   // ─── Gemini Batch Analysis (called from admin panel or on first run) ────────
 
-  /// Analyzes a list of unknown spec keys via Gemini and writes results to Firestore.
+  /// Analyzes a list of unknown spec keys via Gemini (through the PB proxy)
+  /// and writes results to the spec_directions collection.
   /// Called once from admin panel → results cached forever.
-  Future<void> analyzeAndCacheViaGemini(List<String> specKeys, String geminiApiKey) async {
-    if (specKeys.isEmpty || geminiApiKey.isEmpty) return;
+  Future<void> analyzeAndCacheViaGemini(List<String> specKeys, [String? _legacyKey]) async {
+    if (specKeys.isEmpty) return;
 
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    const endpoint = '$kPbBaseUrl/api/ai/gemini';
 
     final keyList = specKeys.take(100).join('\n');
     final prompt = '''You are a tech spec analyzer. For each spec below, determine if a HIGHER value is better ("higher"), a LOWER value is better ("lower"), or it is not comparable ("neutral").
@@ -501,8 +502,8 @@ Return ONLY valid JSON object like:
 Use the exact spec key names as provided. No explanation, only JSON.''';
 
     try {
-      final uri = Uri.parse('$endpoint?key=$geminiApiKey');
       final body = {
+        'model': 'gemini-2.5-flash',
         'contents': [{'parts': [{'text': prompt}]}],
         'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 2048},
       };
@@ -517,8 +518,8 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
         recordId = record.id;
       } catch (_) {}
 
-      // Call Gemini
-      final response = await _callGemini(endpoint, geminiApiKey, body);
+      // Call Gemini via PB proxy
+      final response = await _postJson(endpoint, body);
       if (response == null) return;
 
       // Parse JSON response
@@ -549,11 +550,6 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
       _loaded = false;
       await loadFirestoreOverrides();
     } catch (_) {}
-  }
-
-  Future<Map<String, dynamic>?> _callGemini(
-      String endpoint, String apiKey, Map body) async {
-    return _postJson('$endpoint?key=$apiKey', body);
   }
 
   Future<Map<String, dynamic>?> _postJson(String url, Map body) async {

@@ -6,7 +6,6 @@ library;
 import 'dart:convert';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
-import 'package:compair/config/env_config.dart';
 import 'package:compair/core/pb_client.dart';
 
 /// Fallback weight vector used when Gemini returns invalid JSON
@@ -80,8 +79,7 @@ class GeminiWeightService {
     String? usageIntent,
     String? country,
   }) async {
-    final apiKey = EnvConfig.geminiApiKey;
-    if (apiKey.isEmpty) return Map<String, double>.from(_kFallbackWeights);
+    // Gemini calls go through PocketBase proxy — no client-side key.
 
     final prompt = '''You are a product recommendation AI for a shopping assistant app.
 
@@ -124,13 +122,14 @@ Strict rules:
 
     final dio = Dio();
     final response = await dio.post(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
+      '$kPbBaseUrl/api/ai/gemini',
       options: Options(
         headers: {'Content-Type': 'application/json'},
         sendTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       ),
       data: {
+        'model': 'gemini-2.5-flash',
         'contents': [
           {
             'parts': [

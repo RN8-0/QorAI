@@ -20,8 +20,8 @@ class AppConstants {
   static const int deepSeekMaxRetries = 3;
   static const int deepSeekRateLimitRPM = 60;
 
-  // Gemini Flash 2.5 API (core app intelligence)
-  static const String geminiBaseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+  // Gemini Flash 2.5 API — routed through PocketBase proxy (pb_hooks/gemini.pb.js)
+  // Actual endpoint lives in lib/core/pb_client.dart: `$kPbBaseUrl/api/ai/gemini`
   static const String geminiModel = 'gemini-2.5-flash';
   static const int geminiMaxTokens = 4096;
   static const int geminiTimeoutSeconds = 30;

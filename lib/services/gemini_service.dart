@@ -2,17 +2,16 @@
 ///
 /// Unified AI backbone for the entire application.
 /// Model : gemini-2.5-flash (multimodal: text + image + vision)
-/// Endpoint: generativelanguage.googleapis.com/v1beta
-///
-/// Replaces the previous DeepSeek-based implementation while keeping
-/// the same [AIService] interface so the rest of the app is unchanged.
+/// Endpoint: PocketBase proxy — $kPbBaseUrl/api/ai/gemini
+///           (pb_hooks/gemini.pb.js forwards to Google AI Studio,
+///            key never leaves the server).
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
-import 'package:compair/config/env_config.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/services/ai_service.dart';
@@ -22,19 +21,19 @@ import 'package:compair/services/cache_service.dart';
 class GeminiService implements AIService {
   final Dio _dio;
   final CacheService _cacheService;
-  final String _apiKey;
 
-  static const _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models';
+  // All Gemini calls now go through the PocketBase proxy hook
+  // (pb_hooks/gemini.pb.js). The API key lives only on the server —
+  // clients never see it.
+  static const _proxyUrl = '$kPbBaseUrl/api/ai/gemini';
   static const _model = 'gemini-2.5-flash';
 
   GeminiService({
     required Dio dio,
     required CacheService cacheService,
-    String? apiKey,
+    @Deprecated('No longer used — key is server-side via PB proxy') String? apiKey,
   })  : _dio = dio,
-        _cacheService = cacheService,
-        _apiKey = apiKey ?? EnvConfig.geminiApiKey;
+        _cacheService = cacheService;
 
   // ─────────────────────────────────────────────────────────────────────────
   //  PUBLIC API — implements [AIService]
@@ -207,53 +206,13 @@ class GeminiService implements AIService {
     };
 
     try {
-      final response = await _dio.post(
-        '$_baseUrl/$_model:streamGenerateContent',
-        queryParameters: {'key': _apiKey, 'alt': 'sse'},
-        data: body,
-        options: Options(
-          responseType: ResponseType.stream,
-          receiveTimeout: const Duration(seconds: 60),
-          sendTimeout: const Duration(seconds: 15),
-        ),
-      );
-
-      final stream = response.data?.stream as Stream<List<int>>?;
-      if (stream == null) return;
-
-      String buffer = '';
-      await for (final chunk in stream) {
-        buffer += utf8.decode(chunk, allowMalformed: true);
-        // SSE format: "data: {...}\n\n"
-        while (buffer.contains('\n')) {
-          final lineEnd = buffer.indexOf('\n');
-          final line = buffer.substring(0, lineEnd).trim();
-          buffer = buffer.substring(lineEnd + 1);
-
-          if (line.startsWith('data: ')) {
-            final jsonStr = line.substring(6).trim();
-            if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
-            try {
-              final data = jsonDecode(jsonStr);
-              final candidates = data['candidates'] as List?;
-              if (candidates != null && candidates.isNotEmpty) {
-                final content = candidates[0]['content'];
-                final parts = content?['parts'] as List?;
-                if (parts != null && parts.isNotEmpty) {
-                  final text = parts[0]['text'] as String?;
-                  if (text != null && text.isNotEmpty) {
-                    yield text;
-                  }
-                }
-              }
-            } catch (_) {
-              // Skip malformed JSON chunks
-            }
-          }
-        }
-      }
+      // Streaming is not supported through the PB proxy (JS hooks can't
+      // easily passthrough SSE). Fall back to single-shot.
+      final text = await _rawRequest(body,
+          receiveTimeout: const Duration(seconds: 60));
+      if (text.isNotEmpty) yield text;
     } catch (e) {
-      throw AIServiceException(message: 'Streaming failed: $e');
+      throw AIServiceException(message: 'Chat failed: $e');
     }
   }
 
@@ -915,28 +874,26 @@ $jsonSchema
     }
   }
 
-  /// Low-level POST against the Gemini REST API with retry.
+  /// Low-level POST against the PocketBase Gemini proxy with retry.
   Future<String> _rawRequest(Map<String, dynamic> body,
       {Duration receiveTimeout = const Duration(seconds: 60)}) async {
-    if (_apiKey.isEmpty) {
-      debugPrint('[Gemini] ERROR: API key is empty! '
-          'Run with --dart-define-from-file=.env or set gemini_api_key in Firebase Remote Config.');
-      throw const AIServiceException(
-        message: 'Gemini API key is not configured. Please check your .env file.',
-      );
-    }
-
     int retryCount = 0;
+
+    // PB proxy expects {model, contents, generationConfig, systemInstruction}
+    final proxyBody = {
+      'model': _model,
+      ...body,
+    };
 
     while (retryCount < AppConstants.deepSeekMaxRetries) {
       try {
         final response = await _dio.post(
-          '$_baseUrl/$_model:generateContent',
-          queryParameters: {'key': _apiKey},
-          data: body,
+          _proxyUrl,
+          data: proxyBody,
           options: Options(
             receiveTimeout: receiveTimeout,
             sendTimeout: const Duration(seconds: 15),
+            headers: {'Content-Type': 'application/json'},
           ),
         );
 

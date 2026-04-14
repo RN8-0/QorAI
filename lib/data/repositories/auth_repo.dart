@@ -1,11 +1,8 @@
 /// Compair - Auth Repository
 library;
 
-import 'dart:convert';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
-import 'package:crypto/crypto.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
@@ -14,20 +11,12 @@ import 'package:compair/domain/entities/user_entity.dart';
 
 class AuthRepository {
   final PocketBase _pb;
-  final GoogleSignIn _googleSignIn;
   final PbDataSource _pbDS;
 
   AuthRepository({
     PocketBase? pbClient,
-    GoogleSignIn? googleSignIn,
     required PbDataSource pbDS,
   })  : _pb = pbClient ?? pb,
-        _googleSignIn = googleSignIn ??
-            GoogleSignIn(
-              serverClientId:
-                  '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com',
-              scopes: ['email', 'https://www.googleapis.com/auth/userinfo.profile'],
-            ),
         _pbDS = pbDS;
 
   Stream<String?> get authStateChanges async* {
@@ -95,87 +84,15 @@ class AuthRepository {
     }
   }
 
-  /// Derives a strong, deterministic password from Google credential.
-  /// Uses HMAC-SHA256 with app-level key so it can't be guessed from
-  /// knowing only the Google ID or email.
-  String _deriveOAuthPassword(String googleId, String email) {
-    final key = utf8.encode('compair_pb_oauth2_v1_salt');
-    final data = utf8.encode('$googleId:$email');
-    final hmacResult = Hmac(sha256, key).convert(data);
-    // 44-char base64 password — satisfies PB min-length
-    return base64Url.encode(hmacResult.bytes);
-  }
-
+  /// Google sign-in is currently disabled — native `google_sign_in` package
+  /// was removed to fully detach from Google SDKs. Will be re-enabled via
+  /// PocketBase native OAuth2 (`authWithOAuth2`) once the PB server has SSL
+  /// and Google OAuth2 provider configured.
   Future<Result<UserEntity>> signInWithGoogle() async {
-    try {
-      // Native Google Sign-In → verify identity → PB user create/login.
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        return const Failure(AuthException(message: 'Google girişi iptal edildi'));
-      }
-
-      // Verify Google identity by obtaining authentication tokens.
-      final googleAuth = await googleUser.authentication;
-      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
-        await _googleSignIn.signOut();
-        return const Failure(
-            AuthException(message: 'Google doğrulaması başarısız'));
-      }
-
-      final realEmail = googleUser.email;
-      final displayName =
-          googleUser.displayName ?? realEmail.split('@').first;
-      final googleId = googleUser.id;
-      final avatarUrl = googleUser.photoUrl ?? '';
-
-      await _googleSignIn.signOut();
-
-      // Use a unique PB-only email to avoid collision with email/password users.
-      // Real Google email is stored separately in 'googleEmail' field.
-      final pbEmail = 'g_$googleId@oauth.compair.app';
-      final password = _deriveOAuthPassword(googleId, realEmail);
-
-      // Try to sign in (returning Google user).
-      try {
-        await _pb.collection('users').authWithPassword(pbEmail, password);
-        return Success(UserModel.fromPb(_pb.authStore.record!));
-      } on ClientException catch (signInErr) {
-        // Not 400/404 → unexpected error, rethrow
-        if (signInErr.statusCode != 400 &&
-            signInErr.statusCode != 401 &&
-            signInErr.statusCode != 404) {
-          rethrow;
-        }
-      }
-
-      // User doesn't exist yet → create new PB user for this Google account.
-      // Note: 'verified' cannot be set client-side (admin-only field in PB).
-      // 'authRule' is empty so unverified users can still log in.
-      final body = <String, dynamic>{
-        'email': pbEmail,
-        'password': password,
-        'passwordConfirm': password,
-        'name': displayName,
-        'googleEmail': realEmail,
-        'emailVisibility': true,
-      };
-      if (avatarUrl.isNotEmpty) body['photoURL'] = avatarUrl;
-
-      await _pb.collection('users').create(body: body);
-      await _pb.collection('users').authWithPassword(pbEmail, password);
-
-      return Success(UserModel.fromPb(_pb.authStore.record!));
-    } on ClientException catch (e) {
-      debugPrint('=== Google Sign-In PB Error: ${e.statusCode} ===');
-      debugPrint('Response: ${e.response}');
-      return Failure(
-          AuthException(message: _getPbErrorMsg(e), originalError: e));
-    } catch (e) {
-      debugPrint('=== Google Sign-In Error: $e ===');
-      return Failure(AuthException(
-          message: 'Google girişi başarısız: ${e.toString()}',
-          originalError: e));
-    }
+    debugPrint('[auth] signInWithGoogle called but Google provider is disabled');
+    return const Failure(AuthException(
+      message: 'Google ile giriş şu anda kullanılamıyor. Lütfen e-posta ile giriş yapın.',
+    ));
   }
 
   Future<Result<UserEntity>> signInWithApple() async {
@@ -198,9 +115,6 @@ class AuthRepository {
 
   Future<void> signOut() async {
     _pb.authStore.clear();
-    try {
-      await _googleSignIn.signOut();
-    } catch (_) {}
   }
 
   Future<Result<void>> updateUserProfile({

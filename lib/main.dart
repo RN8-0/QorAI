@@ -1,10 +1,4 @@
 /// Compair - Main Entry Point
-/// Blueprint Section 2, 3
-///
-/// Firebase initialization
-/// Hive initialization
-/// ProviderScope wrapper
-/// Error handling zone
 library;
 
 import 'dart:async';
@@ -13,12 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
-import 'package:compair/firebase_options.dart';
 import 'package:compair/app.dart';
 import 'package:compair/services/cache_service.dart';
 import 'package:compair/services/remote_config_service.dart';
@@ -45,25 +34,6 @@ void main() {
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
       ]);
-    }
-
-    // Initialize Firebase
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      debugPrint('=== COMPAIR: Firebase initialized ===');
-
-      // Register background message handler
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-      // Crashlytics settings (mobile only - not supported on web)
-      if (!kIsWeb) {
-        FlutterError.onError =
-            FirebaseCrashlytics.instance.recordFlutterFatalError;
-      }
-    } catch (e) {
-      debugPrint('=== COMPAIR: Firebase FAILED: $e ===');
     }
 
     // Initialize Cache & Hive - Section 7.4
@@ -94,7 +64,6 @@ void main() {
     await SpecTranslationService.instance.init();
 
     // ATT (App Tracking Transparency) — required for iOS 14.5+
-    // Request permission for Firebase Analytics. Not needed on Android.
     if (!kIsWeb && Platform.isIOS) {
       try {
         final status = await AppTrackingTransparency.trackingAuthorizationStatus;
@@ -134,11 +103,6 @@ void main() {
   }, (error, stack) {
     debugPrint('=== COMPAIR: ZONE ERROR: $error ===');
     debugPrint('$stack');
-    if (!kIsWeb) {
-      try {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      } catch (_) {}
-    }
   });
 }
 

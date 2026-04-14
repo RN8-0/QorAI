@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
-import 'package:compair/config/env_config.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/services/behavior_analysis_service.dart';
@@ -315,8 +314,7 @@ class MatchScoreService {
     required String productText,
   }) async {
     try {
-      final apiKey = EnvConfig.geminiApiKey;
-      if (apiKey.isEmpty) return null;
+      // Gemini calls go through PocketBase proxy — no client-side key.
 
       final prompt = '''Given this user profile:
 $userProfileText
@@ -338,12 +336,13 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
 
       final dio = Dio();
       final response = await dio.post(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
+        '$kPbBaseUrl/api/ai/gemini',
         options: Options(
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
         ),
         data: {
+          'model': 'gemini-2.5-flash',
           'contents': [
             {
               'parts': [
