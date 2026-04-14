@@ -364,7 +364,7 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
           receiveTimeout: const Duration(seconds: 15),
         ),
         data: {
-          'model': AppConstants.geminiModel,
+          'model': AppConstants.geminiLiteModel,
           'contents': [
             {
               'parts': [

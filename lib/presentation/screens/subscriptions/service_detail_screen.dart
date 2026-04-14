@@ -1625,7 +1625,7 @@ Respond in JSON: {"rating": "X/10", "bestFor": "short description of ideal user"
             '$kPbBaseUrl/api/ai/gemini',
             options: Options(headers: withPbAuthHeaders()),
             data: {
-              'model': AppConstants.geminiModel,
+              'model': AppConstants.geminiLiteModel,
               'contents': [
                 {
                   'parts': [

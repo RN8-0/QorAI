@@ -21,14 +21,16 @@ import 'package:compair/services/cache_service.dart';
 class GeminiService implements AIService {
   final Dio _dio;
   final CacheService _cacheService;
-  DateTime? _preferFallbackUntil;
 
   // All Gemini calls now go through the PocketBase proxy hook
   // (pb_hooks/gemini.pb.js). The API key lives only on the server —
   // clients never see it.
   static const _proxyUrl = '$kPbBaseUrl/api/ai/gemini';
-  static const _primaryModel = AppConstants.geminiModel;
-  static const List<String> _fallbackModels = ['gemini-2.5-flash-lite'];
+
+  // Heavy tier: flash primary → lite fallback
+  // Lite tier: lite primary → flash fallback
+  static const _heavyModel = AppConstants.geminiModel;
+  static const _liteModel = AppConstants.geminiLiteModel;
 
   GeminiService({
     required Dio dio,
@@ -57,6 +59,7 @@ class GeminiService implements AIService {
         'country': req.country,
         'category': req.category,
       }),
+      tier: AiTier.heavy,
     );
 
     await _cacheService.set(
@@ -87,6 +90,7 @@ class GeminiService implements AIService {
         'country': req.country,
         'limit': req.limit,
       }),
+      tier: AiTier.lite,
     );
 
     await _cacheService.set(
@@ -113,6 +117,7 @@ class GeminiService implements AIService {
       }),
       thinkingBudget: 1024,
       timeout: const Duration(seconds: 60),
+      tier: AiTier.heavy,
     );
     debugPrint('[Gemini] analyzeLink response keys: ${response.keys}');
 
@@ -142,6 +147,7 @@ class GeminiService implements AIService {
         'userProfile': req.userProfile,
         'country': req.country,
       }),
+      tier: AiTier.lite,
     );
     return (response['score'] as num?)?.toDouble() ?? 0.0;
   }
@@ -152,6 +158,7 @@ class GeminiService implements AIService {
     final response = await _jsonRequest(
       system: _chatSystemPrompt(profile, currentYear),
       user: question,
+      tier: AiTier.lite,
     );
     return jsonEncode(response);
   }
@@ -185,7 +192,7 @@ class GeminiService implements AIService {
       'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
     };
 
-    final text = await _rawRequest(body);
+    final text = await _rawRequest(body, tier: AiTier.lite);
     return text;
   }
 
@@ -223,6 +230,7 @@ class GeminiService implements AIService {
       final text = await _rawRequest(
         body,
         receiveTimeout: const Duration(seconds: 60),
+        tier: AiTier.lite,
       );
       if (text.isNotEmpty) yield text;
     } catch (e) {
@@ -269,12 +277,16 @@ class GeminiService implements AIService {
       'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 2048},
     };
 
-    final text = await _rawRequest(body);
+    final text = await _rawRequest(body, tier: AiTier.heavy);
     return text;
   }
 
   /// Simple text-in / text-out query with optional language preference.
-  Future<String> freeTextQuery(String prompt, {String? language}) async {
+  Future<String> freeTextQuery(
+    String prompt, {
+    String? language,
+    AiTier tier = AiTier.lite,
+  }) async {
     final langCode = language ?? 'en';
     final langName = _languageName(langCode);
     final body = {
@@ -296,7 +308,7 @@ class GeminiService implements AIService {
         },
       'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 2048},
     };
-    return _rawRequest(body);
+    return _rawRequest(body, tier: tier);
   }
 
   /// JSON-enforced free text query — returns a clean JSON string (no markdown wrapping).
@@ -305,6 +317,7 @@ class GeminiService implements AIService {
     String prompt, {
     String? language,
     int maxTokens = 2048,
+    AiTier tier = AiTier.lite,
   }) async {
     final langCode = language ?? 'en';
     final langName = _languageName(langCode);
@@ -330,7 +343,7 @@ class GeminiService implements AIService {
         'responseMimeType': 'application/json',
       },
     };
-    return _rawRequest(body);
+    return _rawRequest(body, tier: tier);
   }
 
   /// Query Gemini with Google Search grounding for real-time factual data.
@@ -349,7 +362,7 @@ class GeminiService implements AIService {
       'generationConfig': {'temperature': 0.1, 'maxOutputTokens': maxTokens},
     };
     // Grounded queries with web search need more time — use 90s timeout
-    return _rawRequest(body, receiveTimeout: const Duration(seconds: 90));
+    return _rawRequest(body, receiveTimeout: const Duration(seconds: 90), tier: AiTier.heavy);
   }
 
   // ── Subscription Intelligence ────────────────────────────────────────────────
@@ -433,6 +446,7 @@ Return valid JSON:
         'subscriptions': subscriptionNames,
         'mode': isCompare ? 'compare' : 'single',
       }),
+      tier: AiTier.heavy,
     );
 
     final questions = (response['questions'] as List<dynamic>? ?? [])
@@ -501,7 +515,7 @@ Provide a comprehensive research summary.
           {'googleSearch': {}},
         ],
         'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 2048},
-      }, receiveTimeout: const Duration(seconds: 60));
+      }, receiveTimeout: const Duration(seconds: 60), tier: AiTier.heavy);
     } catch (e) {
       debugPrint(
         '=== COMPAIR: Research phase failed, continuing without: $e ===',
@@ -624,7 +638,7 @@ $jsonSchema
           'temperature': 0.3,
           'maxOutputTokens': maxTokens,
         },
-      }, receiveTimeout: const Duration(seconds: 120));
+      }, receiveTimeout: const Duration(seconds: 120), tier: AiTier.heavy);
     }
 
     String text;
@@ -757,6 +771,7 @@ $jsonSchema
       }),
       thinkingBudget: 512,
       timeout: const Duration(seconds: 45),
+      tier: AiTier.heavy,
     );
 
     final questions = (response['questions'] as List<dynamic>? ?? [])
@@ -826,6 +841,7 @@ $jsonSchema
       }),
       thinkingBudget: 2048,
       timeout: const Duration(seconds: 60),
+      tier: AiTier.heavy,
     );
 
     // Parse factors — handle both num and string scores from Gemini
@@ -898,6 +914,7 @@ $jsonSchema
     required String user,
     int? thinkingBudget,
     Duration? timeout,
+    AiTier tier = AiTier.lite,
   }) async {
     final body = <String, dynamic>{
       'contents': [
@@ -930,6 +947,7 @@ $jsonSchema
     final text = await _rawRequest(
       body,
       receiveTimeout: timeout ?? const Duration(seconds: 60),
+      tier: tier,
     );
 
     try {
@@ -953,11 +971,12 @@ $jsonSchema
   Future<String> _rawRequest(
     Map<String, dynamic> body, {
     Duration receiveTimeout = const Duration(seconds: 60),
+    AiTier tier = AiTier.lite,
   }) async {
     int retryCount = 0;
 
     while (retryCount < AppConstants.deepSeekMaxRetries) {
-      final models = _candidateModels();
+      final models = _candidateModels(tier);
 
       for (var i = 0; i < models.length; i++) {
         final model = models[i];
@@ -1027,16 +1046,7 @@ $jsonSchema
             throw const AIServiceException(message: 'AI returned no content.');
           }
 
-          if (model != _primaryModel) {
-            _preferFallbackUntil = DateTime.now().add(
-              const Duration(minutes: 30),
-            );
-            debugPrint(
-              '[Gemini] Falling back to $model for better availability.',
-            );
-          } else {
-            _preferFallbackUntil = null;
-          }
+          debugPrint('[Gemini] ✅ model=$model tier=$tier succeeded.');
 
           final buffer = StringBuffer();
           for (final part in parts) {
@@ -1059,11 +1069,6 @@ $jsonSchema
           final shouldTryFallback =
               !isLastModel && _shouldFallbackModel(statusCode, responseBody);
           if (shouldTryFallback) {
-            if (model == _primaryModel) {
-              _preferFallbackUntil = DateTime.now().add(
-                const Duration(minutes: 30),
-              );
-            }
             debugPrint(
               '[Gemini] Retrying with fallback model after $model failed.',
             );
@@ -1111,16 +1116,13 @@ $jsonSchema
     );
   }
 
-  List<String> _candidateModels() {
-    final fallbackFirst =
-        _preferFallbackUntil != null &&
-        DateTime.now().isBefore(_preferFallbackUntil!);
-    final ordered = <String>[
-      if (!fallbackFirst) _primaryModel,
-      ..._fallbackModels,
-      if (fallbackFirst) _primaryModel,
-    ];
-    return ordered.toSet().toList();
+  List<String> _candidateModels(AiTier tier) {
+    // Heavy tier: flash first (powerful), lite fallback (cheaper)
+    // Lite tier:  lite first (cheap), flash fallback (powerful)
+    if (tier == AiTier.heavy) {
+      return [_heavyModel, _liteModel];
+    }
+    return [_liteModel, _heavyModel];
   }
 
   bool _shouldFallbackModel(int? statusCode, dynamic responseBody) {

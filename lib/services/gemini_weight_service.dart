@@ -135,7 +135,7 @@ Strict rules:
         receiveTimeout: const Duration(seconds: 30),
       ),
       data: {
-        'model': AppConstants.geminiModel,
+        'model': AppConstants.geminiLiteModel,
         'contents': [
           {
             'parts': [

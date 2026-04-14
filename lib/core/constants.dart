@@ -2,6 +2,10 @@
 /// Blueprint Section 3.1, 7.1, 11.1
 library;
 
+/// AI model tier: heavy tasks use the full Flash model,
+/// light tasks use the cheaper Flash-Lite model.
+enum AiTier { heavy, lite }
+
 class AppConstants {
   AppConstants._();
 
@@ -21,8 +25,10 @@ class AppConstants {
   static const int deepSeekRateLimitRPM = 60;
 
   // Gemini Flash 2.5 API — routed through PocketBase proxy (pb_hooks/gemini.pb.js)
-  // Actual endpoint lives in lib/core/pb_client.dart: `$kPbBaseUrl/api/ai/gemini`
+  // Heavy tasks → gemini-2.5-flash  (detailed analysis, comparison, vision)
+  // Light tasks → gemini-2.5-flash-lite  (chat, simple scoring, Q&A)
   static const String geminiModel = 'gemini-2.5-flash';
+  static const String geminiLiteModel = 'gemini-2.5-flash-lite';
   static const int geminiMaxTokens = 4096;
   static const int geminiTimeoutSeconds = 30;
 

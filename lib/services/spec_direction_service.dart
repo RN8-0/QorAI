@@ -556,7 +556,7 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
 
     try {
       final body = {
-        'model': AppConstants.geminiModel,
+        'model': AppConstants.geminiLiteModel,
         'contents': [
           {
             'parts': [

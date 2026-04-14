@@ -488,6 +488,7 @@ class _DeepAnalysisNotifier
         '- Pros/cons should be concise (max 10 words each)\n'
         '- Be honest and specific, not generic praise',
         language: language,
+        tier: AiTier.heavy,
       );
       state = AsyncValue.data(_parseDeepAnalysis(result));
     } catch (e) {
@@ -668,6 +669,7 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
         '}\n\n'
         'Be specific and honest. Reasons should be concise (max 15 words each).',
         language: language,
+        tier: AiTier.heavy,
       );
       state = AsyncValue.data(_parseAdvisor(result));
     } catch (e) {
@@ -749,6 +751,7 @@ class _PredictionCacheNotifier
         'Base analysis on typical tech product lifecycle and market patterns. '
         'trendPercentage is the expected price change amount in percent.',
         language: language,
+        tier: AiTier.heavy,
       );
       state = AsyncValue.data(_parsePrediction(result));
     } catch (e) {
