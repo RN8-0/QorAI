@@ -39,20 +39,20 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final locale = _ref.read(localeProvider);
     final langCode = locale?.languageCode ?? 'en';
     const greetings = <String, String>{
-      'tr': 'Merhaba! Ben yapay zeka alışveriş asistanınım. Telefon, laptop, kulaklık hakkında her şeyi sorabilir veya ürün görseli göndererek analiz ettirebilirsiniz! 🚀',
-      'de': 'Hallo! Ich bin dein KI-Einkaufsassistent. Frag mich alles über Smartphones, Laptops, Kopfhörer oder sende ein Produktbild zur Analyse! 🚀',
-      'fr': 'Salut! Je suis votre assistant shopping IA. Posez-moi des questions sur les téléphones, laptops, écouteurs ou envoyez une image produit! 🚀',
-      'es': '¡Hola! Soy tu asistente de compras IA. ¡Pregúntame sobre teléfonos, laptops, auriculares o envía una imagen de producto! 🚀',
-      'ar': 'مرحباً! أنا مساعدك الذكي للتسوق. اسألني عن الهواتف والأجهزة المحمولة أو أرسل صورة منتج للتحليل! 🚀',
+      'tr': 'Merhaba! Ben yapay zeka alışveriş asistanınım. Telefon, laptop, kulaklık hakkında her şeyi sorabilirsiniz! 🚀',
+      'de': 'Hallo! Ich bin dein KI-Einkaufsassistent. Frag mich alles über Smartphones, Laptops, Kopfhörer! 🚀',
+      'fr': 'Salut! Je suis votre assistant shopping IA. Posez-moi des questions sur les téléphones, laptops, écouteurs! 🚀',
+      'es': '¡Hola! Soy tu asistente de compras IA. ¡Pregúntame sobre teléfonos, laptops, auriculares! 🚀',
+      'ar': 'مرحباً! أنا مساعدك الذكي للتسوق. اسألني عن الهواتف والأجهزة المحمولة! 🚀',
       'ru': 'Привет! Я ваш ИИ-помощник по покупкам. Спрашивайте меня о телефонах, ноутбуках, наушниках! 🚀',
-      'zh': '你好！我是您的AI购物助手。询问手机、笔记本、耳机相关问题，或发送产品图片分析！🚀',
+      'zh': '你好！我是您的AI购物助手。询问手机、笔记本、耳机相关问题！🚀',
       'ja': 'こんにちは！AIショッピングアシスタントです。スマホ・ノートPC・ヘッドホンについて何でも聞いてください！🚀',
       'ko': '안녕하세요! AI 쇼핑 도우미입니다. 스마트폰, 노트북, 헤드폰에 대해 무엇이든 물어보세요! 🚀',
       'pt': 'Olá! Sou seu assistente de compras IA. Pergunte-me sobre telefones, laptops, fones de ouvido! 🚀',
       'it': 'Ciao! Sono il tuo assistente shopping IA. Chiedimi di telefoni, laptop, cuffie! 🚀',
     };
     final text = greetings[langCode] ??
-        'Hey! I\'m your AI shopping assistant. Ask me anything about phones, laptops, headphones, or send me a product image to analyze! 🚀';
+        'Hey! I\'m your AI shopping assistant. Ask me anything about phones, laptops, headphones! 🚀';
     final welcome = PersistedChatMsg(
       id: 'welcome',
       role: PersistedMsgRole.ai,
@@ -68,12 +68,10 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
 
   Future<void> send(
     String text, {
-    String? imageBase64,
-    String? imageMimeType,
     Map<String, dynamic>? pageContext,
   }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty && imageBase64 == null) return;
+    if (trimmed.isEmpty) return;
 
     final user = _ref.read(userProfileProvider).valueOrNull;
     if (user == null) {
@@ -116,63 +114,44 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final convId = await _ensureConversation(user.uid, title);
 
     try {
-      final gemini = _ref.read(geminiServiceProvider);
+      final deepseek = _ref.read(deepSeekServiceProvider);
 
-      if (imageBase64 != null) {
-        // Image analysis: non-streaming (multimodal)
-        final response = await gemini.analyzeImage(
-          base64Image: imageBase64,
-          mimeType: imageMimeType ?? 'image/jpeg',
-          prompt: trimmed.isNotEmpty
-              ? trimmed
-              : 'Identify this product. What is it? Is it good?',
-        );
-        final aiMsg = PersistedChatMsg(
-          id: '${DateTime.now().millisecondsSinceEpoch}_ai',
-          role: PersistedMsgRole.ai,
-          text: response,
-        );
-        _addMsg(aiMsg);
-      } else {
-        // Text chat: streaming for instant response feel
-        final turns = _buildTurns(trimmed, user, pageContext: pageContext);
-        final aiMsgId = '${DateTime.now().millisecondsSinceEpoch}_ai';
-        String accumulated = '';
+      // Text chat only — image analysis moved to Visual Scanner
+      final turns = _buildTurns(trimmed, user, pageContext: pageContext);
+      final aiMsgId = '${DateTime.now().millisecondsSinceEpoch}_ai';
+      String accumulated = '';
 
-        try {
-          await for (final chunk in gemini.chatConversationStream(turns, user)) {
-            accumulated += chunk;
-            // Clean JSON wrapper if AI still returns it
-            final cleanText = _stripJsonWrapper(accumulated);
-            // Update the AI message in-place for live streaming effect
-            final aiMsg = PersistedChatMsg(
-              id: aiMsgId,
-              role: PersistedMsgRole.ai,
-              text: cleanText,
-            );
-            _updateOrAddMsg(aiMsg);
-          }
-        } catch (_) {
-          // Streaming failed — fallback to batch
-          if (accumulated.isEmpty) {
-            final response = await gemini.chatConversation(turns, user);
-            accumulated = response;
-          }
+      try {
+        await for (final chunk in deepseek.chatConversationStream(turns, user)) {
+          accumulated += chunk;
+          final cleanText = _stripJsonWrapper(accumulated);
+          final aiMsg = PersistedChatMsg(
+            id: aiMsgId,
+            role: PersistedMsgRole.ai,
+            text: cleanText,
+          );
+          _updateOrAddMsg(aiMsg);
         }
-
+      } catch (_) {
+        // Streaming failed — fallback to batch
         if (accumulated.isEmpty) {
-          accumulated = 'Sorry, I couldn\'t process that. Please try again.';
+          final response = await deepseek.chatConversation(turns, user);
+          accumulated = response;
         }
-
-        // Final update with complete text
-        final cleanText = _stripJsonWrapper(accumulated);
-        final aiMsg = PersistedChatMsg(
-          id: aiMsgId,
-          role: PersistedMsgRole.ai,
-          text: cleanText,
-        );
-        _updateOrAddMsg(aiMsg);
       }
+
+      if (accumulated.isEmpty) {
+        accumulated = 'Sorry, I couldn\'t process that. Please try again.';
+      }
+
+      // Final update with complete text
+      final cleanText = _stripJsonWrapper(accumulated);
+      final aiMsg = PersistedChatMsg(
+        id: aiMsgId,
+        role: PersistedMsgRole.ai,
+        text: cleanText,
+      );
+      _updateOrAddMsg(aiMsg);
 
       // Persist to Firestore in background (fire-and-forget)
       final ds = _ref.read(pbDataSourceProvider);

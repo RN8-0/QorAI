@@ -10,6 +10,7 @@ mixin GeminiCacheNotifierMixin<T> on StateNotifier<AsyncValue<T?>> {
   Ref get cacheRef;
 
   GeminiService get gemini => cacheRef.read(geminiServiceProvider);
+  DeepSeekService get deepseek => cacheRef.read(deepSeekServiceProvider);
 
   /// Resets cached state to null.
   void reset() => state = const AsyncValue.data(null);
@@ -69,9 +70,9 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
     if (state.valueOrNull != null) return;
     state = const AsyncValue.loading();
     try {
-      final gemini = _ref.read(geminiServiceProvider);
+      final deepseek = _ref.read(deepSeekServiceProvider);
       final langName = _getLanguageName(language);
-      final response = await gemini.jsonFreeTextQuery(
+      final response = await deepseek.jsonFreeTextQuery(
         'You are a product sentiment analyst. Based on your knowledge of publicly available '
         'user reviews, Reddit threads, forum discussions, YouTube comments, and tech community '
         'feedback for "$productName", provide a consumer sentiment analysis.\n\n'
@@ -203,8 +204,8 @@ class _ExpertScoresNotifier
     if (state.valueOrNull != null) return;
     state = const AsyncValue.loading();
     try {
-      final gemini = _ref.read(geminiServiceProvider);
-      final response = await gemini.jsonFreeTextQuery(
+      final deepseek = _ref.read(deepSeekServiceProvider);
+      final response = await deepseek.jsonFreeTextQuery(
         'You are a tech product review aggregator. For the product "$productName" (category: $category), '
         'estimate typical review scores from well-known tech review sites.\n\n'
         'Only include sites that would actually review this type of product.\n'
@@ -464,13 +465,13 @@ class _DeepAnalysisNotifier
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
-      final gemini = _ref.read(geminiServiceProvider);
+      final deepseek = _ref.read(deepSeekServiceProvider);
       final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
       final brandInfo = (brand != null && brand.isNotEmpty) ? ' by $brand' : '';
       final yearInfo = (year != null && year > 0)
           ? ', released around $year'
           : '';
-      final result = await gemini.jsonFreeTextQuery(
+      final result = await deepseek.jsonFreeTextQuery(
         'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
         'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
         'Return a JSON object with this EXACT structure:\n'
@@ -488,7 +489,6 @@ class _DeepAnalysisNotifier
         '- Pros/cons should be concise (max 10 words each)\n'
         '- Be honest and specific, not generic praise',
         language: language,
-        tier: AiTier.heavy,
       );
       state = AsyncValue.data(_parseDeepAnalysis(result));
     } catch (e) {
@@ -570,10 +570,9 @@ class _AlternativesCacheNotifier
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
-      final gemini = _ref.read(geminiServiceProvider);
+      final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
-      final result = await gemini.jsonFreeTextQuery(
-        'The product name is exactly "$productName" ($cat). Do NOT assume any typo in the name.\n\n'
+      final result = await deepseek.jsonFreeTextQuery(
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "alternatives": [\n'
@@ -653,10 +652,9 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
-      final gemini = _ref.read(geminiServiceProvider);
+      final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
-      final result = await gemini.jsonFreeTextQuery(
-        'As an expert tech advisor, the product name is exactly "$productName" ($cat, $price). Do NOT assume any typo in the name.\n\n'
+      final result = await deepseek.jsonFreeTextQuery(
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "whoShouldBuy": "<2 sentence description of the ideal buyer>",\n'
@@ -669,7 +667,6 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
         '}\n\n'
         'Be specific and honest. Reasons should be concise (max 15 words each).',
         language: language,
-        tier: AiTier.heavy,
       );
       state = AsyncValue.data(_parseAdvisor(result));
     } catch (e) {
@@ -735,10 +732,9 @@ class _PredictionCacheNotifier
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
-      final gemini = _ref.read(geminiServiceProvider);
+      final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
-      final result = await gemini.jsonFreeTextQuery(
-        'The product name is exactly "$productName" ($cat, current price: $price). Do NOT assume any typo in the name.\n\n'
+      final result = await deepseek.jsonFreeTextQuery(
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "trend": "<up/down/stable>",\n'
@@ -751,7 +747,6 @@ class _PredictionCacheNotifier
         'Base analysis on typical tech product lifecycle and market patterns. '
         'trendPercentage is the expected price change amount in percent.',
         language: language,
-        tier: AiTier.heavy,
       );
       state = AsyncValue.data(_parsePrediction(result));
     } catch (e) {

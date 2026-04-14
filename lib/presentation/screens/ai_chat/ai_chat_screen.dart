@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:compair/core/app_keys.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/data/models/chat_conversation.dart';
@@ -13,7 +10,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
@@ -38,9 +34,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     with TickerProviderStateMixin {
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
-  final _picker = ImagePicker();
   final _focusNode = FocusNode();
-  File? _pendingImage;
   late AnimationController _pulseCtrl;
 
   // Voice chat
@@ -147,29 +141,17 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   // ─── Send message ─────────────────────────────────────────────────────────
 
-  Future<void> _send(String text, {File? image}) async {
+  Future<void> _send(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty && image == null) return;
+    if (trimmed.isEmpty) return;
 
     HapticFeedback.lightImpact();
     ref.read(behaviorTrackingProvider).trackAIChatQuery(trimmed);
 
-    String? imageBase64;
-    String? imageMimeType;
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      imageBase64 = base64Encode(bytes);
-      final ext = image.path.split('.').last.toLowerCase();
-      imageMimeType = (ext == 'png') ? 'image/png' : 'image/jpeg';
-    }
-
-    setState(() => _pendingImage = null);
     _ctrl.clear();
 
     await ref.read(chatSessionProvider.notifier).send(
       trimmed,
-      imageBase64: imageBase64,
-      imageMimeType: imageMimeType,
       pageContext: widget.pageContext,
     );
 
@@ -182,24 +164,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
         _scroll.animateTo(0, duration: 300.ms, curve: Curves.easeOut);
       }
     });
-  }
-
-  Future<void> _pickImage() async {
-    HapticFeedback.selectionClick();
-    final picked = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 80, maxWidth: 1200);
-    if (picked != null) {
-      setState(() => _pendingImage = File(picked.path));
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    HapticFeedback.selectionClick();
-    final picked = await _picker.pickImage(
-        source: ImageSource.camera, imageQuality: 80, maxWidth: 1200);
-    if (picked != null) {
-      setState(() => _pendingImage = File(picked.path));
-    }
   }
 
   // ─── BUILD ────────────────────────────────────────────────────────────────
@@ -443,8 +407,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   // ─── Input Area ───────────────────────────────────────────────────────────
 
   Widget _buildInputArea(double bottomPadding) {
-    final hasText = _ctrl.text.trim().isNotEmpty || _pendingImage != null;
-    // In overlay mode, no nav bar height needed (overlay floats above nav)
+    final hasText = _ctrl.text.trim().isNotEmpty;
     final extraBottom = widget.isOverlay ? 0.0 : AppTheme.navBarHeight;
     return Container(
       padding: EdgeInsets.only(
@@ -459,25 +422,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
               blurRadius: 8, offset: const Offset(0, -2)),
         ]),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Image preview
-        if (_pendingImage != null) _buildImagePreview(),
-
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          // Oval attachment buttons
-          Container(
-            decoration: BoxDecoration(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: context.dividerColor.withValues(alpha: 0.5))),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              _buildAttachButton(Icons.photo_library_rounded, _pickImage),
-              Container(width: 1, height: 18,
-                color: context.dividerColor.withValues(alpha: 0.4)),
-              _buildAttachButton(Icons.camera_alt_rounded, _takePhoto),
-            ]),
-          ),
-          const SizedBox(width: 8),
-
           // Pill-shaped text field
           Expanded(child: Container(
             constraints: const BoxConstraints(minHeight: 40, maxHeight: 120),
@@ -499,7 +444,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
               focusNode: _focusNode,
               maxLines: null,
               onChanged: (_) => setState(() {}),
-              onSubmitted: (_) { if (hasText) _send(_ctrl.text, image: _pendingImage); },
+              onSubmitted: (_) { if (hasText) _send(_ctrl.text); },
               style: GoogleFonts.plusJakartaSans(fontSize: 14,
                   color: context.textPrimary),
               decoration: InputDecoration(
@@ -517,7 +462,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
           // Voice / Send button
           hasText
             ? GestureDetector(
-              onTap: () => _send(_ctrl.text, image: _pendingImage),
+              onTap: () => _send(_ctrl.text),
               child: Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
@@ -571,38 +516,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     );
   }
 
-  Widget _buildAttachButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Icon(icon, size: 18, color: AppTheme.neonCyan),
-      ),
-    );
-  }
-
-  Widget _buildImagePreview() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Stack(children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Image.file(_pendingImage!, height: 120, width: 120,
-              fit: BoxFit.cover)),
-        Positioned(top: 4, right: 4, child: GestureDetector(
-          onTap: () => setState(() => _pendingImage = null),
-          child: Container(
-            width: 24, height: 24,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.6),
-              shape: BoxShape.circle),
-            child: Icon(Icons.close, size: 14, color: context.surfaceVariantColor),
-          ),
-        )),
-      ]),
-    ).animate().scale(begin: const Offset(0.8, 0.8), duration: 200.ms,
-        curve: Curves.easeOutBack);
-  }
 }
 
 // ─── Message Bubble ─────────────────────────────────────────────────────────

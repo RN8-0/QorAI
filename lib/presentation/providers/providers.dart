@@ -32,6 +32,7 @@ import 'package:compair/services/ai_service.dart';
 import 'package:compair/services/spec_direction_service.dart';
 import 'package:flutter/material.dart';
 import 'package:compair/services/gemini_service.dart';
+import 'package:compair/services/deepseek_service.dart';
 import 'package:compair/services/cache_service.dart';
 import 'package:compair/services/subscription_service.dart';
 import 'package:compair/services/remote_config_service.dart';
@@ -104,9 +105,17 @@ final aiServiceProvider = Provider<AIService>((ref) {
   );
 });
 
-/// Gemini Service (concrete type for multimodal features like image analysis)
+/// Gemini Service (concrete type for multimodal features like image analysis + grounding)
 final geminiServiceProvider = Provider<GeminiService>((ref) {
   return ref.read(aiServiceProvider) as GeminiService;
+});
+
+/// DeepSeek Service — handles all text-based AI tasks (chat, compare, quiz, analysis)
+final deepSeekServiceProvider = Provider<DeepSeekService>((ref) {
+  return DeepSeekService(
+    dio: ref.read(dioProvider),
+    cacheService: ref.read(cacheServiceProvider),
+  );
 });
 
 /// Subscription Service (Google Play Billing)

@@ -373,6 +373,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                   ),
                   _AppBarButton(
+                    icon: Icons.document_scanner_rounded,
+                    onTap: () => context.push(AppRoutes.visualScanner),
+                  ),
+                  const SizedBox(width: 8),
+                  _AppBarButton(
                     icon: Icons.diamond_rounded,
                     onTap: () => context.push(AppRoutes.premium),
                     isPrimary: true,

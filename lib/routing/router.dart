@@ -27,6 +27,7 @@ import 'package:compair/presentation/screens/browse/category_browse_screen.dart'
 import 'package:compair/presentation/screens/profile/behavior_report_screen.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_screen.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
+import 'package:compair/presentation/screens/visual_scanner/visual_scanner_screen.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/pb_client.dart';
@@ -63,6 +64,8 @@ class AppRoutes {
   static const String behaviorReport = '/behavior-report';
   // Premium Paywall
   static const String premium = '/premium';
+  // Visual Scanner
+  static const String visualScanner = '/visual-scanner';
 }
 
 /// Root navigator key — used to ensure routes outside ShellRoute use root nav
@@ -285,6 +288,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) => CustomTransitionPage(
           child: const PaywallScreen(),
+          transitionsBuilder: _slideUpTransition,
+          transitionDuration: AppConstants.pageTransitionDuration,
+        ),
+      ),
+
+      // Visual Scanner (standalone, no bottom nav)
+      GoRoute(
+        path: AppRoutes.visualScanner,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          child: const VisualScannerScreen(),
           transitionsBuilder: _slideUpTransition,
           transitionDuration: AppConstants.pageTransitionDuration,
         ),
