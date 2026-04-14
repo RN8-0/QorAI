@@ -19,11 +19,9 @@ class AuthRepository {
   final PocketBase _pb;
   final PbDataSource _pbDS;
 
-  AuthRepository({
-    PocketBase? pbClient,
-    required PbDataSource pbDS,
-  })  : _pb = pbClient ?? pb,
-        _pbDS = pbDS;
+  AuthRepository({PocketBase? pbClient, required PbDataSource pbDS})
+    : _pb = pbClient ?? pb,
+      _pbDS = pbDS;
 
   Stream<String?> get authStateChanges async* {
     yield _currentUid;
@@ -56,10 +54,16 @@ class AuthRepository {
       await _pb.collection('users').authWithPassword(email, password);
       return Success(UserModel.fromPb(_pb.authStore.record!));
     } on ClientException catch (e) {
-      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
     } catch (e) {
-      return Failure(AuthException(
-          message: 'Registration failed: ${e.toString()}', originalError: e));
+      return Failure(
+        AuthException(
+          message: 'Registration failed: ${e.toString()}',
+          originalError: e,
+        ),
+      );
     }
   }
 
@@ -71,10 +75,16 @@ class AuthRepository {
       await _pb.collection('users').authWithPassword(email, password);
       return Success(UserModel.fromPb(_pb.authStore.record!));
     } on ClientException catch (e) {
-      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
     } catch (e) {
       return Failure(
-          AuthException(message: 'Login failed: ${e.toString()}', originalError: e));
+        AuthException(
+          message: 'Login failed: ${e.toString()}',
+          originalError: e,
+        ),
+      );
     }
   }
 
@@ -83,10 +93,16 @@ class AuthRepository {
       await _pb.collection('users').requestPasswordReset(email);
       return const Success(null);
     } on ClientException catch (e) {
-      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
     } catch (e) {
-      return Failure(AuthException(
-          message: 'Email could not be sent: ${e.toString()}', originalError: e));
+      return Failure(
+        AuthException(
+          message: 'Email could not be sent: ${e.toString()}',
+          originalError: e,
+        ),
+      );
     }
   }
 
@@ -105,30 +121,50 @@ class AuthRepository {
       final account = await google.signIn();
       if (account == null) {
         return const Failure(
-            AuthException(message: 'Google ile giriş iptal edildi'));
+          AuthException(message: 'Google ile giriş iptal edildi'),
+        );
       }
       final gAuth = await account.authentication;
       final idToken = gAuth.idToken;
       if (idToken == null || idToken.isEmpty) {
-        return const Failure(AuthException(
-            message: 'Google kimlik doğrulaması başarısız (idToken yok)'));
+        return const Failure(
+          AuthException(
+            message: 'Google kimlik doğrulaması başarısız (idToken yok)',
+          ),
+        );
       }
 
-      final httpResp = await http.post(
-        Uri.parse('https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io/api/auth/google'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'idToken': idToken}),
-      ).timeout(
-        const Duration(seconds: 20),
-        onTimeout: () => throw Exception('Sunucu yanıt vermedi (timeout). İnternet bağlantınızı kontrol edin.'),
-      );
+      final httpResp = await http
+          .post(
+            Uri.parse(
+              'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io/api/auth/google',
+            ),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'idToken': idToken}),
+          )
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () => throw Exception(
+              'Sunucu yanıt vermedi (timeout). İnternet bağlantınızı kontrol edin.',
+            ),
+          );
       debugPrint('[auth] PB response ${httpResp.statusCode}: ${httpResp.body}');
       if (httpResp.statusCode != 200) {
-        final errBody = jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
+        final errBody =
+            jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
         final errCode = errBody['error']?.toString() ?? '';
-        final errDetail = errBody['detail']?.toString() ?? errBody['message']?.toString() ?? '';
-        debugPrint('[auth] PB error code=$errCode detail=$errDetail status=${httpResp.statusCode}');
-        final msg = _mapGoogleAuthError(errCode, errDetail, httpResp.statusCode);
+        final errDetail =
+            errBody['detail']?.toString() ??
+            errBody['message']?.toString() ??
+            '';
+        debugPrint(
+          '[auth] PB error code=$errCode detail=$errDetail status=${httpResp.statusCode}',
+        );
+        final msg = _mapGoogleAuthError(
+          errCode,
+          errDetail,
+          httpResp.statusCode,
+        );
         return Failure(AuthException(message: msg));
       }
       final resp = jsonDecode(httpResp.body) as Map<String, dynamic>;
@@ -137,12 +173,15 @@ class AuthRepository {
       final record = (resp['record'] as Map?)?.cast<String, dynamic>();
       if (token == null || record == null) {
         return const Failure(
-            AuthException(message: 'Sunucudan geçersiz yanıt alındı'));
+          AuthException(message: 'Sunucudan geçersiz yanıt alındı'),
+        );
       }
 
       // Build a RecordModel from the hook response to avoid a second round-trip
       // (getOne would fail unless the authStore is pre-populated first).
-      final googlePhotoUrl = account.photoUrl; // native Google photo URL
+      final googleDisplayName = account.displayName?.trim();
+      final googlePhotoUrl = account.photoUrl?.trim();
+      final googleEmail = account.email.trim();
       final recJson = <String, dynamic>{
         'id': record['id'],
         'collectionId': '_pb_users_auth_',
@@ -150,20 +189,52 @@ class AuthRepository {
         'created': record['created'] ?? DateTime.now().toIso8601String(),
         'updated': record['updated'] ?? DateTime.now().toIso8601String(),
         ...record,
-        // Override photoURL with the Google photo URL (PB avatar is a file field,
-        // so we pass it through a separate key read by UserModel.fromPb)
-        if (googlePhotoUrl != null) 'photoURL': googlePhotoUrl,
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'name': googleDisplayName,
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'displayName': googleDisplayName,
+        if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
+        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty)
+          'photoURL': googlePhotoUrl,
       };
       final recModel = RecordModel.fromJson(recJson);
       _pb.authStore.save(token, recModel);
+      final recordId = record['id']?.toString();
+      final profileUpdate = <String, dynamic>{
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'name': googleDisplayName,
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'displayName': googleDisplayName,
+        if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
+        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty)
+          'photoURL': googlePhotoUrl,
+      };
+      if (recordId != null && profileUpdate.isNotEmpty) {
+        final updatedRecord = await _pb
+            .collection('users')
+            .update(recordId, body: profileUpdate);
+        final updatedJson = updatedRecord.toJson();
+        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) {
+          updatedJson['photoURL'] = googlePhotoUrl;
+        }
+        final syncedRecord = RecordModel.fromJson(updatedJson);
+        _pb.authStore.save(token, syncedRecord);
+        return Success(UserModel.fromPb(syncedRecord));
+      }
 
       return Success(UserModel.fromPb(recModel));
     } on ClientException catch (e) {
-      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
     } catch (e) {
       debugPrint('[auth] signInWithGoogle error: $e');
-      return Failure(AuthException(
-          message: 'Google ile giriş yapılamadı: ${e.toString()}', originalError: e));
+      return Failure(
+        AuthException(
+          message: 'Google ile giriş yapılamadı: ${e.toString()}',
+          originalError: e,
+        ),
+      );
     }
   }
 
@@ -171,7 +242,8 @@ class AuthRepository {
     // Apple Sign-In requires PB HTTPS + Apple provider configuration.
     // Will be enabled when SSL is configured on the PocketBase server.
     return const Failure(
-        AuthException(message: 'Apple login will be available soon'));
+      AuthException(message: 'Apple login will be available soon'),
+    );
   }
 
   Future<Result<UserEntity>> signInAnonymously() async {
@@ -199,7 +271,8 @@ class AuthRepository {
       return const Success(null);
     } catch (e) {
       return Failure(
-          ServerException(message: 'Profile could not be updated: $e'));
+        ServerException(message: 'Profile could not be updated: $e'),
+      );
     }
   }
 
@@ -208,9 +281,11 @@ class AuthRepository {
     final message = e.response['message'] as String? ?? '';
     if (e.statusCode == 400) {
       if (data['email'] != null) return 'This email address is already in use';
-      if (data['password'] != null) return 'Password is too short (min 8 chars)';
+      if (data['password'] != null)
+        return 'Password is too short (min 8 chars)';
       // Show PB's own message for OAuth/other 400 errors
-      if (message.isNotEmpty && message != 'Something went wrong while processing your request.') {
+      if (message.isNotEmpty &&
+          message != 'Something went wrong while processing your request.') {
         return message;
       }
       // Fallback: show first field-level error
@@ -242,8 +317,11 @@ class AuthRepository {
         return 'Sunucu hatası: $detail';
       default:
         if (status == 401) return 'Google ile kimlik doğrulaması başarısız.';
-        if (status >= 500) return 'Sunucu geçici olarak kullanılamıyor. Lütfen tekrar deneyin.';
-        return code.isNotEmpty ? '$code: $detail' : (detail.isNotEmpty ? detail : 'Bilinmeyen hata ($status)');
+        if (status >= 500)
+          return 'Sunucu geçici olarak kullanılamıyor. Lütfen tekrar deneyin.';
+        return code.isNotEmpty
+            ? '$code: $detail'
+            : (detail.isNotEmpty ? detail : 'Bilinmeyen hata ($status)');
     }
   }
 }
