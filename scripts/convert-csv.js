@@ -6,13 +6,12 @@ const CSV_FILE = path.join(__dirname, 'output', 'mobile_products_2025.csv');
 const OUTPUT_FILE = path.join(__dirname, 'output', 'mobile-products.json');
 
 const BRAND_IMAGES = {
-  'Apple': 'https://firebasestorage.googleapis.com/v0/b/compair-99b6e.appspot.com/o/placeholders%2Fapple_placeholder.png?alt=media',
-  'Samsung': 'https://firebasestorage.googleapis.com/v0/b/compair-99b6e.appspot.com/o/placeholders%2Fsamsung_placeholder.png?alt=media',
-  'Xiaomi': 'https://firebasestorage.googleapis.com/v0/b/compair-99b6e.appspot.com/o/placeholders%2Fxiaomi_placeholder.png?alt=media',
-  'OnePlus': 'https://firebasestorage.googleapis.com/v0/b/compair-99b6e.appspot.com/o/placeholders%2Foneplus_placeholder.png?alt=media',
-  'Google': 'https://firebasestorage.googleapis.com/v0/b/compair-99b6e.appspot.com/o/placeholders%2Fgoogle_placeholder.png?alt=media',
-  // Add more as needed or use a generic one
-  'default': 'https://firebasestorage.googleapis.com/v0/b/compair-99b6e.appspot.com/o/placeholders%2Fgeneric_smartphone.png?alt=media',
+  'Apple': 'https://placehold.co/600x800/png?text=Apple',
+  'Samsung': 'https://placehold.co/600x800/png?text=Samsung',
+  'Xiaomi': 'https://placehold.co/600x800/png?text=Xiaomi',
+  'OnePlus': 'https://placehold.co/600x800/png?text=OnePlus',
+  'Google': 'https://placehold.co/600x800/png?text=Google',
+  'default': 'https://placehold.co/600x800/png?text=Smartphone',
 };
 
 // Generic placeholder if specific brand not found

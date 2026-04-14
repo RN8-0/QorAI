@@ -61,6 +61,8 @@ ui-debug.log
 
 # Secrets & credentials — NEVER commit these
 *firebase-adminsdk*.json
+firebase-sa.json
+**/firebase-sa.json
 service-account.json
 .env
 .env.*

@@ -965,7 +965,7 @@ class _LogoImageState extends State<_LogoImage> {
       if (domain.isNotEmpty) ...[
         'https://logo.clearbit.com/$domain',
         'https://cdn.brandfetch.io/$domain/w/400/h/400',
-        'https://www.google.com/s2/favicons?domain=$domain&sz=128',
+        'https://icons.duckduckgo.com/ip3/$domain.ico',
       ],
     ].toSet().toList();
   }

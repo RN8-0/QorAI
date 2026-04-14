@@ -264,14 +264,12 @@ class _SubscriptionLogoWidgetState extends State<SubscriptionLogoWidget> {
       if (isHttpLogo && !isStorageLogo) logoUrl,
       if (isStorageLogo) logoUrl,
       if (domain != null) ...[
-        'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://$domain&size=256',
         'https://logo.clearbit.com/$domain',
-        'https://www.google.com/s2/favicons?domain=$domain&sz=256',
         'https://icons.duckduckgo.com/ip3/$domain.ico',
       ],
       if (domain == null && guessedDomain != null) ...[
-        'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://$guessedDomain&size=256',
         'https://logo.clearbit.com/$guessedDomain',
+        'https://icons.duckduckgo.com/ip3/$guessedDomain.ico',
       ],
       if (_isSvgLogo) logoUrl,
     ].toSet().toList();

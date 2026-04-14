@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Google Identity Services auth callback
+// Admin auth callback
 initGIS(async (userInfo, err) => {
   document.getElementById('loginLoading').style.display = 'none';
   if (err || !userInfo) {
@@ -107,7 +107,7 @@ initGIS(async (userInfo, err) => {
     refreshDashboard();
   } catch (e) {
     document.getElementById('loginError').textContent = 'Error: ' + e.message;
-    console.error('GIS callback error:', e);
+    console.error('Admin auth callback error:', e);
   }
 });
 

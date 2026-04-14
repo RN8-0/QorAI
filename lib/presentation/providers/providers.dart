@@ -14,7 +14,6 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
-import 'package:compair/config/env_config.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/datasources/hive_ds.dart';
 import 'package:compair/core/pb_client.dart';
@@ -119,12 +118,9 @@ final premiumProvider = Provider<bool>((ref) {
   return localPremium || profilePremium;
 });
 
-/// YouTube Data API v3 Service
+/// YouTube Review Fetcher (HTML scraping, no API key)
 final youtubeServiceProvider = Provider<YouTubeService>((ref) {
-  return YouTubeService(
-    dio: ref.read(dioProvider),
-    apiKey: EnvConfig.youtubeApiKey,
-  );
+  return YouTubeService(dio: ref.read(dioProvider));
 });
 
 /// Remote Config Service (PocketBase app_config tabanlı)

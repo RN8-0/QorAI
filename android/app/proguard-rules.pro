@@ -4,10 +4,8 @@
 -keep class io.flutter.embedding.** { *; }
 -dontwarn io.flutter.**
 
-# Firebase
--keep class com.google.firebase.** { *; }
+# Google Sign-In (google_sign_in package uses GMS)
 -keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 
 # Google Play Core

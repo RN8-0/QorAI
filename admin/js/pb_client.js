@@ -4,12 +4,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
-const GOOGLE_CLIENT_ID = '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
-const PB_ADMIN_EMAIL = 'admin@compair.local';
-const PB_ADMIN_PASS = 'mx6I0zPE3HSaqbjlAY0p';
 
 let _pb = null;
-let _pbAuthed = false;
 
 function getPb() {
   if (!_pb) _pb = new PocketBase(PB_URL);
@@ -17,9 +13,10 @@ function getPb() {
 }
 
 async function pbEnsureAuth() {
-  if (_pbAuthed) return;
-  await getPb().collection('_superusers').authWithPassword(PB_ADMIN_EMAIL, PB_ADMIN_PASS);
-  _pbAuthed = true;
+  const pb = getPb();
+  const record = pb.authStore.record;
+  if (pb.authStore.isValid && record?.collectionName === '_superusers') return;
+  throw new Error('Admin authentication required');
 }
 
 // ─── FIRESTORE-COMPATIBLE HELPERS ───────────────────────────────
@@ -146,9 +143,10 @@ function _clean(data) {
   return clean;
 }
 
-// ─── PB SUPERUSER AUTH (replaces Firebase Auth) ──────────────────
+// ─── PB SUPERUSER AUTH ────────────────────────────────────────────
 // Admin panel authenticates directly against PocketBase _superusers.
-// No Google popup, no Firebase SDK. Works fully offline from Google.
+// Credentials are provided by the admin on the login form and persisted by
+// PocketBase authStore instead of being hardcoded in the client bundle.
 
 let _adminAuthCallback = null;
 

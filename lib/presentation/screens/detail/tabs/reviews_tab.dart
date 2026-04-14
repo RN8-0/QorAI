@@ -31,7 +31,7 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// YOUTUBE REVIEWS CARD (YouTube Data API v3)
+// YOUTUBE REVIEWS CARD (public YouTube search parsing)
 // ═══════════════════════════════════════════════════════════
 
 /// Delegates to SharedYouTubeReviewsCard, adds floating player on tap.

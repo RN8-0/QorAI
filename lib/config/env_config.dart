@@ -1,8 +1,6 @@
 /// Compair - Environment Configuration
-/// Blueprint Section 2.1
-
-/// API keys for RemoteConfig/PocketBase bakımı yapılıyor (firebase_remote_config kaldırıldı).
-/// Öncelik sırası: 1) compile-time --dart-define  2) varsayılan (boş)
+/// API keys loaded from --dart-define or PocketBase RemoteConfig.
+library;
 
 enum Environment {
   development,
@@ -60,9 +58,6 @@ class EnvConfig {
     if (_pbRcAndroidKey.isNotEmpty) return _pbRcAndroidKey;
     return const String.fromEnvironment('REVENUECAT_ANDROID_API_KEY', defaultValue: '');
   }
-
-  static String get youtubeApiKey =>
-      const String.fromEnvironment('YOUTUBE_API_KEY', defaultValue: '');
 
   static const String ipApiUrl = 'http://ip-api.com/json';
   static const String ipInfoUrl = 'https://ipinfo.io/json';

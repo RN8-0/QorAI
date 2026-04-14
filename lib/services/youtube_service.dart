@@ -1,6 +1,6 @@
-// Compair - YouTube Data API v3 Service
-// Uses YouTube Data API v3 to fetch product review videos.
-// Falls back to parsing YouTube HTML search page if no API key.
+// Compair - YouTube Review Fetcher
+// Parses the public YouTube search HTML (ytInitialData) — no API key,
+// no Google Cloud project dependency.
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
@@ -43,18 +43,13 @@ class YouTubeVideo {
 
 class YouTubeService {
   final Dio _dio;
-  final String _apiKey;
-
-  static const _baseUrl = 'https://www.googleapis.com/youtube/v3';
 
   // In-memory cache: key = "productName|langCode" → videos
   static final Map<String, _CachedResult> _cache = {};
   static const _cacheDuration = Duration(hours: 24);
   static const _maxCacheEntries = 200;
 
-  YouTubeService({required Dio dio, required String apiKey})
-      : _dio = dio,
-        _apiKey = apiKey;
+  YouTubeService({required Dio dio}) : _dio = dio;
 
   /// Enhanced review keywords per language — more specific for better results
   static String _reviewKeyword(String lang) {
@@ -104,19 +99,7 @@ class YouTubeService {
     final keyword = _reviewKeyword(languageCode);
     final query = '$productName $keyword';
 
-    List<YouTubeVideo> results = [];
-
-    if (_apiKey.isNotEmpty) {
-      try {
-        results = await _searchWithApi(query, languageCode, maxResults);
-      } catch (e) {
-        debugPrint('=== COMPAIR: YouTube API error, falling back: $e ===');
-      }
-    }
-
-    if (results.isEmpty) {
-      results = await _searchWithHtml(query, maxResults);
-    }
+    final results = await _searchWithHtml(query, maxResults);
 
     // Cache the results
     if (results.isNotEmpty) {
@@ -130,122 +113,7 @@ class YouTubeService {
     return results;
   }
 
-  /// Official YouTube Data API v3 search with duration and view filtering
-  Future<List<YouTubeVideo>> _searchWithApi(
-      String query, String languageCode, int maxResults) async {
-    // Fetch more candidates to filter from (3x desired for quality filtering)
-    final fetchCount = (maxResults * 3).clamp(10, 25);
-
-    final searchResponse = await _dio.get(
-      '$_baseUrl/search',
-      queryParameters: {
-        'part': 'snippet',
-        'q': query,
-        'type': 'video',
-        'order': 'viewCount',
-        'maxResults': fetchCount,
-        'relevanceLanguage': languageCode,
-        'videoEmbeddable': 'true',
-        'videoDuration': 'long', // 20+ minutes (full reviews, not shorts)
-        'key': _apiKey,
-      },
-    );
-
-    if (searchResponse.statusCode != 200) return [];
-    final items = searchResponse.data['items'] as List? ?? [];
-    if (items.isEmpty) return [];
-
-    final videoIds = items
-        .map((item) => item['id']?['videoId']?.toString() ?? '')
-        .where((id) => id.isNotEmpty)
-        .toList();
-
-    // Fetch both statistics AND contentDetails for duration
-    Map<String, Map<String, dynamic>> videoDetails = {};
-    try {
-      final detailsResponse = await _dio.get(
-        '$_baseUrl/videos',
-        queryParameters: {
-          'part': 'statistics,contentDetails',
-          'id': videoIds.join(','),
-          'key': _apiKey,
-        },
-      );
-      if (detailsResponse.statusCode == 200) {
-        final detailItems = detailsResponse.data['items'] as List? ?? [];
-        for (final item in detailItems) {
-          final id = item['id']?.toString() ?? '';
-          videoDetails[id] = {
-            'viewCount': item['statistics']?['viewCount']?.toString() ?? '0',
-            'duration': item['contentDetails']?['duration']?.toString() ?? '',
-          };
-        }
-      }
-    } catch (_) {}
-
-    // Build video list with all metadata
-    final allVideos = <YouTubeVideo>[];
-    for (final item in items) {
-      final videoId = item['id']?['videoId']?.toString() ?? '';
-      if (videoId.isEmpty) continue;
-
-      final snippet = item['snippet'] ?? {};
-      final thumbnail = snippet['thumbnails']?['high']?['url']?.toString() ??
-          snippet['thumbnails']?['medium']?['url']?.toString() ??
-          snippet['thumbnails']?['default']?['url']?.toString() ??
-          '';
-      final details = videoDetails[videoId] ?? {};
-      final rawViews = int.tryParse(details['viewCount'] ?? '0') ?? 0;
-      final duration = details['duration']?.toString() ?? '';
-      final durationMinutes = _parseDurationMinutes(duration);
-
-      // Filter: minimum 10K views AND at least 10 minutes long
-      if (rawViews < 10000) continue;
-      if (durationMinutes < 10) continue;
-
-      allVideos.add(YouTubeVideo(
-        videoId: videoId,
-        title: snippet['title']?.toString() ?? '',
-        channelTitle: snippet['channelTitle']?.toString() ?? '',
-        thumbnailUrl: thumbnail,
-        viewCount: _formatViewCount(rawViews.toString()),
-        publishedAt: snippet['publishedAt']?.toString() ?? '',
-        duration: _formatDuration(duration),
-        viewCountRaw: rawViews,
-      ));
-    }
-
-    // Sort by views (most popular first)
-    allVideos.sort((a, b) => b.viewCountRaw.compareTo(a.viewCountRaw));
-
-    return allVideos.take(maxResults).toList();
-  }
-
-  /// Parse ISO 8601 duration (PT10M30S) to minutes
-  int _parseDurationMinutes(String iso8601) {
-    if (iso8601.isEmpty) return 0;
-    final match = RegExp(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?').firstMatch(iso8601);
-    if (match == null) return 0;
-    final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
-    final minutes = int.tryParse(match.group(2) ?? '0') ?? 0;
-    return hours * 60 + minutes;
-  }
-
-  /// Format ISO 8601 duration to human readable (e.g. "12:30", "1:05:20")
-  String _formatDuration(String iso8601) {
-    if (iso8601.isEmpty) return '';
-    final match = RegExp(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?').firstMatch(iso8601);
-    if (match == null) return '';
-    final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
-    final minutes = int.tryParse(match.group(2) ?? '0') ?? 0;
-    final seconds = int.tryParse(match.group(3) ?? '0') ?? 0;
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  /// Unofficial fallback: parse ytInitialData from YouTube search HTML
+  /// Parse ytInitialData from YouTube search HTML
   /// Fetches up to 15 candidates, then filters to only embeddable videos via oEmbed.
   Future<List<YouTubeVideo>> _searchWithHtml(
       String query, int maxResults) async {
@@ -458,16 +326,6 @@ class YouTubeService {
     return '';
   }
 
-  /// Formats view count into a readable format (e.g. "1.2M", "450K")
-  String _formatViewCount(String count) {
-    final n = int.tryParse(count) ?? 0;
-    if (n >= 1000000) {
-      return '${(n / 1000000).toStringAsFixed(1)}M views';
-    } else if (n >= 1000) {
-      return '${(n / 1000).toStringAsFixed(0)}K views';
-    }
-    return '$n views';
-  }
 }
 
 class _CachedResult {

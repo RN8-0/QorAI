@@ -27,8 +27,8 @@
 - **Price comparison** — side-by-side retailer prices
 - **Pros / Cons** — curated highlights
 - **Grouped Specifications** — all spec groups collapsed by default; tap to expand; 20+ admin-defined group types with custom icons and colors
-- **YouTube Reviews** (YouTube Data API v3) — top 3 most-viewed review videos in the user's device language, with view counts
-- **AI Review Analysis** (Google Custom Search + DeepSeek) — crawls real web reviews, summarizes sentiment: satisfaction %, praised features, common criticisms
+- **YouTube Reviews** — top 3 embeddable review videos parsed from public YouTube search results in the user's device language
+- **AI Review Analysis** (DeepSeek) — crawls real web reviews, summarizes sentiment: satisfaction %, praised features, common criticisms
 - **User Reviews** — star rating + comment system; write a review via a bottom sheet; PocketBase-backed sync
 
 ### 🎨 Theme
@@ -70,7 +70,7 @@ node scripts/scraper-proxy.js
 Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 
 ### Security
-- Admin access restricted to PocketBase superuser credentials and app-level controls
+- Admin access restricted to PocketBase superuser credentials entered at login and app-level controls
 - User deletion and product/app management are handled directly through PocketBase
 - No Firebase Auth / Firestore dependency remains in runtime flows
 
@@ -84,8 +84,8 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 | State Management | Riverpod (flutter_riverpod) |
 | Backend | PocketBase + Typesense + Hetzner/Coolify |
 | AI / LLM | DeepSeek API (`deepseek-chat`) |
-| Video | YouTube Data API v3 |
-| Web Search | Google Custom Search API |
+| Video | Public YouTube search parsing |
+| Web Search | PocketBase / app-side crawling |
 | Local Cache | Hive |
 | Routing | GoRouter |
 | Image Loading | CachedNetworkImage |
@@ -115,7 +115,7 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 │   ├── presentation/
 │   │   ├── providers/      # Riverpod providers
 │   │   └── screens/        # UI screens
-│   └── services/           # YouTube, Google Search, DeepSeek, Cache
+│   └── services/           # YouTube, DeepSeek, Gemini, Cache
 ├── scripts/                # Utility & scraper scripts
 │   └── scraper-proxy.js    # Local CORS proxy for admin scraper
 ├── website/                # Public website (Coolify static app)
@@ -148,7 +148,7 @@ npm run deploy:admin     # Admin only
 ### Prerequisites
 - Flutter SDK ≥ 3.0
 - Node.js ≥ 18
-- API keys for: YouTube Data API v3, Google Custom Search API, DeepSeek
+- API keys for: DeepSeek (Gemini optional if enabled on PocketBase)
 
 ### Setup
 
@@ -166,9 +166,6 @@ npm run deploy:admin     # Admin only
 3. **Run with API keys**
    ```bash
    flutter run \
-     --dart-define=YOUTUBE_API_KEY=your_key \
-     --dart-define=GOOGLE_SEARCH_API_KEY=your_key \
-     --dart-define=GOOGLE_SEARCH_ENGINE_ID=your_id \
      --dart-define=DEEPSEEK_API_KEY=your_key
    ```
 
@@ -180,10 +177,8 @@ All secrets are passed via `--dart-define` and accessed through `EnvConfig`:
 
 | Variable | Purpose |
 |----------|---------|
-| `YOUTUBE_API_KEY` | YouTube Data API v3 — product review videos |
-| `GOOGLE_SEARCH_API_KEY` | Google Custom Search — web review crawling |
-| `GOOGLE_SEARCH_ENGINE_ID` | Custom Search Engine ID |
 | `DEEPSEEK_API_KEY` | DeepSeek LLM — AI review sentiment analysis |
+| `GEMINI_API_KEY` | Gemini LLM (optional, also loadable from PB RemoteConfig) |
 
 ---
 
