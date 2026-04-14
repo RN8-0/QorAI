@@ -115,7 +115,7 @@ class GeminiService implements AIService {
           'country': profile.country,
         },
       }),
-      thinkingBudget: 1024,
+      thinkingBudget: 512,
       timeout: const Duration(seconds: 60),
       tier: AiTier.heavy,
     );
@@ -839,7 +839,7 @@ $jsonSchema
           'currentDevices': profile.currentDevices,
         },
       }),
-      thinkingBudget: 2048,
+      thinkingBudget: 1024,
       timeout: const Duration(seconds: 60),
       tier: AiTier.heavy,
     );
@@ -936,13 +936,13 @@ $jsonSchema
       },
     };
 
-    // Control thinking budget to optimise latency
-    if (thinkingBudget != null) {
-      body['generationConfig'] = {
-        ...(body['generationConfig'] as Map<String, dynamic>),
-        'thinkingConfig': {'thinkingBudget': thinkingBudget},
-      };
-    }
+    // Always set thinking budget to control costs.
+    // Thinking tokens are billed at output price ($2.50/1M for flash).
+    final effectiveThinking = thinkingBudget ?? (tier == AiTier.heavy ? 1024 : 0);
+    body['generationConfig'] = {
+      ...(body['generationConfig'] as Map<String, dynamic>),
+      'thinkingConfig': {'thinkingBudget': effectiveThinking},
+    };
 
     final text = await _rawRequest(
       body,
@@ -973,6 +973,20 @@ $jsonSchema
     Duration receiveTimeout = const Duration(seconds: 60),
     AiTier tier = AiTier.lite,
   }) async {
+    // Inject thinking budget if not already set to control costs.
+    // Thinking tokens are billed at output price ($2.50/1M for flash).
+    final genConfig = body['generationConfig'] as Map<String, dynamic>? ?? {};
+    if (!genConfig.containsKey('thinkingConfig')) {
+      final budget = tier == AiTier.heavy ? 1024 : 0;
+      body = {
+        ...body,
+        'generationConfig': {
+          ...genConfig,
+          'thinkingConfig': {'thinkingBudget': budget},
+        },
+      };
+    }
+
     int retryCount = 0;
 
     while (retryCount < AppConstants.deepSeekMaxRetries) {
