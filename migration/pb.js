@@ -1,5 +1,6 @@
 // PocketBase API helper — admin-authed HTTP wrapper
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
@@ -8,19 +9,31 @@ const env = Object.fromEntries(envFile.split(/\r?\n/).filter(l => l && !l.starts
   const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1)];
 }));
 
-const BASE = env.POCKETBASE_URL;
+function normalizeBaseUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('http://') && !/^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)([:/]|$)/.test(url)) {
+    return url.replace(/^http:\/\//, 'https://');
+  }
+  return url;
+}
+
+const BASE = normalizeBaseUrl(env.POCKETBASE_URL);
 const EMAIL = env.POCKETBASE_ADMIN_EMAIL;
 const PASS = env.POCKETBASE_ADMIN_PASSWORD;
 let token = null;
 
-function raw(method, urlPath, body, extraHeaders) {
+function requestModuleFor(url) {
+  return url.protocol === 'https:' ? https : http;
+}
+
+function raw(method, urlPath, body, extraHeaders, redirectCount = 0, baseUrl = BASE) {
   return new Promise((resolve, reject) => {
-    const u = new URL(BASE + urlPath);
+    const u = new URL(urlPath, baseUrl);
     const data = body ? JSON.stringify(body) : null;
     const opts = {
       method,
       hostname: u.hostname,
-      port: u.port || 80,
+      port: u.port || (u.protocol === 'https:' ? 443 : 80),
       path: u.pathname + u.search,
       headers: {
         'Accept': 'application/json',
@@ -29,7 +42,15 @@ function raw(method, urlPath, body, extraHeaders) {
         ...extraHeaders,
       },
     };
-    const r = http.request(opts, (res) => {
+    const transport = requestModuleFor(u);
+    const r = transport.request(opts, (res) => {
+      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location && redirectCount < 5) {
+        const location = new URL(res.headers.location, u);
+        raw(method, location.toString(), body, extraHeaders, redirectCount + 1, location.toString())
+          .then(resolve)
+          .catch(reject)
+        return;
+      }
       let chunks = '';
       res.on('data', c => chunks += c);
       res.on('end', () => {

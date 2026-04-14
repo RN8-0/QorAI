@@ -6,8 +6,7 @@
 // `firestoreId` fallback otherwise).
 const fs = require('fs');
 const path = require('path');
-const { raw, req, auth, BASE } = require('./pb');
-const http = require('http');
+const { raw, req, auth } = require('./pb');
 
 const EXPORT_DIR = path.join(__dirname, 'firebase-export');
 const CONCURRENCY = 20;
@@ -182,6 +181,25 @@ const MAPPERS = {
       lastSuccessfulScrape: fsTs(d.lastSuccessfulScrape),
     }),
   },
+  scraper_logs: {
+    pbName: 'scraper_logs',
+    idKey: null,
+    transform: (d) => ({
+      type: d.type || 'manual',
+      status: d.status || 'running',
+      startedAt: fsTs(d.startedAt),
+      completedAt: fsTs(d.completedAt),
+      sourceId: d.sourceId || '',
+      brandId: d.brandId || '',
+      categoryId: d.categoryId || '',
+      productsFound: typeof d.productsFound === 'number' ? d.productsFound : 0,
+      productsAdded: typeof d.productsAdded === 'number' ? d.productsAdded : 0,
+      productsDuplicate: typeof d.productsDuplicate === 'number' ? d.productsDuplicate : 0,
+      productsFailed: typeof d.productsFailed === 'number' ? d.productsFailed : 0,
+      errorMessage: d.errorMessage || '',
+      details: d.details || null,
+    }),
+  },
   users: {
     pbName: 'users',
     idKey: null,
@@ -217,32 +235,10 @@ async function getExistingIds(pbName, idKey) {
   return existing;
 }
 
-// Persistent keep-alive HTTP agent + parallel POSTs (PB is fine with this)
-const agent = new http.Agent({ keepAlive: true, maxSockets: CONCURRENCY });
-
 function postRecord(pbName, row, token) {
-  return new Promise((resolve) => {
-    const data = JSON.stringify(row);
-    const u = new URL(BASE + `/api/collections/${pbName}/records`);
-    const r = http.request({
-      agent,
-      method: 'POST',
-      hostname: u.hostname,
-      port: u.port || 80,
-      path: u.pathname,
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data),
-        'Authorization': token,
-      },
-    }, (res) => {
-      let buf = '';
-      res.on('data', c => buf += c);
-      res.on('end', () => resolve({ status: res.statusCode, body: buf }));
-    });
-    r.on('error', (e) => resolve({ status: 0, body: e.message }));
-    r.write(data); r.end();
-  });
+  return raw('POST', `/api/collections/${pbName}/records`, row, {
+    Authorization: token,
+  }).catch((e) => ({ status: 0, body: String(e) }));
 }
 
 async function importCollection(fsName) {
@@ -291,7 +287,7 @@ async function importCollection(fsName) {
 
 (async () => {
   const only = process.argv[2];
-  const order = only ? [only] : Object.keys(MAPPERS);
+  const order = only ? [only] : Object.keys(MAPPERS).filter((name) => name !== 'users');
   for (const c of order) {
     try { await importCollection(c); }
     catch (e) { console.error(`[${c}] ERROR:`, e.message); }

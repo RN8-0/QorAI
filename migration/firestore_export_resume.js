@@ -19,7 +19,7 @@ admin.initializeApp({ credential: admin.credential.cert(sa) });
 const db = admin.firestore();
 
 const OUT = path.join(__dirname, 'firebase-export');
-const SKIP = new Set(['cache', 'scrape_logs', 'scraper_logs']);
+const SKIP = new Set(['cache', 'scrape_logs']);
 const BATCH = 2000;
 // Firestore Reads budget (stay safe under daily quota)
 const MAX_READS = 45000;
