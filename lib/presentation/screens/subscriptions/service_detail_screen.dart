@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/data/models/other_models.dart';
@@ -1624,7 +1625,7 @@ Respond in JSON: {"rating": "X/10", "bestFor": "short description of ideal user"
             '$kPbBaseUrl/api/ai/gemini',
             options: Options(headers: withPbAuthHeaders()),
             data: {
-              'model': 'gemini-2.5-flash',
+              'model': AppConstants.geminiModel,
               'contents': [
                 {
                   'parts': [

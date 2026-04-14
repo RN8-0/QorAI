@@ -13,6 +13,7 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/pb_client.dart';
 
 enum SpecDirection { higher, lower, neutral }
@@ -555,7 +556,7 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
 
     try {
       final body = {
-        'model': 'gemini-2.5-flash',
+        'model': AppConstants.geminiModel,
         'contents': [
           {
             'parts': [

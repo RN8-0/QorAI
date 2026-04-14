@@ -1715,7 +1715,7 @@ Return only the JSON array, no explanation.''';
     final response = await dio.post(
       '$kPbBaseUrl/api/ai/gemini',
       data: {
-        'model': 'gemini-2.5-flash',
+        'model': AppConstants.geminiModel,
         'contents': [
           {
             'parts': [

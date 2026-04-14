@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/services/behavior_analysis_service.dart';
@@ -363,7 +364,7 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
           receiveTimeout: const Duration(seconds: 15),
         ),
         data: {
-          'model': 'gemini-2.5-flash',
+          'model': AppConstants.geminiModel,
           'contents': [
             {
               'parts': [

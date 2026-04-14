@@ -1,7 +1,7 @@
 /// Compair - Gemini Flash 2.5 AI Service (Core Intelligence)
 ///
 /// Unified AI backbone for the entire application.
-/// Model : gemini-2.5-flash (multimodal: text + image + vision)
+/// Model : gemini-2.5-flash-lite (multimodal: text + image + vision)
 /// Endpoint: PocketBase proxy — $kPbBaseUrl/api/ai/gemini
 ///           (pb_hooks/gemini.pb.js forwards to Google AI Studio,
 ///            key never leaves the server).
@@ -27,8 +27,8 @@ class GeminiService implements AIService {
   // (pb_hooks/gemini.pb.js). The API key lives only on the server —
   // clients never see it.
   static const _proxyUrl = '$kPbBaseUrl/api/ai/gemini';
-  static const _primaryModel = 'gemini-2.5-flash';
-  static const List<String> _fallbackModels = ['gemini-2.5-flash-lite'];
+  static const _primaryModel = AppConstants.geminiModel;
+  static const List<String> _fallbackModels = ['gemini-2.5-flash'];
 
   GeminiService({
     required Dio dio,

@@ -1,10 +1,11 @@
 /// Compair - Gemini Weight Vector Service (Task 3)
-/// Calls gemini-2.5-flash to generate personalized 12-dimension weight vectors
+/// Calls gemini-2.5-flash-lite to generate personalized 12-dimension weight vectors
 /// based on user quiz answers.
 library;
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/pb_client.dart';
 
 /// Fallback weight vector used when Gemini returns invalid JSON
@@ -66,7 +67,7 @@ class GeminiWeightService {
             'weightVector': {
               ...weights,
               'generated_at': DateTime.now().toIso8601String(),
-              'generated_by': 'gemini-2.5-flash',
+              'generated_by': AppConstants.geminiModel,
             },
           },
         );
@@ -134,7 +135,7 @@ Strict rules:
         receiveTimeout: const Duration(seconds: 30),
       ),
       data: {
-        'model': 'gemini-2.5-flash',
+        'model': AppConstants.geminiModel,
         'contents': [
           {
             'parts': [
