@@ -3,7 +3,7 @@
 // ------------------------------------------------------------
 // Flutter / web / admin -> PocketBase -> Gemini AI Studio
 // - Key never leaves the server (stored in GEMINI_API_KEY env)
-// - Per-user rate limit: 60 req / 5 min  (unauth: 20 req / 5 min by IP)
+// - Per-user rate limit: 600 req / 5 min  (unauth: 120 req / 5 min by IP)
 // - Payload is passed through mostly verbatim to `generateContent`
 //
 // Request body shape:
@@ -22,8 +22,8 @@ routerAdd("POST", "/api/ai/gemini", (e) => {
   // NOTE: PB is single-process, so this is fine. If you scale out,
   // swap _rlBuckets for a KV table.
   const WIN_MS = 5 * 60 * 1000;
-  const LIMIT_AUTH = 60;
-  const LIMIT_ANON = 20;
+  const LIMIT_AUTH = 600;
+  const LIMIT_ANON = 120;
 
   if (!$app.store().has("_gemRl")) $app.store().set("_gemRl", {});
   const buckets = $app.store().get("_gemRl");

@@ -13,6 +13,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/pb_client.dart';
 
 /// Subscription status
 class SubscriptionStatus {
@@ -82,7 +83,9 @@ class SubscriptionService extends ChangeNotifier {
   Completer<void>? _initCompleter;
 
   SubscriptionStatus get status {
-    if (!_status.isPremium && !_profileStatus.isPremium) {
+    if (!_status.isPremium &&
+        !_profileStatus.isPremium &&
+        !_hasPocketBasePremiumSnapshot) {
       return _status;
     }
     return SubscriptionStatus(
@@ -100,6 +103,26 @@ class SubscriptionService extends ChangeNotifier {
   int get comparisonsUsed => _normalizedUsage().comparisons;
   int get aiQuestionsUsed => _normalizedUsage().aiQuestions;
   int get linkPastesUsed => _normalizedUsage().linkPastes;
+
+  bool get _hasPocketBasePremiumSnapshot {
+    try {
+      if (!pb.authStore.isValid) return false;
+      final record = pb.authStore.record;
+      if (record == null) return false;
+      final premiumFlag = record.data['isPremium'] == true;
+      if (premiumFlag) return true;
+      final details = record.data['userSubscriptionDetails'];
+      if (details is Map) {
+        final premium = details['premium'];
+        if (premium is Map && premium.isNotEmpty) {
+          return true;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   SubscriptionService() {
     _usage = _emptyUsage();
@@ -435,7 +458,7 @@ class SubscriptionService extends ChangeNotifier {
       await _iap.restorePurchases();
       // The purchase stream will handle restored purchases
       await Future.delayed(const Duration(seconds: 3));
-      return Success(_status.isPremium);
+      return Success(isPremium);
     } catch (e) {
       return Failure(ServerException(message: 'Restore error: $e'));
     }
