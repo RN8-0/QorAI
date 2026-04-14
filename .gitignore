@@ -74,3 +74,6 @@ local.properties
 secrets.properties
 migration/pb_token.txt
 migration/tmp/google_secret.txt
+
+migration/fb_cfg.json
+migration/ios_cfg.json
