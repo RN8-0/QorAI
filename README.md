@@ -132,6 +132,8 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 | `compair-website` | https://qpq5eb1emz17386uh8jgj76q.46.225.95.201.sslip.io | Public website |
 | `compair-admin` | https://z1221ae58okr865xdquykps8.46.225.95.201.sslip.io | Admin panel |
 
+Note: `https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io` is the PocketBase backend endpoint, not the public website.
+
 Deploy:
 ```bash
 npm run deploy:web       # Website + admin
