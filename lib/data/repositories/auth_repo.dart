@@ -3,11 +3,15 @@ library;
 
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/models/user_model.dart';
 import 'package:compair/domain/entities/user_entity.dart';
+
+const String _kGoogleWebClientId =
+    '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
 
 class AuthRepository {
   final PocketBase _pb;
@@ -84,15 +88,57 @@ class AuthRepository {
     }
   }
 
-  /// Google sign-in is currently disabled — native `google_sign_in` package
-  /// was removed to fully detach from Google SDKs. Will be re-enabled via
-  /// PocketBase native OAuth2 (`authWithOAuth2`) once the PB server has SSL
-  /// and Google OAuth2 provider configured.
+  /// Google Sign-In via native SDK -> PB hook (/api/auth/google).
+  /// On mobile we use the free `google_sign_in` package to obtain a Google
+  /// ID token (audience = our web client id), then POST it to a PB JS hook
+  /// which validates it with Google's tokeninfo endpoint and upserts the
+  /// user in `users`. No Firebase, no client secret on device.
   Future<Result<UserEntity>> signInWithGoogle() async {
-    debugPrint('[auth] signInWithGoogle called but Google provider is disabled');
-    return const Failure(AuthException(
-      message: 'Google ile giriş şu anda kullanılamıyor. Lütfen e-posta ile giriş yapın.',
-    ));
+    try {
+      final google = GoogleSignIn(
+        scopes: const ['email', 'profile'],
+        serverClientId: _kGoogleWebClientId,
+      );
+      await google.signOut();
+      final account = await google.signIn();
+      if (account == null) {
+        return const Failure(
+            AuthException(message: 'Google ile giriş iptal edildi'));
+      }
+      final gAuth = await account.authentication;
+      final idToken = gAuth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        return const Failure(AuthException(
+            message: 'Google kimlik doğrulaması başarısız (idToken yok)'));
+      }
+
+      final raw = await _pb.send(
+        '/api/auth/google',
+        method: 'POST',
+        body: {'idToken': idToken},
+      );
+      final resp = (raw as Map).cast<String, dynamic>();
+
+      final token = resp['token'] as String?;
+      final record = (resp['record'] as Map?)?.cast<String, dynamic>();
+      if (token == null || record == null) {
+        return const Failure(
+            AuthException(message: 'Sunucudan geçersiz yanıt alındı'));
+      }
+
+      // Load the full record from PB and save to authStore so the SDK
+      // behaves the same as `authWithPassword`.
+      final full = await _pb.collection('users').getOne(record['id'] as String);
+      _pb.authStore.save(token, full);
+
+      return Success(UserModel.fromPb(full));
+    } on ClientException catch (e) {
+      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+    } catch (e) {
+      debugPrint('[auth] signInWithGoogle error: $e');
+      return Failure(AuthException(
+          message: 'Google ile giriş yapılamadı: ${e.toString()}', originalError: e));
+    }
   }
 
   Future<Result<UserEntity>> signInWithApple() async {

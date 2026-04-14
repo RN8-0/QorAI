@@ -53,5 +53,18 @@
 	<string>Compair uses the microphone for voice search so you can find products by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Compair uses speech recognition to convert your voice into search queries for finding products.</string>
+	<key>GIDClientID</key>
+	<string>510980756238-369d7b3tst5k4aue0niai0g5tm7090c1.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.510980756238-369d7b3tst5k4aue0niai0g5tm7090c1</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
