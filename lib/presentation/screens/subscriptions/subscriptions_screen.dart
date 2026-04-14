@@ -123,12 +123,14 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             context.l10n?.pleaseEnterSubscriptionName ??
                 'Please add at least one subscription',
             style: GoogleFonts.plusJakartaSans(
-                color: context.surfaceVariantColor),
+              color: context.surfaceVariantColor,
+            ),
           ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.error,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -141,8 +143,17 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final state = ref.watch(subQuizProvider);
-    final isWorking = state.phase == SubFlowPhase.quizLoading ||
+    final isWorking =
+        state.phase == SubFlowPhase.quizLoading ||
         state.phase == SubFlowPhase.analyzing;
+
+    ref.listen<bool>(premiumProvider, (prev, next) {
+      if (!mounted || prev == next || !next) return;
+      final current = ref.read(subQuizProvider);
+      if (current.error != null) {
+        ref.read(subQuizProvider.notifier).reset();
+      }
+    });
 
     // Listen for errors
     ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
@@ -150,13 +161,17 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       if (next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.error!,
-                style: GoogleFonts.plusJakartaSans(
-                    color: context.surfaceVariantColor)),
+            content: Text(
+              next.error!,
+              style: GoogleFonts.plusJakartaSans(
+                color: context.surfaceVariantColor,
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppTheme.error,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -171,8 +186,10 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             slivers: [
               _buildAppBar(state),
               SliverPadding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     // Phase timeline (during loading phases)
@@ -193,8 +210,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     ],
 
                     // Quiz phase
-                    if (state.phase == SubFlowPhase.quiz &&
-                        state.quiz != null)
+                    if (state.phase == SubFlowPhase.quiz && state.quiz != null)
                       _SubQuizView(
                         quiz: state.quiz!,
                         subscriptionNames: state.subscriptionNames,
@@ -206,9 +222,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                               .answerQuestion(idx, answer);
                         },
                         onSubmit: () async {
-                          await ref
-                              .read(subQuizProvider.notifier)
-                              .submitQuiz();
+                          await ref.read(subQuizProvider.notifier).submitQuiz();
                         },
                         onSkip: () {
                           ref.read(subQuizProvider.notifier).skipQuiz();
@@ -226,8 +240,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       ),
 
                     SizedBox(
-                        height: AppTheme.navBarTotalClearance +
-                            MediaQuery.of(context).padding.bottom + 24),
+                      height:
+                          AppTheme.navBarTotalClearance +
+                          MediaQuery.of(context).padding.bottom +
+                          24,
+                    ),
                   ]),
                 ),
               ),
@@ -265,35 +282,37 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               ),
             ),
       centerTitle: true,
-      title: Builder(builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final title = _getTitle(state.phase);
-        if (isDark) {
-          return ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [_kPrimary, _kSecondary, _kAccent],
-            ).createShader(bounds),
-            child: Text(
-              title,
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: Colors.white,
-                letterSpacing: -0.5,
+      title: Builder(
+        builder: (ctx) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          final title = _getTitle(state.phase);
+          if (isDark) {
+            return ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [_kPrimary, _kSecondary, _kAccent],
+              ).createShader(bounds),
+              child: Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
               ),
+            );
+          }
+          return Text(
+            title,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: _kPrimary,
+              letterSpacing: -0.5,
             ),
           );
-        }
-        return Text(
-          title,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: _kPrimary,
-            letterSpacing: -0.5,
-          ),
-        );
-      }),
+        },
+      ),
       actions: [
         if (state.phase != SubFlowPhase.idle)
           _buildAppBarAction(
@@ -332,7 +351,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             color: context.surfaceElevatedColor,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Center(child: Icon(icon, size: 18, color: context.textPrimary)),
+          child: Center(
+            child: Icon(icon, size: 18, color: context.textPrimary),
+          ),
         ),
       ),
     );
@@ -372,11 +393,14 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   height: 400,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      _kPrimary.withValues(
-                          alpha: _orbOpacityAnimation.value * 0.3),
-                      _kPrimary.withValues(alpha: 0.0),
-                    ]),
+                    gradient: RadialGradient(
+                      colors: [
+                        _kPrimary.withValues(
+                          alpha: _orbOpacityAnimation.value * 0.3,
+                        ),
+                        _kPrimary.withValues(alpha: 0.0),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -391,10 +415,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             height: 300,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [
-                _kAccent.withValues(alpha: 0.15),
-                _kAccent.withValues(alpha: 0.0),
-              ]),
+              gradient: RadialGradient(
+                colors: [
+                  _kAccent.withValues(alpha: 0.15),
+                  _kAccent.withValues(alpha: 0.0),
+                ],
+              ),
             ),
           ),
         ),
@@ -440,46 +466,51 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient:
-                    const LinearGradient(colors: [_kPrimary, _kDeep]),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.auto_awesome,
-                  color: context.surfaceVariantColor, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                context.l10n?.analysisProgress ?? 'Analysis Progress',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: context.textPrimary,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: context.surfaceVariantColor,
+                  size: 16,
                 ),
               ),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                gradient:
-                    const LinearGradient(colors: [_kPrimary, _kDeep]),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '$percent%',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  color: Colors.white,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  context.l10n?.analysisProgress ?? 'Analysis Progress',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: context.textPrimary,
+                  ),
                 ),
               ),
-            ),
-          ]),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$percent%',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
@@ -522,63 +553,68 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           ),
                         ),
                         child: Center(
-                          child: Icon(Icons.check_rounded,
-                              size: 15, color: context.surfaceVariantColor),
+                          child: Icon(
+                            Icons.check_rounded,
+                            size: 15,
+                            color: context.surfaceVariantColor,
+                          ),
                         ),
                       ).animate().scale(
-                          begin: const Offset(0.5, 0.5),
-                          end: const Offset(1, 1),
-                          duration: 400.ms,
-                          curve: Curves.elasticOut)
+                        begin: const Offset(0.5, 0.5),
+                        end: const Offset(1, 1),
+                        duration: 400.ms,
+                        curve: Curves.elasticOut,
+                      )
                     : step.isActive
-                        ? AnimatedBuilder(
-                            animation: _pulseController,
-                            builder: (context, child) {
-                              return Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
-                                    colors: [_kPrimary, _kDeep],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _kPrimary.withValues(
-                                          alpha: 0.3 +
-                                              _pulseController.value * 0.3),
-                                      blurRadius:
-                                          6 + _pulseController.value * 6,
-                                      spreadRadius:
-                                          _pulseController.value * 2,
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: context.surfaceVariantColor,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
+                    ? AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, child) {
+                          return Container(
                             width: 28,
                             height: 28,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppTheme.slate700,
+                              gradient: const LinearGradient(
+                                colors: [_kPrimary, _kDeep],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _kPrimary.withValues(
+                                    alpha: 0.3 + _pulseController.value * 0.3,
+                                  ),
+                                  blurRadius: 6 + _pulseController.value * 6,
+                                  spreadRadius: _pulseController.value * 2,
+                                ),
+                              ],
                             ),
                             child: Center(
-                              child: Icon(step.icon,
-                                  size: 13, color: AppTheme.slate400),
+                              child: SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: context.surfaceVariantColor,
+                                ),
+                              ),
                             ),
+                          );
+                        },
+                      )
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.slate700,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            step.icon,
+                            size: 13,
+                            color: AppTheme.slate400,
                           ),
+                        ),
+                      ),
                 if (!isLast)
                   Expanded(
                     child: Container(
@@ -603,13 +639,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 step.label,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
-                  fontWeight:
-                      step.isActive ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: step.isActive ? FontWeight.w700 : FontWeight.w500,
                   color: step.isDone
                       ? AppTheme.success
                       : step.isActive
-                          ? _kPrimary
-                          : AppTheme.slate400,
+                      ? _kPrimary
+                      : AppTheme.slate400,
                 ),
               ),
             ),
@@ -653,14 +688,15 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: done
-                          ? const LinearGradient(colors: [
-                              AppTheme.success,
-                              AppTheme.scoreExcellent
-                            ])
+                          ? const LinearGradient(
+                              colors: [
+                                AppTheme.success,
+                                AppTheme.scoreExcellent,
+                              ],
+                            )
                           : active
-                              ? const LinearGradient(
-                                  colors: [_kPrimary, _kDeep])
-                              : null,
+                          ? const LinearGradient(colors: [_kPrimary, _kDeep])
+                          : null,
                       color: (!done && !active)
                           ? context.surfaceVariantColor
                           : null,
@@ -676,8 +712,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     ),
                     child: Center(
                       child: done
-                          ? Icon(Icons.check_rounded,
-                              size: 13, color: context.surfaceVariantColor)
+                          ? Icon(
+                              Icons.check_rounded,
+                              size: 13,
+                              color: context.surfaceVariantColor,
+                            )
                           : Text(
                               '${i + 1}',
                               style: GoogleFonts.plusJakartaSans(
@@ -696,13 +735,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       steps[i],
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
-                        fontWeight:
-                            active ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         color: done
                             ? AppTheme.success
                             : active
-                                ? _kPrimary
-                                : AppTheme.slate400,
+                            ? _kPrimary
+                            : AppTheme.slate400,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -712,14 +750,15 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     Expanded(
                       child: Container(
                         height: 2,
-                        margin:
-                            const EdgeInsets.symmetric(horizontal: 4),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
                         decoration: BoxDecoration(
                           gradient: done
-                              ? const LinearGradient(colors: [
-                                  AppTheme.success,
-                                  AppTheme.scoreExcellent,
-                                ])
+                              ? const LinearGradient(
+                                  colors: [
+                                    AppTheme.success,
+                                    AppTheme.scoreExcellent,
+                                  ],
+                                )
                               : null,
                           color: done ? null : AppTheme.slate700,
                           borderRadius: BorderRadius.circular(1),
@@ -750,9 +789,14 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 gradient: SweepGradient(
-                  colors: const [_kPrimary, _kSecondary, _kAccent, _kDeep, _kPrimary],
-                  transform:
-                      GradientRotation(_orbController.value * 2 * pi),
+                  colors: const [
+                    _kPrimary,
+                    _kSecondary,
+                    _kAccent,
+                    _kDeep,
+                    _kPrimary,
+                  ],
+                  transform: GradientRotation(_orbController.value * 2 * pi),
                 ),
               ),
               child: child,
@@ -768,27 +812,37 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 // Chips row
                 if (_chips.isNotEmpty)
                   Padding(
-                    padding:
-                        const EdgeInsets.only(left: 14, right: 14, top: 10),
+                    padding: const EdgeInsets.only(
+                      left: 14,
+                      right: 14,
+                      top: 10,
+                    ),
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 6,
                       children: _chips.map((c) {
                         return Chip(
-                          label: Text(c,
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: _kPrimary)),
-                          deleteIcon: const Icon(Icons.close_rounded,
-                              size: 16, color: _kPrimary),
+                          label: Text(
+                            c,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _kPrimary,
+                            ),
+                          ),
+                          deleteIcon: const Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: _kPrimary,
+                          ),
                           onDeleted: () => _removeChip(c),
-                          backgroundColor:
-                              _kPrimary.withValues(alpha: 0.08),
+                          backgroundColor: _kPrimary.withValues(alpha: 0.08),
                           side: BorderSide(
-                              color: _kPrimary.withValues(alpha: 0.3)),
+                            color: _kPrimary.withValues(alpha: 0.3),
+                          ),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         );
                       }).toList(),
                     ),
@@ -805,23 +859,26 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   decoration: InputDecoration(
                     hintText: _chips.isEmpty
                         ? (context.l10n?.subscriptionInputHint ??
-                            'Type a subscription (e.g. Netflix)')
+                              'Type a subscription (e.g. Netflix)')
                         : (context.l10n?.addAnotherSubscription ??
-                            'Add another…'),
+                              'Add another…'),
                     hintStyle: GoogleFonts.inter(
-                      color: context.textTertiaryColor
-                          .withValues(alpha: 0.6),
+                      color: context.textTertiaryColor.withValues(alpha: 0.6),
                       fontWeight: FontWeight.w400,
                       fontSize: 13,
                     ),
                     prefixIcon: Padding(
                       padding: const EdgeInsets.only(left: 14, right: 8),
-                      child: Icon(Icons.subscriptions_rounded,
-                          color: _kPrimary.withValues(alpha: 0.7),
-                          size: 18),
+                      child: Icon(
+                        Icons.subscriptions_rounded,
+                        color: _kPrimary.withValues(alpha: 0.7),
+                        size: 18,
+                      ),
                     ),
-                    prefixIconConstraints:
-                        const BoxConstraints(minWidth: 0, minHeight: 0),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 0,
+                      minHeight: 0,
+                    ),
                     suffixIcon: _inputCtrl.text.isNotEmpty
                         ? GestureDetector(
                             onTap: () => _addChip(_inputCtrl.text),
@@ -832,15 +889,20 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                                 color: _kPrimary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.add_rounded,
-                                  color: _kPrimary, size: 16),
+                              child: const Icon(
+                                Icons.add_rounded,
+                                color: _kPrimary,
+                                size: 16,
+                              ),
                             ),
                           )
                         : null,
                     border: InputBorder.none,
                     filled: false,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 0, vertical: 12),
+                      horizontal: 0,
+                      vertical: 12,
+                    ),
                   ),
                   onChanged: (_) => setState(() {}),
                   onSubmitted: (v) {
@@ -868,8 +930,10 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               return GestureDetector(
                 onTap: isAdded ? null : () => _addChip(name),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: isAdded
                         ? _kPrimary.withValues(alpha: 0.15)
@@ -885,8 +949,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     name,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
-                      fontWeight:
-                          isAdded ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: isAdded ? FontWeight.w700 : FontWeight.w500,
                       color: isAdded ? _kPrimary : context.textSecondary,
                     ),
                   ),
@@ -922,8 +985,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.auto_awesome,
-                          color: Colors.white, size: 20),
+                      const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         context.l10n?.startAnalysis ?? 'Start Analysis',
@@ -949,10 +1015,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
           width: double.infinity,
           height: 56,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              _kPrimary.withValues(alpha: 0.6 + _pulseController.value * 0.4),
-              _kDeep.withValues(alpha: 0.6 + _pulseController.value * 0.4),
-            ]),
+            gradient: LinearGradient(
+              colors: [
+                _kPrimary.withValues(alpha: 0.6 + _pulseController.value * 0.4),
+                _kDeep.withValues(alpha: 0.6 + _pulseController.value * 0.4),
+              ],
+            ),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -985,16 +1053,25 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   Widget _buildError(String msg) {
     return GlassContainer(
       padding: const EdgeInsets.all(16),
-      child: Row(children: [
-        const Icon(Icons.error_outline_rounded,
-            color: AppTheme.error, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(msg,
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppTheme.error,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              msg,
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, color: AppTheme.error)),
-        ),
-      ]),
+                fontSize: 13,
+                color: AppTheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
     ).animate().fadeIn(duration: 300.ms).shake(delay: 100.ms);
   }
 
@@ -1006,9 +1083,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
   void _showSubscriptionHistory() {
     Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
-        builder: (_) => const SubscriptionHistoryScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const SubscriptionHistoryScreen()),
     );
   }
 
@@ -1018,21 +1093,24 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         icon: Icons.search_rounded,
         gradient: const [_kPrimary, _kDeep],
         title: context.l10n?.webPoweredInsights ?? 'Web-Powered Insights',
-        subtitle: context.l10n?.webPoweredInsightsDesc ??
+        subtitle:
+            context.l10n?.webPoweredInsightsDesc ??
             'Real-time pricing, Reddit & forum opinions',
       ),
       _InfoItem(
         icon: Icons.quiz_outlined,
         gradient: const [_kSecondary, Color(0xFFF97316)],
         title: context.l10n?.personalizedQuiz ?? 'Personalized Quiz',
-        subtitle: context.l10n?.personalizedQuizDesc ??
+        subtitle:
+            context.l10n?.personalizedQuizDesc ??
             'AI tailors questions to your usage patterns',
       ),
       _InfoItem(
         icon: Icons.psychology_outlined,
         gradient: const [_kAccent, Color(0xFF10B981)],
         title: context.l10n?.smartCompatibility ?? 'Smart Compatibility',
-        subtitle: context.l10n?.smartCompatibilityDesc ??
+        subtitle:
+            context.l10n?.smartCompatibilityDesc ??
             'Match score based on your profile & answers',
       ),
     ];
@@ -1042,42 +1120,50 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         final i = entry.key;
         final item = entry.value;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: GlassContainer(
-            padding: const EdgeInsets.all(16),
-            child: Row(children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: item.gradient),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(item.icon, color: Colors.white, size: 22),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GlassContainer(
+                padding: const EdgeInsets.all(16),
+                child: Row(
                   children: [
-                    Text(item.title,
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: context.textPrimary)),
-                    const SizedBox(height: 2),
-                    Text(item.subtitle,
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: context.textTertiaryColor)),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: item.gradient),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Icon(item.icon, color: Colors.white, size: 22),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.subtitle,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: context.textTertiaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ]),
-          ),
-        )
+            )
             .animate(delay: (i * 100).ms)
             .fadeIn(duration: 400.ms)
             .slideX(begin: 0.05);
@@ -1140,83 +1226,88 @@ class _SubQuizView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final answeredCount =
-        answeredQuestions.where((q) => q.selectedOption != null).length;
+    final answeredCount = answeredQuestions
+        .where((q) => q.selectedOption != null)
+        .length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Subscription names mini-card
         GlassContainer(
           padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: _kPrimary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/logo/compair_logo.png',
-                  width: 28,
-                  height: 28,
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _kPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/logo/compair_logo.png',
+                    width: 28,
+                    height: 28,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    subscriptionNames.join(' vs '),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: context.textPrimary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      subscriptionNames.join(' vs '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: context.textPrimary,
+                      ),
                     ),
-                  ),
-                  Text(
-                    context.l10n?.subscriptionIntelligence ??
-                        'Subscription Intelligence',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: context.textTertiaryColor,
+                    Text(
+                      context.l10n?.subscriptionIntelligence ??
+                          'Subscription Intelligence',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: context.textTertiaryColor,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
 
         // Progress bar
-        Row(children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: answeredCount / answeredQuestions.length,
-                backgroundColor: AppTheme.slate700,
-                color: _kPrimary,
-                minHeight: 6,
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: answeredCount / answeredQuestions.length,
+                  backgroundColor: AppTheme.slate700,
+                  color: _kPrimary,
+                  minHeight: 6,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '$answeredCount/${answeredQuestions.length}',
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: AppTheme.slate500,
+            const SizedBox(width: 12),
+            Text(
+              '$answeredCount/${answeredQuestions.length}',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppTheme.slate500,
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
         const SizedBox(height: 20),
 
         // Question cards
@@ -1251,17 +1342,18 @@ class _SubQuizView extends StatelessWidget {
             child: GradientButton(
               height: 38,
               borderRadius: BorderRadius.circular(10),
-              gradient: const LinearGradient(
-                colors: [_kPrimary, _kDeep],
-              ),
+              gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
               onPressed: onSubmit,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.insights_rounded,
-                        color: context.surfaceVariantColor, size: 16),
+                    Icon(
+                      Icons.insights_rounded,
+                      color: context.surfaceVariantColor,
+                      size: 16,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       context.l10n?.seeMyMatchScore ?? 'See My Match Score',
@@ -1280,13 +1372,18 @@ class _SubQuizView extends StatelessWidget {
           Center(
             child: TextButton.icon(
               onPressed: onSkip,
-              icon: const Icon(Icons.skip_next_rounded,
-                  color: AppTheme.slate500, size: 18),
+              icon: const Icon(
+                Icons.skip_next_rounded,
+                color: AppTheme.slate500,
+                size: 18,
+              ),
               label: Text(
                 context.l10n?.skipQuizShowBasic ??
                     'Skip quiz & show basic result',
                 style: GoogleFonts.plusJakartaSans(
-                    color: AppTheme.slate500, fontSize: 13),
+                  color: AppTheme.slate500,
+                  fontSize: 13,
+                ),
               ),
             ),
           ),
@@ -1320,42 +1417,47 @@ class _SubQuestionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: isAnswered
-                    ? AppTheme.success
-                    : _kPrimary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: isAnswered
-                    ? Icon(Icons.check,
-                        color: context.surfaceVariantColor, size: 16)
-                    : Text(
-                        '${index + 1}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: _kPrimary,
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isAnswered
+                      ? AppTheme.success
+                      : _kPrimary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: isAnswered
+                      ? Icon(
+                          Icons.check,
+                          color: context.surfaceVariantColor,
+                          size: 16,
+                        )
+                      : Text(
+                          '${index + 1}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: _kPrimary,
+                          ),
                         ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                question.text,
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: context.textPrimary,
                 ),
               ),
-            ),
-          ]),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  question.text,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           ...question.options.map((option) {
             final isSelected = question.selectedOption == option;
@@ -1369,7 +1471,9 @@ class _SubQuestionCard extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? _kPrimary.withValues(alpha: 0.08)
@@ -1380,42 +1484,45 @@ class _SubQuestionCard extends StatelessWidget {
                         width: isSelected ? 2 : 1,
                       ),
                     ),
-                    child: Row(children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color:
-                              isSelected ? _kPrimary : Colors.transparent,
-                          border: Border.all(
-                            color: isSelected ? _kPrimary : AppTheme.slate400,
-                            width: 2,
+                    child: Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected ? _kPrimary : Colors.transparent,
+                            border: Border.all(
+                              color: isSelected ? _kPrimary : AppTheme.slate400,
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected
+                              ? Icon(
+                                  Icons.check,
+                                  color: context.surfaceVariantColor,
+                                  size: 14,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            option,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              fontSize: 14,
+                              color: isSelected
+                                  ? _kPrimary
+                                  : context.textPrimary,
+                            ),
                           ),
                         ),
-                        child: isSelected
-                            ? Icon(Icons.check,
-                                color: context.surfaceVariantColor,
-                                size: 14)
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          option,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            fontSize: 14,
-                            color: isSelected
-                                ? _kPrimary
-                                : context.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1489,7 +1596,8 @@ class _SubResultView extends StatelessWidget {
       try {
         var clean = raw.trim();
         if (clean.startsWith('```')) {
-          clean = clean.replaceFirst(RegExp(r'^```\w*\n?'), '')
+          clean = clean
+              .replaceFirst(RegExp(r'^```\w*\n?'), '')
               .replaceFirst(RegExp(r'\n?```$'), '');
         }
         final parsed = jsonDecode(clean) as Map<String, dynamic>?;
@@ -1510,13 +1618,15 @@ class _SubResultView extends StatelessWidget {
   Widget build(BuildContext context) {
     var subs = (structured?['subscriptions'] as Map<String, dynamic>?) ?? {};
     var winner = (structured?['winner'] as Map<String, dynamic>?) ?? {};
-    
+
     // If structured is null but analysisText looks like JSON, try to parse it
     if (subs.isEmpty && analysisText.trim().startsWith('{')) {
       try {
         var clean = analysisText.trim();
         if (clean.startsWith('```')) {
-          clean = clean.replaceFirst(RegExp(r'^```\w*\n?'), '').replaceFirst(RegExp(r'\n?```$'), '');
+          clean = clean
+              .replaceFirst(RegExp(r'^```\w*\n?'), '')
+              .replaceFirst(RegExp(r'\n?```$'), '');
         }
         final parsed = jsonDecode(clean) as Map<String, dynamic>?;
         if (parsed != null) {
@@ -1539,29 +1649,38 @@ class _SubResultView extends StatelessWidget {
         // ── Score rings ──
         if (scores.isNotEmpty) ...[
           GlassContainer(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Text(
-                  context.l10n?.compatibilityScores ?? 'Compatibility Scores',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700, fontSize: 16,
-                    color: context.textPrimary,
-                  ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Text(
+                      context.l10n?.compatibilityScores ??
+                          'Compatibility Scores',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 20,
+                      runSpacing: 20,
+                      alignment: WrapAlignment.center,
+                      children: scores.entries.map((e) {
+                        return _ScoreRing(label: e.key, score: e.value);
+                      }).toList(),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 20, runSpacing: 20,
-                  alignment: WrapAlignment.center,
-                  children: scores.entries.map((e) {
-                    return _ScoreRing(label: e.key, score: e.value);
-                  }).toList(),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(duration: 400.ms).scale(
-              begin: const Offset(0.9, 0.9), end: const Offset(1, 1),
-              duration: 500.ms, curve: Curves.elasticOut),
+              )
+              .animate()
+              .fadeIn(duration: 400.ms)
+              .scale(
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1, 1),
+                duration: 500.ms,
+                curve: Curves.elasticOut,
+              ),
           const SizedBox(height: 16),
         ],
 
@@ -1572,10 +1691,12 @@ class _SubResultView extends StatelessWidget {
             final name = entry.value.key;
             final data = entry.value.value as Map<String, dynamic>? ?? {};
             return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildServiceCard(context, name, data),
-            ).animate().fadeIn(duration: 400.ms, delay: (100 * idx).ms)
-             .slideY(begin: 0.05, duration: 400.ms);
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildServiceCard(context, name, data),
+                )
+                .animate()
+                .fadeIn(duration: 400.ms, delay: (100 * idx).ms)
+                .slideY(begin: 0.05, duration: 400.ms);
           }),
 
         // ── Recommendation ──
@@ -1584,14 +1705,25 @@ class _SubResultView extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         // Single service recommendation (non-compare mode)
-        if (hasStructured && !winner.containsKey('recommendation') && structured?['recommendation'] != null) ...[
-          _buildRecommendationCard(context, structured!['recommendation'] as String),
+        if (hasStructured &&
+            !winner.containsKey('recommendation') &&
+            structured?['recommendation'] != null) ...[
+          _buildRecommendationCard(
+            context,
+            structured!['recommendation'] as String,
+          ),
           const SizedBox(height: 16),
         ],
 
         // ── Detailed Comparison Section ──
-        if (hasStructured && (structured?['detailed_comparison'] as Map<String, dynamic>?)?.isNotEmpty == true) ...[
-          _buildDetailedComparison(context, structured!['detailed_comparison'] as Map<String, dynamic>),
+        if (hasStructured &&
+            (structured?['detailed_comparison'] as Map<String, dynamic>?)
+                    ?.isNotEmpty ==
+                true) ...[
+          _buildDetailedComparison(
+            context,
+            structured!['detailed_comparison'] as Map<String, dynamic>,
+          ),
           const SizedBox(height: 16),
         ],
 
@@ -1608,25 +1740,37 @@ class _SubResultView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        Expanded(
-                          child: Text(e.key,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700, fontSize: 15,
-                              color: context.textPrimary)),
-                        ),
-                        Text('${score.toInt()}%',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w800, fontSize: 20,
-                            color: _scoreColor(score))),
-                      ]),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              e.key,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${score.toInt()}%',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                              color: _scoreColor(score),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 10),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
                           value: score / 100,
                           backgroundColor: context.dividerColor,
-                          valueColor: AlwaysStoppedAnimation(_scoreColor(score)),
+                          valueColor: AlwaysStoppedAnimation(
+                            _scoreColor(score),
+                          ),
                           minHeight: 8,
                         ),
                       ),
@@ -1642,44 +1786,58 @@ class _SubResultView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.insights_rounded, color: Colors.white, size: 16),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      context.l10n?.aiAnalysis ?? 'AI Analysis',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700, fontSize: 16,
-                        color: context.textPrimary,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [_kPrimary, _kDeep],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.insights_rounded,
+                        color: Colors.white,
+                        size: 16,
                       ),
                     ),
-                  ),
-                ]),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.l10n?.aiAnalysis ?? 'AI Analysis',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 MarkdownBody(
                   data: _readableAnalysis(analysisText, subs, winner),
                   selectable: true,
                   styleSheet: MarkdownStyleSheet(
                     p: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, color: context.textPrimary, height: 1.6,
+                      fontSize: 14,
+                      color: context.textPrimary,
+                      height: 1.6,
                     ),
                     strong: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                       color: context.textPrimary,
                     ),
                     em: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, fontStyle: FontStyle.italic,
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
                       color: context.textSecondary,
                     ),
                     listBullet: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, color: context.textSecondary,
+                      fontSize: 14,
+                      color: context.textSecondary,
                     ),
                     blockSpacing: 8,
                   ),
@@ -1696,58 +1854,95 @@ class _SubResultView extends StatelessWidget {
 
   Widget _buildWinnerBanner(BuildContext context, Map<String, dynamic> winner) {
     return GlassContainer(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const Text('🏆', style: TextStyle(fontSize: 40)),
-          const SizedBox(height: 8),
-          Text(
-            winner['overall'] as String? ?? '',
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w800, fontSize: 22,
-              color: context.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Overall Winner',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13, color: context.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          padding: const EdgeInsets.all(20),
+          child: Column(
             children: [
-              if (winner['best_value'] != null)
-                _buildMiniWinner(context, '💰', 'Best Value', winner['best_value'] as String),
-              if (winner['best_content'] != null)
-                _buildMiniWinner(context, '✨', 'Best Content', winner['best_content'] as String),
+              const Text('🏆', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 8),
+              Text(
+                winner['overall'] as String? ?? '',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Overall Winner',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  if (winner['best_value'] != null)
+                    _buildMiniWinner(
+                      context,
+                      '💰',
+                      'Best Value',
+                      winner['best_value'] as String,
+                    ),
+                  if (winner['best_content'] != null)
+                    _buildMiniWinner(
+                      context,
+                      '✨',
+                      'Best Content',
+                      winner['best_content'] as String,
+                    ),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 500.ms).scale(
-        begin: const Offset(0.85, 0.85), end: const Offset(1, 1),
-        duration: 600.ms, curve: Curves.elasticOut);
+        )
+        .animate()
+        .fadeIn(duration: 500.ms)
+        .scale(
+          begin: const Offset(0.85, 0.85),
+          end: const Offset(1, 1),
+          duration: 600.ms,
+          curve: Curves.elasticOut,
+        );
   }
 
-  Widget _buildMiniWinner(BuildContext context, String emoji, String label, String name) {
+  Widget _buildMiniWinner(
+    BuildContext context,
+    String emoji,
+    String label,
+    String name,
+  ) {
     return Column(
       children: [
         Text(emoji, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.plusJakartaSans(
-          fontSize: 11, color: context.textTertiaryColor, fontWeight: FontWeight.w500,
-        )),
-        Text(name, style: GoogleFonts.plusJakartaSans(
-          fontSize: 13, color: context.textPrimary, fontWeight: FontWeight.w700,
-        )),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            color: context.textTertiaryColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          name,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: context.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildServiceCard(BuildContext context, String name, Map<String, dynamic> data) {
+  Widget _buildServiceCard(
+    BuildContext context,
+    String name,
+    Map<String, dynamic> data,
+  ) {
     final score = (data['compatibility_score'] as num?)?.toDouble() ?? 0;
     final explanation = data['compatibility_explanation'] as String? ?? '';
     final price = _formatPrice(data['price'] as String? ?? '');
@@ -1768,32 +1963,52 @@ class _SubResultView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w800, fontSize: 18, color: context.textPrimary,
-                    )),
+                    Text(
+                      name,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: context.textPrimary,
+                      ),
+                    ),
                     if (price.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text(price, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600,
-                      )),
+                      Text(
+                        price,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: _kAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
               // Large score badge
               Container(
-                width: 60, height: 60,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [_scoreColor(score).withValues(alpha: 0.8), _scoreColor(score)],
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [
+                      _scoreColor(score).withValues(alpha: 0.8),
+                      _scoreColor(score),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
                 child: Center(
-                  child: Text('${score.toInt()}%', style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w900, fontSize: 16, color: Colors.white,
-                  )),
+                  child: Text(
+                    '${score.toInt()}%',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1802,9 +2017,14 @@ class _SubResultView extends StatelessWidget {
           // Explanation
           if (explanation.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(explanation, style: GoogleFonts.plusJakartaSans(
-              fontSize: 13, color: context.textSecondary, height: 1.4,
-            )),
+            Text(
+              explanation,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: context.textSecondary,
+                height: 1.4,
+              ),
+            ),
           ],
 
           // Factor Bars
@@ -1812,17 +2032,29 @@ class _SubResultView extends StatelessWidget {
             const SizedBox(height: 16),
             ...factors.entries.map((f) {
               final fScore = (f.value as num?)?.toDouble() ?? 0;
-              final label = f.key.replaceAll('_', ' ').split(' ').map((w) =>
-                w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
+              final label = f.key
+                  .replaceAll('_', ' ')
+                  .split(' ')
+                  .map(
+                    (w) => w.isNotEmpty
+                        ? '${w[0].toUpperCase()}${w.substring(1)}'
+                        : '',
+                  )
+                  .join(' ');
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
                     SizedBox(
                       width: 95,
-                      child: Text(label, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11, color: context.textTertiaryColor, fontWeight: FontWeight.w500,
-                      )),
+                      child: Text(
+                        label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: context.textTertiaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                     Expanded(
                       child: ClipRRect(
@@ -1838,9 +2070,13 @@ class _SubResultView extends StatelessWidget {
                     const SizedBox(width: 8),
                     SizedBox(
                       width: 32,
-                      child: Text('${fScore.toInt()}', textAlign: TextAlign.right,
+                      child: Text(
+                        '${fScore.toInt()}',
+                        textAlign: TextAlign.right,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12, color: _scoreColor(fScore), fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: _scoreColor(fScore),
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -1854,11 +2090,23 @@ class _SubResultView extends StatelessWidget {
           if (pros.isNotEmpty || cons.isNotEmpty) ...[
             const SizedBox(height: 16),
             if (pros.isNotEmpty) ...[
-              _buildProConSection(context, context.l10n?.prosForYou ?? 'Pros', '✅', pros, AppTheme.success),
+              _buildProConSection(
+                context,
+                context.l10n?.prosForYou ?? 'Pros',
+                '✅',
+                pros,
+                AppTheme.success,
+              ),
               if (cons.isNotEmpty) const SizedBox(height: 12),
             ],
             if (cons.isNotEmpty)
-              _buildProConSection(context, context.l10n?.consForYou ?? 'Cons', '❌', cons, AppTheme.error),
+              _buildProConSection(
+                context,
+                context.l10n?.consForYou ?? 'Cons',
+                '❌',
+                cons,
+                AppTheme.error,
+              ),
           ],
 
           // Community Sentiment
@@ -1876,9 +2124,15 @@ class _SubResultView extends StatelessWidget {
                   const Text('💬', style: TextStyle(fontSize: 16)),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(sentiment, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, color: context.textSecondary, height: 1.4, fontStyle: FontStyle.italic,
-                    )),
+                    child: Text(
+                      sentiment,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                        height: 1.4,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1889,7 +2143,13 @@ class _SubResultView extends StatelessWidget {
     );
   }
 
-  Widget _buildProConSection(BuildContext context, String title, String emoji, List<String> items, Color color) {
+  Widget _buildProConSection(
+    BuildContext context,
+    String title,
+    String emoji,
+    List<String> items,
+    Color color,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -1901,25 +2161,37 @@ class _SubResultView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w700, fontSize: 13, color: color,
-          )),
-          const SizedBox(height: 8),
-          ...items.map((item) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 13)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(item, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, color: context.textSecondary, height: 1.4,
-                  )),
-                ),
-              ],
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: color,
             ),
-          )),
+          ),
+          const SizedBox(height: 8),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: context.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1935,37 +2207,65 @@ class _SubResultView extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [_kPrimary, _kSecondary]),
+                  gradient: const LinearGradient(
+                    colors: [_kPrimary, _kSecondary],
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 12),
               Text(
                 'AI Recommendation',
                 style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w700, fontSize: 16, color: context.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: context.textPrimary,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(recommendation, style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, color: context.textPrimary, height: 1.6,
-          )),
+          Text(
+            recommendation,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: context.textPrimary,
+              height: 1.6,
+            ),
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 500.ms, delay: 300.ms);
   }
 
-  Widget _buildDetailedComparison(BuildContext context, Map<String, dynamic> comparison) {
+  Widget _buildDetailedComparison(
+    BuildContext context,
+    Map<String, dynamic> comparison,
+  ) {
     final sections = <_ComparisonSection>[
       if (comparison['pricing_analysis'] != null)
-        _ComparisonSection('💰', 'Pricing Analysis', comparison['pricing_analysis'] as String),
+        _ComparisonSection(
+          '💰',
+          'Pricing Analysis',
+          comparison['pricing_analysis'] as String,
+        ),
       if (comparison['feature_comparison'] != null)
-        _ComparisonSection('⚡', 'Feature Comparison', comparison['feature_comparison'] as String),
+        _ComparisonSection(
+          '⚡',
+          'Feature Comparison',
+          comparison['feature_comparison'] as String,
+        ),
       if (comparison['user_experience'] != null)
-        _ComparisonSection('🎯', 'User Experience', comparison['user_experience'] as String),
+        _ComparisonSection(
+          '🎯',
+          'User Experience',
+          comparison['user_experience'] as String,
+        ),
     ];
     if (sections.isEmpty) return const SizedBox.shrink();
 
@@ -1977,39 +2277,52 @@ class _SubResultView extends StatelessWidget {
           Text(
             'Detailed Comparison',
             style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w700, fontSize: 16, color: context.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
-          ...sections.map((s) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(s.emoji, style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(s.title, style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w600, fontSize: 13, color: context.textPrimary,
-                      )),
-                      const SizedBox(height: 4),
-                      Text(s.content, style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, color: context.textSecondary, height: 1.5,
-                      )),
-                    ],
+          ...sections.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(s.emoji, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          s.content,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: context.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          )),
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 500.ms, delay: 200.ms);
   }
-
 }
 
 // ── Comparison Section Helper ────────────────────────────────────────────────

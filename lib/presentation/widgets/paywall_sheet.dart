@@ -14,6 +14,7 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:compair/routing/router.dart';
+import 'package:compair/services/subscription_service.dart';
 
 void showPaywallSheet(BuildContext context) {
   context.push(AppRoutes.premium);
@@ -39,6 +40,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
 
   late Animation<double> _floatAnim;
   late Animation<double> _enterAnim;
+
+  bool get _isTurkish => Localizations.localeOf(context).languageCode == 'tr';
+
+  String _txt({required String tr, required String en}) {
+    return _isTurkish ? tr : en;
+  }
 
   @override
   void initState() {
@@ -86,10 +93,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     if (!service.isInitialized) {
       await service.initialize();
     }
-    if (mounted)
+    if (service.isPremium) {
+      await _syncPremiumStatus(service.status);
+    }
+    if (mounted) {
       setState(() {
         _isLoading = false;
       });
+    }
   }
 
   Future<void> _purchase(ProductDetails product) async {
@@ -97,10 +108,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final service = ref.read(subscriptionServiceProvider);
     final result = await service.purchaseProduct(product);
     if (!mounted) return;
+    if (service.isPremium) {
+      await _syncPremiumStatus(service.status);
+      if (!mounted) return;
+    }
     setState(() => _isPurchasing = false);
     switch (result) {
       case Success():
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -131,7 +145,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     switch (result) {
       case Success(data: final isPremium):
         if (isPremium) {
-          Navigator.pop(context);
+          await _syncPremiumStatus(service.status);
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -162,6 +177,67 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           ),
         );
     }
+  }
+
+  Future<void> _syncPremiumStatus(SubscriptionStatus status) async {
+    final uid = ref.read(authStateProvider).valueOrNull;
+    if (uid == null || !status.isPremium) {
+      return;
+    }
+
+    try {
+      final user = ref.read(userProfileProvider).valueOrNull;
+      final details = <String, Map<String, dynamic>>{
+        ...?user?.userSubscriptionDetails,
+        'premium': {
+          'productId': status.activeProductId,
+          'planType': _planType(status.activeProductId),
+          if (status.purchaseDate != null)
+            'startedAt': status.purchaseDate!.toIso8601String(),
+          if (status.expirationDate != null)
+            'expiresAt': status.expirationDate!.toIso8601String(),
+          'source': 'google_play',
+          'updatedAt': DateTime.now().toIso8601String(),
+        },
+      };
+
+      await ref.read(pbDataSourceProvider).updateUser(uid, {
+        'isPremium': true,
+        'userSubscriptionDetails': details,
+      });
+      ref.invalidate(userProfileProvider);
+    } catch (_) {}
+  }
+
+  String _planType(String? productId) {
+    if (productId == AppConstants.yearlySubscriptionId) return 'yearly';
+    if (productId == AppConstants.monthlySubscriptionId) return 'monthly';
+    return 'premium';
+  }
+
+  String _planLabel(String? productId) {
+    return switch (_planType(productId)) {
+      'yearly' => _txt(
+        tr: 'Yıllık abonesiniz',
+        en: 'You are a yearly subscriber',
+      ),
+      'monthly' => _txt(
+        tr: 'Aylık abonesiniz',
+        en: 'You are a monthly subscriber',
+      ),
+      _ => _txt(tr: 'Premium abonesiniz', en: 'You are a premium subscriber'),
+    };
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) {
+      return _txt(tr: 'Bilinmiyor', en: 'Unknown');
+    }
+    final local = date.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year.toString();
+    return _isTurkish ? '$day.$month.$year' : '$month/$day/$year';
   }
 
   void _handlePurchaseTap() {
@@ -286,6 +362,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget build(BuildContext context) {
     final bg = context.backgroundColor;
     final textPrimary = context.textPrimary;
+    final service = ref.watch(subscriptionServiceProvider);
+    final isPremium = service.isPremium;
     return Scaffold(
       backgroundColor: bg,
       extendBodyBehindAppBar: true,
@@ -331,19 +409,27 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 20),
-                  _buildHeroSection(),
-                  const SizedBox(height: 24),
-                  _buildTrialBanner(),
-                  const SizedBox(height: 20),
-                  _buildPlanToggle(),
-                  const SizedBox(height: 20),
-                  _buildComparisonTable(),
-                  const SizedBox(height: 20),
-                  _buildFeatureHighlights(),
-                  const SizedBox(height: 24),
-                  _buildCTAButton(),
-                  const SizedBox(height: 8),
-                  _buildFooter(),
+                  if (isPremium) ...[
+                    _buildActiveSubscriptionSection(service),
+                    const SizedBox(height: 20),
+                    _buildComparisonTable(),
+                    const SizedBox(height: 16),
+                    _buildFooter(),
+                  ] else ...[
+                    _buildHeroSection(),
+                    const SizedBox(height: 24),
+                    _buildTrialBanner(),
+                    const SizedBox(height: 20),
+                    _buildPlanToggle(),
+                    const SizedBox(height: 20),
+                    _buildComparisonTable(),
+                    const SizedBox(height: 20),
+                    _buildFeatureHighlights(),
+                    const SizedBox(height: 24),
+                    _buildCTAButton(),
+                    const SizedBox(height: 8),
+                    _buildFooter(),
+                  ],
                   const SizedBox(height: 8),
                 ],
               ),
@@ -437,7 +523,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Unlimited compare, AI chat, link analysis and a cleaner advanced experience.',
+            _txt(
+              tr: 'Sinirsiz karsilastirma, AI chat, link analizi ve daha temiz premium deneyim.',
+              en: 'Unlimited compare, AI chat, link analysis and a cleaner advanced experience.',
+            ),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               color: context.textSecondary,
@@ -549,7 +638,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'No charge for ${AppConstants.trialDays} days, then your selected plan starts.',
+                  _txt(
+                    tr: '${AppConstants.trialDays} gun boyunca ucret alinmaz, sonra sectiginiz plan baslar.',
+                    en: 'No charge for ${AppConstants.trialDays} days, then your selected plan starts.',
+                  ),
                   style: GoogleFonts.plusJakartaSans(
                     color: context.textSecondary,
                     fontSize: 12,
@@ -743,6 +835,170 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     );
   }
 
+  Widget _buildActiveSubscriptionSection(SubscriptionService service) {
+    final status = service.status;
+    final accent = status.activeProductId == AppConstants.yearlySubscriptionId
+        ? AppTheme.brandCyan
+        : AppTheme.brandBlue;
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.28),
+              width: 1.4,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.12),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.verified_rounded,
+                  color: Colors.white,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _buildShimmerBadge(),
+              const SizedBox(height: 14),
+              Text(
+                _planLabel(status.activeProductId),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary,
+                  letterSpacing: -0.5,
+                  height: 1.15,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _txt(
+                  tr: 'Premium ozellikleriniz aktif. Tum limitler kaldirildi.',
+                  en: 'Your premium benefits are active and all limits are unlocked.',
+                ),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: context.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: accent.withValues(alpha: 0.18)),
+          ),
+          child: Column(
+            children: [
+              _buildSubscriptionMetaRow(
+                icon: Icons.calendar_today_rounded,
+                label: _txt(tr: 'Baslangic tarihi', en: 'Started on'),
+                value: _formatDate(status.purchaseDate),
+              ),
+              const SizedBox(height: 12),
+              _buildSubscriptionMetaRow(
+                icon: Icons.event_repeat_rounded,
+                label: _txt(
+                  tr: 'Tahmini yenilenme / bitis',
+                  en: 'Estimated renewal / end',
+                ),
+                value: _formatDate(status.expirationDate),
+              ),
+              const SizedBox(height: 12),
+              _buildSubscriptionMetaRow(
+                icon: Icons.workspace_premium_rounded,
+                label: _txt(tr: 'Aktif plan', en: 'Active plan'),
+                value:
+                    status.activeProductId == AppConstants.yearlySubscriptionId
+                    ? (_txt(tr: 'Yillik', en: 'Yearly'))
+                    : (_txt(tr: 'Aylik', en: 'Monthly')),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubscriptionMetaRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppTheme.brandBlue.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 18, color: AppTheme.brandBlue),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildComparisonTable() {
     final l = context.l10n;
     final rows = [
@@ -813,7 +1069,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 Expanded(
                   flex: 3,
                   child: Text(
-                    'Free',
+                    _txt(tr: 'Ucretsiz', en: 'Free'),
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       color: context.textSecondary,
@@ -1081,6 +1337,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   }
 
   Widget _buildFooter() {
+    final isPremium = ref.watch(subscriptionServiceProvider).isPremium;
     return Column(
       children: [
         TextButton(
@@ -1095,8 +1352,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           ),
         ),
         Text(
-          context.l10n?.paywallLegalText ??
-              'Auto-renews. Cancel anytime. ${AppConstants.trialDays}-day free trial.',
+          isPremium
+              ? _txt(
+                  tr: 'Aboneliginiz aktif. Isterseniz Google Play uzerinden yonetebilirsiniz.',
+                  en: 'Your subscription is active. You can manage it from Google Play anytime.',
+                )
+              : (context.l10n?.paywallLegalText ??
+                    'Auto-renews. Cancel anytime. ${AppConstants.trialDays}-day free trial.'),
           style: GoogleFonts.plusJakartaSans(
             color: context.textTertiaryColor,
             fontSize: 11,

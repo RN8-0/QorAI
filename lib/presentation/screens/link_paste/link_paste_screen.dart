@@ -28,7 +28,6 @@ part 'widgets/enhanced_result_widget.dart';
 part 'widgets/multi_compare_widget.dart';
 part 'widgets/result_detail_widgets.dart';
 
-
 class LinkPasteScreen extends ConsumerStatefulWidget {
   const LinkPasteScreen({super.key});
 
@@ -40,15 +39,21 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     with TickerProviderStateMixin {
   // === TAB SYSTEM ===
   late TabController _tabController;
-  
+
   // === SINGLE ANALYSIS TAB ===
   final TextEditingController _singleUrlController = TextEditingController();
   final FocusNode _singleFocusNode = FocusNode();
   String? _detectedClipboardUrl; // Legacy - kept for old widgets
 
   // === COMPARE TAB (up to 4 links) ===
-  final List<TextEditingController> _compareControllers = List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _compareFocusNodes = List.generate(4, (_) => FocusNode());
+  final List<TextEditingController> _compareControllers = List.generate(
+    4,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _compareFocusNodes = List.generate(
+    4,
+    (_) => FocusNode(),
+  );
   int _visibleCompareFields = 2; // Start with 2, expandable to 4
   // Compare state now managed by compareAnalysisProvider (survives navigation)
 
@@ -76,7 +81,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     // Only reset if the previous state was idle (don't interrupt ongoing analysis)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final current = ref.read(linkQuizProvider);
@@ -114,8 +119,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     _tabController.dispose();
     _singleUrlController.dispose();
     _singleFocusNode.dispose();
-    for (final c in _compareControllers) { c.dispose(); }
-    for (final f in _compareFocusNodes) { f.dispose(); }
+    for (final c in _compareControllers) {
+      c.dispose();
+    }
+    for (final f in _compareFocusNodes) {
+      f.dispose();
+    }
     _pulseController.dispose();
     _orbController.dispose();
     _quizEntryController.dispose();
@@ -143,7 +152,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   void _resetCompareFields() {
-    for (final c in _compareControllers) { c.clear(); }
+    for (final c in _compareControllers) {
+      c.clear();
+    }
     _visibleCompareFields = 2;
     ref.read(compareAnalysisProvider.notifier).reset();
   }
@@ -168,7 +179,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     final nextUrl = _multiLinkUrls[_currentMultiLinkIndex];
     ref.read(behaviorTrackingProvider).trackLinkPaste(nextUrl, null);
-    await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(nextUrl, user);
+    await ref
+        .read(linkQuizProvider.notifier)
+        .analyzeAndStartQuiz(nextUrl, user);
     if (mounted) _quizEntryController.forward(from: 0.0);
   }
 
@@ -176,18 +189,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final userAsync = ref.read(userProfileProvider);
     final country = ref.read(selectedCountryProvider);
     final currency = ref.read(currencyProvider);
-    return userAsync.valueOrNull ?? UserEntity(
-      uid: 'anonymous',
-      email: '',
-      displayName: 'User',
-      country: country,
-      language: Localizations.localeOf(context).languageCode,
-      currency: currency,
-      priorities: const [],
-      subscriptions: const [],
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
+    return userAsync.valueOrNull ??
+        UserEntity(
+          uid: 'anonymous',
+          email: '',
+          displayName: 'User',
+          country: country,
+          language: Localizations.localeOf(context).languageCode,
+          currency: currency,
+          priorities: const [],
+          subscriptions: const [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
   }
 
   /// Single Analysis tab — start quiz flow for one URL
@@ -196,11 +210,18 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (url.isEmpty || !_isValidUrl(url)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n?.pleaseEnterValidUrl ?? 'Please enter a valid product URL',
-              style: GoogleFonts.plusJakartaSans(color: context.surfaceVariantColor)),
+          content: Text(
+            context.l10n?.pleaseEnterValidUrl ??
+                'Please enter a valid product URL',
+            style: GoogleFonts.plusJakartaSans(
+              color: context.surfaceVariantColor,
+            ),
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.error,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -208,7 +229,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     _singleFocusNode.unfocus();
     ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
-    await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(url, _getOrCreateUser());
+    await ref
+        .read(linkQuizProvider.notifier)
+        .analyzeAndStartQuiz(url, _getOrCreateUser());
     if (mounted) _quizEntryController.forward(from: 0.0);
   }
 
@@ -223,21 +246,31 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (validUrls.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please enter at least 2 valid product URLs',
-              style: GoogleFonts.plusJakartaSans(color: context.surfaceVariantColor)),
+          content: Text(
+            'Please enter at least 2 valid product URLs',
+            style: GoogleFonts.plusJakartaSans(
+              color: context.surfaceVariantColor,
+            ),
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.error,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
     }
 
-    for (final fn in _compareFocusNodes) { fn.unfocus(); }
+    for (final fn in _compareFocusNodes) {
+      fn.unfocus();
+    }
 
     final user = _getOrCreateUser();
     final lang = Localizations.localeOf(context).languageCode;
-    ref.read(compareAnalysisProvider.notifier).startAnalysis(validUrls, user, lang);
+    ref
+        .read(compareAnalysisProvider.notifier)
+        .startAnalysis(validUrls, user, lang);
   }
 
   void _onCompareQuizAnswer(int index, String answer) {
@@ -262,14 +295,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   @override
   Widget build(BuildContext context) {
     final quizState = ref.watch(linkQuizProvider);
+    ref.listen<bool>(premiumProvider, (prev, next) {
+      if (!mounted || prev == next || !next) return;
+      final currentQuiz = ref.read(linkQuizProvider);
+      if (currentQuiz.error != null ||
+          currentQuiz.phase == LinkFlowPhase.idle) {
+        ref.read(linkQuizProvider.notifier).reset();
+      }
+      ref.read(compareAnalysisProvider.notifier).reset();
+    });
     final compareState = ref.watch(compareAnalysisProvider);
-    final isWorking = quizState.phase == LinkFlowPhase.analyzing ||
+    final isWorking =
+        quizState.phase == LinkFlowPhase.analyzing ||
         quizState.phase == LinkFlowPhase.quizLoading ||
         quizState.phase == LinkFlowPhase.computing ||
         compareState.isWorking;
 
     // Show back button when in active flow or comparison ready
-    final showBack = quizState.phase != LinkFlowPhase.idle ||
+    final showBack =
+        quizState.phase != LinkFlowPhase.idle ||
         compareState.phase != ComparePhase.idle;
 
     return Scaffold(
@@ -285,7 +329,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 toolbarHeight: 56,
                 leading: showBack
                     ? IconButton(
-                        icon: Icon(Icons.arrow_back_rounded, color: context.textPrimary),
+                        icon: Icon(
+                          Icons.arrow_back_rounded,
+                          color: context.textPrimary,
+                        ),
                         onPressed: () {
                           HapticFeedback.mediumImpact();
                           ref.read(linkQuizProvider.notifier).reset();
@@ -300,34 +347,50 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         child: Center(
                           child: Image.asset(
                             'assets/logo/compair_logo.png',
-                            width: 32, height: 32,
+                            width: 32,
+                            height: 32,
                           ),
                         ),
                       ),
                 centerTitle: true,
-                title: Builder(builder: (context) {
-                  final isDark = Theme.of(context).brightness == Brightness.dark;
-                  final titleText = compareState.phase == ComparePhase.done
-                      ? 'Comparison'
-                      : _getTitle(quizState.phase);
-                  if (isDark) {
-                    return ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue, AppTheme.brandCyan],
-                      ).createShader(bounds),
-                      child: Text(titleText,
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w800, fontSize: 17,
-                          color: Colors.white, letterSpacing: -0.5),
+                title: Builder(
+                  builder: (context) {
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
+                    final titleText = compareState.phase == ComparePhase.done
+                        ? 'Comparison'
+                        : _getTitle(quizState.phase);
+                    if (isDark) {
+                      return ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [
+                            AppTheme.brandBlue,
+                            AppTheme.brandSkyBlue,
+                            AppTheme.brandCyan,
+                          ],
+                        ).createShader(bounds),
+                        child: Text(
+                          titleText,
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      );
+                    }
+                    return Text(
+                      titleText,
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17,
+                        color: AppTheme.brandBlue,
+                        letterSpacing: -0.5,
                       ),
                     );
-                  }
-                  return Text(titleText,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w800, fontSize: 17,
-                      color: AppTheme.brandBlue, letterSpacing: -0.5),
-                  );
-                }),
+                  },
+                ),
                 actions: [
                   if (showBack)
                     _buildAppBarAction(
@@ -351,7 +414,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   const SizedBox(width: 4),
                 ],
                 // Tab bar at the bottom of the app bar (only when idle)
-                bottom: (quizState.phase == LinkFlowPhase.idle && compareState.phase == ComparePhase.idle)
+                bottom:
+                    (quizState.phase == LinkFlowPhase.idle &&
+                        compareState.phase == ComparePhase.idle)
                     ? PreferredSize(
                         preferredSize: const Size.fromHeight(48),
                         child: _buildTabBar(),
@@ -381,7 +446,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         controller: _tabController,
         indicator: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandCyan],
+            colors: [
+              AppTheme.brandBlue,
+              AppTheme.brandDeepBlue,
+              AppTheme.brandCyan,
+            ],
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
@@ -395,8 +464,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         indicatorSize: TabBarIndicatorSize.tab,
         labelColor: Colors.white,
         unselectedLabelColor: context.textTertiaryColor,
-        labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
-        unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
+        labelStyle: GoogleFonts.inter(
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+        unselectedLabelStyle: GoogleFonts.inter(
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
+        ),
         dividerColor: Colors.transparent,
         splashBorderRadius: BorderRadius.circular(24),
         tabs: const [
@@ -411,26 +486,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final compareState = ref.watch(compareAnalysisProvider);
 
     // Compare results view
-    if (compareState.phase == ComparePhase.done && compareState.results.length >= 2) {
+    if (compareState.phase == ComparePhase.done &&
+        compareState.results.length >= 2) {
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
             _buildMultiLinkComparison(),
-            SizedBox(height: AppTheme.navBarTotalClearance +
-                MediaQuery.of(context).padding.bottom + 60),
+            SizedBox(
+              height:
+                  AppTheme.navBarTotalClearance +
+                  MediaQuery.of(context).padding.bottom +
+                  60,
+            ),
           ],
         ),
       );
     }
 
     // Compare analyzing view (Task 2: no scroll, centered)
-    if (compareState.phase == ComparePhase.analyzing || compareState.phase == ComparePhase.analyzingFirst) {
+    if (compareState.phase == ComparePhase.analyzing ||
+        compareState.phase == ComparePhase.analyzingFirst) {
       return _buildCompareAnalyzingView();
     }
 
     // Compare quiz view — reuse same _QuizView from Single Analysis
-    if (compareState.phase == ComparePhase.quiz && compareState.quiz != null && compareState.firstBaseResult != null) {
+    if (compareState.phase == ComparePhase.quiz &&
+        compareState.quiz != null &&
+        compareState.firstBaseResult != null) {
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
@@ -444,8 +527,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               onSubmit: _onCompareQuizSubmit,
               onSkip: _onCompareQuizSkip,
             ),
-            SizedBox(height: AppTheme.navBarTotalClearance +
-                MediaQuery.of(context).padding.bottom + 60),
+            SizedBox(
+              height:
+                  AppTheme.navBarTotalClearance +
+                  MediaQuery.of(context).padding.bottom +
+                  60,
+            ),
           ],
         ),
       );
@@ -461,8 +548,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             const SizedBox(height: 16),
             GestureDetector(
               onTap: () => ref.read(compareAnalysisProvider.notifier).reset(),
-              child: Text('Try Again', style: GoogleFonts.inter(
-                color: AppTheme.brandBlue, fontWeight: FontWeight.w700)),
+              child: Text(
+                'Try Again',
+                style: GoogleFonts.inter(
+                  color: AppTheme.brandBlue,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
@@ -477,9 +569,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           quizState.phase == LinkFlowPhase.computing) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Center(
-            child: _buildPhaseTimeline(quizState.phase),
-          ),
+          child: Center(child: _buildPhaseTimeline(quizState.phase)),
         );
       }
       // Quiz and result phases: scrollable
@@ -496,7 +586,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 currentIndex: quizState.currentQuestionIndex,
                 baseResult: quizState.baseResult!,
                 onAnswer: (idx, answer) {
-                  ref.read(linkQuizProvider.notifier).answerQuestion(idx, answer);
+                  ref
+                      .read(linkQuizProvider.notifier)
+                      .answerQuestion(idx, answer);
                 },
                 onSubmit: () async {
                   final user = ref.read(userProfileProvider).valueOrNull;
@@ -513,24 +605,32 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 quizState.enhancedResult != null) ...[
               _EnhancedResultView(result: quizState.enhancedResult!),
               // History'e kaydet (sadece bir kez)
-              Builder(builder: (_) {
-                final r = quizState.enhancedResult!;
-                final name = r.baseResult.metadata.title ?? '';
-                final url = _singleUrlController.text.trim();
-                if (name.isNotEmpty && url.isNotEmpty) {
-                  Future.microtask(() => _saveToHistory(
-                    url: url,
-                    productName: name,
-                    score: r.enhancedScore,
-                    result: r,
-                  ));
-                }
-                return const SizedBox.shrink();
-              }),
+              Builder(
+                builder: (_) {
+                  final r = quizState.enhancedResult!;
+                  final name = r.baseResult.metadata.title ?? '';
+                  final url = _singleUrlController.text.trim();
+                  if (name.isNotEmpty && url.isNotEmpty) {
+                    Future.microtask(
+                      () => _saveToHistory(
+                        url: url,
+                        productName: name,
+                        score: r.enhancedScore,
+                        result: r,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
             ],
 
-            SizedBox(height: AppTheme.navBarTotalClearance +
-                MediaQuery.of(context).padding.bottom + 60),
+            SizedBox(
+              height:
+                  AppTheme.navBarTotalClearance +
+                  MediaQuery.of(context).padding.bottom +
+                  60,
+            ),
           ],
         ),
       );
@@ -539,10 +639,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     // Idle state — show tabs
     return TabBarView(
       controller: _tabController,
-      children: [
-        _buildSingleAnalysisTab(isWorking),
-        _buildCompareTab(),
-      ],
+      children: [_buildSingleAnalysisTab(isWorking), _buildCompareTab()],
     );
   }
 
@@ -565,23 +662,37 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue]),
+                          colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue],
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(Icons.link_rounded, color: Colors.white, size: 22),
+                      child: const Icon(
+                        Icons.link_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Paste Product Link',
+                          Text(
+                            'Paste Product Link',
                             style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800, fontSize: 16,
-                              color: context.textPrimary, letterSpacing: -0.3)),
-                          Text('Get AI-powered analysis with quiz',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: context.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            'Get AI-powered analysis with quiz',
                             style: GoogleFonts.inter(
-                              fontSize: 12, color: context.textTertiaryColor)),
+                              fontSize: 12,
+                              color: context.textTertiaryColor,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -594,24 +705,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     color: context.surfaceVariantColor,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: AppTheme.brandBlue.withValues(alpha: 0.2)),
+                      color: AppTheme.brandBlue.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: TextField(
                     controller: _singleUrlController,
                     focusNode: _singleFocusNode,
                     style: GoogleFonts.inter(
-                      fontSize: 14, color: context.textPrimary),
+                      fontSize: 14,
+                      color: context.textPrimary,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'https://www.amazon.com/product...',
                       hintStyle: GoogleFonts.inter(
-                        fontSize: 14, color: context.textTertiaryColor),
+                        fontSize: 14,
+                        color: context.textTertiaryColor,
+                      ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 14, right: 8),
-                        child: Icon(Icons.link_rounded,
-                          color: context.textTertiaryColor, size: 20),
+                        child: Icon(
+                          Icons.link_rounded,
+                          color: context.textTertiaryColor,
+                          size: 20,
+                        ),
                       ),
                       prefixIconConstraints: const BoxConstraints(minWidth: 40),
                       suffixIcon: Container(
@@ -621,8 +742,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: IconButton(
-                          icon: Icon(Icons.content_paste_rounded,
-                            color: AppTheme.brandBlue, size: 18),
+                          icon: Icon(
+                            Icons.content_paste_rounded,
+                            color: AppTheme.brandBlue,
+                            size: 18,
+                          ),
                           onPressed: () async {
                             final data = await Clipboard.getData('text/plain');
                             if (data?.text != null) {
@@ -639,11 +763,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 // Supported stores text
                 Center(
                   child: Text(
-                    context.l10n?.allShoppingSitesSupported ?? 'Tüm alışveriş siteleri desteklenir',
+                    context.l10n?.allShoppingSitesSupported ??
+                        'Tüm alışveriş siteleri desteklenir',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 12, color: context.textTertiaryColor,
-                      fontWeight: FontWeight.w500),
+                      fontSize: 12,
+                      color: context.textTertiaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -654,23 +781,39 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     height: 54,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandSkyBlue]),
+                        colors: [
+                          AppTheme.brandBlue,
+                          AppTheme.brandDeepBlue,
+                          AppTheme.brandSkyBlue,
+                        ],
+                      ),
                       borderRadius: BorderRadius.circular(27),
                       boxShadow: [
                         BoxShadow(
                           color: AppTheme.brandBlue.withValues(alpha: 0.35),
-                          blurRadius: 20, offset: const Offset(0, 8)),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
                       ],
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.auto_awesome,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
-                        Text(context.l10n?.analyzeWithAi ?? 'Analyze with AI',
+                        Text(
+                          context.l10n?.analyzeWithAi ?? 'Analyze with AI',
                           style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w700, fontSize: 15,
-                            color: Colors.white, letterSpacing: -0.3)),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: Colors.white,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -687,8 +830,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           _buildHowItWorks(),
           const SizedBox(height: 16),
           _buildInfoCards(),
-          SizedBox(height: AppTheme.navBarTotalClearance +
-              MediaQuery.of(context).padding.bottom + 60),
+          SizedBox(
+            height:
+                AppTheme.navBarTotalClearance +
+                MediaQuery.of(context).padding.bottom +
+                60,
+          ),
         ],
       ),
     );
@@ -711,23 +858,37 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [AppTheme.brandCyan, AppTheme.brandBlue]),
+                          colors: [AppTheme.brandCyan, AppTheme.brandBlue],
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 22),
+                      child: const Icon(
+                        Icons.compare_arrows_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Compare Products',
+                          Text(
+                            'Compare Products',
                             style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800, fontSize: 16,
-                              color: context.textPrimary, letterSpacing: -0.3)),
-                          Text('Add 2-4 product links to compare',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: context.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            'Add 2-4 product links to compare',
                             style: GoogleFonts.inter(
-                              fontSize: 12, color: context.textTertiaryColor)),
+                              fontSize: 12,
+                              color: context.textTertiaryColor,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -735,8 +896,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 ),
                 const SizedBox(height: 16),
                 // URL input fields (2-4)
-                ...List.generate(_visibleCompareFields, (i) =>
-                  Padding(
+                ...List.generate(
+                  _visibleCompareFields,
+                  (i) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _buildCompareUrlField(i),
                   ),
@@ -746,7 +908,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: GestureDetector(
-                      onTap: () => setState(() { _visibleCompareFields++; }),
+                      onTap: () => setState(() {
+                        _visibleCompareFields++;
+                      }),
                       child: Container(
                         height: 48,
                         decoration: BoxDecoration(
@@ -754,18 +918,26 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
                             color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                            style: BorderStyle.solid),
+                            style: BorderStyle.solid,
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_rounded,
-                              color: AppTheme.brandBlue, size: 20),
+                            Icon(
+                              Icons.add_rounded,
+                              color: AppTheme.brandBlue,
+                              size: 20,
+                            ),
                             const SizedBox(width: 6),
-                            Text('Add Product',
+                            Text(
+                              'Add Product',
                               style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600, fontSize: 13,
-                                color: AppTheme.brandBlue)),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: AppTheme.brandBlue,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -779,23 +951,39 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     height: 54,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [AppTheme.brandCyan, AppTheme.brandBlue, AppTheme.brandDeepBlue]),
+                        colors: [
+                          AppTheme.brandCyan,
+                          AppTheme.brandBlue,
+                          AppTheme.brandDeepBlue,
+                        ],
+                      ),
                       borderRadius: BorderRadius.circular(27),
                       boxShadow: [
                         BoxShadow(
                           color: AppTheme.brandCyan.withValues(alpha: 0.35),
-                          blurRadius: 20, offset: const Offset(0, 8)),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
                       ],
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.compare_arrows_rounded, color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.compare_arrows_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
-                        Text(context.l10n?.compare ?? 'Compare',
+                        Text(
+                          context.l10n?.compare ?? 'Compare',
                           style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w700, fontSize: 15,
-                            color: Colors.white, letterSpacing: -0.3)),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: Colors.white,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -806,8 +994,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           const SizedBox(height: 20),
           // How comparison works
           _buildCompareInfoCards(),
-          SizedBox(height: AppTheme.navBarTotalClearance +
-              MediaQuery.of(context).padding.bottom + 60),
+          SizedBox(
+            height:
+                AppTheme.navBarTotalClearance +
+                MediaQuery.of(context).padding.bottom +
+                60,
+          ),
         ],
       ),
     );
@@ -818,48 +1010,63 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Container(
-            width: 34, height: 34,
+            width: 34,
+            height: 34,
             margin: const EdgeInsets.only(left: 10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
                   AppTheme.brandBlue.withValues(alpha: 0.8),
                   AppTheme.brandCyan.withValues(alpha: 0.8),
-                ]),
+                ],
+              ),
               borderRadius: BorderRadius.circular(17),
             ),
             child: Center(
-              child: Text('${index + 1}',
+              child: Text(
+                '${index + 1}',
                 style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w800, fontSize: 13,
-                  color: Colors.white)),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
           Expanded(
             child: TextField(
               controller: _compareControllers[index],
               focusNode: _compareFocusNodes[index],
-              style: GoogleFonts.inter(fontSize: 13, color: context.textPrimary),
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: context.textPrimary,
+              ),
               decoration: InputDecoration(
                 hintText: 'Paste product URL ${index + 1}...',
                 hintStyle: GoogleFonts.inter(
-                  fontSize: 13, color: context.textTertiaryColor),
+                  fontSize: 13,
+                  color: context.textTertiaryColor,
+                ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 12),
+                  horizontal: 10,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
           // Paste button
           IconButton(
-            icon: Icon(Icons.content_paste_rounded,
-              color: AppTheme.brandCyan, size: 18),
+            icon: Icon(
+              Icons.content_paste_rounded,
+              color: AppTheme.brandCyan,
+              size: 18,
+            ),
             onPressed: () async {
               final data = await Clipboard.getData('text/plain');
               if (data?.text != null) {
@@ -872,14 +1079,18 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           // Remove button (if more than 2 fields)
           if (_visibleCompareFields > 2)
             IconButton(
-              icon: Icon(Icons.close_rounded,
-                color: AppTheme.error.withValues(alpha: 0.7), size: 18),
+              icon: Icon(
+                Icons.close_rounded,
+                color: AppTheme.error.withValues(alpha: 0.7),
+                size: 18,
+              ),
               onPressed: () {
                 setState(() {
                   _compareControllers[index].clear();
                   // Shift remaining controllers up
                   for (int j = index; j < _visibleCompareFields - 1; j++) {
-                    _compareControllers[j].text = _compareControllers[j + 1].text;
+                    _compareControllers[j].text =
+                        _compareControllers[j + 1].text;
                   }
                   _compareControllers[_visibleCompareFields - 1].clear();
                   _visibleCompareFields--;
@@ -902,9 +1113,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     IconData _stepIcon(AnalysisStepType type) {
       switch (type) {
-        case AnalysisStepType.scanLink: return Icons.link_rounded;
-        case AnalysisStepType.aiAnalysis: return Icons.psychology_rounded;
-        case AnalysisStepType.profileMatch: return Icons.person_rounded;
+        case AnalysisStepType.scanLink:
+          return Icons.link_rounded;
+        case AnalysisStepType.aiAnalysis:
+          return Icons.psychology_rounded;
+        case AnalysisStepType.profileMatch:
+          return Icons.person_rounded;
       }
     }
 
@@ -917,29 +1131,50 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             const SizedBox(height: 24),
             // Animated icon
             Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                    blurRadius: 20, offset: const Offset(0, 6)),
-                ],
-              ),
-              child: const Icon(Icons.compare_arrows_rounded,
-                  color: Colors.white, size: 36),
-            ).animate(onPlay: (c) => c.repeat(reverse: true))
-             .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1200.ms),
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.brandBlue.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.compare_arrows_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(
+                  begin: const Offset(0.95, 0.95),
+                  end: const Offset(1.05, 1.05),
+                  duration: 1200.ms,
+                ),
             const SizedBox(height: 20),
-            Text('Analyzing Products...',
+            Text(
+              'Analyzing Products...',
               style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w800, fontSize: 18,
-                color: context.textPrimary)),
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: context.textPrimary,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text('AI is comparing your products side by side',
-              style: GoogleFonts.inter(fontSize: 13, color: context.textTertiaryColor)),
+            Text(
+              'AI is comparing your products side by side',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: context.textTertiaryColor,
+              ),
+            ),
             const SizedBox(height: 20),
 
             // Progress bar
@@ -954,7 +1189,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   builder: (_, val, __) => LinearProgressIndicator(
                     value: val,
                     backgroundColor: context.surfaceVariantColor,
-                    valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
+                    valueColor: const AlwaysStoppedAnimation(
+                      AppTheme.brandBlue,
+                    ),
                     minHeight: 6,
                   ),
                 ),
@@ -965,7 +1202,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             // Step-by-step list
             if (steps.isNotEmpty)
               GlassContainer(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
                   children: steps.asMap().entries.map((entry) {
                     final i = entry.key;
@@ -981,23 +1221,40 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
-  Widget _buildAnalysisStepRow(AnalysisStep step, IconData stepIcon, int index) {
+  Widget _buildAnalysisStepRow(
+    AnalysisStep step,
+    IconData stepIcon,
+    int index,
+  ) {
     final Widget icon;
     final Color textColor;
     if (step.isDone) {
-      icon = Container(
-        width: 28, height: 28,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(colors: [AppTheme.success, AppTheme.scoreExcellent]),
-        ),
-        child: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
-      ).animate().scale(begin: const Offset(0, 0), end: const Offset(1, 1),
-          duration: 300.ms, curve: Curves.elasticOut);
+      icon =
+          Container(
+            width: 28,
+            height: 28,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [AppTheme.success, AppTheme.scoreExcellent],
+              ),
+            ),
+            child: const Icon(
+              Icons.check_rounded,
+              color: Colors.white,
+              size: 16,
+            ),
+          ).animate().scale(
+            begin: const Offset(0, 0),
+            end: const Offset(1, 1),
+            duration: 300.ms,
+            curve: Curves.elasticOut,
+          );
       textColor = context.textPrimary;
     } else if (step.hasError) {
       icon = Container(
-        width: 28, height: 28,
+        width: 28,
+        height: 28,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppTheme.error.withValues(alpha: 0.15),
@@ -1007,7 +1264,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       textColor = AppTheme.error;
     } else if (step.isActive) {
       icon = SizedBox(
-        width: 28, height: 28,
+        width: 28,
+        height: 28,
         child: CircularProgressIndicator(
           strokeWidth: 2.5,
           valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
@@ -1017,7 +1275,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       textColor = AppTheme.brandBlue;
     } else {
       icon = Container(
-        width: 28, height: 28,
+        width: 28,
+        height: 28,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: context.surfaceVariantColor,
@@ -1034,15 +1293,26 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           icon,
           const SizedBox(width: 12),
           Expanded(
-            child: Text(step.label,
+            child: Text(
+              step.label,
               style: GoogleFonts.inter(
                 fontSize: 13,
-                fontWeight: step.isDone || step.isActive ? FontWeight.w600 : FontWeight.w500,
-                color: textColor)),
+                fontWeight: step.isDone || step.isActive
+                    ? FontWeight.w600
+                    : FontWeight.w500,
+                color: textColor,
+              ),
+            ),
           ),
           if (step.isDone)
-            Text('✓', style: TextStyle(color: AppTheme.success, fontSize: 14,
-                fontWeight: FontWeight.w700)),
+            Text(
+              '✓',
+              style: TextStyle(
+                color: AppTheme.success,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
         ],
       ),
     );
@@ -1054,14 +1324,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('How It Works',
+          Text(
+            'How It Works',
             style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w800, fontSize: 15,
-              color: context.textPrimary, letterSpacing: -0.3)),
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: context.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
           const SizedBox(height: 12),
-          _buildStep(1, 'Paste Link', 'Drop any product URL from 100+ stores', Icons.link_rounded),
-          _buildStep(2, 'AI Quiz', 'Answer quick questions about your needs', Icons.quiz_outlined),
-          _buildStep(3, 'Match Score', 'Get personalized compatibility score', Icons.stars_rounded),
+          _buildStep(
+            1,
+            'Paste Link',
+            'Drop any product URL from 100+ stores',
+            Icons.link_rounded,
+          ),
+          _buildStep(
+            2,
+            'AI Quiz',
+            'Answer quick questions about your needs',
+            Icons.quiz_outlined,
+          ),
+          _buildStep(
+            3,
+            'Match Score',
+            'Get personalized compatibility score',
+            Icons.stars_rounded,
+          ),
         ],
       ),
     );
@@ -1078,23 +1368,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       child: Row(
         children: [
           Container(
-            width: 40, height: 40,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: colors[num - 1]),
-              borderRadius: BorderRadius.circular(12)),
-            child: Center(
-              child: Icon(icon, color: Colors.white, size: 20)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(child: Icon(icon, color: Colors.white, size: 20)),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700, fontSize: 13,
-                  color: context.textPrimary)),
-                Text(subtitle, style: GoogleFonts.inter(
-                  fontSize: 11, color: context.textTertiaryColor)),
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: context.textPrimary,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: context.textTertiaryColor,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1109,14 +1410,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('How Comparison Works',
+          Text(
+            'How Comparison Works',
             style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w800, fontSize: 15,
-              color: context.textPrimary, letterSpacing: -0.3)),
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: context.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
           const SizedBox(height: 12),
-          _buildStep(1, 'Add 2-4 Links', 'Paste product URLs you want to compare', Icons.add_link_rounded),
-          _buildStep(2, 'AI Analysis', 'All products analyzed simultaneously', Icons.auto_awesome),
-          _buildStep(3, 'Side-by-Side', 'See ranked comparison with pros & cons', Icons.compare_arrows_rounded),
+          _buildStep(
+            1,
+            'Add 2-4 Links',
+            'Paste product URLs you want to compare',
+            Icons.add_link_rounded,
+          ),
+          _buildStep(
+            2,
+            'AI Analysis',
+            'All products analyzed simultaneously',
+            Icons.auto_awesome,
+          ),
+          _buildStep(
+            3,
+            'Side-by-Side',
+            'See ranked comparison with pros & cons',
+            Icons.compare_arrows_rounded,
+          ),
         ],
       ),
     );
@@ -1133,10 +1454,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.06),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.white.withValues(alpha: 0.06), blurRadius: 8),
         ],
       ),
       child: IconButton(
@@ -1156,7 +1474,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.brandBlue.withValues(alpha: 0.3), width: 1.5),
+          color: AppTheme.brandBlue.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
       ),
       child: Row(
         children: [
@@ -1164,11 +1484,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppTheme.brandBlue, AppTheme.brandCyan]),
+                colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.compare_arrows_rounded,
-                color: Colors.white, size: 18),
+            child: const Icon(
+              Icons.compare_arrows_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1178,8 +1502,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 Text(
                   'Product ${_currentMultiLinkIndex + 1} of ${_multiLinkUrls.length}',
                   style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700, fontSize: 14,
-                    color: context.textPrimary, letterSpacing: -0.3),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: context.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 ClipRRect(
@@ -1187,7 +1514,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   child: LinearProgressIndicator(
                     value: (_currentMultiLinkIndex + 1) / _multiLinkUrls.length,
                     backgroundColor: context.surfaceVariantColor,
-                    valueColor: const AlwaysStoppedAnimation(AppTheme.brandBlue),
+                    valueColor: const AlwaysStoppedAnimation(
+                      AppTheme.brandBlue,
+                    ),
                     minHeight: 4,
                   ),
                 ),
@@ -1256,32 +1585,42 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.auto_awesome,
-                    color: context.surfaceVariantColor, size: 16),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: context.surfaceVariantColor,
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                    context.l10n?.analysisProgress ?? 'Analysis Progress',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: context.textPrimary)),
+                  context.l10n?.analysisProgress ?? 'Analysis Progress',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: context.textPrimary,
+                  ),
+                ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppTheme.primaryBlue, AppTheme.neonPurple],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('$percent%',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        color: Colors.white)),
+                child: Text(
+                  '$percent%',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1290,11 +1629,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           if (estimates.containsKey(phase))
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(estimates[phase]!,
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: context.textTertiaryColor,
-                      fontWeight: FontWeight.w500)),
+              child: Text(
+                estimates[phase]!,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: context.textTertiaryColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           // Progress bar
           ClipRRect(
@@ -1334,73 +1676,77 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         height: 28,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: [
-                            AppTheme.success,
-                            AppTheme.scoreExcellent
-                          ]),
+                          gradient: LinearGradient(
+                            colors: [AppTheme.success, AppTheme.scoreExcellent],
+                          ),
                         ),
                         child: Center(
-                          child: Icon(Icons.check_rounded,
-                              size: 15,
-                              color: context.surfaceVariantColor),
+                          child: Icon(
+                            Icons.check_rounded,
+                            size: 15,
+                            color: context.surfaceVariantColor,
+                          ),
                         ),
+                      ).animate().scale(
+                        begin: const Offset(0.5, 0.5),
+                        end: const Offset(1, 1),
+                        duration: 400.ms,
+                        curve: Curves.elasticOut,
                       )
-                        .animate()
-                        .scale(
-                            begin: const Offset(0.5, 0.5),
-                            end: const Offset(1, 1),
-                            duration: 400.ms,
-                            curve: Curves.elasticOut)
                     : step.isActive
-                        ? AnimatedBuilder(
-                            animation: _pulseController,
-                            builder: (context, child) {
-                              return Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: const LinearGradient(colors: [
-                                    AppTheme.primaryBlue,
-                                    AppTheme.neonPurple
-                                  ]),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppTheme.primaryBlue.withValues(
-                                          alpha:
-                                              0.3 + _pulseController.value * 0.3),
-                                      blurRadius:
-                                          6 + _pulseController.value * 6,
-                                      spreadRadius:
-                                          _pulseController.value * 2,
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: context.surfaceVariantColor),
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : AnimatedContainer(
-                            duration: const Duration(milliseconds: 400),
+                    ? AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, child) {
+                          return Container(
                             width: 28,
                             height: 28,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppTheme.slate700,
+                              gradient: const LinearGradient(
+                                colors: [
+                                  AppTheme.primaryBlue,
+                                  AppTheme.neonPurple,
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryBlue.withValues(
+                                    alpha: 0.3 + _pulseController.value * 0.3,
+                                  ),
+                                  blurRadius: 6 + _pulseController.value * 6,
+                                  spreadRadius: _pulseController.value * 2,
+                                ),
+                              ],
                             ),
                             child: Center(
-                              child: Icon(step.icon,
-                                  size: 13, color: AppTheme.slate400),
+                              child: SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: context.surfaceVariantColor,
+                                ),
+                              ),
                             ),
+                          );
+                        },
+                      )
+                    : AnimatedContainer(
+                        duration: const Duration(milliseconds: 400),
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.slate700,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            step.icon,
+                            size: 13,
+                            color: AppTheme.slate400,
                           ),
+                        ),
+                      ),
                 if (!isLast)
                   Expanded(
                     child: Container(
@@ -1425,13 +1771,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 step.label,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
-                  fontWeight:
-                      step.isActive ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: step.isActive ? FontWeight.w700 : FontWeight.w500,
                   color: step.isDone
                       ? AppTheme.success
                       : step.isActive
-                          ? AppTheme.primaryBlue
-                          : AppTheme.slate400,
+                      ? AppTheme.primaryBlue
+                      : AppTheme.slate400,
                 ),
               ),
             ),
@@ -1456,80 +1801,103 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       child: GlassContainer(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         child: Row(
-            children: List.generate(steps.length, (i) {
-          final done = i < activeIndex;
-          final active = i == activeIndex;
-          return Expanded(
-              child: Row(children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: done
-                    ? const LinearGradient(
-                        colors: [AppTheme.success, AppTheme.scoreExcellent])
-                    : active
-                        ? AppTheme.primaryGradient
-                        : null,
-                color: (!done && !active) ? context.surfaceVariantColor : null,
-                boxShadow: active
-                    ? [
-                        BoxShadow(
-                          color:
-                              AppTheme.primaryBlue.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        )
-                      ]
-                    : null,
-              ),
-              child: Center(
-                  child: done
-                      ? Icon(Icons.check_rounded,
-                          size: 13, color: context.surfaceVariantColor)
-                      : Text('${i + 1}',
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: active
-                                  ? context.textPrimary
-                                  : AppTheme.slate400))),
-            ),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(steps[i],
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight:
-                          active ? FontWeight.w700 : FontWeight.w500,
-                      color: done
-                          ? AppTheme.success
+          children: List.generate(steps.length, (i) {
+            final done = i < activeIndex;
+            final active = i == activeIndex;
+            return Expanded(
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: done
+                          ? const LinearGradient(
+                              colors: [
+                                AppTheme.success,
+                                AppTheme.scoreExcellent,
+                              ],
+                            )
                           : active
-                              ? AppTheme.primaryBlue
-                              : AppTheme.slate400),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1),
-            ),
-            if (i < steps.length - 1)
-              Expanded(
-                  child: Container(
-                height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  gradient: done
-                      ? const LinearGradient(colors: [
-                          AppTheme.success,
-                          AppTheme.scoreExcellent
-                        ])
-                      : null,
-                  color: done ? null : AppTheme.slate700,
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              )),
-          ]));
-        })),
+                          ? AppTheme.primaryGradient
+                          : null,
+                      color: (!done && !active)
+                          ? context.surfaceVariantColor
+                          : null,
+                      boxShadow: active
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primaryBlue.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Center(
+                      child: done
+                          ? Icon(
+                              Icons.check_rounded,
+                              size: 13,
+                              color: context.surfaceVariantColor,
+                            )
+                          : Text(
+                              '${i + 1}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: active
+                                    ? context.textPrimary
+                                    : AppTheme.slate400,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      steps[i],
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        color: done
+                            ? AppTheme.success
+                            : active
+                            ? AppTheme.primaryBlue
+                            : AppTheme.slate400,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  if (i < steps.length - 1)
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          gradient: done
+                              ? const LinearGradient(
+                                  colors: [
+                                    AppTheme.success,
+                                    AppTheme.scoreExcellent,
+                                  ],
+                                )
+                              : null,
+                          color: done ? null : AppTheme.slate700,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -1566,11 +1934,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   height: 400,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      AppTheme.primaryBlue.withValues(
-                          alpha: _orbOpacityAnimation.value * 0.3),
-                      AppTheme.primaryBlue.withValues(alpha: 0.0),
-                    ]),
+                    gradient: RadialGradient(
+                      colors: [
+                        AppTheme.primaryBlue.withValues(
+                          alpha: _orbOpacityAnimation.value * 0.3,
+                        ),
+                        AppTheme.primaryBlue.withValues(alpha: 0.0),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -1585,10 +1956,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             height: 300,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [
-                AppTheme.accentCyan.withValues(alpha: 0.15),
-                AppTheme.accentCyan.withValues(alpha: 0.0),
-              ]),
+              gradient: RadialGradient(
+                colors: [
+                  AppTheme.accentCyan.withValues(alpha: 0.15),
+                  AppTheme.accentCyan.withValues(alpha: 0.0),
+                ],
+              ),
             ),
           ),
         ),
@@ -1627,7 +2000,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.brandBlue.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(14),
@@ -1639,8 +2015,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.add_link_rounded,
-                        color: AppTheme.brandBlue, size: 16),
+                    const Icon(
+                      Icons.add_link_rounded,
+                      color: AppTheme.brandBlue,
+                      size: 16,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '+ Add link (${_urlControllers.length}/4)',
@@ -1667,37 +2046,65 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  AppTheme.brandBlue.withValues(alpha: 0.08),
-                  AppTheme.brandSkyBlue.withValues(alpha: 0.05),
-                ]),
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.brandBlue.withValues(alpha: 0.08),
+                    AppTheme.brandSkyBlue.withValues(alpha: 0.05),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.2),
+                ),
               ),
-              child: Row(children: [
-                const Icon(Icons.content_paste_go_rounded,
-                    color: AppTheme.brandBlue, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(_detectedClipboardUrl!, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 12, color: context.textSecondary)),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8)),
-                  child: Text(context.l10n?.pasteLink ?? 'Paste', style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700, fontSize: 11, color: AppTheme.brandBlue)),
-                ),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: () => setState(() => _detectedClipboardUrl = null),
-                  child: Icon(Icons.close_rounded, size: 14,
-                      color: context.textTertiaryColor.withValues(alpha: 0.5)),
-                ),
-              ]),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.content_paste_go_rounded,
+                    color: AppTheme.brandBlue,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _detectedClipboardUrl!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      context.l10n?.pasteLink ?? 'Paste',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        color: AppTheme.brandBlue,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => setState(() => _detectedClipboardUrl = null),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 14,
+                      color: context.textTertiaryColor.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ).animate().fadeIn(duration: 300.ms),
           const SizedBox(height: 12),
@@ -1708,59 +2115,97 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             ? _buildPulsingButton()
             : Align(
                 alignment: Alignment.center,
-                child: GestureDetector(
-                onTap: () => _startAnalysis(_urlController.text),
-                child: Container(
-                  height: 46,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue, AppTheme.brandSkyBlue],
-                      begin: Alignment.centerLeft, end: Alignment.centerRight),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.brandBlue.withValues(alpha: 0.35),
-                        blurRadius: 16, offset: const Offset(0, 6), spreadRadius: -4),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(validCount > 1
-                          ? Icons.compare_arrows_rounded
-                          : Icons.auto_awesome_rounded,
-                          color: Colors.white, size: 18),
-                      const SizedBox(width: 8),
-                      Text(validCount > 1
-                          ? '${context.l10n?.compare ?? 'Compare'} ($validCount)'
-                          : context.l10n?.analyzeWithAi ?? 'Analyze with AI',
-                          style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700, fontSize: 14,
-                              color: Colors.white, letterSpacing: -0.3)),
-                    ],
-                  ),
-                ),
-              ).animate(onPlay: (c) => c.repeat())
-               .shimmer(duration: 3000.ms, color: Colors.white.withValues(alpha: 0.1)),
+                child:
+                    GestureDetector(
+                          onTap: () => _startAnalysis(_urlController.text),
+                          child: Container(
+                            height: 46,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  AppTheme.brandBlue,
+                                  AppTheme.brandDeepBlue,
+                                  AppTheme.brandSkyBlue,
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.brandBlue.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                  spreadRadius: -4,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  validCount > 1
+                                      ? Icons.compare_arrows_rounded
+                                      : Icons.auto_awesome_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  validCount > 1
+                                      ? '${context.l10n?.compare ?? 'Compare'} ($validCount)'
+                                      : context.l10n?.analyzeWithAi ??
+                                            'Analyze with AI',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .animate(onPlay: (c) => c.repeat())
+                        .shimmer(
+                          duration: 3000.ms,
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
               ),
         const SizedBox(height: 8),
 
         // Store tags - minimal inline
         Wrap(
-          spacing: 6, runSpacing: 6,
+          spacing: 6,
+          runSpacing: 6,
           alignment: WrapAlignment.center,
           children: [
-            for (final store in ['Amazon', 'eBay', 'Best Buy', 'Trendyol', 'AliExpress', '100+'])
+            for (final store in [
+              'Amazon',
+              'eBay',
+              'Best Buy',
+              'Trendyol',
+              'AliExpress',
+              '100+',
+            ])
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: context.surfaceVariantColor.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(store, style: GoogleFonts.inter(
-                  fontSize: 10, fontWeight: FontWeight.w500,
-                  color: context.textTertiaryColor.withValues(alpha: 0.7))),
+                child: Text(
+                  store,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: context.textTertiaryColor.withValues(alpha: 0.7),
+                  ),
+                ),
               ),
           ],
         ),
@@ -1797,8 +2242,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         AppTheme.brandDeepBlue,
                         AppTheme.brandBlue,
                       ],
-                transform:
-                    GradientRotation(_orbController.value * 2 * pi),
+                transform: GradientRotation(_orbController.value * 2 * pi),
               ),
             ),
             child: child,
@@ -1815,25 +2259,32 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               controller: controller,
               focusNode: focusNode,
               style: GoogleFonts.inter(
-                  color: context.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500),
+                color: context.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
               decoration: InputDecoration(
                 hintText: isFirst
-                    ? (context.l10n?.pasteProductUrl ?? 'Paste any product URL...')
+                    ? (context.l10n?.pasteProductUrl ??
+                          'Paste any product URL...')
                     : 'Link ${index + 1} — paste URL...',
                 hintStyle: GoogleFonts.inter(
-                    color: context.textTertiaryColor.withValues(alpha: 0.6),
-                    fontWeight: FontWeight.w400,
-                    fontSize: 13),
+                  color: context.textTertiaryColor.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w400,
+                  fontSize: 13,
+                ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: 14, right: 8),
-                  child: Icon(Icons.link_rounded,
-                      color: AppTheme.brandBlue.withValues(alpha: 0.7),
-                      size: 18),
+                  child: Icon(
+                    Icons.link_rounded,
+                    color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                    size: 18,
+                  ),
                 ),
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 0, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 0,
+                  minHeight: 0,
+                ),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1843,10 +2294,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           controller.clear();
                           setState(() {});
                         },
-                        child: Icon(Icons.close_rounded,
-                            size: 15,
-                            color: context.textTertiaryColor
-                                .withValues(alpha: 0.5)),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 15,
+                          color: context.textTertiaryColor.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
                       ),
                     if (!isFirst)
                       GestureDetector(
@@ -1860,9 +2314,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Icon(Icons.remove_circle_outline_rounded,
-                              size: 16,
-                              color: AppTheme.error.withValues(alpha: 0.7)),
+                          child: Icon(
+                            Icons.remove_circle_outline_rounded,
+                            size: 16,
+                            color: AppTheme.error.withValues(alpha: 0.7),
+                          ),
                         ),
                       ),
                     if (isFirst)
@@ -1875,28 +2331,32 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ),
                         child: GestureDetector(
                           onTap: () async {
-                            final clipData =
-                                await Clipboard.getData(Clipboard.kTextPlain);
+                            final clipData = await Clipboard.getData(
+                              Clipboard.kTextPlain,
+                            );
                             if (clipData?.text != null) {
                               controller.text = clipData!.text!.trim();
                               setState(() {});
                             }
                           },
-                          child: const Icon(Icons.content_paste_rounded,
-                              color: AppTheme.brandBlue, size: 14),
+                          child: const Icon(
+                            Icons.content_paste_rounded,
+                            color: AppTheme.brandBlue,
+                            size: 14,
+                          ),
                         ),
                       ),
                   ],
                 ),
                 border: InputBorder.none,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 0,
+                  vertical: 12,
+                ),
               ),
               keyboardType: TextInputType.url,
               onChanged: (_) => setState(() {}),
-              onSubmitted: isFirst
-                  ? (url) => _startAnalysis(url)
-                  : null,
+              onSubmitted: isFirst ? (url) => _startAnalysis(url) : null,
             ),
           ),
         ),
@@ -1922,9 +2382,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
-          Text(name,
-              style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          Text(
+            name,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -1938,17 +2403,22 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           height: 56,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(colors: [
-              AppTheme.primaryBlue,
-              Color.lerp(AppTheme.primaryBlue, AppTheme.premiumPurple,
-                  _pulseController.value)!,
-            ]),
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.primaryBlue,
+                Color.lerp(
+                  AppTheme.primaryBlue,
+                  AppTheme.premiumPurple,
+                  _pulseController.value,
+                )!,
+              ],
+            ),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.primaryBlue.withValues(alpha: 0.3),
                 blurRadius: 12 + (_pulseController.value * 8),
                 spreadRadius: _pulseController.value * 2,
-              )
+              ),
             ],
           ),
           child: Center(
@@ -1959,14 +2429,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: context.surfaceVariantColor),
+                    strokeWidth: 2.5,
+                    color: context.surfaceVariantColor,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Text(context.l10n?.aiIsAnalyzing ?? 'AI is analyzing...',
-                    style: GoogleFonts.plusJakartaSans(
-                        color: context.surfaceVariantColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16)),
+                Text(
+                  context.l10n?.aiIsAnalyzing ?? 'AI is analyzing...',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.surfaceVariantColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1983,32 +2458,42 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.error.withValues(alpha: 0.2)),
       ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppTheme.error.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.error.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.error_outline_rounded,
+              color: AppTheme.error,
+              size: 20,
+            ),
           ),
-          child: const Icon(Icons.error_outline_rounded,
-              color: AppTheme.error, size: 20),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(error,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              error,
               style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.error,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500)),
-        ),
-      ]),
+                color: AppTheme.error,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     ).animate().fadeIn(duration: 300.ms).shakeX(amount: 4, duration: 300.ms);
   }
 
   /// Multi-link comparison view (shown after all products are analyzed)
   Widget _buildMultiLinkComparison() {
     final compareState = ref.watch(compareAnalysisProvider);
-    final results = compareState.results.isNotEmpty ? compareState.results : _multiLinkResults;
+    final results = compareState.results.isNotEmpty
+        ? compareState.results
+        : _multiLinkResults;
     final sorted = List<EnhancedAnalysisResult>.from(results)
       ..sort((a, b) => b.enhancedScore.compareTo(a.enhancedScore));
     final winner = sorted.first;
@@ -2031,11 +2516,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   boxShadow: [
                     BoxShadow(
                       color: AppTheme.gold.withValues(alpha: 0.3),
-                      blurRadius: 12, offset: const Offset(0, 4)),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
-                child: const Icon(Icons.emoji_events_rounded,
-                    color: Colors.white, size: 24),
+                child: const Icon(
+                  Icons.emoji_events_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2045,15 +2535,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     Text(
                       'Comparison Results',
                       style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: context.textPrimary),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: context.textPrimary,
+                      ),
                     ),
                     Text(
                       '${results.length} products analyzed',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: context.textSecondary),
+                        fontSize: 12,
+                        color: context.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -2078,94 +2570,126 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.leaderboard_rounded,
-                        color: context.surfaceVariantColor, size: 18),
+                    child: Icon(
+                      Icons.leaderboard_rounded,
+                      color: context.surfaceVariantColor,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  Text(context.l10n?.aiRanking ?? 'AI Ranking',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: context.textPrimary)),
+                  Text(
+                    context.l10n?.aiRanking ?? 'AI Ranking',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
               ...List.generate(sorted.length, (i) {
                 final r = sorted[i];
                 final title = r.baseResult.metadata.title ?? 'Product ${i + 1}';
-                final medal = i == 0 ? '🥇' : (i == 1 ? '🥈' : (i == 2 ? '🥉' : ''));
+                final medal = i == 0
+                    ? '🥇'
+                    : (i == 1 ? '🥈' : (i == 2 ? '🥉' : ''));
                 final scoreColor = r.enhancedScore >= 80
                     ? AppTheme.scoreExcellent
-                    : (r.enhancedScore >= 60 ? AppTheme.scoreGood : AppTheme.scoreAverage);
+                    : (r.enhancedScore >= 60
+                          ? AppTheme.scoreGood
+                          : AppTheme.scoreAverage);
                 final isBest = i == 0;
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isBest
-                        ? AppTheme.gold.withValues(alpha: 0.06)
-                        : context.surfaceVariantColor,
-                    borderRadius: BorderRadius.circular(14),
-                    border: isBest
-                        ? Border.all(color: AppTheme.gold.withValues(alpha: 0.3))
-                        : null,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(medal.isNotEmpty ? medal : '${i + 1}',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 20)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(title,
-                                style: GoogleFonts.plusJakartaSans(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isBest
+                            ? AppTheme.gold.withValues(alpha: 0.06)
+                            : context.surfaceVariantColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: isBest
+                            ? Border.all(
+                                color: AppTheme.gold.withValues(alpha: 0.3),
+                              )
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            medal.isNotEmpty ? medal : '${i + 1}',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
-                                    color: context.textPrimary),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis),
+                                    color: context.textPrimary,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
 
-                            if (r.prosForUser.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text('✅ ${r.prosForUser.first}',
-                                    style: GoogleFonts.plusJakartaSans(
+                                if (r.prosForUser.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      '✅ ${r.prosForUser.first}',
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 11,
-                                        color: AppTheme.success),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                            if (r.consForUser.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text('⚠ ${r.consForUser.first}',
-                                    style: GoogleFonts.plusJakartaSans(
+                                        color: AppTheme.success,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                if (r.consForUser.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      '⚠ ${r.consForUser.first}',
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 11,
-                                        color: AppTheme.warning),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: scoreColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text('${r.enhancedScore.toStringAsFixed(0)}%',
-                            style: GoogleFonts.plusJakartaSans(
+                                        color: AppTheme.warning,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: scoreColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${r.enhancedScore.toStringAsFixed(0)}%',
+                              style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 14,
-                                color: scoreColor)),
+                                color: scoreColor,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ).animate(delay: (i * 100).ms).fadeIn(duration: 300.ms).slideX(begin: 0.05);
+                    )
+                    .animate(delay: (i * 100).ms)
+                    .fadeIn(duration: 300.ms)
+                    .slideX(begin: 0.05);
               }),
             ],
           ),
@@ -2189,15 +2713,21 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.auto_awesome_rounded,
-                        color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Text(context.l10n?.aiVerdict ?? 'AI Verdict',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: context.textPrimary)),
+                  Text(
+                    context.l10n?.aiVerdict ?? 'AI Verdict',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -2207,26 +2737,29 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 Text(
                   winner.detailedVerdict,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: context.textPrimary,
-                      height: 1.5),
+                    fontSize: 14,
+                    color: context.textPrimary,
+                    height: 1.5,
+                  ),
                 )
               else ...[
                 Text(
                   '${winner.baseResult.metadata.title ?? "Product 1"} is your best match with a ${winner.enhancedScore.toStringAsFixed(0)}% compatibility score.',
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: context.textPrimary,
-                      height: 1.5),
+                    fontSize: 14,
+                    color: context.textPrimary,
+                    height: 1.5,
+                  ),
                 ),
                 if (sorted.length > 1) ...[
                   const SizedBox(height: 8),
                   Text(
                     'Score difference: ${(winner.enhancedScore - sorted.last.enhancedScore).toStringAsFixed(0)} points between best and worst match.',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        color: context.textSecondary,
-                        height: 1.4),
+                      fontSize: 13,
+                      color: context.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ],
@@ -2240,108 +2773,159 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         ...List.generate(sorted.length, (i) {
           final r = sorted[i];
           final title = r.baseResult.metadata.title ?? 'Product ${i + 1}';
-          final medal = i == 0 ? '🥇' : (i == 1 ? '🥈' : (i == 2 ? '🥉' : '#${i + 1}'));
+          final medal = i == 0
+              ? '🥇'
+              : (i == 1 ? '🥈' : (i == 2 ? '🥉' : '#${i + 1}'));
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: GlassContainer(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: GlassContainer(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(medal, style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(title,
-                            style: GoogleFonts.plusJakartaSans(
+                      Row(
+                        children: [
+                          Text(medal, style: const TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
-                                color: context.textPrimary),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (r.enhancedScore >= 80
-                              ? AppTheme.scoreExcellent
-                              : r.enhancedScore >= 60
-                                  ? AppTheme.scoreGood
-                                  : AppTheme.scoreAverage)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text('${r.enhancedScore.toStringAsFixed(0)}%',
-                            style: GoogleFonts.plusJakartaSans(
+                                color: context.textPrimary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  (r.enhancedScore >= 80
+                                          ? AppTheme.scoreExcellent
+                                          : r.enhancedScore >= 60
+                                          ? AppTheme.scoreGood
+                                          : AppTheme.scoreAverage)
+                                      .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${r.enhancedScore.toStringAsFixed(0)}%',
+                              style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13,
                                 color: r.enhancedScore >= 80
                                     ? AppTheme.scoreExcellent
                                     : r.enhancedScore >= 60
-                                        ? AppTheme.scoreGood
-                                        : AppTheme.scoreAverage)),
+                                    ? AppTheme.scoreGood
+                                    : AppTheme.scoreAverage,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 12),
+                      // Score breakdown bars from factors
+                      ...r.factors
+                          .take(5)
+                          .map(
+                            (f) => _buildComparisonScoreBar(
+                              f.label,
+                              f.score,
+                              context,
+                            ),
+                          ),
+                      // Pros for You
+                      if (r.prosForUser.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Pros for You',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppTheme.success,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        ...r.prosForUser
+                            .take(3)
+                            .map(
+                              (p) => Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      '✅ ',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        p,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          color: context.textSecondary,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                      ],
+                      // Cons for You
+                      if (r.consForUser.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Cons for You',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppTheme.warning,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        ...r.consForUser
+                            .take(3)
+                            .map(
+                              (c) => Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      '⚠️ ',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        c,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          color: context.textSecondary,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  // Score breakdown bars from factors
-                  ...r.factors.take(5).map((f) =>
-                    _buildComparisonScoreBar(f.label, f.score, context),
-                  ),
-                  // Pros for You
-                  if (r.prosForUser.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text('Pros for You',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            color: AppTheme.success)),
-                    const SizedBox(height: 6),
-                    ...r.prosForUser.take(3).map((p) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('✅ ', style: TextStyle(fontSize: 12)),
-                              Expanded(
-                                child: Text(p,
-                                    style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12, color: context.textSecondary, height: 1.4)),
-                              ),
-                            ],
-                          ),
-                        )),
-                  ],
-                  // Cons for You
-                  if (r.consForUser.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text('Cons for You',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            color: AppTheme.warning)),
-                    const SizedBox(height: 6),
-                    ...r.consForUser.take(3).map((c) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('⚠️ ', style: TextStyle(fontSize: 12)),
-                              Expanded(
-                                child: Text(c,
-                                    style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12, color: context.textSecondary, height: 1.4)),
-                              ),
-                            ],
-                          ),
-                        )),
-                  ],
-                ],
-              ),
-            ),
-          ).animate(delay: (600 + i * 150).ms).fadeIn(duration: 300.ms).slideY(begin: 0.03);
+                ),
+              )
+              .animate(delay: (600 + i * 150).ms)
+              .fadeIn(duration: 300.ms)
+              .slideY(begin: 0.03);
         }),
 
         // Better Alternatives section (from the winner's alternatives list)
@@ -2362,49 +2946,71 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.lightbulb_rounded,
-                          color: Colors.white, size: 18),
+                      child: const Icon(
+                        Icons.lightbulb_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text('Better Alternatives',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: context.textPrimary)),
+                    Text(
+                      'Better Alternatives',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: context.textPrimary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text('Based on your profile, you might also consider:',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: context.textSecondary)),
-                const SizedBox(height: 8),
-                ...winner.alternatives.take(3).map((alt) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: context.surfaceVariantColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_forward_rounded,
-                            color: AppTheme.brandBlue, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(alt,
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  color: context.textPrimary,
-                                  fontWeight: FontWeight.w600),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                      ],
-                    ),
+                Text(
+                  'Based on your profile, you might also consider:',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: context.textSecondary,
                   ),
-                )),
+                ),
+                const SizedBox(height: 8),
+                ...winner.alternatives
+                    .take(3)
+                    .map(
+                      (alt) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: context.surfaceVariantColor,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: AppTheme.brandBlue,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  alt,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    color: context.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
               ],
             ),
           ).animate(delay: 900.ms).fadeIn(duration: 400.ms),
@@ -2428,19 +3034,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               color: context.surfaceVariantColor,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: context.textTertiaryColor.withValues(alpha: 0.2)),
+                color: context.textTertiaryColor.withValues(alpha: 0.2),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.refresh_rounded,
-                    color: context.textSecondary, size: 20),
+                Icon(
+                  Icons.refresh_rounded,
+                  color: context.textSecondary,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n?.startOver ?? 'Start Over',
                   style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600, fontSize: 14,
-                      color: context.textSecondary),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: context.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -2451,7 +3063,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   /// Score bar for comparison view
-  Widget _buildComparisonScoreBar(String label, double score, BuildContext ctx) {
+  Widget _buildComparisonScoreBar(
+    String label,
+    double score,
+    BuildContext ctx,
+  ) {
     final color = score >= 80
         ? AppTheme.scoreExcellent
         : (score >= 60 ? AppTheme.scoreGood : AppTheme.scoreAverage);
@@ -2461,11 +3077,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         children: [
           SizedBox(
             width: 72,
-            child: Text(label,
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: ctx.textSecondary,
-                    fontWeight: FontWeight.w500)),
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: ctx.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           Expanded(
             child: ClipRRect(
@@ -2479,11 +3098,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             ),
           ),
           const SizedBox(width: 8),
-          Text('${score.toStringAsFixed(0)}',
-              style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
+          Text(
+            '${score.toStringAsFixed(0)}',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -2497,70 +3119,130 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         // Vertical flow steps with glassmorphic cards
         ...List.generate(3, (i) {
           final steps = [
-            (Icons.link_rounded, context.l10n?.pasteLink ?? 'Paste Link', context.l10n?.dropProductUrl ?? 'Drop any product URL from 100+ stores', AppTheme.brandBlue),
-            (Icons.psychology_rounded, context.l10n?.aiQuiz ?? 'AI Quiz', context.l10n?.answerQuickQuestions ?? 'Answer quick questions about your needs', AppTheme.brandSkyBlue),
-            (Icons.diamond_rounded, context.l10n?.matchScoreLabel ?? 'Match Score', context.l10n?.getPersonalizedScore ?? 'Get personalized compatibility score', AppTheme.brandCyan),
+            (
+              Icons.link_rounded,
+              context.l10n?.pasteLink ?? 'Paste Link',
+              context.l10n?.dropProductUrl ??
+                  'Drop any product URL from 100+ stores',
+              AppTheme.brandBlue,
+            ),
+            (
+              Icons.psychology_rounded,
+              context.l10n?.aiQuiz ?? 'AI Quiz',
+              context.l10n?.answerQuickQuestions ??
+                  'Answer quick questions about your needs',
+              AppTheme.brandSkyBlue,
+            ),
+            (
+              Icons.diamond_rounded,
+              context.l10n?.matchScoreLabel ?? 'Match Score',
+              context.l10n?.getPersonalizedScore ??
+                  'Get personalized compatibility score',
+              AppTheme.brandCyan,
+            ),
           ];
           final (icon, title, desc, color) = steps[i];
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                // Step number + vertical line
-                Column(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
                   children: [
-                    Container(
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.6)]),
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3),
-                          blurRadius: 12, offset: const Offset(0, 4))],
-                      ),
-                      child: Center(child: Text('${i + 1}',
-                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white))),
+                    // Step number + vertical line
+                    Column(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [color, color.withValues(alpha: 0.6)],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${i + 1}',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (i < 2)
+                          Container(
+                            width: 2,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  color.withValues(alpha: 0.4),
+                                  color.withValues(alpha: 0.05),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    if (i < 2) Container(
-                      width: 2, height: 20,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                          colors: [color.withValues(alpha: 0.4), color.withValues(alpha: 0.05)]),
+                    const SizedBox(width: 14),
+                    // Content
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(icon, size: 20, color: color),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    desc,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      color: context.textTertiaryColor,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(width: 14),
-                // Content
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: color.withValues(alpha: 0.12)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(icon, size: 20, color: color),
-                        const SizedBox(width: 12),
-                        Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(title, style: GoogleFonts.inter(
-                              fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary)),
-                            const SizedBox(height: 2),
-                            Text(desc, style: GoogleFonts.inter(
-                              fontSize: 11, color: context.textTertiaryColor, height: 1.3)),
-                          ],
-                        )),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(delay: (100 * i).ms, duration: 400.ms).slideX(begin: 0.05);
+              )
+              .animate()
+              .fadeIn(delay: (100 * i).ms, duration: 400.ms)
+              .slideX(begin: 0.05);
         }),
 
         const SizedBox(height: 20),
@@ -2572,20 +3254,35 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             scrollDirection: Axis.horizontal,
             children: [
               _PowerCard(
-                icon: Icons.memory_rounded, color: AppTheme.brandBlue,
-                title: context.l10n?.specAnalysis ?? 'Spec\nAnalysis', emoji: '🔬'),
+                icon: Icons.memory_rounded,
+                color: AppTheme.brandBlue,
+                title: context.l10n?.specAnalysis ?? 'Spec\nAnalysis',
+                emoji: '🔬',
+              ),
               _PowerCard(
-                icon: Icons.swap_horiz_rounded, color: AppTheme.brandSkyBlue,
-                title: context.l10n?.smartAlternatives ?? 'Smart\nAlternatives', emoji: '🔄'),
+                icon: Icons.swap_horiz_rounded,
+                color: AppTheme.brandSkyBlue,
+                title: context.l10n?.smartAlternatives ?? 'Smart\nAlternatives',
+                emoji: '🔄',
+              ),
               _PowerCard(
-                icon: Icons.star_rounded, color: AppTheme.scoreAverage,
-                title: context.l10n?.reviewDigest ?? 'Review\nDigest', emoji: '⭐'),
+                icon: Icons.star_rounded,
+                color: AppTheme.scoreAverage,
+                title: context.l10n?.reviewDigest ?? 'Review\nDigest',
+                emoji: '⭐',
+              ),
               _PowerCard(
-                icon: Icons.person_rounded, color: AppTheme.brandCyan,
-                title: context.l10n?.personalMatch ?? 'Personal\nMatch', emoji: '🎯'),
+                icon: Icons.person_rounded,
+                color: AppTheme.brandCyan,
+                title: context.l10n?.personalMatch ?? 'Personal\nMatch',
+                emoji: '🎯',
+              ),
               _PowerCard(
-                icon: Icons.trending_up_rounded, color: AppTheme.scoreExcellent,
-                title: context.l10n?.priceHistory ?? 'Price\nHistory', emoji: '📈'),
+                icon: Icons.trending_up_rounded,
+                color: AppTheme.scoreExcellent,
+                title: context.l10n?.priceHistory ?? 'Price\nHistory',
+                emoji: '📈',
+              ),
             ],
           ),
         ),
@@ -2603,9 +3300,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
-      child: Text(name,
-          style: GoogleFonts.plusJakartaSans(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Text(
+        name,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     );
   }
 
@@ -2622,7 +3324,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       if (raw == null || raw.isEmpty) return [];
       final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
       return list;
-    } catch (_) { return []; }
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> _saveToHistory({
@@ -2642,16 +3346,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     // Anında yerel listeye ekle (optimistic update — geçmiş ekranı anında görsün)
     try {
-      ref.read(pendingLinkAnalysisHistoryProvider.notifier).update(
-        (list) => [entry, ...list.where((e) => e['id'] != entry['id'])],
-      );
+      ref
+          .read(pendingLinkAnalysisHistoryProvider.notifier)
+          .update(
+            (list) => [entry, ...list.where((e) => e['id'] != entry['id'])],
+          );
     } catch (_) {}
 
     // Firebase'e kaydet (giriş yapmış kullanıcı için)
     try {
       final auth = ref.read(authStateProvider).valueOrNull;
       if (auth != null) {
-        ref.read(pbDataSourceProvider)
+        ref
+            .read(pbDataSourceProvider)
             .saveLinkAnalysisHistory(auth, entry)
             .then((_) => ref.invalidate(linkAnalysisHistoryProvider))
             .catchError((_) {});
@@ -2665,16 +3372,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       history.removeWhere((e) => e['url'] == url);
       history.insert(0, entry);
       final trimmed = history.take(30).toList();
-      await cache.set<String>(_historyKey, jsonEncode(trimmed),
-          duration: const Duration(days: 30));
+      await cache.set<String>(
+        _historyKey,
+        jsonEncode(trimmed),
+        duration: const Duration(days: 30),
+      );
     } catch (_) {}
   }
 
   void _showAnalysisHistory() {
     Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
-        builder: (_) => const LinkAnalysisHistoryScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LinkAnalysisHistoryScreen()),
     );
   }
 
@@ -2697,12 +3405,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppTheme.slate700),
       ),
-      child: Text(context.l10n?.plusMore('100') ?? '+ 100 more',
-          style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: context.textTertiaryColor)),
+      child: Text(
+        context.l10n?.plusMore('100') ?? '+ 100 more',
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: context.textTertiaryColor,
+        ),
+      ),
     );
   }
 }
-

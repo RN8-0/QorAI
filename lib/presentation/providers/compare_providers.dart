@@ -1192,9 +1192,12 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       } catch (_) {}
     } catch (e) {
       debugPrint('=== COMPAIR: Sub analysis error: $e ===');
-      final errMsg = e.toString().contains('timeout')
+      final rawMessage = e is AppException
+          ? e.message
+          : e.toString().replaceAll('Exception: ', '');
+      final errMsg = rawMessage.toLowerCase().contains('timeout')
           ? 'Analysis timed out. Check your connection.'
-          : 'Analysis failed: ${e.toString().replaceAll('Exception: ', '')}';
+          : 'Analysis failed: $rawMessage';
       state = state.copyWith(phase: SubFlowPhase.idle, error: errMsg);
     }
   }

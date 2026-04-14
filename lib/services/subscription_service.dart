@@ -18,11 +18,13 @@ import 'package:compair/core/errors.dart';
 class SubscriptionStatus {
   final bool isPremium;
   final String? activeProductId;
+  final DateTime? purchaseDate;
   final DateTime? expirationDate;
 
   const SubscriptionStatus({
     this.isPremium = false,
     this.activeProductId,
+    this.purchaseDate,
     this.expirationDate,
   });
 
@@ -202,12 +204,25 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Verify and deliver purchase
   Future<void> _verifyAndDeliver(PurchaseDetails purchase) async {
+    final purchaseDate = _parsePurchaseDate(purchase.transactionDate);
+    final expirationDate = _estimateExpirationDate(
+      purchase.productID,
+      purchaseDate,
+    );
+
     _status = SubscriptionStatus(
       isPremium: true,
       activeProductId: purchase.productID,
+      purchaseDate: purchaseDate,
+      expirationDate: expirationDate,
     );
 
-    await _saveToLocal(purchase.productID);
+    _usage = _emptyUsage();
+    await _saveToLocal(
+      productId: purchase.productID,
+      purchaseDate: purchaseDate,
+      expirationDate: expirationDate,
+    );
     notifyListeners();
 
     if (purchase.pendingCompletePurchase) {
@@ -219,10 +234,27 @@ class SubscriptionService extends ChangeNotifier {
   }
 
   /// Save premium status locally
-  Future<void> _saveToLocal(String productId) async {
+  Future<void> _saveToLocal({
+    required String productId,
+    required DateTime purchaseDate,
+    DateTime? expirationDate,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_premium', true);
     await prefs.setString('active_product_id', productId);
+    await prefs.setString(
+      'premium_purchase_date',
+      purchaseDate.toIso8601String(),
+    );
+    if (expirationDate != null) {
+      await prefs.setString(
+        'premium_expiration_date',
+        expirationDate.toIso8601String(),
+      );
+    } else {
+      await prefs.remove('premium_expiration_date');
+    }
+    await _saveUsageToLocal();
   }
 
   Future<void> _saveUsageToLocal() async {
@@ -245,10 +277,48 @@ class SubscriptionService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final premium = prefs.getBool('is_premium') ?? false;
     final productId = prefs.getString('active_product_id');
+    final purchaseDate = _parseStoredDate(
+      prefs.getString('premium_purchase_date'),
+    );
+    final storedExpiration = _parseStoredDate(
+      prefs.getString('premium_expiration_date'),
+    );
     if (premium && productId != null) {
-      _status = SubscriptionStatus(isPremium: true, activeProductId: productId);
+      final effectivePurchaseDate = purchaseDate ?? DateTime.now();
+      _status = SubscriptionStatus(
+        isPremium: true,
+        activeProductId: productId,
+        purchaseDate: effectivePurchaseDate,
+        expirationDate:
+            storedExpiration ??
+            _estimateExpirationDate(productId, effectivePurchaseDate),
+      );
       notifyListeners();
     }
+  }
+
+  DateTime _parsePurchaseDate(String? transactionDate) {
+    if (transactionDate == null || transactionDate.isEmpty) {
+      return DateTime.now();
+    }
+    final millis = int.tryParse(transactionDate);
+    if (millis != null) {
+      return DateTime.fromMillisecondsSinceEpoch(millis);
+    }
+    return DateTime.tryParse(transactionDate) ?? DateTime.now();
+  }
+
+  DateTime? _parseStoredDate(String? value) {
+    if (value == null || value.isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
+
+  DateTime _estimateExpirationDate(String productId, DateTime purchaseDate) {
+    final trialEnds = purchaseDate.add(Duration(days: AppConstants.trialDays));
+    if (productId == AppConstants.yearlySubscriptionId) {
+      return trialEnds.add(const Duration(days: 365));
+    }
+    return trialEnds.add(const Duration(days: 30));
   }
 
   Future<void> _restoreUsageFromLocal() async {

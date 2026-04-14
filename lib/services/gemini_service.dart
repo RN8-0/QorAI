@@ -568,7 +568,7 @@ Provide a comprehensive research summary.
       return _subscriptionContext[name.toLowerCase().trim()] == null;
     }).toList();
 
-    final analysisPrompt =
+    String buildAnalysisPrompt({required bool includeResearchData}) =>
         '''
 You are Compair's subscription intelligence analyst.
 Analyze: $names
@@ -583,7 +583,7 @@ User Profile:
 Quiz Answers:
 ${qaPairs.map((q) => '- ${q['question']}: ${q['answer']}').join('\n')}
 
-${researchData.isNotEmpty ? 'Research Data:\n$researchData\n' : ''}
+${includeResearchData && researchData.isNotEmpty ? 'Research Data:\n$researchData\n' : ''}
 ${unknownForAnalysis.isNotEmpty ? 'NOTE: The following service(s) may not be well-known: ${unknownForAnalysis.join(', ')}. '
                   'Use the research data above and your knowledge to identify what they are. '
                   'If you cannot identify a service, still analyze it based on available context '
@@ -603,20 +603,51 @@ Return ONLY valid JSON matching this exact schema:
 $jsonSchema
 ''';
 
-    final text = await _rawRequest({
-      'contents': [
-        {
-          'parts': [
-            {'text': analysisPrompt},
-          ],
+    Future<String> runStructuredAnalysis({
+      required bool includeResearchData,
+      required int maxTokens,
+    }) {
+      return _rawRequest({
+        'contents': [
+          {
+            'parts': [
+              {
+                'text': buildAnalysisPrompt(
+                  includeResearchData: includeResearchData,
+                ),
+              },
+            ],
+          },
+        ],
+        'generationConfig': {
+          'responseMimeType': 'application/json',
+          'temperature': 0.3,
+          'maxOutputTokens': maxTokens,
         },
-      ],
-      'generationConfig': {
-        'responseMimeType': 'application/json',
-        'temperature': 0.3,
-        'maxOutputTokens': 8192,
-      },
-    }, receiveTimeout: const Duration(seconds: 120));
+      }, receiveTimeout: const Duration(seconds: 120));
+    }
+
+    String text;
+    try {
+      text = await runStructuredAnalysis(
+        includeResearchData: true,
+        maxTokens: 4096,
+      );
+    } on AIServiceException catch (e) {
+      final shouldRetryCompact =
+          researchData.isNotEmpty &&
+          (e.isRateLimited ||
+              e.message.toLowerCase().contains('busy') ||
+              e.message.toLowerCase().contains('unavailable'));
+      if (!shouldRetryCompact) rethrow;
+      debugPrint(
+        '=== COMPAIR: Retrying subscription analysis with compact prompt ===',
+      );
+      text = await runStructuredAnalysis(
+        includeResearchData: false,
+        maxTokens: 3072,
+      );
+    }
 
     // Parse JSON response — responseMimeType should guarantee valid JSON
     Map<String, dynamic>? parsed;
