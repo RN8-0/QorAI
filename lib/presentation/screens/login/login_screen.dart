@@ -58,6 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.red.shade600,
         margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );

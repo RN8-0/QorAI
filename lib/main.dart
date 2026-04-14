@@ -13,6 +13,8 @@ import 'package:compair/services/cache_service.dart';
 import 'package:compair/services/remote_config_service.dart';
 import 'package:compair/services/spec_translation_service.dart';
 import 'package:compair/services/notification_service.dart';
+import 'package:pocketbase/pocketbase.dart';
+import 'package:compair/core/pb_client.dart' as pb_client;
 import 'package:compair/data/datasources/hive_ds.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -54,6 +56,17 @@ void main() {
       debugPrint('=== COMPAIR: CacheService + HiveDS initialized ===');
     } catch (e) {
       debugPrint('=== COMPAIR: CacheService FAILED: $e ===');
+    }
+
+    // Initialize PocketBase with persistent auth store (SharedPreferences).
+    // This must happen before any provider reads `pb` global singleton.
+    try {
+      pb_client.pb = await pb_client.createPbClientWithPersistence();
+      debugPrint('=== COMPAIR: PocketBase client initialized with persistent auth ===');
+    } catch (e) {
+      // Fallback: in-memory auth (no persistence but app still works)
+      debugPrint('=== COMPAIR: PocketBase persistence init failed, using in-memory: $e ===');
+      pb_client.pb = PocketBase(pb_client.kPbBaseUrl);
     }
 
     // Initialize Remote Config via PocketBase

@@ -1,6 +1,8 @@
 /// Compair - Auth Repository
 library;
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -112,12 +114,24 @@ class AuthRepository {
             message: 'Google kimlik doğrulaması başarısız (idToken yok)'));
       }
 
-      final raw = await _pb.send(
-        '/api/auth/google',
-        method: 'POST',
-        body: {'idToken': idToken},
+      final httpResp = await http.post(
+        Uri.parse('https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io/api/auth/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'idToken': idToken}),
+      ).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw Exception('Sunucu yanıt vermedi (timeout). İnternet bağlantınızı kontrol edin.'),
       );
-      final resp = (raw as Map).cast<String, dynamic>();
+      debugPrint('[auth] PB response ${httpResp.statusCode}: ${httpResp.body}');
+      if (httpResp.statusCode != 200) {
+        final errBody = jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
+        final errCode = errBody['error']?.toString() ?? '';
+        final errDetail = errBody['detail']?.toString() ?? errBody['message']?.toString() ?? '';
+        debugPrint('[auth] PB error code=$errCode detail=$errDetail status=${httpResp.statusCode}');
+        final msg = _mapGoogleAuthError(errCode, errDetail, httpResp.statusCode);
+        return Failure(AuthException(message: msg));
+      }
+      final resp = jsonDecode(httpResp.body) as Map<String, dynamic>;
 
       final token = resp['token'] as String?;
       final record = (resp['record'] as Map?)?.cast<String, dynamic>();
@@ -126,12 +140,24 @@ class AuthRepository {
             AuthException(message: 'Sunucudan geçersiz yanıt alındı'));
       }
 
-      // Load the full record from PB and save to authStore so the SDK
-      // behaves the same as `authWithPassword`.
-      final full = await _pb.collection('users').getOne(record['id'] as String);
-      _pb.authStore.save(token, full);
+      // Build a RecordModel from the hook response to avoid a second round-trip
+      // (getOne would fail unless the authStore is pre-populated first).
+      final googlePhotoUrl = account.photoUrl; // native Google photo URL
+      final recJson = <String, dynamic>{
+        'id': record['id'],
+        'collectionId': '_pb_users_auth_',
+        'collectionName': 'users',
+        'created': record['created'] ?? DateTime.now().toIso8601String(),
+        'updated': record['updated'] ?? DateTime.now().toIso8601String(),
+        ...record,
+        // Override photoURL with the Google photo URL (PB avatar is a file field,
+        // so we pass it through a separate key read by UserModel.fromPb)
+        if (googlePhotoUrl != null) 'photoURL': googlePhotoUrl,
+      };
+      final recModel = RecordModel.fromJson(recJson);
+      _pb.authStore.save(token, recModel);
 
-      return Success(UserModel.fromPb(full));
+      return Success(UserModel.fromPb(recModel));
     } on ClientException catch (e) {
       return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
     } catch (e) {
@@ -200,5 +226,24 @@ class AuthRepository {
     if (e.statusCode == 403) return 'This action is not allowed';
     if (e.statusCode == 404) return 'No account found for this email';
     return 'An error occurred (${e.statusCode})';
+  }
+
+  String _mapGoogleAuthError(String code, String detail, int status) {
+    switch (code) {
+      case 'invalid_token':
+        return 'Google kimlik doğrulaması başarısız. Lütfen tekrar deneyin.';
+      case 'audience_mismatch':
+        return 'Google yapılandırma hatası (audience_mismatch). Lütfen destek ile iletişime geçin.';
+      case 'missing_idToken':
+        return 'Google token alınamadı. Lütfen tekrar deneyin.';
+      case 'tokeninfo_failed':
+        return 'Google ile bağlantı kurulamadı. İnternet bağlantınızı kontrol edin.';
+      case 'hook_fatal':
+        return 'Sunucu hatası: $detail';
+      default:
+        if (status == 401) return 'Google ile kimlik doğrulaması başarısız.';
+        if (status >= 500) return 'Sunucu geçici olarak kullanılamıyor. Lütfen tekrar deneyin.';
+        return code.isNotEmpty ? '$code: $detail' : (detail.isNotEmpty ? detail : 'Bilinmeyen hata ($status)');
+    }
   }
 }
