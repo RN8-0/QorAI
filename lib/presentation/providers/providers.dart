@@ -74,8 +74,22 @@ final hiveDataSourceProvider = Provider<HiveDataSource>((ref) {
 
 /// Dio HTTP Client
 final dioProvider = Provider<Dio>((ref) {
-  return Dio();
+  final dio = Dio();
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        options.headers = withPbAuthHeaders(options.headers);
+        handler.next(options);
+      },
+    ),
+  );
+  return dio;
 });
+
+DateTime? _subscriptionDetailDate(dynamic value) {
+  if (value is! String || value.isEmpty) return null;
+  return DateTime.tryParse(value);
+}
 
 /// Cache Service - Section 7.4
 final cacheServiceProvider = Provider<CacheService>((ref) {
@@ -104,7 +118,24 @@ final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
     authState.whenData((user) {
       if (user != null && !service.isInitialized) {
         service.initialize();
+      } else if (user == null) {
+        unawaited(service.syncProfileEntitlement(isPremium: false));
       }
+    });
+    ref.listen<AsyncValue<UserEntity?>>(userProfileProvider, (_, next) {
+      next.whenData((user) {
+        final premiumDetails = user?.userSubscriptionDetails['premium'];
+        unawaited(
+          service.syncProfileEntitlement(
+            isPremium: user?.isPremium == true,
+            activeProductId: premiumDetails?['productId'] as String?,
+            purchaseDate: _subscriptionDetailDate(premiumDetails?['startedAt']),
+            expirationDate: _subscriptionDetailDate(
+              premiumDetails?['expiresAt'],
+            ),
+          ),
+        );
+      });
     });
     return service;
   },

@@ -1725,7 +1725,10 @@ Return only the JSON array, no explanation.''';
         ],
         'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 512},
       },
-      options: Options(receiveTimeout: const Duration(seconds: 15)),
+      options: Options(
+        headers: withPbAuthHeaders(),
+        receiveTimeout: const Duration(seconds: 15),
+      ),
     );
 
     final text =

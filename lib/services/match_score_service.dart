@@ -7,7 +7,7 @@ import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/services/behavior_analysis_service.dart';
 
 class MatchScoreResult {
-  final double score;       // 0-100
+  final double score; // 0-100
   final String explanation; // Gemini sentence
   final bool fromCache;
 
@@ -34,9 +34,9 @@ class MatchScoreService {
       return _algoConfig!;
     }
     try {
-      final record = await pb.collection('app_config').getFirstListItem(
-        'key = "algorithm"',
-      );
+      final record = await pb
+          .collection('app_config')
+          .getFirstListItem('key = "algorithm"');
       _algoConfig = record.data;
       _algoConfigFetchedAt = DateTime.now();
       return _algoConfig!;
@@ -51,13 +51,16 @@ class MatchScoreService {
     try {
       // ── Step 0: Cache check (1 day + version) ──
       try {
-        final cacheResult = await pb.collection('users').getFirstListItem(
-          'id = "$uid"',
-        );
-        final matchCache = (cacheResult.data['match_cache'] as Map<String, dynamic>?) ?? {};
+        final cacheResult = await pb
+            .collection('users')
+            .getFirstListItem('id = "$uid"');
+        final matchCache =
+            (cacheResult.data['match_cache'] as Map<String, dynamic>?) ?? {};
         final productCache = (matchCache[product.id] as Map<String, dynamic>?);
         if (productCache != null) {
-          final calculatedAt = DateTime.tryParse(productCache['calculated_at'] ?? '');
+          final calculatedAt = DateTime.tryParse(
+            productCache['calculated_at'] ?? '',
+          );
           final cachedVersion = productCache['version'] as int? ?? 0;
           if (calculatedAt != null &&
               cachedVersion == _cacheVersion &&
@@ -81,7 +84,8 @@ class MatchScoreService {
         return null;
       }
 
-      final weightVector = (userRecord.data['weightVector'] as Map<String, dynamic>?);
+      final weightVector =
+          (userRecord.data['weightVector'] as Map<String, dynamic>?);
       if (weightVector == null) return null;
 
       final weights = _parseWeights(weightVector);
@@ -93,8 +97,9 @@ class MatchScoreService {
       final userCountry = userRecord.data['country'] as String? ?? 'US';
 
       // Behavior analysis
-      final behaviorProfile =
-          await BehaviorAnalysisService().analyzeBehavior(uid);
+      final behaviorProfile = await BehaviorAnalysisService().analyzeBehavior(
+        uid,
+      );
 
       // Infer budget from recently viewed product prices
       final avgViewedPrice = await _inferAverageViewedPrice(
@@ -108,7 +113,7 @@ class MatchScoreService {
 
       final hasRichBehavior =
           behaviorProfile.recentlyViewedProductIds.length >= 5 ||
-              behaviorProfile.strongInterestCategories.isNotEmpty;
+          behaviorProfile.strongInterestCategories.isNotEmpty;
 
       // ── Step 2: Build User Profile String ──
       final userProfileText = _buildUserProfileText(
@@ -179,21 +184,26 @@ class MatchScoreService {
       }
 
       // Category bonus (stronger for interested categories)
-      if (behaviorProfile.strongInterestCategories.any((c) =>
-          product.category.toLowerCase().contains(c) ||
-          c.contains(product.category.toLowerCase()))) {
+      if (behaviorProfile.strongInterestCategories.any(
+        (c) =>
+            product.category.toLowerCase().contains(c) ||
+            c.contains(product.category.toLowerCase()),
+      )) {
         finalScore += 8;
       }
 
       finalScore = finalScore.clamp(0.0, 100.0);
 
-      final result =
-          MatchScoreResult(score: finalScore, explanation: explanation);
+      final result = MatchScoreResult(
+        score: finalScore,
+        explanation: explanation,
+      );
 
       // ── Step 7: Cache ──
       try {
         // Store match cache as a field on the user record
-        final existingCache = (userRecord?.data['match_cache'] as Map<String, dynamic>?) ?? {};
+        final existingCache =
+            (userRecord?.data['match_cache'] as Map<String, dynamic>?) ?? {};
         existingCache[product.id] = {
           'score': finalScore,
           'explanation': explanation,
@@ -201,7 +211,9 @@ class MatchScoreService {
           'product_id': product.id,
           'version': _cacheVersion,
         };
-        await pb.collection('users').update(uid, body: {'match_cache': existingCache});
+        await pb
+            .collection('users')
+            .update(uid, body: {'match_cache': existingCache});
       } catch (_) {}
 
       return result;
@@ -228,8 +240,9 @@ class MatchScoreService {
     // Stated preferences
     final topWeights = weights.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final top5 =
-        topWeights.take(5).map((e) => '${e.key}: ${e.value.toStringAsFixed(2)}');
+    final top5 = topWeights
+        .take(5)
+        .map((e) => '${e.key}: ${e.value.toStringAsFixed(2)}');
     buf.writeln('Stated priority weights (top 5): ${top5.join(', ')}');
 
     if (priorities.isNotEmpty) {
@@ -245,19 +258,22 @@ class MatchScoreService {
     }
     if (avgViewedPrice != null && avgViewedPrice > 0) {
       buf.writeln(
-          'Average price of recently viewed products: \$${avgViewedPrice.toStringAsFixed(0)}');
+        'Average price of recently viewed products: \$${avgViewedPrice.toStringAsFixed(0)}',
+      );
     }
 
     // Behavioral signals
     if (behaviorProfile.strongInterestCategories.isNotEmpty) {
       buf.writeln(
-          'Strong interest categories: ${behaviorProfile.strongInterestCategories.join(', ')}');
+        'Strong interest categories: ${behaviorProfile.strongInterestCategories.join(', ')}',
+      );
     }
 
-    final catScores = behaviorProfile.categoryInterestScores.entries
-        .where((e) => e.value > 0.3)
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final catScores =
+        behaviorProfile.categoryInterestScores.entries
+            .where((e) => e.value > 0.3)
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
     if (catScores.isNotEmpty) {
       final catText = catScores
           .take(5)
@@ -266,9 +282,11 @@ class MatchScoreService {
     }
 
     buf.writeln(
-        'Purchase intent: ${behaviorProfile.purchaseIntentScore.toStringAsFixed(2)}');
+      'Purchase intent: ${behaviorProfile.purchaseIntentScore.toStringAsFixed(2)}',
+    );
     buf.writeln(
-        'Products recently viewed: ${behaviorProfile.recentlyViewedProductIds.length}');
+      'Products recently viewed: ${behaviorProfile.recentlyViewedProductIds.length}',
+    );
 
     if (recentSearches.isNotEmpty) {
       buf.writeln('Recent searches: ${recentSearches.take(5).join(', ')}');
@@ -292,7 +310,8 @@ class MatchScoreService {
     final keySpecs = product.keySpecs.entries.take(8);
     if (keySpecs.isNotEmpty) {
       buf.writeln(
-          'Key Specs: ${keySpecs.map((e) => '${e.key}: ${e.value}').join(', ')}');
+        'Key Specs: ${keySpecs.map((e) => '${e.key}: ${e.value}').join(', ')}',
+      );
     }
 
     if (product.pros.isNotEmpty) {
@@ -316,7 +335,8 @@ class MatchScoreService {
     try {
       // Gemini calls go through PocketBase proxy — no client-side key.
 
-      final prompt = '''Given this user profile:
+      final prompt =
+          '''Given this user profile:
 $userProfileText
 
 And this product:
@@ -338,6 +358,7 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
       final response = await dio.post(
         '$kPbBaseUrl/api/ai/gemini',
         options: Options(
+          headers: withPbAuthHeaders(),
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
         ),
@@ -346,9 +367,9 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
           'contents': [
             {
               'parts': [
-                {'text': prompt}
-              ]
-            }
+                {'text': prompt},
+              ],
+            },
           ],
           'generationConfig': {
             'temperature': 0.2,
@@ -358,8 +379,9 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
         },
       );
 
-      final text = response.data['candidates']?[0]?['content']?['parts']?[0]
-          ?['text'] as String?;
+      final text =
+          response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+              as String?;
       if (text == null || text.trim().isEmpty) return null;
 
       return _parseAiResponse(text.trim());
@@ -385,10 +407,12 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
     }
 
     // Regex fallback
-    final scoreMatch =
-        RegExp(r'"score"\s*:\s*(\d+(?:\.\d+)?)').firstMatch(responseText);
-    final reasonMatch =
-        RegExp(r'"reason"\s*:\s*"([^"]+)"').firstMatch(responseText);
+    final scoreMatch = RegExp(
+      r'"score"\s*:\s*(\d+(?:\.\d+)?)',
+    ).firstMatch(responseText);
+    final reasonMatch = RegExp(
+      r'"reason"\s*:\s*"([^"]+)"',
+    ).firstMatch(responseText);
 
     if (scoreMatch != null) {
       final score = double.tryParse(scoreMatch.group(1) ?? '');
@@ -419,9 +443,11 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
   }) {
     // Read admin-configured boosts (percentages → decimals)
     final boosts = algoConfig['boosts'] as Map<String, dynamic>? ?? {};
-    final ecosystemBonus = ((boosts['ecosystem'] as num?)?.toDouble() ?? 18) / 100;
+    final ecosystemBonus =
+        ((boosts['ecosystem'] as num?)?.toDouble() ?? 18) / 100;
     final budgetBonus = ((boosts['budget'] as num?)?.toDouble() ?? 15) / 100;
-    final categoryBonus = ((boosts['categoryView'] as num?)?.toDouble() ?? 12) / 100;
+    final categoryBonus =
+        ((boosts['categoryView'] as num?)?.toDouble() ?? 12) / 100;
     final quizBonus = ((boosts['quiz'] as num?)?.toDouble() ?? 15) / 100;
     // Adjust weights with behavior data
     final adjustedWeights = Map<String, double>.from(weights);
@@ -453,7 +479,14 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
         base -= ecosystemBonus * 0.55;
       }
     } else if (ecosystem == 'android') {
-      if ({'samsung', 'google', 'oneplus', 'xiaomi', 'oppo', 'realme'}.contains(brand)) {
+      if ({
+        'samsung',
+        'google',
+        'oneplus',
+        'xiaomi',
+        'oppo',
+        'realme',
+      }.contains(brand)) {
         base += ecosystemBonus * 0.78;
       } else if (brand == 'apple') {
         base -= ecosystemBonus * 0.44;
@@ -481,9 +514,7 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
     }
 
     // ── Price ratio penalty from viewed products (stronger) ──
-    if (avgViewedPrice != null &&
-        avgViewedPrice > 0 &&
-        productPrice != null) {
+    if (avgViewedPrice != null && avgViewedPrice > 0 && productPrice != null) {
       final ratio = productPrice / avgViewedPrice;
       if (ratio > 2.5) {
         base -= 0.25; // Way over budget
@@ -500,11 +531,15 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
 
     // ── Category interest bonus (admin-configurable) ──
     final productCat = product.category.toLowerCase();
-    if (behaviorProfile.strongInterestCategories.any((c) =>
-        productCat.contains(c) || c.contains(productCat))) {
+    if (behaviorProfile.strongInterestCategories.any(
+      (c) => productCat.contains(c) || c.contains(productCat),
+    )) {
       base += categoryBonus;
-    } else if (behaviorProfile.categoryInterestScores.entries
-        .any((e) => e.value >= 0.3 && (productCat.contains(e.key) || e.key.contains(productCat)))) {
+    } else if (behaviorProfile.categoryInterestScores.entries.any(
+      (e) =>
+          e.value >= 0.3 &&
+          (productCat.contains(e.key) || e.key.contains(productCat)),
+    )) {
       base += categoryBonus * 0.40;
     }
 
@@ -520,8 +555,9 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
 
     // ── Purchase intent signal ──
     if (behaviorProfile.purchaseIntentScore > 0.5 &&
-        behaviorProfile.strongInterestCategories.any((c) =>
-            productCat.contains(c) || c.contains(productCat))) {
+        behaviorProfile.strongInterestCategories.any(
+          (c) => productCat.contains(c) || c.contains(productCat),
+        )) {
       base += 0.07; // User actively shopping in this category
     }
 
@@ -548,14 +584,19 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
       // Batch fetch in groups of 20
       for (var i = 0; i < idsToCheck.length; i += 20) {
         final batch = idsToCheck.sublist(
-            i, i + 20 > idsToCheck.length ? idsToCheck.length : i + 20);
+          i,
+          i + 20 > idsToCheck.length ? idsToCheck.length : i + 20,
+        );
         final filter = batch.map((id) => 'id = "$id"').join(' || ');
-        final result = await pb.collection('products').getFullList(filter: filter);
+        final result = await pb
+            .collection('products')
+            .getFullList(filter: filter);
 
         for (final record in result) {
           final pricesMap = record.data['prices'] as Map<String, dynamic>?;
           if (pricesMap != null) {
-            final price = (pricesMap[userCountry] as num?)?.toDouble() ??
+            final price =
+                (pricesMap[userCountry] as num?)?.toDouble() ??
                 (pricesMap.values.firstOrNull as num?)?.toDouble();
             if (price != null && price > 0) {
               prices.add(price);
@@ -584,10 +625,18 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
   Map<String, double> _parseWeights(Map<String, dynamic>? data) {
     if (data == null) {
       return {
-        'performance': 0.7, 'battery': 0.6, 'camera': 0.5, 'display': 0.6,
-        'portability': 0.5, 'price_sensitivity': 0.5, 'ecosystem_lock': 0.3,
-        'gaming': 0.3, 'content_consumption': 0.6, 'productivity': 0.5,
-        'build_quality': 0.6, 'audio_quality': 0.4,
+        'performance': 0.7,
+        'battery': 0.6,
+        'camera': 0.5,
+        'display': 0.6,
+        'portability': 0.5,
+        'price_sensitivity': 0.5,
+        'ecosystem_lock': 0.3,
+        'gaming': 0.3,
+        'content_consumption': 0.6,
+        'productivity': 0.5,
+        'build_quality': 0.6,
+        'audio_quality': 0.4,
       };
     }
     return {
@@ -616,11 +665,14 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
   // ─────────────────────────────────────────────────────────────────────────
 
   String _heuristicExplanation(int score) {
-    if (score >= 90) return 'Perfect match — this product is tailor-made for your needs.';
-    if (score >= 80) return 'Excellent match for your preferences and ecosystem.';
+    if (score >= 90)
+      return 'Perfect match — this product is tailor-made for your needs.';
+    if (score >= 80)
+      return 'Excellent match for your preferences and ecosystem.';
     if (score >= 70) return 'Great fit across most of your stated priorities.';
     if (score >= 55) return 'Good match with a few trade-offs to consider.';
-    if (score >= 40) return 'Partially matches your preferences — some compromises.';
+    if (score >= 40)
+      return 'Partially matches your preferences — some compromises.';
     if (score >= 25) return 'Not the best fit for your stated priorities.';
     return 'Significant mismatch with your preferences and budget.';
   }

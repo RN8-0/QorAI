@@ -4,7 +4,6 @@
 library;
 
 import 'dart:convert';
-import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
 import 'package:compair/core/pb_client.dart';
 
@@ -59,13 +58,18 @@ class GeminiWeightService {
       weights = Map<String, double>.from(_kFallbackWeights);
     }
 
-    await pb.collection('users').update(uid, body: {
-      'weightVector': {
-        ...weights,
-        'generated_at': DateTime.now().toIso8601String(),
-        'generated_by': 'gemini-2.5-flash',
-      },
-    });
+    await pb
+        .collection('users')
+        .update(
+          uid,
+          body: {
+            'weightVector': {
+              ...weights,
+              'generated_at': DateTime.now().toIso8601String(),
+              'generated_by': 'gemini-2.5-flash',
+            },
+          },
+        );
   }
 
   Future<Map<String, double>> _callGemini({
@@ -81,7 +85,8 @@ class GeminiWeightService {
   }) async {
     // Gemini calls go through PocketBase proxy — no client-side key.
 
-    final prompt = '''You are a product recommendation AI for a shopping assistant app.
+    final prompt =
+        '''You are a product recommendation AI for a shopping assistant app.
 
 User profile:
 - Age group: ${ageGroup ?? 'unknown'}
@@ -124,7 +129,7 @@ Strict rules:
     final response = await dio.post(
       '$kPbBaseUrl/api/ai/gemini',
       options: Options(
-        headers: {'Content-Type': 'application/json'},
+        headers: withPbAuthHeaders({'Content-Type': 'application/json'}),
         sendTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       ),
@@ -133,19 +138,19 @@ Strict rules:
         'contents': [
           {
             'parts': [
-              {'text': prompt}
-            ]
-          }
+              {'text': prompt},
+            ],
+          },
         ],
-        'generationConfig': {
-          'temperature': 0.1,
-          'maxOutputTokens': 512,
-        },
+        'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 512},
       },
     );
 
-    final text = response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
-    if (text == null || text.isEmpty) return Map<String, double>.from(_kFallbackWeights);
+    final text =
+        response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+            as String?;
+    if (text == null || text.isEmpty)
+      return Map<String, double>.from(_kFallbackWeights);
 
     return _parseWeights(text.trim());
   }

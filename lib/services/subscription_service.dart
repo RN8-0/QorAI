@@ -73,6 +73,7 @@ class SubscriptionService extends ChangeNotifier {
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
 
   SubscriptionStatus _status = SubscriptionStatus.free;
+  SubscriptionStatus _profileStatus = SubscriptionStatus.free;
   late UsageCounter _usage;
   bool _initialized = false;
 
@@ -80,8 +81,20 @@ class SubscriptionService extends ChangeNotifier {
   Completer<Result<bool>>? _purchaseCompleter;
   Completer<void>? _initCompleter;
 
-  SubscriptionStatus get status => _status;
-  bool get isPremium => _status.isPremium;
+  SubscriptionStatus get status {
+    if (!_status.isPremium && !_profileStatus.isPremium) {
+      return _status;
+    }
+    return SubscriptionStatus(
+      isPremium: true,
+      activeProductId:
+          _status.activeProductId ?? _profileStatus.activeProductId,
+      purchaseDate: _status.purchaseDate ?? _profileStatus.purchaseDate,
+      expirationDate: _status.expirationDate ?? _profileStatus.expirationDate,
+    );
+  }
+
+  bool get isPremium => status.isPremium;
   bool get isInitialized => _initialized;
   List<ProductDetails> get products => _products;
   int get comparisonsUsed => _normalizedUsage().comparisons;
@@ -235,13 +248,17 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Save premium status locally
   Future<void> _saveToLocal({
-    required String productId,
+    String? productId,
     required DateTime purchaseDate,
     DateTime? expirationDate,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_premium', true);
-    await prefs.setString('active_product_id', productId);
+    if (productId != null && productId.isNotEmpty) {
+      await prefs.setString('active_product_id', productId);
+    } else {
+      await prefs.remove('active_product_id');
+    }
     await prefs.setString(
       'premium_purchase_date',
       purchaseDate.toIso8601String(),
@@ -283,7 +300,7 @@ class SubscriptionService extends ChangeNotifier {
     final storedExpiration = _parseStoredDate(
       prefs.getString('premium_expiration_date'),
     );
-    if (premium && productId != null) {
+    if (premium) {
       final effectivePurchaseDate = purchaseDate ?? DateTime.now();
       _status = SubscriptionStatus(
         isPremium: true,
@@ -291,10 +308,48 @@ class SubscriptionService extends ChangeNotifier {
         purchaseDate: effectivePurchaseDate,
         expirationDate:
             storedExpiration ??
-            _estimateExpirationDate(productId, effectivePurchaseDate),
+            (productId != null
+                ? _estimateExpirationDate(productId, effectivePurchaseDate)
+                : null),
       );
       notifyListeners();
     }
+  }
+
+  Future<void> syncProfileEntitlement({
+    required bool isPremium,
+    String? activeProductId,
+    DateTime? purchaseDate,
+    DateTime? expirationDate,
+  }) async {
+    final hadPremium = this.isPremium;
+    final nextProfileStatus = isPremium
+        ? SubscriptionStatus(
+            isPremium: true,
+            activeProductId: activeProductId,
+            purchaseDate: purchaseDate,
+            expirationDate: expirationDate,
+          )
+        : SubscriptionStatus.free;
+    final changed =
+        nextProfileStatus.isPremium != _profileStatus.isPremium ||
+        nextProfileStatus.activeProductId != _profileStatus.activeProductId ||
+        nextProfileStatus.purchaseDate != _profileStatus.purchaseDate ||
+        nextProfileStatus.expirationDate != _profileStatus.expirationDate;
+    if (!changed) return;
+
+    _profileStatus = nextProfileStatus;
+
+    if (!hadPremium && isPremium) {
+      _usage = _emptyUsage();
+      await _saveToLocal(
+        productId: activeProductId,
+        purchaseDate: purchaseDate ?? DateTime.now(),
+        expirationDate: expirationDate,
+      );
+    }
+
+    notifyListeners();
   }
 
   DateTime _parsePurchaseDate(String? transactionDate) {

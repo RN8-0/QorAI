@@ -305,7 +305,8 @@ class SpecDirectionService {
   Future<void> loadFirestoreOverrides() async {
     if (_loaded) return;
     try {
-      final record = await pb.collection('spec_directions')
+      final record = await pb
+          .collection('spec_directions')
           .getFirstListItem('key = "base"')
           .timeout(const Duration(seconds: 5));
       final data = record.data;
@@ -360,11 +361,19 @@ class SpecDirectionService {
 
     // 1. Boolean check
     final lowers = values.map((v) => v.toLowerCase()).toList();
-    final allBool = lowers.every((v) =>
-        v == 'yes' || v == 'no' || v == '✓ yes' || v == '✗ no' ||
-        v.startsWith('✓') || v.startsWith('✗'));
+    final allBool = lowers.every(
+      (v) =>
+          v == 'yes' ||
+          v == 'no' ||
+          v == '✓ yes' ||
+          v == '✗ no' ||
+          v.startsWith('✓') ||
+          v.startsWith('✗'),
+    );
     if (allBool) {
-      final yesIdx = lowers.indexWhere((v) => v.contains('yes') || v.startsWith('✓'));
+      final yesIdx = lowers.indexWhere(
+        (v) => v.contains('yes') || v.startsWith('✓'),
+      );
       final hasNo = lowers.any((v) => v.contains('no') || v.startsWith('✗'));
       if (yesIdx >= 0 && hasNo) return yesIdx;
       return -1;
@@ -400,8 +409,12 @@ class SpecDirectionService {
 
   int _compareByComponentRanking(String specKey, List<String> values) {
     final key = _normalizeKey(specKey);
-    final isProcessor = key.contains('processor') || key.contains('chipset') ||
-        key.contains('cpu') || key.contains('chip') || key.contains('soc');
+    final isProcessor =
+        key.contains('processor') ||
+        key.contains('chipset') ||
+        key.contains('cpu') ||
+        key.contains('chip') ||
+        key.contains('soc');
     final isGpu = key.contains('gpu') || key.contains('graphics');
 
     Map<String, int>? rankingTable;
@@ -453,30 +466,65 @@ class SpecDirectionService {
 
   static bool _matchesLowerBetter(String key) {
     const lowerKeywords = [
-      'weight', 'thickness', 'price', 'watt', 'tdp', 'noise',
-      'latency', 'response time', 'heat', 'temperature', 'lag',
-      'power consumption', 'idle', 'nm', 'sar', 'radiation',
-      'thd', 'distortion', 'delay',
+      'weight',
+      'thickness',
+      'price',
+      'watt',
+      'tdp',
+      'noise',
+      'latency',
+      'response time',
+      'heat',
+      'temperature',
+      'lag',
+      'power consumption',
+      'idle',
+      'nm',
+      'sar',
+      'radiation',
+      'thd',
+      'distortion',
+      'delay',
     ];
     return lowerKeywords.any((kw) => key.contains(kw));
   }
 
   static bool _matchesHigherBetter(String key) {
     const higherKeywords = [
-      'score', 'speed', 'capacity', 'resolution', 'frequency',
-      'rate', 'bandwidth', 'core', 'thread', 'cache', 'memory',
-      'storage', 'battery', 'playback', 'camera', 'zoom', 'fps',
-      'benchmark', 'ratio', 'density',
+      'score',
+      'speed',
+      'capacity',
+      'resolution',
+      'frequency',
+      'rate',
+      'bandwidth',
+      'core',
+      'thread',
+      'cache',
+      'memory',
+      'storage',
+      'battery',
+      'playback',
+      'camera',
+      'zoom',
+      'fps',
+      'benchmark',
+      'ratio',
+      'density',
     ];
     return higherKeywords.any((kw) => key.contains(kw));
   }
 
   static SpecDirection? _parseDirection(String? value) {
     switch (value?.toLowerCase()) {
-      case 'higher': return SpecDirection.higher;
-      case 'lower': return SpecDirection.lower;
-      case 'neutral': return SpecDirection.neutral;
-      default: return null;
+      case 'higher':
+        return SpecDirection.higher;
+      case 'lower':
+        return SpecDirection.lower;
+      case 'neutral':
+        return SpecDirection.neutral;
+      default:
+        return null;
     }
   }
 
@@ -485,13 +533,17 @@ class SpecDirectionService {
   /// Analyzes a list of unknown spec keys via Gemini (through the PB proxy)
   /// and writes results to the spec_directions collection.
   /// Called once from admin panel → results cached forever.
-  Future<void> analyzeAndCacheViaGemini(List<String> specKeys, [String? _legacyKey]) async {
+  Future<void> analyzeAndCacheViaGemini(
+    List<String> specKeys, [
+    String? _legacyKey,
+  ]) async {
     if (specKeys.isEmpty) return;
 
     const endpoint = '$kPbBaseUrl/api/ai/gemini';
 
     final keyList = specKeys.take(100).join('\n');
-    final prompt = '''You are a tech spec analyzer. For each spec below, determine if a HIGHER value is better ("higher"), a LOWER value is better ("lower"), or it is not comparable ("neutral").
+    final prompt =
+        '''You are a tech spec analyzer. For each spec below, determine if a HIGHER value is better ("higher"), a LOWER value is better ("lower"), or it is not comparable ("neutral").
 
 Spec keys:
 $keyList
@@ -504,7 +556,13 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
     try {
       final body = {
         'model': 'gemini-2.5-flash',
-        'contents': [{'parts': [{'text': prompt}]}],
+        'contents': [
+          {
+            'parts': [
+              {'text': prompt},
+            ],
+          },
+        ],
         'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 2048},
       };
 
@@ -512,7 +570,8 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
       Map<String, dynamic> existing = {};
       String? recordId;
       try {
-        final record = await pb.collection('spec_directions')
+        final record = await pb
+            .collection('spec_directions')
             .getFirstListItem('key = "base"');
         existing = Map<String, dynamic>.from(record.data);
         recordId = record.id;
@@ -523,7 +582,10 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
       if (response == null) return;
 
       // Parse JSON response
-      final text = response['candidates']?[0]?['content']?['parts']?[0]?['text'] as String? ?? '{}';
+      final text =
+          response['candidates']?[0]?['content']?['parts']?[0]?['text']
+              as String? ??
+          '{}';
       final jsonMatch = RegExp(r'\{[^}]+\}', dotAll: true).firstMatch(text);
       if (jsonMatch == null) return;
 
@@ -543,7 +605,9 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
       if (recordId != null) {
         await pb.collection('spec_directions').update(recordId, body: updates);
       } else {
-        await pb.collection('spec_directions').create(body: {...updates, 'key': 'base'});
+        await pb
+            .collection('spec_directions')
+            .create(body: {...updates, 'key': 'base'});
       }
       // Refresh local cache
       _firestoreOverrides = {};
@@ -556,6 +620,10 @@ Use the exact spec key names as provided. No explanation, only JSON.''';
     try {
       final request = await HttpClient().postUrl(Uri.parse(url));
       request.headers.contentType = ContentType.json;
+      final token = currentPbAuthToken();
+      if (token != null) {
+        request.headers.set(HttpHeaders.authorizationHeader, token);
+      }
       request.write(jsonEncode(body));
       final response = await request.close();
       final responseBody = await response.transform(utf8.decoder).join();
