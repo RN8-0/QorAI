@@ -30,7 +30,6 @@ mixin GeminiCacheNotifierMixin<T> on StateNotifier<AsyncValue<T?>> {
   }
 }
 
-
 // ════════════════════════════════════════════════════
 // ─── AI REVIEW SUMMARY CACHE ───
 // ════════════════════════════════════════════════════
@@ -50,15 +49,20 @@ class AIReviewResult {
   });
 }
 
-final aiReviewCacheProvider = StateNotifierProvider.family<
-    _AIReviewNotifier, AsyncValue<AIReviewResult?>, String>((ref, productId) {
-  return _AIReviewNotifier(ref, productId);
-});
+final aiReviewCacheProvider =
+    StateNotifierProvider.family<
+      _AIReviewNotifier,
+      AsyncValue<AIReviewResult?>,
+      String
+    >((ref, productId) {
+      return _AIReviewNotifier(ref, productId);
+    });
 
 class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
   final Ref _ref;
   final String _productId;
-  _AIReviewNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+  _AIReviewNotifier(this._ref, this._productId)
+    : super(const AsyncValue.data(null));
 
   Future<void> startAnalysis(String productName, String language) async {
     if (state is AsyncLoading) return;
@@ -84,18 +88,34 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
         try {
           final start = response.indexOf('{');
           final end = response.lastIndexOf('}');
-          if (start == -1 || end == -1 || end <= start) throw const FormatException('No JSON');
-          final data = Map<String, dynamic>.from(jsonDecode(response.substring(start, end + 1)) as Map);
-          state = AsyncValue.data(AIReviewResult(
-            summary: data['summary']?.toString() ?? '',
-            satisfaction: data['satisfaction'] is num
-                ? (data['satisfaction'] as num).toInt().clamp(0, 100)
-                : int.tryParse(data['satisfaction']?.toString() ?? '') ?? 0,
-            praised: (data['praised'] is List) ? (data['praised'] as List).map((e) => e.toString()).toList() : [],
-            criticized: (data['criticized'] is List) ? (data['criticized'] as List).map((e) => e.toString()).toList() : [],
-          ));
+          if (start == -1 || end == -1 || end <= start)
+            throw const FormatException('No JSON');
+          final data = Map<String, dynamic>.from(
+            jsonDecode(response.substring(start, end + 1)) as Map,
+          );
+          state = AsyncValue.data(
+            AIReviewResult(
+              summary: data['summary']?.toString() ?? '',
+              satisfaction: data['satisfaction'] is num
+                  ? (data['satisfaction'] as num).toInt().clamp(0, 100)
+                  : int.tryParse(data['satisfaction']?.toString() ?? '') ?? 0,
+              praised: (data['praised'] is List)
+                  ? (data['praised'] as List).map((e) => e.toString()).toList()
+                  : [],
+              criticized: (data['criticized'] is List)
+                  ? (data['criticized'] as List)
+                        .map((e) => e.toString())
+                        .toList()
+                  : [],
+            ),
+          );
         } catch (_) {
-          state = const AsyncValue.data(AIReviewResult(summary: 'Analysis failed. Please try again.', failed: true));
+          state = const AsyncValue.data(
+            AIReviewResult(
+              summary: 'Analysis failed. Please try again.',
+              failed: true,
+            ),
+          );
         }
       } else {
         state = const AsyncValue.data(AIReviewResult(failed: true));
@@ -109,19 +129,32 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 
   static String _getLanguageName(String code) {
     switch (code) {
-      case 'tr': return 'Turkish';
-      case 'de': return 'German';
-      case 'fr': return 'French';
-      case 'es': return 'Spanish';
-      case 'pt': return 'Portuguese';
-      case 'it': return 'Italian';
-      case 'ja': return 'Japanese';
-      case 'ko': return 'Korean';
-      case 'zh': return 'Chinese';
-      case 'ru': return 'Russian';
-      case 'ar': return 'Arabic';
-      case 'hi': return 'Hindi';
-      default: return 'English';
+      case 'tr':
+        return 'Turkish';
+      case 'de':
+        return 'German';
+      case 'fr':
+        return 'French';
+      case 'es':
+        return 'Spanish';
+      case 'pt':
+        return 'Portuguese';
+      case 'it':
+        return 'Italian';
+      case 'ja':
+        return 'Japanese';
+      case 'ko':
+        return 'Korean';
+      case 'zh':
+        return 'Chinese';
+      case 'ru':
+        return 'Russian';
+      case 'ar':
+        return 'Arabic';
+      case 'hi':
+        return 'Hindi';
+      default:
+        return 'English';
     }
   }
 }
@@ -149,15 +182,21 @@ class ExpertScoresResult {
   const ExpertScoresResult({this.scores = const [], this.failed = false});
 }
 
-final expertScoresCacheProvider = StateNotifierProvider.family<
-    _ExpertScoresNotifier, AsyncValue<ExpertScoresResult?>, String>((ref, productId) {
-  return _ExpertScoresNotifier(ref, productId);
-});
+final expertScoresCacheProvider =
+    StateNotifierProvider.family<
+      _ExpertScoresNotifier,
+      AsyncValue<ExpertScoresResult?>,
+      String
+    >((ref, productId) {
+      return _ExpertScoresNotifier(ref, productId);
+    });
 
-class _ExpertScoresNotifier extends StateNotifier<AsyncValue<ExpertScoresResult?>> {
+class _ExpertScoresNotifier
+    extends StateNotifier<AsyncValue<ExpertScoresResult?>> {
   final Ref _ref;
   final String _productId;
-  _ExpertScoresNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+  _ExpertScoresNotifier(this._ref, this._productId)
+    : super(const AsyncValue.data(null));
 
   Future<void> fetchScores(String productName, String category) async {
     if (state is AsyncLoading) return;
@@ -182,15 +221,19 @@ class _ExpertScoresNotifier extends StateNotifier<AsyncValue<ExpertScoresResult?
           final cleaned = _cleanJsonString(response);
           final data = _decodeJsonMap(cleaned);
           if (data != null && data['expertScores'] is List) {
-            final entries = (data['expertScores'] as List).map((e) {
-              if (e is! Map) return null;
-              return ExpertScoreEntry(
-                source: e['source']?.toString() ?? '',
-                score: _safeInt(e['score']),
-                maxScore: _safeInt(e['maxScore'], 100),
-                verdict: e['verdict']?.toString() ?? '',
-              );
-            }).whereType<ExpertScoreEntry>().where((e) => e.source.isNotEmpty && e.score > 0).toList();
+            final entries = (data['expertScores'] as List)
+                .map((e) {
+                  if (e is! Map) return null;
+                  return ExpertScoreEntry(
+                    source: e['source']?.toString() ?? '',
+                    score: _safeInt(e['score']),
+                    maxScore: _safeInt(e['maxScore'], 100),
+                    verdict: e['verdict']?.toString() ?? '',
+                  );
+                })
+                .whereType<ExpertScoreEntry>()
+                .where((e) => e.source.isNotEmpty && e.score > 0)
+                .toList();
             state = AsyncValue.data(ExpertScoresResult(scores: entries));
           } else {
             state = const AsyncValue.data(ExpertScoresResult(failed: true));
@@ -286,19 +329,36 @@ class DeepAnalysisResult {
     this.verdict = '',
     this.rawFallback,
   });
+
+  bool get hasUsableContent =>
+      rawFallback == null &&
+      (overallScore > 0 ||
+          strengths.isNotEmpty ||
+          weaknesses.isNotEmpty ||
+          pros.isNotEmpty ||
+          cons.isNotEmpty ||
+          verdict.trim().isNotEmpty);
 }
 
 class AnalysisAttribute {
   final String name;
   final int score;
   final String detail;
-  const AnalysisAttribute({required this.name, required this.score, required this.detail});
+  const AnalysisAttribute({
+    required this.name,
+    required this.score,
+    required this.detail,
+  });
 }
 
 class AlternativesResult {
   final List<AlternativeProduct> alternatives;
   final String? rawFallback;
   const AlternativesResult({this.alternatives = const [], this.rawFallback});
+
+  bool get hasUsableContent =>
+      rawFallback == null &&
+      alternatives.any((alt) => alt.name.trim().isNotEmpty);
 }
 
 class AlternativeProduct {
@@ -337,6 +397,16 @@ class AdvisorResult {
     this.ratingExplanation = '',
     this.rawFallback,
   });
+
+  bool get hasUsableContent =>
+      rawFallback == null &&
+      (whoShouldBuy.trim().isNotEmpty ||
+          whoShouldAvoid.trim().isNotEmpty ||
+          reasonsToBuy.isNotEmpty ||
+          reasonsToSkip.isNotEmpty ||
+          proTips.isNotEmpty ||
+          valueRating > 0 ||
+          ratingExplanation.trim().isNotEmpty);
 }
 
 class PredictionResult {
@@ -356,29 +426,50 @@ class PredictionResult {
     this.reasoning = '',
     this.rawFallback,
   });
+
+  bool get hasUsableContent =>
+      rawFallback == null &&
+      (trendPercentage > 0 ||
+          bestTimeToBuy.trim().isNotEmpty ||
+          expectedDrop.trim().isNotEmpty ||
+          reasoning.trim().isNotEmpty);
 }
 
 /// Caches AI deep analysis results per product ID so they survive navigation.
-final deepAnalysisCacheProvider = StateNotifierProvider.family<
-    _DeepAnalysisNotifier, AsyncValue<DeepAnalysisResult?>, String>((ref, productId) {
-  return _DeepAnalysisNotifier(ref, productId);
-});
+final deepAnalysisCacheProvider =
+    StateNotifierProvider.family<
+      _DeepAnalysisNotifier,
+      AsyncValue<DeepAnalysisResult?>,
+      String
+    >((ref, productId) {
+      return _DeepAnalysisNotifier(ref, productId);
+    });
 
-class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<DeepAnalysisResult?>> {
+class _DeepAnalysisNotifier
+    extends StateNotifier<AsyncValue<DeepAnalysisResult?>> {
   final Ref _ref;
   final String _productId;
 
-  _DeepAnalysisNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+  _DeepAnalysisNotifier(this._ref, this._productId)
+    : super(const AsyncValue.data(null));
 
-  Future<void> startAnalysis(String productName, String language, {String category = '', String? brand, int? year}) async {
+  Future<void> startAnalysis(
+    String productName,
+    String language, {
+    String category = '',
+    String? brand,
+    int? year,
+  }) async {
     if (state is AsyncLoading) return;
-    if (state.valueOrNull != null) return;
+    if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
       final brandInfo = (brand != null && brand.isNotEmpty) ? ' by $brand' : '';
-      final yearInfo = (year != null && year > 0) ? ', released around $year' : '';
+      final yearInfo = (year != null && year > 0)
+          ? ', released around $year'
+          : '';
       final result = await gemini.jsonFreeTextQuery(
         'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
         'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
@@ -400,7 +491,11 @@ class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<DeepAnalysisResult?
       );
       state = AsyncValue.data(_parseDeepAnalysis(result));
     } catch (e) {
-      state = AsyncValue.data(DeepAnalysisResult(rawFallback: 'Unable to generate analysis at this time.'));
+      state = AsyncValue.data(
+        DeepAnalysisResult(
+          rawFallback: 'Unable to generate analysis at this time.',
+        ),
+      );
     }
   }
 
@@ -409,22 +504,32 @@ class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<DeepAnalysisResult?
       final json = _decodeJsonMap(raw);
       return DeepAnalysisResult(
         overallScore: _safeInt(json['overallScore']),
-        strengths: (json['strengths'] as List? ?? []).map((s) => AnalysisAttribute(
-          name: s['name']?.toString() ?? '',
-          score: _safeInt(s['score']),
-          detail: s['detail']?.toString() ?? '',
-        )).toList(),
-        weaknesses: (json['weaknesses'] as List? ?? []).map((w) => AnalysisAttribute(
-          name: w['name']?.toString() ?? '',
-          score: _safeInt(w['score']),
-          detail: w['detail']?.toString() ?? '',
-        )).toList(),
+        strengths: (json['strengths'] as List? ?? [])
+            .map(
+              (s) => AnalysisAttribute(
+                name: s['name']?.toString() ?? '',
+                score: _safeInt(s['score']),
+                detail: s['detail']?.toString() ?? '',
+              ),
+            )
+            .toList(),
+        weaknesses: (json['weaknesses'] as List? ?? [])
+            .map(
+              (w) => AnalysisAttribute(
+                name: w['name']?.toString() ?? '',
+                score: _safeInt(w['score']),
+                detail: w['detail']?.toString() ?? '',
+              ),
+            )
+            .toList(),
         pros: (json['pros'] as List? ?? []).map((p) => p.toString()).toList(),
         cons: (json['cons'] as List? ?? []).map((c) => c.toString()).toList(),
         verdict: json['verdict']?.toString() ?? '',
       );
     } catch (e, st) {
-      debugPrint('[DeepAnalysis] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
+      debugPrint(
+        '[DeepAnalysis] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}',
+      );
       return DeepAnalysisResult(rawFallback: raw);
     }
   }
@@ -439,19 +544,29 @@ class _DeepAnalysisNotifier extends StateNotifier<AsyncValue<DeepAnalysisResult?
 // ════════════════════════════════════════════════════
 
 /// Alternatives cache — survives tab switches
-final alternativesCacheProvider = StateNotifierProvider.family<
-    _AlternativesCacheNotifier, AsyncValue<AlternativesResult?>, String>((ref, productId) {
-  return _AlternativesCacheNotifier(ref, productId);
-});
+final alternativesCacheProvider =
+    StateNotifierProvider.family<
+      _AlternativesCacheNotifier,
+      AsyncValue<AlternativesResult?>,
+      String
+    >((ref, productId) {
+      return _AlternativesCacheNotifier(ref, productId);
+    });
 
-class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<AlternativesResult?>> {
+class _AlternativesCacheNotifier
+    extends StateNotifier<AsyncValue<AlternativesResult?>> {
   final Ref _ref;
   final String _productId;
-  _AlternativesCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+  _AlternativesCacheNotifier(this._ref, this._productId)
+    : super(const AsyncValue.data(null));
 
-  Future<void> startQuery(String productName, String category, String language) async {
+  Future<void> startQuery(
+    String productName,
+    String category,
+    String language,
+  ) async {
     if (state is AsyncLoading) return;
-    if (state.valueOrNull != null) return;
+    if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
       final gemini = _ref.read(geminiServiceProvider);
@@ -476,24 +591,34 @@ class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<AlternativesRe
       );
       state = AsyncValue.data(_parseAlternatives(result));
     } catch (e) {
-      state = AsyncValue.data(AlternativesResult(rawFallback: 'Unable to find alternatives at this time.'));
+      state = AsyncValue.data(
+        AlternativesResult(
+          rawFallback: 'Unable to find alternatives at this time.',
+        ),
+      );
     }
   }
 
   AlternativesResult _parseAlternatives(String raw) {
     try {
       final json = _decodeJsonMap(raw);
-      final alts = (json['alternatives'] as List? ?? []).map((a) => AlternativeProduct(
-        name: a['name']?.toString() ?? '',
-        advantage: a['advantage']?.toString() ?? '',
-        tradeoff: a['tradeoff']?.toString() ?? '',
-        priceComparison: a['priceComparison']?.toString() ?? '',
-        bestFor: a['bestFor']?.toString() ?? '',
-        whyBetter: a['whyBetter']?.toString() ?? '',
-      )).toList();
+      final alts = (json['alternatives'] as List? ?? [])
+          .map(
+            (a) => AlternativeProduct(
+              name: a['name']?.toString() ?? '',
+              advantage: a['advantage']?.toString() ?? '',
+              tradeoff: a['tradeoff']?.toString() ?? '',
+              priceComparison: a['priceComparison']?.toString() ?? '',
+              bestFor: a['bestFor']?.toString() ?? '',
+              whyBetter: a['whyBetter']?.toString() ?? '',
+            ),
+          )
+          .toList();
       return AlternativesResult(alternatives: alts);
     } catch (e, st) {
-      debugPrint('[Alternatives] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
+      debugPrint(
+        '[Alternatives] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}',
+      );
       return AlternativesResult(rawFallback: raw);
     }
   }
@@ -502,19 +627,29 @@ class _AlternativesCacheNotifier extends StateNotifier<AsyncValue<AlternativesRe
 }
 
 /// AI Advisor cache — survives tab switches
-final advisorCacheProvider = StateNotifierProvider.family<
-    _AdvisorCacheNotifier, AsyncValue<AdvisorResult?>, String>((ref, productId) {
-  return _AdvisorCacheNotifier(ref, productId);
-});
+final advisorCacheProvider =
+    StateNotifierProvider.family<
+      _AdvisorCacheNotifier,
+      AsyncValue<AdvisorResult?>,
+      String
+    >((ref, productId) {
+      return _AdvisorCacheNotifier(ref, productId);
+    });
 
 class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
   final Ref _ref;
   final String _productId;
-  _AdvisorCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+  _AdvisorCacheNotifier(this._ref, this._productId)
+    : super(const AsyncValue.data(null));
 
-  Future<void> startQuery(String productName, String category, String price, String language) async {
+  Future<void> startQuery(
+    String productName,
+    String category,
+    String price,
+    String language,
+  ) async {
     if (state is AsyncLoading) return;
-    if (state.valueOrNull != null) return;
+    if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
       final gemini = _ref.read(geminiServiceProvider);
@@ -536,7 +671,9 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
       );
       state = AsyncValue.data(_parseAdvisor(result));
     } catch (e) {
-      state = AsyncValue.data(AdvisorResult(rawFallback: 'Unable to generate advice.'));
+      state = AsyncValue.data(
+        AdvisorResult(rawFallback: 'Unable to generate advice.'),
+      );
     }
   }
 
@@ -546,14 +683,22 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
       return AdvisorResult(
         whoShouldBuy: json['whoShouldBuy']?.toString() ?? '',
         whoShouldAvoid: json['whoShouldAvoid']?.toString() ?? '',
-        reasonsToBuy: (json['reasonsToBuy'] as List? ?? []).map((r) => r.toString()).toList(),
-        reasonsToSkip: (json['reasonsToSkip'] as List? ?? []).map((r) => r.toString()).toList(),
-        proTips: (json['proTips'] as List? ?? []).map((t) => t.toString()).toList(),
+        reasonsToBuy: (json['reasonsToBuy'] as List? ?? [])
+            .map((r) => r.toString())
+            .toList(),
+        reasonsToSkip: (json['reasonsToSkip'] as List? ?? [])
+            .map((r) => r.toString())
+            .toList(),
+        proTips: (json['proTips'] as List? ?? [])
+            .map((t) => t.toString())
+            .toList(),
         valueRating: _safeDouble(json['valueRating']),
         ratingExplanation: json['ratingExplanation']?.toString() ?? '',
       );
     } catch (e, st) {
-      debugPrint('[Advisor] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
+      debugPrint(
+        '[Advisor] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}',
+      );
       return AdvisorResult(rawFallback: raw);
     }
   }
@@ -562,19 +707,30 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
 }
 
 /// Price Prediction cache — survives tab switches
-final predictionCacheProvider = StateNotifierProvider.family<
-    _PredictionCacheNotifier, AsyncValue<PredictionResult?>, String>((ref, productId) {
-  return _PredictionCacheNotifier(ref, productId);
-});
+final predictionCacheProvider =
+    StateNotifierProvider.family<
+      _PredictionCacheNotifier,
+      AsyncValue<PredictionResult?>,
+      String
+    >((ref, productId) {
+      return _PredictionCacheNotifier(ref, productId);
+    });
 
-class _PredictionCacheNotifier extends StateNotifier<AsyncValue<PredictionResult?>> {
+class _PredictionCacheNotifier
+    extends StateNotifier<AsyncValue<PredictionResult?>> {
   final Ref _ref;
   final String _productId;
-  _PredictionCacheNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+  _PredictionCacheNotifier(this._ref, this._productId)
+    : super(const AsyncValue.data(null));
 
-  Future<void> startQuery(String productName, String category, String price, String language) async {
+  Future<void> startQuery(
+    String productName,
+    String category,
+    String price,
+    String language,
+  ) async {
     if (state is AsyncLoading) return;
-    if (state.valueOrNull != null) return;
+    if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
     try {
       final gemini = _ref.read(geminiServiceProvider);
@@ -596,7 +752,9 @@ class _PredictionCacheNotifier extends StateNotifier<AsyncValue<PredictionResult
       );
       state = AsyncValue.data(_parsePrediction(result));
     } catch (e) {
-      state = AsyncValue.data(PredictionResult(rawFallback: 'Unable to predict prices.'));
+      state = AsyncValue.data(
+        PredictionResult(rawFallback: 'Unable to predict prices.'),
+      );
     }
   }
 
@@ -612,7 +770,9 @@ class _PredictionCacheNotifier extends StateNotifier<AsyncValue<PredictionResult
         reasoning: json['reasoning']?.toString() ?? '',
       );
     } catch (e, st) {
-      debugPrint('[Prediction] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}');
+      debugPrint(
+        '[Prediction] Parse error: $e\n$st\nRaw(200): ${raw.substring(0, raw.length < 200 ? raw.length : 200)}',
+      );
       return PredictionResult(rawFallback: raw);
     }
   }
@@ -639,19 +799,23 @@ class GeminiMatchResult {
   });
 }
 
-final geminiMatchScoreProvider = StateNotifierProvider.family<
-    _GeminiMatchScoreNotifier, AsyncValue<GeminiMatchResult?>, String>((ref, productId) {
-  return _GeminiMatchScoreNotifier(ref, productId);
-});
+final geminiMatchScoreProvider =
+    StateNotifierProvider.family<
+      _GeminiMatchScoreNotifier,
+      AsyncValue<GeminiMatchResult?>,
+      String
+    >((ref, productId) {
+      return _GeminiMatchScoreNotifier(ref, productId);
+    });
 
-class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
+class _GeminiMatchScoreNotifier
+    extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
   final Ref _ref;
   final String _productId;
-  _GeminiMatchScoreNotifier(this._ref, this._productId) : super(const AsyncValue.data(null));
+  _GeminiMatchScoreNotifier(this._ref, this._productId)
+    : super(const AsyncValue.data(null));
 
-  Future<void> fetchMatchScore({
-    required ProductEntity product,
-  }) async {
+  Future<void> fetchMatchScore({required ProductEntity product}) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
 
@@ -713,7 +877,8 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
       };
 
       final langCode = user.language.isNotEmpty ? user.language : 'en';
-      final prompt = 'You are a tech product recommendation expert. '
+      final prompt =
+          'You are a tech product recommendation expert. '
           'Analyze how well this product matches this specific user\'s needs and preferences.\n\n'
           'User profile:\n${jsonEncode(profileJson)}\n\n'
           'Product:\n${jsonEncode(productJson)}\n\n'
@@ -738,10 +903,14 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
 
       final score = _safeInt(map['matchScore'], 50).clamp(0, 100);
       final reason = (map['reason'] as String?) ?? '';
-      final factors = (map['topMatchFactors'] as List?)
-          ?.map((e) => e.toString()).toList() ?? [];
-      final missing = (map['missingFactors'] as List?)
-          ?.map((e) => e.toString()).toList() ?? [];
+      final factors =
+          (map['topMatchFactors'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+      final missing =
+          (map['missingFactors'] as List?)?.map((e) => e.toString()).toList() ??
+          [];
 
       final matchResult = GeminiMatchResult(
         matchScore: score,
@@ -756,7 +925,9 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
 
       state = AsyncValue.data(matchResult);
 
-      debugPrint('[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason');
+      debugPrint(
+        '[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason',
+      );
     } catch (e, st) {
       debugPrint('[GeminiMatch] Gemini failed, using local fallback: $e\n$st');
       // Fallback to local algorithm
@@ -774,13 +945,19 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
     final algo = _ref.read(profileAlgorithmServiceProvider);
     final behaviorAsync = _ref.read(behaviorSignalsProvider);
     final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
-    final fs = algo.calculateTotalFitScore(user: user, product: product, behavior: behavior);
+    final fs = algo.calculateTotalFitScore(
+      user: user,
+      product: product,
+      behavior: behavior,
+    );
     if (fs > 0) {
-      state = AsyncValue.data(GeminiMatchResult(
-        matchScore: fs.toInt(),
-        reason: '',
-        isFromGemini: false,
-      ));
+      state = AsyncValue.data(
+        GeminiMatchResult(
+          matchScore: fs.toInt(),
+          reason: '',
+          isFromGemini: false,
+        ),
+      );
     } else {
       state = const AsyncValue.data(null);
     }
@@ -789,7 +966,8 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
   Future<GeminiMatchResult?> _checkFirestoreCache(String uid) async {
     try {
       final userRecord = await pb.collection('users').getOne(uid);
-      final matchCache = userRecord.data['match_cache'] as Map<String, dynamic>? ?? {};
+      final matchCache =
+          userRecord.data['match_cache'] as Map<String, dynamic>? ?? {};
       final cached = matchCache[_productId] as Map<String, dynamic>?;
       if (cached == null) return null;
       final ts = DateTime.tryParse(cached['timestamp']?.toString() ?? '');
@@ -799,10 +977,16 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
       return GeminiMatchResult(
         matchScore: _safeInt(cached['matchScore'], 0),
         reason: (cached['reason'] as String?) ?? '',
-        topMatchFactors: (cached['topMatchFactors'] as List?)
-            ?.map((e) => e.toString()).toList() ?? [],
-        missingFactors: (cached['missingFactors'] as List?)
-            ?.map((e) => e.toString()).toList() ?? [],
+        topMatchFactors:
+            (cached['topMatchFactors'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        missingFactors:
+            (cached['missingFactors'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
         isFromGemini: true,
       );
     } catch (_) {
@@ -810,11 +994,15 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
     }
   }
 
-  Future<void> _saveToFirestoreCache(String uid, GeminiMatchResult result) async {
+  Future<void> _saveToFirestoreCache(
+    String uid,
+    GeminiMatchResult result,
+  ) async {
     try {
       final userRecord = await pb.collection('users').getOne(uid);
       final matchCache = Map<String, dynamic>.from(
-          userRecord.data['match_cache'] as Map? ?? {});
+        userRecord.data['match_cache'] as Map? ?? {},
+      );
       matchCache[_productId] = {
         'matchScore': result.matchScore,
         'reason': result.reason,
@@ -822,9 +1010,9 @@ class _GeminiMatchScoreNotifier extends StateNotifier<AsyncValue<GeminiMatchResu
         'missingFactors': result.missingFactors,
         'timestamp': DateTime.now().toUtc().toIso8601String(),
       };
-      await pb.collection('users').update(uid, body: {
-        'match_cache': matchCache,
-      });
+      await pb
+          .collection('users')
+          .update(uid, body: {'match_cache': matchCache});
     } catch (_) {}
   }
 
@@ -839,10 +1027,9 @@ Future<Result<void>> addToCollection(WidgetRef ref, String productId) async {
     return const Failure(AuthException(message: 'You need to be signed in'));
   }
   try {
-    await ref.read(pbDataSourceProvider).addToUserOwnedProducts(
-          userId: user.uid,
-          productId: productId,
-        );
+    await ref
+        .read(pbDataSourceProvider)
+        .addToUserOwnedProducts(userId: user.uid, productId: productId);
     return const Success(null);
   } catch (e) {
     return Failure(ServerException(message: 'Could not add to collection: $e'));
@@ -865,7 +1052,9 @@ Future<Result<void>> saveLinkAnalysis(
     return const Failure(AuthException(message: 'You need to be signed in'));
   }
   try {
-    await ref.read(pbDataSourceProvider).saveLinkAnalysis(
+    await ref
+        .read(pbDataSourceProvider)
+        .saveLinkAnalysis(
           userId: user.uid,
           url: url,
           productName: productName,
@@ -876,8 +1065,6 @@ Future<Result<void>> saveLinkAnalysis(
         );
     return const Success(null);
   } catch (e) {
-    return Failure(
-        ServerException(message: 'Could not save analysis: $e'));
+    return Failure(ServerException(message: 'Could not save analysis: $e'));
   }
 }
-
