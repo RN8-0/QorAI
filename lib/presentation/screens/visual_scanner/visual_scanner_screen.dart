@@ -589,8 +589,10 @@ class _ScanLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final y = size.height * progress;
+    const m = 80.0;
+    const l = 30.0;
 
-    // Scan line
+    // Scan line (constrained to bracket area)
     final linePaint = Paint()
       ..shader = LinearGradient(
         colors: [
@@ -598,8 +600,8 @@ class _ScanLinePainter extends CustomPainter {
           color.withValues(alpha: 0.8),
           color.withValues(alpha: 0.0),
         ],
-      ).createShader(Rect.fromLTWH(0, y - 1, size.width, 2));
-    canvas.drawRect(Rect.fromLTWH(0, y - 1, size.width, 2), linePaint);
+      ).createShader(Rect.fromLTWH(m, y - 1, size.width - 2 * m, 2));
+    canvas.drawRect(Rect.fromLTWH(m, y - 1, size.width - 2 * m, 2), linePaint);
 
     // Glow area above scan line
     final glowPaint = Paint()
@@ -610,8 +612,8 @@ class _ScanLinePainter extends CustomPainter {
           color.withValues(alpha: 0.0),
           color.withValues(alpha: 0.08),
         ],
-      ).createShader(Rect.fromLTWH(0, y - 60, size.width, 60));
-    canvas.drawRect(Rect.fromLTWH(0, y - 60, size.width, 60), glowPaint);
+      ).createShader(Rect.fromLTWH(m, y - 60, size.width - 2 * m, 60));
+    canvas.drawRect(Rect.fromLTWH(m, y - 60, size.width - 2 * m, 60), glowPaint);
 
     // Corner brackets
     final cornerPaint = Paint()
@@ -619,9 +621,6 @@ class _ScanLinePainter extends CustomPainter {
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-
-    const m = 40.0;
-    const l = 30.0;
 
     // Top-left
     canvas.drawLine(Offset(m, m), Offset(m + l, m), cornerPaint);

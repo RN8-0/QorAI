@@ -274,13 +274,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color(0xFF0A1628),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.account_circle_rounded,
-              color: Color(0xFF6366F1),
+              color: AppTheme.brandBlue,
               size: 24,
             ),
             const SizedBox(width: 8),
@@ -322,7 +322,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
+              backgroundColor: AppTheme.brandBlue,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

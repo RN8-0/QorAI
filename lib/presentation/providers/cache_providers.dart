@@ -5,15 +5,34 @@ part of 'providers.dart';
 // ════════════════════════════════════════════════════
 
 /// Shared mixin for Gemini AI cache notifiers.
-/// Provides: loading guard, error handling, reset, gemini access.
+/// Provides: loading guard, error handling, reset, gemini/deepseek access, disk cache.
 mixin GeminiCacheNotifierMixin<T> on StateNotifier<AsyncValue<T?>> {
   Ref get cacheRef;
 
   GeminiService get gemini => cacheRef.read(geminiServiceProvider);
   DeepSeekService get deepseek => cacheRef.read(deepSeekServiceProvider);
+  CacheService get _diskCache => cacheRef.read(cacheServiceProvider);
 
   /// Resets cached state to null.
   void reset() => state = const AsyncValue.data(null);
+
+  /// Try to load a raw JSON string from disk cache.
+  Future<String?> diskGet(String key) async {
+    try {
+      final cached = await _diskCache.get<String>(key);
+      return cached;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Save a raw JSON string to disk cache (24h TTL).
+  Future<void> diskSet(String key, String value) async {
+    try {
+      await _diskCache.set(key, value,
+          duration: const Duration(hours: 24));
+    } catch (_) {}
+  }
 
   /// Runs query with loading guard: skips if already loading or has cached data.
   Future<void> guardedQuery(
@@ -65,10 +84,26 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
   _AIReviewNotifier(this._ref, this._productId)
     : super(const AsyncValue.data(null));
 
+  CacheService get _cache => _ref.read(cacheServiceProvider);
+
   Future<void> startAnalysis(String productName, String language) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
     state = const AsyncValue.loading();
+
+    // Check disk cache first (24h TTL)
+    final cacheKey = 'ai_review_$_productId';
+    try {
+      final cached = await _cache.get<String>(cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final parsed = _parseReviewResponse(cached);
+        if (parsed != null && !parsed.failed) {
+          state = AsyncValue.data(parsed);
+          return;
+        }
+      }
+    } catch (_) {}
+
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final langName = _getLanguageName(language);
@@ -85,44 +120,42 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
         '"criticized": Array of 2-3 specific issues users consistently criticize. Write in $langName.',
         language: language,
       );
+
+      // Save raw response to disk cache
       if (response.isNotEmpty) {
-        try {
-          final start = response.indexOf('{');
-          final end = response.lastIndexOf('}');
-          if (start == -1 || end == -1 || end <= start)
-            throw const FormatException('No JSON');
-          final data = Map<String, dynamic>.from(
-            jsonDecode(response.substring(start, end + 1)) as Map,
-          );
-          state = AsyncValue.data(
-            AIReviewResult(
-              summary: data['summary']?.toString() ?? '',
-              satisfaction: data['satisfaction'] is num
-                  ? (data['satisfaction'] as num).toInt().clamp(0, 100)
-                  : int.tryParse(data['satisfaction']?.toString() ?? '') ?? 0,
-              praised: (data['praised'] is List)
-                  ? (data['praised'] as List).map((e) => e.toString()).toList()
-                  : [],
-              criticized: (data['criticized'] is List)
-                  ? (data['criticized'] as List)
-                        .map((e) => e.toString())
-                        .toList()
-                  : [],
-            ),
-          );
-        } catch (_) {
-          state = const AsyncValue.data(
-            AIReviewResult(
-              summary: 'Analysis failed. Please try again.',
-              failed: true,
-            ),
-          );
-        }
-      } else {
-        state = const AsyncValue.data(AIReviewResult(failed: true));
+        _cache.set(cacheKey, response, duration: const Duration(hours: 24)).catchError((_) {});
       }
+
+      final parsed = _parseReviewResponse(response);
+      state = AsyncValue.data(parsed ?? const AIReviewResult(failed: true));
     } catch (e) {
       state = const AsyncValue.data(AIReviewResult(failed: true));
+    }
+  }
+
+  AIReviewResult? _parseReviewResponse(String response) {
+    if (response.isEmpty) return null;
+    try {
+      final start = response.indexOf('{');
+      final end = response.lastIndexOf('}');
+      if (start == -1 || end == -1 || end <= start) return null;
+      final data = Map<String, dynamic>.from(
+        jsonDecode(response.substring(start, end + 1)) as Map,
+      );
+      return AIReviewResult(
+        summary: data['summary']?.toString() ?? '',
+        satisfaction: data['satisfaction'] is num
+            ? (data['satisfaction'] as num).toInt().clamp(0, 100)
+            : int.tryParse(data['satisfaction']?.toString() ?? '') ?? 0,
+        praised: (data['praised'] is List)
+            ? (data['praised'] as List).map((e) => e.toString()).toList()
+            : [],
+        criticized: (data['criticized'] is List)
+            ? (data['criticized'] as List).map((e) => e.toString()).toList()
+            : [],
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -203,6 +236,21 @@ class _ExpertScoresNotifier
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
     state = const AsyncValue.loading();
+
+    // Disk cache check
+    final cacheKey = 'expert_scores_$_productId';
+    final cache = _ref.read(cacheServiceProvider);
+    try {
+      final cached = await cache.get<String>(cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final parsed = _parseScoresResponse(cached);
+        if (parsed != null && !parsed.failed) {
+          state = AsyncValue.data(parsed);
+          return;
+        }
+      }
+    } catch (_) {}
+
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final response = await deepseek.jsonFreeTextQuery(
@@ -218,35 +266,40 @@ class _ExpertScoresNotifier
         'Include 3-4 sources maximum. If product is too new or niche, return empty array.',
       );
       if (response.isNotEmpty) {
-        try {
-          final cleaned = _cleanJsonString(response);
-          final data = _decodeJsonMap(cleaned);
-          if (data != null && data['expertScores'] is List) {
-            final entries = (data['expertScores'] as List)
-                .map((e) {
-                  if (e is! Map) return null;
-                  return ExpertScoreEntry(
-                    source: e['source']?.toString() ?? '',
-                    score: _safeInt(e['score']),
-                    maxScore: _safeInt(e['maxScore'], 100),
-                    verdict: e['verdict']?.toString() ?? '',
-                  );
-                })
-                .whereType<ExpertScoreEntry>()
-                .where((e) => e.source.isNotEmpty && e.score > 0)
-                .toList();
-            state = AsyncValue.data(ExpertScoresResult(scores: entries));
-          } else {
-            state = const AsyncValue.data(ExpertScoresResult(failed: true));
-          }
-        } catch (_) {
-          state = const AsyncValue.data(ExpertScoresResult(failed: true));
-        }
+        cache.set(cacheKey, response, duration: const Duration(hours: 24)).catchError((_) {});
+        final parsed = _parseScoresResponse(response);
+        state = AsyncValue.data(parsed ?? const ExpertScoresResult(failed: true));
       } else {
         state = const AsyncValue.data(ExpertScoresResult(failed: true));
       }
     } catch (_) {
       state = const AsyncValue.data(ExpertScoresResult(failed: true));
+    }
+  }
+
+  ExpertScoresResult? _parseScoresResponse(String response) {
+    try {
+      final cleaned = _cleanJsonString(response);
+      final data = _decodeJsonMap(cleaned);
+      if (data['expertScores'] is List) {
+        final entries = (data['expertScores'] as List)
+            .map((e) {
+              if (e is! Map) return null;
+              return ExpertScoreEntry(
+                source: e['source']?.toString() ?? '',
+                score: _safeInt(e['score']),
+                maxScore: _safeInt(e['maxScore'], 100),
+                verdict: e['verdict']?.toString() ?? '',
+              );
+            })
+            .whereType<ExpertScoreEntry>()
+            .where((e) => e.source.isNotEmpty && e.score > 0)
+            .toList();
+        return ExpertScoresResult(scores: entries);
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 }
@@ -464,6 +517,21 @@ class _DeepAnalysisNotifier
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
+
+    // Disk cache check
+    final cacheKey = 'deep_analysis_$_productId';
+    final cache = _ref.read(cacheServiceProvider);
+    try {
+      final cached = await cache.get<String>(cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final parsed = _parseDeepAnalysis(cached);
+        if (parsed.hasUsableContent) {
+          state = AsyncValue.data(parsed);
+          return;
+        }
+      }
+    } catch (_) {}
+
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
@@ -490,6 +558,10 @@ class _DeepAnalysisNotifier
         '- Be honest and specific, not generic praise',
         language: language,
       );
+      // Save to disk cache
+      if (result.isNotEmpty) {
+        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+      }
       state = AsyncValue.data(_parseDeepAnalysis(result));
     } catch (e) {
       state = AsyncValue.data(
@@ -569,6 +641,21 @@ class _AlternativesCacheNotifier
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
+
+    // Disk cache check
+    final cacheKey = 'alternatives_$_productId';
+    final cache = _ref.read(cacheServiceProvider);
+    try {
+      final cached = await cache.get<String>(cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final parsed = _parseAlternatives(cached);
+        if (parsed.hasUsableContent) {
+          state = AsyncValue.data(parsed);
+          return;
+        }
+      }
+    } catch (_) {}
+
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
@@ -589,6 +676,9 @@ class _AlternativesCacheNotifier
         'Provide exactly 5 real alternative products. Be specific with actual product names.',
         language: language,
       );
+      if (result.isNotEmpty) {
+        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+      }
       state = AsyncValue.data(_parseAlternatives(result));
     } catch (e) {
       state = AsyncValue.data(
@@ -651,6 +741,21 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
+
+    // Disk cache check
+    final cacheKey = 'advisor_$_productId';
+    final cache = _ref.read(cacheServiceProvider);
+    try {
+      final cached = await cache.get<String>(cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final parsed = _parseAdvisor(cached);
+        if (parsed.hasUsableContent) {
+          state = AsyncValue.data(parsed);
+          return;
+        }
+      }
+    } catch (_) {}
+
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
@@ -668,6 +773,9 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
         'Be specific and honest. Reasons should be concise (max 15 words each).',
         language: language,
       );
+      if (result.isNotEmpty) {
+        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+      }
       state = AsyncValue.data(_parseAdvisor(result));
     } catch (e) {
       state = AsyncValue.data(
@@ -731,6 +839,21 @@ class _PredictionCacheNotifier
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
+
+    // Disk cache check
+    final cacheKey = 'prediction_$_productId';
+    final cache = _ref.read(cacheServiceProvider);
+    try {
+      final cached = await cache.get<String>(cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final parsed = _parsePrediction(cached);
+        if (parsed.hasUsableContent) {
+          state = AsyncValue.data(parsed);
+          return;
+        }
+      }
+    } catch (_) {}
+
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
@@ -748,6 +871,9 @@ class _PredictionCacheNotifier
         'trendPercentage is the expected price change amount in percent.',
         language: language,
       );
+      if (result.isNotEmpty) {
+        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+      }
       state = AsyncValue.data(_parsePrediction(result));
     } catch (e) {
       state = AsyncValue.data(

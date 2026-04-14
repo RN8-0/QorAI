@@ -225,9 +225,10 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
   }
 
   List<Map<String, String>> _buildTurns(String newMsg, dynamic user, {Map<String, dynamic>? pageContext}) {
+    // Keep last 5 messages to reduce token cost (~40% savings per call)
     final recent = state.messages
         .where((m) => m.role != PersistedMsgRole.system)
-        .take(10)
+        .take(5)
         .toList()
         .reversed
         .toList();

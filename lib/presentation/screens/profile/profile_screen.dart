@@ -207,9 +207,9 @@ class _ProfileBody extends ConsumerWidget {
                         shape: BoxShape.circle,
                         gradient: const LinearGradient(
                           colors: [
-                            Color(0xFF6366F1),
-                            Color(0xFFEC4899),
-                            Color(0xFF06B6D4),
+                            AppTheme.brandBlue,
+                            AppTheme.brandCyan,
+                            AppTheme.brandSkyBlue,
                           ],
                         ),
                       ),
@@ -229,7 +229,7 @@ class _ProfileBody extends ConsumerWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 28,
                                   fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF6366F1),
+                                  color: AppTheme.brandBlue,
                                 ),
                               )
                             : null,
@@ -266,8 +266,8 @@ class _ProfileBody extends ConsumerWidget {
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xFF6366F1),
-                                        Color(0xFFEC4899),
+                                        AppTheme.brandBlue,
+                                        AppTheme.brandCyan,
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
@@ -318,19 +318,19 @@ class _ProfileBody extends ConsumerWidget {
                     _StatPill(
                       value: '${user?.comparisonsCount ?? 0}',
                       label: context.l10n?.comparisons ?? 'Compares',
-                      color: const Color(0xFF6366F1),
+                      color: AppTheme.brandBlue,
                     ),
                     const SizedBox(width: 8),
                     _StatPill(
                       value: '${(user?.ownedProducts as List?)?.length ?? 0}',
                       label: context.l10n?.collection ?? 'Collection',
-                      color: const Color(0xFF06B6D4),
+                      color: AppTheme.brandSkyBlue,
                     ),
                     const SizedBox(width: 8),
                     _StatPill(
                       value: '${user?.affiliateClicks ?? 0}',
                       label: context.l10n?.clicks ?? 'Clicks',
-                      color: const Color(0xFFEC4899),
+                      color: AppTheme.brandCyan,
                     ),
                   ],
                 ),
@@ -351,9 +351,9 @@ class _ProfileBody extends ConsumerWidget {
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [
-                        Color(0xFF6366F1),
+                        AppTheme.brandBlue,
                         Color(0xFF8B5CF6),
-                        Color(0xFFEC4899),
+                        AppTheme.brandCyan,
                       ],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
@@ -361,7 +361,7 @@ class _ProfileBody extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                        color: AppTheme.brandBlue.withValues(alpha: 0.3),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                         spreadRadius: -4,
@@ -438,7 +438,7 @@ class _ProfileBody extends ConsumerWidget {
                   Expanded(
                     child: _QuickActionCard(
                       icon: Icons.history_rounded,
-                      color: const Color(0xFF6366F1),
+                      color: AppTheme.brandBlue,
                       title: context.l10n?.comparisonHistory ?? 'History',
                       onTap: () => context.push(AppRoutes.comparisons),
                     ),
@@ -447,7 +447,7 @@ class _ProfileBody extends ConsumerWidget {
                   Expanded(
                     child: _QuickActionCard(
                       icon: Icons.bar_chart_rounded,
-                      color: const Color(0xFFF59E0B),
+                      color: AppTheme.brandDeepBlue,
                       title: context.l10n?.behaviorReport ?? 'Behavior',
                       onTap: () => context.push(AppRoutes.behaviorReport),
                     ),
@@ -460,7 +460,7 @@ class _ProfileBody extends ConsumerWidget {
               _ContentSection(
                 title: context.l10n?.myCollectionTitle ?? 'My Collection',
                 icon: Icons.folder_open_rounded,
-                color: const Color(0xFF6366F1),
+                color: AppTheme.brandBlue,
                 onHeaderTap: () => context.push(AppRoutes.collection),
                 child: _ProductPreviewList(
                   products: (user?.ownedProducts as List?) ?? [],
@@ -489,7 +489,7 @@ class _ProfileBody extends ConsumerWidget {
               _ContentSection(
                 title: context.l10n?.recentlyViewed ?? 'Recently Viewed',
                 icon: Icons.history_rounded,
-                color: const Color(0xFFF59E0B),
+                color: AppTheme.brandDeepBlue,
                 child: _RecentlyViewedPreviewList(),
               ),
 
@@ -497,7 +497,7 @@ class _ProfileBody extends ConsumerWidget {
 
               // Yorumlarım
               _ContentSection(
-                title: 'Yorumlarım',
+                title: context.l10n?.userReviews ?? 'My Reviews',
                 icon: Icons.rate_review_rounded,
                 color: const Color(0xFF10B981),
                 child: const _MyReviewsList(),
@@ -609,14 +609,14 @@ class _SubscriptionsSection extends StatelessWidget {
           height: 80,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF7C3AED), Color(0xFF4F46E5), Color(0xFF06B6D4)],
+              colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue, AppTheme.brandSkyBlue],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7C3AED).withOpacity(0.3),
+                color: AppTheme.brandDeepBlue.withOpacity(0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -1308,7 +1308,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
               Icon(
                 Icons.pie_chart_rounded,
                 size: 18,
-                color: const Color(0xFF6366F1),
+                color: AppTheme.brandBlue,
               ),
               const SizedBox(width: 8),
               Text(
@@ -1323,7 +1323,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                  color: AppTheme.brandBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1331,7 +1331,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF6366F1),
+                    color: AppTheme.brandBlue,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1342,7 +1342,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           _UsageRow(
             label: context.l10n?.comparisons ?? 'Comparisons',
             icon: Icons.compare_arrows_rounded,
-            color: const Color(0xFF6366F1),
+            color: AppTheme.brandBlue,
             used: comparisons,
             limit: FreemiumLimits.comparisonsPerDay,
             period: 'today',
@@ -1351,7 +1351,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           _UsageRow(
             label: context.l10n?.aiChat ?? 'AI Chat',
             icon: Icons.auto_awesome_rounded,
-            color: const Color(0xFFEC4899),
+            color: AppTheme.brandCyan,
             used: aiChats,
             limit: FreemiumLimits.aiChatsPerDay,
             period: 'today',
@@ -1360,7 +1360,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           _UsageRow(
             label: context.l10n?.linkAnalysis ?? 'Link Analysis',
             icon: Icons.link_rounded,
-            color: const Color(0xFF06B6D4),
+            color: AppTheme.brandSkyBlue,
             used: linkAnalyses,
             limit: FreemiumLimits.linkAnalysesPerWeek,
             period: 'this week',
