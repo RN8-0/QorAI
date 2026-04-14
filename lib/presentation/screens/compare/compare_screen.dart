@@ -168,10 +168,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
   @override
   void dispose() {
-    // Restore nav bar when leaving compare screen
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(hideNavBarProvider.notifier).state = false;
-    });
+    // Restore nav bar — read provider before super.dispose() clears ref
+    ref.read(hideNavBarProvider.notifier).state = false;
     _debounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
