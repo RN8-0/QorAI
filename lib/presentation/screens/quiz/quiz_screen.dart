@@ -10,66 +10,15 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/routing/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-final _quizCategoryKeys = List<String>.unmodifiable(
-  AppCategories.subcategories[AppCategories.tech] ?? const <String>[],
-);
 
 final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
   ref,
 ) async {
-  final covers = <String, String>{
-    ...await ref.watch(categoryCoversProvider.future),
-  };
-
-  for (final category in _quizCategoryKeys) {
-    if ((covers[category] ?? '').isNotEmpty) continue;
-
-    final result = await ref.read(productsByCategoryProvider(category).future);
-    switch (result) {
-      case Success(data: final products):
-        for (final product in products) {
-          final image = product.imageUrl;
-          if (image != null && image.isNotEmpty) {
-            covers[category] = image;
-            break;
-          }
-        }
-      case Failure():
-        break;
-    }
-  }
-
-  return covers;
+  return const <String, String>{};
 });
-
-const _categoryExpansionOrder = <String, List<String>>{
-  'smartphones': ['tablets', 'powerbanks', 'e-readers'],
-  'laptops': ['desktops'],
-  'cpus': ['gpus', 'ram', 'ssd', 'motherboards', 'psu', 'cases', 'coolers'],
-  'monitors': ['keyboards', 'mice', 'webcams', 'printers'],
-  'tvs': ['projectors', 'media-players'],
-  'headphones': ['speakers', 'soundbars', 'microphones'],
-  'smartwatches': ['smart-rings'],
-  'cameras': [
-    'action-cameras',
-    'security-cameras',
-    'ip-cameras',
-    'dashcams',
-    'gimbals',
-    'tripods',
-    'lenses',
-  ],
-  'consoles': ['gamepads', 'vr-headsets'],
-  'routers': ['robot-vacuums'],
-  'drones': [],
-};
-
-final _categoryChildren = <String>{
-  for (final entry in _categoryExpansionOrder.entries) ...entry.value,
-};
 
 class QuizScreen extends ConsumerStatefulWidget {
   const QuizScreen({super.key});
@@ -108,10 +57,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'En cok hangi urunleri kesfetmek istiyorsun?',
         'What do you want to discover most?',
       ),
-      subtitle: _t(
-        'En az 3 kategori sec. Ana sayfa siralamasi ve oneriler buna gore sekillenecek.',
-        'Pick at least 3 categories. Your home feed and recommendations will adapt to this.',
-      ),
+      subtitle: _t('En az 3 kategori sec.', 'Pick at least 3 categories.'),
       algorithmHint: _t(
         'Ana sayfa algoritmasi, kategori onceligi ve AI yonlendirmesi bu secimi kullanir.',
         'Home ranking, category priority, and AI guidance use this signal.',
@@ -375,8 +321,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'Which ecosystem do you use?',
       ),
       subtitle: _t(
-        'Uyumluluk ve aksesuar onerileri buna gore guclenir.',
-        'Compatibility and accessory recommendations become more accurate with this.',
+        'Kurulumuna en yakin ekosistemi sec.',
+        'Choose the ecosystem closest to your setup.',
       ),
       algorithmHint: _t(
         'Ekosistem sinyali urun uyumlulugu ve butunlu deneyim icin kullanilir.',
@@ -391,8 +337,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Apple',
           labelEn: 'Apple',
           emoji: '🍎',
-          detailTr: 'iPhone, Mac, iPad, AirPods, iCloud',
-          detailEn: 'iPhone, Mac, iPad, AirPods, iCloud',
+          detailTr: 'iPhone, Mac, iPad',
+          detailEn: 'iPhone, Mac, iPad',
           logoDomain: 'apple.com',
           preferContain: true,
         ),
@@ -401,8 +347,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Android',
           labelEn: 'Android',
           emoji: '🤖',
-          detailTr: 'Android telefonlar, tabletler ve acik aksesuar dunyasi',
-          detailEn: 'Android phones, tablets, and the open accessory world',
+          detailTr: 'Telefon, tablet, saat',
+          detailEn: 'Phones, tablets, watches',
           logoDomain: 'android.com',
           preferContain: true,
         ),
@@ -411,18 +357,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Windows',
           labelEn: 'Windows',
           emoji: '🪟',
-          detailTr: 'Windows laptop, masaustu ve ofis odakli kurulum',
-          detailEn: 'Windows laptops, desktops, and office-centric setups',
+          detailTr: 'Laptop, masaustu, ofis',
+          detailEn: 'Laptops, desktops, office',
           logoDomain: 'microsoft.com',
           preferContain: true,
         ),
         _QuizOption(
           value: 'samsung',
-          labelTr: 'Galaxy',
-          labelEn: 'Galaxy',
+          labelTr: 'Samsung',
+          labelEn: 'Samsung',
           emoji: '✨',
-          detailTr: 'Galaxy telefon, tablet, saat ve TV odakli akış',
-          detailEn: 'Galaxy phones, tablets, watches, and TVs',
+          detailTr: 'Telefon, tablet, saat',
+          detailEn: 'Phones, tablets, watches',
           logoDomain: 'samsung.com',
           preferContain: true,
         ),
@@ -431,8 +377,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Google',
           labelEn: 'Google',
           emoji: '🔍',
-          detailTr: 'Pixel, Google Home, YouTube Premium, Google One',
-          detailEn: 'Pixel, Google Home, YouTube Premium, Google One',
+          detailTr: 'Pixel, Home, One',
+          detailEn: 'Pixel, Home, One',
           logoDomain: 'google.com',
           preferContain: true,
         ),
@@ -441,19 +387,15 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Karisik',
           labelEn: 'Mixed',
           emoji: '🔄',
-          detailTr:
-              'Marka bagimsiz, capraz platform ve fiyat/performans odakli',
-          detailEn: 'Brand-agnostic, cross-platform, and value-driven',
+          detailTr: 'Capraz platform',
+          detailEn: 'Cross-platform',
         ),
       ],
     ),
     _QuizStep(
       field: 'budgetRange',
       title: _t('Butcen hangi bantta?', 'What budget band fits you?'),
-      subtitle: _t(
-        'Fiyat/performans ile premium oneriler arasindaki dengeyi bu secim belirler.',
-        'This controls the balance between value picks and premium recommendations.',
-      ),
+      subtitle: _t('Butce seviyeni sec.', 'Choose your budget level.'),
       algorithmHint: _t(
         'Fiyat bandi, one cikarilan urunlerin seviye ve segmentini ayarlar.',
         'Budget range changes which price tier the ranking engine prefers.',
@@ -467,8 +409,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Butce Dostu',
           labelEn: 'Budget',
           emoji: '💸',
-          detailTr: 'Once guvenli fiyat/performans ve akilli indirimler',
-          detailEn: 'Value-first picks and smart discounts',
+          detailTr: 'Temel fiyat/performans',
+          detailEn: 'Value first',
           coverCategory: 'powerbanks',
         ),
         _QuizOption(
@@ -476,8 +418,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Dengeli',
           labelEn: 'Balanced',
           emoji: '💎',
-          detailTr: 'Fiyat ile kaliteyi esit tutan dengeli tercih',
-          detailEn: 'A balanced quality-to-price preference',
+          detailTr: 'Dengeli tercih',
+          detailEn: 'Balanced pick',
           coverCategory: 'smartphones',
         ),
         _QuizOption(
@@ -485,8 +427,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Ust-Orta',
           labelEn: 'Upper Mid',
           emoji: '🚀',
-          detailTr: 'Bir tik daha guclu ozellikler icin esnek butce',
-          detailEn: 'Flexible budget for a stronger spec jump',
+          detailTr: 'Biraz daha guclu',
+          detailEn: 'More powerful',
           coverCategory: 'laptops',
         ),
         _QuizOption(
@@ -494,8 +436,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Premium',
           labelEn: 'Premium',
           emoji: '👑',
-          detailTr: 'En iyi ekran, malzeme ve uzun omurlu performans',
-          detailEn: 'Top displays, materials, and long-term performance',
+          detailTr: 'En ust seviye',
+          detailEn: 'Top tier',
           coverCategory: 'cameras',
         ),
         _QuizOption(
@@ -503,8 +445,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Farketmez',
           labelEn: 'Any',
           emoji: '✨',
-          detailTr: 'Kategoriye gore en mantikli secenege acigim',
-          detailEn: 'I am open to the best fit per category',
+          detailTr: 'Kategoriye gore karar veririm',
+          detailEn: 'I decide per category',
           coverCategory: 'headphones',
         ),
       ],
@@ -640,8 +582,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ),
         _QuizOption(
           value: 'galaxy_phone',
-          labelTr: 'Galaxy Phone',
-          labelEn: 'Galaxy Phone',
+          labelTr: 'Samsung Phone',
+          labelEn: 'Samsung Phone',
           emoji: '📱',
           coverCategory: 'smartphones',
           logoDomain: 'samsung.com',
@@ -738,8 +680,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ),
         _QuizOption(
           value: 'galaxy_watch',
-          labelTr: 'Galaxy Watch',
-          labelEn: 'Galaxy Watch',
+          labelTr: 'Samsung Watch',
+          labelEn: 'Samsung Watch',
           emoji: '⌚',
           coverCategory: 'smartwatches',
           logoDomain: 'samsung.com',
@@ -1255,6 +1197,107 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     'any': [Color(0xFF38BDF8), Color(0xFF22D3EE)],
   };
 
+  static const Map<String, String> _logoSvgUrlByValue = {
+    'apple': 'https://cdn.simpleicons.org/apple/000000',
+    'android': 'https://cdn.simpleicons.org/android/3DDC84',
+    'windows': 'https://cdn.simpleicons.org/windows11/0078D4',
+    'samsung': 'https://cdn.simpleicons.org/samsung/1428A0',
+    'google': 'https://cdn.simpleicons.org/google/4285F4',
+    'spotify': 'https://cdn.simpleicons.org/spotify/1DB954',
+    'apple_music': 'https://cdn.simpleicons.org/applemusic/FA243C',
+    'youtube_premium': 'https://cdn.simpleicons.org/youtube/FF0000',
+    'netflix': 'https://cdn.simpleicons.org/netflix/E50914',
+    'disney_plus': 'https://cdn.simpleicons.org/disneyplus/113CCF',
+    'max': 'https://cdn.simpleicons.org/hbomax/5822B4',
+    'prime_video': 'https://cdn.simpleicons.org/primevideo/1F2E3D',
+    'icloud': 'https://cdn.simpleicons.org/icloud/3693F3',
+    'google_one': 'https://cdn.simpleicons.org/googleone/4285F4',
+    'microsoft_365': 'https://cdn.simpleicons.org/microsoftoffice/D83B01',
+    'adobe_cc': 'https://cdn.simpleicons.org/adobecreativecloud/DA1F26',
+    'figma': 'https://cdn.simpleicons.org/figma/F24E1E',
+    'notion': 'https://cdn.simpleicons.org/notion/000000',
+    'chatgpt_plus': 'https://cdn.simpleicons.org/openai/10A37F',
+    'github_copilot': 'https://cdn.simpleicons.org/github/181717',
+    'game_pass': 'https://cdn.simpleicons.org/xbox/107C10',
+    'ps_plus': 'https://cdn.simpleicons.org/playstation/003791',
+    'switch_online': 'https://cdn.simpleicons.org/nintendo/E60012',
+    'geforce_now': 'https://cdn.simpleicons.org/nvidia/76B900',
+    'twitch': 'https://cdn.simpleicons.org/twitch/9146FF',
+  };
+
+  static const Map<String, IconData> _optionIcons = {
+    'smartphones': Icons.smartphone_rounded,
+    'tablets': Icons.tablet_mac_rounded,
+    'laptops': Icons.laptop_mac_rounded,
+    'desktops': Icons.desktop_windows_rounded,
+    'cpus': Icons.memory_rounded,
+    'gpus': Icons.videogame_asset_rounded,
+    'ram': Icons.developer_board_rounded,
+    'ssd': Icons.sd_storage_rounded,
+    'motherboards': Icons.developer_board_rounded,
+    'psu': Icons.electrical_services_rounded,
+    'cases': Icons.inventory_2_rounded,
+    'coolers': Icons.ac_unit_rounded,
+    'monitors': Icons.monitor_rounded,
+    'keyboards': Icons.keyboard_rounded,
+    'mice': Icons.mouse_rounded,
+    'webcams': Icons.videocam_rounded,
+    'printers': Icons.print_rounded,
+    'tvs': Icons.tv_rounded,
+    'projectors': Icons.video_settings_rounded,
+    'media-players': Icons.play_circle_fill_rounded,
+    'headphones': Icons.headphones_rounded,
+    'speakers': Icons.speaker_rounded,
+    'soundbars': Icons.surround_sound_rounded,
+    'microphones': Icons.mic_rounded,
+    'smartwatches': Icons.watch_rounded,
+    'smart-rings': Icons.radio_button_checked_rounded,
+    'cameras': Icons.camera_alt_rounded,
+    'action-cameras': Icons.sports_score_rounded,
+    'security-cameras': Icons.shield_rounded,
+    'ip-cameras': Icons.wifi_tethering_rounded,
+    'dashcams': Icons.directions_car_filled_rounded,
+    'gimbals': Icons.threed_rotation_rounded,
+    'tripods': Icons.trip_origin_rounded,
+    'lenses': Icons.camera_roll_rounded,
+    'consoles': Icons.sports_esports_rounded,
+    'gamepads': Icons.gamepad_rounded,
+    'vr-headsets': Icons.view_in_ar_rounded,
+    'routers': Icons.router_rounded,
+    'robot-vacuums': Icons.cleaning_services_rounded,
+    'powerbanks': Icons.battery_charging_full_rounded,
+    'e-readers': Icons.menu_book_rounded,
+    'drones': Icons.air_rounded,
+    'low': Icons.wallet_rounded,
+    'mid': Icons.balance_rounded,
+    'high': Icons.auto_graph_rounded,
+    'premium': Icons.workspace_premium_rounded,
+    'any': Icons.tune_rounded,
+    'mixed': Icons.hub_rounded,
+    'iphone': Icons.phone_iphone_rounded,
+    'galaxy_phone': Icons.phone_android_rounded,
+    'android_phone': Icons.phone_android_rounded,
+    'ipad': Icons.tablet_mac_rounded,
+    'android_tablet': Icons.tablet_android_rounded,
+    'macbook': Icons.laptop_mac_rounded,
+    'mac_desktop': Icons.desktop_mac_rounded,
+    'windows_laptop': Icons.laptop_windows_rounded,
+    'windows_pc': Icons.desktop_windows_rounded,
+    'gaming_pc': Icons.computer_rounded,
+    'chromebook': Icons.laptop_chromebook_rounded,
+    'linux_pc': Icons.computer_rounded,
+    'apple_watch': Icons.watch_rounded,
+    'galaxy_watch': Icons.watch_rounded,
+    'smart_tv': Icons.tv_rounded,
+    'console': Icons.sports_esports_rounded,
+    'camera_kit': Icons.camera_alt_rounded,
+    'smart_speaker': Icons.speaker_rounded,
+    'router': Icons.router_rounded,
+    'robot_vacuum': Icons.cleaning_services_rounded,
+    'e_reader': Icons.menu_book_rounded,
+    'drone': Icons.air_rounded,
+  };
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userProfileProvider).valueOrNull;
@@ -1499,46 +1542,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            step.subtitle,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.45,
-              color: Colors.white.withValues(alpha: 0.72),
+          if (step.subtitle.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              step.subtitle,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: Colors.white.withValues(alpha: 0.72),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 15,
-                  color: AppTheme.brandCyan,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    step.algorithmHint,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.82),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
+          ],
+          const SizedBox(height: 20),
           if (step.type == _StepType.categories)
             _buildCategoriesStep(step, covers)
           else if (step.displayStyle == _StepDisplay.list)
@@ -1552,9 +1567,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   Widget _buildCategoriesStep(_QuizStep step, Map<String, String> covers) {
     final selectedCount = _interestCategories.length;
-    final rootOptions = step.options
-        .where((option) => !_categoryChildren.contains(option.value))
-        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1564,126 +1576,31 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           minimum: 3,
           text: _t('En az 3 kategori sec', 'Select at least 3 categories'),
         ),
-        const SizedBox(height: 18),
-        Text(
-          _t(
-            'Ana kategorilerden basla. Sectigin kategoriye bagli alanlar aninda acilir.',
-            'Start with core categories. Related categories expand instantly after you select one.',
-          ),
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.4,
-            color: Colors.white.withValues(alpha: 0.62),
-          ),
-        ),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 14,
-          runSpacing: 20,
-          children: rootOptions.map((option) {
-            return _buildCircleChoice(
-              option: option,
-              selected: _interestCategories.contains(option.value),
-              onTap: () => _toggleCategoryRoot(option.value),
-              imageUrl: _resolveOptionImageUrl(option, covers),
-              size: 100,
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 18),
-        ...rootOptions.where(_isCategoryGroupExpanded).map((rootOption) {
-          final childValues =
-              _categoryExpansionOrder[rootOption.value] ?? const <String>[];
-          if (childValues.isEmpty) return const SizedBox.shrink();
-          final groupOptions = step.options
-              .where((option) => childValues.contains(option.value))
-              .toList();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: _buildCategoryExpansionGroup(
-              rootOption: rootOption,
-              options: groupOptions,
-              covers: covers,
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  bool _isCategoryGroupExpanded(_QuizOption rootOption) {
-    final children = _categoryExpansionOrder[rootOption.value] ?? const [];
-    if (_interestCategories.contains(rootOption.value)) return true;
-    return children.any(_interestCategories.contains);
-  }
-
-  Widget _buildCategoryExpansionGroup({
-    required _QuizOption rootOption,
-    required List<_QuizOption> options,
-    required Map<String, String> covers,
-  }) {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.045),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.subdirectory_arrow_right_rounded,
-                  color: AppTheme.brandCyan.withValues(alpha: 0.9),
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _t(
-                      '${rootOption.label(_isTurkish)} ile ilgili alanlar',
-                      'Related to ${rootOption.label(_isTurkish)}',
-                    ),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final itemWidth = (constraints.maxWidth - 24) / 3;
+            return Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 18,
+              children: step.options.map((option) {
+                return SizedBox(
+                  width: itemWidth,
+                  child: _buildCircleChoice(
+                    option: option,
+                    selected: _interestCategories.contains(option.value),
+                    onTap: () =>
+                        _toggleMulti('interestCategories', option.value),
+                    imageUrl: _resolveOptionImageUrl(option, covers),
+                    size: itemWidth.clamp(92.0, 110.0),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final itemWidth = (constraints.maxWidth - 24) / 3;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: options.map((option) {
-                    return SizedBox(
-                      width: itemWidth,
-                      child: _buildCategoryChildChoice(
-                        option: option,
-                        selected: _interestCategories.contains(option.value),
-                        onTap: () =>
-                            _toggleMulti('interestCategories', option.value),
-                        imageUrl: _resolveOptionImageUrl(option, covers),
-                      ),
-                    );
-                  }).toList(),
                 );
-              },
-            ),
-          ],
+              }).toList(),
+            );
+          },
         ),
-      ),
+      ],
     );
   }
 
@@ -1812,7 +1729,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final colors =
         _accentMap[option.value] ??
         const [AppTheme.brandCyan, AppTheme.brandBlue];
-    final usesContain = option.preferContain || option.logoDomain != null;
 
     return GestureDetector(
       onTap: onTap,
@@ -1855,62 +1771,19 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: dimmed
-                              ? const Color(0xFF101B29)
-                              : const Color(0xFF0C1622),
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                    if (imageUrl != null)
-                      Positioned.fill(
-                        child: Padding(
-                          padding: EdgeInsets.all(dimmed ? 10 : 8),
-                          child: ClipOval(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: usesContain
-                                    ? Colors.white.withValues(alpha: 0.96)
-                                    : Colors.white.withValues(alpha: 0.04),
-                              ),
-                              child: Image.network(
-                                imageUrl,
-                                fit: usesContain
-                                    ? BoxFit.contain
-                                    : BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const SizedBox.shrink(),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                     Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(
-                                alpha: imageUrl == null
-                                    ? 0.0
-                                    : (dimmed ? 0.28 : 0.38),
-                              ),
-                            ],
-                          ),
+                      child: Padding(
+                        padding: EdgeInsets.all(dimmed ? 16 : 14),
+                        child: _buildOptionArtwork(
+                          option: option,
+                          imageUrl: imageUrl,
+                          circular: true,
                         ),
                       ),
-                    ),
-                    Center(
-                      child: imageUrl == null
-                          ? Text(
-                              option.emoji,
-                              style: TextStyle(fontSize: size * 0.3),
-                            )
-                          : const SizedBox.shrink(),
                     ),
                     if (selected)
                       Positioned(
@@ -1953,87 +1826,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     );
   }
 
-  Widget _buildCategoryChildChoice({
-    required _QuizOption option,
-    required bool selected,
-    required VoidCallback onTap,
-    String? imageUrl,
-  }) {
-    final colors =
-        _accentMap[option.value] ??
-        const [AppTheme.brandCyan, AppTheme.brandBlue];
-    final usesContain = option.preferContain || option.logoDomain != null;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: selected ? LinearGradient(colors: colors) : null,
-            color: selected ? null : Colors.white.withValues(alpha: 0.05),
-            border: Border.all(
-              color: selected
-                  ? Colors.white.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.08),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 1.15,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: usesContain
-                          ? Colors.white
-                          : const Color(0xFF0C1622),
-                    ),
-                    child: imageUrl == null
-                        ? Center(
-                            child: Text(
-                              option.emoji,
-                              style: const TextStyle(fontSize: 28),
-                            ),
-                          )
-                        : Image.network(
-                            imageUrl,
-                            fit: usesContain ? BoxFit.contain : BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Center(
-                                  child: Text(
-                                    option.emoji,
-                                    style: const TextStyle(fontSize: 28),
-                                  ),
-                                ),
-                          ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                option.label(_isTurkish),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white.withValues(alpha: 0.96),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildListChoice({
     required _QuizOption option,
     required bool selected,
@@ -2044,7 +1836,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         _accentMap[option.value] ??
         const [AppTheme.brandCyan, AppTheme.brandBlue];
     final detail = option.detail(_isTurkish);
-    final usesContain = option.preferContain || option.logoDomain != null;
 
     return Material(
       color: Colors.transparent,
@@ -2078,32 +1869,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 width: 58,
                 height: 58,
                 decoration: BoxDecoration(
-                  color: usesContain
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.06),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                padding: EdgeInsets.all(usesContain ? 11 : 0),
-                child: imageUrl == null
-                    ? Center(
-                        child: Text(
-                          option.emoji,
-                          style: const TextStyle(fontSize: 28),
-                        ),
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.network(
-                          imageUrl,
-                          fit: usesContain ? BoxFit.contain : BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Center(
-                            child: Text(
-                              option.emoji,
-                              style: const TextStyle(fontSize: 28),
-                            ),
-                          ),
-                        ),
-                      ),
+                padding: const EdgeInsets.all(11),
+                child: _buildOptionArtwork(option: option, imageUrl: imageUrl),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -2118,15 +1888,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         color: Colors.white,
                       ),
                     ),
-                    if (detail != null) ...[
+                    if (detail != null && detail.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         detail,
                         style: TextStyle(
-                          fontSize: 12.5,
-                          height: 1.4,
+                          fontSize: 12,
+                          height: 1.25,
                           color: Colors.white.withValues(alpha: 0.68),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ],
@@ -2156,20 +1928,58 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     );
   }
 
+  Widget _buildOptionArtwork({
+    required _QuizOption option,
+    required String? imageUrl,
+    bool circular = false,
+  }) {
+    final icon = _optionIcons[option.value];
+
+    if (imageUrl != null && imageUrl.toLowerCase().endsWith('.svg')) {
+      return SvgPicture.network(
+        imageUrl,
+        fit: BoxFit.contain,
+        placeholderBuilder: (context) =>
+            _buildOptionFallback(option: option, icon: icon),
+      );
+    }
+
+    if (imageUrl != null) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) =>
+            _buildOptionFallback(option: option, icon: icon),
+      );
+    }
+
+    return _buildOptionFallback(option: option, icon: icon, circular: circular);
+  }
+
+  Widget _buildOptionFallback({
+    required _QuizOption option,
+    required IconData? icon,
+    bool circular = false,
+  }) {
+    final radius = circular ? 999.0 : 14.0;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Center(
+        child: icon != null
+            ? Icon(icon, color: const Color(0xFF0C1622), size: 28)
+            : Text(option.emoji, style: const TextStyle(fontSize: 24)),
+      ),
+    );
+  }
+
   String? _resolveOptionImageUrl(
     _QuizOption option,
     Map<String, String> covers,
   ) {
-    if ((option.logoDomain ?? '').isNotEmpty) {
-      return 'https://logo.clearbit.com/${option.logoDomain!}';
-    }
-    if ((option.coverCategory ?? '').isNotEmpty) {
-      final cover = covers[option.coverCategory!];
-      if ((cover ?? '').isNotEmpty) return cover;
-    }
-    final directCover = covers[option.value];
-    if ((directCover ?? '').isNotEmpty) return directCover;
-    return null;
+    return _logoSvgUrlByValue[option.value];
   }
 
   Widget _buildBottomBar(_QuizStep step) {
@@ -2350,19 +2160,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       } else {
         target.add(value);
       }
-    });
-  }
-
-  void _toggleCategoryRoot(String value) {
-    HapticFeedback.lightImpact();
-    setState(() {
-      if (_interestCategories.contains(value)) {
-        _interestCategories.remove(value);
-        final children = _categoryExpansionOrder[value] ?? const <String>[];
-        _interestCategories.removeWhere(children.contains);
-        return;
-      }
-      _interestCategories.add(value);
     });
   }
 
