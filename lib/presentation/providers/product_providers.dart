@@ -105,7 +105,7 @@ final pcBuilderProductsProvider = FutureProvider.family<List<ProductEntity>, Str
       final products = await ds.getAllProductsInCategoryTs(
         category: alias,
         perPage: 250,
-        maxTotal: 250,
+        maxTotal: 5000,
       );
       sw.stop();
       if (products.isNotEmpty) {

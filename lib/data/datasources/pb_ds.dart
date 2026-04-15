@@ -24,7 +24,7 @@ class PbDataSource {
 
   // ─── Local search result cache (recent queries, max 30, 5 min TTL) ───
   static final Map<String, ({List<ProductModel> results, DateTime time})>
-      _searchResultCache = {};
+  _searchResultCache = {};
   static const _searchResultCacheTtl = Duration(minutes: 5);
   static const _searchResultCacheMaxSize = 30;
 
@@ -39,12 +39,14 @@ class PbDataSource {
       'isActive,variantGroup,scrapedAt,lastUpdated';
 
   PbDataSource({PocketBase? client}) : _pb = client ?? pb {
-    _dio = Dio(BaseOptions(
-      baseUrl: kTypesenseUrl,
-      headers: {'X-TYPESENSE-API-KEY': kTypesenseApiKey},
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: kTypesenseUrl,
+        headers: {'X-TYPESENSE-API-KEY': kTypesenseApiKey},
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+      ),
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -53,7 +55,9 @@ class PbDataSource {
 
   Future<UserModel?> getUser(String uid) async {
     try {
-      final record = await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final record = await _pb
+          .collection(AppConstants.usersCollection)
+          .getOne(uid);
       return UserModel.fromPb(record);
     } on ClientException catch (e) {
       if (e.statusCode == 404) return null;
@@ -75,20 +79,19 @@ class PbDataSource {
       }
     });
     // Fetch initial value
-    getUser(uid).then((u) {
-      if (!controller.isClosed) controller.add(u);
-    }).catchError((_) {});
+    getUser(uid)
+        .then((u) {
+          if (!controller.isClosed) controller.add(u);
+        })
+        .catchError((_) {});
     return controller.stream;
   }
 
   Future<void> createUser(UserModel user) async {
     try {
-      await _pb.collection(AppConstants.usersCollection).create(
-        body: {
-          'id': user.uid,
-          ...user.toMap(),
-        },
-      );
+      await _pb
+          .collection(AppConstants.usersCollection)
+          .create(body: {'id': user.uid, ...user.toMap()});
     } catch (e) {
       throw ServerException(message: 'User could not be created: $e');
     }
@@ -97,7 +100,9 @@ class PbDataSource {
   Future<void> updateUser(String uid, Map<String, dynamic> data) async {
     try {
       data.remove('updatedAt'); // PB auto-manages 'updated' field
-      await _pb.collection(AppConstants.usersCollection).update(uid, body: data);
+      await _pb
+          .collection(AppConstants.usersCollection)
+          .update(uid, body: data);
     } catch (e) {
       throw ServerException(message: 'User could not be updated: $e');
     }
@@ -112,9 +117,9 @@ class PbDataSource {
     } else {
       favorites.add(productId);
     }
-    await _pb.collection(AppConstants.usersCollection).update(uid, body: {
-      'favorites': favorites,
-    });
+    await _pb
+        .collection(AppConstants.usersCollection)
+        .update(uid, body: {'favorites': favorites});
     return !isFav;
   }
 
@@ -123,21 +128,22 @@ class PbDataSource {
   Future<void> addRecentlyViewed(String uid, String productId) async {
     try {
       // recently_viewed is a separate PB collection
-      await _pb.collection('recently_viewed').create(body: {
-        'userId': uid,
-        'productId': productId,
-      });
+      await _pb
+          .collection('recently_viewed')
+          .create(body: {'userId': uid, 'productId': productId});
     } catch (_) {}
   }
 
   Future<List<String>> getRecentlyViewed(String uid) async {
     try {
-      final result = await _pb.collection('recently_viewed').getList(
-        page: 1,
-        perPage: 50,
-        filter: 'userId = "$uid"',
-        sort: '-created',
-      );
+      final result = await _pb
+          .collection('recently_viewed')
+          .getList(
+            page: 1,
+            perPage: 50,
+            filter: 'userId = "$uid"',
+            sort: '-created',
+          );
       return result.items.map((r) => r.data['productId'] as String).toList();
     } catch (_) {
       return [];
@@ -162,9 +168,14 @@ class PbDataSource {
   // ─── User Activity Arrays (stored in user document) ───
 
   Future<void> _appendUserArray(
-      String uid, String field, Map<String, dynamic> entry) async {
+    String uid,
+    String field,
+    Map<String, dynamic> entry,
+  ) async {
     try {
-      final user = await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final user = await _pb
+          .collection(AppConstants.usersCollection)
+          .getOne(uid);
       final existing = List<dynamic>.from(user.data[field] ?? []);
       existing.add(entry);
       await _pb
@@ -175,38 +186,42 @@ class PbDataSource {
     }
   }
 
-  Future<void> saveQuizHistory(
-      String uid, Map<String, dynamic> entry) async =>
+  Future<void> saveQuizHistory(String uid, Map<String, dynamic> entry) async =>
       _appendUserArray(uid, 'quizHistory', entry);
 
   Future<void> saveAnalyzedProduct(
-      String uid, Map<String, dynamic> entry) async =>
-      _appendUserArray(uid, 'analyzedProducts', entry);
+    String uid,
+    Map<String, dynamic> entry,
+  ) async => _appendUserArray(uid, 'analyzedProducts', entry);
 
   Future<void> saveSearchHistory(
-      String uid, Map<String, dynamic> entry) async =>
-      _appendUserArray(uid, 'searchHistory', entry);
+    String uid,
+    Map<String, dynamic> entry,
+  ) async => _appendUserArray(uid, 'searchHistory', entry);
 
   Future<void> saveSubscriptionHistory(
-      String uid, Map<String, dynamic> entry) async =>
-      _appendUserArray(uid, 'subscriptionHistory', entry);
+    String uid,
+    Map<String, dynamic> entry,
+  ) async => _appendUserArray(uid, 'subscriptionHistory', entry);
 
   Future<void> updateSubscriptionHistory(
-      String uid, List<Map<String, dynamic>> history) async {
+    String uid,
+    List<Map<String, dynamic>> history,
+  ) async {
     try {
-      await _pb.collection(AppConstants.usersCollection).update(uid, body: {
-        'subscriptionHistory': history,
-      });
+      await _pb
+          .collection(AppConstants.usersCollection)
+          .update(uid, body: {'subscriptionHistory': history});
     } catch (e) {
       debugPrint('[PB] updateSubscriptionHistory failed: $e');
     }
   }
 
-  Future<List<Map<String, dynamic>>> getSubscriptionHistory(
-      String uid) async {
+  Future<List<Map<String, dynamic>>> getSubscriptionHistory(String uid) async {
     try {
-      final user =
-          await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final user = await _pb
+          .collection(AppConstants.usersCollection)
+          .getOne(uid);
       final list = user.data['subscriptionHistory'];
       if (list is! List) return [];
       return list.cast<Map<String, dynamic>>().reversed.take(20).toList();
@@ -216,42 +231,48 @@ class PbDataSource {
   }
 
   Future<void> saveLinkAnalysisHistory(
-      String uid, Map<String, dynamic> entry) async {
+    String uid,
+    Map<String, dynamic> entry,
+  ) async {
     try {
-      final user =
-          await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final user = await _pb
+          .collection(AppConstants.usersCollection)
+          .getOne(uid);
       final data = user.data;
       final existing =
-          (data['linkAnalysisHistory'] as List?)?.cast<Map<String, dynamic>>() ??
-              [];
+          (data['linkAnalysisHistory'] as List?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
       final url = entry['url'] as String? ?? '';
       final deduped = existing.where((e) => e['url'] != url).toList();
       deduped.insert(0, entry);
       final trimmed = deduped.take(30).toList();
-      await _pb.collection(AppConstants.usersCollection).update(uid, body: {
-        'linkAnalysisHistory': trimmed,
-      });
+      await _pb
+          .collection(AppConstants.usersCollection)
+          .update(uid, body: {'linkAnalysisHistory': trimmed});
     } catch (e) {
       debugPrint('[PB] saveLinkAnalysisHistory failed: $e');
     }
   }
 
   Future<void> updateLinkAnalysisHistory(
-      String uid, List<Map<String, dynamic>> history) async {
+    String uid,
+    List<Map<String, dynamic>> history,
+  ) async {
     try {
-      await _pb.collection(AppConstants.usersCollection).update(uid, body: {
-        'linkAnalysisHistory': history,
-      });
+      await _pb
+          .collection(AppConstants.usersCollection)
+          .update(uid, body: {'linkAnalysisHistory': history});
     } catch (e) {
       debugPrint('[PB] updateLinkAnalysisHistory failed: $e');
     }
   }
 
-  Future<List<Map<String, dynamic>>> getLinkAnalysisHistory(
-      String uid) async {
+  Future<List<Map<String, dynamic>>> getLinkAnalysisHistory(String uid) async {
     try {
-      final user =
-          await _pb.collection(AppConstants.usersCollection).getOne(uid);
+      final user = await _pb
+          .collection(AppConstants.usersCollection)
+          .getOne(uid);
       final list = user.data['linkAnalysisHistory'];
       if (list is! List) return [];
       return list.cast<Map<String, dynamic>>().take(30).toList();
@@ -293,8 +314,9 @@ class PbDataSource {
       if (subcategory != null) filters.add('subcategory = "$subcategory"');
       if (activeOnly) filters.add('isActive = true');
 
-      final sortField =
-          (orderBy == 'trendScore' || orderBy == 'techScore') ? orderBy : 'name';
+      final sortField = (orderBy == 'trendScore' || orderBy == 'techScore')
+          ? orderBy
+          : 'name';
       final sortDir = descending ? '-' : '';
       final sort = '$sortDir$sortField';
 
@@ -328,13 +350,16 @@ class PbDataSource {
 
   /// Paginated products — returns nextPage integer instead of DocumentSnapshot.
   Future<({List<ProductModel> products, int nextPage, bool hasMore})>
-      getProductsPage({
+  getProductsPage({
     required String category,
     int limit = 200,
     int page = 1,
   }) async {
-    final result = await _getProductsPageForCategory(category,
-        limit: limit, page: page);
+    final result = await _getProductsPageForCategory(
+      category,
+      limit: limit,
+      page: page,
+    );
     if (result.products.isNotEmpty) return result;
 
     // Variant fallback
@@ -355,15 +380,14 @@ class PbDataSource {
     }
 
     for (final v in variants) {
-      final r =
-          await _getProductsPageForCategory(v, limit: limit, page: page);
+      final r = await _getProductsPageForCategory(v, limit: limit, page: page);
       if (r.products.isNotEmpty) return r;
     }
     return (products: <ProductModel>[], nextPage: page + 1, hasMore: false);
   }
 
   Future<({List<ProductModel> products, int nextPage, bool hasMore})>
-      _getProductsPageForCategory(
+  _getProductsPageForCategory(
     String category, {
     int limit = 200,
     int page = 1,
@@ -381,7 +405,8 @@ class PbDataSource {
           .timeout(const Duration(seconds: 30));
       sw.stop();
       debugPrint(
-          '=== COMPAIR: getProductsPage cat=$category limit=$limit page=$page → ${result.items.length} docs in ${sw.elapsedMilliseconds}ms ===');
+        '=== COMPAIR: getProductsPage cat=$category limit=$limit page=$page → ${result.items.length} docs in ${sw.elapsedMilliseconds}ms ===',
+      );
 
       final products = result.items
           .map((r) {
@@ -398,7 +423,8 @@ class PbDataSource {
       return (products: products, nextPage: page + 1, hasMore: hasMore);
     } catch (e, st) {
       debugPrint(
-          '=== COMPAIR: getProductsPage ERROR cat=$category: $e\n$st ===');
+        '=== COMPAIR: getProductsPage ERROR cat=$category: $e\n$st ===',
+      );
       return (products: <ProductModel>[], nextPage: page + 1, hasMore: false);
     }
   }
@@ -427,11 +453,7 @@ class PbDataSource {
         final idList = chunk.map((id) => '"$id"').join(',');
         final result = await _pb
             .collection(AppConstants.productsCollection)
-            .getList(
-              page: 1,
-              perPage: chunk.length,
-              filter: 'id IN ($idList)',
-            )
+            .getList(page: 1, perPage: chunk.length, filter: 'id IN ($idList)')
             .timeout(const Duration(seconds: 15));
         results.addAll(result.items.map(ProductModel.fromPb));
       }
@@ -462,15 +484,13 @@ class PbDataSource {
       final user = await _pb
           .collection(AppConstants.usersCollection)
           .getOne(comparison.userId);
-      final count =
-          (user.data['comparisonsCount'] as num?)?.toInt() ?? 0;
-      await _pb.collection(AppConstants.usersCollection).update(
-          comparison.userId,
-          body: {'comparisonsCount': count + 1});
+      final count = (user.data['comparisonsCount'] as num?)?.toInt() ?? 0;
+      await _pb
+          .collection(AppConstants.usersCollection)
+          .update(comparison.userId, body: {'comparisonsCount': count + 1});
       return record.id;
     } catch (e) {
-      throw ServerException(
-          message: 'Comparison could not be created: $e');
+      throw ServerException(message: 'Comparison could not be created: $e');
     }
   }
 
@@ -491,8 +511,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 15));
       return result.items.map(ComparisonModel.fromPb).toList();
     } catch (e) {
-      throw ServerException(
-          message: 'Comparisons could not be retrieved: $e');
+      throw ServerException(message: 'Comparisons could not be retrieved: $e');
     }
   }
 
@@ -515,7 +534,8 @@ class PbDataSource {
       return result.items.map(ComparisonModel.fromPb).toList();
     } catch (e) {
       throw ServerException(
-          message: 'Predefined comparisons could not be retrieved: $e');
+        message: 'Predefined comparisons could not be retrieved: $e',
+      );
     }
   }
 
@@ -527,16 +547,11 @@ class PbDataSource {
     try {
       final result = await _pb
           .collection(AppConstants.categoriesCollection)
-          .getList(
-            page: 1,
-            perPage: 100,
-            sort: 'order',
-          )
+          .getList(page: 1, perPage: 100, sort: 'order')
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => CategoryModel.fromPb(r)).toList();
     } catch (e) {
-      throw ServerException(
-          message: 'Categories could not be retrieved: $e');
+      throw ServerException(message: 'Categories could not be retrieved: $e');
     }
   }
 
@@ -562,8 +577,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => TrendModel.fromPb(r)).toList();
     } catch (e) {
-      throw ServerException(
-          message: 'Trend data could not be retrieved: $e');
+      throw ServerException(message: 'Trend data could not be retrieved: $e');
     }
   }
 
@@ -571,8 +585,10 @@ class PbDataSource {
   // ─── REVIEWS ───
   // ────────────────────────────────────────────────────────────────────────
 
-  Future<List<ReviewModel>> getProductReviews(String productId,
-      {int limit = 20}) async {
+  Future<List<ReviewModel>> getProductReviews(
+    String productId, {
+    int limit = 20,
+  }) async {
     try {
       final result = await _pb
           .collection(AppConstants.reviewsCollection)
@@ -585,8 +601,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => ReviewModel.fromPb(r)).toList();
     } catch (e) {
-      throw ServerException(
-          message: 'Reviews could not be retrieved: $e');
+      throw ServerException(message: 'Reviews could not be retrieved: $e');
     }
   }
 
@@ -605,8 +620,9 @@ class PbDataSource {
   }
 
   Future<void> toggleReviewLike(String reviewId, String userId) async {
-    final record =
-        await _pb.collection(AppConstants.reviewsCollection).getOne(reviewId);
+    final record = await _pb
+        .collection(AppConstants.reviewsCollection)
+        .getOne(reviewId);
     final liked = List<String>.from(record.data['likedBy'] ?? []);
     final disliked = List<String>.from(record.data['dislikedBy'] ?? []);
     if (liked.contains(userId)) {
@@ -615,13 +631,15 @@ class PbDataSource {
       liked.add(userId);
       disliked.remove(userId);
     }
-    await _pb.collection(AppConstants.reviewsCollection).update(reviewId,
-        body: {'likedBy': liked, 'dislikedBy': disliked});
+    await _pb
+        .collection(AppConstants.reviewsCollection)
+        .update(reviewId, body: {'likedBy': liked, 'dislikedBy': disliked});
   }
 
   Future<void> toggleReviewDislike(String reviewId, String userId) async {
-    final record =
-        await _pb.collection(AppConstants.reviewsCollection).getOne(reviewId);
+    final record = await _pb
+        .collection(AppConstants.reviewsCollection)
+        .getOne(reviewId);
     final liked = List<String>.from(record.data['likedBy'] ?? []);
     final disliked = List<String>.from(record.data['dislikedBy'] ?? []);
     if (disliked.contains(userId)) {
@@ -630,12 +648,15 @@ class PbDataSource {
       disliked.add(userId);
       liked.remove(userId);
     }
-    await _pb.collection(AppConstants.reviewsCollection).update(reviewId,
-        body: {'likedBy': liked, 'dislikedBy': disliked});
+    await _pb
+        .collection(AppConstants.reviewsCollection)
+        .update(reviewId, body: {'likedBy': liked, 'dislikedBy': disliked});
   }
 
-  Stream<List<ReviewModel>> watchProductReviews(String productId,
-      {int limit = 30}) {
+  Stream<List<ReviewModel>> watchProductReviews(
+    String productId, {
+    int limit = 30,
+  }) {
     final controller = StreamController<List<ReviewModel>>();
     getProductReviews(productId, limit: limit).then((reviews) {
       if (!controller.isClosed) controller.add(reviews);
@@ -650,8 +671,7 @@ class PbDataSource {
     return controller.stream;
   }
 
-  Stream<List<ReviewModel>> watchUserReviews(String userId,
-      {int limit = 50}) {
+  Stream<List<ReviewModel>> watchUserReviews(String userId, {int limit = 50}) {
     final controller = StreamController<List<ReviewModel>>();
     _pb
         .collection(AppConstants.reviewsCollection)
@@ -662,17 +682,19 @@ class PbDataSource {
           sort: '-created',
         )
         .then((r) {
-      if (!controller.isClosed) {
-        controller.add(r.items.map((r) => ReviewModel.fromPb(r)).toList());
-      }
-    });
+          if (!controller.isClosed) {
+            controller.add(r.items.map((r) => ReviewModel.fromPb(r)).toList());
+          }
+        });
     return controller.stream;
   }
 
   // ─── Review Replies (sub-table via replies collection) ───
 
   Stream<List<Map<String, dynamic>>> watchReviewReplies(
-      String collection, String reviewId) {
+    String collection,
+    String reviewId,
+  ) {
     final controller = StreamController<List<Map<String, dynamic>>>();
     _fetchReplies(reviewId).then((replies) {
       if (!controller.isClosed) controller.add(replies);
@@ -688,7 +710,9 @@ class PbDataSource {
   }
 
   Future<List<Map<String, dynamic>>> _fetchReplies(String reviewId) async {
-    final result = await _pb.collection('review_replies').getList(
+    final result = await _pb
+        .collection('review_replies')
+        .getList(
           page: 1,
           perPage: 100,
           filter: 'reviewId = "$reviewId"',
@@ -704,12 +728,16 @@ class PbDataSource {
     required String displayName,
     required String text,
   }) async {
-    await _pb.collection('review_replies').create(body: {
-      'reviewId': reviewId,
-      'userId': userId,
-      'displayName': displayName,
-      'text': text,
-    });
+    await _pb
+        .collection('review_replies')
+        .create(
+          body: {
+            'reviewId': reviewId,
+            'userId': userId,
+            'displayName': displayName,
+            'text': text,
+          },
+        );
   }
 
   Future<void> deleteReviewReply({
@@ -734,8 +762,10 @@ class PbDataSource {
     }
   }
 
-  Future<List<UserLinkModel>> getUserLinks(String userId,
-      {int limit = 20}) async {
+  Future<List<UserLinkModel>> getUserLinks(
+    String userId, {
+    int limit = 20,
+  }) async {
     try {
       final result = await _pb
           .collection(AppConstants.userLinksCollection)
@@ -748,8 +778,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => UserLinkModel.fromPb(r)).toList();
     } catch (e) {
-      throw ServerException(
-          message: 'Links could not be retrieved: $e');
+      throw ServerException(message: 'Links could not be retrieved: $e');
     }
   }
 
@@ -807,7 +836,8 @@ class PbDataSource {
       final hits = (response.data['hits'] as List?) ?? [];
       final results = hits.map((hit) {
         final doc = Map<String, dynamic>.from(
-            hit['document'] as Map<dynamic, dynamic>);
+          hit['document'] as Map<dynamic, dynamic>,
+        );
         // Typesense uses 'id' as the document id
         return ProductModel.fromMap(doc);
       }).toList();
@@ -815,8 +845,7 @@ class PbDataSource {
       final filtered = ProductFilter.filterRelaxed(results);
 
       _evictSearchResultCache();
-      _searchResultCache[cacheKey] =
-          (results: filtered, time: DateTime.now());
+      _searchResultCache[cacheKey] = (results: filtered, time: DateTime.now());
       return filtered;
     } catch (e) {
       debugPrint('SEARCH: Typesense failed: $e');
@@ -834,15 +863,15 @@ class PbDataSource {
     if (_searchResultCache.length >= _searchResultCacheMaxSize) {
       final sorted = _searchResultCache.entries.toList()
         ..sort((a, b) => a.value.time.compareTo(b.value.time));
-      for (final e in sorted
-          .take(_searchResultCache.length - _searchResultCacheMaxSize + 1)) {
+      for (final e in sorted.take(
+        _searchResultCache.length - _searchResultCacheMaxSize + 1,
+      )) {
         _searchResultCache.remove(e.key);
       }
     }
   }
 
-  List<ProductModel> searchProductsFromCache(String query,
-      {int limit = 50}) {
+  List<ProductModel> searchProductsFromCache(String query, {int limit = 50}) {
     if (query.trim().isEmpty) return [];
     final pool = _homeFeedProducts;
     if (pool == null || pool.isEmpty) return [];
@@ -850,11 +879,13 @@ class PbDataSource {
   }
 
   List<ProductModel> _scoreAndRankProducts(
-      List<ProductModel> products, String query, int limit) {
+    List<ProductModel> products,
+    String query,
+    int limit,
+  ) {
     final filtered = ProductFilter.filter(products);
     final q = query.trim().toLowerCase();
-    final words =
-        q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
 
     final scored = <({ProductModel product, int score})>[];
     for (final p in filtered) {
@@ -863,19 +894,27 @@ class PbDataSource {
       final category = p.category.toLowerCase();
       final subcategory = p.subcategory.toLowerCase();
       final tags = p.tags.map((t) => t.toLowerCase()).toList();
-      final keySpecValues =
-          p.keySpecs.values.map((v) => v.toLowerCase()).toList();
+      final keySpecValues = p.keySpecs.values
+          .map((v) => v.toLowerCase())
+          .toList();
 
       int score = 0;
-      if (name == q) score += 100;
-      else if (name.startsWith(q)) score += 80;
-      else if (name.contains(q)) score += 60;
+      if (name == q)
+        score += 100;
+      else if (name.startsWith(q))
+        score += 80;
+      else if (name.contains(q))
+        score += 60;
       if (words.length > 1 && words.every((w) => name.contains(w))) score += 50;
-      if (brand == q) score += 40;
-      else if (brand.startsWith(q)) score += 30;
-      else if (brand.contains(q)) score += 20;
+      if (brand == q)
+        score += 40;
+      else if (brand.startsWith(q))
+        score += 30;
+      else if (brand.contains(q))
+        score += 20;
       if (category.contains(q) || subcategory.contains(q)) score += 15;
-      if (keySpecValues.any((v) => v.contains(q))) score += 15;
+      if (keySpecValues.any((v) => v.contains(q)))
+        score += 15;
       else if (words.length > 1 &&
           keySpecValues.any((v) => words.any((w) => v.contains(w)))) {
         score += 8;
@@ -920,8 +959,7 @@ class PbDataSource {
           .collection(AppConstants.comparisonsCollection)
           .update(comparisonId, body: data);
     } catch (e) {
-      throw ServerException(
-          message: 'Comparison could not be updated: $e');
+      throw ServerException(message: 'Comparison could not be updated: $e');
     }
   }
 
@@ -935,15 +973,19 @@ class PbDataSource {
     String? category,
   }) async {
     try {
-      await _pb.collection('saved_analyses').create(body: {
-        'userId': userId,
-        'url': url,
-        'productName': productName,
-        'score': score,
-        'analysis': analysis,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-        if (category != null) 'category': category,
-      });
+      await _pb
+          .collection('saved_analyses')
+          .create(
+            body: {
+              'userId': userId,
+              'url': url,
+              'productName': productName,
+              'score': score,
+              'analysis': analysis,
+              if (imageUrl != null) 'imageUrl': imageUrl,
+              if (category != null) 'category': category,
+            },
+          );
     } catch (e) {
       throw ServerException(message: 'Could not save analysis: $e');
     }
@@ -954,17 +996,20 @@ class PbDataSource {
     required String productId,
   }) async {
     try {
-      final user =
-          await _pb.collection(AppConstants.usersCollection).getOne(userId);
+      final user = await _pb
+          .collection(AppConstants.usersCollection)
+          .getOne(userId);
       final owned = List<String>.from(user.data['ownedProducts'] ?? []);
       if (!owned.contains(productId)) {
         owned.add(productId);
-        await _pb.collection(AppConstants.usersCollection).update(userId,
-            body: {'ownedProducts': owned});
+        await _pb
+            .collection(AppConstants.usersCollection)
+            .update(userId, body: {'ownedProducts': owned});
       }
     } catch (e) {
       throw ServerException(
-          message: 'User product list could not be updated: $e');
+        message: 'User product list could not be updated: $e',
+      );
     }
   }
 
@@ -973,25 +1018,35 @@ class PbDataSource {
   // ────────────────────────────────────────────────────────────────────────
 
   Future<String> createChatConversation(ChatConversation conv) async {
-    final record = await _pb.collection('chat_conversations').create(body: {
-      'userId': conv.userId,
-      'title': conv.title,
-      'messages': conv.messages.map((m) => m.toMap()).toList(),
-      'messageCount': conv.messages.length,
-    });
+    final record = await _pb
+        .collection('chat_conversations')
+        .create(
+          body: {
+            'userId': conv.userId,
+            'title': conv.title,
+            'messages': conv.messages.map((m) => m.toMap()).toList(),
+            'messageCount': conv.messages.length,
+          },
+        );
     return record.id;
   }
 
   Future<void> updateChatConversation(
-      String userId,
-      String convId,
-      List<PersistedChatMsg> messages,
-      String title) async {
-    await _pb.collection('chat_conversations').update(convId, body: {
-      'messages': messages.map((m) => m.toMap()).toList(),
-      'title': title,
-      'messageCount': messages.length,
-    });
+    String userId,
+    String convId,
+    List<PersistedChatMsg> messages,
+    String title,
+  ) async {
+    await _pb
+        .collection('chat_conversations')
+        .update(
+          convId,
+          body: {
+            'messages': messages.map((m) => m.toMap()).toList(),
+            'title': title,
+            'messageCount': messages.length,
+          },
+        );
   }
 
   Stream<List<ChatConversation>> streamChatConversations(String userId) {
@@ -1005,10 +1060,10 @@ class PbDataSource {
           sort: '-updated',
         )
         .then((r) {
-      if (!controller.isClosed) {
-        controller.add(r.items.map(ChatConversation.fromPb).toList());
-      }
-    });
+          if (!controller.isClosed) {
+            controller.add(r.items.map(ChatConversation.fromPb).toList());
+          }
+        });
     _pb.collection('chat_conversations').subscribe('*', (e) {
       if (e.record?.data['userId'] == userId) {
         _pb
@@ -1020,20 +1075,21 @@ class PbDataSource {
               sort: '-updated',
             )
             .then((r) {
-          if (!controller.isClosed) {
-            controller.add(r.items.map(ChatConversation.fromPb).toList());
-          }
-        });
+              if (!controller.isClosed) {
+                controller.add(r.items.map(ChatConversation.fromPb).toList());
+              }
+            });
       }
     });
     return controller.stream;
   }
 
   Future<ChatConversation?> getChatConversation(
-      String userId, String convId) async {
+    String userId,
+    String convId,
+  ) async {
     try {
-      final record =
-          await _pb.collection('chat_conversations').getOne(convId);
+      final record = await _pb.collection('chat_conversations').getOne(convId);
       return ChatConversation.fromPb(record);
     } on ClientException catch (e) {
       if (e.statusCode == 404) return null;
@@ -1113,7 +1169,8 @@ class PbDataSource {
           .whereType<ProductModel>()
           .toList();
       debugPrint(
-          '=== COMPAIR: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===');
+        '=== COMPAIR: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
+      );
       return products;
     } catch (e) {
       debugPrint('=== COMPAIR: TS cat=$category FAILED: $e ===');
@@ -1132,15 +1189,19 @@ class PbDataSource {
     if (categories.isEmpty) return {};
     try {
       final sw = Stopwatch()..start();
-      final searches = categories.map((cat) => {
-            'collection': 'products',
-            'q': '*',
-            'filter_by': 'category:=$cat',
-            'sort_by': sortBy,
-            'per_page': perCategory,
-            'page': 1,
-            'exclude_fields': '_raw,keySpecsText',
-          }).toList();
+      final searches = categories
+          .map(
+            (cat) => {
+              'collection': 'products',
+              'q': '*',
+              'filter_by': 'category:=$cat',
+              'sort_by': sortBy,
+              'per_page': perCategory,
+              'page': 1,
+              'exclude_fields': '_raw,keySpecsText',
+            },
+          )
+          .toList();
 
       final response = await _dio.post(
         '/multi_search',
@@ -1162,7 +1223,8 @@ class PbDataSource {
 
       final total = results.values.fold<int>(0, (s, l) => s + l.length);
       debugPrint(
-          '=== COMPAIR: TS multi_search ${categories.length} cats → $total products in ${sw.elapsedMilliseconds}ms ===');
+        '=== COMPAIR: TS multi_search ${categories.length} cats → $total products in ${sw.elapsedMilliseconds}ms ===',
+      );
       return results;
     } catch (e) {
       debugPrint('=== COMPAIR: TS multi_search FAILED: $e ===');
@@ -1192,7 +1254,7 @@ class PbDataSource {
             'sort_by': sortBy,
             'per_page': perPage,
             'page': page,
-            'exclude_fields': '_raw,keySpecsText',
+            'exclude_fields': 'keySpecsText',
           },
         );
         final hits = (response.data['hits'] as List?) ?? [];
@@ -1207,7 +1269,8 @@ class PbDataSource {
       }
       sw.stop();
       debugPrint(
-          '=== COMPAIR: TS allInCat cat=$category → ${all.length} in ${sw.elapsedMilliseconds}ms ===');
+        '=== COMPAIR: TS allInCat cat=$category → ${all.length} in ${sw.elapsedMilliseconds}ms ===',
+      );
       return all;
     } catch (e) {
       debugPrint('=== COMPAIR: TS allInCat cat=$category FAILED: $e ===');
@@ -1217,7 +1280,7 @@ class PbDataSource {
 
   /// Paginated Typesense query matching getProductsPage signature for drop-in replacement.
   Future<({List<ProductModel> products, int nextPage, bool hasMore})>
-      getProductsPageTs({
+  getProductsPageTs({
     required String category,
     int limit = 200,
     int page = 1,
@@ -1244,10 +1307,13 @@ class PbDataSource {
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
-          '=== COMPAIR: TS getProductsPage cat=$category page=$page → ${products.length} in ${sw.elapsedMilliseconds}ms ===');
+        '=== COMPAIR: TS getProductsPage cat=$category page=$page → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
+      );
       return (products: products, nextPage: page + 1, hasMore: hasMore);
     } catch (e) {
-      debugPrint('=== COMPAIR: TS getProductsPage FAILED cat=$category: $e ===');
+      debugPrint(
+        '=== COMPAIR: TS getProductsPage FAILED cat=$category: $e ===',
+      );
       // Fallback to PocketBase
       return getProductsPage(category: category, limit: limit, page: page);
     }
@@ -1260,8 +1326,12 @@ class PbDataSource {
   List<List<T>> _chunkList<T>(List<T> list, int chunkSize) {
     final chunks = <List<T>>[];
     for (var i = 0; i < list.length; i += chunkSize) {
-      chunks.add(list.sublist(
-          i, i + chunkSize > list.length ? list.length : i + chunkSize));
+      chunks.add(
+        list.sublist(
+          i,
+          i + chunkSize > list.length ? list.length : i + chunkSize,
+        ),
+      );
     }
     return chunks;
   }

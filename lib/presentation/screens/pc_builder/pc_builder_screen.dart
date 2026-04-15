@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:compair/core/errors.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -124,6 +125,31 @@ String _pcText(BuildContext context, {required String en, required String tr}) {
 // Compatibility Helper
 
 class _Compat {
+  static String? _specValue(ProductEntity p, List<String> keys) {
+    for (final key in keys) {
+      final v = p.specs[key];
+      if (v != null && v.toString().trim().isNotEmpty)
+        return v.toString().trim();
+    }
+    return null;
+  }
+
+  static Iterable<String> _allTexts(ProductEntity p) sync* {
+    yield p.name;
+    for (final v in p.specs.values) {
+      if (v != null) yield v.toString();
+    }
+    for (final entry in p.keySpecs.entries) {
+      yield '${entry.key}: ${entry.value}';
+    }
+  }
+
+  static int? _extractNumber(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final m = RegExp(r'(\d{2,5})').firstMatch(raw);
+    return m == null ? null : int.tryParse(m.group(1)!);
+  }
+
   static String? socket(ProductEntity p) {
     for (final key in [
       'Socket',
@@ -234,10 +260,20 @@ class _Compat {
     return null;
   }
 
+  static double? recommendedSystemPower(ProductEntity p) {
+    final raw = _specValue(p, [
+      'Recommended System Power',
+      'Recommended PSU',
+      'Recommended Power Supply',
+    ]);
+    final watts = _extractNumber(raw);
+    return watts?.toDouble();
+  }
+
   /// Searches all spec values for a query string
   static bool matchesSpecSearch(ProductEntity p, String query) {
-    for (final v in p.specs.values) {
-      if (v != null && v.toString().toLowerCase().contains(query)) return true;
+    for (final v in _allTexts(p)) {
+      if (v.toLowerCase().contains(query)) return true;
     }
     return false;
   }
@@ -274,6 +310,17 @@ class _Compat {
     return null;
   }
 
+  static bool gpuNeedsModernPsu(ProductEntity p) {
+    final conn = gpuPowerConnector(p)?.toLowerCase() ?? '';
+    if (conn.contains('16') ||
+        conn.contains('12vhpwr') ||
+        conn.contains('12v-2x6')) {
+      return true;
+    }
+    final gpuPower = tdp(p) ?? recommendedSystemPower(p);
+    return (gpuPower ?? 0) >= 450;
+  }
+
   /// Form factor — ATX / mATX / mITX / E-ATX
   static String? formFactor(ProductEntity p) {
     for (final key in [
@@ -308,6 +355,76 @@ class _Compat {
       return 'mATX';
     if (n.contains('E-ATX') || n.contains('EATX')) return 'E-ATX';
     return null;
+  }
+
+  static int? gpuLengthMm(ProductEntity p) {
+    final raw = _specValue(p, [
+      'GPU Length',
+      'Graphics Card Length',
+      'Card Length',
+      'Length',
+    ]);
+    return _extractNumber(raw);
+  }
+
+  static int? caseMaxGpuLengthMm(ProductEntity p) {
+    final raw = _specValue(p, [
+      'GPU Length (max)',
+      'Max GPU Length',
+      'GPU Clearance',
+      'Maximum GPU Length',
+    ]);
+    return _extractNumber(raw);
+  }
+
+  static bool motherboardHasM2(ProductEntity p) {
+    final raw = _specValue(p, ['M.2 Slot', 'M.2 Slot Count', 'M.2 Features']);
+    if (raw == null) return false;
+    return raw.toLowerCase().contains('yes') || _extractNumber(raw) != null;
+  }
+
+  static bool motherboardHasSata(ProductEntity p) {
+    final raw = _specValue(p, ['SATA Slot', 'SATA Slot Count']);
+    if (raw == null) return false;
+    return raw.toLowerCase().contains('yes') || _extractNumber(raw) != null;
+  }
+
+  static bool isM2Storage(ProductEntity p) {
+    final frame = _specValue(p, ['Frame Size'])?.toLowerCase() ?? '';
+    final connection =
+        _specValue(p, [
+          'Connection Interface',
+          'Transfer Protocol',
+          'Bus',
+          'Bus Standard',
+        ])?.toLowerCase() ??
+        '';
+    final text = '$frame $connection ${p.name}'.toLowerCase();
+    return text.contains('m.2') || text.contains('m2') || text.contains('nvme');
+  }
+
+  static bool isSataStorage(ProductEntity p) {
+    final frame = _specValue(p, ['Frame Size'])?.toLowerCase() ?? '';
+    final connection =
+        _specValue(p, [
+          'Connection Interface',
+          'Transfer Protocol',
+          'Bus',
+          'Bus Standard',
+        ])?.toLowerCase() ??
+        '';
+    final text = '$frame $connection ${p.name}'.toLowerCase();
+    return text.contains('sata') || text.contains('2.5');
+  }
+
+  static bool psuSupportsModernGpu(ProductEntity p) {
+    final text = _allTexts(p).join(' ').toLowerCase();
+    return text.contains('atx 3') ||
+        text.contains('atx3') ||
+        text.contains('pcie 5') ||
+        text.contains('pcie5') ||
+        text.contains('12vhpwr') ||
+        text.contains('12v-2x6');
   }
 
   /// Checks if two form factors are compatible (MB fits in Case)
@@ -476,13 +593,6 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     }
     _aiAnalysis = ref.read(pcBuilderAiProvider);
     if (_selected.length == PcComponent.values.length) _showCelebration = true;
-    // Preload all PC component categories for faster picking
-    // pcBuilderProductsProvider is what the picker watches — preload so list is instant on open
-    Future.microtask(() {
-      for (final comp in PcComponent.values) {
-        ref.read(pcBuilderProductsProvider(comp.categoryId));
-      }
-    });
   }
 
   void _saveToSession() {
@@ -730,23 +840,94 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       }
     }
 
-    // 6. GPU power connector warning
-    if (gpu != null && psu != null) {
-      final gpuConn = _Compat.gpuPowerConnector(gpu);
-      if (gpuConn != null && gpuConn.contains('16')) {
+    // 6. GPU ↔ Case clearance mismatch
+    if (gpu != null && cs != null) {
+      final gpuLength = _Compat.gpuLengthMm(gpu);
+      final caseLimit = _Compat.caseMaxGpuLengthMm(cs);
+      if (gpuLength != null && caseLimit != null && gpuLength > caseLimit) {
         issues.add(
           _CompatIssue(
-            severity: _IssueSeverity.info,
-            icon: Icons.power_rounded,
+            severity: _IssueSeverity.error,
+            icon: Icons.straighten_rounded,
             title: _pcText(
               context,
-              en: 'GPU Requires 16-pin (12VHPWR)',
-              tr: 'GPU 16-pin (12VHPWR) İstiyor',
+              en: 'GPU Clearance Mismatch',
+              tr: 'GPU Boyut Uyumsuzlugu',
             ),
             detail: _pcText(
               context,
-              en: 'This GPU needs the newer 12VHPWR connector. Verify your PSU has it or use an adapter.',
-              tr: 'Bu GPU yeni 12VHPWR bağlantısı istiyor. PSU bunu destekliyor mu kontrol edin veya adaptör kullanın.',
+              en: 'GPU length ${gpuLength}mm exceeds case limit ${caseLimit}mm',
+              tr: 'GPU uzunlugu ${gpuLength}mm, kasanin ${caseLimit}mm limitini asiyor',
+            ),
+            component: PcComponent.pcCase,
+          ),
+        );
+      }
+    }
+
+    // 7. Storage ↔ Motherboard slot mismatch
+    final storage = _selected[PcComponent.storage];
+    if (storage != null && mb != null) {
+      final isM2 = _Compat.isM2Storage(storage);
+      final isSata = _Compat.isSataStorage(storage);
+      if (isM2 && !_Compat.motherboardHasM2(mb)) {
+        issues.add(
+          _CompatIssue(
+            severity: _IssueSeverity.error,
+            icon: Icons.storage_rounded,
+            title: _pcText(
+              context,
+              en: 'Storage Slot Mismatch',
+              tr: 'Depolama Yuvasi Uyumsuzlugu',
+            ),
+            detail: _pcText(
+              context,
+              en: 'Selected SSD is M.2/NVMe but motherboard does not advertise an M.2 slot',
+              tr: 'Secili SSD M.2/NVMe ancak anakartta M.2 yuvasi gorunmuyor',
+            ),
+            component: PcComponent.storage,
+          ),
+        );
+      } else if (isSata && !_Compat.motherboardHasSata(mb)) {
+        issues.add(
+          _CompatIssue(
+            severity: _IssueSeverity.error,
+            icon: Icons.storage_rounded,
+            title: _pcText(
+              context,
+              en: 'Storage Slot Mismatch',
+              tr: 'Depolama Yuvasi Uyumsuzlugu',
+            ),
+            detail: _pcText(
+              context,
+              en: 'Selected SSD requires SATA but motherboard does not advertise a SATA port',
+              tr: 'Secili SSD SATA istiyor ancak anakartta SATA girisi gorunmuyor',
+            ),
+            component: PcComponent.storage,
+          ),
+        );
+      }
+    }
+
+    // 8. GPU power connector / PSU generation warning
+    if (gpu != null && psu != null) {
+      final gpuConn = _Compat.gpuPowerConnector(gpu);
+      if (gpuConn != null &&
+          gpuConn.contains('16') &&
+          !_Compat.psuSupportsModernGpu(psu)) {
+        issues.add(
+          _CompatIssue(
+            severity: _IssueSeverity.warning,
+            icon: Icons.power_rounded,
+            title: _pcText(
+              context,
+              en: 'Modern GPU Power Check',
+              tr: 'Modern GPU Guc Kontrolu',
+            ),
+            detail: _pcText(
+              context,
+              en: 'GPU needs a modern 16-pin / 12VHPWR-style feed, but PSU metadata does not clearly advertise ATX 3.x / PCIe 5 support.',
+              tr: 'GPU modern 16-pin / 12VHPWR benzeri baglanti istiyor; PSU verisinde ATX 3.x / PCIe 5 destegi net gorunmuyor.',
             ),
             component: PcComponent.gpu,
           ),
@@ -3177,6 +3358,117 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
   bool _showFilters = false;
   bool _compatOnly = true;
 
+  double get _selectedPowerWithoutPsu {
+    double total = 0;
+    for (final entry in widget.allSelected.entries) {
+      if (entry.key == PcComponent.psu) continue;
+      total += _Compat.tdp(entry.value) ?? entry.key.defaultTdp;
+    }
+    return total;
+  }
+
+  double? get _requiredPsuWattage {
+    final gpu = widget.allSelected[PcComponent.gpu];
+    final estimated = (_selectedPowerWithoutPsu * 1.25).ceilToDouble();
+    final recommended = gpu == null
+        ? 0.0
+        : (_Compat.recommendedSystemPower(gpu) ?? 0.0);
+    final required = max(estimated, recommended);
+    return required > 0 ? required : null;
+  }
+
+  bool get _hasAdditionalCompatFilters {
+    return switch (widget.component) {
+      PcComponent.gpu => widget.allSelected[PcComponent.pcCase] != null,
+      PcComponent.storage =>
+        widget.allSelected[PcComponent.motherboard] != null,
+      PcComponent.psu =>
+        widget.allSelected[PcComponent.gpu] != null ||
+            _requiredPsuWattage != null,
+      PcComponent.pcCase =>
+        widget.allSelected[PcComponent.gpu] != null ||
+            widget.allSelected[PcComponent.motherboard] != null,
+      _ => false,
+    };
+  }
+
+  List<String> _compatHints(BuildContext context) {
+    return [
+      if (widget.socketFilter != null)
+        _pcText(
+          context,
+          en: 'Socket: ${widget.socketFilter}',
+          tr: 'Soket: ${widget.socketFilter}',
+        ),
+      if (widget.memTypeFilter != null) widget.memTypeFilter!,
+      if (widget.formFactorFilter != null)
+        _pcText(
+          context,
+          en: 'Form: ${widget.formFactorFilter}',
+          tr: 'Form: ${widget.formFactorFilter}',
+        ),
+      if (widget.component == PcComponent.gpu &&
+          widget.allSelected[PcComponent.pcCase] != null)
+        _pcText(context, en: 'Case GPU clearance', tr: 'Kasa GPU boslugu'),
+      if (widget.component == PcComponent.pcCase &&
+          widget.allSelected[PcComponent.gpu] != null)
+        _pcText(context, en: 'GPU length', tr: 'GPU uzunlugu'),
+      if (widget.component == PcComponent.storage &&
+          widget.allSelected[PcComponent.motherboard] != null)
+        _pcText(
+          context,
+          en: 'Motherboard storage slots',
+          tr: 'Anakart depolama yuvalari',
+        ),
+      if (widget.component == PcComponent.psu && _requiredPsuWattage != null)
+        _pcText(
+          context,
+          en: 'Power >= ${_requiredPsuWattage!.round()}W',
+          tr: 'Guc >= ${_requiredPsuWattage!.round()}W',
+        ),
+      if (widget.component == PcComponent.psu &&
+          widget.allSelected[PcComponent.gpu] != null &&
+          _Compat.gpuNeedsModernPsu(widget.allSelected[PcComponent.gpu]!))
+        _pcText(context, en: 'ATX 3.x / PCIe 5', tr: 'ATX 3.x / PCIe 5'),
+    ];
+  }
+
+  List<MapEntry<String, String>> _detailEntries(ProductEntity product) {
+    final entries = <MapEntry<String, String>>[];
+
+    void addEntry(String key, dynamic value) {
+      final text = switch (value) {
+        null => '',
+        List<dynamic> list => list.where((e) => e != null).join(', '),
+        Map<dynamic, dynamic> map =>
+          map.entries.map((e) => '${e.key}: ${e.value}').join(', '),
+        _ => value.toString(),
+      }.trim();
+      if (key.trim().isEmpty || text.isEmpty) return;
+      entries.add(MapEntry(key, text));
+    }
+
+    if (product.specs.isNotEmpty) {
+      for (final entry in product.specs.entries) {
+        addEntry(entry.key, entry.value);
+      }
+    } else if (product.keySpecs.isNotEmpty) {
+      for (final entry in product.keySpecs.entries) {
+        addEntry(entry.key, entry.value);
+      }
+    } else {
+      for (final section in product.specSections.entries) {
+        final values = section.value;
+        if (values is! Map) continue;
+        for (final entry in values.entries) {
+          addEntry('${section.key} - ${entry.key}', entry.value);
+        }
+      }
+    }
+
+    return entries;
+  }
+
   List<ProductEntity> _applyFilters(List<ProductEntity> all) {
     var list = List<ProductEntity>.from(all);
     // Compat — socket filter for MB and cooler (lenient: unknown socket = included with lower priority)
@@ -3187,8 +3479,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
       final t = widget.socketFilter!.toUpperCase();
       list = list.where((p) {
         final s = _Compat.socket(p);
-        if (s == null)
-          return true; // no socket info → cannot verify → include (might be compatible)
+        if (s == null) return false;
         return s.contains(t) || t.contains(s);
       }).toList();
     }
@@ -3199,8 +3490,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
       final t = widget.memTypeFilter!.toUpperCase();
       list = list.where((p) {
         final m = _Compat.memoryType(p);
-        if (m == null)
-          return true; // no memory type info → cannot verify → include
+        if (m == null) return false;
         return m.contains(t) || t.contains(m);
       }).toList();
     }
@@ -3211,7 +3501,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             widget.component == PcComponent.motherboard)) {
       list = list.where((p) {
         final ff = _Compat.formFactor(p);
-        if (ff == null) return true; // unknown → allow
+        if (ff == null) return false;
         if (widget.component == PcComponent.pcCase) {
           // Case must fit the MB: case must be >= MB form factor
           return _Compat.formFactorCompatible(widget.formFactorFilter, ff);
@@ -3219,6 +3509,57 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
           // MB must fit in Case: MB must be <= case form factor
           return _Compat.formFactorCompatible(ff, widget.formFactorFilter);
         }
+      }).toList();
+    }
+    if (_compatOnly && widget.component == PcComponent.gpu) {
+      final selectedCase = widget.allSelected[PcComponent.pcCase];
+      final caseLimit = selectedCase == null
+          ? null
+          : _Compat.caseMaxGpuLengthMm(selectedCase);
+      if (caseLimit != null) {
+        list = list.where((p) {
+          final gpuLength = _Compat.gpuLengthMm(p);
+          return gpuLength == null || gpuLength <= caseLimit;
+        }).toList();
+      }
+    }
+    if (_compatOnly && widget.component == PcComponent.pcCase) {
+      final selectedGpu = widget.allSelected[PcComponent.gpu];
+      final gpuLength = selectedGpu == null
+          ? null
+          : _Compat.gpuLengthMm(selectedGpu);
+      if (gpuLength != null) {
+        list = list.where((p) {
+          final caseLimit = _Compat.caseMaxGpuLengthMm(p);
+          return caseLimit == null || caseLimit >= gpuLength;
+        }).toList();
+      }
+    }
+    if (_compatOnly && widget.component == PcComponent.storage) {
+      final motherboard = widget.allSelected[PcComponent.motherboard];
+      if (motherboard != null) {
+        list = list.where((p) {
+          final isM2 = _Compat.isM2Storage(p);
+          final isSata = _Compat.isSataStorage(p);
+          if (isM2) return _Compat.motherboardHasM2(motherboard);
+          if (isSata) return _Compat.motherboardHasSata(motherboard);
+          return true;
+        }).toList();
+      }
+    }
+    if (_compatOnly && widget.component == PcComponent.psu) {
+      final required = _requiredPsuWattage;
+      final gpu = widget.allSelected[PcComponent.gpu];
+      list = list.where((p) {
+        final watt = _Compat.psuWattage(p);
+        if (required != null && watt == null) return false;
+        if (required != null && watt != null && watt < required) return false;
+        if (gpu != null &&
+            _Compat.gpuNeedsModernPsu(gpu) &&
+            !_Compat.psuSupportsModernGpu(p)) {
+          return false;
+        }
+        return true;
       }).toList();
     }
     // Search: prioritize name/brand match, only use spec search if no name/brand hits
@@ -3265,7 +3606,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     final hasCompat =
         widget.socketFilter != null ||
         widget.memTypeFilter != null ||
-        widget.formFactorFilter != null;
+        widget.formFactorFilter != null ||
+        _hasAdditionalCompatFilters;
     // pcBuilderProductsProvider: cache-first, no deduplication → all variants shown, instant after preload
     final productsAsync = ref.watch(
       pcBuilderProductsProvider(widget.component.categoryId),
@@ -3435,7 +3777,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      '${context.l10n?.compatibleOnly ?? "Compatible only"}: ${[if (widget.socketFilter != null) _pcText(context, en: 'Socket: ${widget.socketFilter}', tr: 'Soket: ${widget.socketFilter}'), if (widget.memTypeFilter != null) widget.memTypeFilter!, if (widget.formFactorFilter != null) _pcText(context, en: 'Form: ${widget.formFactorFilter}', tr: 'Form: ${widget.formFactorFilter}')].join(' · ')}',
+                      '${context.l10n?.compatibleOnly ?? "Compatible only"}: ${_compatHints(context).join(' · ')}',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: AppTheme.brandDeepBlue,
@@ -3686,7 +4028,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
       final hasCompat =
           widget.socketFilter != null ||
           widget.memTypeFilter != null ||
-          widget.formFactorFilter != null;
+          widget.formFactorFilter != null ||
+          _hasAdditionalCompatFilters;
       final isCompatCause = hasCompat && _compatOnly;
       return Center(
         child: Padding(
@@ -3798,259 +4141,291 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
         expand: false,
         builder: (builderCtx, sc) {
           final bottomPad = MediaQuery.of(builderCtx).padding.bottom;
-          return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: Scaffold(
-              backgroundColor: ctx.backgroundColor,
-              body: Column(
-                children: [
-                  // Handle + header
-                  Container(
-                    color: ctx.surfaceVariantColor,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-                    child: Column(
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: ctx.dividerColor,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
+          return Consumer(
+            builder: (_, ref, __) {
+              final detailAsync = ref.watch(productDetailProvider(p.id));
+              final detailProduct = switch (detailAsync.valueOrNull) {
+                Success<ProductEntity>(data: final product) => product,
+                _ => p,
+              };
+              final detailEntries = _detailEntries(detailProduct);
+
+              return ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                child: Scaffold(
+                  backgroundColor: ctx.backgroundColor,
+                  body: Column(
+                    children: [
+                      Container(
+                        color: ctx.surfaceVariantColor,
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                        child: Column(
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
+                            Center(
                               child: Container(
-                                width: 52,
-                                height: 52,
-                                color: ctx.surfaceColor,
-                                child:
-                                    p.imageUrl != null && p.imageUrl!.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: p.imageUrl!,
-                                        fit: BoxFit.contain,
-                                      )
-                                    : Icon(
-                                        widget.component.icon,
-                                        size: 26,
-                                        color: ctx.textTertiaryColor,
-                                      ),
+                                width: 36,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: ctx.dividerColor,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    p.name,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: ctx.textPrimary,
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    width: 52,
+                                    height: 52,
+                                    color: ctx.surfaceColor,
+                                    child:
+                                        detailProduct.imageUrl != null &&
+                                            detailProduct.imageUrl!.isNotEmpty
+                                        ? CachedNetworkImage(
+                                            imageUrl: detailProduct.imageUrl!,
+                                            fit: BoxFit.contain,
+                                          )
+                                        : Icon(
+                                            widget.component.icon,
+                                            size: 26,
+                                            color: ctx.textTertiaryColor,
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        detailProduct.name,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: ctx.textPrimary,
+                                        ),
+                                      ),
+                                      if (detailProduct.brand != null)
+                                        Text(
+                                          detailProduct.brand!,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            color: widget.component.accentColor,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: widget.component.accentColor
+                                        .withValues(alpha: 0.12),
+                                    border: Border.all(
+                                      color: widget.component.accentColor
+                                          .withValues(alpha: 0.4),
                                     ),
                                   ),
-                                  if (p.brand != null)
-                                    Text(
-                                      p.brand!,
+                                  child: Center(
+                                    child: Text(
+                                      '${detailProduct.techScore.round()}',
                                       style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
                                         color: widget.component.accentColor,
                                       ),
                                     ),
-                                ],
-                              ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            // Tech score badge
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: widget.component.accentColor.withValues(
-                                  alpha: 0.12,
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: sc,
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            12,
+                            16,
+                            bottomPad + 12,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (detailAsync.isLoading &&
+                                  detailEntries.isEmpty) ...[
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: widget.component.accentColor,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                border: Border.all(
-                                  color: widget.component.accentColor
-                                      .withValues(alpha: 0.4),
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${p.techScore.round()}',
+                              ],
+                              if (detailProduct.description.isNotEmpty) ...[
+                                Text(
+                                  detailProduct.description,
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: widget.component.accentColor,
+                                    fontSize: 12,
+                                    color: ctx.textSecondary,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              if (detailEntries.isEmpty)
+                                Text(
+                                  _pcText(
+                                    ctx,
+                                    en: 'No specifications available.',
+                                    tr: 'Teknik ozellik bulunamadi.',
+                                  ),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    color: ctx.textTertiaryColor,
+                                  ),
+                                )
+                              else
+                                ...detailEntries.map(
+                                  (e) => Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: ctx.surfaceVariantColor,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: ctx.dividerColor,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            e.key,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: ctx.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(
+                                            e.value,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: ctx.textPrimary,
+                                            ),
+                                            textAlign: TextAlign.end,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SafeArea(
+                        top: false,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          decoration: BoxDecoration(
+                            color: ctx.backgroundColor,
+                            border: Border(
+                              top: BorderSide(color: ctx.dividerColor),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(sheetCtx);
+                                    ctx.push('/product/${p.id}');
+                                  },
+                                  icon: const Icon(
+                                    Icons.open_in_new_rounded,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    ctx.l10n?.viewDetails ?? 'View Details',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor:
+                                        widget.component.accentColor,
+                                    side: BorderSide(
+                                      color: widget.component.accentColor,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Specs list
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: sc,
-                      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPad + 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (p.description.isNotEmpty) ...[
-                            Text(
-                              p.description,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: ctx.textSecondary,
-                                height: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          if (p.specs.isEmpty)
-                            Text(
-                              _pcText(
-                                ctx,
-                                en: 'No specifications available.',
-                                tr: 'Teknik özellik bulunamadı.',
-                              ),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: ctx.textTertiaryColor,
-                              ),
-                            )
-                          else
-                            ...p.specs.entries.map(
-                              (e) => Container(
-                                margin: const EdgeInsets.only(bottom: 6),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: ctx.surfaceVariantColor,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: ctx.dividerColor),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        e.key,
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: ctx.textSecondary,
-                                        ),
-                                      ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(sheetCtx);
+                                    Navigator.pop(ctx, detailProduct);
+                                  },
+                                  icon: const Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    ctx.l10n?.selectComponent ?? 'Select',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
-                                        e.value.toString(),
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                          color: ctx.textPrimary,
-                                        ),
-                                        textAlign: TextAlign.end,
-                                      ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        widget.component.accentColor,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Bottom action buttons — always visible above safe area
-                  SafeArea(
-                    top: false,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      decoration: BoxDecoration(
-                        color: ctx.backgroundColor,
-                        border: Border(
-                          top: BorderSide(color: ctx.dividerColor),
+                            ],
+                          ),
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(sheetCtx);
-                                ctx.push('/product/${p.id}');
-                              },
-                              icon: const Icon(
-                                Icons.open_in_new_rounded,
-                                size: 16,
-                              ),
-                              label: Text(
-                                ctx.l10n?.viewDetails ?? 'View Details',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: widget.component.accentColor,
-                                side: BorderSide(
-                                  color: widget.component.accentColor,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(sheetCtx); // close detail sheet
-                                Navigator.pop(
-                                  ctx,
-                                  p,
-                                ); // close picker with selection
-                              },
-                              icon: const Icon(
-                                Icons.check_circle_outline_rounded,
-                                size: 16,
-                              ),
-                              label: Text(
-                                ctx.l10n?.selectComponent ?? 'Select',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: widget.component.accentColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),
