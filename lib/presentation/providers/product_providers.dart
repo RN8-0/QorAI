@@ -865,9 +865,31 @@ HomeFeed _buildHomeFeed(
 
     // Profession-based category affinity
     final profCats = <String, List<String>>{
-      'student': ['laptops', 'tablets', 'headphones', 'e-readers'],
+      'student': [
+        'laptops',
+        'tablets',
+        'headphones',
+        'e-readers',
+        'smartphones',
+      ],
       'engineer': ['laptops', 'monitors', 'keyboards', 'mice', 'gpus', 'cpus'],
       'designer': ['laptops', 'monitors', 'tablets', 'cameras', 'mice'],
+      'developer': [
+        'laptops',
+        'monitors',
+        'keyboards',
+        'mice',
+        'desktops',
+        'routers',
+      ],
+      'content_creator': [
+        'cameras',
+        'microphones',
+        'monitors',
+        'laptops',
+        'gimbals',
+        'tripods',
+      ],
       'gamer': [
         'gpus',
         'monitors',
@@ -877,9 +899,14 @@ HomeFeed _buildHomeFeed(
         'gamepads',
         'desktops',
       ],
+      'manager': ['smartphones', 'laptops', 'smartwatches', 'tablets'],
+      'entrepreneur': ['smartphones', 'laptops', 'tablets', 'monitors'],
       'healthcare': ['tablets', 'smartwatches', 'smartphones'],
+      'educator': ['laptops', 'tablets', 'projectors', 'webcams'],
       'teacher': ['laptops', 'tablets', 'projectors', 'webcams'],
       'finance': ['laptops', 'monitors', 'smartphones'],
+      'architect': ['monitors', 'laptops', 'tablets', 'gpus', 'desktops'],
+      'sales_marketing': ['smartphones', 'laptops', 'tablets', 'cameras'],
     };
     final pCats = profCats[user.profession] ?? [];
     if (pCats.contains(cat)) boost *= 1.15;

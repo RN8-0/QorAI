@@ -1,4 +1,3 @@
-
 /// Compair - Profile Algorithm Service
 /// Blueprint Section 8, 10
 ///
@@ -7,6 +6,7 @@
 /// Foundation for dynamic home page and personalized recommendations.
 library;
 
+import 'package:compair/core/constants.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 
@@ -15,16 +15,22 @@ import 'package:compair/domain/entities/product_entity.dart';
 class BehaviorSignals {
   /// category → view count (from product_views)
   final Map<String, int> categoryViews;
+
   /// productId → view count
   final Map<String, int> productViews;
+
   /// productId set of favorited items
   final Set<String> favorites;
+
   /// search queries (latest N)
   final List<String> recentSearches;
+
   /// spec keys user focuses on → count
   final Map<String, int> specFocus;
+
   /// preference keys from quiz answers → weight
   final Map<String, int> quizPreferences;
+
   /// hour → activity count
   final Map<int, int> hourActivity;
 
@@ -51,6 +57,7 @@ class BehaviorSignals {
 class GlobalAlgorithmSignals {
   /// category → total views across all users
   final Map<String, int> categoryPopularity;
+
   /// Total quiz submissions across all users
   final int totalQuizzes;
 
@@ -144,6 +151,7 @@ class ProfileWeights {
     'low': {'min': 0, 'max': 5000, 'multiplier': 0.7},
     'mid': {'min': 5000, 'max': 20000, 'multiplier': 1.0},
     'high': {'min': 20000, 'max': 50000, 'multiplier': 1.3},
+    'premium': {'min': 50000, 'max': 999999, 'multiplier': 1.45},
     'any': {'min': 0, 'max': 999999, 'multiplier': 1.0},
   };
 }
@@ -161,6 +169,8 @@ class ProfileAlgorithmService {
     // 1. Ecosystem score (0-1)
     vector['apple_affinity'] = _calculateAppleAffinity(user);
     vector['android_affinity'] = _calculateAndroidAffinity(user);
+    vector['windows_affinity'] = _calculateWindowsAffinity(user);
+    vector['google_affinity'] = _calculateGoogleAffinity(user);
 
     // 2. Budget score (0-1)
     vector['budget_score'] = _calculateBudgetScore(user);
@@ -172,10 +182,17 @@ class ProfileAlgorithmService {
       'design',
       'ecosystem',
       'performance',
-      'durability'
+      'durability',
+      'battery',
+      'camera',
+      'portability',
+      'gaming',
+      'creator',
+      'productivity',
     ]) {
-      vector['priority_$priority'] =
-          user.priorities.contains(priority) ? 1.0 : 0.0;
+      vector['priority_$priority'] = user.priorities.contains(priority)
+          ? 1.0
+          : 0.0;
     }
 
     // 4. Category interest scores — all user interest categories + primaryCategory
@@ -183,15 +200,19 @@ class ProfileAlgorithmService {
       if (user.primaryCategory != null) user.primaryCategory!,
       ...user.interestCategories,
     };
-    const productCategories = [
-      'smartphones', 'laptops', 'tablets', 'tvs', 'monitors',
-      'cpus', 'gpus', 'headphones', 'smartwatches', 'cameras',
-      'consoles', 'speakers', 'desktops', 'routers', 'drones', 'robot-vacuums',
-      // Legacy generic categories
-      'tech', 'subscription', 'gaming', 'travel', 'productivity', 'entertainment',
+    final productCategories = <String>[
+      ...(AppCategories.subcategories[AppCategories.tech] ?? const <String>[]),
+      'tech',
+      'subscription',
+      'gaming',
+      'travel',
+      'productivity',
+      'entertainment',
     ];
     for (final category in productCategories) {
-      vector['interest_$category'] = userCategories.contains(category) ? 1.0 : 0.3;
+      vector['interest_$category'] = userCategories.contains(category)
+          ? 1.0
+          : 0.3;
     }
     // Dynamic interests from interestCategories (may include scraped categories)
     for (final cat in user.interestCategories) {
@@ -201,8 +222,22 @@ class ProfileAlgorithmService {
     }
 
     // 5. Profession dimension (one-hot encoding for distinct profile buckets)
-    const professions = ['engineer', 'designer', 'student', 'manager',
-                         'healthcare', 'teacher', 'finance', 'other'];
+    const professions = [
+      'student',
+      'engineer',
+      'designer',
+      'developer',
+      'content_creator',
+      'gamer',
+      'manager',
+      'entrepreneur',
+      'healthcare',
+      'educator',
+      'finance',
+      'architect',
+      'sales_marketing',
+      'other',
+    ];
     for (final p in professions) {
       vector['profession_$p'] = (user.profession == p) ? 1.0 : 0.0;
     }
@@ -214,20 +249,29 @@ class ProfileAlgorithmService {
     }
     // Age-based recency preference: younger users prefer newer products more
     final ageIdx = ageRanges.indexOf(user.ageRange ?? '');
-    vector['recency_preference'] = ageIdx >= 0 ? (1.0 - (ageIdx * 0.1)).clamp(0.4, 1.0) : 0.7;
+    vector['recency_preference'] = ageIdx >= 0
+        ? (1.0 - (ageIdx * 0.1)).clamp(0.4, 1.0)
+        : 0.7;
 
     // 7. Device ownership scores (0-1)
-    vector['has_iphone'] =
-        user.currentDevices.contains('iphone') ? 1.0 : 0.0;
+    vector['has_iphone'] = user.currentDevices.contains('iphone') ? 1.0 : 0.0;
     vector['has_android_phone'] =
-        user.currentDevices.contains('android_phone') ? 1.0 : 0.0;
-    vector['has_mac'] = user.currentDevices.contains('mac') ? 1.0 : 0.0;
-    vector['has_windows'] =
-        user.currentDevices.contains('windows_pc') ? 1.0 : 0.0;
-    vector['has_tablet'] = (user.currentDevices.contains('ipad') ||
-            user.currentDevices.contains('android_tablet'))
+        _hasAnyDevice(user, const ['android_phone', 'galaxy_phone'])
         ? 1.0
         : 0.0;
+    vector['has_mac'] = _hasAnyDevice(user, const ['macbook', 'mac_desktop'])
+        ? 1.0
+        : 0.0;
+    vector['has_windows'] =
+        _hasAnyDevice(user, const ['windows_pc', 'windows_laptop', 'gaming_pc'])
+        ? 1.0
+        : 0.0;
+    vector['has_tablet'] = _hasAnyDevice(user, const ['ipad', 'android_tablet'])
+        ? 1.0
+        : 0.0;
+    vector['has_watch'] =
+        _hasAnyDevice(user, const ['apple_watch', 'galaxy_watch']) ? 1.0 : 0.0;
+    vector['has_console'] = user.currentDevices.contains('console') ? 1.0 : 0.0;
 
     // 8. Subscription density score (0-1)
     final subCount = user.subscriptions.length;
@@ -287,29 +331,35 @@ class ProfileAlgorithmService {
   }) {
     // Personal fit (40%)
     final personalFit = calculatePersonalFitScore(
-        user: user, product: product, behavior: behavior);
+      user: user,
+      product: product,
+      behavior: behavior,
+    );
 
     // Expert/Technical evaluation (25%) — use techScore as proxy when
     // expert rating is unavailable (scraped data rarely has expert reviews).
-    final expert = expertScore ??
+    final expert =
+        expertScore ??
         (product.ratings.expert > 0
             ? product.ratings.expert
             : product.techScore.clamp(0, 100));
 
     // Community reviews (20%) — use trendScore as popularity proxy when
     // community rating is unavailable.
-    final community = communityScore ??
+    final community =
+        communityScore ??
         (product.ratings.community > 0
             ? product.ratings.community * 20
             : (product.trendScore * 10).clamp(0, 100));
 
     // Price/Performance (15%)
-    final pricePerf = pricePerformanceScore ??
-        _calculatePricePerformanceScore(user, product);
+    final pricePerf =
+        pricePerformanceScore ?? _calculatePricePerformanceScore(user, product);
 
     // Weighted total (weights: 0.50 + 0.20 + 0.15 + 0.15 = 1.0)
     // Personal fit dominates to make scores user-specific
-    double total = (personalFit * 0.50) +
+    double total =
+        (personalFit * 0.50) +
         (expert * 0.20) +
         (community * 0.15) +
         (pricePerf * 0.15);
@@ -319,12 +369,18 @@ class ProfileAlgorithmService {
     if (releaseYear != null) {
       final currentYear = DateTime.now().year;
       final yearDiff = currentYear - releaseYear;
-      if (yearDiff <= 0) total += 8;        // This year / upcoming → +8
-      else if (yearDiff == 1) total += 4;   // Last year → +4
-      else if (yearDiff == 2) total += 0;   // 2 years ago → neutral
-      else if (yearDiff == 3) total -= 5;   // 3 years ago → -5
-      else if (yearDiff == 4) total -= 12;  // 4 years ago → -12
-      else total -= 18;                     // 5+ years ago → -18
+      if (yearDiff <= 0)
+        total += 8; // This year / upcoming → +8
+      else if (yearDiff == 1)
+        total += 4; // Last year → +4
+      else if (yearDiff == 2)
+        total += 0; // 2 years ago → neutral
+      else if (yearDiff == 3)
+        total -= 5; // 3 years ago → -5
+      else if (yearDiff == 4)
+        total -= 12; // 4 years ago → -12
+      else
+        total -= 18; // 5+ years ago → -18
     }
 
     // Interest category boost: smaller to avoid uniform inflation
@@ -343,8 +399,16 @@ class ProfileAlgorithmService {
 
   /// Extract release year from product specs for recency scoring
   int? _getReleaseYear(ProductEntity product) {
-    for (final key in ['release year', 'Release Year', 'release_year',
-                       'Release Date', 'Piyasaya Çıkış Tarihi', 'Yıl', 'yıl', 'year']) {
+    for (final key in [
+      'release year',
+      'Release Year',
+      'release_year',
+      'Release Date',
+      'Piyasaya Çıkış Tarihi',
+      'Yıl',
+      'yıl',
+      'year',
+    ]) {
       final val = product.specs[key];
       if (val != null) {
         final digits = val.toString().replaceAll(RegExp(r'[^0-9]'), '');
@@ -366,7 +430,10 @@ class ProfileAlgorithmService {
   }) {
     final scoredProducts = products.map((product) {
       final score = calculateTotalFitScore(
-          user: user, product: product, behavior: behavior);
+        user: user,
+        product: product,
+        behavior: behavior,
+      );
       return _ScoredProduct(product, score);
     }).toList();
 
@@ -376,8 +443,10 @@ class ProfileAlgorithmService {
   }
 
   /// Category priority based on user's interests + behavior
-  List<String> getCategoryPriority(UserEntity user,
-      {BehaviorSignals behavior = BehaviorSignals.empty}) {
+  List<String> getCategoryPriority(
+    UserEntity user, {
+    BehaviorSignals behavior = BehaviorSignals.empty,
+  }) {
     final categories = <String, double>{};
     final profileVector = calculateProfileVector(user);
 
@@ -398,14 +467,60 @@ class ProfileAlgorithmService {
 
     // Boost categories based on profession
     const professionCategoryBoost = <String, List<String>>{
-      'engineer':     ['laptops', 'monitors', 'cpus', 'gpus', 'headphones'],
-      'designer':     ['monitors', 'tablets', 'laptops', 'cameras', 'gpus'],
-      'student':      ['laptops', 'tablets', 'headphones', 'smartphones'],
-      'manager':      ['smartphones', 'laptops', 'smartwatches', 'tablets'],
-      'healthcare':   ['tablets', 'smartwatches', 'smartphones', 'laptops'],
-      'teacher':      ['tablets', 'laptops', 'smartwatches', 'headphones'],
-      'finance':      ['smartphones', 'smartwatches', 'laptops', 'tablets'],
-      'other':        ['smartphones', 'laptops'],
+      'student': [
+        'laptops',
+        'tablets',
+        'headphones',
+        'smartphones',
+        'e-readers',
+      ],
+      'engineer': ['laptops', 'monitors', 'cpus', 'gpus', 'keyboards', 'mice'],
+      'designer': ['monitors', 'tablets', 'laptops', 'cameras', 'smartphones'],
+      'developer': [
+        'laptops',
+        'monitors',
+        'keyboards',
+        'mice',
+        'desktops',
+        'routers',
+      ],
+      'content_creator': [
+        'cameras',
+        'microphones',
+        'monitors',
+        'laptops',
+        'gimbals',
+        'tripods',
+      ],
+      'gamer': [
+        'gpus',
+        'monitors',
+        'keyboards',
+        'mice',
+        'headphones',
+        'consoles',
+      ],
+      'manager': [
+        'smartphones',
+        'laptops',
+        'smartwatches',
+        'tablets',
+        'headphones',
+      ],
+      'entrepreneur': [
+        'smartphones',
+        'laptops',
+        'tablets',
+        'monitors',
+        'routers',
+      ],
+      'healthcare': ['tablets', 'smartwatches', 'smartphones', 'laptops'],
+      'educator': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
+      'teacher': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
+      'finance': ['laptops', 'monitors', 'smartphones', 'tablets'],
+      'architect': ['monitors', 'laptops', 'tablets', 'gpus', 'desktops'],
+      'sales_marketing': ['smartphones', 'laptops', 'tablets', 'cameras'],
+      'other': ['smartphones', 'laptops', 'headphones'],
     };
     final boostedCats = professionCategoryBoost[user.profession] ?? [];
     for (int i = 0; i < boostedCats.length; i++) {
@@ -421,8 +536,10 @@ class ProfileAlgorithmService {
 
     // Boost from behavior: categories user actually browses
     if (behavior.categoryViews.isNotEmpty) {
-      final maxViews = behavior.categoryViews.values
-          .fold<int>(1, (a, b) => a > b ? a : b);
+      final maxViews = behavior.categoryViews.values.fold<int>(
+        1,
+        (a, b) => a > b ? a : b,
+      );
       for (final e in behavior.categoryViews.entries) {
         final normalized = (e.value / maxViews).clamp(0.0, 1.0);
         categories[e.key] = (categories[e.key] ?? 0) + normalized * 1.2;
@@ -442,7 +559,9 @@ class ProfileAlgorithmService {
 
   /// Returns a boost value (-15 to +15) based on behavior signals.
   double _calculateBehaviorBoost(
-      ProductEntity product, BehaviorSignals behavior) {
+    ProductEntity product,
+    BehaviorSignals behavior,
+  ) {
     if (behavior == BehaviorSignals.empty) return 0;
 
     double boost = 0;
@@ -451,8 +570,10 @@ class ProfileAlgorithmService {
     //    User who views lots of "laptops" should see laptops ranked higher
     final catViews = behavior.categoryViews[product.category] ?? 0;
     if (catViews > 0) {
-      final totalViews = behavior.categoryViews.values
-          .fold<int>(1, (a, b) => a + b);
+      final totalViews = behavior.categoryViews.values.fold<int>(
+        1,
+        (a, b) => a + b,
+      );
       final ratio = catViews / totalViews;
       boost += (ratio * 12).clamp(0, 6);
     }
@@ -498,13 +619,18 @@ class ProfileAlgorithmService {
   // HELPER METHODS
   // ═══════════════════════════════════════════════════════
 
+  bool _hasAnyDevice(UserEntity user, List<String> candidates) {
+    return user.currentDevices.any(candidates.contains);
+  }
+
   double _calculateAppleAffinity(UserEntity user) {
     double score = 0;
-    if (user.ecosystem == 'apple') score += 0.5;
-    if (user.ecosystem == 'mixed') score += 0.25;
+    if (user.ecosystem == 'apple') score += 0.55;
+    if (user.ecosystem == 'mixed') score += 0.2;
     if (user.currentDevices.contains('iphone')) score += 0.2;
     if (user.currentDevices.contains('ipad')) score += 0.15;
-    if (user.currentDevices.contains('mac')) score += 0.15;
+    if (_hasAnyDevice(user, const ['macbook', 'mac_desktop'])) score += 0.15;
+    if (user.currentDevices.contains('apple_watch')) score += 0.12;
     if (user.subscriptions.contains('icloud')) score += 0.1;
     if (user.subscriptions.contains('apple_music')) score += 0.1;
     return score.clamp(0.0, 1.0);
@@ -512,12 +638,49 @@ class ProfileAlgorithmService {
 
   double _calculateAndroidAffinity(UserEntity user) {
     double score = 0;
-    if (user.ecosystem == 'android') score += 0.5;
-    if (user.ecosystem == 'mixed') score += 0.25;
-    if (user.currentDevices.contains('android_phone')) score += 0.2;
+    if (user.ecosystem == 'android') score += 0.45;
+    if (user.ecosystem == 'samsung' || user.ecosystem == 'google') score += 0.5;
+    if (user.ecosystem == 'mixed') score += 0.2;
+    if (_hasAnyDevice(user, const ['android_phone', 'galaxy_phone'])) {
+      score += 0.2;
+    }
     if (user.currentDevices.contains('android_tablet')) score += 0.15;
-    if (user.currentDevices.contains('windows_pc')) score += 0.1;
+    if (user.currentDevices.contains('galaxy_watch')) score += 0.12;
+    if (_hasAnyDevice(user, const ['windows_pc', 'windows_laptop']))
+      score += 0.08;
     if (user.subscriptions.contains('google_one')) score += 0.1;
+    if (user.subscriptions.contains('youtube_premium')) score += 0.1;
+    return score.clamp(0.0, 1.0);
+  }
+
+  double _calculateWindowsAffinity(UserEntity user) {
+    double score = 0;
+    if (user.ecosystem == 'windows') score += 0.55;
+    if (user.ecosystem == 'mixed') score += 0.2;
+    if (_hasAnyDevice(user, const [
+      'windows_pc',
+      'windows_laptop',
+      'gaming_pc',
+    ])) {
+      score += 0.25;
+    }
+    if (user.subscriptions.contains('microsoft_365')) score += 0.12;
+    return score.clamp(0.0, 1.0);
+  }
+
+  double _calculateGoogleAffinity(UserEntity user) {
+    double score = 0;
+    if (user.ecosystem == 'google') score += 0.55;
+    if (user.ecosystem == 'android') score += 0.25;
+    if (user.ecosystem == 'mixed') score += 0.15;
+    if (_hasAnyDevice(user, const [
+      'chromebook',
+      'android_phone',
+      'galaxy_phone',
+    ])) {
+      score += 0.15;
+    }
+    if (user.subscriptions.contains('google_one')) score += 0.12;
     if (user.subscriptions.contains('youtube_premium')) score += 0.1;
     return score.clamp(0.0, 1.0);
   }
@@ -530,6 +693,8 @@ class ProfileAlgorithmService {
         return 0.5;
       case 'high':
         return 0.75;
+      case 'premium':
+        return 0.92;
       case 'any':
         return 1.0;
       default:
@@ -539,7 +704,9 @@ class ProfileAlgorithmService {
 
   double _calculateEcosystemMatchScore(UserEntity user, ProductEntity product) {
     // Determine product ecosystem from specs or brand
-    final productEcosystem = product.specs['ecosystem']?.toString().toLowerCase();
+    final productEcosystem = product.specs['ecosystem']
+        ?.toString()
+        .toLowerCase();
     final brand = (product.brand ?? '').toLowerCase();
 
     // Infer ecosystem from brand when spec is missing
@@ -548,9 +715,40 @@ class ProfileAlgorithmService {
       inferredEcosystem = productEcosystem;
     } else if ({'apple', 'beats'}.contains(brand)) {
       inferredEcosystem = 'apple';
-    } else if ({'samsung', 'xiaomi', 'oppo', 'vivo', 'realme', 'oneplus',
-                'motorola', 'huawei', 'honor', 'poco', 'nothing', 'google',
-                'tecno', 'infinix', 'zte'}.contains(brand)) {
+    } else if (brand == 'samsung') {
+      inferredEcosystem = 'samsung';
+    } else if (brand == 'google') {
+      inferredEcosystem = 'google';
+    } else if ({
+      'microsoft',
+      'dell',
+      'hp',
+      'lenovo',
+      'asus',
+      'acer',
+      'msi',
+      'razer',
+      'surface',
+      'framework',
+    }.contains(brand)) {
+      inferredEcosystem = 'windows';
+    } else if ({
+      'samsung',
+      'xiaomi',
+      'oppo',
+      'vivo',
+      'realme',
+      'oneplus',
+      'motorola',
+      'huawei',
+      'honor',
+      'poco',
+      'nothing',
+      'google',
+      'tecno',
+      'infinix',
+      'zte',
+    }.contains(brand)) {
       inferredEcosystem = 'android';
     } else {
       // Neutral products (accessories, PC components, etc.)
@@ -558,10 +756,34 @@ class ProfileAlgorithmService {
     }
 
     if (inferredEcosystem == 'neutral') return 0.60;
-    if (user.ecosystem == 'mixed') return 0.70;
+    if (user.ecosystem == 'mixed') return 0.72;
     if (user.ecosystem == inferredEcosystem) return 1.0;
-    if (user.ecosystem == 'apple' && inferredEcosystem == 'android') return 0.15;
-    if (user.ecosystem == 'android' && inferredEcosystem == 'apple') return 0.15;
+    if (user.ecosystem == 'android' &&
+        {'samsung', 'google', 'android'}.contains(inferredEcosystem)) {
+      return 0.9;
+    }
+    if (user.ecosystem == 'samsung' &&
+        {'samsung', 'android', 'google'}.contains(inferredEcosystem)) {
+      return 0.92;
+    }
+    if (user.ecosystem == 'google' &&
+        {'google', 'android', 'samsung'}.contains(inferredEcosystem)) {
+      return 0.9;
+    }
+    if (user.ecosystem == 'windows' && inferredEcosystem == 'windows')
+      return 0.96;
+    if (user.ecosystem == 'apple' && inferredEcosystem == 'windows')
+      return 0.58;
+    if (user.ecosystem == 'windows' && inferredEcosystem == 'apple')
+      return 0.52;
+    if (user.ecosystem == 'apple' &&
+        {'android', 'samsung', 'google'}.contains(inferredEcosystem)) {
+      return 0.18;
+    }
+    if ({'android', 'samsung', 'google'}.contains(user.ecosystem) &&
+        inferredEcosystem == 'apple') {
+      return 0.18;
+    }
 
     return 0.5;
   }
@@ -573,7 +795,8 @@ class ProfileAlgorithmService {
     // Get price based on user's country
     final price = product.prices[user.country] ?? product.prices['US'] ?? 0.0;
 
-    if (user.budgetRange == 'any') return 0.75; // Don't give full score for unset budget
+    if (user.budgetRange == 'any')
+      return 0.75; // Don't give full score for unset budget
 
     final maxBudget = userBudgetRange['max'] ?? 999999;
     final minBudget = userBudgetRange['min'] ?? 0;
@@ -652,6 +875,58 @@ class ProfileAlgorithmService {
             matchCount++;
           }
           break;
+        case 'battery':
+          if (productPros.contains('battery') ||
+              productPros.contains('pil') ||
+              productPros.contains('long-lasting') ||
+              productSpecs.contains('mah')) {
+            matchCount++;
+          }
+          break;
+        case 'camera':
+          if (productPros.contains('camera') ||
+              productPros.contains('kamera') ||
+              productPros.contains('photo') ||
+              productSpecs.contains('mp') ||
+              productSpecs.contains('optical zoom')) {
+            matchCount++;
+          }
+          break;
+        case 'portability':
+          if (productPros.contains('portable') ||
+              productPros.contains('hafif') ||
+              productPros.contains('lightweight') ||
+              productSpecs.contains('weight')) {
+            matchCount++;
+          }
+          break;
+        case 'gaming':
+          if (productPros.contains('gaming') ||
+              productPros.contains('oyun') ||
+              productSpecs.contains('refresh rate') ||
+              productSpecs.contains('rtx') ||
+              productSpecs.contains('fps')) {
+            matchCount++;
+          }
+          break;
+        case 'creator':
+          if (productPros.contains('creator') ||
+              productPros.contains('editing') ||
+              productPros.contains('render') ||
+              productSpecs.contains('color gamut') ||
+              productSpecs.contains('4k')) {
+            matchCount++;
+          }
+          break;
+        case 'productivity':
+          if (productPros.contains('productivity') ||
+              productPros.contains('office') ||
+              productPros.contains('multitask') ||
+              productSpecs.contains('battery') ||
+              productSpecs.contains('screen size')) {
+            matchCount++;
+          }
+          break;
       }
     }
 
@@ -670,7 +945,9 @@ class ProfileAlgorithmService {
   }
 
   double _calculateDeviceCompatibilityScore(
-      UserEntity user, ProductEntity product) {
+    UserEntity user,
+    ProductEntity product,
+  ) {
     if (user.currentDevices.isEmpty) {
       if (user.interestCategories.contains(product.category) ||
           user.interestCategories.contains(product.subcategory)) {
@@ -682,49 +959,118 @@ class ProfileAlgorithmService {
     final category = product.category.toLowerCase();
     final brand = (product.brand ?? '').toLowerCase();
     double compatibility = 0.5;
+    final hasApplePhone = user.currentDevices.contains('iphone');
+    final hasAndroidPhone = _hasAnyDevice(user, const [
+      'android_phone',
+      'galaxy_phone',
+    ]);
+    final hasMac = _hasAnyDevice(user, const ['macbook', 'mac_desktop']);
+    final hasWindows = _hasAnyDevice(user, const [
+      'windows_pc',
+      'windows_laptop',
+      'gaming_pc',
+    ]);
+    final hasTablet = _hasAnyDevice(user, const ['ipad', 'android_tablet']);
 
     // Smartphones
     if (category == 'smartphones') {
-      if (brand == 'apple' && user.currentDevices.contains('iphone')) compatibility = 0.95;
-      else if (brand == 'apple' && user.ecosystem == 'apple') compatibility = 0.90;
-      else if (brand != 'apple' && user.currentDevices.contains('android_phone')) compatibility = 0.85;
-      else if (brand != 'apple' && user.ecosystem == 'android') compatibility = 0.80;
-      else if (user.ecosystem == 'mixed') compatibility = 0.70;
-      else compatibility = 0.40;
+      if (brand == 'apple' && hasApplePhone)
+        compatibility = 0.95;
+      else if (brand == 'apple' && user.ecosystem == 'apple')
+        compatibility = 0.90;
+      else if (brand == 'samsung' &&
+          (hasAndroidPhone || user.ecosystem == 'samsung'))
+        compatibility = 0.9;
+      else if (brand == 'google' &&
+          (hasAndroidPhone || user.ecosystem == 'google'))
+        compatibility = 0.88;
+      else if (brand != 'apple' && hasAndroidPhone)
+        compatibility = 0.85;
+      else if ({'android', 'samsung', 'google'}.contains(user.ecosystem))
+        compatibility = 0.80;
+      else if (user.ecosystem == 'mixed')
+        compatibility = 0.70;
+      else
+        compatibility = 0.40;
     }
     // Laptops & Desktops
     else if (category == 'laptops' || category == 'desktops') {
-      if (brand == 'apple' && (user.currentDevices.contains('mac') || user.ecosystem == 'apple')) compatibility = 0.95;
-      else if (brand != 'apple' && user.currentDevices.contains('windows_pc')) compatibility = 0.85;
-      else if (user.ecosystem == 'mixed') compatibility = 0.70;
-      else compatibility = 0.45;
+      if (brand == 'apple' && (hasMac || user.ecosystem == 'apple'))
+        compatibility = 0.95;
+      else if ({
+            'microsoft',
+            'dell',
+            'hp',
+            'lenovo',
+            'asus',
+            'acer',
+            'msi',
+            'razer',
+          }.contains(brand) &&
+          (hasWindows || user.ecosystem == 'windows')) {
+        compatibility = 0.9;
+      } else if (brand != 'apple' && hasWindows) {
+        compatibility = 0.85;
+      } else if (user.ecosystem == 'mixed')
+        compatibility = 0.70;
+      else
+        compatibility = 0.45;
     }
     // Tablets
     else if (category == 'tablets') {
-      if (brand == 'apple' && (user.currentDevices.contains('ipad') || user.ecosystem == 'apple')) compatibility = 0.95;
-      else if (brand != 'apple' && (user.currentDevices.contains('android_tablet') || user.ecosystem == 'android')) compatibility = 0.85;
-      else if (user.ecosystem == 'mixed') compatibility = 0.70;
-      else compatibility = 0.45;
+      if (brand == 'apple' &&
+          (user.currentDevices.contains('ipad') || user.ecosystem == 'apple'))
+        compatibility = 0.95;
+      else if (brand != 'apple' &&
+          (user.currentDevices.contains('android_tablet') ||
+              {'android', 'samsung', 'google'}.contains(user.ecosystem))) {
+        compatibility = 0.85;
+      } else if (user.ecosystem == 'mixed')
+        compatibility = 0.70;
+      else
+        compatibility = 0.45;
     }
     // Smartwatches
     else if (category == 'smartwatches') {
-      if (brand == 'apple' && user.currentDevices.contains('iphone')) compatibility = 0.95;
-      else if (brand == 'samsung' && user.currentDevices.contains('android_phone')) compatibility = 0.90;
-      else if ({'garmin', 'fitbit', 'amazfit'}.contains(brand)) compatibility = 0.75;
-      else if (user.ecosystem == 'mixed') compatibility = 0.70;
-      else compatibility = 0.45;
+      if (brand == 'apple' && hasApplePhone)
+        compatibility = 0.95;
+      else if (brand == 'samsung' && hasAndroidPhone)
+        compatibility = 0.90;
+      else if (brand == 'google' && hasAndroidPhone)
+        compatibility = 0.88;
+      else if ({'garmin', 'fitbit', 'amazfit'}.contains(brand))
+        compatibility = 0.75;
+      else if (user.ecosystem == 'mixed')
+        compatibility = 0.70;
+      else
+        compatibility = 0.45;
     }
     // Headphones, Speakers (universal)
     else if ({'headphones', 'speakers', 'earbuds'}.contains(category)) {
       compatibility = 0.75;
-      if (brand == 'apple' && user.ecosystem == 'apple') compatibility = 0.90;
-      else if (brand == 'samsung' && user.ecosystem == 'android') compatibility = 0.85;
+      if (brand == 'apple' && user.ecosystem == 'apple')
+        compatibility = 0.90;
+      else if (brand == 'samsung' && user.ecosystem == 'android')
+        compatibility = 0.85;
     }
     // PC Components (GPUs, CPUs, etc.)
-    else if ({'gpus', 'cpus', 'keyboards', 'mice', 'monitors', 'webcams', 'gamepads'}.contains(category)) {
-      if (user.currentDevices.contains('windows_pc')) compatibility = 0.85;
-      else if (user.currentDevices.contains('mac')) compatibility = 0.60;
-      else compatibility = 0.50;
+    else if ({
+      'gpus',
+      'cpus',
+      'keyboards',
+      'mice',
+      'monitors',
+      'webcams',
+      'gamepads',
+    }.contains(category)) {
+      if (hasWindows)
+        compatibility = 0.85;
+      else if (hasMac)
+        compatibility = 0.60;
+      else if (hasTablet)
+        compatibility = 0.55;
+      else
+        compatibility = 0.50;
     }
     // Cameras, Drones, Dashcams (universal)
     else if ({'cameras', 'drones', 'dashcams'}.contains(category)) {
@@ -732,15 +1078,24 @@ class ProfileAlgorithmService {
       if (user.interestCategories.contains(category)) compatibility = 0.85;
     }
     // TVs, Consoles, Routers, Robot Vacuums (universal)
-    else if ({'tvs', 'consoles', 'routers', 'robot-vacuums', 'media-players'}.contains(category)) {
+    else if ({
+      'tvs',
+      'consoles',
+      'routers',
+      'robot-vacuums',
+      'media-players',
+    }.contains(category)) {
       compatibility = 0.65;
       if (user.interestCategories.contains(category)) compatibility = 0.80;
     }
     // Cases
     else if (category == 'cases') {
-      if (user.currentDevices.contains('iphone') && brand == 'apple') compatibility = 0.95;
-      else if (user.currentDevices.contains('android_phone')) compatibility = 0.75;
-      else compatibility = 0.50;
+      if (user.currentDevices.contains('iphone') && brand == 'apple')
+        compatibility = 0.95;
+      else if (user.currentDevices.contains('android_phone'))
+        compatibility = 0.75;
+      else
+        compatibility = 0.50;
     }
     // Subscription (existing logic)
     else if (category == 'subscription') {
@@ -751,7 +1106,9 @@ class ProfileAlgorithmService {
   }
 
   double _calculatePricePerformanceScore(
-      UserEntity user, ProductEntity product) {
+    UserEntity user,
+    ProductEntity product,
+  ) {
     // Use techScore as quality proxy (always populated from scraper)
     final qualityScore = product.techScore.clamp(0.0, 100.0);
     final price = product.prices[user.country] ?? product.prices['US'] ?? 0;
