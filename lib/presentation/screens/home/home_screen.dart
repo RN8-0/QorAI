@@ -474,6 +474,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === QUIZ REMINDER =========================================================
 
   Widget _buildQuizReminder(AsyncValue userProfile) {
+    final covers = ref.watch(categoryCoversProvider).valueOrNull ?? const <String, String>{};
+    final heroImage = covers['smartphones'] ?? covers['laptops'] ?? covers['headphones'];
+
     return userProfile.when(
       data: (user) {
         if (user != null && !user.quizCompleted) {
@@ -483,40 +486,177 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: GestureDetector(
                 onTap: () => context.push(AppRoutes.quiz),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  constraints: const BoxConstraints(minHeight: 168),
                   decoration: BoxDecoration(
-                    gradient: AppTheme.aiBannerGradient,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(
-                          color: context.surfaceElevatedColor,
-                          borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.psychology_rounded,
-                            color: Colors.white, size: 22),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.brandCyan.withValues(alpha: 0.18),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(context.l10n?.completeYourProfile ?? 'Complete Your Profile',
-                                style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white, fontSize: 15,
-                                    fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 2),
-                            Text(context.l10n?.getAiRecommendations ?? 'Get AI-powered recommendations',
-                                style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white70, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios_rounded,
-                          color: Colors.white54, size: 16),
                     ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF071726),
+                                  Color(0xFF0B2442),
+                                  Color(0xFF0A1420),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (heroImage != null)
+                          Positioned.fill(
+                            child: CachedNetworkImage(
+                              imageUrl: heroImage,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                            ),
+                          ),
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.18),
+                                  AppTheme.brandBlue.withValues(alpha: 0.64),
+                                  AppTheme.brandCyan.withValues(alpha: 0.22),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.12),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.auto_awesome_rounded,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(99),
+                                    ),
+                                    child: Text(
+                                      'Quiz',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              Text(
+                                'Build your taste profile',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Unlock a smarter home feed, sharper AI compare guidance, and category-first recommendations.',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white.withValues(alpha: 0.78),
+                                  fontSize: 13,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final label in const [
+                                    'Home ranking',
+                                    'AI fit',
+                                    'Real product feed',
+                                  ])
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(99),
+                                      ),
+                                      child: Text(
+                                        label,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Text(
+                                    context.l10n?.completeYourProfile ??
+                                        'Complete Your Profile',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

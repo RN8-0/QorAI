@@ -1,31 +1,18 @@
 /// Compair - Profile Quiz Screen
-/// Blueprint Section 5.2, 5.3
-///
-/// REQUIRED QUESTIONS (cannot be skipped):
-/// 1. Age group - Critical for profile algorithm
-/// 2. Ecosystem - Apple/Android/Mixed
-/// 3. Budget preference - Base for product recommendations
-///
-/// OPTIONAL QUESTIONS (can be skipped):
-/// 4. Priorities (multiple choice)
-/// 5. Current devices (multiple choice)
-/// 6. Subscriptions (multiple choice)
-/// 7. Country
-/// 8. Interest categories (multiple choice)
-/// 9. Usage intent
 library;
 
 import 'dart:ui';
 
+import 'package:compair/core/constants.dart';
+import 'package:compair/core/errors.dart';
+import 'package:compair/core/theme.dart';
+import 'package:compair/domain/entities/user_entity.dart';
+import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/routing/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/routing/router.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   const QuizScreen({super.key});
@@ -34,14 +21,15 @@ class QuizScreen extends ConsumerStatefulWidget {
   ConsumerState<QuizScreen> createState() => _QuizScreenState();
 }
 
-class _QuizScreenState extends ConsumerState<QuizScreen>
-    with SingleTickerProviderStateMixin {
+class _QuizScreenState extends ConsumerState<QuizScreen> {
   final PageController _pageController = PageController();
+
   int _currentPage = 0;
   bool _isSubmitting = false;
   bool _showCompletion = false;
+  bool _questionsInitialized = false;
+  bool _didPrefill = false;
 
-  // Quiz answers
   String? _ageRange;
   String? _ecosystem;
   String? _budgetRange;
@@ -54,36 +42,28 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   String? _profession;
 
   late List<_QuizQuestion> _questions;
-  bool _questionsInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_questionsInitialized) {
-      _initQuestions();
-      _questionsInitialized = true;
-    }
+    if (_questionsInitialized) return;
+    _initQuestions();
+    _questionsInitialized = true;
   }
 
   void _initQuestions() {
     _questions = [
-      // ═══════════════════════════════════════════════════════
-      // REQUIRED QUESTIONS (First 3 questions - CANNOT BE SKIPPED)
-      // ═══════════════════════════════════════════════════════
-
-      // Question 1: Age Group (REQUIRED)
       _QuizQuestion(
         question: context.l10n?.quizAgeRange ?? 'What is your age range?',
-        subtitle: context.l10n?.usedForPersonalizedRecs ?? 'Used for personalized recommendations',
+        subtitle:
+            context.l10n?.usedForPersonalizedRecs ??
+            'Used to tune your recommendation style and shopping pace.',
         type: QuizQuestionType.single,
         isRequired: true,
         whyWeAsk:
-            context.l10n?.whyAgeRange ?? 'Technology preferences and usage habits vary by age group. This helps us recommend the most suitable products for you.',
+            context.l10n?.whyAgeRange ??
+            'Technology preferences and usage habits vary by age group. This helps us recommend the most suitable products for you.',
+        field: 'ageRange',
         options: [
           _QuizOption('13-17', context.l10n?.genAlphaZ ?? 'Gen Alpha/Z (13-17)', '🎮'),
           _QuizOption('18-24', context.l10n?.genZ ?? 'Gen Z (18-24)', '📱'),
@@ -92,54 +72,53 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           _QuizOption('45-54', context.l10n?.genX ?? 'Gen X (45-54)', '📊'),
           _QuizOption('55+', context.l10n?.fiftyFivePlus ?? '55 and above', '🌟'),
         ],
-        field: 'ageRange',
       ),
-
-      // Question 2: Ecosystem (REQUIRED)
       _QuizQuestion(
         question: context.l10n?.quizEcosystem ?? 'Which ecosystem do you use?',
-        subtitle: context.l10n?.importantForDeviceCompat ?? 'Important for device compatibility',
+        subtitle:
+            context.l10n?.importantForDeviceCompat ??
+            'This drives compatibility, accessory fit, and cross-device suggestions.',
         type: QuizQuestionType.single,
         isRequired: true,
         whyWeAsk:
-            context.l10n?.whyEcosystem ?? 'Apple and Android ecosystems work well with different products. We use this to suggest the most compatible devices.',
+            context.l10n?.whyEcosystem ??
+            'Apple and Android ecosystems work well with different products. We use this to suggest the most compatible devices.',
+        field: 'ecosystem',
         options: [
           _QuizOption('apple', context.l10n?.apple ?? 'Apple', '🍎'),
           _QuizOption('android', context.l10n?.android ?? 'Android', '🤖'),
           _QuizOption('mixed', context.l10n?.mixed ?? 'Mixed', '🔄'),
         ],
-        field: 'ecosystem',
       ),
-
-      // Question 3: Budget (REQUIRED)
       _QuizQuestion(
         question: context.l10n?.quizBudget ?? 'What is your budget preference?',
-        subtitle: context.l10n?.youCanChangeLater ?? 'You can change this later',
+        subtitle:
+            context.l10n?.youCanChangeLater ??
+            'We use this to decide when to show flagship picks versus value winners.',
         type: QuizQuestionType.single,
         isRequired: true,
         whyWeAsk:
-            context.l10n?.whyBudget ?? 'Your budget helps us recommend products within your preferred price range.',
+            context.l10n?.whyBudget ??
+            'Your budget helps us recommend products within your preferred price range.',
+        field: 'budgetRange',
         options: [
           _QuizOption('low', context.l10n?.budgetValue ?? 'Budget / Value', '💰'),
           _QuizOption('mid', context.l10n?.midRange ?? 'Mid-Range', '💎'),
           _QuizOption('high', context.l10n?.premium ?? 'Premium', '👑'),
           _QuizOption('any', context.l10n?.doesNotMatter ?? 'Does Not Matter', '🤷'),
         ],
-        field: 'budgetRange',
       ),
-
-      // ═══════════════════════════════════════════════════════
-      // OPTIONAL QUESTIONS (Can be skipped)
-      // ═══════════════════════════════════════════════════════
-
-      // Question 4: Priorities
       _QuizQuestion(
-        question: context.l10n?.quizPriorities ?? 'What are your priorities?',
-        subtitle: context.l10n?.selectMultiple ?? 'Select multiple',
+        question: context.l10n?.quizPriorities ?? 'What matters most when you compare?',
+        subtitle:
+            context.l10n?.selectMultiple ??
+            'Choose the signals Compair should amplify first.',
         type: QuizQuestionType.multi,
         isRequired: false,
         whyWeAsk:
-            context.l10n?.whyPriorities ?? 'Knowing your priorities helps us understand what matters to you the most in our comparisons.',
+            context.l10n?.whyPriorities ??
+            'Knowing your priorities helps us understand what matters to you the most in our comparisons.',
+        field: 'priorities',
         options: [
           _QuizOption('price', context.l10n?.price ?? 'Price', '💲'),
           _QuizOption('quality', context.l10n?.quality ?? 'Quality', '⭐'),
@@ -148,38 +127,40 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           _QuizOption('performance', context.l10n?.performance ?? 'Performance', '⚡'),
           _QuizOption('durability', context.l10n?.durability ?? 'Durability', '🛡️'),
         ],
-        field: 'priorities',
       ),
-
-      // Question 5: Devices
       _QuizQuestion(
-        question: context.l10n?.quizDevices ?? 'Which devices do you own?',
-        subtitle: context.l10n?.selectMultiple ?? 'Select multiple',
+        question: context.l10n?.quizDevices ?? 'What do you already use every day?',
+        subtitle:
+            context.l10n?.selectMultiple ??
+            'We use this to improve continuity and avoid awkward recommendations.',
         type: QuizQuestionType.multi,
         isRequired: false,
         whyWeAsk:
-            context.l10n?.whyDevices ?? 'This allows us to consider compatibility when making new recommendations.',
+            context.l10n?.whyDevices ??
+            'This allows us to consider compatibility when making new recommendations.',
+        field: 'currentDevices',
         options: [
           _QuizOption('iphone', context.l10n?.iphone ?? 'iPhone', '📱'),
           _QuizOption('android_phone', context.l10n?.androidPhone ?? 'Android Phone', '📱'),
-          _QuizOption('ipad', context.l10n?.ipad ?? 'iPad', '📱'),
-          _QuizOption('android_tablet', context.l10n?.androidTablet ?? 'Android Tablet', '📱'),
+          _QuizOption('ipad', context.l10n?.ipad ?? 'iPad', '📟'),
+          _QuizOption('android_tablet', context.l10n?.androidTablet ?? 'Android Tablet', '📟'),
           _QuizOption('mac', context.l10n?.mac ?? 'Mac', '💻'),
           _QuizOption('windows_pc', context.l10n?.windowsPc ?? 'Windows PC', '🖥️'),
           _QuizOption('linux', context.l10n?.linux ?? 'Linux', '🐧'),
           _QuizOption('smart_watch', context.l10n?.smartWatch ?? 'Smart Watch', '⌚'),
         ],
-        field: 'currentDevices',
       ),
-
-      // Question 6: Subscriptions
       _QuizQuestion(
-        question: context.l10n?.quizSubscriptions ?? 'Which subscriptions do you have?',
-        subtitle: context.l10n?.toAvoidRecommendingOwned ?? 'To avoid recommending what you already have',
+        question: context.l10n?.quizSubscriptions ?? 'Which services are already in your stack?',
+        subtitle:
+            context.l10n?.toAvoidRecommendingOwned ??
+            'This helps Compair avoid redundant subscription advice.',
         type: QuizQuestionType.multi,
         isRequired: false,
         whyWeAsk:
-            context.l10n?.whySubscriptions ?? 'We will skip recommending what you already pay for and show you better alternatives.',
+            context.l10n?.whySubscriptions ??
+            'We will skip recommending what you already pay for and show you better alternatives.',
+        field: 'subscriptions',
         options: [
           _QuizOption('netflix', 'Netflix', '🎬'),
           _QuizOption('spotify', 'Spotify', '🎵'),
@@ -192,31 +173,34 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           _QuizOption('ps_plus', 'PlayStation Plus', '🎮'),
           _QuizOption('none', context.l10n?.none ?? 'None', '❌'),
         ],
-        field: 'subscriptions',
       ),
-
-      // Question 7: Country
       _QuizQuestion(
-        question: context.l10n?.quizCountry ?? 'Which country are you in?',
-        subtitle: context.l10n?.forPricingAndAvailability ?? 'For pricing and availability',
+        question: context.l10n?.quizCountry ?? 'Where should pricing and stock be optimized for?',
+        subtitle:
+            context.l10n?.forPricingAndAvailability ??
+            'Regional pricing, availability, and subscription coverage can change recommendations.',
         type: QuizQuestionType.single,
         isRequired: false,
         whyWeAsk:
-            context.l10n?.whyCountry ?? 'Prices and service availability vary by country. (Currently US Only)',
+            context.l10n?.whyCountry ??
+            'Prices and service availability vary by country.',
+        field: 'country',
         options: [
           _QuizOption('US', context.l10n?.unitedStates ?? 'United States', '🇺🇸'),
         ],
-        field: 'country',
       ),
-
-      // Question 8: Product Categories (Spotify-style circle grid)
       _QuizQuestion(
-        question: context.l10n?.quizProducts ?? 'What products interest you?',
-        subtitle: context.l10n?.pickAtLeast3 ?? 'Pick at least 3 to personalize your feed',
+        question: context.l10n?.quizProducts ?? 'What should dominate your home feed?',
+        subtitle:
+            context.l10n?.pickAtLeast3 ??
+            'Choose a few categories so Compair can build a taste graph around real products.',
         type: QuizQuestionType.multi,
         isRequired: false,
         whyWeAsk:
-            context.l10n?.whyProducts ?? 'We\'ll show products from your favorite categories on the home screen and tailor recommendations to your interests.',
+            context.l10n?.whyProducts ??
+            'We use these categories to rank your home feed, personalize suggestions, and bias AI toward what you actually care about.',
+        field: 'interestCategories',
+        useVisualGrid: true,
         options: [
           _QuizOption('smartphones', context.l10n?.smartphones ?? 'Smartphones', '📱'),
           _QuizOption('laptops', context.l10n?.laptops ?? 'Laptops', '💻'),
@@ -235,35 +219,36 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           _QuizOption('drones', context.l10n?.drones ?? 'Drones', '🚁'),
           _QuizOption('robot-vacuums', context.l10n?.smartHome ?? 'Smart Home', '🤖'),
         ],
-        field: 'interestCategories',
-        useCircleGrid: true,
       ),
-
-      // Question 9: Usage intent
       _QuizQuestion(
-        question: context.l10n?.quizUsage ?? 'Why are you using Compair?',
-        subtitle: context.l10n?.toOptimizeExperience ?? 'To optimize your experience',
+        question: context.l10n?.quizUsage ?? 'How do you want to use Compair?',
+        subtitle:
+            context.l10n?.toOptimizeExperience ??
+            'This affects whether we push deeper analysis, faster decisions, or price-led signals.',
         type: QuizQuestionType.single,
         isRequired: false,
         whyWeAsk:
-            context.l10n?.whyUsage ?? 'This allows us to highlight the features that are most suitable to you.',
+            context.l10n?.whyUsage ??
+            'This allows us to highlight the features that are most suitable to you.',
+        field: 'usageIntent',
         options: [
           _QuizOption('research', context.l10n?.detailedResearch ?? 'Detailed Research', '🔍'),
           _QuizOption('quick_decision', context.l10n?.quickDecisions ?? 'Quick Decisions', '⚡'),
           _QuizOption('price_tracking', context.l10n?.priceTracking ?? 'Price Tracking', '📊'),
           _QuizOption('all', context.l10n?.everything ?? 'Everything', '🎯'),
         ],
-        field: 'usageIntent',
       ),
-
-      // Question 10: Profession
       _QuizQuestion(
-        question: context.l10n?.quizProfession ?? 'What is your profession?',
-        subtitle: context.l10n?.forSmarterAiRecs ?? 'For smarter AI recommendations',
+        question: context.l10n?.quizProfession ?? 'Which perspective should Compair optimize around?',
+        subtitle:
+            context.l10n?.forSmarterAiRecs ??
+            'Profession gives the algorithm better context for fit and productivity needs.',
         type: QuizQuestionType.single,
         isRequired: false,
         whyWeAsk:
-            context.l10n?.whyProfession ?? 'Your profession helps us suggest the right products — an engineer has different needs than a student, designer, or manager.',
+            context.l10n?.whyProfession ??
+            'Your profession helps us suggest the right products — an engineer has different needs than a student, designer, or manager.',
+        field: 'profession',
         options: [
           _QuizOption('student', context.l10n?.student ?? 'Student', '🎓'),
           _QuizOption('engineer', context.l10n?.engineerDev ?? 'Engineer / Developer', '⚙️'),
@@ -274,7 +259,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           _QuizOption('finance', context.l10n?.freelancer ?? 'Freelancer', '💰'),
           _QuizOption('other', context.l10n?.otherProfession ?? 'Other', '🌐'),
         ],
-        field: 'profession',
       ),
     ];
   }
@@ -284,8 +268,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
   bool get _hasCurrentQuestionAnswer {
     if (_currentPage >= _questions.length) return false;
-    final question = _questions[_currentPage];
-    switch (question.field) {
+    switch (_questions[_currentPage].field) {
       case 'ageRange':
         return _ageRange != null;
       case 'ecosystem':
@@ -311,7 +294,44 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     }
   }
 
+  void _prefillFromUser(UserEntity user) {
+    if (_didPrefill || !mounted) return;
+
+    setState(() {
+      _ageRange ??= user.ageRange;
+      _ecosystem ??= user.ecosystem.isEmpty ? null : user.ecosystem;
+      _budgetRange ??= user.budgetRange.isEmpty ? null : user.budgetRange;
+      _country ??= user.country.isEmpty ? null : user.country;
+      _usageIntent ??= user.usageIntent;
+      _profession ??= user.profession;
+
+      if (_priorities.isEmpty) {
+        _priorities.addAll(_dedupe(user.priorities));
+      }
+      if (_currentDevices.isEmpty) {
+        _currentDevices.addAll(_dedupe(user.currentDevices));
+      }
+      if (_subscriptions.isEmpty) {
+        _subscriptions.addAll(_dedupe(user.subscriptions));
+      }
+      if (_interestCategories.isEmpty) {
+        _interestCategories.addAll(_dedupe(user.interestCategories));
+      }
+      _didPrefill = true;
+    });
+  }
+
+  List<String> _dedupe(List<String> values) {
+    final result = <String>[];
+    for (final value in values) {
+      if (value.trim().isEmpty || result.contains(value)) continue;
+      result.add(value);
+    }
+    return result;
+  }
+
   void _selectOption(String field, String value) {
+    HapticFeedback.selectionClick();
     setState(() {
       switch (field) {
         case 'ageRange':
@@ -337,6 +357,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   }
 
   void _toggleMultiOption(String field, String value) {
+    HapticFeedback.lightImpact();
     setState(() {
       List<String> list;
       switch (field) {
@@ -348,14 +369,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           break;
         case 'subscriptions':
           list = _subscriptions;
-          // If "None" is selected, clear others
           if (value == 'none') {
-            list.clear();
-            list.add('none');
+            list
+              ..clear()
+              ..add('none');
             return;
-          } else {
-            list.remove('none');
           }
+          list.remove('none');
           break;
         case 'interestCategories':
           list = _interestCategories;
@@ -400,11 +420,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   }
 
   void _nextPage() {
-    // Check answer for required questions
     if (_isCurrentQuestionRequired && !_hasCurrentQuestionAnswer) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n?.youMustAnswerThis ?? 'You must answer this question'),
+          content: Text(
+            context.l10n?.youMustAnswerThis ?? 'You must answer this question',
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.warning,
         ),
@@ -415,7 +436,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     if (_currentPage < _questions.length - 1) {
       _pageController.nextPage(
         duration: AppConstants.pageTransitionDuration,
-        curve: Curves.easeInOut,
+        curve: Curves.easeOutCubic,
       );
     } else {
       _submitQuiz();
@@ -424,10 +445,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
   void _skipQuestion() {
     if (_isCurrentQuestionRequired) {
-      // Zorunlu sorular atlanamaz
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n?.thisQuestionRequired ?? 'This question is required and cannot be skipped'),
+          content: Text(
+            context.l10n?.thisQuestionRequired ??
+                'This question is required and cannot be skipped',
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.error,
         ),
@@ -438,7 +461,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     if (_currentPage < _questions.length - 1) {
       _pageController.nextPage(
         duration: AppConstants.pageTransitionDuration,
-        curve: Curves.easeInOut,
+        curve: Curves.easeOutCubic,
       );
     } else {
       _submitQuiz();
@@ -446,11 +469,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   }
 
   Future<void> _submitQuiz() async {
-    // Required field check
     if (_ageRange == null || _ecosystem == null || _budgetRange == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n?.pleaseAnswerRequired ?? 'Please answer the required questions'),
+          content: Text(
+            context.l10n?.pleaseAnswerRequired ??
+                'Please answer the required questions',
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.error,
         ),
@@ -464,12 +489,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     final countryInfo = SupportedCountries.countries[country];
     final detectedCurrency = ref.read(currencyProvider);
 
-    final quizData = {
-      // Zorunlu alanlar
+    final quizData = <String, dynamic>{
       'ageRange': _ageRange,
       'ecosystem': _ecosystem,
       'budgetRange': _budgetRange,
-      // Opsiyonel alanlar
       'priorities': _priorities,
       'currentDevices': _currentDevices,
       'subscriptions':
@@ -480,7 +503,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       'interestCategories': _interestCategories,
       'usageIntent': _usageIntent ?? 'all',
       'profession': _profession,
-      // Primary category is now the first of interestCategories
       'primaryCategory':
           _interestCategories.isNotEmpty ? _interestCategories.first : 'tech',
     };
@@ -492,22 +514,27 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     }
 
     final result = await ref.read(authRepositoryProvider).updateUserProfile(
-          uid: user,
-          quizData: quizData,
-        );
+      uid: user,
+      quizData: quizData,
+    );
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     switch (result) {
       case Success():
-        if (!mounted) return;
+        ref.invalidate(userProfileProvider);
+        ref.invalidate(homeFeedProvider);
+        ref.invalidate(categoryCoversProvider);
         setState(() => _showCompletion = true);
         return;
       case Failure(error: final error):
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n?.failedToSaveProfile(error.message) ?? 'Failed to save profile: ${error.message}'),
+            content: Text(
+              context.l10n?.failedToSaveProfile(error.message) ??
+                  'Failed to save profile: ${error.message}',
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -516,340 +543,415 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   }
 
   void _showWhyWeAsk(String reason) {
-    showModalBottomSheet(
+    final palette = _paletteForQuestion(_questions[_currentPage]);
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.08),
-              blurRadius: 24,
-              offset: const Offset(0, -8),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: context.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(
+              color: palette.primary.withValues(alpha: 0.24),
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: context.dividerColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.28),
+                blurRadius: 30,
+                offset: const Offset(0, -8),
               ),
-            ),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1A150A), Color(0xFF1F180D)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.lightbulb_outline,
-                    color: AppTheme.warning,
+                    color: context.dividerColor,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  context.l10n?.whyWeAsk ?? 'Why we ask',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              reason,
-              style: TextStyle(
-                fontSize: 15,
-                color: context.textTertiaryColor,
-                height: 1.6,
               ),
-            ),
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          palette.primary.withValues(alpha: 0.2),
+                          palette.secondary.withValues(alpha: 0.16),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      palette.icon,
+                      color: palette.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      context.l10n?.whyWeAsk ?? 'Why we ask',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                reason,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.6,
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
                 width: double.infinity,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Center(
-                  child: Text(
-                    context.l10n?.gotIt ?? 'Got it',
-                    style: TextStyle(
-                      color: context.surfaceVariantColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: palette.primary,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(context.l10n?.gotIt ?? 'Got it'),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
-  }
-
-  int _getMultiSelectCount(String field) {
-    switch (field) {
-      case 'priorities':
-        return _priorities.length;
-      case 'currentDevices':
-        return _currentDevices.length;
-      case 'subscriptions':
-        return _subscriptions.length;
-      case 'interestCategories':
-        return _interestCategories.length;
-      default:
-        return 0;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showCompletion) return _buildCompletionScreen();
+    final userAsync = ref.watch(userProfileProvider);
+    final coversAsync = ref.watch(categoryCoversProvider);
+
+    final user = userAsync.valueOrNull;
+    if (user != null && !_didPrefill) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _prefillFromUser(user);
+      });
+    }
+
+    if (_showCompletion) {
+      return _buildCompletionScreen(coversAsync.valueOrNull ?? const {});
+    }
 
     final progress = (_currentPage + 1) / _questions.length;
-    final currentQuestion =
-        _currentPage < _questions.length ? _questions[_currentPage] : null;
-
-    final emojiGradients = [
-      const [Color(0xFF0A0F1F), Color(0xFF0D1229)],
-      const [Color(0xFF0A1A0F), Color(0xFF0D1F14)],
-      const [Color(0xFF1A150A), Color(0xFF1F180D)],
-      const [Color(0xFF1A0A14), Color(0xFF1F0D18)],
-      const [Color(0xFF100A1A), Color(0xFF140D1F)],
-      const [Color(0xFF0A141A), Color(0xFF0D181F)],
-      const [Color(0xFF1A0A0A), Color(0xFF1F0D0D)],
-      const [Color(0xFF1A0A0B), Color(0xFF1F0D0E)],
-      const [Color(0xFF0A1A17), Color(0xFF0D1F1C)],
-    ];
+    final currentQuestion = _questions[_currentPage];
+    final palette = _paletteForQuestion(currentQuestion);
+    final covers = coversAsync.valueOrNull ?? const <String, String>{};
 
     return Scaffold(
       backgroundColor: context.surfaceColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Top Bar ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (_currentPage > 0)
-                        GestureDetector(
-                          onTap: () => _pageController.previousPage(
-                            duration: AppConstants.pageTransitionDuration,
-                            curve: Curves.easeInOut,
-                          ),
-                          child: ClipOval(
-                            child: BackdropFilter(
-                              filter:
-                                  ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color:
-                                      context.textPrimary.withValues(alpha: 0.85),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: context.surfaceVariantColor
-                                        .withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.arrow_back_ios_new,
-                                  size: 16,
-                                  color: context.textPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        const SizedBox(width: 40),
-                      if (!_isCurrentQuestionRequired)
-                        GestureDetector(
-                          onTap: _skipQuestion,
-                          child: Text(
-                            context.l10n?.skip ?? 'Skip',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: context.textSecondary,
-                            ),
-                          ),
-                        )
-                      else
-                        const SizedBox(width: 40),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: progress),
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeInOut,
-                    builder: (context, value, _) {
-                      return Container(
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: context.surfaceVariantColor,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: FractionallySizedBox(
-                            widthFactor: value.clamp(0.0, 1.0),
-                            child: ShaderMask(
-                              shaderCallback: (bounds) =>
-                                  const LinearGradient(
-                                colors: [
-                                  AppTheme.neonCyan,
-                                  AppTheme.neonCyan,
-                                ],
-                              ).createShader(bounds),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: context.surfaceVariantColor,
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+      body: Stack(
+        children: [
+          _buildBackdrop(palette),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(progress, palette),
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _questions.length,
+                    onPageChanged: (index) {
+                      setState(() => _currentPage = index);
+                    },
+                    itemBuilder: (context, index) {
+                      return _buildQuestionPage(
+                        _questions[index],
+                        _paletteForQuestion(_questions[index]),
+                        covers,
                       );
                     },
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    context.l10n?.quizStepOf('${_currentPage + 1}', '${_questions.length}') ?? 'Step ${_currentPage + 1} of ${_questions.length}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: context.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                _buildFooter(currentQuestion, palette),
+              ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // ── Questions PageView ──
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _questions.length,
-                onPageChanged: (index) =>
-                    setState(() => _currentPage = index),
-                itemBuilder: (context, index) {
-                  final question = _questions[index];
-                  final gradientColors = index < emojiGradients.length
-                      ? emojiGradients[index]
-                      : emojiGradients.last;
-                  return _buildQuestionPage(question, gradientColors);
-                },
-              ),
-            ),
-
-            // ── Bottom: Why we ask + Continue ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Column(
-                children: [
-                  if (currentQuestion?.whyWeAsk != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: GestureDetector(
-                        onTap: () =>
-                            _showWhyWeAsk(currentQuestion!.whyWeAsk!),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.info_outline,
-                                size: 14, color: AppTheme.neonCyan),
-                            const SizedBox(width: 4),
-                            Text(
-                              context.l10n?.whyWeAsk ?? 'Why we ask',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.neonCyan,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  _buildContinueButton(),
-                ],
-              ),
-            ),
+  Widget _buildBackdrop(_QuestionPalette palette) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            context.surfaceColor,
+            palette.primary.withValues(alpha: 0.08),
+            context.surfaceColor,
           ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -80,
+            right: -40,
+            child: _buildBlurOrb(palette.primary, 180),
+          ),
+          Positioned(
+            top: 220,
+            left: -60,
+            child: _buildBlurOrb(palette.secondary, 160),
+          ),
+          Positioned(
+            bottom: -70,
+            right: 40,
+            child: _buildBlurOrb(AppTheme.brandBlue, 220),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBlurOrb(Color color, double size) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 55, sigmaY: 55),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: 0.16),
         ),
       ),
     );
   }
 
-  Widget _buildContinueButton() {
-    final canContinue =
-        !_isCurrentQuestionRequired || _hasCurrentQuestionAnswer;
-    final isLastPage = _currentPage >= _questions.length - 1;
-
-    return GestureDetector(
-      onTap: _isSubmitting ? null : _nextPage,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: canContinue ? AppTheme.primaryGradient : null,
-          color: canContinue ? null : context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: canContinue ? AppTheme.primaryGlow : null,
-        ),
-        child: Center(
-          child: _isSubmitting
-              ? SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: context.surfaceVariantColor,
+  Widget _buildHeader(double progress, _QuestionPalette palette) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _RoundIconButton(
+                icon: _currentPage == 0
+                    ? Icons.close_rounded
+                    : Icons.arrow_back_ios_new_rounded,
+                onTap: () {
+                  if (_currentPage == 0) {
+                    context.pop();
+                    return;
+                  }
+                  _pageController.previousPage(
+                    duration: AppConstants.pageTransitionDuration,
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Compair Taste Profile',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                        color: palette.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n?.quizStepOf(
+                            '${_currentPage + 1}',
+                            '${_questions.length}',
+                          ) ??
+                          'Step ${_currentPage + 1} of ${_questions.length}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!_isCurrentQuestionRequired)
+                TextButton(
+                  onPressed: _skipQuestion,
+                  child: Text(
+                    context.l10n?.skip ?? 'Skip',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: context.textSecondary,
+                    ),
                   ),
                 )
-              : Text(
-                  isLastPage ? (context.l10n?.createMyProfile ?? 'Create My Profile') : (context.l10n?.continueButton ?? 'Continue'),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: canContinue
-                        ? context.textPrimary
-                        : context.textSecondary,
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warning.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    'Required',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.warning,
+                    ),
                   ),
                 ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: context.surfaceVariantColor,
+              valueColor: AlwaysStoppedAnimation<Color>(palette.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter(_QuizQuestion currentQuestion, _QuestionPalette palette) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+      child: Column(
+        children: [
+          if (currentQuestion.whyWeAsk != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(99),
+                onTap: () => _showWhyWeAsk(currentQuestion.whyWeAsk!),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: palette.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        context.l10n?.whyWeAsk ?? 'Why we ask',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: palette.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          _buildContinueButton(palette),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContinueButton(_QuestionPalette palette) {
+    final canContinue = !_isCurrentQuestionRequired || _hasCurrentQuestionAnswer;
+    final isLastPage = _currentPage >= _questions.length - 1;
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: _isSubmitting ? 0.86 : 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: _isSubmitting ? null : _nextPage,
+        child: Ink(
+          height: 62,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: canContinue
+                ? LinearGradient(
+                    colors: [palette.primary, palette.secondary],
+                  )
+                : null,
+            color: canContinue ? null : context.surfaceVariantColor,
+            boxShadow: canContinue
+                ? [
+                    BoxShadow(
+                      color: palette.primary.withValues(alpha: 0.28),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        isLastPage
+                            ? 'Save my Compair profile'
+                            : (context.l10n?.continueButton ?? 'Continue'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: canContinue
+                              ? Colors.black
+                              : context.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Icon(
+                        isLastPage
+                            ? Icons.auto_awesome_rounded
+                            : Icons.arrow_forward_rounded,
+                        color: canContinue ? Colors.black : context.textSecondary,
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -857,99 +959,182 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
   Widget _buildQuestionPage(
     _QuizQuestion question,
-    List<Color> emojiGradientColors,
+    _QuestionPalette palette,
+    Map<String, String> covers,
   ) {
-    final isMulti = question.type == QuizQuestionType.multi;
-    final multiCount =
-        isMulti ? _getMultiSelectCount(question.field) : 0;
-    final emoji = question.options.isNotEmpty
-        ? question.options.first.emoji
-        : '\u{1F4CB}';
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          const SizedBox(height: 28),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: emojiGradientColors),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Center(
-              child:
-                  Text(emoji, style: const TextStyle(fontSize: 22)),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            question.question,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: context.textPrimary,
-              letterSpacing: -0.5,
-              height: 1.2,
-            ),
-          ),
-          if (question.subtitle != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              question.subtitle!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: context.textTertiaryColor,
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
-          if (isMulti && multiCount > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(20),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeroCard(question, palette, covers),
+            const SizedBox(height: 18),
+            _buildSelectionSummary(question, palette),
+            const SizedBox(height: 14),
+            if (question.useVisualGrid)
+              _buildVisualGrid(question, palette, covers)
+            else
+              ...question.options.map(
+                (option) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildOptionCard(
+                    question: question,
+                    option: option,
+                    palette: palette,
+                  ),
                 ),
-                child: Text(
-                  '$multiCount selected',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.surfaceVariantColor,
-                    fontWeight: FontWeight.w600,
+              ),
+            const SizedBox(height: 10),
+            _buildAlgorithmNote(question, palette),
+            const SizedBox(height: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroCard(
+    _QuizQuestion question,
+    _QuestionPalette palette,
+    Map<String, String> covers,
+  ) {
+    final heroImage = _heroImageForQuestion(question, covers);
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 214),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 30,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(color: context.surfaceVariantColor),
+            ),
+            if (heroImage != null)
+              Positioned.fill(
+                child: Image.network(
+                  heroImage,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
+              ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.black.withValues(alpha: heroImage == null ? 0.0 : 0.18),
+                      palette.primary.withValues(alpha: 0.26),
+                      context.surfaceColor.withValues(alpha: 0.96),
+                    ],
                   ),
                 ),
               ),
             ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: question.useCircleGrid
-                  ? _buildCircleGrid(question)
-                  : Column(
-                      children: question.options.map((option) {
-                        final selected =
-                            _isSelected(question.field, option.value);
-                        return _buildOptionCard(
-                          option: option,
-                          selected: selected,
-                          isMulti: isMulti,
-                          onTap: () {
-                            if (isMulti) {
-                              _toggleMultiOption(
-                                  question.field, option.value);
-                            } else {
-                              _selectOption(question.field, option.value);
-                            }
-                          },
-                        );
-                      }).toList(),
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildPill(
+                        icon: palette.icon,
+                        label: _questionSectionTitle(question),
+                        color: palette.primary,
+                      ),
+                      _buildPill(
+                        icon: Icons.hub_rounded,
+                        label: _questionSignalLabel(question),
+                        color: palette.secondary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    question.question,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      height: 1.06,
+                      letterSpacing: -0.8,
+                      color: context.textPrimary,
                     ),
+                  ),
+                  if (question.subtitle != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      question.subtitle!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.45,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      _HeroMetric(
+                        label: 'Home',
+                        value: _homeMetricPreview(question.field),
+                      ),
+                      const SizedBox(width: 10),
+                      _HeroMetric(
+                        label: 'AI',
+                        value: _aiMetricPreview(question.field),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: color,
             ),
           ),
         ],
@@ -957,346 +1142,1033 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     );
   }
 
-  // ── Spotify-style Circle Grid for Category Selection ──────────────
-  static const _circleColors = <String, List<Color>>{
-    'smartphones': [AppTheme.neonCyan, Color(0xFF5856D6)],
-    'laptops': [AppTheme.green500, AppTheme.emerald500],
-    'tablets': [Color(0xFF5856D6), Color(0xFFAF52DE)],
-    'tvs': [Color(0xFFFF6B35), AppTheme.amber500],
-    'monitors': [Color(0xFF30B0C7), Color(0xFF32ADE6)],
-    'cpus': [Color(0xFFFF2D55), Color(0xFFFF6482)],
-    'gpus': [AppTheme.neonPurple, AppTheme.neonPurple],
-    'headphones': [Color(0xFFFF375F), Color(0xFFFF6482)],
-    'smartwatches': [Color(0xFF00C7BE), AppTheme.green500],
-    'cameras': [AppTheme.amber500, Color(0xFFFFCC00)],
-    'consoles': [Color(0xFF5856D6), AppTheme.neonCyan],
-    'speakers': [Color(0xFFFF2D55), Color(0xFFFF6B35)],
-    'desktops': [Color(0xFF8E8E93), Color(0xFF636366)],
-    'routers': [AppTheme.emerald500, Color(0xFF00C7BE)],
-    'drones': [Color(0xFF32ADE6), AppTheme.neonCyan],
-    'robot-vacuums': [Color(0xFF00C7BE), Color(0xFF30B0C7)],
-  };
+  Widget _buildSelectionSummary(
+    _QuizQuestion question,
+    _QuestionPalette palette,
+  ) {
+    final labels = _selectedLabels(question);
+    final isMulti = question.type == QuizQuestionType.multi;
 
-  Widget _buildCircleGrid(_QuizQuestion question) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 20,
-        alignment: WrapAlignment.center,
-        children: question.options.map((option) {
-          final selected = _isSelected(question.field, option.value);
-          final colors = _circleColors[option.value] ?? [context.textTertiaryColor, context.textSecondary];
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              _toggleMultiOption(question.field, option.value);
-            },
-            child: AnimatedScale(
-              scale: selected ? 1.1 : 1.0,
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutBack,
-              child: SizedBox(
-                width: 90,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: selected
-                            ? LinearGradient(
-                                colors: colors,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight)
-                            : null,
-                        color: selected ? null : context.surfaceVariantColor,
-                        border: Border.all(
-                          color: selected ? colors.first : context.dividerColor,
-                          width: selected ? 3 : 1.5,
-                        ),
-                        boxShadow: selected
-                            ? [BoxShadow(
-                                color: colors.first.withValues(alpha: 0.35),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4))]
-                            : [],
-                      ),
-                      child: Center(
-                        child: Text(option.emoji,
-                            style: TextStyle(fontSize: selected ? 30 : 26)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      option.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        color: selected ? colors.first : context.textTertiaryColor,
-                        height: 1.2,
-                      ),
-                    ),
-                    if (selected)
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        width: 20, height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: colors),
-                        ),
-                        child: Icon(Icons.check_rounded,
-                            color: context.surfaceVariantColor, size: 14),
-                      ),
-                  ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: palette.primary.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isMulti ? Icons.layers_rounded : Icons.adjust_rounded,
+                size: 18,
+                color: palette.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                labels.isEmpty
+                    ? (isMulti
+                        ? 'Select the signals you want Compair to learn.'
+                        : 'Choose one option to continue.')
+                    : (isMulti
+                        ? '${labels.length} selected'
+                        : 'Current selection'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
                 ),
               ),
+            ],
+          ),
+          if (labels.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: labels
+                  .take(question.useVisualGrid ? 6 : 4)
+                  .map(
+                    (label) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: palette.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: palette.primary,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
-          );
-        }).toList(),
+          ],
+        ],
       ),
     );
   }
 
   Widget _buildOptionCard({
+    required _QuizQuestion question,
     required _QuizOption option,
-    required bool selected,
-    required bool isMulti,
-    required VoidCallback onTap,
+    required _QuestionPalette palette,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedScale(
-          scale: selected ? 1.02 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          child: selected
-              ? _buildSelectedOptionCard(option, isMulti)
-              : _buildUnselectedOptionCard(option, isMulti),
-        ),
-      ),
-    );
-  }
+    final isMulti = question.type == QuizQuestionType.multi;
+    final selected = _isSelected(question.field, option.value);
+    final accent = _accentForOption(question.field, option.value, palette);
+    final caption = _captionForOption(question.field, option.value);
 
-  Widget _buildUnselectedOptionCard(_QuizOption option, bool isMulti) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.04),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.04),
-            blurRadius: 40,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: _buildOptionContent(option, false, isMulti),
-    );
-  }
-
-  Widget _buildSelectedOptionCard(_QuizOption option, bool isMulti) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(17),
-      ),
-      padding: const EdgeInsets.all(2),
-      child: Container(
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () {
+        if (isMulti) {
+          _toggleMultiOption(question.field, option.value);
+        } else {
+          _selectOption(question.field, option.value);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: _buildOptionContent(option, true, isMulti),
-      ),
-    );
-  }
-
-  Widget _buildOptionContent(
-    _QuizOption option,
-    bool selected,
-    bool isMulti,
-  ) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
             color: selected
-                ? AppTheme.neonCyan.withValues(alpha: 0.1)
-                : context.surfaceColor,
-            borderRadius: BorderRadius.circular(20),
+                ? accent.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.06),
+            width: selected ? 1.6 : 1,
           ),
-          child: Center(
-            child: Text(option.emoji,
-                style: const TextStyle(fontSize: 20)),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            option.label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: context.textPrimary,
+          gradient: selected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    accent.withValues(alpha: 0.18),
+                    accent.withValues(alpha: 0.06),
+                  ],
+                )
+              : null,
+          color: selected ? null : context.surfaceVariantColor.withValues(alpha: 0.92),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: selected ? 0.16 : 0.06),
+              blurRadius: selected ? 20 : 12,
+              offset: const Offset(0, 8),
             ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: selected ? 0.18 : 0.1),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              alignment: Alignment.center,
+              child: Text(option.emoji, style: const TextStyle(fontSize: 24)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    option.label,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    caption,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            _buildSelectionIndicator(isMulti: isMulti, selected: selected, accent: accent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionIndicator({
+    required bool isMulti,
+    required bool selected,
+    required Color accent,
+  }) {
+    if (!selected) {
+      return Container(
+        width: isMulti ? 24 : 22,
+        height: isMulti ? 24 : 22,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(isMulti ? 8 : 22),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.22),
+            width: 1.4,
           ),
         ),
-        isMulti
-            ? _buildCheckboxIndicator(selected)
-            : _buildRadioIndicator(selected),
-      ],
-    );
-  }
-
-  Widget _buildRadioIndicator(bool selected) {
-    if (selected) {
-      return Container(
-        width: 22,
-        height: 22,
-        decoration: const BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          shape: BoxShape.circle,
-        ),
-        child:
-            Icon(Icons.check, size: 14, color: context.surfaceVariantColor),
       );
     }
+
     return Container(
-      width: 22,
-      height: 22,
+      width: isMulti ? 24 : 22,
+      height: isMulti ? 24 : 22,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: context.dividerColor,
-          width: 1.5,
-        ),
+        color: accent,
+        borderRadius: BorderRadius.circular(isMulti ? 8 : 22),
       ),
+      alignment: Alignment.center,
+      child: const Icon(Icons.check_rounded, color: Colors.black, size: 16),
     );
   }
 
-  Widget _buildCheckboxIndicator(bool selected) {
-    if (selected) {
-      return Container(
-        width: 22,
-        height: 22,
-        decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child:
-            Icon(Icons.check, size: 14, color: context.surfaceVariantColor),
-      );
-    }
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: context.dividerColor,
-          width: 1.5,
-        ),
-      ),
-    );
-  }
+  Widget _buildVisualGrid(
+    _QuizQuestion question,
+    _QuestionPalette palette,
+    Map<String, String> covers,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - 12) / 2;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: question.options.map((option) {
+            final selected = _isSelected(question.field, option.value);
+            final imageUrl = covers[option.value];
+            final accent = _accentForOption(question.field, option.value, palette);
 
-  Widget _buildCompletionScreen() {
-    return Scaffold(
-      backgroundColor: context.surfaceColor,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: const BoxDecoration(
-                    gradient: AppTheme.scoreGradient,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.check_rounded,
-                      size: 40, color: context.surfaceVariantColor),
-                ),
-                const SizedBox(height: 32),
-                ShaderMask(
-                  shaderCallback: (bounds) =>
-                      AppTheme.primaryGradient.createShader(bounds),
-                  child: Text(
-                    context.l10n?.youreAllSet ?? "You're All Set!",
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: context.surfaceVariantColor,
-                      letterSpacing: -0.5,
+            return SizedBox(
+              width: width,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () => _toggleMultiOption(question.field, option.value),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  height: 136,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: selected
+                          ? accent.withValues(alpha: 0.62)
+                          : Colors.white.withValues(alpha: 0.08),
+                      width: selected ? 2 : 1,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  context.l10n?.personalizedFeedReady ?? 'Your personalized feed is ready',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: context.textTertiaryColor,
-                  ),
-                ),
-                const SizedBox(height: 40),
-                GestureDetector(
-                  onTap: () => context.go(AppRoutes.home),
-                  child: Container(
-                    width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: AppTheme.primaryGlow,
-                    ),
-                    child: Center(
-                      child: Text(
-                        context.l10n?.startExploring ?? 'Start Exploring \u2192',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: context.surfaceVariantColor,
-                        ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: selected ? 0.22 : 0.08),
+                        blurRadius: selected ? 20 : 14,
+                        offset: const Offset(0, 10),
                       ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Container(color: context.surfaceVariantColor),
+                        ),
+                        if (imageUrl != null)
+                          Positioned.fill(
+                            child: Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ),
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  accent.withValues(alpha: imageUrl == null ? 0.28 : 0.08),
+                                  Colors.black.withValues(alpha: 0.18),
+                                  Colors.black.withValues(alpha: 0.76),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Align(
+                                alignment: Alignment.topRight,
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? accent
+                                        : Colors.black.withValues(alpha: 0.28),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.18),
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    selected
+                                        ? Icons.check_rounded
+                                        : Icons.add_rounded,
+                                    color: selected ? Colors.black : Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                option.label,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _categoryCardCaption(option.value),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildAlgorithmNote(
+    _QuizQuestion question,
+    _QuestionPalette palette,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        color: palette.secondary.withValues(alpha: 0.08),
+        border: Border.all(color: palette.secondary.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: palette.secondary.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(Icons.auto_awesome_rounded, color: palette.secondary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Algorithm impact',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _algorithmImpactCopy(question.field),
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: context.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletionScreen(Map<String, String> covers) {
+    final primaryCategory = _interestCategories.isNotEmpty
+        ? _interestCategories.first
+        : 'smartphones';
+    final heroImage = covers[primaryCategory];
+    final prioritizedCategories = _interestCategories
+        .take(3)
+        .map((category) => _optionLabel('interestCategories', category))
+        .join(' • ');
+    final aiPriorityText = _priorities
+        .take(3)
+        .map((priority) => _optionLabel('priorities', priority))
+        .join(', ');
+    final currentStackText = _currentDevices
+        .take(3)
+        .map((device) => _optionLabel('currentDevices', device))
+        .join(', ');
+    final palette = _paletteForQuestion(
+      _questions.firstWhere(
+        (q) => q.field == 'interestCategories',
+        orElse: () => _questions.first,
+      ),
+    );
+
+    return Scaffold(
+      backgroundColor: context.surfaceColor,
+      body: Stack(
+        children: [
+          _buildBackdrop(palette),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            constraints: const BoxConstraints(minHeight: 260),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.08),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.16),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 20),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(30),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Container(
+                                      color: context.surfaceVariantColor,
+                                    ),
+                                  ),
+                                  if (heroImage != null)
+                                    Positioned.fill(
+                                      child: Image.network(
+                                        heroImage,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const SizedBox.shrink(),
+                                      ),
+                                    ),
+                                  Positioned.fill(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            palette.primary.withValues(alpha: 0.16),
+                                            Colors.black.withValues(alpha: 0.12),
+                                            context.surfaceColor,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 58,
+                                          height: 58,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: palette.primary,
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: const Icon(
+                                            Icons.check_rounded,
+                                            color: Colors.black,
+                                            size: 30,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 18),
+                                        Text(
+                                          context.l10n?.youreAllSet ??
+                                              "You're all set",
+                                          style: TextStyle(
+                                            fontSize: 30,
+                                            fontWeight: FontWeight.w900,
+                                            height: 1.05,
+                                            letterSpacing: -0.9,
+                                            color: context.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          'Compair now has enough signal to reshape your home feed, sharpen AI guidance, and rank products around your real priorities.',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            height: 1.5,
+                                            color: context.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 18),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: [
+                                            if (_ecosystem != null)
+                                              _buildCompletionChip(
+                                                _optionLabel('ecosystem', _ecosystem!),
+                                              ),
+                                            if (_budgetRange != null)
+                                              _buildCompletionChip(
+                                                _optionLabel('budgetRange', _budgetRange!),
+                                              ),
+                                            if (_profession != null)
+                                              _buildCompletionChip(
+                                                _optionLabel('profession', _profession!),
+                                              ),
+                                            if (_interestCategories.isNotEmpty)
+                                              _buildCompletionChip(
+                                                _optionLabel(
+                                                  'interestCategories',
+                                                  _interestCategories.first,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _buildCompletionInsight(
+                            icon: Icons.home_rounded,
+                            title: 'Home feed',
+                            subtitle: _interestCategories.isEmpty
+                                ? 'Trending tech mix with behavior-based reordering.'
+                                : '$prioritizedCategories will be prioritized first.',
+                            color: AppTheme.brandCyan,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCompletionInsight(
+                            icon: Icons.psychology_alt_rounded,
+                            title: 'AI compare guidance',
+                            subtitle: _priorities.isEmpty
+                                ? 'Balanced advice tuned by ecosystem and budget.'
+                                : 'AI will bias toward $aiPriorityText when explaining winners.',
+                            color: AppTheme.neonPurple,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCompletionInsight(
+                            icon: Icons.tune_rounded,
+                            title: 'Recommendation profile',
+                            subtitle: _currentDevices.isEmpty
+                                ? 'New picks will stay broad until your activity adds more signal.'
+                                : 'Compatibility will respect your current stack: $currentStackText.',
+                            color: AppTheme.green500,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: palette.primary,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                      ),
+                      onPressed: () => context.go(AppRoutes.home),
+                      child: Text(
+                        context.l10n?.startExploring ?? 'Start exploring',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletionChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: context.textPrimary,
         ),
       ),
     );
+  }
+
+  Widget _buildCompletionInsight({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _QuestionPalette _paletteForQuestion(_QuizQuestion question) {
+    switch (question.field) {
+      case 'ageRange':
+        return const _QuestionPalette(
+          primary: Color(0xFF7C3AED),
+          secondary: Color(0xFFA855F7),
+          icon: Icons.timeline_rounded,
+        );
+      case 'ecosystem':
+        return const _QuestionPalette(
+          primary: AppTheme.brandCyan,
+          secondary: AppTheme.brandBlue,
+          icon: Icons.devices_rounded,
+        );
+      case 'budgetRange':
+        return const _QuestionPalette(
+          primary: Color(0xFFFFB020),
+          secondary: Color(0xFFFF7A18),
+          icon: Icons.account_balance_wallet_rounded,
+        );
+      case 'priorities':
+        return const _QuestionPalette(
+          primary: Color(0xFF14B8A6),
+          secondary: Color(0xFF22C55E),
+          icon: Icons.auto_graph_rounded,
+        );
+      case 'currentDevices':
+        return const _QuestionPalette(
+          primary: Color(0xFF60A5FA),
+          secondary: Color(0xFF22D3EE),
+          icon: Icons.memory_rounded,
+        );
+      case 'subscriptions':
+        return const _QuestionPalette(
+          primary: Color(0xFF22C55E),
+          secondary: Color(0xFF86EFAC),
+          icon: Icons.subscriptions_rounded,
+        );
+      case 'country':
+        return const _QuestionPalette(
+          primary: Color(0xFFF97316),
+          secondary: Color(0xFFFB7185),
+          icon: Icons.public_rounded,
+        );
+      case 'interestCategories':
+        return const _QuestionPalette(
+          primary: AppTheme.brandCyan,
+          secondary: AppTheme.neonPurple,
+          icon: Icons.grid_view_rounded,
+        );
+      case 'usageIntent':
+        return const _QuestionPalette(
+          primary: Color(0xFFF43F5E),
+          secondary: Color(0xFFFB7185),
+          icon: Icons.rocket_launch_rounded,
+        );
+      case 'profession':
+        return const _QuestionPalette(
+          primary: Color(0xFF38BDF8),
+          secondary: Color(0xFF818CF8),
+          icon: Icons.work_rounded,
+        );
+      default:
+        return const _QuestionPalette(
+          primary: AppTheme.brandCyan,
+          secondary: AppTheme.brandBlue,
+          icon: Icons.auto_awesome_rounded,
+        );
+    }
+  }
+
+  String _questionSectionTitle(_QuizQuestion question) {
+    switch (question.field) {
+      case 'ageRange':
+        return 'Behavior';
+      case 'ecosystem':
+        return 'Compatibility';
+      case 'budgetRange':
+        return 'Price fit';
+      case 'priorities':
+        return 'Decision style';
+      case 'currentDevices':
+        return 'Current stack';
+      case 'subscriptions':
+        return 'Service graph';
+      case 'country':
+        return 'Region';
+      case 'interestCategories':
+        return 'Feed DNA';
+      case 'usageIntent':
+        return 'Intent';
+      case 'profession':
+        return 'Persona';
+      default:
+        return 'Profile';
+    }
+  }
+
+  String _questionSignalLabel(_QuizQuestion question) {
+    switch (question.field) {
+      case 'interestCategories':
+        return 'Drives home ranking';
+      case 'priorities':
+        return 'Refines compare scoring';
+      case 'ecosystem':
+        return 'Improves fit signals';
+      case 'budgetRange':
+        return 'Controls price bands';
+      default:
+        return 'Shapes recommendations';
+    }
+  }
+
+  String _homeMetricPreview(String field) {
+    switch (field) {
+      case 'interestCategories':
+        return 'Priority sections';
+      case 'ecosystem':
+        return 'Accessory fit';
+      case 'budgetRange':
+        return 'Value vs flagship';
+      case 'currentDevices':
+        return 'Cross-device picks';
+      default:
+        return 'Personalized order';
+    }
+  }
+
+  String _aiMetricPreview(String field) {
+    switch (field) {
+      case 'priorities':
+        return 'Better winner logic';
+      case 'profession':
+        return 'Context-aware advice';
+      case 'usageIntent':
+        return 'Faster guidance';
+      default:
+        return 'Sharper explanations';
+    }
+  }
+
+  String _algorithmImpactCopy(String field) {
+    switch (field) {
+      case 'ageRange':
+        return 'Compair adjusts explanation depth, shortlist style, and discovery pacing using your age-range signal.';
+      case 'ecosystem':
+        return 'This feeds compatibility scoring so recommendations stay coherent with your existing device world.';
+      case 'budgetRange':
+        return 'Your budget signal helps the ranking engine separate flagship flex picks from value-heavy winners.';
+      case 'priorities':
+        return 'These priorities become the algorithmic weights behind compare guidance and product fit scoring.';
+      case 'currentDevices':
+        return 'Current devices strengthen ecosystem affinity and reduce mismatched recommendations.';
+      case 'subscriptions':
+        return 'Subscription data prevents repetitive suggestions and helps AI surface adjacent, more useful alternatives.';
+      case 'country':
+        return 'Region improves pricing relevance, currency display, and availability-sensitive ranking.';
+      case 'interestCategories':
+        return 'Selected categories feed directly into home priority order and category-level recommendation boosts.';
+      case 'usageIntent':
+        return 'Intent changes how aggressively Compair emphasizes research depth, speed, or price monitoring.';
+      case 'profession':
+        return 'Profession gives the persona model better context for productivity, workflow, and recommendation fit.';
+      default:
+        return 'This answer improves how Compair personalizes product discovery and AI guidance.';
+    }
+  }
+
+  String? _heroImageForQuestion(
+    _QuizQuestion question,
+    Map<String, String> covers,
+  ) {
+    if (question.field == 'interestCategories' && _interestCategories.isNotEmpty) {
+      return covers[_interestCategories.first];
+    }
+
+    final categoryKey = switch (question.field) {
+      'ecosystem' => 'smartphones',
+      'budgetRange' => 'laptops',
+      'priorities' => 'smartphones',
+      'currentDevices' => 'desktops',
+      'subscriptions' => 'headphones',
+      'country' => 'smartphones',
+      'interestCategories' => 'smartphones',
+      'usageIntent' => 'monitors',
+      'profession' => 'laptops',
+      _ => 'smartphones',
+    };
+
+    return covers[categoryKey];
+  }
+
+  List<String> _selectedLabels(_QuizQuestion question) {
+    switch (question.field) {
+      case 'ageRange':
+        return _ageRange == null ? const [] : [_optionLabel('ageRange', _ageRange!)];
+      case 'ecosystem':
+        return _ecosystem == null
+            ? const []
+            : [_optionLabel('ecosystem', _ecosystem!)];
+      case 'budgetRange':
+        return _budgetRange == null
+            ? const []
+            : [_optionLabel('budgetRange', _budgetRange!)];
+      case 'priorities':
+        return _priorities.map((v) => _optionLabel('priorities', v)).toList();
+      case 'currentDevices':
+        return _currentDevices
+            .map((v) => _optionLabel('currentDevices', v))
+            .toList();
+      case 'subscriptions':
+        return _subscriptions
+            .map((v) => _optionLabel('subscriptions', v))
+            .toList();
+      case 'country':
+        return _country == null ? const [] : [_optionLabel('country', _country!)];
+      case 'interestCategories':
+        return _interestCategories
+            .map((v) => _optionLabel('interestCategories', v))
+            .toList();
+      case 'usageIntent':
+        return _usageIntent == null
+            ? const []
+            : [_optionLabel('usageIntent', _usageIntent!)];
+      case 'profession':
+        return _profession == null
+            ? const []
+            : [_optionLabel('profession', _profession!)];
+      default:
+        return const [];
+    }
+  }
+
+  String _optionLabel(String field, String value) {
+    final question = _questions.firstWhere(
+      (q) => q.field == field,
+      orElse: () => _questions.first,
+    );
+    for (final option in question.options) {
+      if (option.value == value) return option.label;
+    }
+    return value;
+  }
+
+  String _captionForOption(String field, String value) {
+    const captions = <String, String>{
+      'ageRange:13-17': 'Fast, trend-driven picks with stronger gaming and mobile bias.',
+      'ageRange:18-24': 'Balanced between style, performance, and ecosystem momentum.',
+      'ageRange:25-34': 'Productivity-first with strong value versus flagship trade-offs.',
+      'ageRange:35-44': 'Practical recommendations with stability and long-term value.',
+      'ageRange:45-54': 'Less noise, more confidence and reliable ownership value.',
+      'ageRange:55+': 'Simple, trustworthy picks with easy-to-understand guidance.',
+      'ecosystem:apple': 'Bias suggestions toward Apple-friendly products and accessory fit.',
+      'ecosystem:android': 'Favor Android flexibility, value, and ecosystem breadth.',
+      'ecosystem:mixed': 'Keep recommendations neutral and interoperability-friendly.',
+      'budgetRange:low': 'Surface the smartest value picks first.',
+      'budgetRange:mid': 'Balance performance, longevity, and price.',
+      'budgetRange:high': 'Push stronger premium options and best-in-class upgrades.',
+      'budgetRange:any': 'Keep the engine wide open for the best overall fit.',
+      'priorities:price': 'Compair will reward smarter value and price/performance wins.',
+      'priorities:quality': 'Build quality and trust rise in the ranking.',
+      'priorities:design': 'Industrial design and aesthetics get more weight.',
+      'priorities:ecosystem': 'Compatibility and continuity move closer to the top.',
+      'priorities:performance': 'Raw power and benchmark strength matter more.',
+      'priorities:durability': 'Longevity and ownership confidence get boosted.',
+      'usageIntent:research': 'More detail, context, and deeper product reasoning.',
+      'usageIntent:quick_decision': 'Shorter, faster recommendations with clearer winners.',
+      'usageIntent:price_tracking': 'Focus more on value shifts and price-sensitive picks.',
+      'usageIntent:all': 'Keep the full Compair experience balanced.',
+      'profession:student': 'Portable, value-led, and versatile picks get favored.',
+      'profession:engineer': 'Performance, compatibility, and workstation fit go up.',
+      'profession:designer': 'Displays, design quality, and creative workflows matter more.',
+      'profession:manager': 'Reliable, polished, and time-saving choices get prioritized.',
+      'profession:healthcare': 'Clarity, battery, mobility, and trust grow in weight.',
+      'profession:teacher': 'Practical, shareable, and easy-to-manage products rise.',
+      'profession:finance': 'Efficiency, polish, and productivity-focused gear gets boosted.',
+      'profession:other': 'Keep the persona model broad while behavior fills the gaps.',
+    };
+
+    return captions['$field:$value'] ??
+        'Compair will use this signal to refine ranking, home feed ordering, and AI explanations.';
+  }
+
+  String _categoryCardCaption(String value) {
+    const captions = <String, String>{
+      'smartphones': 'Daily drivers, cameras, and flagship battles.',
+      'laptops': 'Work, study, gaming, and creator picks.',
+      'tablets': 'Portable productivity and media choices.',
+      'tvs': 'Living-room performance and entertainment upgrades.',
+      'monitors': 'Desk setups, refresh rates, and color quality.',
+      'cpus': 'Build planning and raw compute performance.',
+      'gpus': 'Gaming, rendering, and upgrade-heavy hardware picks.',
+      'headphones': 'Audio quality, ANC, and commuting comfort.',
+      'smartwatches': 'Health tracking and ecosystem accessories.',
+      'cameras': 'Photo, video, and creator-focused kits.',
+      'consoles': 'Gaming hardware, bundles, and ecosystem plays.',
+      'speakers': 'Room-filling sound and compact audio gear.',
+      'desktops': 'Prebuilt systems and power-user setups.',
+      'routers': 'Networking speed, stability, and smart home backbone.',
+      'drones': 'Aerial capture and enthusiast gear.',
+      'robot-vacuums': 'Automation and practical smart-home upgrades.',
+    };
+    return captions[value] ?? 'Add this to your priority feed.';
+  }
+
+  Color _accentForOption(String field, String value, _QuestionPalette palette) {
+    const accents = <String, Color>{
+      'ecosystem:apple': Color(0xFF93C5FD),
+      'ecosystem:android': Color(0xFF4ADE80),
+      'ecosystem:mixed': Color(0xFFC084FC),
+      'budgetRange:low': Color(0xFFFBBF24),
+      'budgetRange:mid': Color(0xFF60A5FA),
+      'budgetRange:high': Color(0xFFF472B6),
+      'budgetRange:any': Color(0xFF22D3EE),
+      'interestCategories:smartphones': AppTheme.brandCyan,
+      'interestCategories:laptops': Color(0xFF22C55E),
+      'interestCategories:tablets': Color(0xFF8B5CF6),
+      'interestCategories:tvs': Color(0xFFFB7185),
+      'interestCategories:monitors': Color(0xFF38BDF8),
+      'interestCategories:cpus': Color(0xFFFF6B35),
+      'interestCategories:gpus': Color(0xFFB517FF),
+      'interestCategories:headphones': Color(0xFFF43F5E),
+      'interestCategories:smartwatches': Color(0xFF14B8A6),
+      'interestCategories:cameras': Color(0xFFF59E0B),
+      'interestCategories:consoles': Color(0xFF6366F1),
+      'interestCategories:speakers': Color(0xFFEF4444),
+      'interestCategories:desktops': Color(0xFF94A3B8),
+      'interestCategories:routers': Color(0xFF10B981),
+      'interestCategories:drones': Color(0xFF0EA5E9),
+      'interestCategories:robot-vacuums': Color(0xFF06B6D4),
+      'subscriptions:spotify': Color(0xFF1ED760),
+      'subscriptions:netflix': Color(0xFFE50914),
+    };
+
+    return accents['$field:$value'] ?? palette.primary;
   }
 
   @override
@@ -1305,8 +2177,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     super.dispose();
   }
 }
-
-// ─── Quiz Data Classes ───
 
 enum QuizQuestionType { single, multi }
 
@@ -1318,6 +2188,7 @@ class _QuizQuestion {
   final String? whyWeAsk;
   final List<_QuizOption> options;
   final String field;
+  final bool useVisualGrid;
 
   const _QuizQuestion({
     required this.question,
@@ -1327,10 +2198,8 @@ class _QuizQuestion {
     this.whyWeAsk,
     required this.options,
     required this.field,
-    this.useCircleGrid = false,
+    this.useVisualGrid = false,
   });
-
-  final bool useCircleGrid;
 }
 
 class _QuizOption {
@@ -1339,4 +2208,90 @@ class _QuizOption {
   final String emoji;
 
   const _QuizOption(this.value, this.label, this.emoji);
+}
+
+class _QuestionPalette {
+  final Color primary;
+  final Color secondary;
+  final IconData icon;
+
+  const _QuestionPalette({
+    required this.primary,
+    required this.secondary,
+    required this.icon,
+  });
+}
+
+class _RoundIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _RoundIconButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Ink(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Icon(icon, size: 18, color: context.textPrimary),
+      ),
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _HeroMetric({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: context.textTertiaryColor,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
