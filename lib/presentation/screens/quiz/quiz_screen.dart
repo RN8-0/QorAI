@@ -4,20 +4,182 @@ import 'dart:ui';
 
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/pb_client.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/routing/router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pocketbase/pocketbase.dart';
+
+const List<String> _quizCategoryUniverse = [
+  'smartphones',
+  'tablets',
+  'laptops',
+  'desktops',
+  'cpus',
+  'gpus',
+  'ram',
+  'ssd',
+  'motherboards',
+  'psu',
+  'cases',
+  'coolers',
+  'monitors',
+  'keyboards',
+  'mice',
+  'webcams',
+  'printers',
+  'tvs',
+  'projectors',
+  'media-players',
+  'headphones',
+  'speakers',
+  'soundbars',
+  'microphones',
+  'smartwatches',
+  'smart-rings',
+  'cameras',
+  'action-cameras',
+  'security-cameras',
+  'ip-cameras',
+  'dashcams',
+  'gimbals',
+  'tripods',
+  'lenses',
+  'consoles',
+  'gamepads',
+  'vr-headsets',
+  'routers',
+  'robot-vacuums',
+  'powerbanks',
+  'e-readers',
+  'drones',
+];
+
+const List<String> _deviceCategoryUniverse = [
+  'smartphones',
+  'tablets',
+  'laptops',
+  'desktops',
+  'monitors',
+  'keyboards',
+  'mice',
+  'webcams',
+  'printers',
+  'tvs',
+  'projectors',
+  'media-players',
+  'headphones',
+  'speakers',
+  'soundbars',
+  'microphones',
+  'smartwatches',
+  'smart-rings',
+  'cameras',
+  'action-cameras',
+  'security-cameras',
+  'ip-cameras',
+  'dashcams',
+  'gimbals',
+  'tripods',
+  'lenses',
+  'consoles',
+  'gamepads',
+  'vr-headsets',
+  'routers',
+  'robot-vacuums',
+  'powerbanks',
+  'e-readers',
+  'drones',
+];
+
+String? _recordImageUrl(RecordModel record) {
+  final data = record.data;
+  final imageUrl = (data['imageURL'] ?? data['imageUrl'])?.toString();
+  if (imageUrl != null && imageUrl.trim().isNotEmpty) {
+    return imageUrl.trim();
+  }
+
+  final images = data['images'];
+  if (images is List) {
+    for (final item in images) {
+      final value = item?.toString().trim();
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
 
 final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
   ref,
 ) async {
-  return const <String, String>{};
+  final covers = <String, String>{};
+
+  try {
+    for (
+      var page = 1;
+      page <= 20 && covers.length < _quizCategoryUniverse.length;
+      page++
+    ) {
+      final result = await pb
+          .collection(AppConstants.productsCollection)
+          .getList(
+            page: page,
+            perPage: 200,
+            sort: '-created',
+            fields: 'category,imageURL,imageUrl,images',
+          );
+
+      for (final record in result.items) {
+        final category = record.data['category']?.toString();
+        if (category == null ||
+            !_quizCategoryUniverse.contains(category) ||
+            covers.containsKey(category)) {
+          continue;
+        }
+
+        final image = _recordImageUrl(record);
+        if (image != null) {
+          covers[category] = image;
+        }
+      }
+    }
+
+    final missingCategories = _quizCategoryUniverse
+        .where((category) => !covers.containsKey(category))
+        .toList();
+
+    for (final category in missingCategories) {
+      final result = await pb
+          .collection(AppConstants.productsCollection)
+          .getList(
+            page: 1,
+            perPage: 1,
+            sort: '-created',
+            filter: 'category = "$category"',
+            fields: 'category,imageURL,imageUrl,images',
+          );
+
+      if (result.items.isEmpty) continue;
+      final image = _recordImageUrl(result.items.first);
+      if (image != null) {
+        covers[category] = image;
+      }
+    }
+  } catch (e, st) {
+    debugPrint('[Quiz] quizCategoryVisualsProvider failed: $e\n$st');
+  }
+
+  return covers;
 });
 
 class QuizScreen extends ConsumerStatefulWidget {
@@ -47,355 +209,72 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   final List<String> _subscriptions = [];
 
   bool get _isTurkish => Localizations.localeOf(context).languageCode == 'tr';
+  bool get _isDarkTheme => Theme.of(context).brightness == Brightness.dark;
 
   String _t(String tr, String en) => _isTurkish ? tr : en;
+  Color get _pageBackground =>
+      _isDarkTheme ? const Color(0xFF07101A) : AppTheme.backgroundLightMode;
+  Color get _surfaceColor =>
+      _isDarkTheme ? Colors.white.withValues(alpha: 0.05) : Colors.white;
+  Color get _surfaceStrongColor => _isDarkTheme
+      ? Colors.white.withValues(alpha: 0.08)
+      : AppTheme.surfaceVariantLightMode;
+  Color get _borderColor => _isDarkTheme
+      ? Colors.white.withValues(alpha: 0.08)
+      : AppTheme.dividerLightMode;
+  Color get _primaryTextColor =>
+      _isDarkTheme ? Colors.white : AppTheme.textPrimaryLightMode;
+  Color get _secondaryTextColor => _isDarkTheme
+      ? Colors.white.withValues(alpha: 0.72)
+      : AppTheme.textSecondaryLightMode;
+  Color get _mutedTextColor => _isDarkTheme
+      ? Colors.white.withValues(alpha: 0.58)
+      : AppTheme.textTertiaryLightMode;
+  Color get _buttonDisabledBg =>
+      _isDarkTheme ? Colors.white.withValues(alpha: 0.12) : AppTheme.slate200;
+  Color get _buttonDisabledFg =>
+      _isDarkTheme ? Colors.white54 : AppTheme.textSecondaryLightMode;
+  Color get _selectionCheckColor => _isDarkTheme ? Colors.black : Colors.white;
 
   List<_QuizStep> get _steps => [
     _QuizStep(
       field: 'interestCategories',
       title: _t(
-        'En cok hangi urunleri kesfetmek istiyorsun?',
+        'En çok hangi ürünleri keşfetmek istiyorsun?',
         'What do you want to discover most?',
       ),
-      subtitle: _t('En az 3 kategori sec.', 'Pick at least 3 categories.'),
+      subtitle: _t('En az 3 kategori seç.', 'Pick at least 3 categories.'),
       algorithmHint: _t(
-        'Ana sayfa algoritmasi, kategori onceligi ve AI yonlendirmesi bu secimi kullanir.',
+        'Ana sayfa algoritması, kategori önceliği ve AI yönlendirmesi bu seçimi kullanır.',
         'Home ranking, category priority, and AI guidance use this signal.',
       ),
       type: _StepType.categories,
       isRequired: true,
-      options: const [
-        _QuizOption(
-          value: 'smartphones',
-          labelTr: 'Akilli Telefonlar',
-          labelEn: 'Smartphones',
-          emoji: '📱',
-        ),
-        _QuizOption(
-          value: 'tablets',
-          labelTr: 'Tabletler',
-          labelEn: 'Tablets',
-          emoji: '📟',
-        ),
-        _QuizOption(
-          value: 'laptops',
-          labelTr: 'Dizustu Bilgisayarlar',
-          labelEn: 'Laptops',
-          emoji: '💻',
-        ),
-        _QuizOption(
-          value: 'desktops',
-          labelTr: 'Masaustu Bilgisayarlar',
-          labelEn: 'Desktops',
-          emoji: '🖥️',
-        ),
-        _QuizOption(
-          value: 'cpus',
-          labelTr: 'Islemciler',
-          labelEn: 'Processors',
-          emoji: '⚡',
-        ),
-        _QuizOption(
-          value: 'gpus',
-          labelTr: 'Ekran Kartlari',
-          labelEn: 'Graphics Cards',
-          emoji: '🎮',
-        ),
-        _QuizOption(value: 'ram', labelTr: 'RAM', labelEn: 'RAM', emoji: '🧠'),
-        _QuizOption(
-          value: 'ssd',
-          labelTr: 'SSD ve Depolama',
-          labelEn: 'SSD & Storage',
-          emoji: '💾',
-        ),
-        _QuizOption(
-          value: 'motherboards',
-          labelTr: 'Anakartlar',
-          labelEn: 'Motherboards',
-          emoji: '🧩',
-        ),
-        _QuizOption(
-          value: 'psu',
-          labelTr: 'Guc Kaynaklari',
-          labelEn: 'Power Supplies',
-          emoji: '🔌',
-        ),
-        _QuizOption(
-          value: 'cases',
-          labelTr: 'Kasalar',
-          labelEn: 'PC Cases',
-          emoji: '🗄️',
-        ),
-        _QuizOption(
-          value: 'coolers',
-          labelTr: 'Sogutucular',
-          labelEn: 'Coolers',
-          emoji: '🌀',
-        ),
-        _QuizOption(
-          value: 'monitors',
-          labelTr: 'Monitorler',
-          labelEn: 'Monitors',
-          emoji: '🖥️',
-        ),
-        _QuizOption(
-          value: 'keyboards',
-          labelTr: 'Klavyeler',
-          labelEn: 'Keyboards',
-          emoji: '⌨️',
-        ),
-        _QuizOption(
-          value: 'mice',
-          labelTr: 'Fareler',
-          labelEn: 'Mice',
-          emoji: '🖱️',
-        ),
-        _QuizOption(
-          value: 'webcams',
-          labelTr: 'Web Kameralar',
-          labelEn: 'Webcams',
-          emoji: '📹',
-        ),
-        _QuizOption(
-          value: 'printers',
-          labelTr: 'Yazicilar',
-          labelEn: 'Printers',
-          emoji: '🖨️',
-        ),
-        _QuizOption(
-          value: 'tvs',
-          labelTr: 'TV ve Ekranlar',
-          labelEn: 'TVs',
-          emoji: '📺',
-        ),
-        _QuizOption(
-          value: 'projectors',
-          labelTr: 'Projektorler',
-          labelEn: 'Projectors',
-          emoji: '📽️',
-        ),
-        _QuizOption(
-          value: 'media-players',
-          labelTr: 'Medya Oynaticilar',
-          labelEn: 'Media Players',
-          emoji: '▶️',
-        ),
-        _QuizOption(
-          value: 'headphones',
-          labelTr: 'Kulakliklar',
-          labelEn: 'Headphones',
-          emoji: '🎧',
-        ),
-        _QuizOption(
-          value: 'speakers',
-          labelTr: 'Hoparlorler',
-          labelEn: 'Speakers',
-          emoji: '🔊',
-        ),
-        _QuizOption(
-          value: 'soundbars',
-          labelTr: 'Soundbarlar',
-          labelEn: 'Soundbars',
-          emoji: '🎼',
-        ),
-        _QuizOption(
-          value: 'microphones',
-          labelTr: 'Mikrofonlar',
-          labelEn: 'Microphones',
-          emoji: '🎙️',
-        ),
-        _QuizOption(
-          value: 'smartwatches',
-          labelTr: 'Akilli Saatler',
-          labelEn: 'Smartwatches',
-          emoji: '⌚',
-        ),
-        _QuizOption(
-          value: 'smart-rings',
-          labelTr: 'Akilli Yuzukler',
-          labelEn: 'Smart Rings',
-          emoji: '💍',
-        ),
-        _QuizOption(
-          value: 'cameras',
-          labelTr: 'Kameralar',
-          labelEn: 'Cameras',
-          emoji: '📷',
-        ),
-        _QuizOption(
-          value: 'action-cameras',
-          labelTr: 'Aksiyon Kameralari',
-          labelEn: 'Action Cameras',
-          emoji: '🏄',
-        ),
-        _QuizOption(
-          value: 'security-cameras',
-          labelTr: 'Guvenlik Kameralari',
-          labelEn: 'Security Cameras',
-          emoji: '🛡️',
-        ),
-        _QuizOption(
-          value: 'ip-cameras',
-          labelTr: 'IP Kameralar',
-          labelEn: 'IP Cameras',
-          emoji: '🌐',
-        ),
-        _QuizOption(
-          value: 'dashcams',
-          labelTr: 'Arac Kameralari',
-          labelEn: 'Dashcams',
-          emoji: '🚗',
-        ),
-        _QuizOption(
-          value: 'gimbals',
-          labelTr: 'Gimballar',
-          labelEn: 'Gimbals',
-          emoji: '🎥',
-        ),
-        _QuizOption(
-          value: 'tripods',
-          labelTr: 'Tripodlar',
-          labelEn: 'Tripods',
-          emoji: '📸',
-        ),
-        _QuizOption(
-          value: 'lenses',
-          labelTr: 'Lensler',
-          labelEn: 'Lenses',
-          emoji: '🔍',
-        ),
-        _QuizOption(
-          value: 'consoles',
-          labelTr: 'Oyun Konsollari',
-          labelEn: 'Gaming Consoles',
-          emoji: '🕹️',
-        ),
-        _QuizOption(
-          value: 'gamepads',
-          labelTr: 'Oyun Kollari',
-          labelEn: 'Gamepads',
-          emoji: '🎮',
-        ),
-        _QuizOption(
-          value: 'vr-headsets',
-          labelTr: 'VR Basliklar',
-          labelEn: 'VR Headsets',
-          emoji: '🥽',
-        ),
-        _QuizOption(
-          value: 'routers',
-          labelTr: 'Router ve Modemler',
-          labelEn: 'Routers & Modems',
-          emoji: '📡',
-        ),
-        _QuizOption(
-          value: 'robot-vacuums',
-          labelTr: 'Robot Supurgeler',
-          labelEn: 'Robot Vacuums',
-          emoji: '🤖',
-        ),
-        _QuizOption(
-          value: 'powerbanks',
-          labelTr: 'Tasinabilir Sarj Cihazlari',
-          labelEn: 'Power Banks',
-          emoji: '🔋',
-        ),
-        _QuizOption(
-          value: 'e-readers',
-          labelTr: 'E-Okuyucular',
-          labelEn: 'E-Readers',
-          emoji: '📚',
-        ),
-        _QuizOption(
-          value: 'drones',
-          labelTr: 'Dronelar',
-          labelEn: 'Drones',
-          emoji: '🚁',
-        ),
-      ],
+      options: _buildCategoryOptions(),
     ),
     _QuizStep(
       field: 'ecosystem',
       title: _t(
-        'Hangi ekosistemi kullaniyorsun?',
+        'Hangi ekosistemi kullanıyorsun?',
         'Which ecosystem do you use?',
       ),
       subtitle: _t(
-        'Kurulumuna en yakin ekosistemi sec.',
+        'Kurulumuna en yakın ekosistemi seç.',
         'Choose the ecosystem closest to your setup.',
       ),
       algorithmHint: _t(
-        'Ekosistem sinyali urun uyumlulugu ve butunlu deneyim icin kullanilir.',
+        'Ekosistem sinyali ürün uyumluluğu ve bütünlü deneyim için kullanılır.',
         'Ecosystem affinity improves compatibility and continuity scoring.',
       ),
       type: _StepType.single,
       displayStyle: _StepDisplay.list,
       isRequired: true,
-      options: const [
-        _QuizOption(
-          value: 'apple',
-          labelTr: 'Apple',
-          labelEn: 'Apple',
-          emoji: '🍎',
-          detailTr: 'iPhone, Mac, iPad',
-          detailEn: 'iPhone, Mac, iPad',
-          logoDomain: 'apple.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'android',
-          labelTr: 'Android',
-          labelEn: 'Android',
-          emoji: '🤖',
-          detailTr: 'Telefon, tablet, saat',
-          detailEn: 'Phones, tablets, watches',
-          logoDomain: 'android.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'windows',
-          labelTr: 'Windows',
-          labelEn: 'Windows',
-          emoji: '🪟',
-          detailTr: 'Laptop, masaustu, ofis',
-          detailEn: 'Laptops, desktops, office',
-          logoDomain: 'microsoft.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'samsung',
-          labelTr: 'Samsung',
-          labelEn: 'Samsung',
-          emoji: '✨',
-          detailTr: 'Telefon, tablet, saat',
-          detailEn: 'Phones, tablets, watches',
-          logoDomain: 'samsung.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'google',
-          labelTr: 'Google',
-          labelEn: 'Google',
-          emoji: '🔍',
-          detailTr: 'Pixel, Home, One',
-          detailEn: 'Pixel, Home, One',
-          logoDomain: 'google.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'mixed',
-          labelTr: 'Karisik',
-          labelEn: 'Mixed',
-          emoji: '🔄',
-          detailTr: 'Capraz platform',
-          detailEn: 'Cross-platform',
-        ),
-      ],
+      options: _buildEcosystemOptions(),
     ),
     _QuizStep(
       field: 'budgetRange',
-      title: _t('Butcen hangi bantta?', 'What budget band fits you?'),
-      subtitle: _t('Butce seviyeni sec.', 'Choose your budget level.'),
+      title: _t('Bütçen hangi bantta?', 'What budget band fits you?'),
+      subtitle: _t('Bütçe seviyeni seç.', 'Choose your budget level.'),
       algorithmHint: _t(
         'Fiyat bandi, one cikarilan urunlerin seviye ve segmentini ayarlar.',
         'Budget range changes which price tier the ranking engine prefers.',
@@ -557,193 +436,20 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     _QuizStep(
       field: 'currentDevices',
       title: _t(
-        'Su an hangi cihazlari aktif kullaniyorsun?',
+        'Şu an hangi cihazları aktif kullanıyorsun?',
         'Which devices do you actively use today?',
       ),
       subtitle: _t(
-        'Uyumlu urunleri daha iyi filtrelemek icin kullanilir.',
+        'Veritabanındaki kategorilerden aktif kullandıklarını seç.',
         'Used to surface products that fit your existing setup.',
       ),
       algorithmHint: _t(
-        'Mevcut cihazlar ekosistem puanini ve uyumluluk tahminlerini guclendirir.',
+        'Mevcut cihazlar ekosistem puanını ve uyumluluk tahminlerini güçlendirir.',
         'Current devices reinforce ecosystem affinity and compatibility scoring.',
       ),
       type: _StepType.multi,
       isRequired: false,
-      options: const [
-        _QuizOption(
-          value: 'iphone',
-          labelTr: 'iPhone',
-          labelEn: 'iPhone',
-          emoji: '📱',
-          coverCategory: 'smartphones',
-          logoDomain: 'apple.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'galaxy_phone',
-          labelTr: 'Samsung Phone',
-          labelEn: 'Samsung Phone',
-          emoji: '📱',
-          coverCategory: 'smartphones',
-          logoDomain: 'samsung.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'android_phone',
-          labelTr: 'Android Phone',
-          labelEn: 'Android Phone',
-          emoji: '📱',
-          coverCategory: 'smartphones',
-        ),
-        _QuizOption(
-          value: 'ipad',
-          labelTr: 'iPad',
-          labelEn: 'iPad',
-          emoji: '📟',
-          coverCategory: 'tablets',
-        ),
-        _QuizOption(
-          value: 'android_tablet',
-          labelTr: 'Android Tablet',
-          labelEn: 'Android Tablet',
-          emoji: '📟',
-          coverCategory: 'tablets',
-        ),
-        _QuizOption(
-          value: 'macbook',
-          labelTr: 'MacBook',
-          labelEn: 'MacBook',
-          emoji: '💻',
-          coverCategory: 'laptops',
-          logoDomain: 'apple.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'mac_desktop',
-          labelTr: 'iMac / Mac Studio',
-          labelEn: 'iMac / Mac Studio',
-          emoji: '🖥️',
-          coverCategory: 'desktops',
-          logoDomain: 'apple.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'windows_laptop',
-          labelTr: 'Windows Laptop',
-          labelEn: 'Windows Laptop',
-          emoji: '💻',
-          coverCategory: 'laptops',
-          logoDomain: 'microsoft.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'windows_pc',
-          labelTr: 'Windows PC',
-          labelEn: 'Windows PC',
-          emoji: '🖥️',
-          coverCategory: 'desktops',
-          logoDomain: 'microsoft.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'gaming_pc',
-          labelTr: 'Gaming PC',
-          labelEn: 'Gaming PC',
-          emoji: '🕹️',
-          coverCategory: 'gpus',
-        ),
-        _QuizOption(
-          value: 'chromebook',
-          labelTr: 'Chromebook',
-          labelEn: 'Chromebook',
-          emoji: '💻',
-          coverCategory: 'laptops',
-          logoDomain: 'google.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'linux_pc',
-          labelTr: 'Linux PC',
-          labelEn: 'Linux PC',
-          emoji: '🐧',
-          coverCategory: 'desktops',
-        ),
-        _QuizOption(
-          value: 'apple_watch',
-          labelTr: 'Apple Watch',
-          labelEn: 'Apple Watch',
-          emoji: '⌚',
-          coverCategory: 'smartwatches',
-          logoDomain: 'apple.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'galaxy_watch',
-          labelTr: 'Samsung Watch',
-          labelEn: 'Samsung Watch',
-          emoji: '⌚',
-          coverCategory: 'smartwatches',
-          logoDomain: 'samsung.com',
-          preferContain: true,
-        ),
-        _QuizOption(
-          value: 'smart_tv',
-          labelTr: 'Smart TV',
-          labelEn: 'Smart TV',
-          emoji: '📺',
-          coverCategory: 'tvs',
-        ),
-        _QuizOption(
-          value: 'console',
-          labelTr: 'Konsol',
-          labelEn: 'Console',
-          emoji: '🎮',
-          coverCategory: 'consoles',
-        ),
-        _QuizOption(
-          value: 'camera_kit',
-          labelTr: 'Kamera',
-          labelEn: 'Camera',
-          emoji: '📷',
-          coverCategory: 'cameras',
-        ),
-        _QuizOption(
-          value: 'smart_speaker',
-          labelTr: 'Akilli Hoparlor',
-          labelEn: 'Smart Speaker',
-          emoji: '🔊',
-          coverCategory: 'speakers',
-        ),
-        _QuizOption(
-          value: 'router',
-          labelTr: 'Router',
-          labelEn: 'Router',
-          emoji: '📡',
-          coverCategory: 'routers',
-        ),
-        _QuizOption(
-          value: 'robot_vacuum',
-          labelTr: 'Robot Supurge',
-          labelEn: 'Robot Vacuum',
-          emoji: '🤖',
-          coverCategory: 'robot-vacuums',
-        ),
-        _QuizOption(
-          value: 'e_reader',
-          labelTr: 'E-Okuyucu',
-          labelEn: 'E-Reader',
-          emoji: '📚',
-          coverCategory: 'e-readers',
-        ),
-        _QuizOption(
-          value: 'drone',
-          labelTr: 'Drone',
-          labelEn: 'Drone',
-          emoji: '🚁',
-          coverCategory: 'drones',
-        ),
-      ],
+      options: _buildCurrentDeviceOptions(),
     ),
     _QuizStep(
       field: 'usageIntent',
@@ -756,7 +462,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'This decides which experience gets emphasized across the app.',
       ),
       algorithmHint: _t(
-        'Kullanim amaci hizli karar, detayli arastirma ve fiyat odagi arasinda denge kurar.',
+        'Kullanım amacı hızlı karar, detaylı araştırma ve fiyat odağı arasında denge kurar.',
         'Usage intent shifts emphasis between fast decisions, deep research, and price focus.',
       ),
       type: _StepType.single,
@@ -764,7 +470,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       options: const [
         _QuizOption(
           value: 'research',
-          labelTr: 'Detayli Arastirma',
+          labelTr: 'Detaylı Araştırma',
           labelEn: 'Deep Research',
           emoji: '🔍',
           coverCategory: 'laptops',
@@ -809,7 +515,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     _QuizStep(
       field: 'ageRange',
       title: _t(
-        'Kendine en yakin yas araligini sec',
+        'Kendine en yakın yaş aralığını seç',
         'Pick the age range closest to you',
       ),
       subtitle: _t(
@@ -870,128 +576,29 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     _QuizStep(
       field: 'profession',
       title: _t(
-        'Sana en yakin profil hangisi?',
+        'Sana en yakın profil hangisi?',
         'Which profile feels closest to you?',
       ),
       subtitle: _t(
-        'Meslek bilgisi kategori onceliklerini daha akilli hale getirir.',
+        'Meslek bilgisi kategori önceliklerini daha akıllı hale getirir.',
         'Profession helps tune category priority more intelligently.',
       ),
       algorithmHint: _t(
-        'Profil algoritmasi ilgi alanlarini ve kategori onceliklerini buna gore ince ayarlar.',
+        'Profil algoritması ilgi alanlarını ve kategori önceliklerini buna göre ince ayarlar.',
         'The profile algorithm fine-tunes category priority with this signal.',
       ),
       type: _StepType.single,
       isRequired: false,
-      options: const [
-        _QuizOption(
-          value: 'student',
-          labelTr: 'Ogrenci',
-          labelEn: 'Student',
-          emoji: '🎓',
-          coverCategory: 'laptops',
-        ),
-        _QuizOption(
-          value: 'engineer',
-          labelTr: 'Muhendis',
-          labelEn: 'Engineer',
-          emoji: '⚙️',
-          coverCategory: 'cpus',
-        ),
-        _QuizOption(
-          value: 'designer',
-          labelTr: 'Tasarimci',
-          labelEn: 'Designer',
-          emoji: '🎨',
-          coverCategory: 'monitors',
-        ),
-        _QuizOption(
-          value: 'developer',
-          labelTr: 'Yazilimci',
-          labelEn: 'Developer',
-          emoji: '👨‍💻',
-          coverCategory: 'keyboards',
-        ),
-        _QuizOption(
-          value: 'content_creator',
-          labelTr: 'Icerik Ureticisi',
-          labelEn: 'Content Creator',
-          emoji: '🎥',
-          coverCategory: 'cameras',
-        ),
-        _QuizOption(
-          value: 'gamer',
-          labelTr: 'Oyuncu',
-          labelEn: 'Gamer',
-          emoji: '🎮',
-          coverCategory: 'consoles',
-        ),
-        _QuizOption(
-          value: 'manager',
-          labelTr: 'Yonetici',
-          labelEn: 'Manager',
-          emoji: '💼',
-          coverCategory: 'smartphones',
-        ),
-        _QuizOption(
-          value: 'entrepreneur',
-          labelTr: 'Girisimci',
-          labelEn: 'Entrepreneur',
-          emoji: '🚀',
-          coverCategory: 'laptops',
-        ),
-        _QuizOption(
-          value: 'healthcare',
-          labelTr: 'Saglik',
-          labelEn: 'Healthcare',
-          emoji: '🏥',
-          coverCategory: 'smartwatches',
-        ),
-        _QuizOption(
-          value: 'educator',
-          labelTr: 'Egitmen',
-          labelEn: 'Educator',
-          emoji: '📚',
-          coverCategory: 'projectors',
-        ),
-        _QuizOption(
-          value: 'finance',
-          labelTr: 'Finans',
-          labelEn: 'Finance',
-          emoji: '💹',
-          coverCategory: 'monitors',
-        ),
-        _QuizOption(
-          value: 'architect',
-          labelTr: 'Mimar',
-          labelEn: 'Architect',
-          emoji: '📐',
-          coverCategory: 'tablets',
-        ),
-        _QuizOption(
-          value: 'sales_marketing',
-          labelTr: 'Satis / Pazarlama',
-          labelEn: 'Sales / Marketing',
-          emoji: '📣',
-          coverCategory: 'smartphones',
-        ),
-        _QuizOption(
-          value: 'other',
-          labelTr: 'Diger',
-          labelEn: 'Other',
-          emoji: '🌐',
-          coverCategory: 'smartphones',
-        ),
-      ],
+      options: _buildProfessionOptions(),
     ),
     _QuizStep(
       field: 'subscriptions',
       title: _t(
-        'Hangi servisler zaten hayatinin icinde?',
+        'Hangi servisler zaten hayatının içinde?',
         'Which services are already part of your stack?',
       ),
       subtitle: _t(
-        'Kullandigin servisleri sec.',
+        'Kullandığın servisleri seç.',
         'Select the services you already use.',
       ),
       algorithmHint: _t(
@@ -1371,6 +978,293 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     ),
   ];
 
+  static const Map<String, List<String>> _categoryLabels = {
+    'smartphones': ['Akıllı Telefonlar', 'Smartphones'],
+    'tablets': ['Tabletler', 'Tablets'],
+    'laptops': ['Dizüstü Bilgisayarlar', 'Laptops'],
+    'desktops': ['Masaüstü Bilgisayarlar', 'Desktops'],
+    'cpus': ['İşlemciler', 'Processors'],
+    'gpus': ['Ekran Kartları', 'Graphics Cards'],
+    'ram': ['RAM', 'RAM'],
+    'ssd': ['SSD ve Depolama', 'SSD & Storage'],
+    'motherboards': ['Anakartlar', 'Motherboards'],
+    'psu': ['Güç Kaynakları', 'Power Supplies'],
+    'cases': ['Kasalar', 'PC Cases'],
+    'coolers': ['Soğutucular', 'Coolers'],
+    'monitors': ['Monitörler', 'Monitors'],
+    'keyboards': ['Klavyeler', 'Keyboards'],
+    'mice': ['Fareler', 'Mice'],
+    'webcams': ['Web Kameraları', 'Webcams'],
+    'printers': ['Yazıcılar', 'Printers'],
+    'tvs': ['TV ve Ekranlar', 'TVs'],
+    'projectors': ['Projektörler', 'Projectors'],
+    'media-players': ['Medya Oynatıcılar', 'Media Players'],
+    'headphones': ['Kulaklıklar', 'Headphones'],
+    'speakers': ['Hoparlörler', 'Speakers'],
+    'soundbars': ['Soundbarlar', 'Soundbars'],
+    'microphones': ['Mikrofonlar', 'Microphones'],
+    'smartwatches': ['Akıllı Saatler', 'Smartwatches'],
+    'smart-rings': ['Akıllı Yüzükler', 'Smart Rings'],
+    'cameras': ['Kameralar', 'Cameras'],
+    'action-cameras': ['Aksiyon Kameraları', 'Action Cameras'],
+    'security-cameras': ['Güvenlik Kameraları', 'Security Cameras'],
+    'ip-cameras': ['IP Kameralar', 'IP Cameras'],
+    'dashcams': ['Araç Kameraları', 'Dashcams'],
+    'gimbals': ['Gimballer', 'Gimbals'],
+    'tripods': ['Tripodlar', 'Tripods'],
+    'lenses': ['Lensler', 'Lenses'],
+    'consoles': ['Oyun Konsolları', 'Gaming Consoles'],
+    'gamepads': ['Oyun Kolları', 'Gamepads'],
+    'vr-headsets': ['VR Başlıklar', 'VR Headsets'],
+    'routers': ['Router ve Modemler', 'Routers & Modems'],
+    'robot-vacuums': ['Robot Süpürgeler', 'Robot Vacuums'],
+    'powerbanks': ['Taşınabilir Şarj Cihazları', 'Power Banks'],
+    'e-readers': ['E-Okuyucular', 'E-Readers'],
+    'drones': ['Dronelar', 'Drones'],
+  };
+
+  List<_QuizOption> _buildCategoryOptions() {
+    return _quizCategoryUniverse
+        .map(
+          (category) => _QuizOption(
+            value: category,
+            labelTr: _categoryLabels[category]![0],
+            labelEn: _categoryLabels[category]![1],
+            emoji: '✨',
+            coverCategory: category,
+          ),
+        )
+        .toList();
+  }
+
+  List<_QuizOption> _buildCurrentDeviceOptions() {
+    return _deviceCategoryUniverse
+        .map(
+          (category) => _QuizOption(
+            value: category,
+            labelTr: _categoryLabels[category]![0],
+            labelEn: _categoryLabels[category]![1],
+            emoji: '✨',
+            coverCategory: category,
+          ),
+        )
+        .toList();
+  }
+
+  List<_QuizOption> _buildEcosystemOptions() {
+    return const [
+      _QuizOption(
+        value: 'apple',
+        labelTr: 'Apple',
+        labelEn: 'Apple',
+        emoji: '🍎',
+        detailTr: 'iPhone, Mac, iPad, Watch',
+        detailEn: 'iPhone, Mac, iPad, Watch',
+      ),
+      _QuizOption(
+        value: 'android',
+        labelTr: 'Android',
+        labelEn: 'Android',
+        emoji: '🤖',
+        detailTr: 'Telefon, tablet ve saat',
+        detailEn: 'Phones, tablets, and watches',
+      ),
+      _QuizOption(
+        value: 'windows',
+        labelTr: 'Windows',
+        labelEn: 'Windows',
+        emoji: '🪟',
+        detailTr: 'Laptop, masaüstü ve ofis',
+        detailEn: 'Laptops, desktops, and office',
+      ),
+      _QuizOption(
+        value: 'samsung',
+        labelTr: 'Samsung',
+        labelEn: 'Samsung',
+        emoji: '✨',
+        detailTr: 'Galaxy telefon, tablet ve saat',
+        detailEn: 'Galaxy phones, tablets, and watches',
+      ),
+      _QuizOption(
+        value: 'google',
+        labelTr: 'Google',
+        labelEn: 'Google',
+        emoji: '🔍',
+        detailTr: 'Pixel, Nest ve Google One',
+        detailEn: 'Pixel, Nest, and Google One',
+      ),
+      _QuizOption(
+        value: 'xiaomi',
+        labelTr: 'Xiaomi',
+        labelEn: 'Xiaomi',
+        emoji: '🟧',
+        detailTr: 'Telefon, tablet ve giyilebilir ürünler',
+        detailEn: 'Phones, tablets, and wearables',
+      ),
+      _QuizOption(
+        value: 'huawei',
+        labelTr: 'Huawei',
+        labelEn: 'Huawei',
+        emoji: '🌺',
+        detailTr: 'Telefon, tablet ve giyilebilir ürünler',
+        detailEn: 'Phones, tablets, and wearables',
+      ),
+      _QuizOption(
+        value: 'mixed',
+        labelTr: 'Karışık',
+        labelEn: 'Mixed',
+        emoji: '🔄',
+        detailTr: 'Çapraz platform kurulum',
+        detailEn: 'Cross-platform setup',
+      ),
+    ];
+  }
+
+  List<_QuizOption> _buildProfessionOptions() {
+    return const [
+      _QuizOption(
+        value: 'student',
+        labelTr: 'Öğrenci',
+        labelEn: 'Student',
+        emoji: '🎓',
+        coverCategory: 'laptops',
+      ),
+      _QuizOption(
+        value: 'engineer',
+        labelTr: 'Mühendis',
+        labelEn: 'Engineer',
+        emoji: '⚙️',
+        coverCategory: 'monitors',
+      ),
+      _QuizOption(
+        value: 'designer',
+        labelTr: 'Tasarımcı',
+        labelEn: 'Designer',
+        emoji: '🎨',
+        coverCategory: 'tablets',
+      ),
+      _QuizOption(
+        value: 'developer',
+        labelTr: 'Yazılımcı',
+        labelEn: 'Developer',
+        emoji: '👨‍💻',
+        coverCategory: 'keyboards',
+      ),
+      _QuizOption(
+        value: 'content_creator',
+        labelTr: 'İçerik Üreticisi',
+        labelEn: 'Content Creator',
+        emoji: '🎥',
+        coverCategory: 'cameras',
+      ),
+      _QuizOption(
+        value: 'video_editor',
+        labelTr: 'Video Editörü',
+        labelEn: 'Video Editor',
+        emoji: '🎞️',
+        coverCategory: 'monitors',
+      ),
+      _QuizOption(
+        value: 'photographer',
+        labelTr: 'Fotoğrafçı',
+        labelEn: 'Photographer',
+        emoji: '📸',
+        coverCategory: 'cameras',
+      ),
+      _QuizOption(
+        value: 'gamer',
+        labelTr: 'Oyuncu',
+        labelEn: 'Gamer',
+        emoji: '🎮',
+        coverCategory: 'consoles',
+      ),
+      _QuizOption(
+        value: 'manager',
+        labelTr: 'Yönetici',
+        labelEn: 'Manager',
+        emoji: '💼',
+        coverCategory: 'smartphones',
+      ),
+      _QuizOption(
+        value: 'product_manager',
+        labelTr: 'Ürün Yöneticisi',
+        labelEn: 'Product Manager',
+        emoji: '🧭',
+        coverCategory: 'laptops',
+      ),
+      _QuizOption(
+        value: 'entrepreneur',
+        labelTr: 'Girişimci',
+        labelEn: 'Entrepreneur',
+        emoji: '🚀',
+        coverCategory: 'laptops',
+      ),
+      _QuizOption(
+        value: 'healthcare',
+        labelTr: 'Sağlık Profesyoneli',
+        labelEn: 'Healthcare Professional',
+        emoji: '🏥',
+        coverCategory: 'smartwatches',
+      ),
+      _QuizOption(
+        value: 'educator',
+        labelTr: 'Eğitmen',
+        labelEn: 'Educator',
+        emoji: '📚',
+        coverCategory: 'projectors',
+      ),
+      _QuizOption(
+        value: 'finance',
+        labelTr: 'Finans',
+        labelEn: 'Finance',
+        emoji: '💹',
+        coverCategory: 'monitors',
+      ),
+      _QuizOption(
+        value: 'data_analyst',
+        labelTr: 'Veri Analisti',
+        labelEn: 'Data Analyst',
+        emoji: '📊',
+        coverCategory: 'monitors',
+      ),
+      _QuizOption(
+        value: 'architect',
+        labelTr: 'Mimar',
+        labelEn: 'Architect',
+        emoji: '📐',
+        coverCategory: 'tablets',
+      ),
+      _QuizOption(
+        value: 'sales_marketing',
+        labelTr: 'Satış / Pazarlama',
+        labelEn: 'Sales / Marketing',
+        emoji: '📣',
+        coverCategory: 'smartphones',
+      ),
+      _QuizOption(
+        value: 'lawyer',
+        labelTr: 'Hukuk',
+        labelEn: 'Legal',
+        emoji: '⚖️',
+        coverCategory: 'laptops',
+      ),
+      _QuizOption(
+        value: 'researcher',
+        labelTr: 'Araştırmacı',
+        labelEn: 'Researcher',
+        emoji: '🔬',
+        coverCategory: 'tablets',
+      ),
+      _QuizOption(
+        value: 'other',
+        labelTr: 'Diğer',
+        labelEn: 'Other',
+        emoji: '🌐',
+        coverCategory: 'smartphones',
+      ),
+    ];
+  }
+
   static const Map<String, List<Color>> _accentMap = {
     'smartphones': [Color(0xFF37C7FF), Color(0xFF2563EB)],
     'laptops': [Color(0xFF22C55E), Color(0xFF14B8A6)],
@@ -1398,56 +1292,58 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   };
 
   static const Map<String, String> _logoSvgUrlByValue = {
-    'apple': 'https://cdn.simpleicons.org/apple/000000',
-    'android': 'https://cdn.simpleicons.org/android/3DDC84',
-    'windows': 'https://cdn.simpleicons.org/windows11/0078D4',
-    'samsung': 'https://cdn.simpleicons.org/samsung/1428A0',
-    'google': 'https://cdn.simpleicons.org/google/4285F4',
-    'spotify': 'https://cdn.simpleicons.org/spotify/1DB954',
-    'apple_music': 'https://cdn.simpleicons.org/applemusic/FA243C',
-    'youtube_premium': 'https://cdn.simpleicons.org/youtube/FF0000',
-    'netflix': 'https://cdn.simpleicons.org/netflix/E50914',
-    'disney_plus': 'https://cdn.simpleicons.org/disneyplus/113CCF',
-    'max': 'https://cdn.simpleicons.org/hbomax/5822B4',
-    'prime_video': 'https://cdn.simpleicons.org/primevideo/1F2E3D',
-    'icloud': 'https://cdn.simpleicons.org/icloud/3693F3',
-    'google_one': 'https://cdn.simpleicons.org/googleone/4285F4',
-    'microsoft_365': 'https://cdn.simpleicons.org/microsoftoffice/D83B01',
-    'adobe_cc': 'https://cdn.simpleicons.org/adobecreativecloud/DA1F26',
-    'figma': 'https://cdn.simpleicons.org/figma/F24E1E',
-    'notion': 'https://cdn.simpleicons.org/notion/000000',
-    'chatgpt_plus': 'https://cdn.simpleicons.org/openai/10A37F',
-    'github_copilot': 'https://cdn.simpleicons.org/github/181717',
-    'game_pass': 'https://cdn.simpleicons.org/xbox/107C10',
-    'ps_plus': 'https://cdn.simpleicons.org/playstation/003791',
-    'switch_online': 'https://cdn.simpleicons.org/nintendo/E60012',
-    'geforce_now': 'https://cdn.simpleicons.org/nvidia/76B900',
-    'twitch': 'https://cdn.simpleicons.org/twitch/9146FF',
-    'youtube_music': 'https://cdn.simpleicons.org/youtubemusic/FF0000',
-    'amazon_music': 'https://cdn.simpleicons.org/amazonmusic/46C3D0',
-    'tidal': 'https://cdn.simpleicons.org/tidal/000000',
-    'deezer': 'https://cdn.simpleicons.org/deezer/A238FF',
-    'hulu': 'https://cdn.simpleicons.org/hulu/1CE783',
-    'crunchyroll': 'https://cdn.simpleicons.org/crunchyroll/F47521',
-    'mubi': 'https://cdn.simpleicons.org/mubi/000000',
-    'dropbox': 'https://cdn.simpleicons.org/dropbox/0061FF',
-    'onedrive': 'https://cdn.simpleicons.org/microsoftonedrive/0078D4',
-    'canva': 'https://cdn.simpleicons.org/canva/00C4CC',
-    'slack': 'https://cdn.simpleicons.org/slack/4A154B',
-    'zoom': 'https://cdn.simpleicons.org/zoom/0B5CFF',
-    'jira': 'https://cdn.simpleicons.org/jira/0052CC',
-    'grammarly': 'https://cdn.simpleicons.org/grammarly/15C39A',
-    'linkedin_premium': 'https://cdn.simpleicons.org/linkedin/0A66C2',
-    'udemy': 'https://cdn.simpleicons.org/udemy/A435F0',
-    'coursera': 'https://cdn.simpleicons.org/coursera/0056D2',
-    'duolingo': 'https://cdn.simpleicons.org/duolingo/58CC02',
-    'claude': 'https://cdn.simpleicons.org/anthropic/191919',
-    'gemini': 'https://cdn.simpleicons.org/googlegemini/8E75B2',
-    'perplexity': 'https://cdn.simpleicons.org/perplexity/1FB8CD',
-    'midjourney': 'https://cdn.simpleicons.org/midjourney/000000',
-    'elevenlabs': 'https://cdn.simpleicons.org/elevenlabs/000000',
-    'nordvpn': 'https://cdn.simpleicons.org/nordvpn/4687FF',
-    '1password': 'https://cdn.simpleicons.org/1password/3B66BC',
+    'apple': 'assets/icons/quiz_logos/apple.svg',
+    'android': 'assets/icons/quiz_logos/android.svg',
+    'windows': 'assets/icons/quiz_logos/windows.png',
+    'samsung': 'assets/icons/quiz_logos/samsung.svg',
+    'google': 'assets/icons/quiz_logos/google.svg',
+    'huawei': 'assets/icons/quiz_logos/huawei.svg',
+    'xiaomi': 'assets/icons/quiz_logos/xiaomi.svg',
+    'spotify': 'assets/icons/quiz_logos/spotify.svg',
+    'apple_music': 'assets/icons/quiz_logos/apple_music.svg',
+    'youtube_premium': 'assets/icons/quiz_logos/youtube_premium.svg',
+    'netflix': 'assets/icons/quiz_logos/netflix.svg',
+    'disney_plus': 'assets/icons/quiz_logos/disney_plus.png',
+    'max': 'assets/icons/quiz_logos/max.svg',
+    'prime_video': 'assets/icons/quiz_logos/prime_video.png',
+    'icloud': 'assets/icons/quiz_logos/icloud.svg',
+    'google_one': 'assets/icons/quiz_logos/google_one.png',
+    'microsoft_365': 'assets/icons/quiz_logos/microsoft_365.png',
+    'adobe_cc': 'assets/icons/quiz_logos/adobe_cc.png',
+    'figma': 'assets/icons/quiz_logos/figma.svg',
+    'notion': 'assets/icons/quiz_logos/notion.svg',
+    'chatgpt_plus': 'assets/icons/quiz_logos/chatgpt_plus.png',
+    'github_copilot': 'assets/icons/quiz_logos/github_copilot.svg',
+    'game_pass': 'assets/icons/quiz_logos/game_pass.png',
+    'ps_plus': 'assets/icons/quiz_logos/ps_plus.svg',
+    'switch_online': 'assets/icons/quiz_logos/switch_online.png',
+    'geforce_now': 'assets/icons/quiz_logos/geforce_now.svg',
+    'twitch': 'assets/icons/quiz_logos/twitch.svg',
+    'youtube_music': 'assets/icons/quiz_logos/youtube_music.svg',
+    'amazon_music': 'assets/icons/quiz_logos/amazon_music.png',
+    'tidal': 'assets/icons/quiz_logos/tidal.svg',
+    'deezer': 'assets/icons/quiz_logos/deezer.svg',
+    'hulu': 'assets/icons/quiz_logos/hulu.png',
+    'crunchyroll': 'assets/icons/quiz_logos/crunchyroll.svg',
+    'mubi': 'assets/icons/quiz_logos/mubi.svg',
+    'dropbox': 'assets/icons/quiz_logos/dropbox.svg',
+    'onedrive': 'assets/icons/quiz_logos/onedrive.png',
+    'canva': 'assets/icons/quiz_logos/canva.png',
+    'slack': 'assets/icons/quiz_logos/slack.png',
+    'zoom': 'assets/icons/quiz_logos/zoom.svg',
+    'jira': 'assets/icons/quiz_logos/jira.svg',
+    'grammarly': 'assets/icons/quiz_logos/grammarly.svg',
+    'linkedin_premium': 'assets/icons/quiz_logos/linkedin_premium.png',
+    'udemy': 'assets/icons/quiz_logos/udemy.svg',
+    'coursera': 'assets/icons/quiz_logos/coursera.svg',
+    'duolingo': 'assets/icons/quiz_logos/duolingo.svg',
+    'claude': 'assets/icons/quiz_logos/claude.svg',
+    'gemini': 'assets/icons/quiz_logos/gemini.svg',
+    'perplexity': 'assets/icons/quiz_logos/perplexity.svg',
+    'midjourney': 'assets/icons/quiz_logos/midjourney.png',
+    'elevenlabs': 'assets/icons/quiz_logos/elevenlabs.svg',
+    'nordvpn': 'assets/icons/quiz_logos/nordvpn.svg',
+    '1password': 'assets/icons/quiz_logos/1password.svg',
   };
 
   static const Map<String, IconData> _optionIcons = {
@@ -1499,6 +1395,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     'premium': Icons.workspace_premium_rounded,
     'any': Icons.tune_rounded,
     'mixed': Icons.hub_rounded,
+    'apple': Icons.apple_rounded,
+    'android': Icons.android_rounded,
+    'windows': Icons.window_rounded,
+    'samsung': Icons.phone_android_rounded,
+    'google': Icons.travel_explore_rounded,
+    'xiaomi': Icons.phone_android_rounded,
+    'huawei': Icons.phone_android_rounded,
     'iphone': Icons.phone_iphone_rounded,
     'galaxy_phone': Icons.phone_android_rounded,
     'android_phone': Icons.phone_android_rounded,
@@ -1521,6 +1424,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     'robot_vacuum': Icons.cleaning_services_rounded,
     'e_reader': Icons.menu_book_rounded,
     'drone': Icons.air_rounded,
+    'video_editor': Icons.movie_rounded,
+    'photographer': Icons.camera_alt_rounded,
+    'product_manager': Icons.route_rounded,
+    'data_analyst': Icons.analytics_rounded,
+    'lawyer': Icons.balance_rounded,
+    'researcher': Icons.biotech_rounded,
   };
 
   @override
@@ -1545,7 +1454,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF07101A),
+      backgroundColor: _pageBackground,
       body: Stack(
         children: [
           _buildBackground(),
@@ -1619,17 +1528,25 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF07101A),
-                  AppTheme.brandBlue.withValues(alpha: 0.18),
-                  const Color(0xFF07101A),
+                  _isDarkTheme ? const Color(0xFF07101A) : Colors.white,
+                  _isDarkTheme
+                      ? AppTheme.brandBlue.withValues(alpha: 0.18)
+                      : AppTheme.brandCyan.withValues(alpha: 0.08),
+                  _isDarkTheme
+                      ? const Color(0xFF07101A)
+                      : AppTheme.backgroundLightMode,
                 ],
               ),
             ),
           ),
         ),
-        _orb(const Color(0xFF00E5FF), const Alignment(-0.9, -0.8), 180),
-        _orb(const Color(0xFF3B82F6), const Alignment(1.1, -0.2), 220),
-        _orb(const Color(0xFF8B5CF6), const Alignment(-1.0, 0.8), 220),
+        _orb(AppTheme.brandCyan, const Alignment(-0.9, -0.8), 180),
+        _orb(AppTheme.brandBlue, const Alignment(1.1, -0.2), 220),
+        _orb(
+          _isDarkTheme ? const Color(0xFF8B5CF6) : AppTheme.brandSkyBlue,
+          const Alignment(-1.0, 0.8),
+          220,
+        ),
       ],
     );
   }
@@ -1644,7 +1561,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color.withValues(alpha: 0.18),
+            color: color.withValues(alpha: _isDarkTheme ? 0.18 : 0.10),
           ),
         ),
       ),
@@ -1691,12 +1608,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     const SizedBox(height: 3),
                     Text(
                       _t(
-                        'Adim ${_currentPage + 1} / $totalSteps',
+                        'Adım ${_currentPage + 1} / $totalSteps',
                         'Step ${_currentPage + 1} / $totalSteps',
                       ),
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.74),
+                        color: _secondaryTextColor,
                       ),
                     ),
                   ],
@@ -1707,9 +1624,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   onPressed: _goNext,
                   child: Text(
                     _t('Atla', 'Skip'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: _primaryTextColor,
                     ),
                   ),
                 )
@@ -1720,7 +1637,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: _surfaceStrongColor,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -1728,7 +1645,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white.withValues(alpha: 0.85),
+                      color: _primaryTextColor,
                     ),
                   ),
                 ),
@@ -1740,7 +1657,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 5,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: _surfaceStrongColor,
               valueColor: const AlwaysStoppedAnimation<Color>(
                 AppTheme.brandCyan,
               ),
@@ -1761,11 +1678,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           Text(
             step.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w900,
               height: 1.05,
-              color: Colors.white,
+              color: _primaryTextColor,
             ),
           ),
           if (step.subtitle.trim().isNotEmpty) ...[
@@ -1776,7 +1693,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               style: TextStyle(
                 fontSize: 13,
                 height: 1.35,
-                color: Colors.white.withValues(alpha: 0.72),
+                color: _secondaryTextColor,
               ),
             ),
           ],
@@ -1801,7 +1718,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         _buildSelectedCounter(
           selectedCount,
           minimum: 3,
-          text: _t('En az 3 kategori sec', 'Select at least 3 categories'),
+          text: _t('En az 3 kategori seç', 'Select at least 3 categories'),
         ),
         const SizedBox(height: 16),
         LayoutBuilder(
@@ -1842,7 +1759,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             padding: const EdgeInsets.only(bottom: 16),
             child: _buildSelectedCounter(
               selectedValues.length,
-              text: _t('Secili', 'Selected'),
+              text: _t('Seçili', 'Selected'),
             ),
           ),
         LayoutBuilder(
@@ -1890,7 +1807,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             padding: const EdgeInsets.only(bottom: 16),
             child: _buildSelectedCounter(
               selectedValues.length,
-              text: _t('Secili', 'Selected'),
+              text: _t('Seçili', 'Selected'),
             ),
           ),
         ...step.options.map((option) {
@@ -1930,12 +1847,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: _surfaceColor,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: meetsMinimum
                 ? AppTheme.brandCyan.withValues(alpha: 0.32)
-                : Colors.white.withValues(alpha: 0.08),
+                : _borderColor,
           ),
         ),
         child: Row(
@@ -1944,7 +1861,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             Icon(
               meetsMinimum ? Icons.check_circle_rounded : Icons.circle_outlined,
               size: 16,
-              color: meetsMinimum ? AppTheme.brandCyan : Colors.white54,
+              color: meetsMinimum ? AppTheme.brandCyan : _buttonDisabledFg,
             ),
             const SizedBox(width: 8),
             Text(
@@ -1952,7 +1869,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.88),
+                color: _primaryTextColor,
               ),
             ),
           ],
@@ -1990,11 +1907,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: selected ? LinearGradient(colors: colors) : null,
-                  color: selected ? null : Colors.white.withValues(alpha: 0.05),
+                  color: selected ? null : _surfaceColor,
                   border: Border.all(
                     color: selected
-                        ? Colors.white.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.08),
+                        ? (_isDarkTheme
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : AppTheme.brandBlue.withValues(alpha: 0.18))
+                        : _borderColor,
                     width: selected ? 2 : 1,
                   ),
                   boxShadow: selected
@@ -2039,10 +1958,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                             shape: BoxShape.circle,
                             color: AppTheme.brandCyan,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.check_rounded,
                             size: 16,
-                            color: Colors.black,
+                            color: _selectionCheckColor,
                           ),
                         ),
                       ),
@@ -2058,7 +1977,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  color: Colors.white.withValues(alpha: selected ? 0.98 : 0.75),
+                  color: selected ? _primaryTextColor : _secondaryTextColor,
                   height: 1.2,
                 ),
               ),
@@ -2098,11 +2017,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     ],
                   )
                 : null,
-            color: selected ? null : Colors.white.withValues(alpha: 0.05),
+            color: selected ? null : _surfaceColor,
             border: Border.all(
               color: selected
                   ? colors.first.withValues(alpha: 0.9)
-                  : Colors.white.withValues(alpha: 0.08),
+                  : _borderColor,
               width: selected ? 1.4 : 1,
             ),
           ),
@@ -2125,10 +2044,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   children: [
                     Text(
                       option.label(_isTurkish),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: _primaryTextColor,
                       ),
                     ),
                     if (detail != null && detail.isNotEmpty) ...[
@@ -2138,7 +2057,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.25,
-                          color: Colors.white.withValues(alpha: 0.68),
+                          color: _secondaryTextColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -2154,13 +2073,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: selected
-                      ? AppTheme.brandCyan
-                      : Colors.white.withValues(alpha: 0.08),
+                  color: selected ? AppTheme.brandCyan : _surfaceStrongColor,
                 ),
                 child: Icon(
                   selected ? Icons.check_rounded : Icons.add_rounded,
-                  color: selected ? Colors.black : Colors.white70,
+                  color: selected ? _selectionCheckColor : _buttonDisabledFg,
                   size: 17,
                 ),
               ),
@@ -2179,9 +2096,26 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final icon = _optionIcons[option.value];
 
     final lowerUrl = imageUrl?.toLowerCase();
-    final isSvg =
-        lowerUrl != null &&
-        (lowerUrl.endsWith('.svg') || lowerUrl.contains('simpleicons.org'));
+    final isAsset = imageUrl != null && imageUrl.startsWith('assets/');
+    final isSvg = lowerUrl != null && lowerUrl.endsWith('.svg');
+
+    if (isAsset) {
+      if (isSvg) {
+        return SvgPicture.asset(
+          imageUrl,
+          fit: BoxFit.contain,
+          placeholderBuilder: (context) =>
+              _buildOptionFallback(option: option, icon: icon),
+        );
+      }
+
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) =>
+            _buildOptionFallback(option: option, icon: icon),
+      );
+    }
 
     if (imageUrl != null && isSvg) {
       return SvgPicture.network(
@@ -2193,10 +2127,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     }
 
     if (imageUrl != null) {
-      return Image.network(
-        imageUrl,
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) =>
+        placeholder: (context, url) =>
+            _buildOptionFallback(option: option, icon: icon),
+        errorWidget: (context, url, error) =>
             _buildOptionFallback(option: option, icon: icon),
       );
     }
@@ -2227,7 +2163,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     _QuizOption option,
     Map<String, String> covers,
   ) {
-    return _logoSvgUrlByValue[option.value];
+    return _logoSvgUrlByValue[option.value] ??
+        covers[option.coverCategory ?? option.value];
   }
 
   Widget _buildBottomBar(_QuizStep step) {
@@ -2244,17 +2181,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               child: Text(
                 step.field == 'interestCategories'
                     ? _t(
-                        'Devam etmek icin en az 3 kategori sec.',
+                        'Devam etmek için en az 3 kategori seç.',
                         'Select at least 3 categories to continue.',
                       )
                     : _t(
-                        'Devam etmek icin bu adimi tamamla.',
+                        'Devam etmek için bu adımı tamamla.',
                         'Complete this step to continue.',
                       ),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.58),
-                ),
+                style: TextStyle(fontSize: 12, color: _mutedTextColor),
               ),
             ),
           SizedBox(
@@ -2263,8 +2197,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: canContinue
                     ? AppTheme.brandCyan
-                    : Colors.white.withValues(alpha: 0.12),
-                foregroundColor: canContinue ? Colors.black : Colors.white54,
+                    : _buttonDisabledBg,
+                foregroundColor: canContinue
+                    ? _selectionCheckColor
+                    : _buttonDisabledFg,
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(22),
@@ -2287,7 +2223,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       children: [
                         Text(
                           isLast
-                              ? _t('Profilimi olustur', 'Create my profile')
+                              ? _t('Profilimi oluştur', 'Create my profile')
                               : _t('Devam et', 'Continue'),
                           style: const TextStyle(
                             fontSize: 16,
@@ -2419,11 +2355,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           content: Text(
             step.field == 'interestCategories'
                 ? _t(
-                    'En az 3 kategori secmeden devam edemezsin.',
+                    'En az 3 kategori seçmeden devam edemezsin.',
                     'Select at least 3 categories before continuing.',
                   )
                 : _t(
-                    'Bu adim tamamlanmadan devam edemezsin.',
+                    'Bu adım tamamlanmadan devam edemezsin.',
                     'Complete this step before continuing.',
                   ),
           ),
@@ -2525,7 +2461,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF07101A),
+      backgroundColor: _pageBackground,
       body: Stack(
         children: [
           _buildBackground(),
@@ -2544,8 +2480,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                             height: 280,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(32),
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF102033), Color(0xFF0A1624)],
+                              gradient: LinearGradient(
+                                colors: _isDarkTheme
+                                    ? const [
+                                        Color(0xFF102033),
+                                        Color(0xFF0A1624),
+                                      ]
+                                    : const [Colors.white, Color(0xFFEAF4FF)],
                               ),
                             ),
                             child: ClipRRect(
@@ -2554,12 +2495,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                 children: [
                                   if (heroImage != null)
                                     Positioned.fill(
-                                      child: Image.network(
-                                        heroImage,
+                                      child: CachedNetworkImage(
+                                        imageUrl: heroImage,
                                         fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                const SizedBox.shrink(),
+                                        errorWidget: (context, url, error) =>
+                                            const SizedBox.shrink(),
                                       ),
                                     ),
                                   Positioned.fill(
@@ -2569,11 +2509,26 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
                                           colors: [
-                                            Colors.black.withValues(
-                                              alpha: 0.18,
-                                            ),
-                                            Colors.black.withValues(alpha: 0.2),
-                                            const Color(0xFF07101A),
+                                            if (_isDarkTheme)
+                                              Colors.black.withValues(
+                                                alpha: 0.18,
+                                              )
+                                            else
+                                              Colors.white.withValues(
+                                                alpha: 0.10,
+                                              ),
+                                            if (_isDarkTheme)
+                                              Colors.black.withValues(
+                                                alpha: 0.2,
+                                              )
+                                            else
+                                              Colors.white.withValues(
+                                                alpha: 0.48,
+                                              ),
+                                            if (_isDarkTheme)
+                                              const Color(0xFF07101A)
+                                            else
+                                              AppTheme.backgroundLightMode,
                                           ],
                                         ),
                                       ),
@@ -2601,10 +2556,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                         const Spacer(),
                                         Text(
                                           _buildProfileHeadline(),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 30,
                                             fontWeight: FontWeight.w900,
-                                            color: Colors.white,
+                                            color: _primaryTextColor,
                                           ),
                                         ),
                                         const SizedBox(height: 10),
@@ -2613,9 +2568,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                           style: TextStyle(
                                             fontSize: 14,
                                             height: 1.5,
-                                            color: Colors.white.withValues(
-                                              alpha: 0.78,
-                                            ),
+                                            color: _secondaryTextColor,
                                           ),
                                         ),
                                       ],
@@ -2651,7 +2604,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                           if (topCategories.isNotEmpty)
                             const SizedBox(height: 14),
                           _completionCard(
-                            title: _t('Kesif DNA', 'Discovery DNA'),
+                            title: _t('Keşif DNA', 'Discovery DNA'),
                             body: _buildDiscoverySummary(),
                             color: AppTheme.brandCyan,
                             icon: Icons.auto_awesome_rounded,
@@ -2672,14 +2625,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                           ),
                           const SizedBox(height: 12),
                           _completionCard(
-                            title: _t('Kullanim profili', 'Usage profile'),
+                            title: _t('Kullanım profili', 'Usage profile'),
                             body: _buildWorkProfileSummary(),
                             color: const Color(0xFFF59E0B),
                             icon: Icons.work_rounded,
                           ),
                           const SizedBox(height: 12),
                           _completionCard(
-                            title: _t('Servis yogunlugu', 'Service density'),
+                            title: _t('Servis yoğunluğu', 'Service density'),
                             body: _buildSubscriptionSummary(),
                             color: AppTheme.green500,
                             icon: Icons.hub_rounded,
@@ -2694,7 +2647,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     child: FilledButton(
                       style: FilledButton.styleFrom(
                         backgroundColor: AppTheme.brandCyan,
-                        foregroundColor: Colors.black,
+                        foregroundColor: _selectionCheckColor,
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(22),
@@ -2702,7 +2655,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       ),
                       onPressed: () => context.go(AppRoutes.home),
                       child: Text(
-                        _t('Kesfe basla', 'Start exploring'),
+                        _t('Keşfe başla', 'Start exploring'),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -2724,12 +2677,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: secondary
-            ? Colors.white.withValues(alpha: 0.06)
+            ? _surfaceColor
             : AppTheme.brandCyan.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: secondary
-              ? Colors.white.withValues(alpha: 0.08)
+              ? _borderColor
               : AppTheme.brandCyan.withValues(alpha: 0.22),
         ),
       ),
@@ -2738,7 +2691,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: Colors.white.withValues(alpha: 0.92),
+          color: _primaryTextColor,
         ),
       ),
     );
@@ -2754,7 +2707,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
@@ -2777,10 +2730,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: _primaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -2789,7 +2742,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
-                    color: Colors.white.withValues(alpha: 0.72),
+                    color: _secondaryTextColor,
                   ),
                 ),
               ],
@@ -2803,8 +2756,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   String _buildProfileHeadline() {
     final leadingCategory = _interestCategories.isNotEmpty
         ? _labelForCategory(_interestCategories.first)
-        : _t('Tech kesfi', 'Tech discovery');
-    return _t('$leadingCategory icin hazirsin', 'Ready for $leadingCategory');
+        : _t('Tech keşfi', 'Tech discovery');
+    return _t('$leadingCategory için hazırsın', 'Ready for $leadingCategory');
   }
 
   String _buildProfileSubheadline() {
@@ -2821,7 +2774,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ? _t('dengeli bir profil', 'a balanced profile')
         : fragments.join(' · ');
     return _t(
-      'Compair artik $descriptor sinyallerini ana sayfa, AI aciklamalari ve kategori siralamalarina yansitacak.',
+      'Compair artık $descriptor sinyallerini ana sayfa, AI açıklamaları ve kategori sıralamalarına yansıtacak.',
       'Compair will now reflect your $descriptor signals across home ranking, AI explanations, and category priorities.',
     );
   }
@@ -2833,7 +2786,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         .toList();
     if (categories.isEmpty) {
       return _t(
-        'Kesif akisi davranis verilerinle birlikte dengeli sekilde sekillenecek.',
+        'Keşif akışı davranış verilerinle birlikte dengeli şekilde şekillenecek.',
         'Discovery will balance itself progressively with your behavior data.',
       );
     }
@@ -2842,7 +2795,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final categoryText = categories.join(', ');
     if (priorities.isEmpty) {
       return _t(
-        'Ana odak: $categoryText. Ana sayfa bu alanlari daha yukari tasiyacak.',
+        'Ana odak: $categoryText. Ana sayfa bu alanları daha yukarı taşıyacak.',
         'Primary focus: $categoryText. Home will push these categories higher.',
       );
     }
@@ -2855,18 +2808,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   String _buildSetupSummary() {
     final ecosystem = _ecosystem == null
-        ? _t('Karisik kurulum', 'Mixed setup')
+        ? _t('Karışık kurulum', 'Mixed setup')
         : _labelForEcosystem(_ecosystem!);
     final devices = _currentDevices.take(4).map(_labelForOwnedDevice).toList();
     if (devices.isEmpty) {
       return _t(
-        '$ecosystem sinyali baz alinacak; cihaz baglantilari kullandikca netlesecek.',
+        '$ecosystem sinyali baz alınacak; cihaz bağlantıları kullandıkça netleşecek.',
         '$ecosystem will be the base signal; device compatibility will sharpen as you use the app.',
       );
     }
 
     return _t(
-      '$ecosystem kurulumu algilandi. Aktif cihazlar: ${devices.join(', ')}.',
+      '$ecosystem kurulumu algılandı. Aktif cihazlar: ${devices.join(', ')}.',
       '$ecosystem setup detected. Active devices: ${devices.join(', ')}.',
     );
   }
@@ -2886,10 +2839,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   String _buildWorkProfileSummary() {
     final profession = _profession == null
-        ? _t('Genel kullanici', 'General user')
+        ? _t('Genel kullanıcı', 'General user')
         : _labelForProfession(_profession!);
     final usage = _usageIntent == null
-        ? _t('dengeli kullanim', 'balanced usage')
+        ? _t('dengeli kullanım', 'balanced usage')
         : _labelForUsageIntent(_usageIntent!);
     final age = _ageRange ?? '';
     if (age.isEmpty) {
@@ -2899,7 +2852,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       );
     }
     return _t(
-      '$profession profili, $usage modu ve $age davranis bandi birlikte kullanilacak.',
+      '$profession profili, $usage modu ve $age davranış bandı birlikte kullanılacak.',
       '$profession profile, $usage mode, and the $age behavior band will work together.',
     );
   }
@@ -2947,17 +2900,21 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   String _labelForEcosystem(String value) {
     switch (value) {
       case 'apple':
-        return _t('Apple odakli', 'Apple-first');
+        return _t('Apple odaklı', 'Apple-first');
       case 'android':
-        return _t('Android odakli', 'Android-first');
+        return _t('Android odaklı', 'Android-first');
       case 'windows':
-        return _t('Windows odakli', 'Windows-first');
+        return _t('Windows odaklı', 'Windows-first');
       case 'samsung':
-        return _t('Galaxy odakli', 'Galaxy-first');
+        return _t('Samsung odaklı', 'Samsung-first');
       case 'google':
-        return _t('Google odakli', 'Google-first');
+        return _t('Google odaklı', 'Google-first');
+      case 'xiaomi':
+        return _t('Xiaomi odaklı', 'Xiaomi-first');
+      case 'huawei':
+        return _t('Huawei odaklı', 'Huawei-first');
       case 'mixed':
-        return _t('Karisik ekosistem', 'Mixed ecosystem');
+        return _t('Karışık ekosistem', 'Mixed ecosystem');
       default:
         return value;
     }
@@ -3082,6 +3039,7 @@ class _HeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -3089,11 +3047,18 @@ class _HeaderButton extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : AppTheme.dividerLightMode,
+          ),
         ),
-        child: Icon(icon, color: Colors.white),
+        child: Icon(
+          icon,
+          color: isDark ? Colors.white : AppTheme.textPrimaryLightMode,
+        ),
       ),
     );
   }

@@ -228,14 +228,20 @@ class ProfileAlgorithmService {
       'designer',
       'developer',
       'content_creator',
+      'video_editor',
+      'photographer',
       'gamer',
       'manager',
+      'product_manager',
       'entrepreneur',
       'healthcare',
       'educator',
       'finance',
+      'data_analyst',
       'architect',
       'sales_marketing',
+      'lawyer',
+      'researcher',
       'other',
     ];
     for (final p in professions) {
@@ -254,24 +260,36 @@ class ProfileAlgorithmService {
         : 0.7;
 
     // 7. Device ownership scores (0-1)
-    vector['has_iphone'] = user.currentDevices.contains('iphone') ? 1.0 : 0.0;
-    vector['has_android_phone'] =
-        _hasAnyDevice(user, const ['android_phone', 'galaxy_phone'])
+    vector['has_iphone'] = user.ecosystem == 'apple'
         ? 1.0
-        : 0.0;
-    vector['has_mac'] = _hasAnyDevice(user, const ['macbook', 'mac_desktop'])
+        : (user.currentDevices.contains('smartphones') ? 0.35 : 0.0);
+    vector['has_android_phone'] =
+        ({
+          'android',
+          'samsung',
+          'google',
+          'xiaomi',
+          'huawei',
+        }.contains(user.ecosystem))
+        ? 1.0
+        : (user.currentDevices.contains('smartphones') ? 0.55 : 0.0);
+    vector['has_mac'] =
+        user.ecosystem == 'apple' &&
+            _hasAnyDevice(user, const ['laptops', 'desktops'])
         ? 1.0
         : 0.0;
     vector['has_windows'] =
-        _hasAnyDevice(user, const ['windows_pc', 'windows_laptop', 'gaming_pc'])
+        user.ecosystem == 'windows' &&
+            _hasAnyDevice(user, const ['laptops', 'desktops', 'monitors'])
         ? 1.0
         : 0.0;
-    vector['has_tablet'] = _hasAnyDevice(user, const ['ipad', 'android_tablet'])
+    vector['has_tablet'] = user.currentDevices.contains('tablets') ? 1.0 : 0.0;
+    vector['has_watch'] = user.currentDevices.contains('smartwatches')
         ? 1.0
         : 0.0;
-    vector['has_watch'] =
-        _hasAnyDevice(user, const ['apple_watch', 'galaxy_watch']) ? 1.0 : 0.0;
-    vector['has_console'] = user.currentDevices.contains('console') ? 1.0 : 0.0;
+    vector['has_console'] = user.currentDevices.contains('consoles')
+        ? 1.0
+        : 0.0;
 
     // 8. Subscription density score (0-1)
     final subCount = user.subscriptions.length;
@@ -492,6 +510,14 @@ class ProfileAlgorithmService {
         'gimbals',
         'tripods',
       ],
+      'video_editor': [
+        'monitors',
+        'laptops',
+        'microphones',
+        'headphones',
+        'cameras',
+      ],
+      'photographer': ['cameras', 'lenses', 'tripods', 'gimbals', 'monitors'],
       'gamer': [
         'gpus',
         'monitors',
@@ -507,6 +533,13 @@ class ProfileAlgorithmService {
         'tablets',
         'headphones',
       ],
+      'product_manager': [
+        'laptops',
+        'smartphones',
+        'tablets',
+        'monitors',
+        'headphones',
+      ],
       'entrepreneur': [
         'smartphones',
         'laptops',
@@ -518,8 +551,11 @@ class ProfileAlgorithmService {
       'educator': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
       'teacher': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
       'finance': ['laptops', 'monitors', 'smartphones', 'tablets'],
+      'data_analyst': ['laptops', 'monitors', 'tablets', 'keyboards'],
       'architect': ['monitors', 'laptops', 'tablets', 'gpus', 'desktops'],
       'sales_marketing': ['smartphones', 'laptops', 'tablets', 'cameras'],
+      'lawyer': ['laptops', 'tablets', 'smartphones', 'headphones'],
+      'researcher': ['laptops', 'tablets', 'e-readers', 'monitors'],
       'other': ['smartphones', 'laptops', 'headphones'],
     };
     final boostedCats = professionCategoryBoost[user.profession] ?? [];
@@ -627,10 +663,21 @@ class ProfileAlgorithmService {
     double score = 0;
     if (user.ecosystem == 'apple') score += 0.55;
     if (user.ecosystem == 'mixed') score += 0.2;
-    if (user.currentDevices.contains('iphone')) score += 0.2;
-    if (user.currentDevices.contains('ipad')) score += 0.15;
-    if (_hasAnyDevice(user, const ['macbook', 'mac_desktop'])) score += 0.15;
-    if (user.currentDevices.contains('apple_watch')) score += 0.12;
+    if (user.currentDevices.contains('smartphones') &&
+        user.ecosystem == 'apple') {
+      score += 0.2;
+    }
+    if (user.currentDevices.contains('tablets') && user.ecosystem == 'apple') {
+      score += 0.15;
+    }
+    if (_hasAnyDevice(user, const ['laptops', 'desktops']) &&
+        user.ecosystem == 'apple') {
+      score += 0.15;
+    }
+    if (user.currentDevices.contains('smartwatches') &&
+        user.ecosystem == 'apple') {
+      score += 0.12;
+    }
     if (user.subscriptions.contains('icloud')) score += 0.1;
     if (user.subscriptions.contains('apple_music')) score += 0.1;
     return score.clamp(0.0, 1.0);
@@ -639,15 +686,16 @@ class ProfileAlgorithmService {
   double _calculateAndroidAffinity(UserEntity user) {
     double score = 0;
     if (user.ecosystem == 'android') score += 0.45;
-    if (user.ecosystem == 'samsung' || user.ecosystem == 'google') score += 0.5;
+    if ({'samsung', 'google', 'xiaomi', 'huawei'}.contains(user.ecosystem)) {
+      score += 0.5;
+    }
     if (user.ecosystem == 'mixed') score += 0.2;
-    if (_hasAnyDevice(user, const ['android_phone', 'galaxy_phone'])) {
+    if (user.currentDevices.contains('smartphones')) {
       score += 0.2;
     }
-    if (user.currentDevices.contains('android_tablet')) score += 0.15;
-    if (user.currentDevices.contains('galaxy_watch')) score += 0.12;
-    if (_hasAnyDevice(user, const ['windows_pc', 'windows_laptop']))
-      score += 0.08;
+    if (user.currentDevices.contains('tablets')) score += 0.15;
+    if (user.currentDevices.contains('smartwatches')) score += 0.12;
+    if (_hasAnyDevice(user, const ['laptops', 'desktops'])) score += 0.08;
     if (user.subscriptions.contains('google_one')) score += 0.1;
     if (user.subscriptions.contains('youtube_premium')) score += 0.1;
     return score.clamp(0.0, 1.0);
@@ -657,11 +705,7 @@ class ProfileAlgorithmService {
     double score = 0;
     if (user.ecosystem == 'windows') score += 0.55;
     if (user.ecosystem == 'mixed') score += 0.2;
-    if (_hasAnyDevice(user, const [
-      'windows_pc',
-      'windows_laptop',
-      'gaming_pc',
-    ])) {
+    if (_hasAnyDevice(user, const ['laptops', 'desktops', 'monitors'])) {
       score += 0.25;
     }
     if (user.subscriptions.contains('microsoft_365')) score += 0.12;
@@ -672,12 +716,11 @@ class ProfileAlgorithmService {
     double score = 0;
     if (user.ecosystem == 'google') score += 0.55;
     if (user.ecosystem == 'android') score += 0.25;
+    if (user.ecosystem == 'xiaomi' || user.ecosystem == 'huawei') {
+      score += 0.2;
+    }
     if (user.ecosystem == 'mixed') score += 0.15;
-    if (_hasAnyDevice(user, const [
-      'chromebook',
-      'android_phone',
-      'galaxy_phone',
-    ])) {
+    if (_hasAnyDevice(user, const ['smartphones', 'tablets', 'laptops'])) {
       score += 0.15;
     }
     if (user.subscriptions.contains('google_one')) score += 0.12;
@@ -719,6 +762,10 @@ class ProfileAlgorithmService {
       inferredEcosystem = 'samsung';
     } else if (brand == 'google') {
       inferredEcosystem = 'google';
+    } else if ({'xiaomi', 'poco'}.contains(brand)) {
+      inferredEcosystem = 'xiaomi';
+    } else if ({'huawei', 'honor'}.contains(brand)) {
+      inferredEcosystem = 'huawei';
     } else if ({
       'microsoft',
       'dell',
@@ -758,16 +805,60 @@ class ProfileAlgorithmService {
     if (inferredEcosystem == 'neutral') return 0.60;
     if (user.ecosystem == 'mixed') return 0.72;
     if (user.ecosystem == inferredEcosystem) return 1.0;
-    if (user.ecosystem == 'android' &&
-        {'samsung', 'google', 'android'}.contains(inferredEcosystem)) {
+    if ({
+          'android',
+          'samsung',
+          'google',
+          'xiaomi',
+          'huawei',
+        }.contains(user.ecosystem) &&
+        {
+          'android',
+          'samsung',
+          'google',
+          'xiaomi',
+          'huawei',
+        }.contains(inferredEcosystem)) {
       return 0.9;
     }
     if (user.ecosystem == 'samsung' &&
-        {'samsung', 'android', 'google'}.contains(inferredEcosystem)) {
+        {
+          'samsung',
+          'android',
+          'google',
+          'xiaomi',
+          'huawei',
+        }.contains(inferredEcosystem)) {
       return 0.92;
     }
     if (user.ecosystem == 'google' &&
-        {'google', 'android', 'samsung'}.contains(inferredEcosystem)) {
+        {
+          'google',
+          'android',
+          'samsung',
+          'xiaomi',
+          'huawei',
+        }.contains(inferredEcosystem)) {
+      return 0.9;
+    }
+    if (user.ecosystem == 'xiaomi' &&
+        {
+          'xiaomi',
+          'android',
+          'google',
+          'samsung',
+          'huawei',
+        }.contains(inferredEcosystem)) {
+      return 0.9;
+    }
+    if (user.ecosystem == 'huawei' &&
+        {
+          'huawei',
+          'android',
+          'google',
+          'samsung',
+          'xiaomi',
+        }.contains(inferredEcosystem)) {
       return 0.9;
     }
     if (user.ecosystem == 'windows' && inferredEcosystem == 'windows')
@@ -777,10 +868,22 @@ class ProfileAlgorithmService {
     if (user.ecosystem == 'windows' && inferredEcosystem == 'apple')
       return 0.52;
     if (user.ecosystem == 'apple' &&
-        {'android', 'samsung', 'google'}.contains(inferredEcosystem)) {
+        {
+          'android',
+          'samsung',
+          'google',
+          'xiaomi',
+          'huawei',
+        }.contains(inferredEcosystem)) {
       return 0.18;
     }
-    if ({'android', 'samsung', 'google'}.contains(user.ecosystem) &&
+    if ({
+          'android',
+          'samsung',
+          'google',
+          'xiaomi',
+          'huawei',
+        }.contains(user.ecosystem) &&
         inferredEcosystem == 'apple') {
       return 0.18;
     }
@@ -958,19 +1061,25 @@ class ProfileAlgorithmService {
 
     final category = product.category.toLowerCase();
     final brand = (product.brand ?? '').toLowerCase();
+    final ownedCategories = user.currentDevices
+        .map((item) => item.toLowerCase())
+        .toSet();
     double compatibility = 0.5;
-    final hasApplePhone = user.currentDevices.contains('iphone');
-    final hasAndroidPhone = _hasAnyDevice(user, const [
-      'android_phone',
-      'galaxy_phone',
-    ]);
-    final hasMac = _hasAnyDevice(user, const ['macbook', 'mac_desktop']);
-    final hasWindows = _hasAnyDevice(user, const [
-      'windows_pc',
-      'windows_laptop',
-      'gaming_pc',
-    ]);
-    final hasTablet = _hasAnyDevice(user, const ['ipad', 'android_tablet']);
+    final hasApplePhone =
+        ownedCategories.contains('smartphones') && user.ecosystem == 'apple';
+    final hasAndroidPhone =
+        ownedCategories.contains('smartphones') && user.ecosystem != 'apple';
+    final hasMac =
+        _hasAnyDevice(user, const ['laptops', 'desktops']) &&
+        user.ecosystem == 'apple';
+    final hasWindows =
+        _hasAnyDevice(user, const ['laptops', 'desktops', 'monitors']) &&
+        user.ecosystem == 'windows';
+    final hasTablet = ownedCategories.contains('tablets');
+
+    if (ownedCategories.contains(category)) {
+      return 0.96;
+    }
 
     // Smartphones
     if (category == 'smartphones') {
@@ -984,9 +1093,21 @@ class ProfileAlgorithmService {
       else if (brand == 'google' &&
           (hasAndroidPhone || user.ecosystem == 'google'))
         compatibility = 0.88;
+      else if ({'xiaomi', 'poco'}.contains(brand) &&
+          (hasAndroidPhone || user.ecosystem == 'xiaomi'))
+        compatibility = 0.88;
+      else if ({'huawei', 'honor'}.contains(brand) &&
+          (hasAndroidPhone || user.ecosystem == 'huawei'))
+        compatibility = 0.86;
       else if (brand != 'apple' && hasAndroidPhone)
         compatibility = 0.85;
-      else if ({'android', 'samsung', 'google'}.contains(user.ecosystem))
+      else if ({
+        'android',
+        'samsung',
+        'google',
+        'xiaomi',
+        'huawei',
+      }.contains(user.ecosystem))
         compatibility = 0.80;
       else if (user.ecosystem == 'mixed')
         compatibility = 0.70;
@@ -1011,6 +1132,8 @@ class ProfileAlgorithmService {
         compatibility = 0.9;
       } else if (brand != 'apple' && hasWindows) {
         compatibility = 0.85;
+      } else if (_hasAnyDevice(user, const ['laptops', 'desktops'])) {
+        compatibility = 0.78;
       } else if (user.ecosystem == 'mixed')
         compatibility = 0.70;
       else
@@ -1019,11 +1142,17 @@ class ProfileAlgorithmService {
     // Tablets
     else if (category == 'tablets') {
       if (brand == 'apple' &&
-          (user.currentDevices.contains('ipad') || user.ecosystem == 'apple'))
+          (ownedCategories.contains('tablets') || user.ecosystem == 'apple'))
         compatibility = 0.95;
       else if (brand != 'apple' &&
-          (user.currentDevices.contains('android_tablet') ||
-              {'android', 'samsung', 'google'}.contains(user.ecosystem))) {
+          (ownedCategories.contains('tablets') ||
+              {
+                'android',
+                'samsung',
+                'google',
+                'xiaomi',
+                'huawei',
+              }.contains(user.ecosystem))) {
         compatibility = 0.85;
       } else if (user.ecosystem == 'mixed')
         compatibility = 0.70;
@@ -1038,6 +1167,9 @@ class ProfileAlgorithmService {
         compatibility = 0.90;
       else if (brand == 'google' && hasAndroidPhone)
         compatibility = 0.88;
+      else if ({'xiaomi', 'huawei', 'honor', 'amazfit'}.contains(brand) &&
+          hasAndroidPhone)
+        compatibility = 0.86;
       else if ({'garmin', 'fitbit', 'amazfit'}.contains(brand))
         compatibility = 0.75;
       else if (user.ecosystem == 'mixed')
@@ -1050,7 +1182,14 @@ class ProfileAlgorithmService {
       compatibility = 0.75;
       if (brand == 'apple' && user.ecosystem == 'apple')
         compatibility = 0.90;
-      else if (brand == 'samsung' && user.ecosystem == 'android')
+      else if (brand == 'samsung' &&
+          {
+            'android',
+            'samsung',
+            'google',
+            'xiaomi',
+            'huawei',
+          }.contains(user.ecosystem))
         compatibility = 0.85;
     }
     // PC Components (GPUs, CPUs, etc.)
@@ -1090,9 +1229,9 @@ class ProfileAlgorithmService {
     }
     // Cases
     else if (category == 'cases') {
-      if (user.currentDevices.contains('iphone') && brand == 'apple')
+      if (user.ecosystem == 'apple' && brand == 'apple')
         compatibility = 0.95;
-      else if (user.currentDevices.contains('android_phone'))
+      else if (ownedCategories.contains('smartphones'))
         compatibility = 0.75;
       else
         compatibility = 0.50;

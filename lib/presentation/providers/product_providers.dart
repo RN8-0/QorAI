@@ -890,6 +890,8 @@ HomeFeed _buildHomeFeed(
         'gimbals',
         'tripods',
       ],
+      'video_editor': ['monitors', 'laptops', 'microphones', 'headphones'],
+      'photographer': ['cameras', 'lenses', 'tripods', 'gimbals', 'monitors'],
       'gamer': [
         'gpus',
         'monitors',
@@ -900,13 +902,17 @@ HomeFeed _buildHomeFeed(
         'desktops',
       ],
       'manager': ['smartphones', 'laptops', 'smartwatches', 'tablets'],
+      'product_manager': ['laptops', 'smartphones', 'tablets', 'monitors'],
       'entrepreneur': ['smartphones', 'laptops', 'tablets', 'monitors'],
       'healthcare': ['tablets', 'smartwatches', 'smartphones'],
       'educator': ['laptops', 'tablets', 'projectors', 'webcams'],
       'teacher': ['laptops', 'tablets', 'projectors', 'webcams'],
       'finance': ['laptops', 'monitors', 'smartphones'],
+      'data_analyst': ['laptops', 'monitors', 'tablets', 'keyboards'],
       'architect': ['monitors', 'laptops', 'tablets', 'gpus', 'desktops'],
       'sales_marketing': ['smartphones', 'laptops', 'tablets', 'cameras'],
+      'lawyer': ['laptops', 'tablets', 'smartphones', 'headphones'],
+      'researcher': ['laptops', 'tablets', 'e-readers', 'monitors'],
     };
     final pCats = profCats[user.profession] ?? [];
     if (pCats.contains(cat)) boost *= 1.15;
