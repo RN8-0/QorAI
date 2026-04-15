@@ -14,11 +14,29 @@ import 'package:compair/routing/router.dart';
 const _accent = AppTheme.brandBlue;
 const _accentLight = AppTheme.brandSkyBlue;
 
-class ComparisonsScreen extends ConsumerWidget {
+class ComparisonsScreen extends ConsumerStatefulWidget {
   const ComparisonsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ComparisonsScreen> createState() => _ComparisonsScreenState();
+}
+
+class _ComparisonsScreenState extends ConsumerState<ComparisonsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(userComparisonsProvider);
+    });
+  }
+
+  Future<void> _refresh() async {
+    ref.invalidate(userComparisonsProvider);
+    await ref.read(userComparisonsProvider.future);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final comparisonsAsync = ref.watch(userComparisonsProvider);
 
     return Scaffold(
@@ -62,31 +80,53 @@ class ComparisonsScreen extends ConsumerWidget {
                   end: Alignment.bottomCenter,
                 ),
         ),
-        child: comparisonsAsync.when(
-          loading: () =>
-              Center(child: CircularProgressIndicator(color: _accent)),
-          error: (e, _) => Center(
-            child: Text(
-              'Error: $e',
-              style: TextStyle(color: context.textSecondary),
+        child: RefreshIndicator(
+          color: _accent,
+          onRefresh: _refresh,
+          child: comparisonsAsync.when(
+            loading: () => ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 220),
+              children: [
+                Center(child: CircularProgressIndicator(color: _accent)),
+              ],
             ),
-          ),
-          data: (result) => result.when(
-            success: (comparisons) {
-              if (comparisons.isEmpty) {
-                return const _EmptyState();
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 108, 16, 100),
-                itemCount: comparisons.length,
-                itemBuilder: (ctx, i) =>
-                    _ComparisonCard(comparison: comparisons[i], index: i),
-              );
-            },
-            failure: (err) => Center(
-              child: Text(
-                'Failed: ${err.message}',
-                style: TextStyle(color: context.textSecondary),
+            error: (e, _) => ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 220),
+              children: [
+                Center(
+                  child: Text(
+                    'Error: $e',
+                    style: TextStyle(color: context.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+            data: (result) => result.when(
+              success: (comparisons) {
+                if (comparisons.isEmpty) {
+                  return _EmptyState(onRetry: _refresh);
+                }
+                return ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 108, 16, 100),
+                  itemCount: comparisons.length,
+                  itemBuilder: (ctx, i) =>
+                      _ComparisonCard(comparison: comparisons[i], index: i),
+                );
+              },
+              failure: (err) => ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(top: 220),
+                children: [
+                  Center(
+                    child: Text(
+                      'Failed: ${err.message}',
+                      style: TextStyle(color: context.textSecondary),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -102,77 +142,92 @@ class ComparisonsScreen extends ConsumerWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final Future<void> Function()? onRetry;
+
+  const _EmptyState({this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 120, 28, 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 108,
-              height: 108,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    _accent.withValues(alpha: 0.18),
-                    _accentLight.withValues(alpha: 0.08),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 120, 28, 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 108,
+                  height: 108,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _accent.withValues(alpha: 0.18),
+                        _accentLight.withValues(alpha: 0.08),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: _accent.withValues(alpha: 0.16)),
+                  ),
+                  child: const Icon(
+                    Icons.compare_arrows_rounded,
+                    size: 48,
+                    color: _accent,
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: _accent.withValues(alpha: 0.16)),
-              ),
-              child: const Icon(
-                Icons.compare_arrows_rounded,
-                size: 48,
-                color: _accent,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              context.l10n?.noComparisonsYet ?? 'No comparisons yet',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.l10n?.startComparingHistory ??
-                  'Start comparing products to see\nyour history here.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                color: context.textTertiaryColor,
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 22),
-            FilledButton.icon(
-              onPressed: () => context.go(AppRoutes.compare),
-              style: FilledButton.styleFrom(
-                backgroundColor: _accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 14,
+                const SizedBox(height: 24),
+                Text(
+                  context.l10n?.noComparisonsYet ?? 'No comparisons yet',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 8),
+                Text(
+                  context.l10n?.startComparingHistory ??
+                      'Start comparing products to see\nyour history here.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.textTertiaryColor,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Yeni karsilastirma baslat'),
+                const SizedBox(height: 22),
+                FilledButton.icon(
+                  onPressed: () => context.go(AppRoutes.compare),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Yeni karsilastirma baslat'),
+                ),
+                if (onRetry != null) ...[
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Gecmisi yenile'),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

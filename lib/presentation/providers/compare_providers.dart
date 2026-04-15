@@ -10,6 +10,7 @@ final comparisonStateProvider =
       return ComparisonNotifier(
         comparisonRepo: ref.read(comparisonRepositoryProvider),
         subscriptionService: ref.read(subscriptionServiceProvider),
+        ref: ref,
       );
     });
 
@@ -50,12 +51,15 @@ class ComparisonState {
 class ComparisonNotifier extends StateNotifier<ComparisonState> {
   final ComparisonRepositoryImpl _comparisonRepo;
   final SubscriptionService _subscriptionService;
+  final Ref _ref;
 
   ComparisonNotifier({
     required ComparisonRepositoryImpl comparisonRepo,
     required SubscriptionService subscriptionService,
+    required Ref ref,
   }) : _comparisonRepo = comparisonRepo,
        _subscriptionService = subscriptionService,
+       _ref = ref,
        super(const ComparisonState());
 
   /// Select/remove product
@@ -110,6 +114,7 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
           isLoading: false,
           loadingMessage: null,
         );
+        _ref.invalidate(userComparisonsProvider);
       },
       failure: (error) {
         state = state.copyWith(
@@ -1382,15 +1387,31 @@ final pcBuilderAiProvider = StateProvider<String?>((ref) => null);
 final linkAnalysisNotifierProvider = linkAnalysisProvider;
 
 /// User comparison history
-final userComparisonsProvider = FutureProvider<Result<List<ComparisonEntity>>>((
-  ref,
-) async {
-  final userAsync = ref.watch(userProfileProvider);
-  final user = userAsync.valueOrNull;
-  if (user == null) return const Success([]);
+final userComparisonsProvider =
+    FutureProvider.autoDispose<Result<List<ComparisonEntity>>>((ref) async {
+      final userAsync = ref.watch(userProfileProvider);
+      final user = userAsync.valueOrNull;
+      final userId = user?.uid ?? pb.authStore.record?.id;
+      if (userId == null || userId.isEmpty) {
+        return const Success([]);
+      }
 
-  return ref.read(comparisonRepositoryProvider).getUserComparisons(user.uid);
-});
+      final repo = ref.read(comparisonRepositoryProvider);
+      var result = await repo.getUserComparisons(userId);
+
+      if ((user?.comparisonsCount ?? 0) > 0) {
+        switch (result) {
+          case Success<List<ComparisonEntity>>(data: final comparisons)
+              when comparisons.isEmpty:
+            await Future<void>.delayed(const Duration(milliseconds: 350));
+            result = await repo.getUserComparisons(userId);
+          default:
+            break;
+        }
+      }
+
+      return result;
+    });
 
 /// Admin-curated comparisons (Battles)
 final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((
