@@ -14,14 +14,12 @@ import 'package:go_router/go_router.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
+import 'package:compair/core/search_ranking.dart';
 import 'package:compair/config/filter_config.dart';
 import 'package:compair/presentation/models/filter_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:compair/presentation/widgets/product_image_box.dart';
-import 'package:compair/routing/router.dart';
 
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/data/models/product_model.dart';
@@ -74,7 +72,8 @@ class CategoryBrowseScreen extends ConsumerStatefulWidget {
   final List<Map<String, dynamic>>? groupItems;
 
   @override
-  ConsumerState<CategoryBrowseScreen> createState() => _CategoryBrowseScreenState();
+  ConsumerState<CategoryBrowseScreen> createState() =>
+      _CategoryBrowseScreenState();
 }
 
 class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
@@ -107,13 +106,24 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     if (_cachedFilterDefs == null ||
         _allProducts.length != _cachedProductCount ||
         _activeCategoryId != _cachedCategoryId) {
-      _cachedFilterDefs = FilterConfig.getFiltersWithProducts(_activeCategoryId, _allProducts);
+      _cachedFilterDefs = FilterConfig.getFiltersWithProducts(
+        _activeCategoryId,
+        _allProducts,
+      );
       _cachedProductCount = _allProducts.length;
       _cachedCategoryId = _activeCategoryId;
     }
     return _cachedFilterDefs!;
   }
+
   bool _allLoaded = false;
+
+  bool get _isTurkish =>
+      Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+
+  String _fallbackText({required String en, required String tr}) {
+    return _isTurkish ? tr : en;
+  }
 
   @override
   void initState() {
@@ -161,16 +171,20 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       if (mounted && _searchQuery == query) {
         final catKey = _activeCategoryId.toLowerCase().trim();
         // Accept both exact match and variant (e.g. "microphone" vs "microphones")
-        final categoryResults = results.where((p) {
-          final pCat = p.category.toLowerCase().trim();
-          return pCat == catKey ||
-              (catKey.endsWith('s') && pCat == catKey.substring(0, catKey.length - 1)) ||
-              (!catKey.endsWith('s') && pCat == '${catKey}s');
-        }).cast<ProductEntity>().toList();
+        final categoryResults = results
+            .where((p) {
+              final pCat = p.category.toLowerCase().trim();
+              return pCat == catKey ||
+                  (catKey.endsWith('s') &&
+                      pCat == catKey.substring(0, catKey.length - 1)) ||
+                  (!catKey.endsWith('s') && pCat == '${catKey}s');
+            })
+            .cast<ProductEntity>()
+            .toList();
 
         setState(() {
           // ALL remote results — let _filteredProducts merge with local
-          _remoteSearchResults = categoryResults;
+          _remoteSearchResults = rankProductsForQuery(categoryResults, query);
           _remoteSearching = false;
         });
       }
@@ -181,8 +195,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 600 &&
-        !_fetchingAll && !_allLoaded) {
+            _scrollController.position.maxScrollExtent - 600 &&
+        !_fetchingAll &&
+        !_allLoaded) {
       _fetchNextPage();
     }
   }
@@ -215,7 +230,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   /// Load first page fast, then keep fetching all pages in background.
   Future<void> _loadProducts() async {
-    setState(() { _loading = true; _error = null; _allLoaded = false; _currentPage = 1; _allProducts = []; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _allLoaded = false;
+      _currentPage = 1;
+      _allProducts = [];
+    });
     final catKey = _activeCategoryId.toLowerCase().trim();
     final hiveCacheKey = 'cat_products_${catKey}_v2';
 
@@ -225,11 +246,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final stale = cache.getLocalStale<List<dynamic>>(hiveCacheKey);
       if (stale.data != null && (stale.data as List).isNotEmpty) {
         final products = (stale.data as List)
-            .map((item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)))
+            .map(
+              (item) =>
+                  ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
+            )
             .cast<ProductEntity>()
             .toList();
         if (products.isNotEmpty && mounted) {
-          setState(() { _allProducts = products; _loading = false; });
+          setState(() {
+            _allProducts = products;
+            _loading = false;
+          });
         }
       }
     } catch (_) {}
@@ -243,18 +270,27 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         final catProducts = cached.all.where((p) {
           final pCat = p.category.toLowerCase().trim();
           return pCat == catKey ||
-              (catKey.endsWith('s') && pCat == catKey.substring(0, catKey.length - 1)) ||
+              (catKey.endsWith('s') &&
+                  pCat == catKey.substring(0, catKey.length - 1)) ||
               (!catKey.endsWith('s') && pCat == '${catKey}s');
         }).toList();
         if (catProducts.isNotEmpty && mounted) {
           // Merge: keep existing hive products, add any new from homeFeed
           if (_allProducts.isEmpty) {
-            setState(() { _allProducts = catProducts; _loading = false; });
+            setState(() {
+              _allProducts = catProducts;
+              _loading = false;
+            });
           } else {
             final existingIds = _allProducts.map((p) => p.id).toSet();
-            final extras = catProducts.where((p) => !existingIds.contains(p.id)).toList();
+            final extras = catProducts
+                .where((p) => !existingIds.contains(p.id))
+                .toList();
             if (extras.isNotEmpty) {
-              setState(() { _allProducts = [..._allProducts, ...extras]; _loading = false; });
+              setState(() {
+                _allProducts = [..._allProducts, ...extras];
+                _loading = false;
+              });
             }
           }
         }
@@ -294,7 +330,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             .toList();
 
         if (newProducts.isNotEmpty) {
-          for (final p in newProducts) seenIds.add(p.id);
+          for (final p in newProducts) {
+            seenIds.add(p.id);
+          }
           setState(() {
             _allProducts = [..._allProducts, ...newProducts];
             _loading = false;
@@ -311,12 +349,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   .map((p) => p.toMap())
                   .toList();
               if (maps.isNotEmpty) {
-                cache.setLocal(hiveCacheKey, maps,
-                    duration: const Duration(hours: 12));
+                cache.setLocal(
+                  hiveCacheKey,
+                  maps,
+                  duration: const Duration(hours: 12),
+                );
               }
             } catch (_) {}
           }
-          setState(() { _allLoaded = true; _currentPage = 1; });
+          setState(() {
+            _allLoaded = true;
+            _currentPage = 1;
+          });
           break;
         }
 
@@ -328,16 +372,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
 
     if (mounted) {
-      setState(() { _fetchingAll = false; _loading = false; });
+      setState(() {
+        _fetchingAll = false;
+        _loading = false;
+      });
     }
   }
 
   List<ProductEntity> get _filteredProducts {
     if (_searchQuery.isNotEmpty) {
-      // Start with local results that match the search query
       final localMatches = _allProducts.where((p) {
-        return p.name.toLowerCase().contains(_searchQuery) ||
-            (p.brand ?? '').toLowerCase().contains(_searchQuery);
+        final rank = rankProductForQuery(p, _searchQuery);
+        return rank.score > 0;
       }).toList();
 
       // Merge ALL remote search results (dedup by id)
@@ -351,30 +397,71 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         }
       }
 
-      final filtered = FilterApplier.apply(localMatches, _filterState, _filterDefinitions);
+      final filtered = FilterApplier.apply(
+        localMatches,
+        _filterState,
+        _filterDefinitions,
+      );
       return _sortProducts(filtered);
     }
 
     // No search — show all loaded products
-    final filtered = FilterApplier.apply(_allProducts, _filterState, _filterDefinitions);
+    final filtered = FilterApplier.apply(
+      _allProducts,
+      _filterState,
+      _filterDefinitions,
+    );
     return _sortProducts(filtered);
   }
 
   List<ProductEntity> _sortProducts(List<ProductEntity> products) {
     final copy = List<ProductEntity>.from(products);
+    if (_searchQuery.isNotEmpty) {
+      final rankMap = {
+        for (final product in copy)
+          product.id: rankProductForQuery(product, _searchQuery),
+      };
+      copy.sort((a, b) {
+        final rankCompare = (rankMap[b.id]?.score ?? 0).compareTo(
+          rankMap[a.id]?.score ?? 0,
+        );
+        if (rankCompare != 0) return rankCompare;
+        return _compareBySelectedSort(a, b);
+      });
+      return copy;
+    }
+
     switch (_sortOption) {
       case _SortOption.techScore:
-        copy.sort((a, b) {
-          final cmp = b.techScore.compareTo(a.techScore);
-          if (cmp != 0) return cmp;
-          return b.lastUpdated.compareTo(a.lastUpdated);
-        });
+        copy.sort(_compareBySelectedSort);
+        break;
       case _SortOption.newest:
-        copy.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+        copy.sort(_compareBySelectedSort);
+        break;
       case _SortOption.relevance:
+        copy.sort(_compareBySelectedSort);
         break;
     }
     return copy;
+  }
+
+  int _compareBySelectedSort(ProductEntity a, ProductEntity b) {
+    switch (_sortOption) {
+      case _SortOption.techScore:
+        final techCompare = b.techScore.compareTo(a.techScore);
+        if (techCompare != 0) return techCompare;
+        final trendCompare = b.trendScore.compareTo(a.trendScore);
+        if (trendCompare != 0) return trendCompare;
+        return b.lastUpdated.compareTo(a.lastUpdated);
+      case _SortOption.newest:
+        return b.lastUpdated.compareTo(a.lastUpdated);
+      case _SortOption.relevance:
+        final trendCompare = b.trendScore.compareTo(a.trendScore);
+        if (trendCompare != 0) return trendCompare;
+        final techCompare = b.techScore.compareTo(a.techScore);
+        if (techCompare != 0) return techCompare;
+        return b.lastUpdated.compareTo(a.lastUpdated);
+    }
   }
 
   Future<void> _openFilters() async {
@@ -390,8 +477,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   void _removeFilter(String filterId) {
-    final newMultiSelect = Map<String, Set<String>>.from(_filterState.multiSelect)
-      ..remove(filterId);
+    final newMultiSelect = Map<String, Set<String>>.from(
+      _filterState.multiSelect,
+    )..remove(filterId);
     final newRanges = Map<String, RangeValues>.from(_filterState.ranges)
       ..remove(filterId);
     final newToggles = Map<String, bool?>.from(_filterState.toggles)
@@ -523,44 +611,72 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return Container(
       color: context.backgroundColor,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: TextField(
-        controller: _searchController,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 14,
-          color: context.textPrimary,
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.12)),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.brandBlue.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        decoration: InputDecoration(
-          hintText: context.l10n?.searchInCategoryHint(_activeCategoryName) ?? 'Search in ${_activeCategoryName}...',
-          hintStyle: GoogleFonts.plusJakartaSans(
+        child: TextField(
+          controller: _searchController,
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
-            color: context.textTertiaryColor,
+            fontWeight: FontWeight.w500,
+            color: context.textPrimary,
           ),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: context.textSecondary,
-            size: 20,
-          ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  color: context.textSecondary,
-                  onPressed: () => _searchController.clear(),
-                )
-              : null,
-          filled: true,
-          fillColor: context.surfaceVariantColor,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: context.dividerColor),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: context.dividerColor),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+          decoration: InputDecoration(
+            hintText:
+                context.l10n?.searchInCategoryHint(_activeCategoryName) ??
+                'Search in $_activeCategoryName...',
+            hintStyle: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: context.textTertiaryColor,
+            ),
+            prefixIcon: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.brandCyan.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.search_rounded,
+                color: AppTheme.brandCyan,
+                size: 18,
+              ),
+            ),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: context.textSecondary,
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryBlue,
+                width: 1.4,
+              ),
+            ),
           ),
         ),
       ),
@@ -571,25 +687,56 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     final hasFilters = _filterState.isActive;
     return Container(
       decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
+        gradient: LinearGradient(
+          colors: [
+            context.surfaceVariantColor,
+            context.surfaceVariantColor.withValues(alpha: 0.94),
+          ],
+        ),
         border: Border(
-          top: BorderSide(color: context.dividerColor),
-          bottom: BorderSide(color: context.dividerColor),
+          top: BorderSide(color: context.dividerColor.withValues(alpha: 0.5)),
+          bottom: BorderSide(
+            color: context.dividerColor.withValues(alpha: 0.35),
+          ),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Text(
-            context.l10n?.productCount(productCount) ?? '$productCount product${productCount == 1 ? '' : 's'}',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: context.textTertiaryColor,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: context.backgroundColor,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: context.dividerColor.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Text(
+              context.l10n?.productCount(productCount) ??
+                  '$productCount product${productCount == 1 ? '' : 's'}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: context.textSecondary,
+              ),
             ),
           ),
-          const Spacer(),
-          // Inline sort dropdown
+          if (_searchQuery.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '"${_searchController.text.trim()}"',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.brandCyan,
+                ),
+              ),
+            ),
+          ] else
+            const Spacer(),
           _SortDropdown(
             value: _sortOption,
             onChanged: (opt) => setState(() => _sortOption = opt),
@@ -600,11 +747,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             onTap: _openFilters,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 gradient: hasFilters ? AppTheme.primaryGradient : null,
                 color: hasFilters ? null : context.backgroundColor,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: hasFilters ? Colors.transparent : context.dividerColor,
                 ),
@@ -612,23 +759,38 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.tune_rounded, size: 13,
-                      color: hasFilters ? Colors.white : context.textSecondary),
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 13,
+                    color: hasFilters ? Colors.white : context.textSecondary,
+                  ),
                   const SizedBox(width: 4),
-                  Text(context.l10n?.filterLabel ?? 'Filter',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, fontWeight: FontWeight.w600,
-                        color: hasFilters ? Colors.white : context.textSecondary,
-                      )),
+                  Text(
+                    context.l10n?.filterLabel ?? 'Filter',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: hasFilters ? Colors.white : context.textSecondary,
+                    ),
+                  ),
                   if (hasFilters) ...[
                     const SizedBox(width: 4),
                     Container(
-                      width: 15, height: 15,
+                      width: 15,
+                      height: 15,
                       decoration: const BoxDecoration(
-                          color: Colors.white30, shape: BoxShape.circle),
+                        color: Colors.white30,
+                        shape: BoxShape.circle,
+                      ),
                       child: Center(
-                        child: Text('${_filterState.activeCount}',
-                            style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
+                        child: Text(
+                          '${_filterState.activeCount}',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -681,13 +843,14 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           if (_filterState.ranges.containsKey(def.id)) {
             final r = _filterState.ranges[def.id]!;
             final unit = def.unit != null ? ' ${def.unit}' : '';
-            final isDecimal = ((def.maxValue ?? 100) - (def.minValue ?? 0)) < 50;
+            final isDecimal =
+                ((def.maxValue ?? 100) - (def.minValue ?? 0)) < 50;
             final fmt = isDecimal
                 ? '${r.start.toStringAsFixed(1)}–${r.end.toStringAsFixed(1)}$unit'
                 : '${r.start.round()}–${r.end.round()}$unit';
             chips.add(_activeChip('${def.label}: $fmt', def.id));
           }
-          case FilterType.toggle:
+        case FilterType.toggle:
           final v = _filterState.toggles[def.id];
           if (v != null) {
             final yes = context.l10n?.yes ?? 'Yes';
@@ -704,9 +867,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       decoration: BoxDecoration(
         color: context.backgroundColor,
         border: Border(
-          bottom: BorderSide(
-            color: AppTheme.brandCyan.withValues(alpha: 0.12),
-          ),
+          bottom: BorderSide(color: AppTheme.brandCyan.withValues(alpha: 0.12)),
         ),
       ),
       child: ListView(
@@ -730,12 +891,14 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           ),
         ),
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-        deleteIcon: const Icon(Icons.close, size: 16, color: AppTheme.primaryBlue),
+        deleteIcon: const Icon(
+          Icons.close,
+          size: 16,
+          color: AppTheme.primaryBlue,
+        ),
         onDeleted: () => _removeFilter(filterId),
         backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.08),
-        side: BorderSide(
-          color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-        ),
+        side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,
@@ -746,8 +909,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   Widget _buildBody(List<ProductEntity> products) {
     // Show spinner: initial load OR fetching still running with no products yet
     if (_loading || (_fetchingAll && _allProducts.isEmpty)) {
-      return const Center(child: CircularProgressIndicator(
-        color: AppTheme.primaryBlue, strokeWidth: 2.5));
+      return const Center(
+        child: CircularProgressIndicator(
+          color: AppTheme.primaryBlue,
+          strokeWidth: 2.5,
+        ),
+      );
     }
 
     if (_error != null) {
@@ -795,20 +962,34 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(
-                width: 32, height: 32,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.brandCyan),
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppTheme.brandCyan,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Searching all products...',
+                _fallbackText(
+                  en: 'Searching all products...',
+                  tr: 'Tüm ürünlerde aranıyor...',
+                ),
                 style: GoogleFonts.plusJakartaSans(
-                  color: context.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                  color: context.textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
         );
       }
-      final isEmptyCategory = _allProducts.isEmpty && !_loading && !_fetchingAll && !_filterState.isActive;
+      final isEmptyCategory =
+          _allProducts.isEmpty &&
+          !_loading &&
+          !_fetchingAll &&
+          !_filterState.isActive;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -829,7 +1010,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isEmptyCategory ? Icons.inventory_2_outlined : Icons.search_off,
+                  isEmptyCategory
+                      ? Icons.inventory_2_outlined
+                      : Icons.search_off,
                   size: 48,
                   color: context.textTertiaryColor,
                 ),
@@ -837,10 +1020,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               const SizedBox(height: 12),
               Text(
                 _filterState.isActive
-                    ? (context.l10n?.noProductsMatchFilters ?? 'No products match your filters')
+                    ? (context.l10n?.noProductsMatchFilters ??
+                          'No products match your filters')
                     : isEmptyCategory
-                        ? (context.l10n?.comingSoon ?? 'Coming Soon')
-                        : (context.l10n?.noProductsFound ?? 'No products found'),
+                    ? (context.l10n?.comingSoon ?? 'Coming Soon')
+                    : (context.l10n?.noProductsFound ?? 'No products found'),
                 style: GoogleFonts.plusJakartaSans(
                   color: context.textPrimary,
                   fontSize: 16,
@@ -850,7 +1034,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               if (isEmptyCategory) ...[
                 const SizedBox(height: 8),
                 Text(
-                  context.l10n?.productsAddingSoon ?? 'Products in this category are being added.\nCheck back soon!',
+                  context.l10n?.productsAddingSoon ??
+                      'Products in this category are being added.\nCheck back soon!',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
                     color: context.textSecondary,
@@ -861,7 +1046,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               if (_filterState.isActive) ...[
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => setState(() => _filterState = const FilterState()),
+                  onPressed: () =>
+                      setState(() => _filterState = const FilterState()),
                   child: Text(
                     context.l10n?.clearFilters ?? 'Clear Filters',
                     style: GoogleFonts.plusJakartaSans(
@@ -883,26 +1069,35 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           child: ListView.builder(
             controller: _scrollController,
             padding: EdgeInsets.fromLTRB(
-              12, 8, 12,
-              MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
+              12,
+              8,
+              12,
+              MediaQuery.of(context).padding.bottom +
+                  AppTheme.navBarTotalClearance,
             ),
             itemCount: products.length + (_fetchingAll ? 1 : 0),
             itemBuilder: (context, index) {
               if (index >= products.length) {
                 return const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 );
               }
               return _ProductListTile(
-              product: products[index],
-              onTap: () {
-                HapticFeedback.lightImpact();
-                context.push('/product/${products[index].id}');
-              },
-            ).animate()
-              .fadeIn(delay: Duration(milliseconds: 30 * (index % 10)), duration: 250.ms)
-              .slideX(begin: 0.05, end: 0, duration: 250.ms);
+                    product: products[index],
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.push('/product/${products[index].id}');
+                    },
+                  )
+                  .animate()
+                  .fadeIn(
+                    delay: Duration(milliseconds: 30 * (index % 10)),
+                    duration: 250.ms,
+                  )
+                  .slideX(begin: 0.05, end: 0, duration: 250.ms);
             },
           ),
         ),
@@ -916,7 +1111,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       child: Row(
         children: [
           Text(
-            context.l10n?.productCount(count) ?? '$count product${count == 1 ? '' : 's'}',
+            context.l10n?.productCount(count) ??
+                '$count product${count == 1 ? '' : 's'}',
             style: GoogleFonts.plusJakartaSans(
               color: context.textSecondary,
               fontSize: 13,
@@ -952,17 +1148,15 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 // ---------------------------------------------------------------------------
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({
-    required this.product,
-    required this.onTap,
-  });
+  const _ProductCard({required this.product, required this.onTap});
 
   final ProductEntity product;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = product.imageUrl ?? 
+    final imageUrl =
+        product.imageUrl ??
         (product.allImages.isNotEmpty ? product.allImages.first : null);
     final usPrice = product.prices['US'];
 
@@ -1141,7 +1335,8 @@ class _ProductListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = product.imageUrl ??
+    final imageUrl =
+        product.imageUrl ??
         (product.allImages.isNotEmpty ? product.allImages.first : null);
     final usPrice = product.prices['US'];
     final score = product.techScore;
@@ -1157,32 +1352,43 @@ class _ProductListTile extends StatelessWidget {
             color: context.surfaceVariantColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.08),
             ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-                blurRadius: 8, offset: const Offset(0, 2)),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
             ],
           ),
           child: Row(
             children: [
               // ── Ürün görseli ──
               ClipRRect(
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(15)),
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(15),
+                ),
                 child: ProductImageBox(
                   imageUrl: imageUrl,
                   fallbackUrls: product.images,
                   height: 86,
                   width: 86,
-                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(15)),
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(15),
+                  ),
                   padding: const EdgeInsets.all(8),
                 ),
               ),
               // ── Bilgiler ──
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1216,9 +1422,14 @@ class _ProductListTile extends StatelessWidget {
                         children: [
                           if (usPrice != null)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -1230,28 +1441,36 @@ class _ProductListTile extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          if (usPrice != null && score > 0) const SizedBox(width: 6),
+                          if (usPrice != null && score > 0)
+                            const SizedBox(width: 6),
                           if (score > 0)
-                            Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.star_rounded, size: 12, color: scoreColor),
-                              const SizedBox(width: 2),
-                              Text(
-                                score.round().toString(),
-                                style: GoogleFonts.plusJakartaSans(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 12,
                                   color: scoreColor,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
                                 ),
-                              ),
-                              Text(
-                                '/100',
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: scoreColor.withValues(alpha: 0.6),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
+                                const SizedBox(width: 2),
+                                Text(
+                                  score.round().toString(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: scoreColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                            ]),
+                                Text(
+                                  '/100',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: scoreColor.withValues(alpha: 0.6),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ],
@@ -1297,42 +1516,72 @@ class _SortDropdown extends StatelessWidget {
         child: DropdownButton<_SortOption>(
           value: value,
           isDense: true,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: context.textSecondary),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 16,
+            color: context.textSecondary,
+          ),
           dropdownColor: context.surfaceElevatedColor,
           borderRadius: BorderRadius.circular(12),
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 12, fontWeight: FontWeight.w600,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
             color: context.textSecondary,
           ),
-          onChanged: (v) { if (v != null) onChanged(v); },
-          items: _SortOption.values.map((opt) => DropdownMenuItem(
-            value: opt,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(opt.icon, size: 13, color: opt == value ? AppTheme.primaryBlue : context.textSecondary),
-                const SizedBox(width: 5),
-                Text(opt.label(context),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: opt == value ? FontWeight.w700 : FontWeight.w500,
-                      color: opt == value ? AppTheme.primaryBlue : context.textPrimary,
-                    )),
-              ],
-            ),
-          )).toList(),
-          selectedItemBuilder: (ctx) => _SortOption.values.map((opt) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(opt.icon, size: 13, color: context.textSecondary),
-              const SizedBox(width: 4),
-              Text(opt.label(ctx),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, fontWeight: FontWeight.w600,
-                    color: context.textSecondary,
-                  )),
-            ],
-          )).toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+          items: _SortOption.values
+              .map(
+                (opt) => DropdownMenuItem(
+                  value: opt,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        opt.icon,
+                        size: 13,
+                        color: opt == value
+                            ? AppTheme.primaryBlue
+                            : context.textSecondary,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        opt.label(context),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: opt == value
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: opt == value
+                              ? AppTheme.primaryBlue
+                              : context.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .toList(),
+          selectedItemBuilder: (ctx) => _SortOption.values
+              .map(
+                (opt) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(opt.icon, size: 13, color: context.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      opt.label(ctx),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .toList(),
         ),
       ),
     );
@@ -1392,7 +1641,8 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
           // Handle
           Center(
             child: Container(
-              width: 36, height: 4,
+              width: 36,
+              height: 4,
               margin: const EdgeInsets.only(top: 12, bottom: 16),
               decoration: BoxDecoration(
                 color: context.dividerColor,
@@ -1409,17 +1659,21 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
                 Text(
                   'Sort & Filter',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18, fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                     color: context.textPrimary,
                   ),
                 ),
                 if (_filterState.isActive)
                   TextButton(
-                    onPressed: () => setState(() => _filterState = const FilterState()),
+                    onPressed: () =>
+                        setState(() => _filterState = const FilterState()),
                     child: Text(
                       'Clear Filters',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, color: AppTheme.accentCyan, fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: AppTheme.accentCyan,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -1429,7 +1683,9 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
           const SizedBox(height: 8),
           // Scrollable content
           ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.65),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.65,
+            ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -1439,40 +1695,60 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
                   Text(
                     'Sort By',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: context.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 8, runSpacing: 8,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: _SortOption.values.map((opt) {
                       final selected = opt == _selectedSort;
                       return GestureDetector(
                         onTap: () => setState(() => _selectedSort = opt),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 130),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
                           decoration: BoxDecoration(
-                            gradient: selected ? AppTheme.primaryGradient : null,
+                            gradient: selected
+                                ? AppTheme.primaryGradient
+                                : null,
                             color: selected ? null : context.backgroundColor,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: selected ? Colors.transparent : context.dividerColor,
+                              color: selected
+                                  ? Colors.transparent
+                                  : context.dividerColor,
                             ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(opt.icon, size: 13,
-                                  color: selected ? Colors.white : context.textSecondary),
+                              Icon(
+                                opt.icon,
+                                size: 13,
+                                color: selected
+                                    ? Colors.white
+                                    : context.textSecondary,
+                              ),
                               const SizedBox(width: 5),
-                              Text(opt.label(context),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                                    color: selected ? Colors.white : context.textSecondary,
-                                  )),
+                              Text(
+                                opt.label(context),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: selected
+                                      ? Colors.white
+                                      : context.textSecondary,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1491,10 +1767,15 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
                           initialState: _filterState,
                           products: widget.products,
                         );
-                        if (result != null) setState(() => _filterState = result);
+                        if (result != null) {
+                          setState(() => _filterState = result);
+                        }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: _filterState.isActive
                               ? AppTheme.primaryBlue.withValues(alpha: 0.08)
@@ -1511,20 +1792,30 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
                             Icon(
                               Icons.filter_alt_outlined,
                               size: 18,
-                              color: _filterState.isActive ? AppTheme.primaryBlue : context.textSecondary,
+                              color: _filterState.isActive
+                                  ? AppTheme.primaryBlue
+                                  : context.textSecondary,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                _filterState.isActive ? 'Filters applied (tap to edit)' : 'Filter Options',
+                                _filterState.isActive
+                                    ? 'Filters applied (tap to edit)'
+                                    : 'Filter Options',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: _filterState.isActive ? AppTheme.primaryBlue : context.textSecondary,
+                                  color: _filterState.isActive
+                                      ? AppTheme.primaryBlue
+                                      : context.textSecondary,
                                 ),
                               ),
                             ),
-                            Icon(Icons.chevron_right_rounded, size: 18, color: context.textTertiaryColor),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: context.textTertiaryColor,
+                            ),
                           ],
                         ),
                       ),
@@ -1537,7 +1828,12 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
           ),
           // Apply button
           Padding(
-            padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              8,
+              20,
+              MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
             child: ElevatedButton(
               onPressed: () {
                 widget.onApply(_selectedSort, _filterState);
@@ -1545,13 +1841,18 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 backgroundColor: AppTheme.primaryBlue,
                 foregroundColor: Colors.white,
               ),
               child: Text(
                 'Apply',
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),

@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/search_ranking.dart';
 import 'package:compair/core/product_filter.dart';
 import 'package:compair/data/models/user_model.dart';
 import 'package:compair/data/models/product_model.dart';
@@ -1031,8 +1032,12 @@ class PbDataSource {
       final params = <String, dynamic>{
         'q': q,
         'query_by': 'name,brand,subcategory,keySpecsText,tags',
+        'query_by_weights': '8,5,4,2,3',
         'per_page': limit,
-        'sort_by': 'techScore:desc',
+        'sort_by': '_text_match:desc,techScore:desc',
+        'prioritize_exact_match': true,
+        'prioritize_token_position': true,
+        'prefix': 'true,true,true,false,false',
         'exclude_fields': '_raw,keySpecsText',
         if (category != null) 'filter_by': 'category:=$category',
       };
@@ -1053,9 +1058,11 @@ class PbDataSource {
 
       final filtered = ProductFilter.filterRelaxed(results);
 
+      final ranked = rankProductsForQuery(filtered, q, limit: limit);
+
       _evictSearchResultCache();
-      _searchResultCache[cacheKey] = (results: filtered, time: DateTime.now());
-      return filtered;
+      _searchResultCache[cacheKey] = (results: ranked, time: DateTime.now());
+      return ranked;
     } catch (e) {
       debugPrint('SEARCH: Typesense failed: $e');
     }
@@ -1093,66 +1100,7 @@ class PbDataSource {
     int limit,
   ) {
     final filtered = ProductFilter.filter(products);
-    final q = query.trim().toLowerCase();
-    final words = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-
-    final scored = <({ProductModel product, int score})>[];
-    for (final p in filtered) {
-      final name = p.name.toLowerCase();
-      final brand = (p.brand ?? '').toLowerCase();
-      final category = p.category.toLowerCase();
-      final subcategory = p.subcategory.toLowerCase();
-      final tags = p.tags.map((t) => t.toLowerCase()).toList();
-      final keySpecValues = p.keySpecs.values
-          .map((v) => v.toLowerCase())
-          .toList();
-
-      int score = 0;
-      if (name == q)
-        score += 100;
-      else if (name.startsWith(q))
-        score += 80;
-      else if (name.contains(q))
-        score += 60;
-      if (words.length > 1 && words.every((w) => name.contains(w))) score += 50;
-      if (brand == q)
-        score += 40;
-      else if (brand.startsWith(q))
-        score += 30;
-      else if (brand.contains(q))
-        score += 20;
-      if (category.contains(q) || subcategory.contains(q)) score += 15;
-      if (keySpecValues.any((v) => v.contains(q)))
-        score += 15;
-      else if (words.length > 1 &&
-          keySpecValues.any((v) => words.any((w) => v.contains(w)))) {
-        score += 8;
-      }
-      for (final tag in tags) {
-        if (tag == q || words.any((w) => tag.contains(w))) {
-          score += 10;
-          break;
-        }
-      }
-      if (score == 0) {
-        final combined = '$name $brand';
-        if (words.every((w) => combined.contains(w))) score += 25;
-      }
-      if (score == 0 && words.length == 1) {
-        final combined = '$name $brand ${tags.join(' ')}';
-        if (combined.contains(q)) score += 20;
-      }
-      if (score > 0) {
-        final techBoost = (p.techScore / 100.0 * 5).round();
-        scored.add((product: p, score: score + techBoost));
-      }
-    }
-    scored.sort((a, b) {
-      final cmp = b.score.compareTo(a.score);
-      if (cmp != 0) return cmp;
-      return b.product.techScore.compareTo(a.product.techScore);
-    });
-    return scored.take(limit).map((s) => s.product).toList();
+    return rankProductsForQuery(filtered, query, limit: limit);
   }
 
   // ────────────────────────────────────────────────────────────────────────

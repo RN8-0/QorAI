@@ -29,8 +29,7 @@ mixin GeminiCacheNotifierMixin<T> on StateNotifier<AsyncValue<T?>> {
   /// Save a raw JSON string to disk cache (24h TTL).
   Future<void> diskSet(String key, String value) async {
     try {
-      await _diskCache.set(key, value,
-          duration: const Duration(hours: 24));
+      await _diskCache.set(key, value, duration: const Duration(hours: 24));
     } catch (_) {}
   }
 
@@ -123,7 +122,9 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 
       // Save raw response to disk cache
       if (response.isNotEmpty) {
-        _cache.set(cacheKey, response, duration: const Duration(hours: 24)).catchError((_) {});
+        _cache
+            .set(cacheKey, response, duration: const Duration(hours: 24))
+            .catchError((_) {});
       }
 
       final parsed = _parseReviewResponse(response);
@@ -266,9 +267,13 @@ class _ExpertScoresNotifier
         'Include 3-4 sources maximum. If product is too new or niche, return empty array.',
       );
       if (response.isNotEmpty) {
-        cache.set(cacheKey, response, duration: const Duration(hours: 24)).catchError((_) {});
+        cache
+            .set(cacheKey, response, duration: const Duration(hours: 24))
+            .catchError((_) {});
         final parsed = _parseScoresResponse(response);
-        state = AsyncValue.data(parsed ?? const ExpertScoresResult(failed: true));
+        state = AsyncValue.data(
+          parsed ?? const ExpertScoresResult(failed: true),
+        );
       } else {
         state = const AsyncValue.data(ExpertScoresResult(failed: true));
       }
@@ -560,7 +565,9 @@ class _DeepAnalysisNotifier
       );
       // Save to disk cache
       if (result.isNotEmpty) {
-        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+        cache
+            .set(cacheKey, result, duration: const Duration(hours: 24))
+            .catchError((_) {});
       }
       state = AsyncValue.data(_parseDeepAnalysis(result));
     } catch (e) {
@@ -677,7 +684,9 @@ class _AlternativesCacheNotifier
         language: language,
       );
       if (result.isNotEmpty) {
-        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+        cache
+            .set(cacheKey, result, duration: const Duration(hours: 24))
+            .catchError((_) {});
       }
       state = AsyncValue.data(_parseAlternatives(result));
     } catch (e) {
@@ -774,7 +783,9 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
         language: language,
       );
       if (result.isNotEmpty) {
-        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+        cache
+            .set(cacheKey, result, duration: const Duration(hours: 24))
+            .catchError((_) {});
       }
       state = AsyncValue.data(_parseAdvisor(result));
     } catch (e) {
@@ -872,7 +883,9 @@ class _PredictionCacheNotifier
         language: language,
       );
       if (result.isNotEmpty) {
-        cache.set(cacheKey, result, duration: const Duration(hours: 24)).catchError((_) {});
+        cache
+            .set(cacheKey, result, duration: const Duration(hours: 24))
+            .catchError((_) {});
       }
       state = AsyncValue.data(_parsePrediction(result));
     } catch (e) {
@@ -950,8 +963,15 @@ class _GeminiMatchScoreNotifier
     state = const AsyncValue.loading();
 
     try {
+      final locale = _ref.read(localeProvider);
+      final localeLangCode = locale?.languageCode.trim().toLowerCase();
+      final profileLangCode = user.language.trim().toLowerCase();
+      final langCode = (localeLangCode?.isNotEmpty ?? false)
+          ? localeLangCode!
+          : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
+
       // 1. Check Firestore cache first (24h TTL)
-      final cached = await _checkFirestoreCache(user.uid);
+      final cached = await _checkFirestoreCache(user.uid, langCode);
       if (cached != null) {
         state = AsyncValue.data(cached);
         return;
@@ -1000,7 +1020,6 @@ class _GeminiMatchScoreNotifier
         if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
       };
 
-      final langCode = user.language.isNotEmpty ? user.language : 'en';
       final prompt =
           'You are a tech product recommendation expert. '
           'Analyze how well this product matches this specific user\'s needs and preferences.\n\n'
@@ -1045,7 +1064,7 @@ class _GeminiMatchScoreNotifier
       );
 
       // Save to Firestore cache
-      _saveToFirestoreCache(user.uid, matchResult);
+      _saveToFirestoreCache(user.uid, matchResult, langCode);
 
       state = AsyncValue.data(matchResult);
 
@@ -1087,7 +1106,10 @@ class _GeminiMatchScoreNotifier
     }
   }
 
-  Future<GeminiMatchResult?> _checkFirestoreCache(String uid) async {
+  Future<GeminiMatchResult?> _checkFirestoreCache(
+    String uid,
+    String langCode,
+  ) async {
     try {
       final userRecord = await pb.collection('users').getOne(uid);
       final matchCache =
@@ -1098,6 +1120,10 @@ class _GeminiMatchScoreNotifier
       if (ts == null) return null;
       final age = DateTime.now().difference(ts);
       if (age.inHours >= 24) return null; // expired
+      final cachedLanguage = (cached['language'] as String?)
+          ?.trim()
+          .toLowerCase();
+      if (cachedLanguage == null || cachedLanguage != langCode) return null;
       return GeminiMatchResult(
         matchScore: _safeInt(cached['matchScore'], 0),
         reason: (cached['reason'] as String?) ?? '',
@@ -1121,6 +1147,7 @@ class _GeminiMatchScoreNotifier
   Future<void> _saveToFirestoreCache(
     String uid,
     GeminiMatchResult result,
+    String langCode,
   ) async {
     try {
       final userRecord = await pb.collection('users').getOne(uid);
@@ -1132,6 +1159,7 @@ class _GeminiMatchScoreNotifier
         'reason': result.reason,
         'topMatchFactors': result.topMatchFactors,
         'missingFactors': result.missingFactors,
+        'language': langCode,
         'timestamp': DateTime.now().toUtc().toIso8601String(),
       };
       await pb
