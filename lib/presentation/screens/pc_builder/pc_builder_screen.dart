@@ -125,6 +125,15 @@ String _pcText(BuildContext context, {required String en, required String tr}) {
 // Compatibility Helper
 
 class _Compat {
+  static String _normalizeSocket(String raw) {
+    return raw
+        .trim()
+        .toUpperCase()
+        .replaceAll('SOCKET', '')
+        .replaceAll('FCLGA', 'LGA')
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+  }
+
   static String? _specValue(ProductEntity p, List<String> keys) {
     for (final key in keys) {
       final v = p.specs[key];
@@ -151,6 +160,8 @@ class _Compat {
   }
 
   static String? socket(ProductEntity p) {
+    final parsed = socketTokens(p);
+    if (parsed.isNotEmpty) return parsed.first;
     for (final key in [
       'Socket',
       'socket',
@@ -176,6 +187,57 @@ class _Compat {
       if (m != null) return m.group(0)!.replaceAll(' ', '');
     }
     return null;
+  }
+
+  static Set<String> socketTokens(ProductEntity p) {
+    final found = <String>{};
+
+    void addToken(String raw) {
+      final normalized = _normalizeSocket(raw);
+      if (normalized.isNotEmpty) found.add(normalized);
+    }
+
+    for (final value in _allTexts(p)) {
+      final text = value.toUpperCase();
+      for (final match in RegExp(
+        r'\b(?:FC)?LGA\s*\d{3,4}\b|\bAM[345]\b|\bTRX\d+\b|\bSTRP\d+\b',
+      ).allMatches(text)) {
+        addToken(match.group(0)!);
+      }
+    }
+
+    for (final raw in [
+      _specValue(p, ['Socket', 'socket', 'Processor Socket']),
+      _specValue(p, [
+        'Compatible Sockets',
+        'Socket Support',
+        'Supported Socket',
+      ]),
+    ]) {
+      if (raw == null) continue;
+      for (final part in raw.split(RegExp(r'[,/|;]'))) {
+        final trimmed = part.trim();
+        if (trimmed.isEmpty) continue;
+        for (final match in RegExp(
+          r'(?:FC)?LGA\s*\d{3,4}|AM[345]|TRX\d+|STRP\d+',
+        ).allMatches(trimmed.toUpperCase())) {
+          addToken(match.group(0)!);
+        }
+      }
+    }
+
+    return found;
+  }
+
+  static bool supportsSocket(ProductEntity p, String targetSocket) {
+    final target = _normalizeSocket(targetSocket);
+    if (target.isEmpty) return false;
+    final tokens = socketTokens(p);
+    if (tokens.isEmpty) return false;
+    return tokens.any(
+      (token) =>
+          token == target || token.contains(target) || target.contains(token),
+    );
   }
 
   static String? memoryType(ProductEntity p) {
@@ -276,6 +338,36 @@ class _Compat {
       if (v.toLowerCase().contains(query)) return true;
     }
     return false;
+  }
+
+  static int searchScore(ProductEntity p, String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return 1;
+
+    final tokens = normalized
+        .split(RegExp(r'\s+'))
+        .where((t) => t.trim().isNotEmpty)
+        .toList();
+    final name = p.name.toLowerCase();
+    final brand = (p.brand ?? '').toLowerCase();
+    final specText = _allTexts(p).join(' ').toLowerCase();
+
+    var score = 0;
+    if (name == normalized) score += 160;
+    if (name.startsWith(normalized)) score += 120;
+    if (name.contains(normalized)) score += 90;
+    if (brand == normalized) score += 80;
+    if (brand.contains(normalized)) score += 45;
+    if (specText.contains(normalized)) score += 25;
+
+    for (final token in tokens) {
+      if (name.startsWith(token)) score += 32;
+      if (name.contains(token)) score += 22;
+      if (brand.contains(token)) score += 14;
+      if (specText.contains(token)) score += 8;
+    }
+
+    return score;
   }
 
   /// GPU power connector — returns '6-pin','8-pin','12-pin','16-pin' or null
@@ -509,6 +601,20 @@ class _CompatIssue {
   };
 }
 
+class _UpgradeSuggestion {
+  final PcComponent component;
+  final ProductEntity product;
+  final String reason;
+  final int scoreGain;
+
+  const _UpgradeSuggestion({
+    required this.component,
+    required this.product,
+    required this.reason,
+    required this.scoreGain,
+  });
+}
+
 // Animated Progress Ring Painter
 
 class _ProgressRingPainter extends CustomPainter {
@@ -567,6 +673,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
   bool _showCelebration = false;
   String? _aiAnalysis;
   bool _aiLoading = false;
+  String? _localDiagnosis;
+  PcComponent? _upgradeFocus;
+  List<_UpgradeSuggestion> _upgradeSuggestions = const [];
 
   @override
   void initState() {
@@ -682,6 +791,293 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     final cs = _selected[PcComponent.pcCase];
     if (cs != null) return _Compat.formFactor(cs);
     return null;
+  }
+
+  String _analysisLanguageName() {
+    return switch (Localizations.localeOf(context).languageCode) {
+      'tr' => 'Turkish',
+      'de' => 'German',
+      'es' => 'Spanish',
+      'fr' => 'French',
+      'it' => 'Italian',
+      'ja' => 'Japanese',
+      'pt' => 'Portuguese',
+      'ar' => 'Arabic',
+      _ => 'English',
+    };
+  }
+
+  PcComponent? get _primaryUpgradeComponent {
+    final compatIssues =
+        _compatIssues.where((issue) => issue.component != null).toList()
+          ..sort((a, b) => a.severity.index.compareTo(b.severity.index));
+    final compatTarget = compatIssues.firstOrNull?.component;
+    if (compatTarget != null) return compatTarget;
+
+    final headroom = _psuHeadroom;
+    if (headroom != null && headroom < 100) return PcComponent.psu;
+
+    final cpu = _selected[PcComponent.cpu];
+    final gpu = _selected[PcComponent.gpu];
+    if (cpu != null && gpu != null) {
+      final diff = cpu.techScore - gpu.techScore;
+      if (diff.abs() >= 14) {
+        return diff < 0 ? PcComponent.cpu : PcComponent.gpu;
+      }
+    }
+
+    const upgradeOrder = [
+      PcComponent.cpu,
+      PcComponent.gpu,
+      PcComponent.ram,
+      PcComponent.storage,
+      PcComponent.cooler,
+      PcComponent.motherboard,
+      PcComponent.pcCase,
+    ];
+    final ranked =
+        upgradeOrder
+            .where((component) => _selected.containsKey(component))
+            .map((component) => MapEntry(component, _selected[component]!))
+            .toList()
+          ..sort((a, b) => a.value.techScore.compareTo(b.value.techScore));
+    return ranked.firstOrNull?.key;
+  }
+
+  String _buildDeterministicDiagnosis(PcComponent? focus) {
+    final issue = _compatIssues.firstOrNull;
+    if (issue != null) {
+      return _pcText(
+        context,
+        en: '${issue.title}: ${issue.detail}',
+        tr: '${issue.title}: ${issue.detail}',
+      );
+    }
+
+    final cpu = _selected[PcComponent.cpu];
+    final gpu = _selected[PcComponent.gpu];
+    final ram = _selected[PcComponent.ram];
+    final headroom = _psuHeadroom;
+
+    if (focus == PcComponent.cpu && cpu != null && gpu != null) {
+      return _pcText(
+        context,
+        en: 'GPU score is noticeably ahead of the CPU, so the processor is the first likely bottleneck under high-refresh gaming loads.',
+        tr: 'GPU skoru CPU’dan belirgin sekilde ileride; bu nedenle yuksek tazeleme hizli oyunlarda ilk darboğaz adayi islemci oluyor.',
+      );
+    }
+    if (focus == PcComponent.gpu && cpu != null && gpu != null) {
+      return _pcText(
+        context,
+        en: 'CPU platform looks stronger than the selected GPU, so graphics performance is the first upgrade area for gaming and rendering.',
+        tr: 'CPU platformu secili GPU’dan daha guclu gorunuyor; bu nedenle oyun ve render tarafinda ilk gelistirme alani ekran karti.',
+      );
+    }
+    if (focus == PcComponent.psu && headroom != null) {
+      return _pcText(
+        context,
+        en: 'Power budget is too tight for comfortable spikes and future upgrades. A PSU with more headroom will stabilize the build.',
+        tr: 'Guc butcesi ani yuklenmeler ve gelecekteki upgradeler icin dar kaliyor. Daha fazla payli bir PSU sistemi daha guvenli hale getirir.',
+      );
+    }
+    if (focus == PcComponent.ram && ram != null) {
+      return _pcText(
+        context,
+        en: 'Memory is the soft spot of this build, either because of speed/capacity or because the rest of the platform scales higher.',
+        tr: 'Bu sistemin yumusak noktasi RAM; kapasite/hiz seviyesi ya da platformun geri kalaninin daha yuksege cikabilmesi nedeniyle once RAM bakilmali.',
+      );
+    }
+
+    return _pcText(
+      context,
+      en: 'The build is broadly usable, but the next improvement should target the lowest-performing core component to keep the system balanced.',
+      tr: 'Sistem genel olarak kullanilabilir durumda; fakat dengeyi korumak icin siradaki gelistirme en zayif temel bilesene odaklanmali.',
+    );
+  }
+
+  bool _isCompatibleUpgrade(PcComponent component, ProductEntity candidate) {
+    final socketTarget = _selectedSocket;
+    final memTypeTarget = _selectedMemType;
+    final selectedMb = component == PcComponent.motherboard
+        ? candidate
+        : _selected[PcComponent.motherboard];
+    final selectedCase = component == PcComponent.pcCase
+        ? candidate
+        : _selected[PcComponent.pcCase];
+    final selectedGpu = component == PcComponent.gpu
+        ? candidate
+        : _selected[PcComponent.gpu];
+
+    switch (component) {
+      case PcComponent.cpu:
+        if (socketTarget == null) return true;
+        final sock = _Compat.socket(candidate);
+        return sock != null &&
+            (sock.contains(socketTarget) || socketTarget.contains(sock));
+      case PcComponent.motherboard:
+        if (socketTarget != null) {
+          final sock = _Compat.socket(candidate);
+          if (sock == null ||
+              (!sock.contains(socketTarget) && !socketTarget.contains(sock))) {
+            return false;
+          }
+        }
+        if (selectedCase != null &&
+            !_Compat.formFactorCompatible(
+              _Compat.formFactor(candidate),
+              _Compat.formFactor(selectedCase),
+            )) {
+          return false;
+        }
+        return true;
+      case PcComponent.ram:
+        if (memTypeTarget == null) return true;
+        final mem = _Compat.memoryType(candidate);
+        return mem != null &&
+            (mem.contains(memTypeTarget) || memTypeTarget.contains(mem));
+      case PcComponent.gpu:
+        final gpuLength = _Compat.gpuLengthMm(candidate);
+        final caseLimit = selectedCase == null
+            ? null
+            : _Compat.caseMaxGpuLengthMm(selectedCase);
+        if (gpuLength != null && caseLimit != null && gpuLength > caseLimit) {
+          return false;
+        }
+        return true;
+      case PcComponent.storage:
+        if (selectedMb == null) return true;
+        if (_Compat.isM2Storage(candidate) &&
+            !_Compat.motherboardHasM2(selectedMb)) {
+          return false;
+        }
+        if (_Compat.isSataStorage(candidate) &&
+            !_Compat.motherboardHasSata(selectedMb)) {
+          return false;
+        }
+        return true;
+      case PcComponent.psu:
+        final watt = _Compat.psuWattage(candidate);
+        final required = max(
+          (_estimatedPower * 1.25).ceilToDouble(),
+          selectedGpu == null
+              ? 0.0
+              : (_Compat.recommendedSystemPower(selectedGpu) ?? 0.0),
+        );
+        return watt != null && watt >= required;
+      case PcComponent.pcCase:
+        if (selectedMb != null &&
+            !_Compat.formFactorCompatible(
+              _Compat.formFactor(selectedMb),
+              _Compat.formFactor(candidate),
+            )) {
+          return false;
+        }
+        final gpuLength = selectedGpu == null
+            ? null
+            : _Compat.gpuLengthMm(selectedGpu);
+        final caseLimit = _Compat.caseMaxGpuLengthMm(candidate);
+        if (gpuLength != null && caseLimit != null && gpuLength > caseLimit) {
+          return false;
+        }
+        return true;
+      case PcComponent.cooler:
+        if (socketTarget == null) return true;
+        return _Compat.supportsSocket(candidate, socketTarget) ||
+            _Compat.socketTokens(candidate).isEmpty;
+      case PcComponent.monitor:
+      case PcComponent.keyboard:
+      case PcComponent.mouse:
+      case PcComponent.headset:
+        return true;
+    }
+  }
+
+  String _upgradeReason(
+    PcComponent component,
+    ProductEntity current,
+    ProductEntity candidate,
+  ) {
+    final gain = (candidate.techScore - current.techScore).round();
+    return switch (component) {
+      PcComponent.cpu => _pcText(
+        context,
+        en: 'Keeps the ${_selectedSocket ?? "current"} platform while adding about +$gain score.',
+        tr: '${_selectedSocket ?? "mevcut"} platformunda kalip yaklasik +$gain puan kazandiriyor.',
+      ),
+      PcComponent.gpu => _pcText(
+        context,
+        en: 'Raises graphics headroom by about +$gain score without breaking the current case fit rules.',
+        tr: 'Mevcut kasa uyumunu bozmadan grafik tarafinda yaklasik +$gain puanlik pay aciyor.',
+      ),
+      PcComponent.psu => _pcText(
+        context,
+        en: 'Adds cleaner power margin with ${(_Compat.psuWattage(candidate) ?? 0).round()}W capacity.',
+        tr: '${(_Compat.psuWattage(candidate) ?? 0).round()}W kapasiteyle daha rahat guc payi sunuyor.',
+      ),
+      PcComponent.cooler => _pcText(
+        context,
+        en: 'Matches the current socket and is a stronger thermal fit for the selected processor.',
+        tr: 'Mevcut soketle eslesiyor ve secili islemci icin daha guclu bir termal eslesme sunuyor.',
+      ),
+      PcComponent.storage => _pcText(
+        context,
+        en: 'Fits the motherboard storage layout and improves overall drive quality by about +$gain score.',
+        tr: 'Anakart depolama yapisina uyuyor ve disk kalitesini yaklasik +$gain puan artiriyor.',
+      ),
+      PcComponent.ram => _pcText(
+        context,
+        en: 'Stays on ${_selectedMemType ?? "the current memory platform"} and improves balance.',
+        tr: '${_selectedMemType ?? "mevcut bellek platformunda"} kalip sistem dengesini iyilestiriyor.',
+      ),
+      PcComponent.motherboard => _pcText(
+        context,
+        en: 'Keeps the platform socket while giving the build a stronger board foundation.',
+        tr: 'Platform soketini korurken sisteme daha guclu bir anakart temeli veriyor.',
+      ),
+      PcComponent.pcCase => _pcText(
+        context,
+        en: 'Preserves motherboard and GPU fit while improving overall case quality.',
+        tr: 'Anakart ve GPU sigmasini korurken kasa kalitesini yukseltiyor.',
+      ),
+      _ => _pcText(
+        context,
+        en: 'A safer overall upgrade choice for this build.',
+        tr: 'Bu kurulum icin daha guvenli bir genel upgrade secenegi.',
+      ),
+    };
+  }
+
+  Future<List<_UpgradeSuggestion>> _loadUpgradeSuggestions(
+    PcComponent component,
+  ) async {
+    final current = _selected[component];
+    if (current == null) return const [];
+
+    final pool = await ref.read(
+      pcBuilderProductsProvider(component.categoryId).future,
+    );
+    final candidates =
+        pool
+            .where((p) => p.id != current.id)
+            .where((p) => p.techScore > current.techScore + 3)
+            .where((p) => _isCompatibleUpgrade(component, p))
+            .toList()
+          ..sort((a, b) {
+            final priceA = a.prices['US'] ?? a.prices.values.firstOrNull ?? 0.0;
+            final priceB = b.prices['US'] ?? b.prices.values.firstOrNull ?? 0.0;
+            final valueA = a.techScore - (priceA > 0 ? priceA / 250 : 0);
+            final valueB = b.techScore - (priceB > 0 ? priceB / 250 : 0);
+            return valueB.compareTo(valueA);
+          });
+
+    return candidates.take(3).map((candidate) {
+      return _UpgradeSuggestion(
+        component: component,
+        product: candidate,
+        reason: _upgradeReason(component, current, candidate),
+        scoreGain: (candidate.techScore - current.techScore).round(),
+      );
+    }).toList();
   }
 
   /// Returns all current compatibility issues in the build
@@ -814,12 +1210,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
     // 5. CPU cooler socket compatibility
     if (cooler != null && cpu != null) {
-      final coolerSock = _Compat.socket(cooler);
       final cpuSock = _Compat.socket(cpu);
-      if (coolerSock != null &&
-          cpuSock != null &&
-          !coolerSock.contains(cpuSock) &&
-          !cpuSock.contains(coolerSock)) {
+      final coolerSockets = _Compat.socketTokens(cooler);
+      if (cpuSock != null &&
+          coolerSockets.isNotEmpty &&
+          !_Compat.supportsSocket(cooler, cpuSock)) {
         issues.add(
           _CompatIssue(
             severity: _IssueSeverity.error,
@@ -831,8 +1226,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             ),
             detail: _pcText(
               context,
-              en: 'Cooler supports $coolerSock, CPU needs $cpuSock mounting',
-              tr: 'Soğutucu $coolerSock destekliyor, CPU ise $cpuSock montajı istiyor',
+              en: 'Cooler supports ${coolerSockets.join(", ")}, CPU needs $cpuSock mounting',
+              tr: 'Sogutucu ${coolerSockets.join(", ")} destekliyor, CPU ise $cpuSock montaji istiyor',
             ),
             component: PcComponent.cooler,
           ),
@@ -985,7 +1380,13 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       ),
     );
     if (result != null && mounted) {
-      setState(() => _selected[component] = result);
+      setState(() {
+        _selected[component] = result;
+        _aiAnalysis = null;
+        _localDiagnosis = null;
+        _upgradeFocus = null;
+        _upgradeSuggestions = const [];
+      });
       _saveToSession();
       if (_selected.length == PcComponent.values.length && !_showCelebration) {
         _showCelebration = true;
@@ -998,6 +1399,10 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     setState(() {
       _selected.remove(c);
       _showCelebration = false;
+      _aiAnalysis = null;
+      _localDiagnosis = null;
+      _upgradeFocus = null;
+      _upgradeSuggestions = const [];
     });
     _saveToSession();
   }
@@ -1008,6 +1413,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       _showCelebration = false;
       _summaryExpanded = false;
       _aiAnalysis = null;
+      _localDiagnosis = null;
+      _upgradeFocus = null;
+      _upgradeSuggestions = const [];
     });
     _saveToSession();
   }
@@ -1056,15 +1464,29 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
   Future<void> _runAiAnalysis() async {
     if (_aiLoading) return;
+    final focus = _primaryUpgradeComponent;
     setState(() {
       _aiLoading = true;
       _aiAnalysis = null;
+      _upgradeFocus = focus;
+      _localDiagnosis = _buildDeterministicDiagnosis(focus);
+      _upgradeSuggestions = const [];
     });
 
     try {
+      final suggestions = focus == null
+          ? const <_UpgradeSuggestion>[]
+          : await _loadUpgradeSuggestions(focus);
       final buf = StringBuffer();
+      buf.writeln('You are an expert PC hardware analyst.');
       buf.writeln(
-        'You are an expert PC hardware analyst. Analyze this PC build comprehensively.',
+        'Keep every section label exactly as written in English so the app can parse them.',
+      );
+      buf.writeln(
+        'Write all explanations, bullet points, and recommendations in ${_analysisLanguageName()}.',
+      );
+      buf.writeln(
+        'If a bottleneck, mismatch, or weak component exists, state it clearly and prioritize actionable advice.',
       );
       buf.writeln();
       buf.writeln('=== BUILD COMPONENTS ===');
@@ -1098,6 +1520,25 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       if (gpuConn != null) buf.writeln('GPU power connector: $gpuConn');
       buf.writeln('Build score: ${_totalScore.round()}/100');
       buf.writeln();
+      if (_localDiagnosis != null) {
+        buf.writeln('=== LOCAL DIAGNOSIS ===');
+        buf.writeln(_localDiagnosis);
+        buf.writeln();
+      }
+      if (focus != null) {
+        buf.writeln('=== PRIMARY UPGRADE TARGET ===');
+        buf.writeln(focus.name.toUpperCase());
+        buf.writeln();
+      }
+      if (suggestions.isNotEmpty) {
+        buf.writeln('=== COMPATIBLE UPGRADE CANDIDATES ===');
+        for (final suggestion in suggestions) {
+          buf.writeln(
+            '- ${suggestion.component.name.toUpperCase()}: ${suggestion.product.name} (${suggestion.product.techScore.round()}/100) — ${suggestion.reason}',
+          );
+        }
+        buf.writeln();
+      }
       buf.writeln(
         'Respond in this EXACT format (do not add extra text outside sections):',
       );
@@ -1154,20 +1595,18 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       );
       buf.writeln();
       buf.writeln('RECOMMENDATIONS:');
-      // Only ask for recommendations on the most expensive / impactful components
-      final keyComponents = [
-        PcComponent.cpu,
-        PcComponent.gpu,
-        PcComponent.ram,
-        PcComponent.psu,
-      ];
-      for (final c in keyComponents) {
-        final p = _selected[c];
-        if (p != null) {
+      if (suggestions.isNotEmpty) {
+        for (final suggestion in suggestions) {
+          final current = _selected[suggestion.component];
+          if (current == null) continue;
           buf.writeln(
-            '- Instead of ${p.name}, consider: [specific product name] — [reason, 1 sentence]',
+            '- Instead of ${current.name}, consider ${suggestion.product.name} — [brief reason connected to this build]',
           );
         }
+      } else {
+        buf.writeln(
+          '- If the provided candidate pool is not enough, say that clearly and explain the safest next upgrade direction.',
+        );
       }
       buf.writeln();
       buf.writeln(
@@ -1181,6 +1620,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         setState(() {
           _aiAnalysis = response;
           _aiLoading = false;
+          _upgradeSuggestions = suggestions;
         });
         _saveToSession();
       }
@@ -1743,8 +2183,157 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     );
   }
 
+  Widget _buildDeterministicAdviceSection(BuildContext context) {
+    if (_localDiagnosis == null && _upgradeSuggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.brandBlue.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.insights_rounded, size: 15, color: AppTheme.brandBlue),
+              const SizedBox(width: 6),
+              Text(
+                _pcText(context, en: 'Build diagnosis', tr: 'Sistem tespiti'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.brandBlue,
+                ),
+              ),
+              if (_upgradeFocus != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _upgradeFocus!.accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    _upgradeFocus!.label(context),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: _upgradeFocus!.accentColor,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (_localDiagnosis != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _localDiagnosis!,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: context.textSecondary,
+                height: 1.45,
+              ),
+            ),
+          ],
+          if (_upgradeSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              _pcText(
+                context,
+                en: 'Recommended products',
+                tr: 'Onerilen urunler',
+              ),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ..._upgradeSuggestions.map(
+              (suggestion) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: context.surfaceVariantColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: context.dividerColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            suggestion.product.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: suggestion.component.accentColor.withValues(
+                              alpha: 0.12,
+                            ),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '+${suggestion.scoreGain}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: suggestion.component.accentColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      suggestion.reason,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        color: context.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnalysisContent(BuildContext context, String analysis) {
     final sections = <Widget>[];
+
+    if (_localDiagnosis != null || _upgradeSuggestions.isNotEmpty) {
+      sections.add(_buildDeterministicAdviceSection(context));
+    }
 
     // Helper: parse bullet lines from a section
     List<String> parseBullets(String text) => text
@@ -1790,10 +2379,10 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           ? AppTheme.amber500
           : AppTheme.rose500;
       final label = pct <= 10
-          ? 'Excellent'
+          ? _pcText(context, en: 'Excellent', tr: 'Cok iyi')
           : pct <= 25
-          ? 'Moderate'
-          : 'Significant';
+          ? _pcText(context, en: 'Moderate', tr: 'Orta')
+          : _pcText(context, en: 'Significant', tr: 'Belirgin');
 
       sections.add(
         Container(
@@ -1816,7 +2405,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Bottleneck Analysis',
+                    _pcText(
+                      context,
+                      en: 'Bottleneck analysis',
+                      tr: 'Darbogaz analizi',
+                    ),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -1913,7 +2506,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
               Text(tierEmoji, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 10),
               Text(
-                'Performance Tier',
+                _pcText(
+                  context,
+                  en: 'Performance tier',
+                  tr: 'Performans seviyesi',
+                ),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   color: context.textSecondary,
@@ -1990,7 +2587,12 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       final items = parseBullets(strengthsMatch.group(1)!);
       if (items.isNotEmpty)
         sections.add(
-          _bulletSection(context, '💪 Strengths', items, AppTheme.success),
+          _bulletSection(
+            context,
+            _pcText(context, en: '💪 Strengths', tr: '💪 Guclu yonler'),
+            items,
+            AppTheme.success,
+          ),
         );
     }
 
@@ -2004,7 +2606,12 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       final items = parseBullets(weaknessMatch.group(1)!);
       if (items.isNotEmpty)
         sections.add(
-          _bulletSection(context, '⚠️ Weaknesses', items, AppTheme.amber500),
+          _bulletSection(
+            context,
+            _pcText(context, en: '⚠️ Weaknesses', tr: '⚠️ Zayif yonler'),
+            items,
+            AppTheme.amber500,
+          ),
         );
     }
 
@@ -2036,7 +2643,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Upgrade Priority',
+                      _pcText(
+                        context,
+                        en: 'Upgrade priority',
+                        tr: 'Oncelikli upgrade',
+                      ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -2093,7 +2704,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'AI Recommendations',
+                      _pcText(
+                        context,
+                        en: 'AI recommendations',
+                        tr: 'AI onerileri',
+                      ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -3355,6 +3970,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
   String _search = '';
   String _sort = 'score';
   final Set<String> _brands = {};
+  String? _quickFilter;
   bool _showFilters = false;
   bool _compatOnly = true;
 
@@ -3433,6 +4049,136 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     ];
   }
 
+  List<MapEntry<String, String>> _quickFilterOptions(
+    List<ProductEntity> products,
+  ) {
+    final options = <MapEntry<String, String>>[];
+
+    void addIfAny(String key, String label, bool Function(ProductEntity) test) {
+      if (products.any(test)) options.add(MapEntry(key, label));
+    }
+
+    switch (widget.component) {
+      case PcComponent.cpu:
+        addIfAny('amd', 'AMD', (p) => p.name.toLowerCase().contains('amd'));
+        addIfAny(
+          'intel',
+          'Intel',
+          (p) => p.name.toLowerCase().contains('intel'),
+        );
+        break;
+      case PcComponent.motherboard:
+      case PcComponent.pcCase:
+        addIfAny('atx', 'ATX', (p) => _Compat.formFactor(p) == 'ATX');
+        addIfAny('matx', 'mATX', (p) => _Compat.formFactor(p) == 'mATX');
+        addIfAny('mitx', 'mITX', (p) => _Compat.formFactor(p) == 'mITX');
+        break;
+      case PcComponent.ram:
+        addIfAny('ddr5', 'DDR5', (p) => _Compat.memoryType(p) == 'DDR5');
+        addIfAny('ddr4', 'DDR4', (p) => _Compat.memoryType(p) == 'DDR4');
+        addIfAny('32gb', '32GB+', (p) => _Compat.matchesSpecSearch(p, '32gb'));
+        break;
+      case PcComponent.gpu:
+        addIfAny('12v', '16-pin', (p) => _Compat.gpuNeedsModernPsu(p));
+        addIfAny('12gb', '12GB+', (p) => _Compat.matchesSpecSearch(p, '12 gb'));
+        break;
+      case PcComponent.storage:
+        addIfAny('m2', 'M.2 / NVMe', (p) => _Compat.isM2Storage(p));
+        addIfAny('sata', 'SATA', (p) => _Compat.isSataStorage(p));
+        addIfAny('1tb', '1TB+', (p) => _Compat.matchesSpecSearch(p, '1 tb'));
+        break;
+      case PcComponent.psu:
+        addIfAny('atx3', 'ATX 3.x', (p) => _Compat.psuSupportsModernGpu(p));
+        addIfAny('750w', '750W+', (p) => (_Compat.psuWattage(p) ?? 0) >= 750);
+        addIfAny('850w', '850W+', (p) => (_Compat.psuWattage(p) ?? 0) >= 850);
+        break;
+      case PcComponent.cooler:
+        if (widget.socketFilter != null) {
+          addIfAny(
+            'socket',
+            _pcText(
+              context,
+              en: 'Socket ${widget.socketFilter}',
+              tr: 'Soket ${widget.socketFilter}',
+            ),
+            (p) =>
+                _Compat.supportsSocket(p, widget.socketFilter!) ||
+                _Compat.socketTokens(p).isEmpty,
+          );
+        }
+        addIfAny(
+          'liquid',
+          _pcText(context, en: 'Liquid', tr: 'Sivi'),
+          (p) => _Compat.matchesSpecSearch(p, 'liquid'),
+        );
+        addIfAny(
+          'air',
+          _pcText(context, en: 'Air', tr: 'Hava'),
+          (p) =>
+              _Compat.matchesSpecSearch(p, 'air') ||
+              _Compat.matchesSpecSearch(p, 'fan'),
+        );
+        break;
+      case PcComponent.monitor:
+      case PcComponent.keyboard:
+      case PcComponent.mouse:
+      case PcComponent.headset:
+        break;
+    }
+
+    return options;
+  }
+
+  bool _matchesQuickFilter(ProductEntity product) {
+    switch (_quickFilter) {
+      case null:
+        return true;
+      case 'amd':
+        return product.name.toLowerCase().contains('amd');
+      case 'intel':
+        return product.name.toLowerCase().contains('intel');
+      case 'atx':
+        return _Compat.formFactor(product) == 'ATX';
+      case 'matx':
+        return _Compat.formFactor(product) == 'mATX';
+      case 'mitx':
+        return _Compat.formFactor(product) == 'mITX';
+      case 'ddr5':
+        return _Compat.memoryType(product) == 'DDR5';
+      case 'ddr4':
+        return _Compat.memoryType(product) == 'DDR4';
+      case '32gb':
+        return _Compat.matchesSpecSearch(product, '32gb');
+      case '12v':
+        return _Compat.gpuNeedsModernPsu(product);
+      case '12gb':
+        return _Compat.matchesSpecSearch(product, '12 gb');
+      case 'm2':
+        return _Compat.isM2Storage(product);
+      case 'sata':
+        return _Compat.isSataStorage(product);
+      case '1tb':
+        return _Compat.matchesSpecSearch(product, '1 tb');
+      case 'atx3':
+        return _Compat.psuSupportsModernGpu(product);
+      case '750w':
+        return (_Compat.psuWattage(product) ?? 0) >= 750;
+      case '850w':
+        return (_Compat.psuWattage(product) ?? 0) >= 850;
+      case 'socket':
+        return widget.socketFilter == null ||
+            _Compat.supportsSocket(product, widget.socketFilter!) ||
+            _Compat.socketTokens(product).isEmpty;
+      case 'liquid':
+        return _Compat.matchesSpecSearch(product, 'liquid');
+      case 'air':
+        return _Compat.matchesSpecSearch(product, 'air') ||
+            _Compat.matchesSpecSearch(product, 'fan');
+      default:
+        return true;
+    }
+  }
+
   List<MapEntry<String, String>> _detailEntries(ProductEntity product) {
     final entries = <MapEntry<String, String>>[];
 
@@ -3478,6 +4224,10 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             widget.component == PcComponent.cooler)) {
       final t = widget.socketFilter!.toUpperCase();
       list = list.where((p) {
+        if (widget.component == PcComponent.cooler) {
+          return _Compat.supportsSocket(p, t) ||
+              _Compat.socketTokens(p).isEmpty;
+        }
         final s = _Compat.socket(p);
         if (s == null) return false;
         return s.contains(t) || t.contains(s);
@@ -3549,41 +4299,39 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     }
     if (_compatOnly && widget.component == PcComponent.psu) {
       final required = _requiredPsuWattage;
-      final gpu = widget.allSelected[PcComponent.gpu];
       list = list.where((p) {
         final watt = _Compat.psuWattage(p);
         if (required != null && watt == null) return false;
         if (required != null && watt != null && watt < required) return false;
-        if (gpu != null &&
-            _Compat.gpuNeedsModernPsu(gpu) &&
-            !_Compat.psuSupportsModernGpu(p)) {
-          return false;
-        }
         return true;
       }).toList();
     }
-    // Search: prioritize name/brand match, only use spec search if no name/brand hits
+    if (_quickFilter != null) {
+      list = list.where(_matchesQuickFilter).toList();
+    }
+    // Search: score name/brand/spec matches together instead of dropping spec-only hits
     if (_search.isNotEmpty) {
-      final nameMatches = list
-          .where(
-            (p) =>
-                p.name.toLowerCase().contains(_search) ||
-                (p.brand ?? '').toLowerCase().contains(_search),
-          )
-          .toList();
-      if (nameMatches.isNotEmpty) {
-        list = nameMatches;
-      } else {
-        list = list
-            .where((p) => _Compat.matchesSpecSearch(p, _search))
-            .toList();
-      }
+      final scored =
+          list
+              .map((p) => MapEntry(p, _Compat.searchScore(p, _search)))
+              .where((entry) => entry.value > 0)
+              .toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+      list = scored.map((entry) => entry.key).toList();
     }
     if (_brands.isNotEmpty)
       list = list.where((p) => _brands.contains(p.brand)).toList();
     switch (_sort) {
       case 'score':
         list.sort((a, b) => b.techScore.compareTo(a.techScore));
+        if (_compatOnly && widget.component == PcComponent.psu) {
+          list.sort((a, b) {
+            final aModern = _Compat.psuSupportsModernGpu(a) ? 1 : 0;
+            final bModern = _Compat.psuSupportsModernGpu(b) ? 1 : 0;
+            if (aModern != bModern) return bModern.compareTo(aModern);
+            return b.techScore.compareTo(a.techScore);
+          });
+        }
       case 'name':
         list.sort((a, b) => a.name.compareTo(b.name));
       case 'brand':
@@ -3800,7 +4548,58 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
               builder: (_) {
                 final products = productsAsync.valueOrNull;
                 if (products == null) return const SizedBox.shrink();
-                return _brandChipsFromList(context, products);
+                final quickFilters = _quickFilterOptions(products);
+                return Column(
+                  children: [
+                    if (quickFilters.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 5,
+                          runSpacing: 5,
+                          children: [
+                            ...quickFilters.map((filter) {
+                              final selected = _quickFilter == filter.key;
+                              return GestureDetector(
+                                onTap: () => setState(() {
+                                  _quickFilter = selected ? null : filter.key;
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? accent.withValues(alpha: 0.15)
+                                        : context.surfaceVariantColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: selected
+                                          ? accent
+                                          : context.dividerColor,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    filter.value,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: selected
+                                          ? accent
+                                          : context.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    _brandChipsFromList(context, products),
+                  ],
+                );
               },
             ),
           // Count
@@ -3822,9 +4621,12 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   },
                 ),
                 const Spacer(),
-                if (_brands.isNotEmpty)
+                if (_brands.isNotEmpty || _quickFilter != null)
                   GestureDetector(
-                    onTap: () => setState(() => _brands.clear()),
+                    onTap: () => setState(() {
+                      _brands.clear();
+                      _quickFilter = null;
+                    }),
                     child: Text(
                       context.l10n?.clearFilters ?? 'Clear',
                       style: GoogleFonts.plusJakartaSans(
@@ -4077,12 +4879,15 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   ),
                 ),
               ],
-              if (_search.isNotEmpty || _brands.isNotEmpty) ...[
+              if (_search.isNotEmpty ||
+                  _brands.isNotEmpty ||
+                  _quickFilter != null) ...[
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => setState(() {
                     _search = '';
                     _brands.clear();
+                    _quickFilter = null;
                   }),
                   child: Text(
                     context.l10n?.clearFilters ?? 'Clear Filters',
@@ -4544,10 +5349,15 @@ class _ProductCard extends StatelessWidget {
     if ((component == PcComponent.motherboard ||
             component == PcComponent.cooler) &&
         socketFilter != null) {
-      final sock = _Compat.socket(product);
-      if (sock != null) {
+      final sock = component == PcComponent.cooler
+          ? _Compat.socketTokens(product).join(', ')
+          : _Compat.socket(product);
+      if (sock != null && sock.isNotEmpty) {
         final t = socketFilter!.toUpperCase();
-        if (!sock.contains(t) && !t.contains(sock)) {
+        final isCompat = component == PcComponent.cooler
+            ? _Compat.supportsSocket(product, t)
+            : (sock.contains(t) || t.contains(sock));
+        if (!isCompat) {
           return '⚠️ Socket mismatch: $sock ≠ $socketFilter';
         }
       }
