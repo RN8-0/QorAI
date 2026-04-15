@@ -2656,9 +2656,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }
 
   Widget _buildCompletionScreen(Map<String, String> covers) {
-    final heroCategory = _interestCategories.isNotEmpty
-        ? _interestCategories.first
-        : 'smartphones';
+    final heroCategory = _resolveCompletionHeroCategory(covers);
     final heroImage = covers[heroCategory];
     final topCategories = _interestCategories
         .take(4)
@@ -2688,7 +2686,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         children: [
                           Container(
                             width: double.infinity,
-                            height: 280,
+                            height: 300,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(32),
                               gradient: LinearGradient(
@@ -2747,39 +2745,77 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                   ),
                                   Padding(
                                     padding: const EdgeInsets.all(24),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                    child: Stack(
                                       children: [
-                                        Container(
-                                          width: 58,
-                                          height: 58,
-                                          decoration: const BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: AppTheme.brandCyan,
-                                          ),
-                                          child: const Icon(
-                                            Icons.check_rounded,
-                                            color: Colors.black,
-                                            size: 30,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        Text(
-                                          _buildProfileHeadline(),
-                                          style: TextStyle(
-                                            fontSize: 30,
-                                            fontWeight: FontWeight.w900,
-                                            color: _primaryTextColor,
+                                        Align(
+                                          alignment: Alignment.topLeft,
+                                          child: Container(
+                                            width: 58,
+                                            height: 58,
+                                            decoration: const BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: AppTheme.brandCyan,
+                                            ),
+                                            child: const Icon(
+                                              Icons.check_rounded,
+                                              color: Colors.black,
+                                              size: 30,
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          _buildProfileSubheadline(),
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            height: 1.5,
-                                            color: _secondaryTextColor,
+                                        if (heroImage == null)
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Icon(
+                                              _optionIcons[heroCategory] ??
+                                                  Icons.auto_awesome_rounded,
+                                              size: 120,
+                                              color: Colors.white.withValues(
+                                                alpha: _isDarkTheme
+                                                    ? 0.12
+                                                    : 0.24,
+                                              ),
+                                            ),
+                                          ),
+                                        Align(
+                                          alignment: Alignment.bottomLeft,
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(
+                                              minHeight: 0,
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  _buildProfileHeadline(
+                                                    heroCategory,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 30,
+                                                    height: 1.08,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _primaryTextColor,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Text(
+                                                  _buildProfileSubheadline(),
+                                                  maxLines: 4,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    height: 1.45,
+                                                    color: _secondaryTextColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -2883,6 +2919,48 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     );
   }
 
+  String _resolveCompletionHeroCategory(Map<String, String> covers) {
+    final scores = <String, double>{};
+
+    void addScore(String? category, double score) {
+      if (category == null || category.isEmpty) return;
+      scores.update(category, (value) => value + score, ifAbsent: () => score);
+    }
+
+    for (var index = 0; index < _interestCategories.length; index++) {
+      addScore(_interestCategories[index], 24 - (index * 3));
+    }
+
+    for (var index = 0; index < _currentDevices.length; index++) {
+      addScore(_currentDevices[index], 12 - (index * 1.5));
+    }
+
+    for (var index = 0; index < _priorities.length; index++) {
+      addScore(
+        _optionForField('priorities', _priorities[index])?.coverCategory,
+        10 - index.toDouble(),
+      );
+    }
+
+    addScore(_optionForField('usageIntent', _usageIntent)?.coverCategory, 8);
+    addScore(_optionForField('profession', _profession)?.coverCategory, 7);
+    addScore(_optionForField('budgetRange', _budgetRange)?.coverCategory, 5);
+    addScore(_optionForField('ageRange', _ageRange)?.coverCategory, 4);
+
+    if (scores.isNotEmpty) {
+      final sorted = scores.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      for (final entry in sorted) {
+        if (covers.containsKey(entry.key)) return entry.key;
+      }
+      return sorted.first.key;
+    }
+
+    return _interestCategories.isNotEmpty
+        ? _interestCategories.first
+        : 'smartphones';
+  }
+
   Widget _summaryChip({required String label, bool secondary = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2964,10 +3042,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     );
   }
 
-  String _buildProfileHeadline() {
-    final leadingCategory = _interestCategories.isNotEmpty
-        ? _labelForCategory(_interestCategories.first)
-        : _t('Tech keşfi', 'Tech discovery');
+  String _buildProfileHeadline(String heroCategory) {
+    final leadingCategory = _labelForCategory(heroCategory);
     return _t('$leadingCategory için hazırsın', 'Ready for $leadingCategory');
   }
 
@@ -3087,6 +3163,26 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       '$density servis yogunlugu algilandi: ${labels.join(', ')}.',
       '$density service density detected: ${labels.join(', ')}.',
     );
+  }
+
+  _QuizOption? _optionForField(String field, String? value) {
+    if (value == null || value.isEmpty) return null;
+    final step = _steps.firstWhere(
+      (item) => item.field == field,
+      orElse: () => _QuizStep(
+        field: field,
+        title: '',
+        subtitle: '',
+        algorithmHint: '',
+        type: _StepType.single,
+        isRequired: false,
+        options: const [],
+      ),
+    );
+    for (final option in step.options) {
+      if (option.value == value) return option;
+    }
+    return null;
   }
 
   String _labelForCategory(String value) {
