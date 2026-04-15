@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:compair/core/product_filter.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/utils.dart';
 import 'package:compair/domain/entities/product_entity.dart';
@@ -43,6 +44,35 @@ class SharedPremiumFeaturesSectionState
 
   String _txt({required String tr, required String en}) {
     return _isTurkish ? tr : en;
+  }
+
+  String _predictionProductContext(ProductEntity product) {
+    final releaseYear = ProductFilter.getExactReleaseYear(product);
+    final details = <String>[
+      'brand: ${product.brand?.trim().isNotEmpty == true ? product.brand!.trim() : 'unknown'}',
+      'category: ${product.category}',
+    ];
+    if (product.subcategory.trim().isNotEmpty) {
+      details.add('subcategory: ${product.subcategory.trim()}');
+    }
+    if (releaseYear != null) {
+      details.add('release year: $releaseYear');
+    }
+    if (product.techScore > 0) {
+      details.add('tech score: ${product.techScore.toStringAsFixed(1)}/100');
+    }
+    final highlightedSpecs = product.keySpecs.entries
+        .where(
+          (entry) =>
+              entry.key.trim().isNotEmpty && entry.value.trim().isNotEmpty,
+        )
+        .take(4)
+        .map((entry) => '${entry.key}: ${entry.value}')
+        .toList();
+    if (highlightedSpecs.isNotEmpty) {
+      details.add('key specs: ${highlightedSpecs.join(' | ')}');
+    }
+    return details.join(', ');
   }
 
   @override
@@ -1774,7 +1804,13 @@ class SharedPremiumFeaturesSectionState
         : 'unknown price';
     ref
         .read(predictionCacheProvider(widget.product.id).notifier)
-        .startQuery(widget.product.name, widget.product.category, price, lang);
+        .startQuery(
+          widget.product.name,
+          widget.product.category,
+          price,
+          lang,
+          productContext: _predictionProductContext(widget.product),
+        );
   }
 }
 

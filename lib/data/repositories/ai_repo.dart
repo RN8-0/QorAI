@@ -19,9 +19,9 @@ class AIRepository {
     required AIService aiService,
     required PbDataSource pbDS,
     MetadataService? metadataService,
-  })  : _aiService = aiService,
-        _pbDS = pbDS,
-        _metadataService = metadataService;
+  }) : _aiService = aiService,
+       _pbDS = pbDS,
+       _metadataService = metadataService;
 
   /// Get recommendations - Section 7.2
   Future<Result<RecommendationResult>> getRecommendations({
@@ -64,17 +64,23 @@ class AIRepository {
       OgMetadata metadata = const OgMetadata();
       if (_metadataService != null) {
         try {
-          metadata = await _metadataService!.fetchMetadataForSite(url);
-          debugPrint('[AIRepo] Metadata fetched for $url: title=${metadata.title}');
+          metadata = await _metadataService.fetchMetadataForSite(url);
+          debugPrint(
+            '[AIRepo] Metadata fetched for $url: title=${metadata.title}',
+          );
         } catch (e) {
-          debugPrint('[AIRepo] Metadata fetch failed for $url: $e — continuing');
+          debugPrint(
+            '[AIRepo] Metadata fetch failed for $url: $e — continuing',
+          );
         }
       }
 
       // Step 2: AI analysis (enriched with metadata)
       debugPrint('[AIRepo] Starting AI analysis for: $url');
       final result = await _aiService.analyzeLink(url, user);
-      debugPrint('[AIRepo] AI analysis done: score=${result.aiScore}, category=${result.category}');
+      debugPrint(
+        '[AIRepo] AI analysis done: score=${result.aiScore}, category=${result.category}',
+      );
 
       // Merge metadata with AI result (fill in info AI didn't return from metadata)
       final enrichedResult = LinkAnalysisResult(
@@ -109,7 +115,15 @@ class AIRepository {
         createdAt: DateTime.now(),
       );
 
-      await _pbDS.saveUserLink(link);
+      if (user.uid.isEmpty || user.uid == 'anonymous') {
+        debugPrint('[AIRepo] Skipping user_links save for anonymous session');
+      } else {
+        try {
+          await _pbDS.saveUserLink(link);
+        } catch (e) {
+          debugPrint('[AIRepo] user_links save failed for $url: $e');
+        }
+      }
 
       return Success(enrichedResult);
     } on AIServiceException catch (e) {

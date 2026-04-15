@@ -744,8 +744,9 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     String productName,
     String category,
     String price,
-    String language,
-  ) async {
+    String language, {
+    String productContext = '',
+  }) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
@@ -843,15 +844,16 @@ class _PredictionCacheNotifier
     String productName,
     String category,
     String price,
-    String language,
-  ) async {
+    String language, {
+    String productContext = '',
+  }) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
 
     // Disk cache check
     final normalizedLanguage = language.trim().toLowerCase();
-    final cacheKey = 'prediction_${normalizedLanguage}_$_productId';
+    final cacheKey = 'prediction_v2_${normalizedLanguage}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     try {
       final cached = await cache.get<String>(cacheKey);
@@ -880,10 +882,11 @@ class _PredictionCacheNotifier
         'Analyze this specific product:\n'
         '- Product name: $productName\n'
         '- Category: $cat\n'
-        '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n\n'
-        'Base analysis on this specific product\'s category, price tier, and typical lifecycle. '
+        '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n'
+        '${productContext.isEmpty ? '' : '- Product context: $productContext\n'}\n'
+        'Base analysis on this specific product\'s category, brand, price tier, likely release timing, and notable specs. '
         'If the product appears premium, mid-range, budget, new, or aging, reflect that difference in the answer. '
-        'Do not reuse the same percentage across unrelated products. '
+        'Different products must not receive the same percentage or reasoning by default. '
         'trendPercentage is the expected price change amount in percent.',
         language: language,
       );

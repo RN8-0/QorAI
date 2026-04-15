@@ -125,6 +125,35 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
 
   String _localizedFeature(String feature) => '${feature}_${_appLang}';
 
+  String _predictionProductContext(ProductEntity product) {
+    final details = <String>[
+      'brand: ${product.brand?.trim().isNotEmpty == true ? product.brand!.trim() : 'unknown'}',
+      'category: ${product.category}',
+    ];
+    if (product.subcategory.trim().isNotEmpty) {
+      details.add('subcategory: ${product.subcategory.trim()}');
+    }
+    final releaseYear = ProductFilter.getExactReleaseYear(product);
+    if (releaseYear != null) {
+      details.add('release year: $releaseYear');
+    }
+    if (product.techScore > 0) {
+      details.add('tech score: ${product.techScore.toStringAsFixed(1)}/100');
+    }
+    final highlightedSpecs = product.keySpecs.entries
+        .where(
+          (entry) =>
+              entry.key.trim().isNotEmpty && entry.value.trim().isNotEmpty,
+        )
+        .take(4)
+        .map((entry) => '${entry.key}: ${entry.value}')
+        .toList();
+    if (highlightedSpecs.isNotEmpty) {
+      details.add('key specs: ${highlightedSpecs.join(' | ')}');
+    }
+    return details.join(', ');
+  }
+
   Widget _buildMatchScoreRing({
     required double progress,
     required Color color,
@@ -810,7 +839,7 @@ Return ONLY valid JSON, no markdown, no explanation:
     final sw = Stopwatch()..start();
     try {
       // Check Firestore cache first
-      final cached = await _loadAiCache(_localizedFeature('prediction_v2'));
+      final cached = await _loadAiCache(_localizedFeature('prediction_v3'));
       if (cached != null && cached['result'] != null) {
         final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
@@ -844,7 +873,7 @@ Return ONLY valid JSON, no markdown, no explanation:
             final idx = e.key + 1;
             final p = e.value;
             final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
-            return '$idx. ${p.name} — current price: $price';
+            return '$idx. ${p.name} — current price: $price — ${_predictionProductContext(p)}';
           })
           .join('\n');
 
@@ -875,7 +904,9 @@ Rules:
 - best_time_to_buy: "now", "wait_1_month", or "wait_3_months"
 - confidence: integer 0-100
 - reason: 1-2 sentences for the user
-- You MUST include all ${widget.products.length} products, one entry per product in the same order as listed above''';
+- You MUST include all ${widget.products.length} products, one entry per product in the same order as listed above
+- Use the brand, release timing, price tier, and key specs to differentiate similar models
+- Do NOT give identical trend, change_percent, or best_time_to_buy values to multiple products unless their inputs are effectively the same''';
 
       debugPrint('[Compair] Prediction starting');
       final result = await _fetchWithRetry(
@@ -900,7 +931,7 @@ Rules:
             _predictionLoading = false;
           });
           _saveToSession();
-          _saveAiCache(_localizedFeature('prediction_v2'), {
+          _saveAiCache(_localizedFeature('prediction_v3'), {
             'result': resultStr,
             'structured': result.data,
           });
@@ -1180,14 +1211,24 @@ Rules:
       'video and lens': l.specGroupVideoLens,
       'documentation': l.specGroupDocumentation,
     };
-    final groupExact = map[k];
-    if (groupExact != null) return groupExact;
     final locale = Localizations.localeOf(context).languageCode;
-    if (locale != 'en') {
-      final translated = spec_dict.translateSpec(key, locale);
-      if (translated.toLowerCase() != k) return translated;
+    final svc = SpecTranslationService.instance;
+    final canonicalKey = svc.isLoaded ? svc.canonicalizeToEnglish(k) : k;
+    final groupExact = map[k] ?? map[canonicalKey];
+    if (groupExact != null) return groupExact;
+    if (svc.isLoaded) {
+      final translated = svc.translateLabelForLocale(key, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return translated;
+      }
     }
-    return _formatKey(key);
+    if (locale != 'en') {
+      final translated = spec_dict.translateSpec(canonicalKey, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return translated;
+      }
+    }
+    return _formatKey(canonicalKey);
   }
 
   String _localizedSpecName(BuildContext context, String key) {
@@ -1320,35 +1361,57 @@ Rules:
       'ports': l.specPorts,
       'wireless': l.specWireless,
     };
-    final specExact = map[k];
-    if (specExact != null) return specExact;
     final locale = Localizations.localeOf(context).languageCode;
-    if (locale != 'en') {
-      final translated = spec_dict.translateSpec(key, locale);
-      if (translated.toLowerCase() != k) return translated;
+    final svc = SpecTranslationService.instance;
+    final canonicalKey = svc.isLoaded ? svc.canonicalizeToEnglish(k) : k;
+    final specExact = map[k] ?? map[canonicalKey];
+    if (specExact != null) return specExact;
+    if (svc.isLoaded) {
+      final translated = svc.translateLabelForLocale(key, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return translated;
+      }
     }
-    return _formatKey(key);
+    if (locale != 'en') {
+      final translated = spec_dict.translateSpec(canonicalKey, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return translated;
+      }
+    }
+    return _formatKey(canonicalKey);
   }
 
   /// Translate spec values (colors, materials, booleans, etc.)
   String _localizedSpecValue(BuildContext context, String val) {
     if (val.isEmpty || val == '—') return val;
     final locale = Localizations.localeOf(context).languageCode;
-    if (locale == 'en') return val;
+    final svc = SpecTranslationService.instance;
+    final canonicalValue = svc.isLoaded ? svc.canonicalizeToEnglish(val) : val;
+    final canonicalLower = canonicalValue.trim().toLowerCase();
+    if (locale == 'en') return canonicalValue;
     // Boolean/status shortcuts
-    final lower = val.trim().toLowerCase();
     final l = context.l10n;
     if (l != null) {
-      if (lower == 'yes' || lower == 'true') return l.specValYes;
-      if (lower == 'no' || lower == 'no.' || lower == 'false')
+      if (canonicalLower == 'yes' || canonicalLower == 'true') {
+        return l.specValYes;
+      }
+      if (canonicalLower == 'no' ||
+          canonicalLower == 'no.' ||
+          canonicalLower == 'false') {
         return l.specValNo;
-      if (lower == 'available') return l.specValAvailable;
-      if (lower == 'not available' || lower == 'n/a')
+      }
+      if (canonicalLower == 'available') return l.specValAvailable;
+      if (canonicalLower == 'not available' || canonicalLower == 'n/a') {
         return l.specValNotAvailable;
+      }
     }
-    final translated = spec_dict.translateSpec(val, locale);
-    if (translated != val) return translated;
-    return val;
+    if (svc.isLoaded) {
+      final translated = svc.translateValueForLocale(val, locale);
+      if (translated.toLowerCase() != canonicalLower) return translated;
+    }
+    final translated = spec_dict.translateSpecValue(canonicalValue, locale);
+    if (translated != canonicalValue) return translated;
+    return canonicalValue;
   }
 
   /// Returns the index of the "better" value for a given spec.

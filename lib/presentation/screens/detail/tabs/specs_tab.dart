@@ -303,31 +303,25 @@ class _SpecsCardState extends State<_SpecsCard> {
       'video and lens': l.specGroupVideoLens,
       'documentation': l.specGroupDocumentation,
     };
-    // Try exact match
-    final exact = map[k];
-    if (exact != null) return exact;
-    // Bidirectional dictionary fallback (EN↔TR)
     final locale = Localizations.localeOf(context).languageCode;
     final svc = SpecTranslationService.instance;
+    final canonicalKey = svc.isLoaded ? svc.canonicalizeToEnglish(k) : k;
+    // Try exact match
+    final exact = map[k] ?? map[canonicalKey];
+    if (exact != null) return exact;
     if (svc.isLoaded) {
-      if (locale == 'tr') {
-        final full = svc.translate(k);
-        if (full != k) return _titleCase(full);
-        final wordLevel = svc.translateWords(k);
-        if (wordLevel != k) return _titleCase(wordLevel);
-      } else {
-        final full = svc.translateToEn(k);
-        if (full != k) return _titleCase(full);
-        final wordLevel = svc.translateWordsToEn(k);
-        if (wordLevel != k) return _titleCase(wordLevel);
+      final translated = svc.translateLabelForLocale(key, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return _titleCase(translated);
       }
     }
-    // Multilingual word-level dictionary (all languages)
     if (locale != 'en') {
-      final translated = spec_dict.translateSpec(key, locale);
-      if (translated.toLowerCase() != k) return _titleCase(translated);
+      final translated = spec_dict.translateSpec(canonicalKey, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return _titleCase(translated);
+      }
     }
-    return _formatKey(key);
+    return _formatKey(canonicalKey);
   }
 
   /// Translate a spec name to the user's language.
@@ -454,33 +448,25 @@ class _SpecsCardState extends State<_SpecsCard> {
       'memory': l.specGroupMemory,
       'software': l.specGroupSoftware,
     };
-    // 1. Try exact match (fast path)
-    final exact = map[k];
-    if (exact != null) return exact;
-    // 2. Scraper dictionary (7300+ entries, bidirectional EN↔TR)
     final locale = Localizations.localeOf(context).languageCode;
     final svc = SpecTranslationService.instance;
+    final canonicalKey = svc.isLoaded ? svc.canonicalizeToEnglish(k) : k;
+    // 1. Try exact match (fast path)
+    final exact = map[k] ?? map[canonicalKey];
+    if (exact != null) return exact;
     if (svc.isLoaded) {
-      if (locale == 'tr') {
-        // EN→TR translation
-        final full = svc.translate(k);
-        if (full != k) return _titleCase(full);
-        final wordLevel = svc.translateWords(k);
-        if (wordLevel != k) return _titleCase(wordLevel);
-      } else {
-        // TR→EN translation (for leftover Turkish spec names)
-        final full = svc.translateToEn(k);
-        if (full != k) return _titleCase(full);
-        final wordLevel = svc.translateWordsToEn(k);
-        if (wordLevel != k) return _titleCase(wordLevel);
+      final translated = svc.translateLabelForLocale(key, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return _titleCase(translated);
       }
     }
-    // 3. Multilingual word-level dictionary (all languages)
     if (locale != 'en') {
-      final translated = spec_dict.translateSpec(key, locale);
-      if (translated.toLowerCase() != k) return _titleCase(translated);
+      final translated = spec_dict.translateSpec(canonicalKey, locale);
+      if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
+        return _titleCase(translated);
+      }
     }
-    return _formatKey(key);
+    return _formatKey(canonicalKey);
   }
 
   /// Translate a multi-word spec name word-by-word using a dictionary.
@@ -1102,9 +1088,26 @@ class _SpecRow extends StatelessWidget {
     return chunks.where((chunk) => chunk.trim().isNotEmpty).toList();
   }
 
+  static bool _looksLikePackedFeatureList(String value) {
+    final words = value
+        .split(RegExp(r'\s+'))
+        .map((word) => word.trim())
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words.length < 6) return false;
+    final featureLikeWords = words.where((word) {
+      return RegExp(r'^[A-Z0-9ÇĞİÖŞÜ]').hasMatch(word) &&
+          !_isConnectorWord(word);
+    }).length;
+    return featureLikeWords >= 4 &&
+        !value.contains('.') &&
+        !value.contains(':');
+  }
+
   static List<String> _extractValueParts(String value) {
     final normalized = value
         .replaceAll('\u2022', '\n')
+        .replaceAll('•', '\n')
         .replaceAll('|', '\n')
         .replaceAllMapped(
           RegExp(r'(?<=[a-zçğıöşü])(?=[A-ZÇĞİÖŞÜ])'),
@@ -1142,19 +1145,26 @@ class _SpecRow extends StatelessWidget {
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
-    } else if (normalized.length > 42) {
+    } else if (normalized.length > 42 &&
+        _looksLikePackedFeatureList(normalized)) {
       parts = _chunkLongValue(normalized);
     }
 
-    return parts ?? [normalized];
+    return (parts ?? [normalized])
+        .map((part) => part.replaceFirst(RegExp(r'^[•\-\s]+'), '').trim())
+        .where((part) => part.isNotEmpty)
+        .toList();
   }
 
   String _localizedValue(BuildContext context, String val) {
     final l = context.l10n;
     if (l == null) return val;
-    final v = val.trim().toLowerCase();
+    final locale = Localizations.localeOf(context).languageCode;
+    final svc = SpecTranslationService.instance;
+    final canonicalValue = svc.isLoaded ? svc.canonicalizeToEnglish(val) : val;
+    final canonicalLower = canonicalValue.trim().toLowerCase();
     // Handle "No." variant (with period)
-    if (v == 'no.' || v == 'no') {
+    if (canonicalLower == 'no.' || canonicalLower == 'no') {
       return l.specValNo;
     }
     // Common boolean/status values
@@ -1274,42 +1284,21 @@ class _SpecRow extends StatelessWidget {
       'adjustable': l.specValAdjustable,
       'automatic': l.specValAutomatic,
     };
-    final key = enToKey[v];
+    final key = enToKey[canonicalLower];
     if (key != null && trMap[key] != null) return trMap[key]!;
-    // Bidirectional dictionary fallback for spec values
-    final locale = Localizations.localeOf(context).languageCode;
-    final svc = SpecTranslationService.instance;
+    if (locale == 'en') {
+      return _applyValueTitleCase(canonicalValue);
+    }
     if (svc.isLoaded) {
-      if (locale == 'tr') {
-        // 1. Full-phrase exact match
-        final full = svc.translate(v);
-        if (full != v) return _applyValueTitleCase(full);
-        // 2. Word-by-word (handles multi-word values like "side mounted")
-        final words = svc.translateWords(v);
-        if (words != v) return _applyValueTitleCase(words);
-        // 3. Hyphen-split: "side-mounted" → translate "side" + "mounted" separately
-        if (v.contains('-')) {
-          final parts = v.split('-');
-          final translated = parts
-              .map((p) {
-                final t = svc.translate(p.trim());
-                return t != p.trim() ? t : p.trim();
-              })
-              .join(' ');
-          if (translated != v.replaceAll('-', ' '))
-            return _applyValueTitleCase(translated);
-        }
-      } else {
-        final full = svc.translateToEn(v);
-        if (full != v) return _applyValueTitleCase(full);
+      final translated = svc.translateValueForLocale(val, locale);
+      if (translated.toLowerCase() != canonicalLower) {
+        return _applyValueTitleCase(translated);
       }
     }
-    // Multilingual word-level dictionary fallback
-    if (locale != 'en') {
-      final translated = spec_dict.translateSpecValue(val, locale);
-      if (translated != val) return translated;
+    final translated = spec_dict.translateSpecValue(canonicalValue, locale);
+    if (translated != canonicalValue) {
+      return translated;
     }
-    // Capitalize first letter of value for any language
     return _applyValueTitleCase(val);
   }
 
@@ -1363,8 +1352,10 @@ class _SpecRow extends StatelessWidget {
   /// Translate common English spec values to the active locale language.
   String _localizedSpecValue(BuildContext context, String val) {
     final locale = Localizations.localeOf(context).languageCode;
-    if (locale == 'en') return val;
-    final v = val.trim().toLowerCase();
+    final svc = SpecTranslationService.instance;
+    final canonicalValue = svc.isLoaded ? svc.canonicalizeToEnglish(val) : val;
+    if (locale == 'en') return canonicalValue;
+    final v = canonicalValue.trim().toLowerCase();
     switch (locale) {
       case 'tr':
         const trMap = {
@@ -1409,7 +1400,7 @@ class _SpecRow extends StatelessWidget {
           'available': 'Verfügbar',
           'not available': 'Nicht verfügbar',
         };
-        return deMap[v] ?? val;
+        return deMap[v] ?? canonicalValue;
       case 'fr':
         const frMap = {
           'yes': 'Oui',
@@ -1417,7 +1408,7 @@ class _SpecRow extends StatelessWidget {
           'available': 'Disponible',
           'not available': 'Non disponible',
         };
-        return frMap[v] ?? val;
+        return frMap[v] ?? canonicalValue;
       case 'es':
         const esMap = {
           'yes': 'Sí',
@@ -1425,9 +1416,12 @@ class _SpecRow extends StatelessWidget {
           'available': 'Disponible',
           'not available': 'No disponible',
         };
-        return esMap[v] ?? val;
+        return esMap[v] ?? canonicalValue;
       default:
-        return val;
+        final translated = svc.isLoaded
+            ? svc.translateValueForLocale(val, locale)
+            : canonicalValue;
+        return translated == val ? canonicalValue : translated;
     }
   }
 

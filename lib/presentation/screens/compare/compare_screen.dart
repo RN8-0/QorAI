@@ -18,6 +18,7 @@ import 'package:chewie/chewie.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/product_filter.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/domain/entities/comparison_entity.dart';
@@ -40,6 +41,7 @@ import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:compair/services/spec_translation_service.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';
@@ -379,7 +381,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   Widget build(BuildContext context) {
     // Watch session state for reactivity
     final session = ref.watch(compareSessionProvider);
-    final _selectedIds = session.selectedProductIds;
     final _products = session.comparedProducts;
 
     // Hide/show nav bar based on comparison state
@@ -396,6 +397,17 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: context.textPrimary),
+          onPressed: () {
+            if (GoRouter.of(context).canPop()) {
+              context.pop();
+              return;
+            }
+            context.go(AppRoutes.home);
+          },
+        ),
         title: ShaderMask(
           shaderCallback: (bounds) => _accentGradient.createShader(bounds),
           child: Text(
@@ -412,28 +424,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          if (_selectedIds.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: TextButton.icon(
-                onPressed: _resetComparison,
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  size: 16,
-                  color: AppTheme.error,
-                ),
-                label: Text(
-                  context.l10n?.clearLabel ?? 'Clear',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: AppTheme.error,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-        ],
       ),
       body: Column(
         children: [

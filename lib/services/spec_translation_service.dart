@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
 
 /// Loads the EN→TR spec dictionary from assets and provides bidirectional translation.
 /// Uses the scraper's 7,300+ entry dictionary for comprehensive coverage.
@@ -11,6 +12,9 @@ class SpecTranslationService {
   Map<String, String>? _trEn; // Reverse lookup: TR→EN
   bool _loading = false;
 
+  String normalize(String text) =>
+      text.replaceAll('\u00A0', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+
   Future<void> init() async {
     if (_enTr != null || _loading) return;
     _loading = true;
@@ -20,7 +24,7 @@ class SpecTranslationService {
       // Build reverse map for TR→EN translation
       _trEn = {};
       for (final entry in _enTr!.entries) {
-        _trEn![entry.value.toLowerCase().trim()] = entry.key;
+        _trEn![normalize(entry.value).toLowerCase()] = entry.key;
       }
     } catch (_) {
       _enTr = {};
@@ -33,7 +37,7 @@ class SpecTranslationService {
   /// Returns original if no translation found.
   String translate(String text) {
     if (_enTr == null || _enTr!.isEmpty) return text;
-    final key = text.toLowerCase().trim();
+    final key = normalize(text).toLowerCase();
     return _enTr![key] ?? text;
   }
 
@@ -41,7 +45,7 @@ class SpecTranslationService {
   /// Returns original if no translation found.
   String translateToEn(String text) {
     if (_trEn == null || _trEn!.isEmpty) return text;
-    final key = text.toLowerCase().trim();
+    final key = normalize(text).toLowerCase();
     return _trEn![key] ?? text;
   }
 
@@ -59,6 +63,7 @@ class SpecTranslationService {
   /// Handles parenthetical suffixes: "Print Speed (Color)" → "Baskı Hızı (Renkli)"
   String translateWords(String text) {
     if (_enTr == null || _enTr!.isEmpty) return text;
+    text = normalize(text);
 
     // Handle parenthetical content separately
     final parenMatch = RegExp(r'^(.*?)\s*\(([^)]+)\)\s*$').firstMatch(text);
@@ -80,7 +85,7 @@ class SpecTranslationService {
 
   String _translateWordInner(String text) {
     if (_enTr == null || _enTr!.isEmpty) return text;
-    final words = text.split(RegExp(r'\s+'));
+    final words = normalize(text).split(RegExp(r'\s+'));
     if (words.length <= 1) return translate(text);
 
     final result = <String>[];
@@ -91,13 +96,21 @@ class SpecTranslationService {
       if (i + 2 < words.length) {
         final tri = '${words[i]} ${words[i + 1]} ${words[i + 2]}'.toLowerCase();
         final t = _enTr![tri];
-        if (t != null) { result.add(t); i += 3; found = true; }
+        if (t != null) {
+          result.add(t);
+          i += 3;
+          found = true;
+        }
       }
       // Try 2-word window
       if (!found && i + 1 < words.length) {
         final bi = '${words[i]} ${words[i + 1]}'.toLowerCase();
         final t = _enTr![bi];
-        if (t != null) { result.add(t); i += 2; found = true; }
+        if (t != null) {
+          result.add(t);
+          i += 2;
+          found = true;
+        }
       }
       // Try single word
       if (!found) {
@@ -113,6 +126,7 @@ class SpecTranslationService {
   /// Translate word-by-word Turkish → English using sliding window.
   String translateWordsToEn(String text) {
     if (_trEn == null || _trEn!.isEmpty) return text;
+    text = normalize(text);
 
     final parenMatch = RegExp(r'^(.*?)\s*\(([^)]+)\)\s*$').firstMatch(text);
     if (parenMatch != null) {
@@ -132,7 +146,7 @@ class SpecTranslationService {
 
   String _translateWordInnerReverse(String text) {
     if (_trEn == null || _trEn!.isEmpty) return text;
-    final words = text.split(RegExp(r'\s+'));
+    final words = normalize(text).split(RegExp(r'\s+'));
     if (words.length <= 1) return translateToEn(text);
 
     final result = <String>[];
@@ -142,12 +156,20 @@ class SpecTranslationService {
       if (i + 2 < words.length) {
         final tri = '${words[i]} ${words[i + 1]} ${words[i + 2]}'.toLowerCase();
         final t = _trEn![tri];
-        if (t != null) { result.add(t); i += 3; found = true; }
+        if (t != null) {
+          result.add(t);
+          i += 3;
+          found = true;
+        }
       }
       if (!found && i + 1 < words.length) {
         final bi = '${words[i]} ${words[i + 1]}'.toLowerCase();
         final t = _trEn![bi];
-        if (t != null) { result.add(t); i += 2; found = true; }
+        if (t != null) {
+          result.add(t);
+          i += 2;
+          found = true;
+        }
       }
       if (!found) {
         final single = words[i].toLowerCase();
@@ -157,6 +179,63 @@ class SpecTranslationService {
       }
     }
     return result.join(' ');
+  }
+
+  String canonicalizeToEnglish(String text) {
+    final normalized = normalize(text);
+    if (normalized.isEmpty) return normalized;
+
+    final exact = normalize(translateToEn(normalized));
+    if (exact.toLowerCase() != normalized.toLowerCase()) {
+      return exact;
+    }
+
+    final wordLevel = normalize(translateWordsToEn(normalized));
+    if (wordLevel.toLowerCase() != normalized.toLowerCase()) {
+      return wordLevel;
+    }
+
+    return normalized;
+  }
+
+  String translateLabelForLocale(String text, String locale) {
+    final canonical = canonicalizeToEnglish(text);
+    if (canonical.isEmpty) return canonical;
+
+    if (locale == 'en') return canonical;
+    if (locale == 'tr') {
+      final exact = normalize(translate(canonical));
+      if (exact.toLowerCase() != canonical.toLowerCase()) return exact;
+      final wordLevel = normalize(translateWords(canonical));
+      if (wordLevel.toLowerCase() != canonical.toLowerCase()) return wordLevel;
+      return canonical;
+    }
+
+    final translated = normalize(spec_dict.translateSpec(canonical, locale));
+    return translated.toLowerCase() != canonical.toLowerCase()
+        ? translated
+        : canonical;
+  }
+
+  String translateValueForLocale(String text, String locale) {
+    final canonical = canonicalizeToEnglish(text);
+    if (canonical.isEmpty) return canonical;
+
+    if (locale == 'en') return canonical;
+    if (locale == 'tr') {
+      final exact = normalize(translate(canonical));
+      if (exact.toLowerCase() != canonical.toLowerCase()) return exact;
+      final wordLevel = normalize(translateWords(canonical));
+      if (wordLevel.toLowerCase() != canonical.toLowerCase()) return wordLevel;
+      return canonical;
+    }
+
+    final translated = normalize(
+      spec_dict.translateSpecValue(canonical, locale),
+    );
+    return translated.toLowerCase() != canonical.toLowerCase()
+        ? translated
+        : canonical;
   }
 
   bool get isLoaded => _enTr != null && _enTr!.isNotEmpty;
