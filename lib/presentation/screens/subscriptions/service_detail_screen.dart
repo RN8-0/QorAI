@@ -136,7 +136,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen>
         body: TabBarView(
           controller: _tabs,
           children: [
-            _PlansTab(service: s, accent: accent),
+            _PlansTab(service: s, accent: accent, ref: ref),
             _DetailsTab(service: s, accent: accent, ref: ref),
           ],
         ),
@@ -295,7 +295,12 @@ class _HeroHeader extends StatelessWidget {
 class _PlansTab extends StatefulWidget {
   final SubscriptionServiceModel service;
   final Color accent;
-  const _PlansTab({required this.service, required this.accent});
+  final WidgetRef ref;
+  const _PlansTab({
+    required this.service,
+    required this.accent,
+    required this.ref,
+  });
   @override
   State<_PlansTab> createState() => _PlansTabState();
 }
@@ -547,6 +552,9 @@ class _PlansTabState extends State<_PlansTab> {
         uri,
         mode: LaunchMode.externalApplication,
       );
+      if (launched) {
+        widget.ref.read(behaviorTrackingProvider).trackAffiliateTap(s.id);
+      }
       if (!launched && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

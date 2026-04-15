@@ -78,8 +78,9 @@ class ProfileScreen extends ConsumerWidget {
           // Dekoratif glow çemberleri — sadece dark modda
           Builder(
             builder: (context) {
-              if (Theme.of(context).brightness != Brightness.dark)
+              if (Theme.of(context).brightness != Brightness.dark) {
                 return const SizedBox.shrink();
+              }
               return Stack(
                 children: [
                   Positioned(
@@ -138,7 +139,7 @@ class ProfileScreen extends ConsumerWidget {
               loading: () {
                 return _ProfileBody(user: _buildAuthStoreFallbackUser());
               },
-              error: (_, __) {
+              error: (error, stackTrace) {
                 return _ProfileBody(user: _buildAuthStoreFallbackUser());
               },
             ),
@@ -319,18 +320,21 @@ class _ProfileBody extends ConsumerWidget {
                       value: '${user?.comparisonsCount ?? 0}',
                       label: context.l10n?.comparisons ?? 'Compares',
                       color: AppTheme.brandBlue,
+                      onTap: () => context.push(AppRoutes.comparisons),
                     ),
                     const SizedBox(width: 8),
                     _StatPill(
                       value: '${(user?.ownedProducts as List?)?.length ?? 0}',
                       label: context.l10n?.collection ?? 'Collection',
                       color: AppTheme.brandSkyBlue,
+                      onTap: () => context.push(AppRoutes.collection),
                     ),
                     const SizedBox(width: 8),
                     _StatPill(
                       value: '${user?.affiliateClicks ?? 0}',
                       label: context.l10n?.clicks ?? 'Clicks',
                       color: AppTheme.brandCyan,
+                      onTap: () => context.push(AppRoutes.behaviorReport),
                     ),
                   ],
                 ),
@@ -541,6 +545,9 @@ class _ProfileBody extends ConsumerWidget {
                   );
                   if (confirmed == true && context.mounted) {
                     await ref.read(authRepositoryProvider).signOut();
+                    if (context.mounted) {
+                      context.go(AppRoutes.login);
+                    }
                   }
                 },
                 child: Container(
@@ -609,7 +616,11 @@ class _SubscriptionsSection extends StatelessWidget {
           height: 80,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue, AppTheme.brandSkyBlue],
+              colors: [
+                AppTheme.brandDeepBlue,
+                AppTheme.brandBlue,
+                AppTheme.brandSkyBlue,
+              ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -735,42 +746,51 @@ class _StatPill extends StatelessWidget {
   final String value;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
   const _StatPill({
     required this.value,
     required this.label,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.12)),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: color.withValues(alpha: 0.12)),
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: context.textTertiaryColor,
-              ),
+            child: Column(
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: context.textTertiaryColor,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

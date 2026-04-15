@@ -9,6 +9,14 @@ import 'package:compair/presentation/widgets/glass_container.dart';
 
 final pi = math.pi;
 
+String _behaviorText(
+  BuildContext context, {
+  required String en,
+  required String tr,
+}) {
+  return Localizations.localeOf(context).languageCode == 'tr' ? tr : en;
+}
+
 class BehaviorReportScreen extends ConsumerWidget {
   const BehaviorReportScreen({super.key});
 
@@ -40,7 +48,16 @@ class BehaviorReportScreen extends ConsumerWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (!snapshot.hasData) {
-                  return Center(child: Text(context.l10n?.noBehaviorDataYet ?? 'No behavior data yet'));
+                  return Center(
+                    child: Text(
+                      context.l10n?.noBehaviorDataYet ??
+                          _behaviorText(
+                            context,
+                            en: 'No behavior data yet',
+                            tr: 'Henuz davranis verisi yok',
+                          ),
+                    ),
+                  );
                 }
                 final profile = snapshot.data!;
                 return _BehaviorReportBody(profile: profile);
@@ -57,15 +74,14 @@ class _BehaviorReportBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasData = profile.categoryInterestScores.isNotEmpty;
-    final completeness = hasData
-        ? ((profile.strongInterestCategories.length / 5.0) * 100).clamp(0, 100).toInt()
-        : 0;
+    final completeness = profile.profileCompletenessScore;
 
     // Get top 5 categories sorted by score
-    final topCategories = (profile.categoryInterestScores.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value)))
-        .take(5)
-        .toList();
+    final topCategories =
+        (profile.categoryInterestScores.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value)))
+            .take(5)
+            .toList();
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -83,7 +99,12 @@ class _BehaviorReportBody extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 16),
             child: Text(
-              context.l10n?.categoryEngagement ?? 'Category Engagement',
+              context.l10n?.categoryEngagement ??
+                  _behaviorText(
+                    context,
+                    en: 'Category engagement',
+                    tr: 'Kategori etkilesimi',
+                  ),
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
@@ -112,7 +133,7 @@ class _BehaviorReportBody extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 12),
             child: Text(
-              'Interest Cloud',
+              _behaviorText(context, en: 'Interest cloud', tr: 'Ilgi bulutu'),
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
@@ -131,11 +152,15 @@ class _BehaviorReportBody extends StatelessWidget {
         ],
 
         // ─── Detailed Category Breakdown ───
-        if (hasData && topCategories.length > 0) ...[
+        if (hasData && topCategories.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 12),
             child: Text(
-              'Score Breakdown',
+              _behaviorText(
+                context,
+                en: 'Score breakdown',
+                tr: 'Skor dagilimi',
+              ),
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
@@ -143,19 +168,16 @@ class _BehaviorReportBody extends StatelessWidget {
               ),
             ),
           ),
-          ...topCategories.map((entry) {
-            return _CategoryScoreBar(
-              category: entry.key,
-              score: entry.value,
-            );
-          }).toList(),
+          ...topCategories.map(
+            (entry) =>
+                _CategoryScoreBar(category: entry.key, score: entry.value),
+          ),
           const SizedBox(height: 20),
         ],
       ],
     );
   }
 }
-
 
 /// ═══════════════════════════════════════════════════════════════════════════
 /// ════════════════════════  SCORE OVERVIEW CARD  ════════════════════════════
@@ -226,7 +248,11 @@ class _ScoreOverviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Purchase Intent',
+                      _behaviorText(
+                        context,
+                        en: 'Purchase intent',
+                        tr: 'Satın alma niyeti',
+                      ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -261,7 +287,11 @@ class _ScoreOverviewCard extends StatelessWidget {
           const SizedBox(height: 16),
           // Subtitle
           Text(
-            'Based on your engagement and browsing behavior',
+            _behaviorText(
+              context,
+              en: 'Based on your engagement and browsing behavior',
+              tr: 'Etkilesimlerin ve gezinme davranisina gore hesaplandi',
+            ),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w400,
@@ -352,13 +382,7 @@ class _GradientCircularProgressPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawArc(
-      rect,
-      -pi / 2,
-      (2 * pi * value),
-      false,
-      paint,
-    );
+    canvas.drawArc(rect, -pi / 2, (2 * pi * value), false, paint);
   }
 
   @override
@@ -373,10 +397,7 @@ class _CircularScoreCard extends StatelessWidget {
   final String category;
   final double score;
 
-  const _CircularScoreCard({
-    required this.category,
-    required this.score,
-  });
+  const _CircularScoreCard({required this.category, required this.score});
 
   @override
   Widget build(BuildContext context) {
@@ -440,18 +461,16 @@ class _InterestCloud extends StatelessWidget {
   final List<String> interests;
   final Map<String, double> scores;
 
-  const _InterestCloud({
-    required this.interests,
-    required this.scores,
-  });
+  const _InterestCloud({required this.interests, required this.scores});
 
   @override
   Widget build(BuildContext context) {
     // Sort interests by score
-    final sortedInterests = (interests.toList()
-          ..sort((a, b) => (scores[b] ?? 0.0).compareTo(scores[a] ?? 0.0)))
-        .take(12)
-        .toList();
+    final sortedInterests =
+        (interests.toList()
+              ..sort((a, b) => (scores[b] ?? 0.0).compareTo(scores[a] ?? 0.0)))
+            .take(12)
+            .toList();
 
     return Wrap(
       spacing: 8,
@@ -474,7 +493,7 @@ class _InterestCloud extends StatelessWidget {
 
   int _getSizeIndex(double score) {
     if (score >= 0.75) return 3; // Large
-    if (score >= 0.5) return 2;  // Medium
+    if (score >= 0.5) return 2; // Medium
     return 1; // Small
   }
 
@@ -523,10 +542,7 @@ class _InterestChip extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Text(
         label,
@@ -548,10 +564,7 @@ class _CategoryScoreBar extends StatelessWidget {
   final String category;
   final double score;
 
-  const _CategoryScoreBar({
-    required this.category,
-    required this.score,
-  });
+  const _CategoryScoreBar({required this.category, required this.score});
 
   @override
   Widget build(BuildContext context) {
@@ -591,9 +604,7 @@ class _CategoryScoreBar extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: score,
                 backgroundColor: context.dividerColor,
-                valueColor: AlwaysStoppedAnimation(
-                  _getGradientColor(score),
-                ),
+                valueColor: AlwaysStoppedAnimation(_getGradientColor(score)),
                 minHeight: 6,
               ),
             ),
