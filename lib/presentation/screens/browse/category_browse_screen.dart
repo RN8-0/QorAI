@@ -1045,16 +1045,35 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               ],
               if (_filterState.isActive) ...[
                 const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () =>
-                      setState(() => _filterState = const FilterState()),
-                  child: Text(
-                    context.l10n?.clearFilters ?? 'Clear Filters',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.w600,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  children: [
+                    TextButton(
+                      onPressed: _openFilters,
+                      child: Text(
+                        _fallbackText(
+                          en: 'Adjust Filters',
+                          tr: 'Filtreleri Düzenle',
+                        ),
+                        style: GoogleFonts.plusJakartaSans(
+                          color: context.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
+                    TextButton(
+                      onPressed: () =>
+                          setState(() => _filterState = const FilterState()),
+                      child: Text(
+                        context.l10n?.clearFilters ?? 'Clear Filters',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],

@@ -105,8 +105,10 @@ class FilterApplier {
 
     // Add lowest available price for price range filtering
     if (product.prices.isNotEmpty) {
-      final lowestPrice = product.prices.values
-          .fold<double>(double.infinity, (m, v) => v < m ? v : m);
+      final lowestPrice = product.prices.values.fold<double>(
+        double.infinity,
+        (m, v) => v < m ? v : m,
+      );
       if (lowestPrice != double.infinity) {
         flat['price'] = lowestPrice.toStringAsFixed(0);
         flat['Price'] = lowestPrice.toStringAsFixed(0);
@@ -137,8 +139,12 @@ class FilterApplier {
 
     // Brand filter checks product.brand directly.
     if (def.id == 'brand') {
-      final brandLower = (product.brand ?? '').toLowerCase();
-      return selectedLabels.any((l) => brandLower.contains(l) || l.contains(brandLower));
+      final brandLower = _normalizeText(product.brand ?? '');
+      return selectedLabels
+          .map(_normalizeText)
+          .any(
+            (label) => brandLower.contains(label) || label.contains(brandLower),
+          );
     }
 
     // Score range filter checks product.techScore against range buckets.
@@ -156,11 +162,16 @@ class FilterApplier {
     }
 
     // For other filters, search spec values.
-    final specValue = _findSpecValue(def.specKeys, flatSpecs);
-    if (specValue == null) return false;
-    final specLower = specValue.toLowerCase();
+    final specValues = _findSpecValues(def.specKeys, flatSpecs);
+    if (specValues.isEmpty) return false;
 
-    return selectedLabels.any((label) => specLower.contains(label));
+    final normalizedLabels = selectedLabels.map(_normalizeText).toList();
+    return specValues.any((value) {
+      final specLower = _normalizeText(value);
+      return normalizedLabels.any(
+        (label) => specLower.contains(label) || label.contains(specLower),
+      );
+    });
   }
 
   static bool _passesRange(
@@ -171,7 +182,8 @@ class FilterApplier {
     final range = state.ranges[def.id];
     if (range == null) return true;
 
-    final specValue = _findSpecValue(def.specKeys, flatSpecs);
+    final specValues = _findSpecValues(def.specKeys, flatSpecs);
+    final specValue = specValues.isEmpty ? null : specValues.first;
     if (specValue == null) return false;
 
     final number = _extractFirstNumber(specValue);
@@ -188,48 +200,92 @@ class FilterApplier {
     final wantTrue = state.toggles[def.id];
     if (wantTrue == null) return true;
 
-    final specValue = _findSpecValue(def.specKeys, flatSpecs);
+    final specValues = _findSpecValues(def.specKeys, flatSpecs);
+    final specValue = specValues.isEmpty ? null : specValues.first;
     final isPresent = specValue != null;
-    final valueLower = (specValue ?? '').toLowerCase().trim();
+    final valueLower = _normalizeText(specValue ?? '');
 
     // Explicit "no" markers
-    final isNegative = valueLower == 'no' ||
+    final isNegative =
+        valueLower == 'no' ||
         valueLower == 'false' ||
+        valueLower == 'hayir' ||
+        valueLower == 'yok' ||
         valueLower.contains('✗') ||
-        valueLower == 'n/a' ||
+        valueLower == 'n a' ||
         valueLower == '-';
 
     // Explicit "yes" markers (or simply present with non-negative value)
-    final isPositive = isPresent &&
+    final isPositive =
+        isPresent &&
         !isNegative &&
         (valueLower == 'yes' ||
             valueLower == 'true' ||
+            valueLower == 'evet' ||
+            valueLower == 'var' ||
             valueLower.contains('✓') ||
             valueLower.isNotEmpty);
 
     return wantTrue ? isPositive : isNegative;
   }
 
-  /// Returns the first spec value found for any of the provided keys
-  /// (case-insensitive key match).
-  static String? _findSpecValue(List<String> keys, Map<String, String> flatSpecs) {
+  static List<String> _findSpecValues(
+    List<String> keys,
+    Map<String, String> flatSpecs,
+  ) {
+    final matches = <String>[];
+    final seen = <String>{};
+
     for (final key in keys) {
-      final lower = key.toLowerCase();
+      final normalizedKey = _normalizeText(key);
       // Exact match first
       final exact = flatSpecs[key];
-      if (exact != null) return exact;
+      if (exact != null && seen.add(exact)) {
+        matches.add(exact);
+      }
       // Case-insensitive fallback
       for (final entry in flatSpecs.entries) {
-        if (entry.key.toLowerCase() == lower) return entry.value;
+        final normalizedEntryKey = _normalizeText(entry.key);
+        final tokenOverlap = _tokenOverlap(normalizedKey, normalizedEntryKey);
+        final isMatch =
+            normalizedEntryKey == normalizedKey ||
+            normalizedEntryKey.contains(normalizedKey) ||
+            normalizedKey.contains(normalizedEntryKey) ||
+            tokenOverlap >= 2;
+        if (isMatch && seen.add(entry.value)) {
+          matches.add(entry.value);
+        }
       }
     }
-    return null;
+    return matches;
   }
 
   /// Extracts the first numeric value from a string like "6.1 in", "128 GB", "4200 mAh".
   static double? _extractFirstNumber(String value) {
-    final match = RegExp(r'[\d]+(?:[.,]\d+)?').firstMatch(value.replaceAll(',', '.'));
+    final match = RegExp(
+      r'[\d]+(?:[.,]\d+)?',
+    ).firstMatch(value.replaceAll(',', '.'));
     if (match == null) return null;
     return double.tryParse(match.group(0)!.replaceAll(',', '.'));
+  }
+
+  static String _normalizeText(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static int _tokenOverlap(String a, String b) {
+    final aTokens = a.split(' ').where((e) => e.isNotEmpty).toSet();
+    final bTokens = b.split(' ').where((e) => e.isNotEmpty).toSet();
+    return aTokens.intersection(bTokens).length;
   }
 }

@@ -34,6 +34,32 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
   final _scrollCtrl = ScrollController();
   late AnimationController _scanAnimCtrl;
 
+  bool get _isTurkish =>
+      Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+
+  String _uiText({required String tr, required String en}) {
+    return _isTurkish ? tr : en;
+  }
+
+  String get _responseLanguageName {
+    const names = <String, String>{
+      'tr': 'Turkish',
+      'en': 'English',
+      'de': 'German',
+      'fr': 'French',
+      'es': 'Spanish',
+      'it': 'Italian',
+      'pt': 'Portuguese',
+      'ru': 'Russian',
+      'ar': 'Arabic',
+      'zh': 'Chinese',
+      'ja': 'Japanese',
+      'ko': 'Korean',
+    };
+    final code = Localizations.localeOf(context).languageCode.toLowerCase();
+    return names[code] ?? 'English';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -97,7 +123,8 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
             '2. Key specifications\n'
             '3. Approximate price range\n'
             '4. Quick verdict (is it worth buying?)\n\n'
-            'Be concise but informative. Use bullet points.',
+            'Be concise but informative. Use bullet points.\n'
+            'IMPORTANT: Respond in $_responseLanguageName.',
       );
 
       setState(() {
@@ -107,9 +134,15 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     } catch (e) {
       setState(() {
         _hasResult = true;
-        _chatMessages.add(_ScannerChat(
+        _chatMessages.add(
+          _ScannerChat(
             role: _ChatRole.ai,
-            text: 'Could not analyze the image. Please try again.'));
+            text: _uiText(
+              tr: 'Gorsel analiz edilemedi. Lutfen tekrar deneyin.',
+              en: 'Could not analyze the image. Please try again.',
+            ),
+          ),
+        );
       });
     } finally {
       _scanAnimCtrl.stop();
@@ -135,8 +168,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
       final gemini = ref.read(geminiServiceProvider);
       final chatContext = _chatMessages
-          .map((m) =>
-              '${m.role == _ChatRole.user ? "User" : "AI"}: ${m.text}')
+          .map((m) => '${m.role == _ChatRole.user ? "User" : "AI"}: ${m.text}')
           .join('\n');
 
       final response = await gemini.analyzeImage(
@@ -145,7 +177,8 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
         prompt:
             'Previous conversation about this product:\n$chatContext\n\n'
             'User\'s follow-up question: $question\n\n'
-            'Answer concisely based on the product in the image.',
+            'Answer concisely based on the product in the image.\n'
+            'IMPORTANT: Respond in $_responseLanguageName.',
       );
 
       setState(() {
@@ -153,9 +186,15 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
       });
     } catch (e) {
       setState(() {
-        _chatMessages.add(_ScannerChat(
+        _chatMessages.add(
+          _ScannerChat(
             role: _ChatRole.ai,
-            text: 'Sorry, I couldn\'t process that. Try again.'));
+            text: _uiText(
+              tr: 'Uzgunum, bu istegi isleyemedim. Tekrar deneyin.',
+              en: 'Sorry, I couldn\'t process that. Try again.',
+            ),
+          ),
+        );
       });
     } finally {
       setState(() => _isScanning = false);
@@ -199,8 +238,9 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
             Positioned.fill(child: CameraPreview(_camCtrl!))
           else
             const Positioned.fill(
-              child:
-                  Center(child: CircularProgressIndicator(color: AppTheme.neonCyan)),
+              child: Center(
+                child: CircularProgressIndicator(color: AppTheme.neonCyan),
+              ),
             ),
 
           // Dark overlay when result shown
@@ -241,14 +281,17 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                     color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white, size: 22),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Visual Scanner',
+                  _uiText(tr: 'Gorsel Tarayici', en: 'Visual Scanner'),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -266,8 +309,11 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.refresh_rounded,
-                        color: Colors.white, size: 22),
+                    child: const Icon(
+                      Icons.refresh_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
             ],
@@ -306,7 +352,10 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
             children: [
               if (!_isScanning)
                 Text(
-                  'Point camera at a product to scan',
+                  _uiText(
+                    tr: 'Taramak icin kamerayi urune dogrultun',
+                    en: 'Point camera at a product to scan',
+                  ),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     color: Colors.white.withValues(alpha: 0.8),
@@ -325,7 +374,8 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                     gradient: _isScanning
                         ? null
                         : const LinearGradient(
-                            colors: [AppTheme.brandBlue, AppTheme.neonCyan]),
+                            colors: [AppTheme.brandBlue, AppTheme.neonCyan],
+                          ),
                     color: _isScanning
                         ? Colors.white.withValues(alpha: 0.2)
                         : null,
@@ -347,8 +397,11 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                             strokeWidth: 3,
                           ),
                         )
-                      : const Icon(Icons.document_scanner_rounded,
-                          color: Colors.white, size: 32),
+                      : const Icon(
+                          Icons.document_scanner_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                 ),
               ),
             ],
@@ -402,12 +455,15 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                       gradient: AppTheme.primaryGradient,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.auto_awesome,
-                        color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.auto_awesome,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Scan Result',
+                    _uiText(tr: 'Tarama Sonucu', en: 'Scan Result'),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -422,8 +478,10 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
             Flexible(
               child: ListView.builder(
                 controller: _scrollCtrl,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 itemCount: _chatMessages.length + (_isScanning ? 1 : 0),
                 itemBuilder: (context, i) {
                   if (i == _chatMessages.length && _isScanning) {
@@ -500,7 +558,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
             ),
             const SizedBox(width: 8),
             Text(
-              'Analyzing...',
+              _uiText(tr: 'Analiz ediliyor...', en: 'Analyzing...'),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 color: context.textSecondary,
@@ -519,21 +577,23 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(
-                color: context.dividerColor.withValues(alpha: 0.5)),
+            top: BorderSide(color: context.dividerColor.withValues(alpha: 0.5)),
           ),
         ),
         child: Row(
           children: [
             Expanded(
               child: Container(
-                constraints:
-                    const BoxConstraints(minHeight: 40, maxHeight: 100),
+                constraints: const BoxConstraints(
+                  minHeight: 40,
+                  maxHeight: 100,
+                ),
                 decoration: BoxDecoration(
                   color: context.surfaceVariantColor,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: context.dividerColor.withValues(alpha: 0.5)),
+                    color: context.dividerColor.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: TextField(
                   controller: _questionCtrl,
@@ -544,7 +604,10 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                     color: context.textPrimary,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Ask about this product...',
+                    hintText: _uiText(
+                      tr: 'Bu urun hakkinda soru sorun...',
+                      en: 'Ask about this product...',
+                    ),
                     hintStyle: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       color: context.textTertiaryColor,
@@ -552,7 +615,9 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                 ),
               ),
@@ -567,8 +632,11 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                   shape: BoxShape.circle,
                   gradient: AppTheme.primaryGradient,
                 ),
-                child: const Icon(Icons.arrow_upward_rounded,
-                    color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.arrow_upward_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -588,9 +656,9 @@ class _ScanLinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final y = size.height * progress;
     const m = 80.0;
     const l = 30.0;
+    final y = m + (size.height - (m * 2)) * progress;
 
     // Scan line (constrained to bracket area)
     final linePaint = Paint()
@@ -602,18 +670,6 @@ class _ScanLinePainter extends CustomPainter {
         ],
       ).createShader(Rect.fromLTWH(m, y - 1, size.width - 2 * m, 2));
     canvas.drawRect(Rect.fromLTWH(m, y - 1, size.width - 2 * m, 2), linePaint);
-
-    // Glow area above scan line
-    final glowPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          color.withValues(alpha: 0.0),
-          color.withValues(alpha: 0.08),
-        ],
-      ).createShader(Rect.fromLTWH(m, y - 60, size.width - 2 * m, 60));
-    canvas.drawRect(Rect.fromLTWH(m, y - 60, size.width - 2 * m, 60), glowPaint);
 
     // Corner brackets
     final cornerPaint = Paint()
@@ -627,19 +683,37 @@ class _ScanLinePainter extends CustomPainter {
     canvas.drawLine(Offset(m, m), Offset(m, m + l), cornerPaint);
     // Top-right
     canvas.drawLine(
-        Offset(size.width - m, m), Offset(size.width - m - l, m), cornerPaint);
-    canvas.drawLine(Offset(size.width - m, m),
-        Offset(size.width - m, m + l), cornerPaint);
+      Offset(size.width - m, m),
+      Offset(size.width - m - l, m),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width - m, m),
+      Offset(size.width - m, m + l),
+      cornerPaint,
+    );
     // Bottom-left
-    canvas.drawLine(Offset(m, size.height - m),
-        Offset(m + l, size.height - m), cornerPaint);
-    canvas.drawLine(Offset(m, size.height - m),
-        Offset(m, size.height - m - l), cornerPaint);
+    canvas.drawLine(
+      Offset(m, size.height - m),
+      Offset(m + l, size.height - m),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(m, size.height - m),
+      Offset(m, size.height - m - l),
+      cornerPaint,
+    );
     // Bottom-right
-    canvas.drawLine(Offset(size.width - m, size.height - m),
-        Offset(size.width - m - l, size.height - m), cornerPaint);
-    canvas.drawLine(Offset(size.width - m, size.height - m),
-        Offset(size.width - m, size.height - m - l), cornerPaint);
+    canvas.drawLine(
+      Offset(size.width - m, size.height - m),
+      Offset(size.width - m - l, size.height - m),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width - m, size.height - m),
+      Offset(size.width - m, size.height - m - l),
+      cornerPaint,
+    );
   }
 
   @override

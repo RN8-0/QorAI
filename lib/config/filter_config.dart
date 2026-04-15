@@ -36,7 +36,8 @@ class FilterDefinition {
     this.specKeys = const [],
   });
 
-  FilterDefinition withOptions(List<FilterOption> newOptions) => FilterDefinition(
+  FilterDefinition withOptions(List<FilterOption> newOptions) =>
+      FilterDefinition(
         id: id,
         label: label,
         type: type,
@@ -52,8 +53,11 @@ class FilterDefinition {
 // ---------------------------------------------------------------------------
 // Helper to build a FilterOption list from plain string labels.
 // ---------------------------------------------------------------------------
-List<FilterOption> _opts(List<String> labels) =>
-    labels.map((l) => FilterOption(id: l.toLowerCase().replaceAll(' ', '_'), label: l)).toList();
+List<FilterOption> _opts(List<String> labels) => labels
+    .map(
+      (l) => FilterOption(id: l.toLowerCase().replaceAll(' ', '_'), label: l),
+    )
+    .toList();
 
 // ---------------------------------------------------------------------------
 // Shared dynamic brand filter – options populated at runtime from products
@@ -119,7 +123,11 @@ const List<FilterDefinition> _smartphoneFilters = [
     minValue: 1500,
     maxValue: 7000,
     unit: 'mAh',
-    specKeys: ['Battery Capacity', 'battery capacity', 'Battery Capacity (Typical)'],
+    specKeys: [
+      'Battery Capacity',
+      'battery capacity',
+      'Battery Capacity (Typical)',
+    ],
   ),
   FilterDefinition(
     id: 'os',
@@ -210,7 +218,16 @@ const List<FilterDefinition> _laptopFilters = [
       FilterOption(id: 'apple', label: 'Apple'),
       FilterOption(id: 'qualcomm', label: 'Qualcomm'),
     ],
-    specKeys: ['Processor Brand', 'processor brand'],
+    specKeys: [
+      'Processor Brand',
+      'processor brand',
+      'Processor',
+      'CPU',
+      'Chip',
+      'Chipset',
+      'Processor Model',
+      'Processor Type',
+    ],
   ),
   FilterDefinition(
     id: 'ram',
@@ -257,7 +274,7 @@ const List<FilterDefinition> _laptopFilters = [
       FilterOption(id: 'linux', label: 'Linux'),
       FilterOption(id: 'chromeos', label: 'ChromeOS'),
     ],
-    specKeys: ['Operating System'],
+    specKeys: ['Operating System', 'OS', 'Platform'],
   ),
   FilterDefinition(
     id: 'gpu_type',
@@ -267,7 +284,14 @@ const List<FilterDefinition> _laptopFilters = [
       FilterOption(id: 'integrated', label: 'Integrated'),
       FilterOption(id: 'dedicated', label: 'Dedicated'),
     ],
-    specKeys: ['Graphics Card', 'GPU', 'graphics processor'],
+    specKeys: [
+      'Graphics Card',
+      'GPU',
+      'graphics processor',
+      'Graphics',
+      'Graphics Card Type',
+      'Video Card',
+    ],
   ),
   FilterDefinition(
     id: 'weight',
@@ -290,7 +314,7 @@ const List<FilterDefinition> _laptopFilters = [
       FilterOption(id: '165_hz', label: '165 Hz'),
       FilterOption(id: '240_hz', label: '240 Hz'),
     ],
-    specKeys: ['Screen Refresh Rate', 'refresh rate'],
+    specKeys: ['Screen Refresh Rate', 'refresh rate', 'Refresh Rate'],
   ),
 ];
 
@@ -1538,12 +1562,16 @@ class FilterConfig {
             final cmp = brandCount[b]!.compareTo(brandCount[a]!);
             return cmp != 0 ? cmp : a.compareTo(b);
           });
-        return def.withOptions(sorted
-            .map((b) => FilterOption(
+        return def.withOptions(
+          sorted
+              .map(
+                (b) => FilterOption(
                   id: b.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
                   label: b,
-                ))
-            .toList());
+                ),
+              )
+              .toList(),
+        );
       }
 
       // Generic dynamic: extract unique values from product specs
@@ -1551,8 +1579,7 @@ class FilterConfig {
       for (final p in products) {
         for (final key in def.specKeys) {
           final specs = (p.specs as Map<String, dynamic>?) ?? {};
-          final specSections =
-              (p.specSections as Map<String, dynamic>?) ?? {};
+          final specSections = (p.specSections as Map<String, dynamic>?) ?? {};
           final v = specs[key]?.toString();
           if (v != null && v.isNotEmpty) valueSet.add(v);
           for (final section in specSections.values) {
@@ -1565,12 +1592,16 @@ class FilterConfig {
       }
       if (valueSet.isEmpty) return def;
       final sorted = valueSet.toList()..sort();
-      return def.withOptions(sorted
-          .map((v) => FilterOption(
+      return def.withOptions(
+        sorted
+            .map(
+              (v) => FilterOption(
                 id: v.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
                 label: v,
-              ))
-          .toList());
+              ),
+            )
+            .toList(),
+      );
     }).toList();
   }
 }
