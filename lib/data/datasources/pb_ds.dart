@@ -22,6 +22,9 @@ import 'package:compair/data/models/chat_conversation.dart';
 class PbDataSource {
   final PocketBase _pb;
   late final Dio _dio;
+  static const _savedAnalysesCollection = 'saved_analyses';
+  static const _linkHistoryCategory = 'link_history';
+  static const _subscriptionHistoryCategory = 'subscription_history';
 
   // ─── Local search result cache (recent queries, max 30, 5 min TTL) ───
   static final Map<String, ({List<ProductModel> results, DateTime time})>
@@ -203,16 +206,60 @@ class PbDataSource {
   Future<void> saveSubscriptionHistory(
     String uid,
     Map<String, dynamic> entry,
-  ) async => _appendUserArray(uid, 'subscriptionHistory', entry);
+  ) async {
+    try {
+      final services = (entry['services'] as List?)?.cast<String>() ?? const [];
+      final rawScores = entry['scores'];
+      final scores = rawScores is Map
+          ? rawScores.map((key, value) => MapEntry(key.toString(), value))
+          : const <String, dynamic>{};
+      final winner = entry['winner']?.toString();
+      final aiScore = winner != null
+          ? (scores[winner] as num?)?.toDouble()
+          : scores.values
+                    .whereType<num>()
+                    .map((value) => value.toDouble())
+                    .fold<double>(0, (sum, value) => sum + value) /
+                (scores.isEmpty ? 1 : scores.length);
+      final normalizedScore = (aiScore ?? 0).isFinite ? (aiScore ?? 0) : 0;
+
+      await _pb
+          .collection(_savedAnalysesCollection)
+          .create(
+            body: {
+              'userId': uid,
+              'title': services.join(' vs '),
+              'category': _subscriptionHistoryCategory,
+              'analysisData': {...entry, 'type': 'subscription'},
+              'aiScore': normalizedScore,
+              'aiSummary': (entry['analysisResult'] as String? ?? '').substring(
+                0,
+                (entry['analysisResult'] as String? ?? '').length.clamp(
+                  0,
+                  5000,
+                ),
+              ),
+              'savedAt':
+                  entry['timestamp'] as String? ??
+                  DateTime.now().toIso8601String(),
+            },
+          );
+    } catch (e) {
+      debugPrint('[PB] saveSubscriptionHistory failed: $e');
+    }
+  }
 
   Future<void> updateSubscriptionHistory(
     String uid,
     List<Map<String, dynamic>> history,
   ) async {
     try {
-      await _pb
-          .collection(AppConstants.usersCollection)
-          .update(uid, body: {'subscriptionHistory': history});
+      await _replaceSavedHistory(
+        uid: uid,
+        category: _subscriptionHistoryCategory,
+        history: history,
+        saveEntry: saveSubscriptionHistory,
+      );
     } catch (e) {
       debugPrint('[PB] updateSubscriptionHistory failed: $e');
     }
@@ -220,12 +267,16 @@ class PbDataSource {
 
   Future<List<Map<String, dynamic>>> getSubscriptionHistory(String uid) async {
     try {
-      final user = await _pb
-          .collection(AppConstants.usersCollection)
-          .getOne(uid);
-      final list = user.data['subscriptionHistory'];
-      if (list is! List) return [];
-      return list.cast<Map<String, dynamic>>().reversed.take(20).toList();
+      final result = await _pb
+          .collection(_savedAnalysesCollection)
+          .getList(
+            page: 1,
+            perPage: 50,
+            filter:
+                'userId = "$uid" && category = "$_subscriptionHistoryCategory"',
+            sort: '-savedAt,-created',
+          );
+      return result.items.map(_mapSubscriptionHistoryRecord).take(20).toList();
     } catch (_) {
       return [];
     }
@@ -236,21 +287,35 @@ class PbDataSource {
     Map<String, dynamic> entry,
   ) async {
     try {
-      final user = await _pb
-          .collection(AppConstants.usersCollection)
-          .getOne(uid);
-      final data = user.data;
-      final existing =
-          (data['linkAnalysisHistory'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
-      final url = entry['url'] as String? ?? '';
-      final deduped = existing.where((e) => e['url'] != url).toList();
-      deduped.insert(0, entry);
-      final trimmed = deduped.take(30).toList();
+      final title =
+          entry['title'] as String? ??
+          entry['productName'] as String? ??
+          ((entry['products'] as List?)?.cast<String>() ?? const []).join(
+            ' vs ',
+          );
+      final summary =
+          entry['analysis'] as String? ??
+          ((entry['result'] as Map<String, dynamic>?)?['detailedVerdict']
+              as String?) ??
+          '';
+      final score = (entry['score'] as num?)?.toDouble() ?? 0.0;
+
       await _pb
-          .collection(AppConstants.usersCollection)
-          .update(uid, body: {'linkAnalysisHistory': trimmed});
+          .collection(_savedAnalysesCollection)
+          .create(
+            body: {
+              'userId': uid,
+              'url': entry['url'] as String? ?? '',
+              'title': title,
+              'category': _linkHistoryCategory,
+              'analysisData': {...entry, 'type': entry['type'] ?? 'single'},
+              'aiScore': score,
+              'aiSummary': summary.substring(0, summary.length.clamp(0, 5000)),
+              'savedAt':
+                  entry['timestamp'] as String? ??
+                  DateTime.now().toIso8601String(),
+            },
+          );
     } catch (e) {
       debugPrint('[PB] saveLinkAnalysisHistory failed: $e');
     }
@@ -261,9 +326,12 @@ class PbDataSource {
     List<Map<String, dynamic>> history,
   ) async {
     try {
-      await _pb
-          .collection(AppConstants.usersCollection)
-          .update(uid, body: {'linkAnalysisHistory': history});
+      await _replaceSavedHistory(
+        uid: uid,
+        category: _linkHistoryCategory,
+        history: history,
+        saveEntry: saveLinkAnalysisHistory,
+      );
     } catch (e) {
       debugPrint('[PB] updateLinkAnalysisHistory failed: $e');
     }
@@ -271,12 +339,15 @@ class PbDataSource {
 
   Future<List<Map<String, dynamic>>> getLinkAnalysisHistory(String uid) async {
     try {
-      final user = await _pb
-          .collection(AppConstants.usersCollection)
-          .getOne(uid);
-      final list = user.data['linkAnalysisHistory'];
-      if (list is! List) return [];
-      return list.cast<Map<String, dynamic>>().take(30).toList();
+      final result = await _pb
+          .collection(_savedAnalysesCollection)
+          .getList(
+            page: 1,
+            perPage: 50,
+            filter: 'userId = "$uid" && category = "$_linkHistoryCategory"',
+            sort: '-savedAt,-created',
+          );
+      return result.items.map(_mapLinkHistoryRecord).take(30).toList();
     } catch (_) {
       return [];
     }
@@ -1131,21 +1202,116 @@ class PbDataSource {
   }) async {
     try {
       await _pb
-          .collection('saved_analyses')
+          .collection(_savedAnalysesCollection)
           .create(
             body: {
               'userId': userId,
               'url': url,
-              'productName': productName,
-              'score': score,
-              'analysis': analysis,
-              if (imageUrl != null) 'imageUrl': imageUrl,
-              if (category != null) 'category': category,
+              'title': productName,
+              'category': category ?? 'saved_link_analysis',
+              'analysisData': {
+                'type': 'saved_link_analysis',
+                'url': url,
+                'title': productName,
+                'imageUrl': imageUrl,
+                'analysis': analysis,
+                'category': category,
+              },
+              'aiScore': score,
+              'aiSummary': analysis.substring(
+                0,
+                analysis.length.clamp(0, 5000),
+              ),
+              'savedAt': DateTime.now().toIso8601String(),
             },
           );
     } catch (e) {
       throw ServerException(message: 'Could not save analysis: $e');
     }
+  }
+
+  Future<void> _replaceSavedHistory({
+    required String uid,
+    required String category,
+    required List<Map<String, dynamic>> history,
+    required Future<void> Function(String uid, Map<String, dynamic> entry)
+    saveEntry,
+  }) async {
+    final existing = await _pb
+        .collection(_savedAnalysesCollection)
+        .getList(
+          page: 1,
+          perPage: 100,
+          filter: 'userId = "$uid" && category = "$category"',
+        );
+    for (final item in existing.items) {
+      await _pb.collection(_savedAnalysesCollection).delete(item.id);
+    }
+    for (final entry in history.reversed) {
+      await saveEntry(uid, entry);
+    }
+  }
+
+  Map<String, dynamic> _mapLinkHistoryRecord(RecordModel record) {
+    final data = record.data;
+    final analysisData =
+        (data['analysisData'] as Map?)?.map(
+          (key, value) => MapEntry(key.toString(), value),
+        ) ??
+        const <String, dynamic>{};
+    return {
+      'id': record.id,
+      'type': analysisData['type'] ?? 'single',
+      'url': data['url']?.toString() ?? analysisData['url']?.toString() ?? '',
+      'productName':
+          data['title']?.toString() ??
+          analysisData['productName']?.toString() ??
+          analysisData['title']?.toString() ??
+          '',
+      'score':
+          (data['aiScore'] as num?)?.toDouble() ??
+          (analysisData['score'] as num?)?.toDouble() ??
+          0.0,
+      'timestamp':
+          data['savedAt']?.toString() ??
+          analysisData['timestamp']?.toString() ??
+          record.created,
+      if (analysisData['result'] != null) 'result': analysisData['result'],
+      if (analysisData['results'] != null) 'results': analysisData['results'],
+      if (analysisData['products'] != null)
+        'products': analysisData['products'],
+      if (analysisData['urls'] != null) 'urls': analysisData['urls'],
+      if (analysisData['analysis'] != null)
+        'analysis': analysisData['analysis'],
+    };
+  }
+
+  Map<String, dynamic> _mapSubscriptionHistoryRecord(RecordModel record) {
+    final data = record.data;
+    final analysisData =
+        (data['analysisData'] as Map?)?.map(
+          (key, value) => MapEntry(key.toString(), value),
+        ) ??
+        const <String, dynamic>{};
+    return {
+      'id': record.id,
+      'timestamp':
+          data['savedAt']?.toString() ??
+          analysisData['timestamp']?.toString() ??
+          record.created,
+      'services':
+          (analysisData['services'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          <String>[],
+      'scores': analysisData['scores'] ?? const <String, dynamic>{},
+      'winner': analysisData['winner'],
+      'analysisResult':
+          analysisData['analysisResult']?.toString() ??
+          data['aiSummary']?.toString() ??
+          '',
+      'structured': analysisData['structured'],
+    };
   }
 
   Future<void> addToUserOwnedProducts({

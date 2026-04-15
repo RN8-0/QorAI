@@ -240,6 +240,21 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     return _isTurkish ? '$day.$month.$year' : '$month/$day/$year';
   }
 
+  DateTime? _resolveSubscriptionDate(
+    SubscriptionStatus status, {
+    required bool isStart,
+  }) {
+    final directDate = isStart ? status.purchaseDate : status.expirationDate;
+    if (directDate != null) return directDate;
+
+    final user = ref.read(userProfileProvider).valueOrNull;
+    final premiumDetails = user?.userSubscriptionDetails['premium'];
+    final rawValue = premiumDetails?[isStart ? 'startedAt' : 'expiresAt']
+        ?.toString();
+    if (rawValue == null || rawValue.isEmpty) return null;
+    return DateTime.tryParse(rawValue);
+  }
+
   void _handlePurchaseTap() {
     // Auth gate: require logged-in user
     final authRecord = pb.authStore.record;
@@ -927,7 +942,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               _buildSubscriptionMetaRow(
                 icon: Icons.calendar_today_rounded,
                 label: _txt(tr: 'Baslangic tarihi', en: 'Started on'),
-                value: _formatDate(status.purchaseDate),
+                value: _formatDate(
+                  _resolveSubscriptionDate(status, isStart: true),
+                ),
               ),
               const SizedBox(height: 12),
               _buildSubscriptionMetaRow(
@@ -936,7 +953,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                   tr: 'Tahmini yenilenme / bitis',
                   en: 'Estimated renewal / end',
                 ),
-                value: _formatDate(status.expirationDate),
+                value: _formatDate(
+                  _resolveSubscriptionDate(status, isStart: false),
+                ),
               ),
               const SizedBox(height: 12),
               _buildSubscriptionMetaRow(

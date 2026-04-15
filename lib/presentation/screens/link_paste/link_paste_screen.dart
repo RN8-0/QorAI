@@ -28,6 +28,17 @@ part 'widgets/enhanced_result_widget.dart';
 part 'widgets/multi_compare_widget.dart';
 part 'widgets/result_detail_widgets.dart';
 
+bool _isTurkishLinkLocale(BuildContext context) =>
+    Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+
+String _linkText(
+  BuildContext context, {
+  required String tr,
+  required String en,
+}) {
+  return _isTurkishLinkLocale(context) ? tr : en;
+}
+
 class LinkPasteScreen extends ConsumerStatefulWidget {
   const LinkPasteScreen({super.key});
 
@@ -44,6 +55,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   final TextEditingController _singleUrlController = TextEditingController();
   final FocusNode _singleFocusNode = FocusNode();
   String? _detectedClipboardUrl; // Legacy - kept for old widgets
+  String? _lastSavedSingleHistoryKey;
+  String? _lastSavedCompareHistoryKey;
 
   // === COMPARE TAB (up to 4 links) ===
   final List<TextEditingController> _compareControllers = List.generate(
@@ -144,11 +157,56 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     }
   }
 
+  String? _extractUrlCandidate(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return null;
+
+    final match = RegExp("https?://[^\\s<>\"'`]+").firstMatch(trimmed);
+    final candidate = (match?.group(0) ?? trimmed)
+        .replaceAll(RegExp(r'[)\],.;]+$'), '')
+        .trim();
+    return _isValidUrl(candidate) ? candidate : null;
+  }
+
+  Future<void> _pasteClipboardInto(
+    TextEditingController controller, {
+    FocusNode? focusNode,
+  }) async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final pastedUrl = _extractUrlCandidate(data?.text ?? '');
+    if (pastedUrl == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _linkText(
+              context,
+              tr: 'Panoda gecerli bir baglanti bulunamadi.',
+              en: 'No valid URL was found in the clipboard.',
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      controller.text = pastedUrl;
+      controller.selection = TextSelection.collapsed(
+        offset: controller.text.length,
+      );
+    });
+    focusNode?.requestFocus();
+  }
+
   void _resetLinkFields() {
     _singleUrlController.clear();
     _multiLinkUrls = [];
     _multiLinkResults = [];
     _currentMultiLinkIndex = 0;
+    _lastSavedSingleHistoryKey = null;
   }
 
   void _resetCompareFields() {
@@ -156,6 +214,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       c.clear();
     }
     _visibleCompareFields = 2;
+    _lastSavedCompareHistoryKey = null;
     ref.read(compareAnalysisProvider.notifier).reset();
   }
 
@@ -206,7 +265,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   /// Single Analysis tab — start quiz flow for one URL
   Future<void> _startSingleAnalysis() async {
-    final url = _singleUrlController.text.trim();
+    final normalizedUrl = _extractUrlCandidate(_singleUrlController.text);
+    final url = normalizedUrl ?? _singleUrlController.text.trim();
+    if (normalizedUrl != null && _singleUrlController.text != normalizedUrl) {
+      _singleUrlController.text = normalizedUrl;
+    }
     if (url.isEmpty || !_isValidUrl(url)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -237,17 +300,24 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   /// Compare tab — analyze all URLs via background-safe provider
   Future<void> _startCompareAnalysis() async {
-    final validUrls = _compareControllers
-        .take(_visibleCompareFields)
-        .map((c) => c.text.trim())
-        .where((u) => u.isNotEmpty && _isValidUrl(u))
-        .toList();
+    final validUrls = <String>[];
+    for (final controller in _compareControllers.take(_visibleCompareFields)) {
+      final normalized = _extractUrlCandidate(controller.text);
+      if (normalized != null) {
+        controller.text = normalized;
+        validUrls.add(normalized);
+      }
+    }
 
     if (validUrls.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please enter at least 2 valid product URLs',
+            _linkText(
+              context,
+              tr: 'Lutfen en az 2 gecerli urun baglantisi girin.',
+              en: 'Please enter at least 2 valid product URLs.',
+            ),
             style: GoogleFonts.plusJakartaSans(
               color: context.surfaceVariantColor,
             ),
@@ -495,6 +565,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         child: Column(
           children: [
             _buildMultiLinkComparison(),
+            Builder(
+              builder: (_) {
+                Future.microtask(
+                  () => _saveCompareHistory(compareState.results),
+                );
+                return const SizedBox.shrink();
+              },
+            ),
             SizedBox(
               height:
                   AppTheme.navBarTotalClearance +
@@ -752,10 +830,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             size: 18,
                           ),
                           onPressed: () async {
-                            final data = await Clipboard.getData('text/plain');
-                            if (data?.text != null) {
-                              _singleUrlController.text = data!.text!;
-                            }
+                            await _pasteClipboardInto(
+                              _singleUrlController,
+                              focusNode: _singleFocusNode,
+                            );
                           },
                         ),
                       ),
@@ -1075,10 +1153,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               size: 18,
             ),
             onPressed: () async {
-              final data = await Clipboard.getData('text/plain');
-              if (data?.text != null) {
-                _compareControllers[index].text = data!.text!;
-              }
+              await _pasteClipboardInto(
+                _compareControllers[index],
+                focusNode: _compareFocusNodes[index],
+              );
             },
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -3372,11 +3450,21 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     required double score,
     EnhancedAnalysisResult? result,
   }) async {
+    final historyKey = '$url|${result?.enhancedScore ?? score}';
+    if (_lastSavedSingleHistoryKey == historyKey) return;
+    _lastSavedSingleHistoryKey = historyKey;
+
     final entry = {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'type': 'single',
       'url': url,
       'productName': productName,
       'score': score,
+      if (result != null) 'analysis': result.detailedVerdict,
+      if (result != null && result.baseResult.category != null)
+        'category': result.baseResult.category,
+      if (result != null && result.baseResult.metadata.image != null)
+        'imageUrl': result.baseResult.metadata.image,
       'timestamp': DateTime.now().toIso8601String(),
       if (result != null) 'result': result.toJson(),
     };
@@ -3414,6 +3502,55 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         jsonEncode(trimmed),
         duration: const Duration(days: 30),
       );
+    } catch (_) {}
+  }
+
+  Future<void> _saveCompareHistory(List<EnhancedAnalysisResult> results) async {
+    if (results.length < 2) return;
+    final urls = results.map((result) => result.baseResult.url).toList();
+    final historyKey = urls.join('|');
+    if (_lastSavedCompareHistoryKey == historyKey) return;
+    _lastSavedCompareHistoryKey = historyKey;
+
+    final products = results.map((result) {
+      final title = result.baseResult.metadata.title?.trim();
+      return (title == null || title.isEmpty)
+          ? (context.l10n?.productLabel ?? 'Product')
+          : title;
+    }).toList();
+    final averageScore =
+        results.fold<double>(0, (sum, result) => sum + result.enhancedScore) /
+        results.length;
+    final entry = {
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'type': 'compare',
+      'title': products.join(' vs '),
+      'productName': products.join(' vs '),
+      'products': products,
+      'urls': urls,
+      'score': averageScore,
+      'analysis': '',
+      'timestamp': DateTime.now().toIso8601String(),
+      'results': results.map((result) => result.toJson()).toList(),
+    };
+
+    try {
+      ref
+          .read(pendingLinkAnalysisHistoryProvider.notifier)
+          .update(
+            (list) => [entry, ...list.where((e) => e['id'] != entry['id'])],
+          );
+    } catch (_) {}
+
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        ref
+            .read(pbDataSourceProvider)
+            .saveLinkAnalysisHistory(auth, entry)
+            .then((_) => ref.invalidate(linkAnalysisHistoryProvider))
+            .catchError((_) {});
+      }
     } catch (_) {}
   }
 

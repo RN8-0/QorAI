@@ -1564,8 +1564,41 @@ class _SubResultView extends StatelessWidget {
     return rawPrice;
   }
 
+  bool _isTr(BuildContext context) =>
+      Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+
+  String _txt(BuildContext context, {required String tr, required String en}) {
+    return _isTr(context) ? tr : en;
+  }
+
+  String _factorLabel(BuildContext context, String key) {
+    switch (key.trim().toLowerCase()) {
+      case 'usage_fit':
+        return _txt(context, tr: 'Kullanim Uyumu', en: 'Usage Fit');
+      case 'value_match':
+        return _txt(context, tr: 'Fiyat / Deger Uyumu', en: 'Value Match');
+      case 'content_match':
+        return _txt(context, tr: 'Icerik Uyumu', en: 'Content Match');
+      case 'ecosystem_fit':
+        return _txt(context, tr: 'Ekosistem Uyumu', en: 'Ecosystem Fit');
+      case 'lifestyle_match':
+        return _txt(context, tr: 'Yasam Tarzi Uyumu', en: 'Lifestyle Match');
+      default:
+        return key
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map(
+              (word) => word.isNotEmpty
+                  ? '${word[0].toUpperCase()}${word.substring(1)}'
+                  : '',
+            )
+            .join(' ');
+    }
+  }
+
   /// Build readable text from structured data — NEVER show raw JSON.
   String _readableAnalysis(
+    BuildContext context,
     String raw,
     Map<String, dynamic> subs,
     Map<String, dynamic> winner,
@@ -1605,11 +1638,19 @@ class _SubResultView extends StatelessWidget {
           return parsed['analysis'] as String? ??
               parsed['summary'] as String? ??
               parsed['recommendation'] as String? ??
-              'Analysis complete. See the detailed results above.';
+              _txt(
+                context,
+                tr: 'Analiz tamamlandi. Ayrintili sonucu yukaridan inceleyin.',
+                en: 'Analysis complete. See the detailed results above.',
+              );
         }
       } catch (_) {}
       // Absolute fallback — never show JSON
-      return 'Analysis complete. See the detailed results above.';
+      return _txt(
+        context,
+        tr: 'Analiz tamamlandi. Ayrintili sonucu yukaridan inceleyin.',
+        en: 'Analysis complete. See the detailed results above.',
+      );
     }
     return raw;
   }
@@ -1817,7 +1858,7 @@ class _SubResultView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 MarkdownBody(
-                  data: _readableAnalysis(analysisText, subs, winner),
+                  data: _readableAnalysis(context, analysisText, subs, winner),
                   selectable: true,
                   styleSheet: MarkdownStyleSheet(
                     p: GoogleFonts.plusJakartaSans(
@@ -1869,7 +1910,7 @@ class _SubResultView extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Overall Winner',
+                _txt(context, tr: 'Genel Kazanan', en: 'Overall Winner'),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   color: context.textSecondary,
@@ -1883,14 +1924,15 @@ class _SubResultView extends StatelessWidget {
                     _buildMiniWinner(
                       context,
                       '💰',
-                      'Best Value',
+                      context.l10n?.bestValue ??
+                          _txt(context, tr: 'En Iyi Deger', en: 'Best Value'),
                       winner['best_value'] as String,
                     ),
                   if (winner['best_content'] != null)
                     _buildMiniWinner(
                       context,
                       '✨',
-                      'Best Content',
+                      _txt(context, tr: 'En Iyi Icerik', en: 'Best Content'),
                       winner['best_content'] as String,
                     ),
                 ],
@@ -2032,15 +2074,7 @@ class _SubResultView extends StatelessWidget {
             const SizedBox(height: 16),
             ...factors.entries.map((f) {
               final fScore = (f.value as num?)?.toDouble() ?? 0;
-              final label = f.key
-                  .replaceAll('_', ' ')
-                  .split(' ')
-                  .map(
-                    (w) => w.isNotEmpty
-                        ? '${w[0].toUpperCase()}${w.substring(1)}'
-                        : '',
-                  )
-                  .join(' ');
+              final label = _factorLabel(context, f.key);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(

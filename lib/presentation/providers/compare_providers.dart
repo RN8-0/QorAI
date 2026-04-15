@@ -928,6 +928,14 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   void reset() {
     state = const CompareAnalysisState();
   }
+
+  void restoreFromHistory(List<EnhancedAnalysisResult> results) {
+    state = CompareAnalysisState(
+      phase: ComparePhase.done,
+      results: results,
+      validUrls: results.map((result) => result.baseResult.url).toList(),
+    );
+  }
 }
 
 final compareAnalysisProvider =

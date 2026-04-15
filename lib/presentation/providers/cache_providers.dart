@@ -665,7 +665,6 @@ class _AlternativesCacheNotifier
 
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
-      final cat = category.isEmpty ? 'tech product' : category;
       final result = await deepseek.jsonFreeTextQuery(
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
@@ -767,7 +766,6 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
 
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
-      final cat = category.isEmpty ? 'tech product' : category;
       final result = await deepseek.jsonFreeTextQuery(
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
@@ -852,7 +850,8 @@ class _PredictionCacheNotifier
     state = const AsyncValue.loading();
 
     // Disk cache check
-    final cacheKey = 'prediction_$_productId';
+    final normalizedLanguage = language.trim().toLowerCase();
+    final cacheKey = 'prediction_${normalizedLanguage}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     try {
       final cached = await cache.get<String>(cacheKey);
@@ -878,7 +877,13 @@ class _PredictionCacheNotifier
         '  "buyOrWait": "<buy/wait>",\n'
         '  "reasoning": "<2-3 sentence explanation of the prediction>"\n'
         '}\n\n'
-        'Base analysis on typical tech product lifecycle and market patterns. '
+        'Analyze this specific product:\n'
+        '- Product name: $productName\n'
+        '- Category: $cat\n'
+        '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n\n'
+        'Base analysis on this specific product\'s category, price tier, and typical lifecycle. '
+        'If the product appears premium, mid-range, budget, new, or aging, reflect that difference in the answer. '
+        'Do not reuse the same percentage across unrelated products. '
         'trendPercentage is the expected price change amount in percent.',
         language: language,
       );

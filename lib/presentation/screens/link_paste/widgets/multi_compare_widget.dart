@@ -5,7 +5,10 @@ class _LinkAnalysisImage extends StatefulWidget {
   final String imageUrl;
   final BorderRadius borderRadius;
 
-  const _LinkAnalysisImage({required this.imageUrl, required this.borderRadius});
+  const _LinkAnalysisImage({
+    required this.imageUrl,
+    required this.borderRadius,
+  });
 
   @override
   State<_LinkAnalysisImage> createState() => _LinkAnalysisImageState();
@@ -82,7 +85,13 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
       if (mounted) {
         setState(() {
           _isAnalyzing = false;
-          _error = 'Please sign in first';
+          _error =
+              context.l10n?.pleaseSignInFirst ??
+              _linkText(
+                context,
+                tr: 'Devam etmek icin once giris yapin.',
+                en: 'Please sign in first.',
+              );
         });
       }
       return;
@@ -95,7 +104,9 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
 
       if (mounted) setState(() => _analyzingIndex = i);
       try {
-        await ref.read(linkQuizProvider.notifier).analyzeAndStartQuiz(url, user);
+        await ref
+            .read(linkQuizProvider.notifier)
+            .analyzeAndStartQuiz(url, user);
         if (!mounted) break;
         ref.read(linkQuizProvider.notifier).skipQuiz();
 
@@ -122,7 +133,15 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
     });
 
     if (analyzedResults.length < 2) {
-      if (mounted) setState(() => _error = 'Need at least 2 products to compare');
+      if (mounted) {
+        setState(
+          () => _error = _linkText(
+            context,
+            tr: 'Karsilastirma icin en az 2 urun gerekiyor.',
+            en: 'Need at least 2 products to compare.',
+          ),
+        );
+      }
       return;
     }
 
@@ -138,7 +157,7 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
     try {
       final comparison = _buildAiComparison(analyzedResults, categories);
       if (!mounted) return;
-      
+
       // Find best match (highest enhanced score)
       EnhancedAnalysisResult best = analyzedResults.first;
       for (final r in analyzedResults) {
@@ -154,20 +173,26 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
       if (mounted) {
         setState(() {
           _isComparing = false;
-          _error = 'AI comparison failed: ${e.toString().length > 80 ? e.toString().substring(0, 80) : e}';
+          _error =
+              '${_linkText(context, tr: 'AI karsilastirmasi basarisiz', en: 'AI comparison failed')}: '
+              '${e.toString().length > 80 ? e.toString().substring(0, 80) : e}';
         });
       }
     }
   }
 
   String _buildAiComparison(
-      List<EnhancedAnalysisResult> results, Set<String> categories) {
+    List<EnhancedAnalysisResult> results,
+    Set<String> categories,
+  ) {
     final isSameCategory = categories.length <= 1;
     final buf = StringBuffer();
 
-    buf.writeln(isSameCategory
-        ? '## Same-Category Comparison'
-        : '## Cross-Category Comparison');
+    buf.writeln(
+      isSameCategory
+          ? '## ${_linkText(context, tr: 'Ayni Kategori Karsilastirmasi', en: 'Same-Category Comparison')}'
+          : '## ${_linkText(context, tr: 'Kategoriler Arasi Karsilastirma', en: 'Cross-Category Comparison')}',
+    );
     buf.writeln('');
 
     // Rank by score
@@ -176,10 +201,14 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
 
     for (int i = 0; i < sorted.length; i++) {
       final r = sorted[i];
-      final title = r.baseResult.metadata.title ?? 'Product ${i + 1}';
+      final title =
+          r.baseResult.metadata.title ??
+          '${context.l10n?.productLabel ?? 'Product'} ${i + 1}';
       final medal = i == 0 ? '🥇' : (i == 1 ? '🥈' : (i == 2 ? '🥉' : ''));
       buf.writeln('$medal **#${i + 1} $title**');
-      buf.writeln('Match Score: ${r.enhancedScore.toStringAsFixed(0)}%');
+      buf.writeln(
+        '${context.l10n?.matchScoreLabel ?? _linkText(context, tr: 'Eslesme Puani', en: 'Match Score')}: ${r.enhancedScore.toStringAsFixed(0)}%',
+      );
       if (r.prosForUser.isNotEmpty) {
         buf.writeln('✅ ${r.prosForUser.first}');
       }
@@ -190,8 +219,16 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
     }
 
     buf.writeln('---');
-    buf.writeln('**Best for you:** ${sorted.first.baseResult.metadata.title ?? "Product 1"}');
-    buf.writeln('Based on your profile, preferences, and budget.');
+    buf.writeln(
+      '**${_linkText(context, tr: 'Sizin icin en iyi secim', en: 'Best for you')}:** ${sorted.first.baseResult.metadata.title ?? (context.l10n?.productLabel ?? 'Product')}',
+    );
+    buf.writeln(
+      _linkText(
+        context,
+        tr: 'Profiliniz, oncelikleriniz ve butceniz baz alindi.',
+        en: 'Based on your profile, preferences, and budget.',
+      ),
+    );
 
     return buf.toString();
   }
@@ -234,23 +271,34 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                       ),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(Icons.compare_arrows_rounded,
-                        color: context.surfaceVariantColor, size: 22),
+                    child: Icon(
+                      Icons.compare_arrows_rounded,
+                      color: context.surfaceVariantColor,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(context.l10n?.multiLinkCompare ?? 'Multi-Link Compare',
-                            style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
-                                color: context.textPrimary)),
-                        Text(context.l10n?.addLinksToFindBest ?? 'Add links to find your best match',
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                color: context.textSecondary)),
+                        Text(
+                          context.l10n?.multiLinkCompare ??
+                              'Multi-Link Compare',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          context.l10n?.addLinksToFindBest ??
+                              'Add links to find your best match',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: context.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -271,7 +319,8 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _buildLockedProductCard(
-                          result.baseResult.metadata.title ?? 'Product ${i + 1}',
+                          result.baseResult.metadata.title ??
+                              'Product ${i + 1}',
                           result.enhancedScore,
                           url,
                         ),
@@ -295,13 +344,20 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.error_outline_rounded,
-                                color: AppTheme.error, size: 18),
+                            const Icon(
+                              Icons.error_outline_rounded,
+                              color: AppTheme.error,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(_error!,
-                                  style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13, color: AppTheme.error)),
+                              child: Text(
+                                _error!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: AppTheme.error,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -315,32 +371,43 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            AppTheme.primaryBlue.withValues(alpha: 0.08),
-                            AppTheme.neonPurple.withValues(alpha: 0.05),
-                          ]),
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.primaryBlue.withValues(alpha: 0.08),
+                              AppTheme.neonPurple.withValues(alpha: 0.05),
+                            ],
+                          ),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: AppTheme.primaryBlue.withValues(alpha: 0.15)),
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SizedBox(
-                              width: 20, height: 20,
+                              width: 20,
+                              height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                color: AppTheme.primaryBlue),
+                                color: AppTheme.primaryBlue,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Text(
                               _isComparing
-                                  ? (context.l10n?.aiComparing ?? 'AI comparing products...')
-                                  : 'Analyzing product ${_analyzingIndex + 1}/${widget.allUrls.length}...',
+                                  ? (context.l10n?.aiComparing ??
+                                        'AI comparing products...')
+                                  : _linkText(
+                                      context,
+                                      tr: 'Urun analiz ediliyor ${_analyzingIndex + 1}/${widget.allUrls.length}...',
+                                      en: 'Analyzing product ${_analyzingIndex + 1}/${widget.allUrls.length}...',
+                                    ),
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
-                                color: context.textPrimary),
+                                color: context.textPrimary,
+                              ),
                             ),
                           ],
                         ),
@@ -376,7 +443,10 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
               gradient: LinearGradient(
                 colors: isBest
                     ? [AppTheme.gold, AppTheme.goldOrange]
-                    : [AppTheme.primaryBlue.withValues(alpha: 0.15), AppTheme.primaryBlue.withValues(alpha: 0.05)],
+                    : [
+                        AppTheme.primaryBlue.withValues(alpha: 0.15),
+                        AppTheme.primaryBlue.withValues(alpha: 0.05),
+                      ],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -394,25 +464,32 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                 if (isBest)
                   Container(
                     margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [AppTheme.gold, AppTheme.goldOrange],
                       ),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(context.l10n?.bestMatch ?? 'Best Match',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: context.surfaceVariantColor)),
+                    child: Text(
+                      context.l10n?.bestMatch ?? 'Best Match',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: context.surfaceVariantColor,
+                      ),
+                    ),
                   ),
                 Text(
                   name,
                   style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: context.textPrimary),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: context.textPrimary,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -425,11 +502,14 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
               color: scoreColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('${score.toStringAsFixed(0)}%',
-                style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: scoreColor)),
+            child: Text(
+              '${score.toStringAsFixed(0)}%',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: scoreColor,
+              ),
+            ),
           ),
         ],
       ),
@@ -453,9 +533,12 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
             ),
             child: isCurrentlyAnalyzing
                 ? const SizedBox(
-                    width: 18, height: 18,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppTheme.primaryBlue),
+                      strokeWidth: 2,
+                      color: AppTheme.primaryBlue,
+                    ),
                   )
                 : Icon(Icons.link_rounded, size: 18, color: AppTheme.slate400),
           ),
@@ -465,16 +548,31 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isCurrentlyAnalyzing ? 'Analyzing...' : 'Waiting...',
+                  isCurrentlyAnalyzing
+                      ? _linkText(
+                          context,
+                          tr: 'Analiz ediliyor...',
+                          en: 'Analyzing...',
+                        )
+                      : _linkText(
+                          context,
+                          tr: 'Bekleniyor...',
+                          en: 'Waiting...',
+                        ),
                   style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w600, fontSize: 13,
-                      color: context.textPrimary),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: context.textPrimary,
+                  ),
                 ),
                 Text(
                   Uri.tryParse(url)?.host ?? url,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: context.textSecondary),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                    fontSize: 11,
+                    color: context.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -485,7 +583,10 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
   }
 
   Widget _buildComparisonResult() {
-    final allResults = _results.where((r) => r != null).cast<EnhancedAnalysisResult>().toList();
+    final allResults = _results
+        .where((r) => r != null)
+        .cast<EnhancedAnalysisResult>()
+        .toList();
 
     // Sort by score
     final sorted = List<EnhancedAnalysisResult>.from(allResults)
@@ -510,25 +611,37 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.emoji_events_rounded,
-                        color: context.surfaceVariantColor, size: 18),
+                    child: Icon(
+                      Icons.emoji_events_rounded,
+                      color: context.surfaceVariantColor,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  Text(context.l10n?.aiRanking ?? 'AI Ranking',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: context.textPrimary)),
+                  Text(
+                    context.l10n?.aiRanking ?? 'AI Ranking',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
               ...List.generate(sorted.length, (i) {
                 final r = sorted[i];
-                final title = r.baseResult.metadata.title ?? 'Product ${i + 1}';
-                final medal = i == 0 ? '🥇' : (i == 1 ? '🥈' : (i == 2 ? '🥉' : ''));
+                final title =
+                    r.baseResult.metadata.title ??
+                    '${context.l10n?.productLabel ?? 'Product'} ${i + 1}';
+                final medal = i == 0
+                    ? '🥇'
+                    : (i == 1 ? '🥈' : (i == 2 ? '🥉' : ''));
                 final scoreColor = r.enhancedScore >= 80
                     ? AppTheme.scoreExcellent
-                    : (r.enhancedScore >= 60 ? AppTheme.scoreGood : AppTheme.scoreAverage);
+                    : (r.enhancedScore >= 60
+                          ? AppTheme.scoreGood
+                          : AppTheme.scoreAverage);
                 final isBest = i == 0;
 
                 return Container(
@@ -540,50 +653,66 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
                         : context.surfaceVariantColor,
                     borderRadius: BorderRadius.circular(14),
                     border: isBest
-                        ? Border.all(color: AppTheme.gold.withValues(alpha: 0.3))
+                        ? Border.all(
+                            color: AppTheme.gold.withValues(alpha: 0.3),
+                          )
                         : null,
                   ),
                   child: Row(
                     children: [
-                      Text(medal.isNotEmpty ? medal : '${i + 1}',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 20)),
+                      Text(
+                        medal.isNotEmpty ? medal : '${i + 1}',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 20),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(title,
-                                style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    color: context.textPrimary),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                            Text(
+                              title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: context.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
 
                             if (r.prosForUser.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
-                                child: Text('✅ ${r.prosForUser.first}',
-                                    style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: AppTheme.success),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  '✅ ${r.prosForUser.first}',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: AppTheme.success,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                           ],
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: scoreColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text('${r.enhancedScore.toStringAsFixed(0)}%',
-                            style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                color: scoreColor)),
+                        child: Text(
+                          '${r.enhancedScore.toStringAsFixed(0)}%',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color: scoreColor,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -602,32 +731,48 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      color: AppTheme.primaryBlue, size: 20),
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: AppTheme.primaryBlue,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
-                  Text(context.l10n?.aiVerdict ?? 'AI Verdict',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: context.textPrimary)),
+                  Text(
+                    context.l10n?.aiVerdict ?? 'AI Verdict',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
               Text(
-                '${sorted.first.baseResult.metadata.title ?? "Product 1"} is your best match with a ${sorted.first.enhancedScore.toStringAsFixed(0)}% compatibility score.',
+                _linkText(
+                  context,
+                  tr: '${sorted.first.baseResult.metadata.title ?? (context.l10n?.productLabel ?? 'Urun')} sizin icin en iyi eslesme; uyumluluk puani ${sorted.first.enhancedScore.toStringAsFixed(0)}%.',
+                  en: '${sorted.first.baseResult.metadata.title ?? (context.l10n?.productLabel ?? 'Product')} is your best match with a ${sorted.first.enhancedScore.toStringAsFixed(0)}% compatibility score.',
+                ),
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: context.textPrimary,
-                    height: 1.5),
+                  fontSize: 14,
+                  color: context.textPrimary,
+                  height: 1.5,
+                ),
               ),
               if (sorted.length > 1) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Score difference: ${(sorted.first.enhancedScore - sorted.last.enhancedScore).toStringAsFixed(0)} points between best and worst match.',
+                  _linkText(
+                    context,
+                    tr: 'En iyi ve en dusuk eslesme arasinda ${(sorted.first.enhancedScore - sorted.last.enhancedScore).toStringAsFixed(0)} puan fark var.',
+                    en: 'Score difference: ${(sorted.first.enhancedScore - sorted.last.enhancedScore).toStringAsFixed(0)} points between best and worst match.',
+                  ),
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: context.textSecondary,
-                      height: 1.4),
+                    fontSize: 13,
+                    color: context.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ],
@@ -640,4 +785,4 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
 
 // ---------------------------------------------------------------
 // SUPPORTING WIDGETS
-// ---------------------------------------------------------------
+// ---------------------------------------------------------------

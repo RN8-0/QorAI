@@ -235,6 +235,30 @@ class _LinkAnalysisHistoryScreenState
   }
 
   void _openHistoryItem(Map<String, dynamic> item) {
+    final type = item['type'] as String? ?? 'single';
+    if (type == 'compare') {
+      final rawResults = item['results'] as List?;
+      if (rawResults != null && rawResults.isNotEmpty) {
+        try {
+          final results = rawResults
+              .whereType<Map>()
+              .map(
+                (entry) => EnhancedAnalysisResult.fromJson(
+                  Map<String, dynamic>.from(entry),
+                ),
+              )
+              .toList();
+          if (results.length >= 2) {
+            ref
+                .read(compareAnalysisProvider.notifier)
+                .restoreFromHistory(results);
+            Navigator.of(context).pop();
+            return;
+          }
+        } catch (_) {}
+      }
+    }
+
     final resultJson = item['result'] as Map<String, dynamic>?;
     if (resultJson != null) {
       try {
@@ -488,8 +512,12 @@ class _LinkAnalysisHistoryScreenState
     Color textPrimary,
     Color textTertiary,
   ) {
+    final type = item['type'] as String? ?? 'single';
+    final isCompare = type == 'compare';
+    final products = (item['products'] as List?)?.cast<String>() ?? const [];
     final name =
         item['productName'] as String? ??
+        (products.isNotEmpty ? products.join(' vs ') : null) ??
         _analysisText(context, tr: 'Ürün', en: 'Product');
     final url = item['url'] as String? ?? '';
     final score = (item['score'] as num?)?.toDouble() ?? 0.0;
@@ -497,11 +525,12 @@ class _LinkAnalysisHistoryScreenState
     final hasFullResult = item['result'] != null;
 
     final resultJson = item['result'] as Map<String, dynamic>?;
-    final siteName =
-        (resultJson?['baseResult']
-                as Map<String, dynamic>?)?['metadata']?['siteName']
-            as String? ??
-        _hostFromUrl(url);
+    final siteName = !isCompare
+        ? (resultJson?['baseResult']
+                      as Map<String, dynamic>?)?['metadata']?['siteName']
+                  as String? ??
+              _hostFromUrl(url)
+        : '';
 
     final scoreColor = score >= 80
         ? AppTheme.green500
@@ -560,8 +589,8 @@ class _LinkAnalysisHistoryScreenState
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
-                  Icons.link_rounded,
+                child: Icon(
+                  isCompare ? Icons.compare_arrows_rounded : Icons.link_rounded,
                   color: Colors.white,
                   size: 22,
                 ),
@@ -585,7 +614,7 @@ class _LinkAnalysisHistoryScreenState
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        if (siteName.isNotEmpty) ...[
+                        if (!isCompare && siteName.isNotEmpty) ...[
                           Icon(
                             Icons.language_rounded,
                             size: 11,
@@ -611,6 +640,16 @@ class _LinkAnalysisHistoryScreenState
                           ),
                       ],
                     ),
+                    if (isCompare && products.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${products.length} ürün',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: textTertiary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
