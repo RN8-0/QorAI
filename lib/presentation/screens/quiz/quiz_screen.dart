@@ -13,6 +13,53 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+const _quizCategoryKeys = <String>[
+  'smartphones',
+  'laptops',
+  'tablets',
+  'tvs',
+  'monitors',
+  'cpus',
+  'gpus',
+  'headphones',
+  'smartwatches',
+  'cameras',
+  'consoles',
+  'speakers',
+  'desktops',
+  'routers',
+  'drones',
+  'robot-vacuums',
+];
+
+final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
+  ref,
+) async {
+  final covers = <String, String>{
+    ...await ref.watch(categoryCoversProvider.future),
+  };
+
+  for (final category in _quizCategoryKeys) {
+    if ((covers[category] ?? '').isNotEmpty) continue;
+
+    final result = await ref.read(productsByCategoryProvider(category).future);
+    switch (result) {
+      case Success(data: final products):
+        for (final product in products) {
+          final image = product.imageUrl;
+          if (image != null && image.isNotEmpty) {
+            covers[category] = image;
+            break;
+          }
+        }
+      case Failure():
+        break;
+    }
+  }
+
+  return covers;
+});
+
 class QuizScreen extends ConsumerStatefulWidget {
   const QuizScreen({super.key});
 
@@ -44,537 +91,557 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   String _t(String tr, String en) => _isTurkish ? tr : en;
 
   List<_QuizStep> get _steps => [
-        _QuizStep(
-          field: 'interestCategories',
-          title: _t(
-            'En cok hangi urunleri kesfetmek istiyorsun?',
-            'What do you want to discover most?',
-          ),
-          subtitle: _t(
-            'En az 3 kategori sec. Ana sayfa siralamasi ve oneriler buna gore sekillenecek.',
-            'Pick at least 3 categories. Your home feed and recommendations will adapt to this.',
-          ),
-          algorithmHint: _t(
-            'Ana sayfa algoritmasi, kategori onceligi ve AI yonlendirmesi bu secimi kullanir.',
-            'Home ranking, category priority, and AI guidance use this signal.',
-          ),
-          type: _StepType.categories,
-          isRequired: true,
-          options: [
-            _QuizOption(
-              value: 'smartphones',
-              labelTr: 'Telefonlar',
-              labelEn: 'Phones',
-              emoji: '📱',
-            ),
-            _QuizOption(
-              value: 'laptops',
-              labelTr: 'Laptoplar',
-              labelEn: 'Laptops',
-              emoji: '💻',
-            ),
-            _QuizOption(
-              value: 'tablets',
-              labelTr: 'Tabletler',
-              labelEn: 'Tablets',
-              emoji: '📟',
-            ),
-            _QuizOption(
-              value: 'tvs',
-              labelTr: 'TV',
-              labelEn: 'TVs',
-              emoji: '📺',
-            ),
-            _QuizOption(
-              value: 'monitors',
-              labelTr: 'Monitorler',
-              labelEn: 'Monitors',
-              emoji: '🖥️',
-            ),
-            _QuizOption(
-              value: 'cpus',
-              labelTr: 'Islemciler',
-              labelEn: 'CPUs',
-              emoji: '⚡',
-            ),
-            _QuizOption(
-              value: 'gpus',
-              labelTr: 'Ekran Kartlari',
-              labelEn: 'GPUs',
-              emoji: '🎮',
-            ),
-            _QuizOption(
-              value: 'headphones',
-              labelTr: 'Kulakliklar',
-              labelEn: 'Headphones',
-              emoji: '🎧',
-            ),
-            _QuizOption(
-              value: 'smartwatches',
-              labelTr: 'Akilli Saatler',
-              labelEn: 'Smartwatches',
-              emoji: '⌚',
-            ),
-            _QuizOption(
-              value: 'cameras',
-              labelTr: 'Kameralar',
-              labelEn: 'Cameras',
-              emoji: '📷',
-            ),
-            _QuizOption(
-              value: 'consoles',
-              labelTr: 'Konsollar',
-              labelEn: 'Consoles',
-              emoji: '🕹️',
-            ),
-            _QuizOption(
-              value: 'speakers',
-              labelTr: 'Hoparlorler',
-              labelEn: 'Speakers',
-              emoji: '🔊',
-            ),
-            _QuizOption(
-              value: 'desktops',
-              labelTr: 'Masaustu',
-              labelEn: 'Desktops',
-              emoji: '🖥️',
-            ),
-            _QuizOption(
-              value: 'routers',
-              labelTr: 'Ag Urunleri',
-              labelEn: 'Networking',
-              emoji: '📡',
-            ),
-            _QuizOption(
-              value: 'drones',
-              labelTr: 'Drone',
-              labelEn: 'Drones',
-              emoji: '🚁',
-            ),
-            _QuizOption(
-              value: 'robot-vacuums',
-              labelTr: 'Akilli Ev',
-              labelEn: 'Smart Home',
-              emoji: '🤖',
-            ),
-          ],
+    _QuizStep(
+      field: 'interestCategories',
+      title: _t(
+        'En cok hangi urunleri kesfetmek istiyorsun?',
+        'What do you want to discover most?',
+      ),
+      subtitle: _t(
+        'En az 3 kategori sec. Ana sayfa siralamasi ve oneriler buna gore sekillenecek.',
+        'Pick at least 3 categories. Your home feed and recommendations will adapt to this.',
+      ),
+      algorithmHint: _t(
+        'Ana sayfa algoritmasi, kategori onceligi ve AI yonlendirmesi bu secimi kullanir.',
+        'Home ranking, category priority, and AI guidance use this signal.',
+      ),
+      type: _StepType.categories,
+      isRequired: true,
+      options: [
+        _QuizOption(
+          value: 'smartphones',
+          labelTr: 'Telefonlar',
+          labelEn: 'Phones',
+          emoji: '📱',
         ),
-        _QuizStep(
-          field: 'ecosystem',
-          title: _t(
-            'Hangi ekosistemi kullaniyorsun?',
-            'Which ecosystem do you use?',
-          ),
-          subtitle: _t(
-            'Uyumluluk ve aksesuar onerileri buna gore guclenir.',
-            'Compatibility and accessory recommendations become more accurate with this.',
-          ),
-          algorithmHint: _t(
-            'Ekosistem sinyali urun uyumlulugu ve butunlu deneyim icin kullanilir.',
-            'Ecosystem affinity improves compatibility and continuity scoring.',
-          ),
-          type: _StepType.single,
-          isRequired: true,
-          options: [
-            _QuizOption(
-              value: 'apple',
-              labelTr: 'Apple',
-              labelEn: 'Apple',
-              emoji: '🍎',
-            ),
-            _QuizOption(
-              value: 'android',
-              labelTr: 'Android',
-              labelEn: 'Android',
-              emoji: '🤖',
-            ),
-            _QuizOption(
-              value: 'mixed',
-              labelTr: 'Karisik',
-              labelEn: 'Mixed',
-              emoji: '🔄',
-            ),
-          ],
+        _QuizOption(
+          value: 'laptops',
+          labelTr: 'Laptoplar',
+          labelEn: 'Laptops',
+          emoji: '💻',
         ),
-        _QuizStep(
-          field: 'budgetRange',
-          title: _t('Butcen hangi bantta?', 'What budget band fits you?'),
-          subtitle: _t(
-            'Fiyat/performans ile premium oneriler arasindaki dengeyi bu secim belirler.',
-            'This controls the balance between value picks and premium recommendations.',
-          ),
-          algorithmHint: _t(
-            'Fiyat bandi, one cikarilan urunlerin seviye ve segmentini ayarlar.',
-            'Budget range changes which price tier the ranking engine prefers.',
-          ),
-          type: _StepType.single,
-          isRequired: true,
-          options: [
-            _QuizOption(
-              value: 'low',
-              labelTr: 'Butce Dostu',
-              labelEn: 'Budget',
-              emoji: '💸',
-            ),
-            _QuizOption(
-              value: 'mid',
-              labelTr: 'Dengeli',
-              labelEn: 'Balanced',
-              emoji: '💎',
-            ),
-            _QuizOption(
-              value: 'high',
-              labelTr: 'Premium',
-              labelEn: 'Premium',
-              emoji: '👑',
-            ),
-            _QuizOption(
-              value: 'any',
-              labelTr: 'Farketmez',
-              labelEn: 'Any',
-              emoji: '✨',
-            ),
-          ],
+        _QuizOption(
+          value: 'tablets',
+          labelTr: 'Tabletler',
+          labelEn: 'Tablets',
+          emoji: '📟',
         ),
-        _QuizStep(
-          field: 'priorities',
-          title: _t(
-            'Karsilastirmada senin icin en onemli sey ne?',
-            'What matters most when you compare?',
-          ),
-          subtitle: _t(
-            'Birden fazla secim yapabilirsin.',
-            'You can choose more than one.',
-          ),
-          algorithmHint: _t(
-            'Bu secimler AI aciklamalarini ve puan agirliklarini etkiler.',
-            'These selections influence AI explanations and score weighting.',
-          ),
-          type: _StepType.multi,
-          isRequired: false,
-          options: [
-            _QuizOption(
-              value: 'price',
-              labelTr: 'Fiyat',
-              labelEn: 'Price',
-              emoji: '💰',
-            ),
-            _QuizOption(
-              value: 'quality',
-              labelTr: 'Kalite',
-              labelEn: 'Quality',
-              emoji: '⭐',
-            ),
-            _QuizOption(
-              value: 'design',
-              labelTr: 'Tasarim',
-              labelEn: 'Design',
-              emoji: '🎨',
-            ),
-            _QuizOption(
-              value: 'ecosystem',
-              labelTr: 'Uyum',
-              labelEn: 'Ecosystem',
-              emoji: '🔗',
-            ),
-            _QuizOption(
-              value: 'performance',
-              labelTr: 'Performans',
-              labelEn: 'Performance',
-              emoji: '⚡',
-            ),
-            _QuizOption(
-              value: 'durability',
-              labelTr: 'Dayaniklilik',
-              labelEn: 'Durability',
-              emoji: '🛡️',
-            ),
-          ],
+        _QuizOption(value: 'tvs', labelTr: 'TV', labelEn: 'TVs', emoji: '📺'),
+        _QuizOption(
+          value: 'monitors',
+          labelTr: 'Monitorler',
+          labelEn: 'Monitors',
+          emoji: '🖥️',
         ),
-        _QuizStep(
-          field: 'currentDevices',
-          title: _t(
-            'Su an hangi cihazlari aktif kullaniyorsun?',
-            'Which devices do you actively use today?',
-          ),
-          subtitle: _t(
-            'Uyumlu urunleri daha iyi filtrelemek icin kullanilir.',
-            'Used to surface products that fit your existing setup.',
-          ),
-          algorithmHint: _t(
-            'Mevcut cihazlar ekosistem puanini ve uyumluluk tahminlerini guclendirir.',
-            'Current devices reinforce ecosystem affinity and compatibility scoring.',
-          ),
-          type: _StepType.multi,
-          isRequired: false,
-          options: [
-            _QuizOption(
-              value: 'iphone',
-              labelTr: 'iPhone',
-              labelEn: 'iPhone',
-              emoji: '📱',
-              coverCategory: 'smartphones',
-            ),
-            _QuizOption(
-              value: 'android_phone',
-              labelTr: 'Android',
-              labelEn: 'Android Phone',
-              emoji: '📱',
-              coverCategory: 'smartphones',
-            ),
-            _QuizOption(
-              value: 'ipad',
-              labelTr: 'iPad',
-              labelEn: 'iPad',
-              emoji: '📟',
-              coverCategory: 'tablets',
-            ),
-            _QuizOption(
-              value: 'android_tablet',
-              labelTr: 'Android Tablet',
-              labelEn: 'Android Tablet',
-              emoji: '📟',
-              coverCategory: 'tablets',
-            ),
-            _QuizOption(
-              value: 'mac',
-              labelTr: 'Mac',
-              labelEn: 'Mac',
-              emoji: '💻',
-              coverCategory: 'laptops',
-            ),
-            _QuizOption(
-              value: 'windows_pc',
-              labelTr: 'Windows PC',
-              labelEn: 'Windows PC',
-              emoji: '🖥️',
-              coverCategory: 'desktops',
-            ),
-            _QuizOption(
-              value: 'linux',
-              labelTr: 'Linux',
-              labelEn: 'Linux',
-              emoji: '🐧',
-              coverCategory: 'desktops',
-            ),
-            _QuizOption(
-              value: 'smart_watch',
-              labelTr: 'Akilli Saat',
-              labelEn: 'Smart Watch',
-              emoji: '⌚',
-              coverCategory: 'smartwatches',
-            ),
-          ],
+        _QuizOption(
+          value: 'cpus',
+          labelTr: 'Islemciler',
+          labelEn: 'CPUs',
+          emoji: '⚡',
         ),
-        _QuizStep(
-          field: 'usageIntent',
-          title: _t(
-            'Compairi en cok ne icin kullanacaksin?',
-            'How will you use Compair most?',
-          ),
-          subtitle: _t(
-            'Arayuzde hangi deneyimin onde olacagini belirler.',
-            'This decides which experience gets emphasized across the app.',
-          ),
-          algorithmHint: _t(
-            'Kullanim amaci hizli karar, detayli arastirma ve fiyat odagi arasinda denge kurar.',
-            'Usage intent shifts emphasis between fast decisions, deep research, and price focus.',
-          ),
-          type: _StepType.single,
-          isRequired: false,
-          options: [
-            _QuizOption(
-              value: 'research',
-              labelTr: 'Detayli Arastirma',
-              labelEn: 'Deep Research',
-              emoji: '🔍',
-            ),
-            _QuizOption(
-              value: 'quick_decision',
-              labelTr: 'Hizli Karar',
-              labelEn: 'Quick Decision',
-              emoji: '⚡',
-            ),
-            _QuizOption(
-              value: 'price_tracking',
-              labelTr: 'Fiyat Takibi',
-              labelEn: 'Price Tracking',
-              emoji: '📉',
-            ),
-            _QuizOption(
-              value: 'all',
-              labelTr: 'Hepsi',
-              labelEn: 'Everything',
-              emoji: '🎯',
-            ),
-          ],
+        _QuizOption(
+          value: 'gpus',
+          labelTr: 'Ekran Kartlari',
+          labelEn: 'GPUs',
+          emoji: '🎮',
         ),
-        _QuizStep(
-          field: 'ageRange',
-          title: _t(
-            'Kendine en yakin yas araligini sec',
-            'Pick the age range closest to you',
-          ),
-          subtitle: _t(
-            'Oneri tonu ve kesif hizi buna gore ayarlanir.',
-            'This helps tune exploration pace and recommendation tone.',
-          ),
-          algorithmHint: _t(
-            'Yas araligi, yeni urunlere egilim ve aciklama derinligini etkiler.',
-            'Age range influences recency preference and explanation depth.',
-          ),
-          type: _StepType.single,
-          isRequired: true,
-          options: [
-            _QuizOption(value: '13-17', labelTr: '13-17', labelEn: '13-17', emoji: '🎮'),
-            _QuizOption(value: '18-24', labelTr: '18-24', labelEn: '18-24', emoji: '📱'),
-            _QuizOption(value: '25-34', labelTr: '25-34', labelEn: '25-34', emoji: '💻'),
-            _QuizOption(value: '35-44', labelTr: '35-44', labelEn: '35-44', emoji: '🏠'),
-            _QuizOption(value: '45-54', labelTr: '45-54', labelEn: '45-54', emoji: '📊'),
-            _QuizOption(value: '55+', labelTr: '55+', labelEn: '55+', emoji: '✨'),
-          ],
+        _QuizOption(
+          value: 'headphones',
+          labelTr: 'Kulakliklar',
+          labelEn: 'Headphones',
+          emoji: '🎧',
         ),
-        _QuizStep(
-          field: 'profession',
-          title: _t(
-            'Sana en yakin profil hangisi?',
-            'Which profile feels closest to you?',
-          ),
-          subtitle: _t(
-            'Meslek bilgisi kategori onceliklerini daha akilli hale getirir.',
-            'Profession helps tune category priority more intelligently.',
-          ),
-          algorithmHint: _t(
-            'Profil algoritmasi ilgi alanlarini ve kategori onceliklerini buna gore ince ayarlar.',
-            'The profile algorithm fine-tunes category priority with this signal.',
-          ),
-          type: _StepType.single,
-          isRequired: false,
-          options: [
-            _QuizOption(
-              value: 'student',
-              labelTr: 'Ogrenci',
-              labelEn: 'Student',
-              emoji: '🎓',
-            ),
-            _QuizOption(
-              value: 'engineer',
-              labelTr: 'Muhendis',
-              labelEn: 'Engineer',
-              emoji: '⚙️',
-            ),
-            _QuizOption(
-              value: 'designer',
-              labelTr: 'Tasarimci',
-              labelEn: 'Designer',
-              emoji: '🎨',
-            ),
-            _QuizOption(
-              value: 'manager',
-              labelTr: 'Yonetici',
-              labelEn: 'Manager',
-              emoji: '💼',
-            ),
-            _QuizOption(
-              value: 'healthcare',
-              labelTr: 'Saglik',
-              labelEn: 'Healthcare',
-              emoji: '🏥',
-            ),
-            _QuizOption(
-              value: 'teacher',
-              labelTr: 'Egitmen',
-              labelEn: 'Teacher',
-              emoji: '📚',
-            ),
-            _QuizOption(
-              value: 'finance',
-              labelTr: 'Finans',
-              labelEn: 'Finance',
-              emoji: '💹',
-            ),
-            _QuizOption(
-              value: 'other',
-              labelTr: 'Diger',
-              labelEn: 'Other',
-              emoji: '🌐',
-            ),
-          ],
+        _QuizOption(
+          value: 'smartwatches',
+          labelTr: 'Akilli Saatler',
+          labelEn: 'Smartwatches',
+          emoji: '⌚',
         ),
-        _QuizStep(
-          field: 'subscriptions',
-          title: _t(
-            'Hangi servisler zaten hayatinin icinde?',
-            'Which services are already part of your stack?',
-          ),
-          subtitle: _t(
-            'Compair zaten kullandigin servisleri yeniden onermemek icin bunu kullanir.',
-            'Compair uses this to avoid recommending services you already pay for.',
-          ),
-          algorithmHint: _t(
-            'Servis secimleri ekosistem yatkinligi ve abonelik yogunlugunu etkiler.',
-            'Service choices influence ecosystem affinity and subscription density.',
-          ),
-          type: _StepType.multi,
-          isRequired: false,
-          options: [
-            _QuizOption(
-              value: 'spotify',
-              labelTr: 'Spotify',
-              labelEn: 'Spotify',
-              emoji: '🎵',
-            ),
-            _QuizOption(
-              value: 'netflix',
-              labelTr: 'Netflix',
-              labelEn: 'Netflix',
-              emoji: '🎬',
-            ),
-            _QuizOption(
-              value: 'youtube_premium',
-              labelTr: 'YouTube Premium',
-              labelEn: 'YouTube Premium',
-              emoji: '▶️',
-            ),
-            _QuizOption(
-              value: 'apple_music',
-              labelTr: 'Apple Music',
-              labelEn: 'Apple Music',
-              emoji: '🎶',
-            ),
-            _QuizOption(
-              value: 'icloud',
-              labelTr: 'iCloud',
-              labelEn: 'iCloud',
-              emoji: '☁️',
-            ),
-            _QuizOption(
-              value: 'google_one',
-              labelTr: 'Google One',
-              labelEn: 'Google One',
-              emoji: '☁️',
-            ),
-            _QuizOption(
-              value: 'game_pass',
-              labelTr: 'Game Pass',
-              labelEn: 'Game Pass',
-              emoji: '🎮',
-            ),
-            _QuizOption(
-              value: 'ps_plus',
-              labelTr: 'PS Plus',
-              labelEn: 'PS Plus',
-              emoji: '🕹️',
-            ),
-            _QuizOption(
-              value: 'none',
-              labelTr: 'Hicbiri',
-              labelEn: 'None',
-              emoji: '➖',
-            ),
-          ],
+        _QuizOption(
+          value: 'cameras',
+          labelTr: 'Kameralar',
+          labelEn: 'Cameras',
+          emoji: '📷',
         ),
-      ];
+        _QuizOption(
+          value: 'consoles',
+          labelTr: 'Konsollar',
+          labelEn: 'Consoles',
+          emoji: '🕹️',
+        ),
+        _QuizOption(
+          value: 'speakers',
+          labelTr: 'Hoparlorler',
+          labelEn: 'Speakers',
+          emoji: '🔊',
+        ),
+        _QuizOption(
+          value: 'desktops',
+          labelTr: 'Masaustu',
+          labelEn: 'Desktops',
+          emoji: '🖥️',
+        ),
+        _QuizOption(
+          value: 'routers',
+          labelTr: 'Ag Urunleri',
+          labelEn: 'Networking',
+          emoji: '📡',
+        ),
+        _QuizOption(
+          value: 'drones',
+          labelTr: 'Drone',
+          labelEn: 'Drones',
+          emoji: '🚁',
+        ),
+        _QuizOption(
+          value: 'robot-vacuums',
+          labelTr: 'Akilli Ev',
+          labelEn: 'Smart Home',
+          emoji: '🤖',
+        ),
+      ],
+    ),
+    _QuizStep(
+      field: 'ecosystem',
+      title: _t(
+        'Hangi ekosistemi kullaniyorsun?',
+        'Which ecosystem do you use?',
+      ),
+      subtitle: _t(
+        'Uyumluluk ve aksesuar onerileri buna gore guclenir.',
+        'Compatibility and accessory recommendations become more accurate with this.',
+      ),
+      algorithmHint: _t(
+        'Ekosistem sinyali urun uyumlulugu ve butunlu deneyim icin kullanilir.',
+        'Ecosystem affinity improves compatibility and continuity scoring.',
+      ),
+      type: _StepType.single,
+      isRequired: true,
+      options: [
+        _QuizOption(
+          value: 'apple',
+          labelTr: 'Apple',
+          labelEn: 'Apple',
+          emoji: '🍎',
+        ),
+        _QuizOption(
+          value: 'android',
+          labelTr: 'Android',
+          labelEn: 'Android',
+          emoji: '🤖',
+        ),
+        _QuizOption(
+          value: 'mixed',
+          labelTr: 'Karisik',
+          labelEn: 'Mixed',
+          emoji: '🔄',
+        ),
+      ],
+    ),
+    _QuizStep(
+      field: 'budgetRange',
+      title: _t('Butcen hangi bantta?', 'What budget band fits you?'),
+      subtitle: _t(
+        'Fiyat/performans ile premium oneriler arasindaki dengeyi bu secim belirler.',
+        'This controls the balance between value picks and premium recommendations.',
+      ),
+      algorithmHint: _t(
+        'Fiyat bandi, one cikarilan urunlerin seviye ve segmentini ayarlar.',
+        'Budget range changes which price tier the ranking engine prefers.',
+      ),
+      type: _StepType.single,
+      isRequired: true,
+      options: [
+        _QuizOption(
+          value: 'low',
+          labelTr: 'Butce Dostu',
+          labelEn: 'Budget',
+          emoji: '💸',
+        ),
+        _QuizOption(
+          value: 'mid',
+          labelTr: 'Dengeli',
+          labelEn: 'Balanced',
+          emoji: '💎',
+        ),
+        _QuizOption(
+          value: 'high',
+          labelTr: 'Premium',
+          labelEn: 'Premium',
+          emoji: '👑',
+        ),
+        _QuizOption(
+          value: 'any',
+          labelTr: 'Farketmez',
+          labelEn: 'Any',
+          emoji: '✨',
+        ),
+      ],
+    ),
+    _QuizStep(
+      field: 'priorities',
+      title: _t(
+        'Karsilastirmada senin icin en onemli sey ne?',
+        'What matters most when you compare?',
+      ),
+      subtitle: _t(
+        'Birden fazla secim yapabilirsin.',
+        'You can choose more than one.',
+      ),
+      algorithmHint: _t(
+        'Bu secimler AI aciklamalarini ve puan agirliklarini etkiler.',
+        'These selections influence AI explanations and score weighting.',
+      ),
+      type: _StepType.multi,
+      isRequired: false,
+      options: [
+        _QuizOption(
+          value: 'price',
+          labelTr: 'Fiyat',
+          labelEn: 'Price',
+          emoji: '💰',
+        ),
+        _QuizOption(
+          value: 'quality',
+          labelTr: 'Kalite',
+          labelEn: 'Quality',
+          emoji: '⭐',
+        ),
+        _QuizOption(
+          value: 'design',
+          labelTr: 'Tasarim',
+          labelEn: 'Design',
+          emoji: '🎨',
+        ),
+        _QuizOption(
+          value: 'ecosystem',
+          labelTr: 'Uyum',
+          labelEn: 'Ecosystem',
+          emoji: '🔗',
+        ),
+        _QuizOption(
+          value: 'performance',
+          labelTr: 'Performans',
+          labelEn: 'Performance',
+          emoji: '⚡',
+        ),
+        _QuizOption(
+          value: 'durability',
+          labelTr: 'Dayaniklilik',
+          labelEn: 'Durability',
+          emoji: '🛡️',
+        ),
+      ],
+    ),
+    _QuizStep(
+      field: 'currentDevices',
+      title: _t(
+        'Su an hangi cihazlari aktif kullaniyorsun?',
+        'Which devices do you actively use today?',
+      ),
+      subtitle: _t(
+        'Uyumlu urunleri daha iyi filtrelemek icin kullanilir.',
+        'Used to surface products that fit your existing setup.',
+      ),
+      algorithmHint: _t(
+        'Mevcut cihazlar ekosistem puanini ve uyumluluk tahminlerini guclendirir.',
+        'Current devices reinforce ecosystem affinity and compatibility scoring.',
+      ),
+      type: _StepType.multi,
+      isRequired: false,
+      options: [
+        _QuizOption(
+          value: 'iphone',
+          labelTr: 'iPhone',
+          labelEn: 'iPhone',
+          emoji: '📱',
+          coverCategory: 'smartphones',
+        ),
+        _QuizOption(
+          value: 'android_phone',
+          labelTr: 'Android',
+          labelEn: 'Android Phone',
+          emoji: '📱',
+          coverCategory: 'smartphones',
+        ),
+        _QuizOption(
+          value: 'ipad',
+          labelTr: 'iPad',
+          labelEn: 'iPad',
+          emoji: '📟',
+          coverCategory: 'tablets',
+        ),
+        _QuizOption(
+          value: 'android_tablet',
+          labelTr: 'Android Tablet',
+          labelEn: 'Android Tablet',
+          emoji: '📟',
+          coverCategory: 'tablets',
+        ),
+        _QuizOption(
+          value: 'mac',
+          labelTr: 'Mac',
+          labelEn: 'Mac',
+          emoji: '💻',
+          coverCategory: 'laptops',
+        ),
+        _QuizOption(
+          value: 'windows_pc',
+          labelTr: 'Windows PC',
+          labelEn: 'Windows PC',
+          emoji: '🖥️',
+          coverCategory: 'desktops',
+        ),
+        _QuizOption(
+          value: 'linux',
+          labelTr: 'Linux',
+          labelEn: 'Linux',
+          emoji: '🐧',
+          coverCategory: 'desktops',
+        ),
+        _QuizOption(
+          value: 'smart_watch',
+          labelTr: 'Akilli Saat',
+          labelEn: 'Smart Watch',
+          emoji: '⌚',
+          coverCategory: 'smartwatches',
+        ),
+      ],
+    ),
+    _QuizStep(
+      field: 'usageIntent',
+      title: _t(
+        'Compairi en cok ne icin kullanacaksin?',
+        'How will you use Compair most?',
+      ),
+      subtitle: _t(
+        'Arayuzde hangi deneyimin onde olacagini belirler.',
+        'This decides which experience gets emphasized across the app.',
+      ),
+      algorithmHint: _t(
+        'Kullanim amaci hizli karar, detayli arastirma ve fiyat odagi arasinda denge kurar.',
+        'Usage intent shifts emphasis between fast decisions, deep research, and price focus.',
+      ),
+      type: _StepType.single,
+      isRequired: false,
+      options: [
+        _QuizOption(
+          value: 'research',
+          labelTr: 'Detayli Arastirma',
+          labelEn: 'Deep Research',
+          emoji: '🔍',
+        ),
+        _QuizOption(
+          value: 'quick_decision',
+          labelTr: 'Hizli Karar',
+          labelEn: 'Quick Decision',
+          emoji: '⚡',
+        ),
+        _QuizOption(
+          value: 'price_tracking',
+          labelTr: 'Fiyat Takibi',
+          labelEn: 'Price Tracking',
+          emoji: '📉',
+        ),
+        _QuizOption(
+          value: 'all',
+          labelTr: 'Hepsi',
+          labelEn: 'Everything',
+          emoji: '🎯',
+        ),
+      ],
+    ),
+    _QuizStep(
+      field: 'ageRange',
+      title: _t(
+        'Kendine en yakin yas araligini sec',
+        'Pick the age range closest to you',
+      ),
+      subtitle: _t(
+        'Oneri tonu ve kesif hizi buna gore ayarlanir.',
+        'This helps tune exploration pace and recommendation tone.',
+      ),
+      algorithmHint: _t(
+        'Yas araligi, yeni urunlere egilim ve aciklama derinligini etkiler.',
+        'Age range influences recency preference and explanation depth.',
+      ),
+      type: _StepType.single,
+      isRequired: true,
+      options: [
+        _QuizOption(
+          value: '13-17',
+          labelTr: '13-17',
+          labelEn: '13-17',
+          emoji: '🎮',
+        ),
+        _QuizOption(
+          value: '18-24',
+          labelTr: '18-24',
+          labelEn: '18-24',
+          emoji: '📱',
+        ),
+        _QuizOption(
+          value: '25-34',
+          labelTr: '25-34',
+          labelEn: '25-34',
+          emoji: '💻',
+        ),
+        _QuizOption(
+          value: '35-44',
+          labelTr: '35-44',
+          labelEn: '35-44',
+          emoji: '🏠',
+        ),
+        _QuizOption(
+          value: '45-54',
+          labelTr: '45-54',
+          labelEn: '45-54',
+          emoji: '📊',
+        ),
+        _QuizOption(value: '55+', labelTr: '55+', labelEn: '55+', emoji: '✨'),
+      ],
+    ),
+    _QuizStep(
+      field: 'profession',
+      title: _t(
+        'Sana en yakin profil hangisi?',
+        'Which profile feels closest to you?',
+      ),
+      subtitle: _t(
+        'Meslek bilgisi kategori onceliklerini daha akilli hale getirir.',
+        'Profession helps tune category priority more intelligently.',
+      ),
+      algorithmHint: _t(
+        'Profil algoritmasi ilgi alanlarini ve kategori onceliklerini buna gore ince ayarlar.',
+        'The profile algorithm fine-tunes category priority with this signal.',
+      ),
+      type: _StepType.single,
+      isRequired: false,
+      options: [
+        _QuizOption(
+          value: 'student',
+          labelTr: 'Ogrenci',
+          labelEn: 'Student',
+          emoji: '🎓',
+        ),
+        _QuizOption(
+          value: 'engineer',
+          labelTr: 'Muhendis',
+          labelEn: 'Engineer',
+          emoji: '⚙️',
+        ),
+        _QuizOption(
+          value: 'designer',
+          labelTr: 'Tasarimci',
+          labelEn: 'Designer',
+          emoji: '🎨',
+        ),
+        _QuizOption(
+          value: 'manager',
+          labelTr: 'Yonetici',
+          labelEn: 'Manager',
+          emoji: '💼',
+        ),
+        _QuizOption(
+          value: 'healthcare',
+          labelTr: 'Saglik',
+          labelEn: 'Healthcare',
+          emoji: '🏥',
+        ),
+        _QuizOption(
+          value: 'teacher',
+          labelTr: 'Egitmen',
+          labelEn: 'Teacher',
+          emoji: '📚',
+        ),
+        _QuizOption(
+          value: 'finance',
+          labelTr: 'Finans',
+          labelEn: 'Finance',
+          emoji: '💹',
+        ),
+        _QuizOption(
+          value: 'other',
+          labelTr: 'Diger',
+          labelEn: 'Other',
+          emoji: '🌐',
+        ),
+      ],
+    ),
+    _QuizStep(
+      field: 'subscriptions',
+      title: _t(
+        'Hangi servisler zaten hayatinin icinde?',
+        'Which services are already part of your stack?',
+      ),
+      subtitle: _t(
+        'Compair zaten kullandigin servisleri yeniden onermemek icin bunu kullanir.',
+        'Compair uses this to avoid recommending services you already pay for.',
+      ),
+      algorithmHint: _t(
+        'Servis secimleri ekosistem yatkinligi ve abonelik yogunlugunu etkiler.',
+        'Service choices influence ecosystem affinity and subscription density.',
+      ),
+      type: _StepType.multi,
+      isRequired: false,
+      options: [
+        _QuizOption(
+          value: 'spotify',
+          labelTr: 'Spotify',
+          labelEn: 'Spotify',
+          emoji: '🎵',
+        ),
+        _QuizOption(
+          value: 'netflix',
+          labelTr: 'Netflix',
+          labelEn: 'Netflix',
+          emoji: '🎬',
+        ),
+        _QuizOption(
+          value: 'youtube_premium',
+          labelTr: 'YouTube Premium',
+          labelEn: 'YouTube Premium',
+          emoji: '▶️',
+        ),
+        _QuizOption(
+          value: 'apple_music',
+          labelTr: 'Apple Music',
+          labelEn: 'Apple Music',
+          emoji: '🎶',
+        ),
+        _QuizOption(
+          value: 'icloud',
+          labelTr: 'iCloud',
+          labelEn: 'iCloud',
+          emoji: '☁️',
+        ),
+        _QuizOption(
+          value: 'google_one',
+          labelTr: 'Google One',
+          labelEn: 'Google One',
+          emoji: '☁️',
+        ),
+        _QuizOption(
+          value: 'game_pass',
+          labelTr: 'Game Pass',
+          labelEn: 'Game Pass',
+          emoji: '🎮',
+        ),
+        _QuizOption(
+          value: 'ps_plus',
+          labelTr: 'PS Plus',
+          labelEn: 'PS Plus',
+          emoji: '🕹️',
+        ),
+        _QuizOption(
+          value: 'none',
+          labelTr: 'Hicbiri',
+          labelEn: 'None',
+          emoji: '➖',
+        ),
+      ],
+    ),
+  ];
 
   static const Map<String, List<String>> _relatedCategories = {
     'smartphones': ['tablets', 'smartwatches', 'headphones'],
@@ -590,7 +657,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     'consoles': ['tvs', 'headphones', 'speakers'],
     'speakers': ['tvs', 'headphones', 'consoles'],
     'desktops': ['monitors', 'cpus', 'gpus'],
-    'routers': ['smart-home', 'tvs', 'desktops'],
+    'routers': ['robot-vacuums', 'tvs', 'desktops'],
     'drones': ['cameras', 'smartphones', 'tablets'],
     'robot-vacuums': ['routers', 'smartwatches', 'speakers'],
   };
@@ -624,7 +691,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userProfileProvider).valueOrNull;
-    final covers = ref.watch(categoryCoversProvider).valueOrNull ?? const <String, String>{};
+    final covers =
+        ref.watch(quizCategoryVisualsProvider).valueOrNull ??
+        const <String, String>{};
     final steps = _steps;
     final step = steps[_currentPage];
 
@@ -654,13 +723,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: steps.length,
-                    onPageChanged: (index) => setState(() => _currentPage = index),
+                    onPageChanged: (index) =>
+                        setState(() => _currentPage = index),
                     itemBuilder: (context, index) {
                       final currentStep = steps[index];
-                      return _buildStepPage(
-                        currentStep,
-                        covers,
-                      );
+                      return _buildStepPage(currentStep, covers);
                     },
                   ),
                 ),
@@ -839,7 +906,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               value: progress,
               minHeight: 5,
               backgroundColor: Colors.white.withValues(alpha: 0.08),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.brandCyan),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppTheme.brandCyan,
+              ),
             ),
           ),
         ],
@@ -914,7 +983,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   Widget _buildCategoriesStep(_QuizStep step, Map<String, String> covers) {
     final selectedCount = _interestCategories.length;
-    final suggestions = _relatedSuggestions(step);
+    final expandedOptions = _expandedCategoryOptions(step);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -922,10 +991,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         _buildSelectedCounter(
           selectedCount,
           minimum: 3,
-          text: _t(
-            'En az 3 kategori sec',
-            'Select at least 3 categories',
-          ),
+          text: _t('En az 3 kategori sec', 'Select at least 3 categories'),
         ),
         const SizedBox(height: 18),
         Wrap(
@@ -944,51 +1010,24 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         AnimatedSize(
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
-          child: suggestions.isEmpty
+          child: expandedOptions.isEmpty
               ? const SizedBox.shrink()
               : Padding(
-                  padding: const EdgeInsets.only(top: 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _t('Benzer ilgi alanlari', 'Related interests'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _t(
-                          'Sectikce benzer kategoriler acilir. Spotify tarzinda zevk profilini boyle kuruyoruz.',
-                          'Related categories expand as you select, building a taste profile like Spotify-style onboarding.',
-                        ),
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.45,
-                          color: Colors.white.withValues(alpha: 0.66),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 14,
-                        children: suggestions.map((value) {
-                          final option = step.options.firstWhere(
-                            (item) => item.value == value,
-                          );
-                          return _buildMiniCircleChoice(
-                            option: option,
-                            selected: _interestCategories.contains(value),
-                            onTap: () =>
-                                _toggleMulti('interestCategories', value),
-                            imageUrl: covers[value],
-                          );
-                        }).toList(),
-                      ),
-                    ],
+                  padding: const EdgeInsets.only(top: 22),
+                  child: Wrap(
+                    spacing: 14,
+                    runSpacing: 18,
+                    children: expandedOptions.map((option) {
+                      return _buildCircleChoice(
+                        option: option,
+                        selected: _interestCategories.contains(option.value),
+                        onTap: () =>
+                            _toggleMulti('interestCategories', option.value),
+                        imageUrl: covers[option.value],
+                        size: 84,
+                        dimmed: true,
+                      );
+                    }).toList(),
                   ),
                 ),
         ),
@@ -996,25 +1035,26 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     );
   }
 
-  List<String> _relatedSuggestions(_QuizStep step) {
-    final suggestions = <String>[];
+  List<_QuizOption> _expandedCategoryOptions(_QuizStep step) {
+    final expandedValues = <String>[];
     for (final selected in _interestCategories) {
       final related = _relatedCategories[selected] ?? const <String>[];
       for (final value in related) {
         final exists = step.options.any((option) => option.value == value);
-        if (!exists || _interestCategories.contains(value) || suggestions.contains(value)) {
+        if (!exists ||
+            _interestCategories.contains(value) ||
+            expandedValues.contains(value)) {
           continue;
         }
-        suggestions.add(value);
+        expandedValues.add(value);
       }
     }
-    return suggestions.take(6).toList();
+    return expandedValues.take(6).map((value) {
+      return step.options.firstWhere((option) => option.value == value);
+    }).toList();
   }
 
-  Widget _buildGenericCircleStep(
-    _QuizStep step,
-    Map<String, String> covers,
-  ) {
+  Widget _buildGenericCircleStep(_QuizStep step, Map<String, String> covers) {
     final selectedValues = _selectedValues(step.field);
 
     return Column(
@@ -1101,8 +1141,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     required VoidCallback onTap,
     required double size,
     String? imageUrl,
+    bool dimmed = false,
   }) {
-    final colors = _accentMap[option.value] ?? const [AppTheme.brandCyan, AppTheme.brandBlue];
+    final colors =
+        _accentMap[option.value] ??
+        const [AppTheme.brandCyan, AppTheme.brandBlue];
 
     return GestureDetector(
       onTap: onTap,
@@ -1120,12 +1163,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 height: size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: selected
-                      ? LinearGradient(colors: colors)
-                      : null,
-                  color: selected
-                      ? null
-                      : Colors.white.withValues(alpha: 0.05),
+                  gradient: selected ? LinearGradient(colors: colors) : null,
+                  color: selected ? null : Colors.white.withValues(alpha: 0.05),
                   border: Border.all(
                     color: selected
                         ? Colors.white.withValues(alpha: 0.2)
@@ -1142,25 +1181,36 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         ]
                       : null,
                 ),
-                padding: const EdgeInsets.all(4),
+                padding: EdgeInsets.all(dimmed ? 5 : 4),
                 child: Stack(
                   children: [
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF0C1622),
+                          color: dimmed
+                              ? const Color(0xFF101B29)
+                              : const Color(0xFF0C1622),
                         ),
                       ),
                     ),
                     if (imageUrl != null)
                       Positioned.fill(
-                        child: ClipOval(
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const SizedBox.shrink(),
+                        child: Padding(
+                          padding: EdgeInsets.all(dimmed ? 10 : 8),
+                          child: ClipOval(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.04),
+                              ),
+                              child: Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -1173,7 +1223,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withValues(alpha: imageUrl == null ? 0.0 : 0.45),
+                              Colors.black.withValues(
+                                alpha: imageUrl == null
+                                    ? 0.0
+                                    : (dimmed ? 0.28 : 0.38),
+                              ),
                             ],
                           ),
                         ),
@@ -1223,77 +1277,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMiniCircleChoice({
-    required _QuizOption option,
-    required bool selected,
-    required VoidCallback onTap,
-    String? imageUrl,
-  }) {
-    final colors = _accentMap[option.value] ?? const [AppTheme.brandCyan, AppTheme.brandBlue];
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? colors.first.withValues(alpha: 0.16)
-              : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected
-                ? colors.first.withValues(alpha: 0.4)
-                : Colors.white.withValues(alpha: 0.06),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: colors),
-              ),
-              padding: const EdgeInsets.all(2),
-              child: ClipOval(
-                child: imageUrl == null
-                    ? Center(
-                        child: Text(
-                          option.emoji,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      )
-                    : Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Center(
-                          child: Text(
-                            option.emoji,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              option.label(_isTurkish),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.88),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1536,21 +1519,23 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       'budgetRange': _budgetRange,
       'priorities': _priorities,
       'currentDevices': _currentDevices,
-      'subscriptions': _subscriptions.contains('none') ? <String>[] : _subscriptions,
+      'subscriptions': _subscriptions.contains('none')
+          ? <String>[]
+          : _subscriptions,
       'country': country,
       'language': countryInfo?.language ?? (_isTurkish ? 'tr' : 'en'),
       'currency': countryInfo?.currency ?? detectedCurrency,
       'interestCategories': _interestCategories,
       'usageIntent': _usageIntent ?? 'all',
       'profession': _profession,
-      'primaryCategory':
-          _interestCategories.isNotEmpty ? _interestCategories.first : 'smartphones',
+      'primaryCategory': _interestCategories.isNotEmpty
+          ? _interestCategories.first
+          : 'smartphones',
     };
 
-    final result = await ref.read(authRepositoryProvider).updateUserProfile(
-          uid: userId,
-          quizData: payload,
-        );
+    final result = await ref
+        .read(authRepositoryProvider)
+        .updateUserProfile(uid: userId, quizData: payload);
 
     if (!mounted) return;
 
@@ -1561,6 +1546,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ref.invalidate(userProfileProvider);
         ref.invalidate(homeFeedProvider);
         ref.invalidate(categoryCoversProvider);
+        ref.invalidate(quizCategoryVisualsProvider);
         setState(() => _showCompletion = true);
         return;
       case Failure(error: final error):
@@ -1575,8 +1561,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }
 
   Widget _buildCompletionScreen(Map<String, String> covers) {
-    final heroCategory =
-        _interestCategories.isNotEmpty ? _interestCategories.first : 'smartphones';
+    final heroCategory = _interestCategories.isNotEmpty
+        ? _interestCategories.first
+        : 'smartphones';
     final heroImage = covers[heroCategory];
     final topCategories = _interestCategories
         .take(3)
@@ -1620,8 +1607,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                       child: Image.network(
                                         heroImage,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            const SizedBox.shrink(),
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const SizedBox.shrink(),
                                       ),
                                     ),
                                   Positioned.fill(
@@ -1631,7 +1619,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
                                           colors: [
-                                            Colors.black.withValues(alpha: 0.18),
+                                            Colors.black.withValues(
+                                              alpha: 0.18,
+                                            ),
                                             Colors.black.withValues(alpha: 0.2),
                                             const Color(0xFF07101A),
                                           ],
@@ -1642,7 +1632,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                   Padding(
                                     padding: const EdgeInsets.all(24),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Container(
                                           width: 58,
@@ -1659,10 +1650,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                         ),
                                         const Spacer(),
                                         Text(
-                                          _t(
-                                            'Hazirsin',
-                                            'You are ready',
-                                          ),
+                                          _t('Hazirsin', 'You are ready'),
                                           style: const TextStyle(
                                             fontSize: 32,
                                             fontWeight: FontWeight.w900,
@@ -1678,7 +1666,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                           style: TextStyle(
                                             fontSize: 14,
                                             height: 1.5,
-                                            color: Colors.white.withValues(alpha: 0.78),
+                                            color: Colors.white.withValues(
+                                              alpha: 0.78,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -1714,7 +1704,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                           ),
                           const SizedBox(height: 12),
                           _completionCard(
-                            title: _t('Uyumluluk profili', 'Compatibility profile'),
+                            title: _t(
+                              'Uyumluluk profili',
+                              'Compatibility profile',
+                            ),
                             body: _ecosystem == null
                                 ? _t(
                                     'Uyumluluk davranis sinyalleri ile guclenecek.',
@@ -1818,12 +1811,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   String _labelForCategory(String value) {
     final option = _steps.first.options.firstWhere(
       (item) => item.value == value,
-      orElse: () => _QuizOption(
-        value: value,
-        labelTr: value,
-        labelEn: value,
-        emoji: '✨',
-      ),
+      orElse: () =>
+          _QuizOption(value: value, labelTr: value, labelEn: value, emoji: '✨'),
     );
     return option.label(_isTurkish);
   }
@@ -1832,12 +1821,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final step = _steps.firstWhere((item) => item.field == 'priorities');
     final option = step.options.firstWhere(
       (item) => item.value == value,
-      orElse: () => _QuizOption(
-        value: value,
-        labelTr: value,
-        labelEn: value,
-        emoji: '✨',
-      ),
+      orElse: () =>
+          _QuizOption(value: value, labelTr: value, labelEn: value, emoji: '✨'),
     );
     return option.label(_isTurkish);
   }
@@ -1906,10 +1891,7 @@ class _HeaderButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _HeaderButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _HeaderButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
