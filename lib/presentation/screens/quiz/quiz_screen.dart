@@ -991,8 +991,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'Which services are already part of your stack?',
       ),
       subtitle: _t(
-        'Compair zaten kullandigin servisleri yeniden onermemek icin bunu kullanir.',
-        'Compair uses this to avoid recommending services you already pay for.',
+        'Kullandigin servisleri sec.',
+        'Select the services you already use.',
       ),
       algorithmHint: _t(
         'Servis secimleri ekosistem yatkinligi ve abonelik yogunlugunu etkiler.',
@@ -1162,6 +1162,206 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           preferContain: true,
         ),
         _QuizOption(
+          value: 'youtube_music',
+          labelTr: 'YouTube Music',
+          labelEn: 'YouTube Music',
+          emoji: '🎵',
+          logoDomain: 'youtube.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'amazon_music',
+          labelTr: 'Amazon Music',
+          labelEn: 'Amazon Music',
+          emoji: '🎵',
+          logoDomain: 'amazon.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'tidal',
+          labelTr: 'Tidal',
+          labelEn: 'Tidal',
+          emoji: '🎵',
+          logoDomain: 'tidal.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'deezer',
+          labelTr: 'Deezer',
+          labelEn: 'Deezer',
+          emoji: '🎵',
+          logoDomain: 'deezer.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'hulu',
+          labelTr: 'Hulu',
+          labelEn: 'Hulu',
+          emoji: '🎬',
+          logoDomain: 'hulu.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'crunchyroll',
+          labelTr: 'Crunchyroll',
+          labelEn: 'Crunchyroll',
+          emoji: '🎬',
+          logoDomain: 'crunchyroll.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'mubi',
+          labelTr: 'MUBI',
+          labelEn: 'MUBI',
+          emoji: '🎬',
+          logoDomain: 'mubi.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'dropbox',
+          labelTr: 'Dropbox',
+          labelEn: 'Dropbox',
+          emoji: '☁️',
+          logoDomain: 'dropbox.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'onedrive',
+          labelTr: 'OneDrive',
+          labelEn: 'OneDrive',
+          emoji: '☁️',
+          logoDomain: 'onedrive.live.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'canva',
+          labelTr: 'Canva',
+          labelEn: 'Canva',
+          emoji: '🎨',
+          logoDomain: 'canva.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'slack',
+          labelTr: 'Slack',
+          labelEn: 'Slack',
+          emoji: '💬',
+          logoDomain: 'slack.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'zoom',
+          labelTr: 'Zoom',
+          labelEn: 'Zoom',
+          emoji: '🎥',
+          logoDomain: 'zoom.us',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'jira',
+          labelTr: 'Jira',
+          labelEn: 'Jira',
+          emoji: '🧩',
+          logoDomain: 'atlassian.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'grammarly',
+          labelTr: 'Grammarly',
+          labelEn: 'Grammarly',
+          emoji: '✍️',
+          logoDomain: 'grammarly.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'linkedin_premium',
+          labelTr: 'LinkedIn Premium',
+          labelEn: 'LinkedIn Premium',
+          emoji: '💼',
+          logoDomain: 'linkedin.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'udemy',
+          labelTr: 'Udemy',
+          labelEn: 'Udemy',
+          emoji: '🎓',
+          logoDomain: 'udemy.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'coursera',
+          labelTr: 'Coursera',
+          labelEn: 'Coursera',
+          emoji: '🎓',
+          logoDomain: 'coursera.org',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'duolingo',
+          labelTr: 'Duolingo',
+          labelEn: 'Duolingo',
+          emoji: '🎓',
+          logoDomain: 'duolingo.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'claude',
+          labelTr: 'Claude Pro',
+          labelEn: 'Claude Pro',
+          emoji: '🤖',
+          logoDomain: 'anthropic.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'gemini',
+          labelTr: 'Gemini Advanced',
+          labelEn: 'Gemini Advanced',
+          emoji: '🤖',
+          logoDomain: 'gemini.google.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'perplexity',
+          labelTr: 'Perplexity Pro',
+          labelEn: 'Perplexity Pro',
+          emoji: '🤖',
+          logoDomain: 'perplexity.ai',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'midjourney',
+          labelTr: 'Midjourney',
+          labelEn: 'Midjourney',
+          emoji: '🤖',
+          logoDomain: 'midjourney.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'elevenlabs',
+          labelTr: 'ElevenLabs',
+          labelEn: 'ElevenLabs',
+          emoji: '🤖',
+          logoDomain: 'elevenlabs.io',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: 'nordvpn',
+          labelTr: 'NordVPN',
+          labelEn: 'NordVPN',
+          emoji: '🔐',
+          logoDomain: 'nordvpn.com',
+          preferContain: true,
+        ),
+        _QuizOption(
+          value: '1password',
+          labelTr: '1Password',
+          labelEn: '1Password',
+          emoji: '🔐',
+          logoDomain: '1password.com',
+          preferContain: true,
+        ),
+        _QuizOption(
           value: 'none',
           labelTr: 'Hicbiri',
           labelEn: 'None',
@@ -1223,6 +1423,31 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     'switch_online': 'https://cdn.simpleicons.org/nintendo/E60012',
     'geforce_now': 'https://cdn.simpleicons.org/nvidia/76B900',
     'twitch': 'https://cdn.simpleicons.org/twitch/9146FF',
+    'youtube_music': 'https://cdn.simpleicons.org/youtubemusic/FF0000',
+    'amazon_music': 'https://cdn.simpleicons.org/amazonmusic/46C3D0',
+    'tidal': 'https://cdn.simpleicons.org/tidal/000000',
+    'deezer': 'https://cdn.simpleicons.org/deezer/A238FF',
+    'hulu': 'https://cdn.simpleicons.org/hulu/1CE783',
+    'crunchyroll': 'https://cdn.simpleicons.org/crunchyroll/F47521',
+    'mubi': 'https://cdn.simpleicons.org/mubi/000000',
+    'dropbox': 'https://cdn.simpleicons.org/dropbox/0061FF',
+    'onedrive': 'https://cdn.simpleicons.org/microsoftonedrive/0078D4',
+    'canva': 'https://cdn.simpleicons.org/canva/00C4CC',
+    'slack': 'https://cdn.simpleicons.org/slack/4A154B',
+    'zoom': 'https://cdn.simpleicons.org/zoom/0B5CFF',
+    'jira': 'https://cdn.simpleicons.org/jira/0052CC',
+    'grammarly': 'https://cdn.simpleicons.org/grammarly/15C39A',
+    'linkedin_premium': 'https://cdn.simpleicons.org/linkedin/0A66C2',
+    'udemy': 'https://cdn.simpleicons.org/udemy/A435F0',
+    'coursera': 'https://cdn.simpleicons.org/coursera/0056D2',
+    'duolingo': 'https://cdn.simpleicons.org/duolingo/58CC02',
+    'claude': 'https://cdn.simpleicons.org/anthropic/191919',
+    'gemini': 'https://cdn.simpleicons.org/googlegemini/8E75B2',
+    'perplexity': 'https://cdn.simpleicons.org/perplexity/1FB8CD',
+    'midjourney': 'https://cdn.simpleicons.org/midjourney/000000',
+    'elevenlabs': 'https://cdn.simpleicons.org/elevenlabs/000000',
+    'nordvpn': 'https://cdn.simpleicons.org/nordvpn/4687FF',
+    '1password': 'https://cdn.simpleicons.org/1password/3B66BC',
   };
 
   static const Map<String, IconData> _optionIcons = {
@@ -1531,10 +1756,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             step.title,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w900,
@@ -1546,6 +1772,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             const SizedBox(height: 8),
             Text(
               step.subtitle,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
                 height: 1.35,
@@ -1569,7 +1796,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final selectedCount = _interestCategories.length;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _buildSelectedCounter(
           selectedCount,
@@ -1608,7 +1835,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final selectedValues = _selectedValues(step.field);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (step.type == _StepType.multi && selectedValues.isNotEmpty)
           Padding(
@@ -1618,25 +1845,35 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               text: _t('Secili', 'Selected'),
             ),
           ),
-        Wrap(
-          spacing: 14,
-          runSpacing: 18,
-          children: step.options.map((option) {
-            final selected = selectedValues.contains(option.value);
-            return _buildCircleChoice(
-              option: option,
-              selected: selected,
-              onTap: () {
-                if (step.type == _StepType.single) {
-                  _selectSingle(step.field, option.value);
-                } else {
-                  _toggleMulti(step.field, option.value);
-                }
-              },
-              imageUrl: _resolveOptionImageUrl(option, covers),
-              size: 94,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final itemWidth = (constraints.maxWidth - 24) / 3;
+            final circleSize = itemWidth.clamp(92.0, 106.0);
+            return Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 18,
+              children: step.options.map((option) {
+                final selected = selectedValues.contains(option.value);
+                return SizedBox(
+                  width: itemWidth,
+                  child: _buildCircleChoice(
+                    option: option,
+                    selected: selected,
+                    onTap: () {
+                      if (step.type == _StepType.single) {
+                        _selectSingle(step.field, option.value);
+                      } else {
+                        _toggleMulti(step.field, option.value);
+                      }
+                    },
+                    imageUrl: _resolveOptionImageUrl(option, covers),
+                    size: circleSize,
+                  ),
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
         ),
       ],
     );
@@ -1646,7 +1883,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final selectedValues = _selectedValues(step.field);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (step.type == _StepType.multi && selectedValues.isNotEmpty)
           Padding(
@@ -1660,17 +1897,20 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           final selected = selectedValues.contains(option.value);
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _buildListChoice(
-              option: option,
-              selected: selected,
-              onTap: () {
-                if (step.type == _StepType.single) {
-                  _selectSingle(step.field, option.value);
-                } else {
-                  _toggleMulti(step.field, option.value);
-                }
-              },
-              imageUrl: _resolveOptionImageUrl(option, covers),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: _buildListChoice(
+                option: option,
+                selected: selected,
+                onTap: () {
+                  if (step.type == _StepType.single) {
+                    _selectSingle(step.field, option.value);
+                  } else {
+                    _toggleMulti(step.field, option.value);
+                  }
+                },
+                imageUrl: _resolveOptionImageUrl(option, covers),
+              ),
             ),
           );
         }),
@@ -1685,35 +1925,38 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }) {
     final meetsMinimum = minimum == null || count >= minimum;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: meetsMinimum
-              ? AppTheme.brandCyan.withValues(alpha: 0.32)
-              : Colors.white.withValues(alpha: 0.08),
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: meetsMinimum
+                ? AppTheme.brandCyan.withValues(alpha: 0.32)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            meetsMinimum ? Icons.check_circle_rounded : Icons.circle_outlined,
-            size: 16,
-            color: meetsMinimum ? AppTheme.brandCyan : Colors.white54,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            minimum == null ? '$count $text' : '$count / $minimum · $text',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.88),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              meetsMinimum ? Icons.check_circle_rounded : Icons.circle_outlined,
+              size: 16,
+              color: meetsMinimum ? AppTheme.brandCyan : Colors.white54,
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              minimum == null ? '$count $text' : '$count / $minimum · $text',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: 0.88),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1935,7 +2178,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }) {
     final icon = _optionIcons[option.value];
 
-    if (imageUrl != null && imageUrl.toLowerCase().endsWith('.svg')) {
+    final lowerUrl = imageUrl?.toLowerCase();
+    final isSvg =
+        lowerUrl != null &&
+        (lowerUrl.endsWith('.svg') || lowerUrl.contains('simpleicons.org'));
+
+    if (imageUrl != null && isSvg) {
       return SvgPicture.network(
         imageUrl,
         fit: BoxFit.contain,
