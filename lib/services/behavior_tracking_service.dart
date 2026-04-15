@@ -115,13 +115,6 @@ class BehaviorTrackingService {
     if (productIds.isEmpty) {
       return;
     }
-    _fireAndForget('trackComparison', (uid) async {
-      await _appendHistory(
-        uid,
-        'comparisonHistory',
-        _entry({'productIds': productIds}),
-      );
-    });
   }
 
   void trackPriceTap(String productId) {

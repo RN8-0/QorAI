@@ -477,69 +477,34 @@ class PbDataSource {
 
   Future<String> createComparison(ComparisonModel comparison) async {
     try {
-      var recordId = comparison.id;
-      try {
-        final record = await _pb
-            .collection(AppConstants.comparisonsCollection)
-            .create(body: comparison.toMap());
-        recordId = record.id;
-      } catch (_) {
-        try {
-          final record = await _pb
-              .collection(AppConstants.comparisonsCollection)
-              .create(
-                body: {
-                  'userId': comparison.userId,
-                  'productIds': comparison.itemIds,
-                  'title': comparison.title,
-                  'notes': {
-                    'category': comparison.category,
-                    'winnerId': comparison.winnerId,
-                    'aiAnalysis': comparison.aiAnalysis,
-                    'createdAt': comparison.createdAt.toIso8601String(),
-                  },
-                  'isShared': comparison.isPublic,
-                },
-              );
-          recordId = record.id;
-        } catch (e) {
-          debugPrint(
-            '[PB] comparison collection save failed, using user history fallback: $e',
+      final record = await _pb
+          .collection(AppConstants.comparisonsCollection)
+          .create(
+            body: {
+              'userId': comparison.userId,
+              'productIds': comparison.itemIds,
+              'title': comparison.title,
+              'notes': {
+                'category': comparison.category,
+                'winnerId': comparison.winnerId,
+                'aiAnalysis': comparison.aiAnalysis,
+                'createdAt': comparison.createdAt.toIso8601String(),
+              },
+              'isShared': comparison.isPublic,
+              'shareCode': comparison.id,
+            },
           );
-        }
-      }
+      final recordId = record.id;
 
       final user = await _pb
           .collection(AppConstants.usersCollection)
           .getOne(comparison.userId);
-      final rawHistory = user.data['comparisonHistory'];
-      final history = _parseHistoryEntries(
-        rawHistory is List ? rawHistory : null,
-      );
-      history.insert(0, {
-        'id': recordId,
-        'comparisonId': recordId,
-        'items': comparison.itemIds,
-        'productIds': comparison.itemIds,
-        'title': comparison.title,
-        'category': comparison.category,
-        'winnerId': comparison.winnerId,
-        'aiAnalysis': comparison.aiAnalysis,
-        'createdAt': comparison.createdAt.toIso8601String(),
-      });
-      final trimmedHistory = history.take(50).toList();
 
       // Increment user comparison count
       final count = (user.data['comparisonsCount'] as num?)?.toInt() ?? 0;
       await _pb
           .collection(AppConstants.usersCollection)
-          .update(
-            comparison.userId,
-            body: {
-              'comparisonsCount': count + 1,
-              'comparisonHistory': trimmedHistory,
-            },
-          );
+          .update(comparison.userId, body: {'comparisonsCount': count + 1});
       return recordId;
     } catch (e) {
       throw ServerException(message: 'Comparison could not be created: $e');
