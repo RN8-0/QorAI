@@ -8,7 +8,11 @@ class _SpecsCard extends StatefulWidget {
   final Map<String, dynamic> specs;
   final Color cardBg;
   final bool isDark;
-  const _SpecsCard({required this.specs, required this.cardBg, required this.isDark});
+  const _SpecsCard({
+    required this.specs,
+    required this.cardBg,
+    required this.isDark,
+  });
 
   @override
   State<_SpecsCard> createState() => _SpecsCardState();
@@ -20,49 +24,112 @@ class _SpecsCardState extends State<_SpecsCard> {
   // Icons per spec group — matches Firestore group names from admin panel
   IconData _getGroupIcon(String groupKey) {
     final k = groupKey.toLowerCase().replaceAll('_', ' ');
-    if (k.contains('general') || k.contains('information')) return Icons.info_outline;
-    if (k.contains('display') || k.contains('screen') || k.contains('ekran')) return Icons.phone_android;
-    if (k.contains('processor') || k.contains('cpu') || k.contains('performance')) return Icons.memory;
-    if (k.contains('graphic') || k.contains('gpu') || k.contains('video card')) return Icons.videogame_asset_outlined;
+    if (k.contains('general') || k.contains('information'))
+      return Icons.info_outline;
+    if (k.contains('display') || k.contains('screen') || k.contains('ekran'))
+      return Icons.phone_android;
+    if (k.contains('processor') ||
+        k.contains('cpu') ||
+        k.contains('performance'))
+      return Icons.memory;
+    if (k.contains('graphic') || k.contains('gpu') || k.contains('video card'))
+      return Icons.videogame_asset_outlined;
     if (k.contains('memory') || k.contains('ram')) return Icons.memory_outlined;
-    if (k.contains('storage') || k.contains('disk') || k.contains('optical') || k.contains('ssd') || k.contains('hdd')) return Icons.storage_outlined;
-    if (k.contains('battery') || k.contains('power')) return Icons.battery_charging_full_outlined;
-    if (k.contains('camera') || k.contains('photo')) return Icons.camera_alt_outlined;
-    if (k.contains('connect') || k.contains('network') || k.contains('wifi') || k.contains('bluetooth')) return Icons.wifi;
-    if (k.contains('port') || k.contains('slot') || k.contains('interface') || k.contains('usb') || k.contains('expansion')) return Icons.usb_outlined;
-    if (k.contains('audio') || k.contains('sound') || k.contains('speaker')) return Icons.headphones_outlined;
-    if (k.contains('design') || k.contains('physical') || k.contains('dimension') || k.contains('build') || k.contains('chassis')) return Icons.design_services_outlined;
-    if (k.contains('software') || k.contains('os') || k.contains('operating')) return Icons.apps_outlined;
-    if (k.contains('cooling') || k.contains('fan') || k.contains('thermal')) return Icons.ac_unit_outlined;
-    if (k.contains('lighting') || k.contains('rgb') || k.contains('led')) return Icons.lightbulb_outlined;
-    if (k.contains('document') || k.contains('packaging') || k.contains('warranty') || k.contains('box')) return Icons.description_outlined;
-    if (k.contains('function') || k.contains('feature')) return Icons.build_outlined;
-    if (k.contains('security') || k.contains('sensor')) return Icons.security_outlined;
-    if (k.contains('weight') || k.contains('material')) return Icons.fitness_center_outlined;
-    if (k.contains('input') || k.contains('keyboard')) return Icons.keyboard_outlined;
+    if (k.contains('storage') ||
+        k.contains('disk') ||
+        k.contains('optical') ||
+        k.contains('ssd') ||
+        k.contains('hdd'))
+      return Icons.storage_outlined;
+    if (k.contains('battery') || k.contains('power'))
+      return Icons.battery_charging_full_outlined;
+    if (k.contains('camera') || k.contains('photo'))
+      return Icons.camera_alt_outlined;
+    if (k.contains('connect') ||
+        k.contains('network') ||
+        k.contains('wifi') ||
+        k.contains('bluetooth'))
+      return Icons.wifi;
+    if (k.contains('port') ||
+        k.contains('slot') ||
+        k.contains('interface') ||
+        k.contains('usb') ||
+        k.contains('expansion'))
+      return Icons.usb_outlined;
+    if (k.contains('audio') || k.contains('sound') || k.contains('speaker'))
+      return Icons.headphones_outlined;
+    if (k.contains('design') ||
+        k.contains('physical') ||
+        k.contains('dimension') ||
+        k.contains('build') ||
+        k.contains('chassis'))
+      return Icons.design_services_outlined;
+    if (k.contains('software') || k.contains('os') || k.contains('operating'))
+      return Icons.apps_outlined;
+    if (k.contains('cooling') || k.contains('fan') || k.contains('thermal'))
+      return Icons.ac_unit_outlined;
+    if (k.contains('lighting') || k.contains('rgb') || k.contains('led'))
+      return Icons.lightbulb_outlined;
+    if (k.contains('document') ||
+        k.contains('packaging') ||
+        k.contains('warranty') ||
+        k.contains('box'))
+      return Icons.description_outlined;
+    if (k.contains('function') || k.contains('feature'))
+      return Icons.build_outlined;
+    if (k.contains('security') || k.contains('sensor'))
+      return Icons.security_outlined;
+    if (k.contains('weight') || k.contains('material'))
+      return Icons.fitness_center_outlined;
+    if (k.contains('input') || k.contains('keyboard'))
+      return Icons.keyboard_outlined;
     return Icons.tune;
   }
 
   Color _getGroupColor(String groupKey) {
     final k = groupKey.toLowerCase().replaceAll('_', ' ');
-    if (k.contains('general') || k.contains('information')) return const Color(0xFF5C6BC0);
-    if (k.contains('display') || k.contains('screen')) return const Color(0xFF2196F3);
-    if (k.contains('processor') || k.contains('cpu') || k.contains('performance')) return const Color(0xFFFF5722);
-    if (k.contains('graphic') || k.contains('gpu')) return const Color(0xFFE91E63);
-    if (k.contains('memory') || k.contains('ram')) return const Color(0xFF3F51B5);
-    if (k.contains('storage') || k.contains('disk') || k.contains('optical')) return const Color(0xFF607D8B);
-    if (k.contains('battery') || k.contains('power')) return const Color(0xFF4CAF50);
+    if (k.contains('general') || k.contains('information'))
+      return const Color(0xFF5C6BC0);
+    if (k.contains('display') || k.contains('screen'))
+      return const Color(0xFF2196F3);
+    if (k.contains('processor') ||
+        k.contains('cpu') ||
+        k.contains('performance'))
+      return const Color(0xFFFF5722);
+    if (k.contains('graphic') || k.contains('gpu'))
+      return const Color(0xFFE91E63);
+    if (k.contains('memory') || k.contains('ram'))
+      return const Color(0xFF3F51B5);
+    if (k.contains('storage') || k.contains('disk') || k.contains('optical'))
+      return const Color(0xFF607D8B);
+    if (k.contains('battery') || k.contains('power'))
+      return const Color(0xFF4CAF50);
     if (k.contains('camera')) return const Color(0xFF9C27B0);
-    if (k.contains('connect') || k.contains('network')) return const Color(0xFF00BCD4);
-    if (k.contains('port') || k.contains('slot') || k.contains('expansion')) return const Color(0xFF42A5F5);
-    if (k.contains('audio') || k.contains('sound')) return const Color(0xFFE91E63);
-    if (k.contains('design') || k.contains('physical') || k.contains('dimension') || k.contains('chassis')) return const Color(0xFF795548);
-    if (k.contains('software') || k.contains('os')) return const Color(0xFF7E57C2);
-    if (k.contains('cooling') || k.contains('fan')) return const Color(0xFF29B6F6);
-    if (k.contains('lighting') || k.contains('rgb')) return const Color(0xFFFFC107);
-    if (k.contains('document') || k.contains('packaging') || k.contains('warranty')) return const Color(0xFF78909C);
-    if (k.contains('function') || k.contains('feature')) return const Color(0xFFAB47BC);
-    if (k.contains('security') || k.contains('sensor')) return const Color(0xFFEC407A);
+    if (k.contains('connect') || k.contains('network'))
+      return const Color(0xFF00BCD4);
+    if (k.contains('port') || k.contains('slot') || k.contains('expansion'))
+      return const Color(0xFF42A5F5);
+    if (k.contains('audio') || k.contains('sound'))
+      return const Color(0xFFE91E63);
+    if (k.contains('design') ||
+        k.contains('physical') ||
+        k.contains('dimension') ||
+        k.contains('chassis'))
+      return const Color(0xFF795548);
+    if (k.contains('software') || k.contains('os'))
+      return const Color(0xFF7E57C2);
+    if (k.contains('cooling') || k.contains('fan'))
+      return const Color(0xFF29B6F6);
+    if (k.contains('lighting') || k.contains('rgb'))
+      return const Color(0xFFFFC107);
+    if (k.contains('document') ||
+        k.contains('packaging') ||
+        k.contains('warranty'))
+      return const Color(0xFF78909C);
+    if (k.contains('function') || k.contains('feature'))
+      return const Color(0xFFAB47BC);
+    if (k.contains('security') || k.contains('sensor'))
+      return const Color(0xFFEC407A);
     return const Color(0xFF9E9E9E);
   }
 
@@ -70,9 +137,7 @@ class _SpecsCardState extends State<_SpecsCard> {
   void initState() {
     super.initState();
     // Use Firestore data directly — all groups collapsed
-    _expanded = {
-      for (final key in widget.specs.keys) key: false,
-    };
+    _expanded = {for (final key in widget.specs.keys) key: false};
   }
 
   static String _formatKey(String key) {
@@ -103,10 +168,13 @@ class _SpecsCardState extends State<_SpecsCard> {
   /// Capitalize each word in a string (title case).
   String _titleCase(String s) {
     if (s.isEmpty) return s;
-    return s.split(' ').map((w) {
-      if (w.isEmpty) return w;
-      return w[0].toUpperCase() + w.substring(1);
-    }).join(' ');
+    return s
+        .split(' ')
+        .map((w) {
+          if (w.isEmpty) return w;
+          return w[0].toUpperCase() + w.substring(1);
+        })
+        .join(' ');
   }
 
   String _localizedGroupName(BuildContext context, String key) {
@@ -423,14 +491,18 @@ class _SpecsCardState extends State<_SpecsCard> {
     for (final part in parts) {
       final clean = part.trim().toLowerCase();
       if (clean.isEmpty || clean == '&' || clean == '/' || clean == '-') {
-        if (clean == '&') translated.add('ve');
-        else if (clean == '/') translated.add('/');
-        else if (clean.isNotEmpty) translated.add(part);
+        if (clean == '&')
+          translated.add('ve');
+        else if (clean == '/')
+          translated.add('/');
+        else if (clean.isNotEmpty)
+          translated.add(part);
         continue;
       }
       final tr = dict[clean];
       if (tr != null) {
-        if (tr.isNotEmpty) translated.add(tr); // skip empty translations (stop words)
+        if (tr.isNotEmpty)
+          translated.add(tr); // skip empty translations (stop words)
         anyTranslated = true;
       } else {
         // Keep original preserving acronyms via _formatKey single-word logic
@@ -447,15 +519,20 @@ class _SpecsCardState extends State<_SpecsCard> {
   /// Word-level dictionary for translating individual technical terms.
   static Map<String, String> _specWordDict(String locale) {
     switch (locale) {
-      case 'tr': return _trWordDict;
-      default: return const {};
+      case 'tr':
+        return _trWordDict;
+      default:
+        return const {};
     }
   }
 
   static const _trWordDict = <String, String>{
     // Core hardware
     'processor': 'İşlemci', 'cpu': 'İşlemci', 'chipset': 'Yonga Seti',
-    'core': 'Çekirdek', 'cores': 'Çekirdek', 'thread': 'İş Parçacığı', 'threads': 'İş Parçacığı',
+    'core': 'Çekirdek',
+    'cores': 'Çekirdek',
+    'thread': 'İş Parçacığı',
+    'threads': 'İş Parçacığı',
     'clock': 'Saat', 'frequency': 'Frekans', 'speed': 'Hız',
     'boost': 'Boost', 'turbo': 'Turbo', 'base': 'Temel',
     'efficiency': 'Verimlilik', 'performance': 'Performans',
@@ -494,7 +571,9 @@ class _SpecsCardState extends State<_SpecsCard> {
     'image': 'Görüntü', 'sensor': 'Sensör', 'sensors': 'Sensörler',
     // Network & Connectivity
     'network': 'Ağ', 'connection': 'Bağlantı', 'connections': 'Bağlantılar',
-    'connectivity': 'Bağlantı', 'interface': 'Arayüz', 'interfaces': 'Arayüzler',
+    'connectivity': 'Bağlantı',
+    'interface': 'Arayüz',
+    'interfaces': 'Arayüzler',
     'bluetooth': 'Bluetooth', 'wifi': 'Wi-Fi', 'wi-fi': 'Wi-Fi',
     'nfc': 'NFC', 'gps': 'GPS', 'lte': 'LTE', '5g': '5G', '4g': '4G',
     'band': 'Bant', 'bands': 'Bantlar',
@@ -504,7 +583,10 @@ class _SpecsCardState extends State<_SpecsCard> {
     'hdmi': 'HDMI', 'jack': 'Jak', 'headphone': 'Kulaklık',
     'input': 'Giriş', 'output': 'Çıkış',
     // Audio
-    'audio': 'Ses', 'sound': 'Ses', 'speaker': 'Hoparlör', 'speakers': 'Hoparlörler',
+    'audio': 'Ses',
+    'sound': 'Ses',
+    'speaker': 'Hoparlör',
+    'speakers': 'Hoparlörler',
     'microphone': 'Mikrofon', 'stereo': 'Stereo', 'mono': 'Mono',
     'noise': 'Gürültü', 'cancellation': 'Önleme',
     'active': 'Aktif', 'passive': 'Pasif',
@@ -588,88 +670,150 @@ class _SpecsCardState extends State<_SpecsCard> {
     final k = key.toLowerCase().replaceAll('_', ' ');
 
     // 1. BASIC INFO — Answers "What is this?", establishes context
-    if (k.contains('basic info') || k.contains('general info') ||
-        k.contains('information') || k.contains('release') ||
-        k.contains('general') || k.contains('overview')) return 1;
+    if (k.contains('basic info') ||
+        k.contains('general info') ||
+        k.contains('information') ||
+        k.contains('release') ||
+        k.contains('general') ||
+        k.contains('overview'))
+      return 1;
 
     // 2. DESIGN — First visual impression; what the user feels when seeing the product
-    if (k.contains('design') || k.contains('physical') ||
-        k.contains('dimension') || k.contains('build') ||
-        k.contains('chassis') || k.contains('weight') ||
-        k.contains('material') || k.contains('color')) return 2;
+    if (k.contains('design') ||
+        k.contains('physical') ||
+        k.contains('dimension') ||
+        k.contains('build') ||
+        k.contains('chassis') ||
+        k.contains('weight') ||
+        k.contains('material') ||
+        k.contains('color'))
+      return 2;
 
     // 3. DISPLAY — The surface the user interacts with the most
-    if (k.contains('display') || k.contains('screen') ||
-        k.contains('monitor') || k.contains('panel')) return 3;
+    if (k.contains('display') ||
+        k.contains('screen') ||
+        k.contains('monitor') ||
+        k.contains('panel'))
+      return 3;
 
     // 4. PERFORMANCE / PROCESSOR — "How fast is it?" — Most frequently asked
-    if (k.contains('basic hard') || k.contains('processor') ||
-        k.contains('cpu') || k.contains('chipset') ||
-        k.contains('performance') || k.contains('computing')) return 4;
+    if (k.contains('basic hard') ||
+        k.contains('processor') ||
+        k.contains('cpu') ||
+        k.contains('chipset') ||
+        k.contains('performance') ||
+        k.contains('computing'))
+      return 4;
 
     // 5. MEMORY / RAM — Extension of performance
     if (k.contains('memory') || k.contains('ram')) return 5;
 
     // 6. STORAGE — Capacity
-    if (k.contains('storage') || k.contains('disk') ||
-        k.contains('ssd') || k.contains('hdd') ||
-        k.contains('optical') || k.contains('flash')) return 6;
+    if (k.contains('storage') ||
+        k.contains('disk') ||
+        k.contains('ssd') ||
+        k.contains('hdd') ||
+        k.contains('optical') ||
+        k.contains('flash'))
+      return 6;
 
     // 7. CAMERA — Strongest purchase motivator in 2024
-    if (k.contains('camera') || k.contains('photo') ||
-        k.contains('imaging') || k.contains('optic')) return 7;
+    if (k.contains('camera') ||
+        k.contains('photo') ||
+        k.contains('imaging') ||
+        k.contains('optic'))
+      return 7;
 
     // 8. BATTERY — A constant concern in daily use
-    if (k.contains('battery') || k.contains('power') ||
-        k.contains('charging') || k.contains('endurance')) return 8;
+    if (k.contains('battery') ||
+        k.contains('power') ||
+        k.contains('charging') ||
+        k.contains('endurance'))
+      return 8;
 
     // 9. GPU / GRAPHICS — Gaming and visual performance
-    if (k.contains('graphic') || k.contains('gpu') ||
-        k.contains('video card') || k.contains('vga')) return 9;
+    if (k.contains('graphic') ||
+        k.contains('gpu') ||
+        k.contains('video card') ||
+        k.contains('vga'))
+      return 9;
 
     // 10. NETWORK / CELLULAR — Connectivity (4G/5G matters)
-    if (k.contains('network') || k.contains('cellular') ||
-        k.contains('sim') || k.contains('lte') || k.contains('5g') ||
-        k.contains('connect') && !k.contains('wireless')) return 10;
+    if (k.contains('network') ||
+        k.contains('cellular') ||
+        k.contains('sim') ||
+        k.contains('lte') ||
+        k.contains('5g') ||
+        k.contains('connect') && !k.contains('wireless'))
+      return 10;
 
     // 11. WIRELESS — WiFi, BT, NFC
-    if (k.contains('wireless') || k.contains('wifi') ||
-        k.contains('bluetooth') || k.contains('nfc') ||
-        k.contains('gps') || k.contains('navigation')) return 11;
+    if (k.contains('wireless') ||
+        k.contains('wifi') ||
+        k.contains('bluetooth') ||
+        k.contains('nfc') ||
+        k.contains('gps') ||
+        k.contains('navigation'))
+      return 11;
 
     // 12. OS / SOFTWARE — Ecosystem and platform
-    if (k.contains('operating') || k.contains('software') ||
-        k.contains(' os') || k.contains('system')) return 12;
+    if (k.contains('operating') ||
+        k.contains('software') ||
+        k.contains(' os') ||
+        k.contains('system'))
+      return 12;
 
     // 13. AUDIO / MULTIMEDIA — Media consumption
-    if (k.contains('audio') || k.contains('sound') ||
-        k.contains('speaker') || k.contains('multimedia') ||
-        k.contains('music')) return 13;
+    if (k.contains('audio') ||
+        k.contains('sound') ||
+        k.contains('speaker') ||
+        k.contains('multimedia') ||
+        k.contains('music'))
+      return 13;
 
     // 14. FEATURES / SECURITY / SENSORS — Additional features
-    if (k.contains('feature') || k.contains('function') ||
-        k.contains('security') || k.contains('sensor') ||
-        k.contains('biometric') || k.contains('fingerprint')) return 14;
+    if (k.contains('feature') ||
+        k.contains('function') ||
+        k.contains('security') ||
+        k.contains('sensor') ||
+        k.contains('biometric') ||
+        k.contains('fingerprint'))
+      return 14;
 
     // 15. PORTS / CONNECTIONS — Physical connections
-    if (k.contains('port') || k.contains('slot') ||
-        k.contains('usb') || k.contains('interface') ||
-        k.contains('expansion') || k.contains('other connection') ||
-        k.contains('connector')) return 15;
+    if (k.contains('port') ||
+        k.contains('slot') ||
+        k.contains('usb') ||
+        k.contains('interface') ||
+        k.contains('expansion') ||
+        k.contains('other connection') ||
+        k.contains('connector'))
+      return 15;
 
     // 16. COOLING — Desktop/Laptop specific
-    if (k.contains('cooling') || k.contains('fan') ||
-        k.contains('thermal') || k.contains('heat')) return 16;
+    if (k.contains('cooling') ||
+        k.contains('fan') ||
+        k.contains('thermal') ||
+        k.contains('heat'))
+      return 16;
 
     // 17. INPUT — Keyboard, mouse
-    if (k.contains('input') || k.contains('keyboard') ||
-        k.contains('mouse') || k.contains('touchpad')) return 17;
+    if (k.contains('input') ||
+        k.contains('keyboard') ||
+        k.contains('mouse') ||
+        k.contains('touchpad'))
+      return 17;
 
     // 18. PACKAGING / WARRANTY — Box contents, warranty
-    if (k.contains('document') || k.contains('packaging') ||
-        k.contains('warranty') || k.contains('box') ||
-        k.contains('contents') || k.contains('lighting') ||
-        k.contains('rgb') || k.contains('led')) return 18;
+    if (k.contains('document') ||
+        k.contains('packaging') ||
+        k.contains('warranty') ||
+        k.contains('box') ||
+        k.contains('contents') ||
+        k.contains('lighting') ||
+        k.contains('rgb') ||
+        k.contains('led'))
+      return 18;
 
     return 99;
   }
@@ -677,7 +821,9 @@ class _SpecsCardState extends State<_SpecsCard> {
   @override
   Widget build(BuildContext context) {
     final sortedEntries = widget.specs.entries.toList()
-      ..sort((a, b) => _sectionPriority(a.key).compareTo(_sectionPriority(b.key)));
+      ..sort(
+        (a, b) => _sectionPriority(a.key).compareTo(_sectionPriority(b.key)),
+      );
     final specs = Map.fromEntries(sortedEntries);
 
     return Container(
@@ -685,7 +831,9 @@ class _SpecsCardState extends State<_SpecsCard> {
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: context.dividerColor),
-        boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.04), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.white.withValues(alpha: 0.04), blurRadius: 8),
+        ],
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(
@@ -698,11 +846,18 @@ class _SpecsCardState extends State<_SpecsCard> {
             ),
             child: Row(
               children: [
-                _CardHeader(icon: Icons.settings_input_component, label: context.l10n?.specs ?? 'Specifications', color: AppTheme.primaryBlue),
+                _CardHeader(
+                  icon: Icons.settings_input_component,
+                  label: context.l10n?.specs ?? 'Specifications',
+                  color: AppTheme.primaryBlue,
+                ),
                 const Spacer(),
                 Text(
                   '${specs.length} ${context.l10n?.groups ?? 'groups'}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.slate500),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.slate500,
+                  ),
                 ),
               ],
             ),
@@ -724,13 +879,18 @@ class _SpecsCardState extends State<_SpecsCard> {
                   Material(
                     color: context.surfaceVariantColor,
                     child: InkWell(
-                      onTap: () => setState(() => _expanded[groupKey] = !isExpanded),
+                      onTap: () =>
+                          setState(() => _expanded[groupKey] = !isExpanded),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         child: Row(
                           children: [
                             Container(
-                              width: 32, height: 32,
+                              width: 32,
+                              height: 32,
                               decoration: BoxDecoration(
                                 color: color.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
@@ -751,13 +911,20 @@ class _SpecsCardState extends State<_SpecsCard> {
                             ),
                             Text(
                               '${value.length} ${context.l10n?.specsCount ?? 'specs'}',
-                              style: const TextStyle(fontSize: 11, color: AppTheme.slate400),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.slate400,
+                              ),
                             ),
                             const SizedBox(width: 6),
                             AnimatedRotation(
                               turns: isExpanded ? 0.5 : 0,
                               duration: const Duration(milliseconds: 200),
-                              child: const Icon(Icons.expand_more, size: 18, color: AppTheme.slate400),
+                              child: const Icon(
+                                Icons.expand_more,
+                                size: 18,
+                                color: AppTheme.slate400,
+                              ),
                             ),
                           ],
                         ),
@@ -765,51 +932,73 @@ class _SpecsCardState extends State<_SpecsCard> {
                     ),
                   ),
                   if (isExpanded)
-                    Builder(builder: (context) {
-                      int rowIdx = 0;
-                      return Column(
-                        children: value.entries.expand<Widget>((sub) {
-                          final subLabel = _localizedSpecName(context, sub.key.toString());
-                          final subVal = sub.value;
-                          // Handle nested maps within a group
-                          if (subVal is Map && subVal.isNotEmpty) {
-                            return subVal.entries.map((inner) {
-                              final innerVal = inner.value?.toString() ?? '';
-                              if (innerVal.isEmpty || innerVal == '?' || innerVal == 'null' || innerVal == '{}' || innerVal == '[]') {
-                                return const SizedBox.shrink();
-                              }
-                              final odd = rowIdx++ % 2 == 1;
-                              return _SpecRow(
-                                label: _localizedSpecName(context, inner.key.toString()),
-                                value: innerVal,
+                    Builder(
+                      builder: (context) {
+                        int rowIdx = 0;
+                        return Column(
+                          children: value.entries.expand<Widget>((sub) {
+                            final subLabel = _localizedSpecName(
+                              context,
+                              sub.key.toString(),
+                            );
+                            final subVal = sub.value;
+                            // Handle nested maps within a group
+                            if (subVal is Map && subVal.isNotEmpty) {
+                              return subVal.entries.map((inner) {
+                                final innerVal = inner.value?.toString() ?? '';
+                                if (innerVal.isEmpty ||
+                                    innerVal == '?' ||
+                                    innerVal == 'null' ||
+                                    innerVal == '{}' ||
+                                    innerVal == '[]') {
+                                  return const SizedBox.shrink();
+                                }
+                                final odd = rowIdx++ % 2 == 1;
+                                return _SpecRow(
+                                  label: _localizedSpecName(
+                                    context,
+                                    inner.key.toString(),
+                                  ),
+                                  value: innerVal,
+                                  isDark: widget.isDark,
+                                  accent: color,
+                                  isOdd: odd,
+                                );
+                              });
+                            }
+                            final subValue = subVal?.toString() ?? '';
+                            if (subValue.isEmpty ||
+                                subValue == '?' ||
+                                subValue == 'null' ||
+                                subValue == '{}' ||
+                                subValue == '[]') {
+                              return [const SizedBox.shrink()];
+                            }
+                            final odd = rowIdx++ % 2 == 1;
+                            return [
+                              _SpecRow(
+                                label: subLabel,
+                                value: subValue,
                                 isDark: widget.isDark,
                                 accent: color,
                                 isOdd: odd,
-                              );
-                            });
-                          }
-                          final subValue = subVal?.toString() ?? '';
-                          if (subValue.isEmpty || subValue == '?' || subValue == 'null' || subValue == '{}' || subValue == '[]') {
-                            return [const SizedBox.shrink()];
-                          }
-                          final odd = rowIdx++ % 2 == 1;
-                          return [_SpecRow(
-                            label: subLabel,
-                            value: subValue,
-                            isDark: widget.isDark,
-                            accent: color,
-                            isOdd: odd,
-                          )];
-                        }).toList(),
-                      );
-                    }),
+                              ),
+                            ];
+                          }).toList(),
+                        );
+                      },
+                    ),
                 ],
               );
             }
 
             // ── Flat key-value (fallback) ──
             final flatValue = value?.toString() ?? '';
-            if (flatValue.isEmpty || flatValue == '?' || flatValue == 'null' || flatValue == '{}' || flatValue == '[]') {
+            if (flatValue.isEmpty ||
+                flatValue == '?' ||
+                flatValue == 'null' ||
+                flatValue == '{}' ||
+                flatValue == '[]') {
               return const SizedBox.shrink();
             }
             return _SpecRow(
@@ -832,17 +1021,132 @@ class _SpecRow extends StatelessWidget {
   final bool isDark;
   final Color accent;
   final bool isOdd;
-  const _SpecRow({required this.label, required this.value, required this.isDark, required this.accent, this.isOdd = false});
+  const _SpecRow({
+    required this.label,
+    required this.value,
+    required this.isDark,
+    required this.accent,
+    this.isOdd = false,
+  });
 
   /// Capitalize first letter of each word but preserve acronyms (USB, HDMI...).
   static String _applyValueTitleCase(String s) {
     if (s.isEmpty) return s;
-    return s.split(' ').map((w) {
-      if (w.isEmpty) return w;
-      // Numbers and technical codes (start with digit): leave as is
-      if (RegExp(r'^[\d\W]').hasMatch(w)) return w;
-      return w[0].toUpperCase() + w.substring(1);
-    }).join(' ');
+    return s
+        .split(' ')
+        .map((w) {
+          if (w.isEmpty) return w;
+          // Numbers and technical codes (start with digit): leave as is
+          if (RegExp(r'^[\d\W]').hasMatch(w)) return w;
+          return w[0].toUpperCase() + w.substring(1);
+        })
+        .join(' ');
+  }
+
+  static bool _isConnectorWord(String word) {
+    const connectors = {
+      'and',
+      'or',
+      'with',
+      'for',
+      'to',
+      've',
+      'ile',
+      'veya',
+      'the',
+      'a',
+      'an',
+      'of',
+      '&',
+    };
+    return connectors.contains(word.toLowerCase());
+  }
+
+  static List<String> _chunkLongValue(String value) {
+    final words = value
+        .split(RegExp(r'\s+'))
+        .map((w) => w.trim())
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.length < 5) return [value];
+
+    final chunks = <String>[];
+    final current = <String>[];
+    var currentLength = 0;
+
+    for (final word in words) {
+      final startsFeature =
+          current.isNotEmpty &&
+          current.length >= 2 &&
+          RegExp(r'^[A-Z0-9ÇĞİÖŞÜ]').hasMatch(word) &&
+          !_isConnectorWord(word) &&
+          currentLength >= 18;
+
+      if (startsFeature || currentLength >= 28) {
+        chunks.add(current.join(' '));
+        current
+          ..clear()
+          ..add(word);
+        currentLength = word.length;
+        continue;
+      }
+
+      current.add(word);
+      currentLength += word.length + 1;
+    }
+
+    if (current.isNotEmpty) {
+      chunks.add(current.join(' '));
+    }
+
+    return chunks.where((chunk) => chunk.trim().isNotEmpty).toList();
+  }
+
+  static List<String> _extractValueParts(String value) {
+    final normalized = value
+        .replaceAll('\u2022', '\n')
+        .replaceAll('|', '\n')
+        .replaceAllMapped(
+          RegExp(r'(?<=[a-zçğıöşü])(?=[A-ZÇĞİÖŞÜ])'),
+          (_) => '\n',
+        )
+        .replaceAllMapped(
+          RegExp(r'(?<=[+)])\s+(?=[A-ZÇĞİÖŞÜ0-9])'),
+          (_) => '\n',
+        )
+        .replaceAll(RegExp(r'\s{2,}'), ' ')
+        .trim();
+
+    List<String>? parts;
+    if (normalized.contains('\n')) {
+      parts = normalized
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.contains(',') && normalized.length > 8) {
+      parts = normalized
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.contains(';') && normalized.length > 8) {
+      parts = normalized
+          .split(';')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.contains(' / ') && normalized.length > 8) {
+      parts = normalized
+          .split(' / ')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.length > 42) {
+      parts = _chunkLongValue(normalized);
+    }
+
+    return parts ?? [normalized];
   }
 
   String _localizedValue(BuildContext context, String val) {
@@ -986,11 +1290,14 @@ class _SpecRow extends StatelessWidget {
         // 3. Hyphen-split: "side-mounted" → translate "side" + "mounted" separately
         if (v.contains('-')) {
           final parts = v.split('-');
-          final translated = parts.map((p) {
-            final t = svc.translate(p.trim());
-            return t != p.trim() ? t : p.trim();
-          }).join(' ');
-          if (translated != v.replaceAll('-', ' ')) return _applyValueTitleCase(translated);
+          final translated = parts
+              .map((p) {
+                final t = svc.translate(p.trim());
+                return t != p.trim() ? t : p.trim();
+              })
+              .join(' ');
+          if (translated != v.replaceAll('-', ' '))
+            return _applyValueTitleCase(translated);
         }
       } else {
         final full = svc.translateToEn(v);
@@ -1010,8 +1317,11 @@ class _SpecRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // Skip empty, null-like, or serialized object values
     final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed == '?' || trimmed == 'null' || 
-        trimmed == '{}' || trimmed == '[]' ||
+    if (trimmed.isEmpty ||
+        trimmed == '?' ||
+        trimmed == 'null' ||
+        trimmed == '{}' ||
+        trimmed == '[]' ||
         (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
       return const SizedBox.shrink();
     }
@@ -1035,14 +1345,13 @@ class _SpecRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ),
-              Expanded(
-                flex: 5,
-                child: valueWidget,
-              ),
+              Expanded(flex: 5, child: valueWidget),
             ],
           ),
         ),
@@ -1059,29 +1368,63 @@ class _SpecRow extends StatelessWidget {
     switch (locale) {
       case 'tr':
         const trMap = {
-          'yes': 'Var', 'no': 'Yok', 'true': 'Evet', 'false': 'Hayır',
-          'available': 'Mevcut', 'not available': 'Mevcut Değil',
-          'supported': 'Destekleniyor', 'not supported': 'Desteklenmiyor',
-          'included': 'Dahil', 'not included': 'Dahil Değil',
-          'active': 'Aktif', 'passive': 'Pasif',
-          'wired': 'Kablolu', 'wireless': 'Kablosuz',
-          'touch': 'Dokunmatik', 'mechanical': 'Mekanik',
-          'mono': 'Mono', 'stereo': 'Stereo',
-          'front': 'Ön', 'rear': 'Arka', 'back': 'Arka',
-          'left': 'Sol', 'right': 'Sağ',
-          'black': 'Siyah', 'white': 'Beyaz', 'silver': 'Gümüş',
-          'gold': 'Altın', 'blue': 'Mavi', 'red': 'Kırmızı',
-          'green': 'Yeşil', 'gray': 'Gri', 'grey': 'Gri',
+          'yes': 'Var',
+          'no': 'Yok',
+          'true': 'Evet',
+          'false': 'Hayır',
+          'available': 'Mevcut',
+          'not available': 'Mevcut Değil',
+          'supported': 'Destekleniyor',
+          'not supported': 'Desteklenmiyor',
+          'included': 'Dahil',
+          'not included': 'Dahil Değil',
+          'active': 'Aktif',
+          'passive': 'Pasif',
+          'wired': 'Kablolu',
+          'wireless': 'Kablosuz',
+          'touch': 'Dokunmatik',
+          'mechanical': 'Mekanik',
+          'mono': 'Mono',
+          'stereo': 'Stereo',
+          'front': 'Ön',
+          'rear': 'Arka',
+          'back': 'Arka',
+          'left': 'Sol',
+          'right': 'Sağ',
+          'black': 'Siyah',
+          'white': 'Beyaz',
+          'silver': 'Gümüş',
+          'gold': 'Altın',
+          'blue': 'Mavi',
+          'red': 'Kırmızı',
+          'green': 'Yeşil',
+          'gray': 'Gri',
+          'grey': 'Gri',
         };
         return trMap[v] ?? val;
       case 'de':
-        const deMap = {'yes': 'Ja', 'no': 'Nein', 'available': 'Verfügbar', 'not available': 'Nicht verfügbar'};
+        const deMap = {
+          'yes': 'Ja',
+          'no': 'Nein',
+          'available': 'Verfügbar',
+          'not available': 'Nicht verfügbar',
+        };
         return deMap[v] ?? val;
       case 'fr':
-        const frMap = {'yes': 'Oui', 'no': 'Non', 'available': 'Disponible', 'not available': 'Non disponible'};
+        const frMap = {
+          'yes': 'Oui',
+          'no': 'Non',
+          'available': 'Disponible',
+          'not available': 'Non disponible',
+        };
         return frMap[v] ?? val;
       case 'es':
-        const esMap = {'yes': 'Sí', 'no': 'No', 'available': 'Disponible', 'not available': 'No disponible'};
+        const esMap = {
+          'yes': 'Sí',
+          'no': 'No',
+          'available': 'Disponible',
+          'not available': 'No disponible',
+        };
         return esMap[v] ?? val;
       default:
         return val;
@@ -1091,36 +1434,30 @@ class _SpecRow extends StatelessWidget {
   Widget _buildValueWidget(BuildContext context, String rawVal) {
     // Translate common value words to locale language
     final val = _localizedSpecValue(context, rawVal);
-    // Detect multi-value strings (comma/semicolon/newline separated)
-    // Lower thresholds so short multi-values like "Android, iOS" also split
-    List<String>? parts;
-    if (val.contains('\n')) {
-      parts = val.split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-    } else if (val.contains(',') && val.length > 8) {
-      parts = val.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-    } else if (val.contains(';') && val.length > 8) {
-      parts = val.split(';').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-    } else if (val.contains(' / ') && val.length > 8) {
-      parts = val.split(' / ').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-    }
+    final parts = _extractValueParts(val);
 
-    if (parts != null && parts.length >= 2) {
+    if (parts.length >= 2) {
+      final widgets = parts
+          .map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                '• $p',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.end,
+                softWrap: true,
+              ),
+            ),
+          )
+          .toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: parts.map((p) => Padding(
-          padding: const EdgeInsets.only(bottom: 2),
-          child: Text(
-            '• $p',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.end,
-            softWrap: true,
-          ),
-        )).toList(),
+        children: widgets,
       );
     }
 
@@ -1151,13 +1488,17 @@ class _TagsRow extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: tags.map((t) => Chip(
-        label: Text('#$t', style: const TextStyle(fontSize: 12)),
-        backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.08),
-        side: const BorderSide(color: Colors.transparent),
-        padding: EdgeInsets.zero,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      )).toList(),
+      children: tags
+          .map(
+            (t) => Chip(
+              label: Text('#$t', style: const TextStyle(fontSize: 12)),
+              backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.08),
+              side: const BorderSide(color: Colors.transparent),
+              padding: EdgeInsets.zero,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -1182,7 +1523,10 @@ class _KeySpecsHighlight extends StatelessWidget {
       for (final entry in specs.entries) {
         if (entry.key.toLowerCase().contains(kwLow)) {
           final val = entry.value?.toString().trim() ?? '';
-          if (val.isNotEmpty && val != '0' && val != '-' && val.toLowerCase() != 'n/a') {
+          if (val.isNotEmpty &&
+              val != '0' &&
+              val != '-' &&
+              val.toLowerCase() != 'n/a') {
             return val;
           }
         }
@@ -1197,7 +1541,10 @@ class _KeySpecsHighlight extends StatelessWidget {
           for (final entry in section.entries) {
             if (entry.key.toString().toLowerCase().contains(kwLow)) {
               final val = entry.value?.toString().trim() ?? '';
-              if (val.isNotEmpty && val != '0' && val != '-' && val.toLowerCase() != 'n/a') {
+              if (val.isNotEmpty &&
+                  val != '0' &&
+                  val != '-' &&
+                  val.toLowerCase() != 'n/a') {
                 return val;
               }
             }
@@ -1213,346 +1560,385 @@ class _KeySpecsHighlight extends StatelessWidget {
 
     if (sub.contains('smartphone') || sub.contains('phone')) {
       return [
-        ('Screen Size',    ['screen size', 'display size', 'ekran boyutu']),
-        ('RAM',            ['ram', 'memory size', 'bellek (ram)', 'bellek']),
-        ('Storage',        ['internal storage', 'storage capacity', 'dahili depolama']),
-        ('Battery',        ['battery capacity', 'batarya kapasitesi']),
-        ('Main Camera',    ['main camera', 'rear camera', 'camera resolution', 'kamera']),
-        ('Front Camera',   ['front camera', 'selfie camera', 'on kamera']),
-        ('Processor',      ['processor', 'chipset', 'cpu model', 'cpu name', 'islemci']),
-        ('CPU Cores',      ['cpu core', 'core count', 'number of core']),
-        ('CPU Frequency',  ['cpu frequenc', 'clock speed', 'cpu speed']),
-        ('Screen Tech',    ['screen tech', 'display tech', 'panel type', 'ekran teknolojisi']),
-        ('Resolution',     ['screen resolution', 'display resolution', 'ekran cozunurlugu']),
-        ('Pixel Density',  ['pixel density', 'ppi']),
-        ('5G',             ['5g']),
-        ('NFC',            ['nfc']),
-        ('GPS',            ['gps']),
-        ('Bluetooth',      ['bluetooth']),
-        ('Fast Charge',    ['fast charg', 'charging power', 'hizli sarj']),
-        ('USB Type',       ['usb type', 'usb connector', 'usb version']),
-        ('Water Rating',   ['water resist', 'ip rating', 'ipx', 'suya dayaniklilik']),
-        ('Fingerprint',    ['fingerprint', 'parmak izi']),
-        ('OS',             ['operating system', 'android version']),
-        ('Weight',         ['weight', 'agirlik']),
-        ('SIM',            ['sim count', 'hat sayisi', 'sim card']),
+        ('Screen Size', ['screen size', 'display size', 'ekran boyutu']),
+        ('RAM', ['ram', 'memory size', 'bellek (ram)', 'bellek']),
+        (
+          'Storage',
+          ['internal storage', 'storage capacity', 'dahili depolama'],
+        ),
+        ('Battery', ['battery capacity', 'batarya kapasitesi']),
+        (
+          'Main Camera',
+          ['main camera', 'rear camera', 'camera resolution', 'kamera'],
+        ),
+        ('Front Camera', ['front camera', 'selfie camera', 'on kamera']),
+        (
+          'Processor',
+          ['processor', 'chipset', 'cpu model', 'cpu name', 'islemci'],
+        ),
+        ('CPU Cores', ['cpu core', 'core count', 'number of core']),
+        ('CPU Frequency', ['cpu frequenc', 'clock speed', 'cpu speed']),
+        (
+          'Screen Tech',
+          ['screen tech', 'display tech', 'panel type', 'ekran teknolojisi'],
+        ),
+        (
+          'Resolution',
+          ['screen resolution', 'display resolution', 'ekran cozunurlugu'],
+        ),
+        ('Pixel Density', ['pixel density', 'ppi']),
+        ('5G', ['5g']),
+        ('NFC', ['nfc']),
+        ('GPS', ['gps']),
+        ('Bluetooth', ['bluetooth']),
+        ('Fast Charge', ['fast charg', 'charging power', 'hizli sarj']),
+        ('USB Type', ['usb type', 'usb connector', 'usb version']),
+        (
+          'Water Rating',
+          ['water resist', 'ip rating', 'ipx', 'suya dayaniklilik'],
+        ),
+        ('Fingerprint', ['fingerprint', 'parmak izi']),
+        ('OS', ['operating system', 'android version']),
+        ('Weight', ['weight', 'agirlik']),
+        ('SIM', ['sim count', 'hat sayisi', 'sim card']),
       ];
     }
 
     if (sub.contains('tablet')) {
       return [
-        ('Screen Size',    ['screen size', 'display size', 'ekran boyutu']),
-        ('RAM',            ['ram', 'memory size', 'bellek']),
-        ('Storage',        ['internal storage', 'storage capacity', 'dahili depolama']),
-        ('Memory Card',    ['memory card', 'microsd', 'expandable storage']),
-        ('Battery',        ['battery capacity', 'batarya kapasitesi']),
-        ('Processor',      ['processor', 'chipset', 'cpu model', 'islemci']),
-        ('CPU Cores',      ['cpu core', 'core count', 'number of core']),
-        ('CPU Frequency',  ['cpu frequenc', 'clock speed']),
-        ('Screen Tech',    ['screen tech', 'display tech', 'panel type', 'ekran teknolojisi']),
-        ('Resolution',     ['screen resolution', 'display resolution']),
-        ('Pixel Density',  ['pixel density', 'ppi']),
-        ('Screen Area',    ['screen area', 'display area', 'ekran alani']),
-        ('WiFi',           ['wifi', 'wi-fi', '802.11']),
-        ('Bluetooth',      ['bluetooth']),
-        ('GPS',            ['gps']),
-        ('NFC',            ['nfc']),
-        ('USB Type',       ['usb type', 'usb connector']),
-        ('Weight',         ['weight', 'agirlik']),
-        ('OS',             ['operating system']),
+        ('Screen Size', ['screen size', 'display size', 'ekran boyutu']),
+        ('RAM', ['ram', 'memory size', 'bellek']),
+        (
+          'Storage',
+          ['internal storage', 'storage capacity', 'dahili depolama'],
+        ),
+        ('Memory Card', ['memory card', 'microsd', 'expandable storage']),
+        ('Battery', ['battery capacity', 'batarya kapasitesi']),
+        ('Processor', ['processor', 'chipset', 'cpu model', 'islemci']),
+        ('CPU Cores', ['cpu core', 'core count', 'number of core']),
+        ('CPU Frequency', ['cpu frequenc', 'clock speed']),
+        (
+          'Screen Tech',
+          ['screen tech', 'display tech', 'panel type', 'ekran teknolojisi'],
+        ),
+        ('Resolution', ['screen resolution', 'display resolution']),
+        ('Pixel Density', ['pixel density', 'ppi']),
+        ('Screen Area', ['screen area', 'display area', 'ekran alani']),
+        ('WiFi', ['wifi', 'wi-fi', '802.11']),
+        ('Bluetooth', ['bluetooth']),
+        ('GPS', ['gps']),
+        ('NFC', ['nfc']),
+        ('USB Type', ['usb type', 'usb connector']),
+        ('Weight', ['weight', 'agirlik']),
+        ('OS', ['operating system']),
       ];
     }
 
     if (sub.contains('laptop') || sub.contains('notebook')) {
       return [
-        ('Processor',      ['processor model', 'cpu model', 'cpu name', 'islemci modeli']),
-        ('Processor Gen',  ['processor generation', 'cpu generation', 'nesil']),
-        ('Base Freq',      ['base frequenc', 'base clock', 'temel frekans']),
-        ('CPU Cores',      ['cpu core', 'core count', 'number of core']),
-        ('TDP',            ['tdp', 'thermal design power']),
-        ('RAM',            ['ram', 'memory size', 'bellek']),
-        ('Storage',        ['ssd', 'storage size', 'hard disk', 'nvme']),
-        ('Screen Size',    ['screen size', 'display size']),
-        ('Screen Tech',    ['screen tech', 'display tech', 'panel type']),
-        ('Resolution',     ['screen resolution', 'display resolution']),
-        ('Refresh Rate',   ['refresh rate', 'hz']),
-        ('GPU',            ['gpu', 'graphics card', 'video card', 'ekran karti']),
-        ('Battery',        ['battery capacity', 'batarya']),
-        ('OS',             ['operating system']),
-        ('WiFi',           ['wifi', 'wi-fi', '802.11']),
-        ('Bluetooth',      ['bluetooth']),
-        ('USB Type',       ['usb type', 'usb-c', 'thunderbolt']),
-        ('Weight',         ['weight', 'agirlik']),
+        (
+          'Processor',
+          ['processor model', 'cpu model', 'cpu name', 'islemci modeli'],
+        ),
+        ('Processor Gen', ['processor generation', 'cpu generation', 'nesil']),
+        ('Base Freq', ['base frequenc', 'base clock', 'temel frekans']),
+        ('CPU Cores', ['cpu core', 'core count', 'number of core']),
+        ('TDP', ['tdp', 'thermal design power']),
+        ('RAM', ['ram', 'memory size', 'bellek']),
+        ('Storage', ['ssd', 'storage size', 'hard disk', 'nvme']),
+        ('Screen Size', ['screen size', 'display size']),
+        ('Screen Tech', ['screen tech', 'display tech', 'panel type']),
+        ('Resolution', ['screen resolution', 'display resolution']),
+        ('Refresh Rate', ['refresh rate', 'hz']),
+        ('GPU', ['gpu', 'graphics card', 'video card', 'ekran karti']),
+        ('Battery', ['battery capacity', 'batarya']),
+        ('OS', ['operating system']),
+        ('WiFi', ['wifi', 'wi-fi', '802.11']),
+        ('Bluetooth', ['bluetooth']),
+        ('USB Type', ['usb type', 'usb-c', 'thunderbolt']),
+        ('Weight', ['weight', 'agirlik']),
       ];
     }
 
     if (sub.contains('desktop')) {
       return [
-        ('Processor',      ['processor model', 'cpu model', 'cpu name']),
-        ('Processor Gen',  ['processor generation', 'cpu generation', 'generation']),
-        ('Base Freq',      ['base frequenc', 'base clock']),
-        ('CPU Cores',      ['cpu core', 'core count', 'number of core']),
-        ('TDP',            ['tdp', 'thermal design power']),
-        ('RAM',            ['ram', 'memory size', 'bellek']),
-        ('Storage',        ['storage', 'disk', 'ssd', 'hdd']),
-        ('GPU',            ['gpu', 'graphics']),
-        ('Case Type',      ['case type', 'chassis type', 'kasa tipi']),
+        ('Processor', ['processor model', 'cpu model', 'cpu name']),
+        (
+          'Processor Gen',
+          ['processor generation', 'cpu generation', 'generation'],
+        ),
+        ('Base Freq', ['base frequenc', 'base clock']),
+        ('CPU Cores', ['cpu core', 'core count', 'number of core']),
+        ('TDP', ['tdp', 'thermal design power']),
+        ('RAM', ['ram', 'memory size', 'bellek']),
+        ('Storage', ['storage', 'disk', 'ssd', 'hdd']),
+        ('GPU', ['gpu', 'graphics']),
+        ('Case Type', ['case type', 'chassis type', 'kasa tipi']),
         ('Product Series', ['product series', 'series', 'model series']),
-        ('OS',             ['operating system']),
-        ('Display Feat',   ['display features', 'display body ratio', 'screen to body']),
+        ('OS', ['operating system']),
+        (
+          'Display Feat',
+          ['display features', 'display body ratio', 'screen to body'],
+        ),
       ];
     }
 
     if (sub.contains('cpu') || sub.contains('processor')) {
       return [
-        ('Model',          ['processor model', 'cpu model', 'cpu name']),
-        ('Series',         ['series', 'product line']),
-        ('Cores',          ['core count', 'number of core', ' cores']),
-        ('Threads',        ['thread count', 'threads']),
-        ('Base Clock',     ['base frequenc', 'base clock', 'base speed']),
-        ('Boost Clock',    ['boost frequenc', 'max clock', 'turbo']),
-        ('TDP',            ['tdp', 'thermal design power']),
-        ('Socket',         ['socket', 'platform']),
-        ('L3 Cache',       ['l3 cache', 'cache']),
-        ('Process',        ['process node', 'manufacturing process', 'nm']),
+        ('Model', ['processor model', 'cpu model', 'cpu name']),
+        ('Series', ['series', 'product line']),
+        ('Cores', ['core count', 'number of core', ' cores']),
+        ('Threads', ['thread count', 'threads']),
+        ('Base Clock', ['base frequenc', 'base clock', 'base speed']),
+        ('Boost Clock', ['boost frequenc', 'max clock', 'turbo']),
+        ('TDP', ['tdp', 'thermal design power']),
+        ('Socket', ['socket', 'platform']),
+        ('L3 Cache', ['l3 cache', 'cache']),
+        ('Process', ['process node', 'manufacturing process', 'nm']),
       ];
     }
 
     if (sub.contains('gpu') || sub.contains('graphic')) {
       return [
-        ('GPU Model',      ['gpu model', 'product name', 'chip']),
-        ('VRAM',           ['vram', 'video memory', 'memory size']),
-        ('Memory Type',    ['memory type', 'vram type']),
-        ('Memory Bus',     ['memory bus', 'bus width']),
-        ('Base Clock',     ['base clock', 'core clock']),
-        ('Boost Clock',    ['boost clock', 'max clock']),
-        ('TDP',            ['tdp', 'power consumption']),
-        ('Interface',      ['interface', 'pcie']),
-        ('Outputs',        ['output', 'display output', 'hdmi']),
+        ('GPU Model', ['gpu model', 'product name', 'chip']),
+        ('VRAM', ['vram', 'video memory', 'memory size']),
+        ('Memory Type', ['memory type', 'vram type']),
+        ('Memory Bus', ['memory bus', 'bus width']),
+        ('Base Clock', ['base clock', 'core clock']),
+        ('Boost Clock', ['boost clock', 'max clock']),
+        ('TDP', ['tdp', 'power consumption']),
+        ('Interface', ['interface', 'pcie']),
+        ('Outputs', ['output', 'display output', 'hdmi']),
       ];
     }
 
-    if (sub.contains('ram') || (sub.contains('memory') && !sub.contains('card'))) {
+    if (sub.contains('ram') ||
+        (sub.contains('memory') && !sub.contains('card'))) {
       return [
-        ('Capacity',       ['capacity', 'size']),
-        ('Speed',          ['speed', 'frequency', 'mhz']),
-        ('Type',           ['type', 'ddr']),
-        ('CAS Latency',    ['cas', 'latency']),
-        ('Voltage',        ['voltage']),
-        ('Form Factor',    ['form factor', 'dimm', 'so-dimm']),
+        ('Capacity', ['capacity', 'size']),
+        ('Speed', ['speed', 'frequency', 'mhz']),
+        ('Type', ['type', 'ddr']),
+        ('CAS Latency', ['cas', 'latency']),
+        ('Voltage', ['voltage']),
+        ('Form Factor', ['form factor', 'dimm', 'so-dimm']),
       ];
     }
 
-    if (sub.contains('ssd') || sub.contains('hdd') || sub.contains('storage') || sub.contains('hard')) {
+    if (sub.contains('ssd') ||
+        sub.contains('hdd') ||
+        sub.contains('storage') ||
+        sub.contains('hard')) {
       return [
-        ('Capacity',       ['capacity', 'storage size']),
-        ('Interface',      ['interface', 'pcie', 'sata', 'nvme']),
-        ('Read Speed',     ['read speed', 'sequential read']),
-        ('Write Speed',    ['write speed', 'sequential write']),
-        ('Form Factor',    ['form factor']),
-        ('NAND Type',      ['nand', 'flash type']),
+        ('Capacity', ['capacity', 'storage size']),
+        ('Interface', ['interface', 'pcie', 'sata', 'nvme']),
+        ('Read Speed', ['read speed', 'sequential read']),
+        ('Write Speed', ['write speed', 'sequential write']),
+        ('Form Factor', ['form factor']),
+        ('NAND Type', ['nand', 'flash type']),
       ];
     }
 
     if (sub.contains('monitor')) {
       return [
-        ('Screen Size',    ['screen size', 'display size']),
-        ('Resolution',     ['resolution']),
-        ('Panel Type',     ['panel type', 'panel']),
-        ('Refresh Rate',   ['refresh rate', 'hz']),
-        ('Response Time',  ['response time']),
-        ('HDR',            ['hdr']),
-        ('Brightness',     ['brightness', 'nits', 'cd/m']),
-        ('Color Gamut',    ['color gamut', 'srgb', 'dci-p3']),
-        ('Sync Tech',      ['freesync', 'g-sync', 'adaptive sync']),
-        ('Connectivity',   ['hdmi', 'displayport', 'usb-c']),
+        ('Screen Size', ['screen size', 'display size']),
+        ('Resolution', ['resolution']),
+        ('Panel Type', ['panel type', 'panel']),
+        ('Refresh Rate', ['refresh rate', 'hz']),
+        ('Response Time', ['response time']),
+        ('HDR', ['hdr']),
+        ('Brightness', ['brightness', 'nits', 'cd/m']),
+        ('Color Gamut', ['color gamut', 'srgb', 'dci-p3']),
+        ('Sync Tech', ['freesync', 'g-sync', 'adaptive sync']),
+        ('Connectivity', ['hdmi', 'displayport', 'usb-c']),
       ];
     }
 
     if (sub.contains('tv') || sub.contains('television')) {
       return [
-        ('Screen Size',    ['screen size', 'display size']),
-        ('Resolution',     ['resolution']),
-        ('Panel Type',     ['panel type']),
-        ('HDR',            ['hdr']),
-        ('Smart TV',       ['smart tv', 'smart']),
-        ('Refresh Rate',   ['refresh rate']),
-        ('HDMI Ports',     ['hdmi']),
-        ('Brightness',     ['brightness', 'nits']),
-        ('Viewing Angle',  ['viewing angle']),
-        ('Dolby',          ['dolby']),
+        ('Screen Size', ['screen size', 'display size']),
+        ('Resolution', ['resolution']),
+        ('Panel Type', ['panel type']),
+        ('HDR', ['hdr']),
+        ('Smart TV', ['smart tv', 'smart']),
+        ('Refresh Rate', ['refresh rate']),
+        ('HDMI Ports', ['hdmi']),
+        ('Brightness', ['brightness', 'nits']),
+        ('Viewing Angle', ['viewing angle']),
+        ('Dolby', ['dolby']),
       ];
     }
 
-    if (sub.contains('headphone') || sub.contains('earphone') || sub.contains('earbuds')) {
+    if (sub.contains('headphone') ||
+        sub.contains('earphone') ||
+        sub.contains('earbuds')) {
       return [
-        ('Type',           ['type', 'form factor', 'design']),
-        ('Connectivity',   ['connectivity', 'bluetooth', 'wireless']),
-        ('BT Version',     ['bluetooth version', 'bt version']),
-        ('Battery Life',   ['battery life', 'playback time', 'battery']),
-        ('Charge Time',    ['charge time', 'charging time']),
-        ('Noise Cancel',   ['noise cancell', 'anc', 'active noise']),
-        ('Driver Size',    ['driver size', 'driver']),
-        ('Frequency',      ['frequency response']),
-        ('Impedance',      ['impedance', 'ohm']),
-        ('Microphone',     ['microphone', 'mic']),
-        ('Water Rating',   ['water resist', 'ip rating', 'ipx']),
-        ('Weight',         ['weight']),
+        ('Type', ['type', 'form factor', 'design']),
+        ('Connectivity', ['connectivity', 'bluetooth', 'wireless']),
+        ('BT Version', ['bluetooth version', 'bt version']),
+        ('Battery Life', ['battery life', 'playback time', 'battery']),
+        ('Charge Time', ['charge time', 'charging time']),
+        ('Noise Cancel', ['noise cancell', 'anc', 'active noise']),
+        ('Driver Size', ['driver size', 'driver']),
+        ('Frequency', ['frequency response']),
+        ('Impedance', ['impedance', 'ohm']),
+        ('Microphone', ['microphone', 'mic']),
+        ('Water Rating', ['water resist', 'ip rating', 'ipx']),
+        ('Weight', ['weight']),
       ];
     }
 
     if (sub.contains('speaker') || sub.contains('soundbar')) {
       return [
-        ('Power',          ['power output', 'rms', 'watt']),
-        ('Connectivity',   ['bluetooth', 'connectivity', 'wireless']),
-        ('BT Version',     ['bluetooth version']),
-        ('Battery',        ['battery', 'playback time']),
-        ('Channels',       ['channel', 'subwoofer', '2.1', '5.1']),
-        ('Frequency',      ['frequency response']),
-        ('Water Rating',   ['water resist', 'ip rating', 'ipx']),
-        ('Weight',         ['weight']),
+        ('Power', ['power output', 'rms', 'watt']),
+        ('Connectivity', ['bluetooth', 'connectivity', 'wireless']),
+        ('BT Version', ['bluetooth version']),
+        ('Battery', ['battery', 'playback time']),
+        ('Channels', ['channel', 'subwoofer', '2.1', '5.1']),
+        ('Frequency', ['frequency response']),
+        ('Water Rating', ['water resist', 'ip rating', 'ipx']),
+        ('Weight', ['weight']),
       ];
     }
 
     if (sub.contains('smartwatch') || sub.contains('watch')) {
       return [
-        ('Display Size',   ['display size', 'screen size']),
-        ('Display Tech',   ['display tech', 'screen tech', 'panel type']),
-        ('Battery Life',   ['battery life', 'battery']),
-        ('OS',             ['os', 'operating system', 'watch os']),
-        ('Processor',      ['processor', 'chip', 'cpu']),
-        ('RAM',            ['ram', 'memory']),
-        ('Storage',        ['storage', 'internal storage']),
-        ('GPS',            ['gps']),
-        ('Heart Rate',     ['heart rate']),
-        ('SpO2',           ['spo2', 'blood oxygen']),
-        ('ECG',            ['ecg', 'electrocardiogram']),
-        ('Water Rating',   ['water resist', 'ip rating', 'atm']),
-        ('NFC',            ['nfc']),
-        ('Weight',         ['weight']),
+        ('Display Size', ['display size', 'screen size']),
+        ('Display Tech', ['display tech', 'screen tech', 'panel type']),
+        ('Battery Life', ['battery life', 'battery']),
+        ('OS', ['os', 'operating system', 'watch os']),
+        ('Processor', ['processor', 'chip', 'cpu']),
+        ('RAM', ['ram', 'memory']),
+        ('Storage', ['storage', 'internal storage']),
+        ('GPS', ['gps']),
+        ('Heart Rate', ['heart rate']),
+        ('SpO2', ['spo2', 'blood oxygen']),
+        ('ECG', ['ecg', 'electrocardiogram']),
+        ('Water Rating', ['water resist', 'ip rating', 'atm']),
+        ('NFC', ['nfc']),
+        ('Weight', ['weight']),
       ];
     }
 
     if (sub.contains('camera')) {
       return [
-        ('Sensor',         ['sensor type', 'sensor size', 'sensor']),
-        ('Resolution',     ['resolution', 'megapixel', 'mp']),
-        ('Aperture',       ['aperture', 'f/']),
-        ('Focal Length',   ['focal length', 'lens']),
-        ('ISO',            ['iso']),
-        ('Shutter Speed',  ['shutter speed']),
-        ('Video',          ['video resolution', 'video recording', '4k']),
-        ('Stabilization',  ['stabilization', 'ois', 'ibis']),
-        ('AF System',      ['autofocus', 'af system']),
-        ('Battery',        ['battery', 'shots per charge']),
-        ('Weight',         ['weight']),
+        ('Sensor', ['sensor type', 'sensor size', 'sensor']),
+        ('Resolution', ['resolution', 'megapixel', 'mp']),
+        ('Aperture', ['aperture', 'f/']),
+        ('Focal Length', ['focal length', 'lens']),
+        ('ISO', ['iso']),
+        ('Shutter Speed', ['shutter speed']),
+        ('Video', ['video resolution', 'video recording', '4k']),
+        ('Stabilization', ['stabilization', 'ois', 'ibis']),
+        ('AF System', ['autofocus', 'af system']),
+        ('Battery', ['battery', 'shots per charge']),
+        ('Weight', ['weight']),
       ];
     }
 
     if (sub.contains('motherboard')) {
       return [
-        ('Chipset',        ['chipset']),
-        ('Socket',         ['socket', 'cpu socket']),
-        ('Form Factor',    ['form factor', 'atx']),
-        ('Memory Slots',   ['memory slot', 'dimm']),
-        ('Max RAM',        ['max memory', 'maximum ram']),
-        ('Memory Type',    ['memory type', 'ddr']),
-        ('PCIe Slots',     ['pcie x16', 'pcie slot']),
-        ('M.2 Slots',      ['m.2', 'm2 slot']),
-        ('USB Ports',      ['usb', 'usb 3']),
-        ('Network',        ['network', 'ethernet', '2.5g']),
-        ('WiFi',           ['wifi', 'wi-fi', '802.11']),
-        ('Bluetooth',      ['bluetooth']),
+        ('Chipset', ['chipset']),
+        ('Socket', ['socket', 'cpu socket']),
+        ('Form Factor', ['form factor', 'atx']),
+        ('Memory Slots', ['memory slot', 'dimm']),
+        ('Max RAM', ['max memory', 'maximum ram']),
+        ('Memory Type', ['memory type', 'ddr']),
+        ('PCIe Slots', ['pcie x16', 'pcie slot']),
+        ('M.2 Slots', ['m.2', 'm2 slot']),
+        ('USB Ports', ['usb', 'usb 3']),
+        ('Network', ['network', 'ethernet', '2.5g']),
+        ('WiFi', ['wifi', 'wi-fi', '802.11']),
+        ('Bluetooth', ['bluetooth']),
       ];
     }
 
     if (sub.contains('psu') || sub.contains('power supply')) {
       return [
-        ('Wattage',        ['wattage', 'power output', 'watt']),
-        ('Efficiency',     ['efficiency', '80 plus', '80plus']),
-        ('Modular',        ['modular']),
-        ('Form Factor',    ['form factor', 'atx']),
-        ('Fan Size',       ['fan size']),
-        ('PFC',            ['pfc', 'power factor']),
+        ('Wattage', ['wattage', 'power output', 'watt']),
+        ('Efficiency', ['efficiency', '80 plus', '80plus']),
+        ('Modular', ['modular']),
+        ('Form Factor', ['form factor', 'atx']),
+        ('Fan Size', ['fan size']),
+        ('PFC', ['pfc', 'power factor']),
       ];
     }
 
     if (sub.contains('cooler') || sub.contains('cooling')) {
       return [
-        ('Type',           ['type', 'cooler type']),
-        ('TDP Support',    ['tdp support', 'max tdp']),
-        ('Fan Size',       ['fan size', 'fan diameter']),
-        ('Fan Speed',      ['fan speed', 'rpm']),
-        ('Noise Level',    ['noise', 'dba', 'db level']),
+        ('Type', ['type', 'cooler type']),
+        ('TDP Support', ['tdp support', 'max tdp']),
+        ('Fan Size', ['fan size', 'fan diameter']),
+        ('Fan Speed', ['fan speed', 'rpm']),
+        ('Noise Level', ['noise', 'dba', 'db level']),
         ('Socket Support', ['socket', 'compatibility']),
-        ('Dimensions',     ['dimension', 'height', 'size']),
-        ('Weight',         ['weight']),
+        ('Dimensions', ['dimension', 'height', 'size']),
+        ('Weight', ['weight']),
       ];
     }
 
     if (sub.contains('keyboard')) {
       return [
-        ('Switch Type',    ['switch type', 'switch']),
-        ('Connectivity',   ['connectivity', 'wireless', 'bluetooth']),
-        ('BT Version',     ['bluetooth version']),
-        ('Layout',         ['layout', 'form factor']),
-        ('Backlight',      ['backlight', 'rgb', 'led']),
-        ('Battery',        ['battery', 'battery life']),
-        ('Interface',      ['interface', 'usb']),
-        ('N-Key',          ['rollover', 'nkro', 'anti-ghosting']),
-        ('Weight',         ['weight']),
+        ('Switch Type', ['switch type', 'switch']),
+        ('Connectivity', ['connectivity', 'wireless', 'bluetooth']),
+        ('BT Version', ['bluetooth version']),
+        ('Layout', ['layout', 'form factor']),
+        ('Backlight', ['backlight', 'rgb', 'led']),
+        ('Battery', ['battery', 'battery life']),
+        ('Interface', ['interface', 'usb']),
+        ('N-Key', ['rollover', 'nkro', 'anti-ghosting']),
+        ('Weight', ['weight']),
       ];
     }
 
     if (sub.contains('mouse') || sub.contains('mice')) {
       return [
-        ('DPI',            ['dpi', 'sensitivity', 'cpi']),
-        ('Polling Rate',   ['polling rate', 'hz']),
-        ('Connectivity',   ['connectivity', 'wireless', 'bluetooth']),
-        ('Sensor',         ['sensor type', 'sensor model', 'sensor']),
-        ('Buttons',        ['button', 'programmable']),
-        ('Battery',        ['battery', 'battery life']),
-        ('RGB',            ['rgb', 'lighting']),
-        ('Weight',         ['weight']),
+        ('DPI', ['dpi', 'sensitivity', 'cpi']),
+        ('Polling Rate', ['polling rate', 'hz']),
+        ('Connectivity', ['connectivity', 'wireless', 'bluetooth']),
+        ('Sensor', ['sensor type', 'sensor model', 'sensor']),
+        ('Buttons', ['button', 'programmable']),
+        ('Battery', ['battery', 'battery life']),
+        ('RGB', ['rgb', 'lighting']),
+        ('Weight', ['weight']),
       ];
     }
 
     if (sub.contains('router')) {
       return [
-        ('WiFi Standard',  ['wifi standard', 'wifi 6', 'wifi 5', '802.11']),
-        ('Max Speed',      ['max speed', 'throughput', 'mbps', 'gbps']),
-        ('Frequency',      ['frequency band', 'dual band', 'tri band']),
-        ('LAN Ports',      ['lan port', 'ethernet port', 'wan']),
-        ('Antennas',       ['antenna']),
-        ('Processor',      ['processor', 'cpu']),
-        ('RAM',            ['ram', 'memory']),
-        ('USB Port',       ['usb port']),
-        ('Security',       ['security', 'wpa', 'encryption']),
+        ('WiFi Standard', ['wifi standard', 'wifi 6', 'wifi 5', '802.11']),
+        ('Max Speed', ['max speed', 'throughput', 'mbps', 'gbps']),
+        ('Frequency', ['frequency band', 'dual band', 'tri band']),
+        ('LAN Ports', ['lan port', 'ethernet port', 'wan']),
+        ('Antennas', ['antenna']),
+        ('Processor', ['processor', 'cpu']),
+        ('RAM', ['ram', 'memory']),
+        ('USB Port', ['usb port']),
+        ('Security', ['security', 'wpa', 'encryption']),
       ];
     }
 
     if (sub.contains('console') || sub.contains('gaming')) {
       return [
-        ('Processor',      ['processor', 'cpu']),
-        ('GPU',            ['gpu', 'graphics']),
-        ('RAM',            ['ram', 'memory']),
-        ('Storage',        ['storage', 'ssd']),
-        ('Resolution',     ['resolution', '4k', '8k']),
-        ('Optical Drive',  ['optical', 'blu-ray', 'disc']),
-        ('WiFi',           ['wifi', 'wi-fi']),
-        ('Bluetooth',      ['bluetooth']),
-        ('USB Ports',      ['usb', 'usb port']),
+        ('Processor', ['processor', 'cpu']),
+        ('GPU', ['gpu', 'graphics']),
+        ('RAM', ['ram', 'memory']),
+        ('Storage', ['storage', 'ssd']),
+        ('Resolution', ['resolution', '4k', '8k']),
+        ('Optical Drive', ['optical', 'blu-ray', 'disc']),
+        ('WiFi', ['wifi', 'wi-fi']),
+        ('Bluetooth', ['bluetooth']),
+        ('USB Ports', ['usb', 'usb port']),
       ];
     }
 
     if (sub.contains('projector')) {
       return [
-        ('Resolution',     ['resolution']),
-        ('Brightness',     ['brightness', 'lumens', 'ansi']),
+        ('Resolution', ['resolution']),
+        ('Brightness', ['brightness', 'lumens', 'ansi']),
         ('Contrast Ratio', ['contrast']),
-        ('Throw Ratio',    ['throw ratio']),
-        ('Lamp Life',      ['lamp life', 'lamp hour']),
-        ('Connectivity',   ['hdmi', 'connectivity']),
+        ('Throw Ratio', ['throw ratio']),
+        ('Lamp Life', ['lamp life', 'lamp hour']),
+        ('Connectivity', ['hdmi', 'connectivity']),
       ];
     }
 
@@ -1567,7 +1953,10 @@ class _KeySpecsHighlight extends StatelessWidget {
     if (product.keySpecs.isNotEmpty) {
       for (final entry in product.keySpecs.entries) {
         final val = entry.value.trim();
-        if (val.isNotEmpty && val != '0' && val != '-' && val.toLowerCase() != 'n/a') {
+        if (val.isNotEmpty &&
+            val != '0' &&
+            val != '-' &&
+            val.toLowerCase() != 'n/a') {
           found.add((entry.key, val));
         }
       }
@@ -1616,13 +2005,17 @@ class _KeySpecsHighlight extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 28, height: 28,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     color: AppTheme.primaryBlue.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.bolt_rounded,
-                      color: AppTheme.primaryBlue, size: 16),
+                  child: const Icon(
+                    Icons.bolt_rounded,
+                    color: AppTheme.primaryBlue,
+                    size: 16,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -1645,9 +2038,14 @@ class _KeySpecsHighlight extends StatelessWidget {
                 final isOdd = entry.key.isOdd;
                 final spec = entry.value;
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
-                    color: isOdd ? context.surfaceColor.withValues(alpha: 0.5) : Colors.transparent,
+                    color: isOdd
+                        ? context.surfaceColor.withValues(alpha: 0.5)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -1696,7 +2094,9 @@ class _SpecChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final display = value.length > 18 ? '${value.substring(0, 16)}\u2026' : value;
+    final display = value.length > 18
+        ? '${value.substring(0, 16)}\u2026'
+        : value;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
@@ -1754,7 +2154,11 @@ class _SpecsTabContent extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.settings_input_component_outlined, size: 48, color: AppTheme.slate400),
+              const Icon(
+                Icons.settings_input_component_outlined,
+                size: 48,
+                color: AppTheme.slate400,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'No specifications available',
@@ -1770,7 +2174,9 @@ class _SpecsTabContent extends StatelessWidget {
       children: [
         _KeySpecsGrid(product: product),
         _SpecsCard(
-          specs: product.specSections.isNotEmpty ? product.specSections : product.specs,
+          specs: product.specSections.isNotEmpty
+              ? product.specSections
+              : product.specs,
           cardBg: cardBg,
           isDark: isDark,
         ),

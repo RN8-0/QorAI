@@ -42,92 +42,116 @@ class _QuizView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final answeredCount =
-        answeredQuestions.where((q) => q.selectedOption != null).length;
+    final answeredCount = answeredQuestions
+        .where((q) => q.selectedOption != null)
+        .length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Product mini-card
         GlassContainer(
           padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: baseResult.metadata.image != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(baseResult.metadata.image!,
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: baseResult.metadata.image != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          baseResult.metadata.image!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const Icon(
-                              Icons.shopping_bag_rounded,
-                              color: AppTheme.primaryBlue)),
-                    )
-                  : const Icon(Icons.shopping_bag_rounded,
-                      color: AppTheme.primaryBlue),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(baseResult.metadata.title ?? 'Product',
+                            Icons.shopping_bag_rounded,
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.shopping_bag_rounded,
+                        color: AppTheme.primaryBlue,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      baseResult.metadata.title ??
+                          (context.l10n?.productLabel ?? 'Product'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: context.textPrimary)),
-                  if (baseResult.category != null)
-                    Text(baseResult.category!,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    if (baseResult.category != null)
+                      Text(
+                        baseResult.category!,
                         style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: context.textTertiaryColor)),
-                ],
+                          fontSize: 12,
+                          color: context.textTertiaryColor,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
                   '${baseResult.aiScore.toStringAsFixed(0)}%',
                   style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: AppTheme.primaryBlue)),
-            ),
-          ]),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
 
         // Progress bar
-        Row(children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: answeredCount / answeredQuestions.length,
-                backgroundColor: AppTheme.slate700,
-                color: AppTheme.primaryBlue,
-                minHeight: 6,
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: answeredCount / answeredQuestions.length,
+                  backgroundColor: AppTheme.slate700,
+                  color: AppTheme.primaryBlue,
+                  minHeight: 6,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Text('$answeredCount/${answeredQuestions.length}',
+            const SizedBox(width: 12),
+            Text(
+              '$answeredCount/${answeredQuestions.length}',
               style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: AppTheme.slate500)),
-        ]),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppTheme.slate500,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
 
         // Question cards
@@ -166,17 +190,23 @@ class _QuizView extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.brandBlue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
                   elevation: 2,
                 ),
                 icon: const Icon(Icons.insights_rounded, size: 16),
-                label: Text(context.l10n?.seeMyMatchScore ?? 'See My Match Score',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12)),
+                label: Text(
+                  context.l10n?.seeMyMatchScore ?? 'See My Match Score',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ),
           )
@@ -184,11 +214,19 @@ class _QuizView extends StatelessWidget {
           Center(
             child: TextButton.icon(
               onPressed: onSkip,
-              icon: const Icon(Icons.skip_next_rounded,
-                  color: AppTheme.slate500, size: 18),
-              label: Text(context.l10n?.skipQuizShowBasic ?? 'Skip quiz & show basic result',
-                  style: GoogleFonts.plusJakartaSans(
-                      color: AppTheme.slate500, fontSize: 13)),
+              icon: const Icon(
+                Icons.skip_next_rounded,
+                color: AppTheme.slate500,
+                size: 18,
+              ),
+              label: Text(
+                context.l10n?.skipQuizShowBasic ??
+                    'Skip quiz & show basic result',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppTheme.slate500,
+                  fontSize: 13,
+                ),
+              ),
             ),
           ),
       ],
@@ -219,35 +257,47 @@ class _QuestionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: isAnswered
-                    ? AppTheme.success
-                    : AppTheme.primaryBlue.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: isAnswered
-                    ? Icon(Icons.check, color: context.surfaceVariantColor, size: 16)
-                    : Text('${index + 1}',
-                        style: GoogleFonts.plusJakartaSans(
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isAnswered
+                      ? AppTheme.success
+                      : AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: isAnswered
+                      ? Icon(
+                          Icons.check,
+                          color: context.surfaceVariantColor,
+                          size: 16,
+                        )
+                      : Text(
+                          '${index + 1}',
+                          style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
-                            color: AppTheme.primaryBlue)),
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(question.text,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  question.text,
                   style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: context.textPrimary)),
-            ),
-          ]),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           ...question.options.map((option) {
             final isSelected = question.selectedOption == option;
@@ -261,7 +311,9 @@ class _QuestionCard extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppTheme.primaryBlue.withValues(alpha: 0.08)
@@ -274,41 +326,49 @@ class _QuestionCard extends StatelessWidget {
                         width: isSelected ? 2 : 1,
                       ),
                     ),
-                    child: Row(children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected
-                              ? AppTheme.primaryBlue
-                              : Colors.transparent,
-                          border: Border.all(
+                    child: Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
                             color: isSelected
                                 ? AppTheme.primaryBlue
-                                : AppTheme.slate400,
-                            width: 2,
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primaryBlue
+                                  : AppTheme.slate400,
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected
+                              ? Icon(
+                                  Icons.check,
+                                  color: context.surfaceVariantColor,
+                                  size: 14,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            option,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              fontSize: 14,
+                              color: isSelected
+                                  ? AppTheme.primaryBlue
+                                  : context.textPrimary,
+                            ),
                           ),
                         ),
-                        child: isSelected
-                            ? Icon(Icons.check,
-                                color: context.surfaceVariantColor, size: 14)
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(option,
-                            style: GoogleFonts.plusJakartaSans(
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                                fontSize: 14,
-                                color: isSelected
-                                    ? AppTheme.primaryBlue
-                                    : context.textPrimary)),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -322,4 +382,4 @@ class _QuestionCard extends StatelessWidget {
 
 // ---------------------------------------------------------------
 // ENHANCED RESULT VIEW
-// ---------------------------------------------------------------
+// ---------------------------------------------------------------

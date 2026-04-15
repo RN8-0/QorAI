@@ -87,6 +87,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounce;
 
+  String _productSlotLabel(int slotNumber) =>
+      context.l10n?.productSlotLabel(slotNumber) ?? 'Product $slotNumber';
+
   @override
   void initState() {
     super.initState();
@@ -421,7 +424,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                   color: AppTheme.error,
                 ),
                 label: Text(
-                  'Clear',
+                  context.l10n?.clearLabel ?? 'Clear',
                   style: GoogleFonts.plusJakartaSans(
                     color: AppTheme.error,
                     fontWeight: FontWeight.w600,
@@ -453,6 +456,40 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     final count = _selectedProductIds.length;
     final canCompare = count >= 2;
     final allFilled = count >= 4;
+    final isDark = context.isDarkMode;
+    final heroDecoration = BoxDecoration(
+      gradient: isDark
+          ? const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0F1724), Color(0xFF141C2E), Color(0xFF0A1020)],
+            )
+          : LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                context.surfaceColor,
+                const Color(0xFFF7FAFF),
+                const Color(0xFFEEF5FF),
+              ],
+            ),
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.18 : 0.10),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.22 : 0.08),
+          blurRadius: isDark ? 24 : 20,
+          offset: const Offset(0, 8),
+        ),
+        BoxShadow(
+          color: AppTheme.brandCyan.withValues(alpha: isDark ? 0.06 : 0.04),
+          blurRadius: 40,
+          spreadRadius: -4,
+        ),
+      ],
+    );
 
     return Stack(
       fit: StackFit.expand,
@@ -462,33 +499,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             // ── Premium header card ────────────────────────────────────────────
             Container(
               margin: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F1724),
-                    Color(0xFF141C2E),
-                    Color(0xFF0A1020),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.brandDeepBlue.withValues(alpha: 0.3),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: AppTheme.brandCyan.withValues(alpha: 0.06),
-                    blurRadius: 40,
-                    spreadRadius: -4,
-                  ),
-                ],
-              ),
+              decoration: heroDecoration,
               child: Column(
                 children: [
                   // Tagline row
@@ -502,12 +513,21 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                AppTheme.brandBlue,
-                                AppTheme.brandDeepBlue,
-                              ],
+                            gradient: LinearGradient(
+                              colors: isDark
+                                  ? const [
+                                      AppTheme.brandBlue,
+                                      AppTheme.brandDeepBlue,
+                                    ]
+                                  : [AppTheme.brandBlue, AppTheme.brandSkyBlue],
                             ),
+                            border: isDark
+                                ? null
+                                : Border.all(
+                                    color: AppTheme.brandBlue.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                  ),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -523,12 +543,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                                 count < 2
                                     ? (context.l10n?.selectAtLeast2 ??
                                           'Select at least 2 products')
-                                    : (Localizations.localeOf(
-                                                context,
-                                              ).languageCode ==
-                                              'tr'
-                                          ? 'Hazır — karşılaştırın!'
-                                          : 'Ready to compare!'),
+                                    : (context.l10n?.readyToCompare ??
+                                          'Ready to compare!'),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -545,8 +561,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: count >= 2
-                                ? AppTheme.brandCyan
-                                : Colors.white38,
+                                ? (isDark
+                                      ? AppTheme.brandCyan
+                                      : AppTheme.brandBlue)
+                                : (isDark
+                                      ? Colors.white38
+                                      : context.textTertiaryColor),
                           ),
                         ),
                       ],
@@ -764,7 +784,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   }
 
   Widget _buildPremiumEmptySlot(int slotNumber) {
-    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
+    final isDark = context.isDarkMode;
     return GestureDetector(
       onTap: () {
         _searchFocusNode.requestFocus();
@@ -782,7 +802,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                 width: 1.5,
                 strokeAlign: BorderSide.strokeAlignOutside,
               ),
-              color: Colors.white.withValues(alpha: 0.03),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : AppTheme.brandBlue.withValues(alpha: 0.05),
             ),
             child: Center(
               child: Container(
@@ -811,11 +833,13 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           ),
           const SizedBox(height: 5),
           Text(
-            '${isTurkish ? 'Ürün' : 'Product'} $slotNumber',
+            _productSlotLabel(slotNumber),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 9,
               fontWeight: FontWeight.w600,
-              color: AppTheme.brandCyan.withValues(alpha: 0.5),
+              color: isDark
+                  ? AppTheme.brandCyan.withValues(alpha: 0.5)
+                  : context.textSecondary,
             ),
           ),
         ],
@@ -824,6 +848,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   }
 
   Widget _buildPremiumFilledSlot(ProductEntity product) {
+    final isDark = context.isDarkMode;
     return Column(
       children: [
         Stack(
@@ -834,7 +859,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               width: 66,
               height: 66,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.07),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.07)
+                    : AppTheme.brandBlue.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: AppTheme.brandCyan.withValues(alpha: 0.3),
@@ -864,7 +891,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                     color: const Color(0xFFEF4444),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFF0A1020),
+                      color: isDark
+                          ? const Color(0xFF0A1020)
+                          : context.surfaceColor,
                       width: 1.5,
                     ),
                   ),
@@ -885,7 +914,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 9,
               fontWeight: FontWeight.w600,
-              color: Colors.white70,
+              color: isDark ? Colors.white70 : context.textSecondary,
             ),
           ),
         ),

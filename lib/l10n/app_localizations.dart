@@ -6801,6 +6801,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap to load comparison videos'**
   String get tapToLoadVideos;
+
+  /// No description provided for @productLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get productLabel;
+
+  /// No description provided for @readyToCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to compare!'**
+  String get readyToCompare;
+
+  /// No description provided for @analysisHistoryTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Analysis History'**
+  String get analysisHistoryTooltip;
+
+  /// No description provided for @pasteProductLinkCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste Product Link'**
+  String get pasteProductLinkCardTitle;
+
+  /// No description provided for @pasteProductLinkSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get AI-powered analysis with quiz'**
+  String get pasteProductLinkSubtitle;
+
+  /// No description provided for @compareProductsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add 2-4 product links to compare'**
+  String get compareProductsSubtitle;
+
+  /// No description provided for @addProductLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Product'**
+  String get addProductLabel;
+
+  /// No description provided for @analyzingProductsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing Products...'**
+  String get analyzingProductsTitle;
+
+  /// No description provided for @analyzingProductsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI is comparing your products side by side'**
+  String get analyzingProductsSubtitle;
+
+  /// No description provided for @howComparisonWorks.
+  ///
+  /// In en, this message translates to:
+  /// **'How Comparison Works'**
+  String get howComparisonWorks;
+
+  /// No description provided for @addLinksCompareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add 2-4 Links'**
+  String get addLinksCompareTitle;
+
+  /// No description provided for @addLinksCompareSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste product URLs you want to compare'**
+  String get addLinksCompareSubtitle;
+
+  /// No description provided for @sideBySideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Side-by-Side'**
+  String get sideBySideTitle;
+
+  /// No description provided for @sideBySideSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See ranked comparison with pros & cons'**
+  String get sideBySideSubtitle;
+
+  /// No description provided for @comparisonResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Comparison Results'**
+  String get comparisonResults;
+
+  /// No description provided for @aiRecommendation.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Recommendation'**
+  String get aiRecommendation;
+
+  /// No description provided for @detailedComparisonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed Comparison'**
+  String get detailedComparisonTitle;
+
+  /// No description provided for @pricingAnalysisTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pricing Analysis'**
+  String get pricingAnalysisTitle;
+
+  /// No description provided for @featureComparisonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Feature Comparison'**
+  String get featureComparisonTitle;
+
+  /// No description provided for @userExperienceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'User Experience'**
+  String get userExperienceTitle;
+
+  /// No description provided for @scanStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan'**
+  String get scanStep;
+
+  /// No description provided for @analyzeStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyze'**
+  String get analyzeStep;
+
+  /// No description provided for @productsAnalyzed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} products analyzed'**
+  String productsAnalyzed(int count);
+
+  /// No description provided for @productSlotLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product {slot}'**
+  String productSlotLabel(int slot);
+
+  /// No description provided for @pasteProductUrlNumbered.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste product URL {index}...'**
+  String pasteProductUrlNumbered(int index);
+
+  /// No description provided for @productProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Product {current} of {total}'**
+  String productProgress(int current, int total);
 }
 
 class _AppLocalizationsDelegate

@@ -1379,5 +1379,62 @@
   "completeQuiz": "Complete Quiz",
   "basedOnYourPreferences": "Based on your preferences and usage habits",
   "comparisonVideos": "Comparison Videos",
-  "tapToLoadVideos": "Tap to load comparison videos"
+  "tapToLoadVideos": "Tap to load comparison videos",
+  "productLabel": "Product",
+  "readyToCompare": "Ready to compare!",
+  "analysisHistoryTooltip": "Analysis History",
+  "pasteProductLinkCardTitle": "Paste Product Link",
+  "pasteProductLinkSubtitle": "Get AI-powered analysis with quiz",
+  "compareProductsSubtitle": "Add 2-4 product links to compare",
+  "addProductLabel": "Add Product",
+  "analyzingProductsTitle": "Analyzing Products...",
+  "analyzingProductsSubtitle": "AI is comparing your products side by side",
+  "howComparisonWorks": "How Comparison Works",
+  "addLinksCompareTitle": "Add 2-4 Links",
+  "addLinksCompareSubtitle": "Paste product URLs you want to compare",
+  "sideBySideTitle": "Side-by-Side",
+  "sideBySideSubtitle": "See ranked comparison with pros & cons",
+  "comparisonResults": "Comparison Results",
+  "aiRecommendation": "AI Recommendation",
+  "detailedComparisonTitle": "Detailed Comparison",
+  "pricingAnalysisTitle": "Pricing Analysis",
+  "featureComparisonTitle": "Feature Comparison",
+  "userExperienceTitle": "User Experience",
+  "scanStep": "Scan",
+  "analyzeStep": "Analyze",
+  "productsAnalyzed": "{count} products analyzed",
+  "@productsAnalyzed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productSlotLabel": "Product {slot}",
+  "@productSlotLabel": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "pasteProductUrlNumbered": "Paste product URL {index}...",
+  "@pasteProductUrlNumbered": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "productProgress": "Product {current} of {total}",
+  "@productProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

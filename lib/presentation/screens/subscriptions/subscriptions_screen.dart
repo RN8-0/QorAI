@@ -2220,7 +2220,7 @@ class _SubResultView extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                'AI Recommendation',
+                context.l10n?.aiRecommendation ?? 'AI Recommendation',
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
@@ -2251,19 +2251,19 @@ class _SubResultView extends StatelessWidget {
       if (comparison['pricing_analysis'] != null)
         _ComparisonSection(
           '💰',
-          'Pricing Analysis',
+          context.l10n?.pricingAnalysisTitle ?? 'Pricing Analysis',
           comparison['pricing_analysis'] as String,
         ),
       if (comparison['feature_comparison'] != null)
         _ComparisonSection(
           '⚡',
-          'Feature Comparison',
+          context.l10n?.featureComparisonTitle ?? 'Feature Comparison',
           comparison['feature_comparison'] as String,
         ),
       if (comparison['user_experience'] != null)
         _ComparisonSection(
           '🎯',
-          'User Experience',
+          context.l10n?.userExperienceTitle ?? 'User Experience',
           comparison['user_experience'] as String,
         ),
     ];
@@ -2275,7 +2275,7 @@ class _SubResultView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Detailed Comparison',
+            context.l10n?.detailedComparisonTitle ?? 'Detailed Comparison',
             style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w700,
               fontSize: 16,

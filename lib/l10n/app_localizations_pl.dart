@@ -3500,4 +3500,92 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get tapToLoadVideos => 'Tap to load comparison videos';
+
+  @override
+  String get productLabel => 'Product';
+
+  @override
+  String get readyToCompare => 'Ready to compare!';
+
+  @override
+  String get analysisHistoryTooltip => 'Analysis History';
+
+  @override
+  String get pasteProductLinkCardTitle => 'Paste Product Link';
+
+  @override
+  String get pasteProductLinkSubtitle => 'Get AI-powered analysis with quiz';
+
+  @override
+  String get compareProductsSubtitle => 'Add 2-4 product links to compare';
+
+  @override
+  String get addProductLabel => 'Add Product';
+
+  @override
+  String get analyzingProductsTitle => 'Analyzing Products...';
+
+  @override
+  String get analyzingProductsSubtitle =>
+      'AI is comparing your products side by side';
+
+  @override
+  String get howComparisonWorks => 'How Comparison Works';
+
+  @override
+  String get addLinksCompareTitle => 'Add 2-4 Links';
+
+  @override
+  String get addLinksCompareSubtitle =>
+      'Paste product URLs you want to compare';
+
+  @override
+  String get sideBySideTitle => 'Side-by-Side';
+
+  @override
+  String get sideBySideSubtitle => 'See ranked comparison with pros & cons';
+
+  @override
+  String get comparisonResults => 'Comparison Results';
+
+  @override
+  String get aiRecommendation => 'AI Recommendation';
+
+  @override
+  String get detailedComparisonTitle => 'Detailed Comparison';
+
+  @override
+  String get pricingAnalysisTitle => 'Pricing Analysis';
+
+  @override
+  String get featureComparisonTitle => 'Feature Comparison';
+
+  @override
+  String get userExperienceTitle => 'User Experience';
+
+  @override
+  String get scanStep => 'Scan';
+
+  @override
+  String get analyzeStep => 'Analyze';
+
+  @override
+  String productsAnalyzed(int count) {
+    return '$count products analyzed';
+  }
+
+  @override
+  String productSlotLabel(int slot) {
+    return 'Product $slot';
+  }
+
+  @override
+  String pasteProductUrlNumbered(int index) {
+    return 'Paste product URL $index...';
+  }
+
+  @override
+  String productProgress(int current, int total) {
+    return 'Product $current of $total';
+  }
 }

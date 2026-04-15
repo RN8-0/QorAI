@@ -1327,5 +1327,62 @@
   "completeQuiz": "Quiz'i Tamamla",
   "basedOnYourPreferences": "Tercihleriniz ve kullanım alışkanlıklarınıza göre",
   "comparisonVideos": "Karşılaştırma Videoları",
-  "tapToLoadVideos": "Karşılaştırma videolarını yüklemek için dokunun"
+  "tapToLoadVideos": "Karşılaştırma videolarını yüklemek için dokunun",
+  "productLabel": "Ürün",
+  "readyToCompare": "Hazır — karşılaştırın!",
+  "analysisHistoryTooltip": "Analiz Geçmişi",
+  "pasteProductLinkCardTitle": "Ürün Bağlantısı Yapıştır",
+  "pasteProductLinkSubtitle": "Quiz ile AI destekli analiz alın",
+  "compareProductsSubtitle": "Karşılaştırmak için 2-4 ürün bağlantısı ekleyin",
+  "addProductLabel": "Ürün Ekle",
+  "analyzingProductsTitle": "Ürünler Analiz Ediliyor...",
+  "analyzingProductsSubtitle": "AI ürünlerinizi yan yana karşılaştırıyor",
+  "howComparisonWorks": "Karşılaştırma Nasıl Çalışır",
+  "addLinksCompareTitle": "2-4 Bağlantı Ekleyin",
+  "addLinksCompareSubtitle": "Karşılaştırmak istediğiniz ürün URL'lerini yapıştırın",
+  "sideBySideTitle": "Yan Yana",
+  "sideBySideSubtitle": "Artı ve eksileriyle sıralı karşılaştırmayı görün",
+  "comparisonResults": "Karşılaştırma Sonuçları",
+  "aiRecommendation": "AI Önerisi",
+  "detailedComparisonTitle": "Detaylı Karşılaştırma",
+  "pricingAnalysisTitle": "Fiyat Analizi",
+  "featureComparisonTitle": "Özellik Karşılaştırması",
+  "userExperienceTitle": "Kullanıcı Deneyimi",
+  "scanStep": "Tara",
+  "analyzeStep": "Analiz",
+  "productsAnalyzed": "{count} ürün analiz edildi",
+  "@productsAnalyzed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productSlotLabel": "Ürün {slot}",
+  "@productSlotLabel": {
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "pasteProductUrlNumbered": "Ürün URL'si {index} yapıştırın...",
+  "@pasteProductUrlNumbered": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "productProgress": "{total} içinden {current}. ürün",
+  "@productProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

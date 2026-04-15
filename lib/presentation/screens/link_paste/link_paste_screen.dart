@@ -358,7 +358,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     final isDark =
                         Theme.of(context).brightness == Brightness.dark;
                     final titleText = compareState.phase == ComparePhase.done
-                        ? 'Comparison'
+                        ? (context.l10n?.compare ?? 'Compare')
                         : _getTitle(quizState.phase);
                     if (isDark) {
                       return ShaderMask(
@@ -409,7 +409,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     _buildAppBarAction(
                       icon: Icons.manage_history_rounded,
                       onPressed: _showAnalysisHistory,
-                      tooltip: 'Analiz Geçmişi',
+                      tooltip:
+                          context.l10n?.analysisHistoryTooltip ??
+                          'Analysis History',
                     ),
                   const SizedBox(width: 4),
                 ],
@@ -474,9 +476,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         ),
         dividerColor: Colors.transparent,
         splashBorderRadius: BorderRadius.circular(24),
-        tabs: const [
-          Tab(text: '🔍  Single Analysis'),
-          Tab(text: '⚡  Compare'),
+        tabs: [
+          Tab(text: '🔍  ${context.l10n?.singleAnalysis ?? 'Single Analysis'}'),
+          Tab(text: '⚡  ${context.l10n?.compare ?? 'Compare'}'),
         ],
       ),
     );
@@ -549,7 +551,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             GestureDetector(
               onTap: () => ref.read(compareAnalysisProvider.notifier).reset(),
               child: Text(
-                'Try Again',
+                context.l10n?.tryAgain ?? 'Try Again',
                 style: GoogleFonts.inter(
                   color: AppTheme.brandBlue,
                   fontWeight: FontWeight.w700,
@@ -678,7 +680,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Paste Product Link',
+                            context.l10n?.pasteProductLinkCardTitle ??
+                                'Paste Product Link',
                             style: GoogleFonts.plusJakartaSans(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
@@ -687,7 +690,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             ),
                           ),
                           Text(
-                            'Get AI-powered analysis with quiz',
+                            context.l10n?.pasteProductLinkSubtitle ??
+                                'Get AI-powered analysis with quiz',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: context.textTertiaryColor,
@@ -874,7 +878,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Compare Products',
+                            context.l10n?.compareProducts ?? 'Compare Products',
                             style: GoogleFonts.plusJakartaSans(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
@@ -883,7 +887,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             ),
                           ),
                           Text(
-                            'Add 2-4 product links to compare',
+                            context.l10n?.compareProductsSubtitle ??
+                                'Add 2-4 product links to compare',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: context.textTertiaryColor,
@@ -931,7 +936,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Add Product',
+                              context.l10n?.addProductLabel ?? 'Add Product',
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
@@ -1047,7 +1052,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 color: context.textPrimary,
               ),
               decoration: InputDecoration(
-                hintText: 'Paste product URL ${index + 1}...',
+                hintText:
+                    context.l10n?.pasteProductUrlNumbered(index + 1) ??
+                    'Paste product URL ${index + 1}...',
                 hintStyle: GoogleFonts.inter(
                   fontSize: 13,
                   color: context.textTertiaryColor,
@@ -1160,7 +1167,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 ),
             const SizedBox(height: 20),
             Text(
-              'Analyzing Products...',
+              context.l10n?.analyzingProductsTitle ?? 'Analyzing Products...',
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
@@ -1169,7 +1176,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'AI is comparing your products side by side',
+              context.l10n?.analyzingProductsSubtitle ??
+                  'AI is comparing your products side by side',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: context.textTertiaryColor,
@@ -1219,6 +1227,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         ),
       ),
     );
+  }
+
+  String _localizedCompareStepLabel(AnalysisStep step, int index) {
+    switch (step.type) {
+      case AnalysisStepType.scanLink:
+        final productLabel =
+            context.l10n?.productSlotLabel(index + 1) ?? 'Product ${index + 1}';
+        return '${context.l10n?.scanStep ?? 'Scan'} • $productLabel';
+      case AnalysisStepType.aiAnalysis:
+        return context.l10n?.stepAnalyzeTitle ?? 'AI Analysis';
+      case AnalysisStepType.profileMatch:
+        return context.l10n?.smartCompatibility ?? 'Smart Compatibility';
+    }
   }
 
   Widget _buildAnalysisStepRow(
@@ -1294,7 +1315,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              step.label,
+              _localizedCompareStepLabel(step, index),
               style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: step.isDone || step.isActive
@@ -1325,7 +1346,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'How It Works',
+            context.l10n?.howItWorks ?? 'How It Works',
             style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w800,
               fontSize: 15,
@@ -1336,20 +1357,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           const SizedBox(height: 12),
           _buildStep(
             1,
-            'Paste Link',
-            'Drop any product URL from 100+ stores',
+            context.l10n?.pasteLink ?? 'Paste Link',
+            context.l10n?.dropProductUrl ??
+                'Drop any product URL from 100+ stores',
             Icons.link_rounded,
           ),
           _buildStep(
             2,
-            'AI Quiz',
-            'Answer quick questions about your needs',
+            context.l10n?.aiQuiz ?? 'AI Quiz',
+            context.l10n?.answerQuickQuestions ??
+                'Answer quick questions about your needs',
             Icons.quiz_outlined,
           ),
           _buildStep(
             3,
-            'Match Score',
-            'Get personalized compatibility score',
+            context.l10n?.matchScoreLabel ?? 'Match Score',
+            context.l10n?.getPersonalizedScore ??
+                'Get personalized compatibility score',
             Icons.stars_rounded,
           ),
         ],
@@ -1411,7 +1435,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'How Comparison Works',
+            context.l10n?.howComparisonWorks ?? 'How Comparison Works',
             style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w800,
               fontSize: 15,
@@ -1422,20 +1446,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           const SizedBox(height: 12),
           _buildStep(
             1,
-            'Add 2-4 Links',
-            'Paste product URLs you want to compare',
+            context.l10n?.addLinksCompareTitle ?? 'Add 2-4 Links',
+            context.l10n?.addLinksCompareSubtitle ??
+                'Paste product URLs you want to compare',
             Icons.add_link_rounded,
           ),
           _buildStep(
             2,
-            'AI Analysis',
-            'All products analyzed simultaneously',
+            context.l10n?.stepAnalyzeTitle ?? 'AI Analysis',
+            context.l10n?.analyzingProductsSubtitle ??
+                'AI is comparing your products side by side',
             Icons.auto_awesome,
           ),
           _buildStep(
             3,
-            'Side-by-Side',
-            'See ranked comparison with pros & cons',
+            context.l10n?.sideBySideTitle ?? 'Side-by-Side',
+            context.l10n?.sideBySideSubtitle ??
+                'See ranked comparison with pros & cons',
             Icons.compare_arrows_rounded,
           ),
         ],
@@ -1500,7 +1527,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Product ${_currentMultiLinkIndex + 1} of ${_multiLinkUrls.length}',
+                  context.l10n?.productProgress(
+                        _currentMultiLinkIndex + 1,
+                        _multiLinkUrls.length,
+                      ) ??
+                      'Product ${_currentMultiLinkIndex + 1} of ${_multiLinkUrls.length}',
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -1787,7 +1818,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildProgressSteps(LinkFlowPhase phase) {
-    const steps = ['Scan', 'Quiz', 'Analyze', 'Result'];
+    final steps = [
+      context.l10n?.scanStep ?? 'Scan',
+      context.l10n?.aiQuiz ?? 'Quiz',
+      context.l10n?.analyzeStep ?? 'Analyze',
+      context.l10n?.resultLabel ?? 'Result',
+    ];
     final activeIndex = switch (phase) {
       LinkFlowPhase.analyzing => 0,
       LinkFlowPhase.quizLoading => 1,
@@ -2533,7 +2569,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Comparison Results',
+                      context.l10n?.comparisonResults ?? 'Comparison Results',
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
@@ -2541,7 +2577,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       ),
                     ),
                     Text(
-                      '${results.length} products analyzed',
+                      context.l10n?.productsAnalyzed(results.length) ??
+                          '${results.length} products analyzed',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         color: context.textSecondary,
@@ -2845,7 +2882,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       if (r.prosForUser.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Text(
-                          'Pros for You',
+                          context.l10n?.prosForYou ?? 'Pros for You',
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
@@ -2884,7 +2921,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       if (r.consForUser.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'Cons for You',
+                          context.l10n?.consForYou ?? 'Cons for You',
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700,
                             fontSize: 12,

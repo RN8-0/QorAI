@@ -3509,4 +3509,94 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get tapToLoadVideos =>
       'Karşılaştırma videolarını yüklemek için dokunun';
+
+  @override
+  String get productLabel => 'Ürün';
+
+  @override
+  String get readyToCompare => 'Hazır — karşılaştırın!';
+
+  @override
+  String get analysisHistoryTooltip => 'Analiz Geçmişi';
+
+  @override
+  String get pasteProductLinkCardTitle => 'Ürün Bağlantısı Yapıştır';
+
+  @override
+  String get pasteProductLinkSubtitle => 'Quiz ile AI destekli analiz alın';
+
+  @override
+  String get compareProductsSubtitle =>
+      'Karşılaştırmak için 2-4 ürün bağlantısı ekleyin';
+
+  @override
+  String get addProductLabel => 'Ürün Ekle';
+
+  @override
+  String get analyzingProductsTitle => 'Ürünler Analiz Ediliyor...';
+
+  @override
+  String get analyzingProductsSubtitle =>
+      'AI ürünlerinizi yan yana karşılaştırıyor';
+
+  @override
+  String get howComparisonWorks => 'Karşılaştırma Nasıl Çalışır';
+
+  @override
+  String get addLinksCompareTitle => '2-4 Bağlantı Ekleyin';
+
+  @override
+  String get addLinksCompareSubtitle =>
+      'Karşılaştırmak istediğiniz ürün URL\'lerini yapıştırın';
+
+  @override
+  String get sideBySideTitle => 'Yan Yana';
+
+  @override
+  String get sideBySideSubtitle =>
+      'Artı ve eksileriyle sıralı karşılaştırmayı görün';
+
+  @override
+  String get comparisonResults => 'Karşılaştırma Sonuçları';
+
+  @override
+  String get aiRecommendation => 'AI Önerisi';
+
+  @override
+  String get detailedComparisonTitle => 'Detaylı Karşılaştırma';
+
+  @override
+  String get pricingAnalysisTitle => 'Fiyat Analizi';
+
+  @override
+  String get featureComparisonTitle => 'Özellik Karşılaştırması';
+
+  @override
+  String get userExperienceTitle => 'Kullanıcı Deneyimi';
+
+  @override
+  String get scanStep => 'Tara';
+
+  @override
+  String get analyzeStep => 'Analiz';
+
+  @override
+  String productsAnalyzed(int count) {
+    return '$count ürün analiz edildi';
+  }
+
+  @override
+  String productSlotLabel(int slot) {
+    return 'Ürün $slot';
+  }
+
+  @override
+  String pasteProductUrlNumbered(int index) {
+    return 'Ürün URL\'si $index yapıştırın...';
+  }
+
+  @override
+  String productProgress(int current, int total) {
+    return '$total içinden $current. ürün';
+  }
 }

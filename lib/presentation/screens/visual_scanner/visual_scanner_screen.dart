@@ -656,20 +656,39 @@ class _ScanLinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const m = 80.0;
-    const l = 30.0;
-    final y = m + (size.height - (m * 2)) * progress;
+    final horizontalInset = size.width * 0.14;
+    final topInset = size.height * 0.14;
+    final bottomY = size.height * 0.76;
+    const cornerLength = 32.0;
+    final frameHeight = bottomY - topInset;
+    final y = topInset + frameHeight * progress;
 
     // Scan line (constrained to bracket area)
     final linePaint = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          color.withValues(alpha: 0.0),
-          color.withValues(alpha: 0.8),
-          color.withValues(alpha: 0.0),
-        ],
-      ).createShader(Rect.fromLTWH(m, y - 1, size.width - 2 * m, 2));
-    canvas.drawRect(Rect.fromLTWH(m, y - 1, size.width - 2 * m, 2), linePaint);
+      ..shader =
+          LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.0),
+              color.withValues(alpha: 0.8),
+              color.withValues(alpha: 0.0),
+            ],
+          ).createShader(
+            Rect.fromLTWH(
+              horizontalInset,
+              y - 1,
+              size.width - 2 * horizontalInset,
+              2,
+            ),
+          );
+    canvas.drawRect(
+      Rect.fromLTWH(
+        horizontalInset,
+        y - 1,
+        size.width - 2 * horizontalInset,
+        2,
+      ),
+      linePaint,
+    );
 
     // Corner brackets
     final cornerPaint = Paint()
@@ -679,39 +698,47 @@ class _ScanLinePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     // Top-left
-    canvas.drawLine(Offset(m, m), Offset(m + l, m), cornerPaint);
-    canvas.drawLine(Offset(m, m), Offset(m, m + l), cornerPaint);
-    // Top-right
     canvas.drawLine(
-      Offset(size.width - m, m),
-      Offset(size.width - m - l, m),
+      Offset(horizontalInset, topInset),
+      Offset(horizontalInset + cornerLength, topInset),
       cornerPaint,
     );
     canvas.drawLine(
-      Offset(size.width - m, m),
-      Offset(size.width - m, m + l),
+      Offset(horizontalInset, topInset),
+      Offset(horizontalInset, topInset + cornerLength),
+      cornerPaint,
+    );
+    // Top-right
+    canvas.drawLine(
+      Offset(size.width - horizontalInset, topInset),
+      Offset(size.width - horizontalInset - cornerLength, topInset),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width - horizontalInset, topInset),
+      Offset(size.width - horizontalInset, topInset + cornerLength),
       cornerPaint,
     );
     // Bottom-left
     canvas.drawLine(
-      Offset(m, size.height - m),
-      Offset(m + l, size.height - m),
+      Offset(horizontalInset, bottomY),
+      Offset(horizontalInset + cornerLength, bottomY),
       cornerPaint,
     );
     canvas.drawLine(
-      Offset(m, size.height - m),
-      Offset(m, size.height - m - l),
+      Offset(horizontalInset, bottomY),
+      Offset(horizontalInset, bottomY - cornerLength),
       cornerPaint,
     );
     // Bottom-right
     canvas.drawLine(
-      Offset(size.width - m, size.height - m),
-      Offset(size.width - m - l, size.height - m),
+      Offset(size.width - horizontalInset, bottomY),
+      Offset(size.width - horizontalInset - cornerLength, bottomY),
       cornerPaint,
     );
     canvas.drawLine(
-      Offset(size.width - m, size.height - m),
-      Offset(size.width - m, size.height - m - l),
+      Offset(size.width - horizontalInset, bottomY),
+      Offset(size.width - horizontalInset, bottomY - cornerLength),
       cornerPaint,
     );
   }
