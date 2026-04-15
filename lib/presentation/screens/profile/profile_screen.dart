@@ -901,11 +901,7 @@ class _ContentSection extends StatelessWidget {
                     ),
                   ),
                   if (onHeaderTap != null)
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      color: context.textTertiaryColor,
-                      size: 20,
-                    ),
+                    Icon(Icons.arrow_forward_rounded, color: color, size: 20),
                 ],
               ),
             ),
@@ -986,7 +982,7 @@ class _ComparisonPreviewList extends StatelessWidget {
     return Column(
       children: comparisons.take(3).map((comparison) {
         final subtitle = comparison.itemIds.length >= 2
-            ? '${comparison.itemIds.length} urun • ${_formatComparisonTimestamp(comparison.createdAt)}'
+            ? '${comparison.itemIds.length} urun • ${_formatComparisonTimestamp(comparison.createdAt)}${comparison.occurrenceCount > 1 ? ' • ${comparison.occurrenceCount} kez' : ''}'
             : 'Taslak karsilastirma';
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),

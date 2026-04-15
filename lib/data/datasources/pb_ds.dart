@@ -657,12 +657,15 @@ class PbDataSource {
       }
 
       final existing = merged[existingIndex];
+      final totalCount = existing.occurrenceCount + comparison.occurrenceCount;
       final hasBetterTitle =
           (existing.title == null || existing.title!.trim().isEmpty) &&
           (comparison.title?.trim().isNotEmpty ?? false);
-      if (hasBetterTitle) {
-        merged[existingIndex] = comparison;
-      }
+      final preferred = hasBetterTitle ? comparison : existing;
+      merged[existingIndex] = _copyComparison(
+        preferred,
+        occurrenceCount: totalCount,
+      );
     }
 
     if (merged.length <= limit) {
@@ -697,6 +700,28 @@ class PbDataSource {
 
     final diff = existing.createdAt.difference(candidate.createdAt).abs();
     return diff <= const Duration(minutes: 10);
+  }
+
+  ComparisonModel _copyComparison(
+    ComparisonModel source, {
+    int? occurrenceCount,
+  }) {
+    return ComparisonModel(
+      id: source.id,
+      userId: source.userId,
+      itemIds: source.itemIds,
+      scores: source.scores,
+      aiAnalysis: source.aiAnalysis,
+      winnerId: source.winnerId,
+      userChoiceId: source.userChoiceId,
+      category: source.category,
+      createdAt: source.createdAt,
+      isPublic: source.isPublic,
+      title: source.title,
+      isFeatured: source.isFeatured,
+      isPredefined: source.isPredefined,
+      occurrenceCount: occurrenceCount ?? source.occurrenceCount,
+    );
   }
 
   Future<List<ComparisonModel>> getPredefinedComparisons({

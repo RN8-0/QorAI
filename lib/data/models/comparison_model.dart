@@ -19,6 +19,7 @@ class ComparisonModel extends ComparisonEntity {
     super.title,
     super.isFeatured = false,
     super.isPredefined = false,
+    super.occurrenceCount = 1,
   });
 
   factory ComparisonModel.fromPb(RecordModel record) {
@@ -69,6 +70,7 @@ class ComparisonModel extends ComparisonEntity {
       title: data['title'],
       isFeatured: data['isFeatured'] ?? false,
       isPredefined: data['isPredefined'] ?? false,
+      occurrenceCount: (notes['occurrenceCount'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -123,6 +125,7 @@ class ComparisonModel extends ComparisonEntity {
       title: entity.title,
       isFeatured: entity.isFeatured,
       isPredefined: entity.isPredefined,
+      occurrenceCount: entity.occurrenceCount,
     );
   }
 }

@@ -17,6 +17,7 @@ class ComparisonEntity extends Equatable {
   final String category;
   final DateTime createdAt;
   final bool isPublic;
+  final int occurrenceCount;
 
   const ComparisonEntity({
     required this.id,
@@ -32,6 +33,7 @@ class ComparisonEntity extends Equatable {
     this.title,
     this.isFeatured = false,
     this.isPredefined = false,
+    this.occurrenceCount = 1,
   });
 
   /// Convenience getters for screens
@@ -80,7 +82,8 @@ class ComparisonScore extends Equatable {
     List<String> pros = const [],
     List<String> cons = const [],
   }) {
-    final total = (personalFit * 0.40) +
+    final total =
+        (personalFit * 0.40) +
         (community * 0.25) +
         (expert * 0.20) +
         (valuePrice * 0.15);
