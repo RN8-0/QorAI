@@ -1,7 +1,9 @@
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:compair/core/pb_client.dart';
 import 'package:flutter/material.dart';
 import 'package:compair/domain/entities/user_entity.dart';
+import 'package:compair/domain/entities/comparison_entity.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -191,6 +193,19 @@ class _ProfileBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isPremium = ref.watch(premiumProvider);
+    final comparisonsAsync = ref.watch(userComparisonsProvider);
+    final comparisonHistory =
+        comparisonsAsync.valueOrNull?.when(
+          success: (comparisons) => comparisons,
+          failure: (_) => <ComparisonEntity>[],
+        ) ??
+        const <ComparisonEntity>[];
+    final comparisonsCount = math.max(
+      user?.comparisonsCount ?? 0,
+      comparisonHistory.length,
+    );
+    final favoritesCount = user?.favorites.length ?? 0;
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
@@ -317,15 +332,15 @@ class _ProfileBody extends ConsumerWidget {
                 Row(
                   children: [
                     _StatPill(
-                      value: '${user?.comparisonsCount ?? 0}',
+                      value: '$comparisonsCount',
                       label: context.l10n?.comparisons ?? 'Compares',
                       color: AppTheme.brandBlue,
                       onTap: () => context.push(AppRoutes.comparisons),
                     ),
                     const SizedBox(width: 8),
                     _StatPill(
-                      value: '${(user?.ownedProducts as List?)?.length ?? 0}',
-                      label: context.l10n?.collection ?? 'Collection',
+                      value: '$favoritesCount',
+                      label: context.l10n?.favorites ?? 'Favorites',
                       color: AppTheme.brandSkyBlue,
                       onTap: () => context.push(AppRoutes.collection),
                     ),
@@ -460,17 +475,16 @@ class _ProfileBody extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
 
-              // My Collection
+              // Comparison History Preview
               _ContentSection(
-                title: context.l10n?.myCollectionTitle ?? 'My Collection',
-                icon: Icons.folder_open_rounded,
+                title: context.l10n?.comparisonHistory ?? 'Comparison History',
+                icon: Icons.compare_arrows_rounded,
                 color: AppTheme.brandBlue,
-                onHeaderTap: () => context.push(AppRoutes.collection),
-                child: _ProductPreviewList(
-                  products: (user?.ownedProducts as List?) ?? [],
+                onHeaderTap: () => context.push(AppRoutes.comparisons),
+                child: _ComparisonPreviewList(
+                  comparisons: comparisonHistory,
                   emptyMessage:
-                      context.l10n?.noProductsInCollection ??
-                      'No products in collection',
+                      context.l10n?.noComparisonsYet ?? 'No comparisons yet',
                 ),
               ),
 
@@ -481,6 +495,7 @@ class _ProfileBody extends ConsumerWidget {
                 title: context.l10n?.favorites ?? 'Favorites',
                 icon: Icons.favorite_rounded,
                 color: const Color(0xFFEF4444),
+                onHeaderTap: () => context.push(AppRoutes.collection),
                 child: _ProductPreviewList(
                   products: (user?.favorites as List?) ?? [],
                   emptyMessage: context.l10n?.noFavorites ?? 'No favorites yet',
@@ -952,6 +967,100 @@ class _ProductPreviewList extends ConsumerWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _ProductListItem(productId: productId.toString()),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _ComparisonPreviewList extends StatelessWidget {
+  final List<ComparisonEntity> comparisons;
+  final String emptyMessage;
+
+  const _ComparisonPreviewList({
+    required this.comparisons,
+    required this.emptyMessage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (comparisons.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Text(
+            emptyMessage,
+            style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+              color: context.textTertiaryColor,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: comparisons.take(3).map((comparison) {
+        final subtitle = comparison.itemIds.length >= 2
+            ? '${comparison.itemIds.length} urun'
+            : 'Taslak karsilastirma';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: InkWell(
+            onTap: () => context.push(AppRoutes.comparisons),
+            borderRadius: BorderRadius.circular(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.compare_arrows_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (comparison.title ?? 'Comparison').trim().isEmpty
+                            ? 'Comparison'
+                            : comparison.title!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: context.textTertiaryColor,
+                ),
+              ],
+            ),
+          ),
         );
       }).toList(),
     );

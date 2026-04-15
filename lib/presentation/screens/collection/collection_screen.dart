@@ -25,11 +25,11 @@ class CollectionScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (user) {
-          final ownedIds = user?.ownedProducts ?? [];
-          if (ownedIds.isEmpty) {
+          final favoriteIds = user?.favorites ?? [];
+          if (favoriteIds.isEmpty) {
             return const _EmptyState();
           }
-          return _CollectionContent(productIds: ownedIds);
+          return _CollectionContent(productIds: favoriteIds);
         },
       ),
     );
@@ -59,10 +59,14 @@ class _CollectionContent extends StatelessWidget {
                     children: [
                       ShaderMask(
                         shaderCallback: (bounds) => const LinearGradient(
-                          colors: [AppTheme.neonCyan, AppTheme.neonPurple, AppTheme.neonPink],
+                          colors: [
+                            AppTheme.neonCyan,
+                            AppTheme.neonPurple,
+                            AppTheme.neonPink,
+                          ],
                         ).createShader(bounds),
                         child: Text(
-                          'My Collection',
+                          'Favorilerim',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
@@ -74,7 +78,10 @@ class _CollectionContent extends StatelessWidget {
                       const Spacer(),
                       // Item count badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
@@ -90,8 +97,11 @@ class _CollectionContent extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.devices_rounded,
-                                size: 14, color: AppTheme.primaryBlue),
+                            Icon(
+                              Icons.favorite_rounded,
+                              size: 14,
+                              color: AppTheme.primaryBlue,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${productIds.length}',
@@ -108,7 +118,7 @@ class _CollectionContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Products you own and love',
+                    'Favoriye ekledigin urunler burada listelenir',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -171,14 +181,14 @@ class _EmptyState extends StatelessWidget {
                   borderRadius: BorderRadius.circular(36),
                 ),
                 child: Icon(
-                  Icons.bookmark_outline_rounded,
+                  Icons.favorite_border_rounded,
                   size: 56,
                   color: AppTheme.primaryBlue,
                 ),
               ),
               const SizedBox(height: 28),
               Text(
-                'Your Collection is Empty',
+                'Henuz favori yok',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -188,7 +198,7 @@ class _EmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Add products you own to track them, compare easily, and get personalized recommendations.',
+                'Begendigin urunleri favoriye eklediginde burada hizlica ulasabileceksin.',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -201,7 +211,10 @@ class _EmptyState extends StatelessWidget {
               GestureDetector(
                 onTap: () => context.push(AppRoutes.search),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     gradient: AppTheme.primaryGradient,
                     borderRadius: BorderRadius.circular(14),
@@ -216,10 +229,14 @@ class _EmptyState extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+                      const Icon(
+                        Icons.search_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        'Explore Products',
+                        'Urunleri Kesfet',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -250,10 +267,7 @@ class _CollectionProductCard extends ConsumerWidget {
       loading: () => _ShimmerCard(),
       error: (_, __) => _ErrorCard(),
       data: (result) {
-        final product = result.when(
-          success: (p) => p,
-          failure: (_) => null,
-        );
+        final product = result.when(success: (p) => p, failure: (_) => null);
         if (product == null) return _ErrorCard();
         return _ProductCard(product: product);
       },
@@ -292,8 +306,11 @@ class _ErrorCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
       ),
       child: Center(
-        child: Icon(Icons.error_outline_rounded,
-            color: context.textTertiaryColor, size: 32),
+        child: Icon(
+          Icons.error_outline_rounded,
+          color: context.textTertiaryColor,
+          size: 32,
+        ),
       ),
     );
   }
@@ -310,16 +327,14 @@ class _ProductCard extends ConsumerWidget {
     final scoreColor = techScore >= 80
         ? const Color(0xFF10B981)
         : techScore >= 60
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFEF4444);
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFFEF4444);
 
     return GestureDetector(
       onTap: () => context.push('/product/${product.id}'),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.white,
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isDark
@@ -345,7 +360,9 @@ class _ProductCard extends ConsumerWidget {
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(18),
+                    ),
                     child: Container(
                       width: double.infinity,
                       color: isDark
@@ -356,17 +373,26 @@ class _ProductCard extends ConsumerWidget {
                               imageUrl: product.imageURL,
                               fit: BoxFit.contain,
                               placeholder: (_, __) => Center(
-                                child: Icon(Icons.image_outlined,
-                                    size: 32, color: context.textTertiaryColor),
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  size: 32,
+                                  color: context.textTertiaryColor,
+                                ),
                               ),
                               errorWidget: (_, __, ___) => Center(
-                                child: Icon(Icons.broken_image_outlined,
-                                    size: 32, color: context.textTertiaryColor),
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  size: 32,
+                                  color: context.textTertiaryColor,
+                                ),
                               ),
                             )
                           : Center(
-                              child: Icon(Icons.image_outlined,
-                                  size: 32, color: context.textTertiaryColor),
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 32,
+                                color: context.textTertiaryColor,
+                              ),
                             ),
                     ),
                   ),
@@ -376,16 +402,25 @@ class _ProductCard extends ConsumerWidget {
                       top: 8,
                       right: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: scoreColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: scoreColor.withValues(alpha: 0.4)),
+                          border: Border.all(
+                            color: scoreColor.withValues(alpha: 0.4),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.bolt_rounded, size: 12, color: scoreColor),
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 12,
+                              color: scoreColor,
+                            ),
                             const SizedBox(width: 2),
                             Text(
                               '${techScore.round()}',
@@ -404,7 +439,10 @@ class _ProductCard extends ConsumerWidget {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? Colors.black.withValues(alpha: 0.5)
@@ -466,7 +504,10 @@ class _ProductCard extends ConsumerWidget {
                     if (product.prices.isNotEmpty)
                       Container(
                         margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           gradient: AppTheme.primaryGradient,
                           borderRadius: BorderRadius.circular(6),

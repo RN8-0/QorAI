@@ -23,41 +23,44 @@ class ComparisonModel extends ComparisonEntity {
 
   factory ComparisonModel.fromPb(RecordModel record) {
     final data = Map<String, dynamic>.from(record.data);
+    final itemIds = List<String>.from(
+      data['items'] ?? data['productIds'] ?? [],
+    );
 
     // Scores map'i
     final scoresData = data['scores'] as Map<String, dynamic>? ?? {};
-    final scores = scoresData.map(
-      (key, value) {
-        final scoreData = value as Map<String, dynamic>;
-        return MapEntry(
-          key,
-          ComparisonScore(
-            totalScore: (scoreData['totalScore'] as num?)?.toDouble() ?? 0.0,
-            personalFitScore:
-                (scoreData['personalFitScore'] as num?)?.toDouble() ?? 0.0,
-            communityScore:
-                (scoreData['communityScore'] as num?)?.toDouble() ?? 0.0,
-            expertScore:
-                (scoreData['expertScore'] as num?)?.toDouble() ?? 0.0,
-            valuePriceScore:
-                (scoreData['valuePriceScore'] as num?)?.toDouble() ?? 0.0,
-            pros: List<String>.from(scoreData['pros'] ?? []),
-            cons: List<String>.from(scoreData['cons'] ?? []),
-          ),
-        );
-      },
-    );
+    final scores = scoresData.map((key, value) {
+      final scoreData = value as Map<String, dynamic>;
+      return MapEntry(
+        key,
+        ComparisonScore(
+          totalScore: (scoreData['totalScore'] as num?)?.toDouble() ?? 0.0,
+          personalFitScore:
+              (scoreData['personalFitScore'] as num?)?.toDouble() ?? 0.0,
+          communityScore:
+              (scoreData['communityScore'] as num?)?.toDouble() ?? 0.0,
+          expertScore: (scoreData['expertScore'] as num?)?.toDouble() ?? 0.0,
+          valuePriceScore:
+              (scoreData['valuePriceScore'] as num?)?.toDouble() ?? 0.0,
+          pros: List<String>.from(scoreData['pros'] ?? []),
+          cons: List<String>.from(scoreData['cons'] ?? []),
+        ),
+      );
+    });
 
     return ComparisonModel(
       id: record.id,
       userId: data['userId'] ?? '',
-      itemIds: List<String>.from(data['items'] ?? []),
+      itemIds: itemIds,
       scores: scores,
       aiAnalysis: data['aiAnalysis'] ?? '',
       winnerId: data['winner'],
       userChoiceId: data['userChoice'],
       category: data['category'] ?? '',
-      createdAt: _parseDate(data['created']) ?? _parseDate(data['createdAt']) ?? DateTime.now(),
+      createdAt:
+          _parseDate(data['created']) ??
+          _parseDate(data['createdAt']) ??
+          DateTime.now(),
       isPublic: data['isPublic'] ?? false,
       title: data['title'],
       isFeatured: data['isFeatured'] ?? false,

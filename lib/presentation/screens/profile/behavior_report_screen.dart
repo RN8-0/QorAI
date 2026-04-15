@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,6 +27,7 @@ class BehaviorReportScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           context.l10n?.behaviorReport ?? 'Behavior Report',
@@ -35,7 +37,7 @@ class BehaviorReportScreen extends ConsumerWidget {
             color: context.textPrimary,
           ),
         ),
-        backgroundColor: context.surfaceColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
       ),
@@ -84,14 +86,87 @@ class _BehaviorReportBody extends StatelessWidget {
             .toList();
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 104, 16, 24),
       children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.brandBlue.withValues(alpha: 0.14),
+                AppTheme.brandCyan.withValues(alpha: 0.08),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: AppTheme.brandBlue.withValues(alpha: 0.12),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.insights_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _behaviorText(
+                        context,
+                        en: 'Personal insight snapshot',
+                        tr: 'Kisisel icgoru ozeti',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _behaviorText(
+                        context,
+                        en: 'Your interests, intent and profile strength in one place.',
+                        tr: 'Ilgi alanlarin, niyetin ve profil gucun tek ekranda.',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        height: 1.45,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 350.ms).moveY(begin: 12, end: 0),
+        const SizedBox(height: 16),
         // ─── Header Score Card ───
         _ScoreOverviewCard(
-          completeness: completeness,
-          purchaseIntent: profile.purchaseIntentScore,
-          profileLabel: context.l10n?.profileComplete ?? 'Profile Complete',
-        ),
+              completeness: completeness,
+              purchaseIntent: profile.purchaseIntentScore,
+              profileLabel: context.l10n?.profileComplete ?? 'Profile Complete',
+            )
+            .animate()
+            .fadeIn(duration: 400.ms, delay: 40.ms)
+            .moveY(begin: 10, end: 0),
         const SizedBox(height: 24),
 
         // ─── Category Scores with Circular Indicators ───
@@ -142,12 +217,15 @@ class _BehaviorReportBody extends StatelessWidget {
             ),
           ),
           GlassContainer(
-            padding: const EdgeInsets.all(16),
-            child: _InterestCloud(
-              interests: profile.strongInterestCategories,
-              scores: profile.categoryInterestScores,
-            ),
-          ),
+                padding: const EdgeInsets.all(16),
+                child: _InterestCloud(
+                  interests: profile.strongInterestCategories,
+                  scores: profile.categoryInterestScores,
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 450.ms, delay: 120.ms)
+              .moveY(begin: 10, end: 0),
           const SizedBox(height: 24),
         ],
 

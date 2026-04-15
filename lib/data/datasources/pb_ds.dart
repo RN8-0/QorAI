@@ -477,18 +477,68 @@ class PbDataSource {
 
   Future<String> createComparison(ComparisonModel comparison) async {
     try {
-      final record = await _pb
-          .collection(AppConstants.comparisonsCollection)
-          .create(body: comparison.toMap());
-      // Increment user comparison count
+      var recordId = comparison.id;
+      try {
+        final record = await _pb
+            .collection(AppConstants.comparisonsCollection)
+            .create(body: comparison.toMap());
+        recordId = record.id;
+      } catch (_) {
+        try {
+          final record = await _pb
+              .collection(AppConstants.comparisonsCollection)
+              .create(
+                body: {
+                  'userId': comparison.userId,
+                  'productIds': comparison.itemIds,
+                  'title': comparison.title,
+                  'notes': {
+                    'category': comparison.category,
+                    'winnerId': comparison.winnerId,
+                    'aiAnalysis': comparison.aiAnalysis,
+                    'createdAt': comparison.createdAt.toIso8601String(),
+                  },
+                  'isShared': comparison.isPublic,
+                },
+              );
+          recordId = record.id;
+        } catch (e) {
+          debugPrint(
+            '[PB] comparison collection save failed, using user history fallback: $e',
+          );
+        }
+      }
+
       final user = await _pb
           .collection(AppConstants.usersCollection)
           .getOne(comparison.userId);
+      final history = List<Map<String, dynamic>>.from(
+        (user.data['comparisonHistory'] as List? ?? const []).map(
+          (item) => Map<String, dynamic>.from(item as Map),
+        ),
+      );
+      history.insert(0, {
+        'comparisonId': recordId,
+        'productIds': comparison.itemIds,
+        'title': comparison.title,
+        'category': comparison.category,
+        'winnerId': comparison.winnerId,
+        'createdAt': comparison.createdAt.toIso8601String(),
+      });
+      final trimmedHistory = history.take(50).toList();
+
+      // Increment user comparison count
       final count = (user.data['comparisonsCount'] as num?)?.toInt() ?? 0;
       await _pb
           .collection(AppConstants.usersCollection)
-          .update(comparison.userId, body: {'comparisonsCount': count + 1});
-      return record.id;
+          .update(
+            comparison.userId,
+            body: {
+              'comparisonsCount': count + 1,
+              'comparisonHistory': trimmedHistory,
+            },
+          );
+      return recordId;
     } catch (e) {
       throw ServerException(message: 'Comparison could not be created: $e');
     }
@@ -509,10 +559,63 @@ class PbDataSource {
             sort: '-created',
           )
           .timeout(const Duration(seconds: 15));
-      return result.items.map(ComparisonModel.fromPb).toList();
+      final comparisons = result.items.map(ComparisonModel.fromPb).toList();
+      if (comparisons.isNotEmpty) {
+        return comparisons;
+      }
+      return _getUserComparisonsFromHistory(userId, limit: limit);
     } catch (e) {
-      throw ServerException(message: 'Comparisons could not be retrieved: $e');
+      try {
+        return await _getUserComparisonsFromHistory(userId, limit: limit);
+      } catch (_) {
+        throw ServerException(
+          message: 'Comparisons could not be retrieved: $e',
+        );
+      }
     }
+  }
+
+  Future<List<ComparisonModel>> _getUserComparisonsFromHistory(
+    String userId, {
+    int limit = 20,
+  }) async {
+    final user = await _pb
+        .collection(AppConstants.usersCollection)
+        .getOne(userId);
+    final history = List<Map<String, dynamic>>.from(
+      (user.data['comparisonHistory'] as List? ?? const []).map(
+        (item) => Map<String, dynamic>.from(item as Map),
+      ),
+    );
+
+    return history
+        .take(limit)
+        .map((entry) => _comparisonFromHistoryEntry(userId, entry))
+        .toList();
+  }
+
+  ComparisonModel _comparisonFromHistoryEntry(
+    String userId,
+    Map<String, dynamic> entry,
+  ) {
+    final rawIds = entry['productIds'] ?? entry['items'] ?? const <dynamic>[];
+    final itemIds = rawIds is List ? List<String>.from(rawIds) : <String>[];
+
+    return ComparisonModel(
+      id:
+          (entry['comparisonId'] as String?) ??
+          (entry['id'] as String?) ??
+          '${entry['createdAt'] ?? DateTime.now().toIso8601String()}_${itemIds.join('_')}',
+      userId: (entry['userId'] as String?) ?? userId,
+      itemIds: itemIds,
+      title: entry['title'] as String?,
+      category: (entry['category'] as String?) ?? '',
+      winnerId: entry['winnerId'] as String?,
+      aiAnalysis: (entry['aiAnalysis'] as String?) ?? '',
+      createdAt:
+          DateTime.tryParse((entry['createdAt'] as String?) ?? '') ??
+          DateTime.now(),
+    );
   }
 
   Future<List<ComparisonModel>> getPredefinedComparisons({
