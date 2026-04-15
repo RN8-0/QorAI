@@ -122,64 +122,38 @@ String? _recordImageUrl(RecordModel record) {
 final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
   ref,
 ) async {
-  final covers = <String, String>{};
-
   try {
-    for (
-      var page = 1;
-      page <= 20 && covers.length < _quizCategoryUniverse.length;
-      page++
-    ) {
-      final result = await pb
-          .collection(AppConstants.productsCollection)
-          .getList(
-            page: page,
-            perPage: 200,
-            sort: '-created',
-            fields: 'category,imageURL,imageUrl,images',
-          );
+    final entries = await Future.wait(
+      _quizCategoryUniverse.map((category) async {
+        try {
+          final result = await pb
+              .collection(AppConstants.productsCollection)
+              .getList(
+                page: 1,
+                perPage: 1,
+                sort: '-created',
+                filter: 'category = "$category"',
+                fields: 'category,imageURL,imageUrl,images',
+              );
 
-      for (final record in result.items) {
-        final category = record.data['category']?.toString();
-        if (category == null ||
-            !_quizCategoryUniverse.contains(category) ||
-            covers.containsKey(category)) {
-          continue;
+          if (result.items.isEmpty) return null;
+          final image = _recordImageUrl(result.items.first);
+          if (image == null || image.isEmpty) return null;
+          return MapEntry(category, image);
+        } catch (_) {
+          return null;
         }
+      }),
+    );
 
-        final image = _recordImageUrl(record);
-        if (image != null) {
-          covers[category] = image;
-        }
-      }
-    }
-
-    final missingCategories = _quizCategoryUniverse
-        .where((category) => !covers.containsKey(category))
-        .toList();
-
-    for (final category in missingCategories) {
-      final result = await pb
-          .collection(AppConstants.productsCollection)
-          .getList(
-            page: 1,
-            perPage: 1,
-            sort: '-created',
-            filter: 'category = "$category"',
-            fields: 'category,imageURL,imageUrl,images',
-          );
-
-      if (result.items.isEmpty) continue;
-      final image = _recordImageUrl(result.items.first);
-      if (image != null) {
-        covers[category] = image;
-      }
-    }
+    return {
+      for (final entry in entries)
+        if (entry != null) entry.key: entry.value,
+    };
   } catch (e, st) {
     debugPrint('[Quiz] quizCategoryVisualsProvider failed: $e\n$st');
+    return const {};
   }
-
-  return covers;
 });
 
 class QuizScreen extends ConsumerStatefulWidget {
@@ -213,27 +187,28 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   String _t(String tr, String en) => _isTurkish ? tr : en;
   Color get _pageBackground =>
-      _isDarkTheme ? const Color(0xFF07101A) : AppTheme.backgroundLightMode;
+      _isDarkTheme ? const Color(0xFF07101A) : const Color(0xFFF5F7FB);
   Color get _surfaceColor =>
       _isDarkTheme ? Colors.white.withValues(alpha: 0.05) : Colors.white;
   Color get _surfaceStrongColor => _isDarkTheme
       ? Colors.white.withValues(alpha: 0.08)
-      : AppTheme.surfaceVariantLightMode;
+      : const Color(0xFFF0F4FA);
   Color get _borderColor => _isDarkTheme
       ? Colors.white.withValues(alpha: 0.08)
-      : AppTheme.dividerLightMode;
+      : const Color(0xFFD8E1EC);
   Color get _primaryTextColor =>
-      _isDarkTheme ? Colors.white : AppTheme.textPrimaryLightMode;
+      _isDarkTheme ? Colors.white : const Color(0xFF0F172A);
   Color get _secondaryTextColor => _isDarkTheme
       ? Colors.white.withValues(alpha: 0.72)
-      : AppTheme.textSecondaryLightMode;
+      : const Color(0xFF475569);
   Color get _mutedTextColor => _isDarkTheme
       ? Colors.white.withValues(alpha: 0.58)
-      : AppTheme.textTertiaryLightMode;
-  Color get _buttonDisabledBg =>
-      _isDarkTheme ? Colors.white.withValues(alpha: 0.12) : AppTheme.slate200;
+      : const Color(0xFF64748B);
+  Color get _buttonDisabledBg => _isDarkTheme
+      ? Colors.white.withValues(alpha: 0.12)
+      : const Color(0xFFE2E8F0);
   Color get _buttonDisabledFg =>
-      _isDarkTheme ? Colors.white54 : AppTheme.textSecondaryLightMode;
+      _isDarkTheme ? Colors.white54 : const Color(0xFF64748B);
   Color get _selectionCheckColor => _isDarkTheme ? Colors.black : Colors.white;
 
   List<_QuizStep> get _steps => [
@@ -1528,22 +1503,32 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  _isDarkTheme ? const Color(0xFF07101A) : Colors.white,
-                  _isDarkTheme
-                      ? AppTheme.brandBlue.withValues(alpha: 0.18)
-                      : AppTheme.brandCyan.withValues(alpha: 0.08),
                   _isDarkTheme
                       ? const Color(0xFF07101A)
-                      : AppTheme.backgroundLightMode,
+                      : const Color(0xFFFCFDFF),
+                  _isDarkTheme
+                      ? AppTheme.brandBlue.withValues(alpha: 0.18)
+                      : const Color(0xFFEAF1FF),
+                  _isDarkTheme
+                      ? const Color(0xFF07101A)
+                      : const Color(0xFFF5F7FB),
                 ],
               ),
             ),
           ),
         ),
-        _orb(AppTheme.brandCyan, const Alignment(-0.9, -0.8), 180),
-        _orb(AppTheme.brandBlue, const Alignment(1.1, -0.2), 220),
         _orb(
-          _isDarkTheme ? const Color(0xFF8B5CF6) : AppTheme.brandSkyBlue,
+          _isDarkTheme ? AppTheme.brandCyan : const Color(0xFFBFDBFE),
+          const Alignment(-0.9, -0.8),
+          180,
+        ),
+        _orb(
+          _isDarkTheme ? AppTheme.brandBlue : const Color(0xFFC7D2FE),
+          const Alignment(1.1, -0.2),
+          220,
+        ),
+        _orb(
+          _isDarkTheme ? const Color(0xFF8B5CF6) : const Color(0xFFE2E8F0),
           const Alignment(-1.0, 0.8),
           220,
         ),
@@ -1561,7 +1546,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color.withValues(alpha: _isDarkTheme ? 0.18 : 0.10),
+            color: color.withValues(alpha: _isDarkTheme ? 0.18 : 0.16),
           ),
         ),
       ),
@@ -1889,6 +1874,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final colors =
         _accentMap[option.value] ??
         const [AppTheme.brandCyan, AppTheme.brandBlue];
+    final hasArtwork = imageUrl != null && imageUrl.trim().isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
@@ -1912,19 +1898,28 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     color: selected
                         ? (_isDarkTheme
                               ? Colors.white.withValues(alpha: 0.2)
-                              : AppTheme.brandBlue.withValues(alpha: 0.18))
+                              : const Color(0xFF93C5FD))
                         : _borderColor,
                     width: selected ? 2 : 1,
                   ),
                   boxShadow: selected
                       ? [
                           BoxShadow(
-                            color: colors.first.withValues(alpha: 0.32),
+                            color: colors.first.withValues(
+                              alpha: _isDarkTheme ? 0.32 : 0.18,
+                            ),
                             blurRadius: 22,
                             offset: const Offset(0, 10),
                           ),
                         ]
-                      : null,
+                      : [
+                          if (!_isDarkTheme)
+                            const BoxShadow(
+                              color: Color(0x120F172A),
+                              blurRadius: 18,
+                              offset: Offset(0, 8),
+                            ),
+                        ],
                 ),
                 padding: EdgeInsets.all(dimmed ? 5 : 4),
                 child: Stack(
@@ -1939,7 +1934,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     ),
                     Positioned.fill(
                       child: Padding(
-                        padding: EdgeInsets.all(dimmed ? 16 : 14),
+                        padding: EdgeInsets.all(
+                          hasArtwork ? (dimmed ? 10 : 8) : (dimmed ? 16 : 14),
+                        ),
                         child: _buildOptionArtwork(
                           option: option,
                           imageUrl: imageUrl,
@@ -2130,6 +2127,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       return CachedNetworkImage(
         imageUrl: imageUrl,
         fit: BoxFit.contain,
+        fadeInDuration: const Duration(milliseconds: 120),
+        memCacheWidth: circular ? 320 : null,
+        maxWidthDiskCache: circular ? 320 : null,
         placeholder: (context, url) =>
             _buildOptionFallback(option: option, icon: icon),
         errorWidget: (context, url, error) =>
