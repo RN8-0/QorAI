@@ -642,39 +642,61 @@ class PbDataSource {
     List<ComparisonModel> comparisons, {
     required int limit,
   }) {
-    final unique = <String, ComparisonModel>{};
+    final merged = <ComparisonModel>[];
+    final sorted = [...comparisons]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    for (final comparison in comparisons) {
-      final key = _comparisonMergeKey(comparison);
-      final existing = unique[key];
-      if (existing == null ||
-          comparison.createdAt.isAfter(existing.createdAt) ||
+    for (final comparison in sorted) {
+      final existingIndex = merged.indexWhere(
+        (existing) => _shouldCollapseDuplicate(existing, comparison),
+      );
+
+      if (existingIndex == -1) {
+        merged.add(comparison);
+        continue;
+      }
+
+      final existing = merged[existingIndex];
+      final hasBetterTitle =
           (existing.title == null || existing.title!.trim().isEmpty) &&
-              (comparison.title?.trim().isNotEmpty ?? false)) {
-        unique[key] = comparison;
+          (comparison.title?.trim().isNotEmpty ?? false);
+      if (hasBetterTitle) {
+        merged[existingIndex] = comparison;
       }
     }
 
-    final merged = unique.values.toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (merged.length <= limit) {
       return merged;
     }
     return merged.take(limit).toList();
   }
 
-  String _comparisonMergeKey(ComparisonModel comparison) {
-    final explicitId = comparison.id.trim();
-    if (explicitId.isNotEmpty && !explicitId.contains('_')) {
-      return explicitId;
+  bool _shouldCollapseDuplicate(
+    ComparisonModel existing,
+    ComparisonModel candidate,
+  ) {
+    final existingIds = [...existing.itemIds]..sort();
+    final candidateIds = [...candidate.itemIds]..sort();
+    if (existingIds.length != candidateIds.length) {
+      return false;
     }
 
-    final sortedIds = [...comparison.itemIds]..sort();
-    if (sortedIds.isNotEmpty) {
-      return sortedIds.join('|');
+    for (var index = 0; index < existingIds.length; index++) {
+      if (existingIds[index] != candidateIds[index]) {
+        return false;
+      }
     }
 
-    return explicitId;
+    final existingTitle = (existing.title ?? '').trim().toLowerCase();
+    final candidateTitle = (candidate.title ?? '').trim().toLowerCase();
+    if (existingTitle.isNotEmpty &&
+        candidateTitle.isNotEmpty &&
+        existingTitle != candidateTitle) {
+      return false;
+    }
+
+    final diff = existing.createdAt.difference(candidate.createdAt).abs();
+    return diff <= const Duration(minutes: 10);
   }
 
   Future<List<ComparisonModel>> getPredefinedComparisons({

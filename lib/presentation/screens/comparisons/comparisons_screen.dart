@@ -362,7 +362,16 @@ class _ComparisonCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        _formatDate(comparison.createdAt),
+                        _formatDateLabel(comparison.createdAt),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: context.textTertiaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatTime(comparison.createdAt),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           color: context.textTertiaryColor,
@@ -389,13 +398,19 @@ class _ComparisonCard extends ConsumerWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDateLabel(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
     if (diff.inDays == 0) return 'Bugun';
     if (diff.inDays == 1) return 'Dun';
     if (diff.inDays < 7) return '${diff.inDays} gun once';
-    return '${date.day}/${date.month}/${date.year}';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }
 

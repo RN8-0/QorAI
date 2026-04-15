@@ -451,30 +451,6 @@ class _ProfileBody extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Quick Actions Grid
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickActionCard(
-                      icon: Icons.history_rounded,
-                      color: AppTheme.brandBlue,
-                      title: context.l10n?.comparisonHistory ?? 'History',
-                      onTap: () => context.push(AppRoutes.comparisons),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _QuickActionCard(
-                      icon: Icons.bar_chart_rounded,
-                      color: AppTheme.brandDeepBlue,
-                      title: context.l10n?.behaviorReport ?? 'Behavior',
-                      onTap: () => context.push(AppRoutes.behaviorReport),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
               // Comparison History Preview
               _ContentSection(
                 title: context.l10n?.comparisonHistory ?? 'Comparison History',
@@ -510,6 +486,15 @@ class _ProfileBody extends ConsumerWidget {
                 icon: Icons.history_rounded,
                 color: AppTheme.brandDeepBlue,
                 child: _RecentlyViewedPreviewList(),
+              ),
+
+              const SizedBox(height: 16),
+
+              _QuickActionCard(
+                icon: Icons.bar_chart_rounded,
+                color: AppTheme.brandDeepBlue,
+                title: context.l10n?.behaviorReport ?? 'Behavior Report',
+                onTap: () => context.push(AppRoutes.behaviorReport),
               ),
 
               const SizedBox(height: 16),
@@ -1001,7 +986,7 @@ class _ComparisonPreviewList extends StatelessWidget {
     return Column(
       children: comparisons.take(3).map((comparison) {
         final subtitle = comparison.itemIds.length >= 2
-            ? '${comparison.itemIds.length} urun'
+            ? '${comparison.itemIds.length} urun • ${_formatComparisonTimestamp(comparison.createdAt)}'
             : 'Taslak karsilastirma';
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -1066,6 +1051,25 @@ class _ComparisonPreviewList extends StatelessWidget {
       }).toList(),
     );
   }
+}
+
+String _formatComparisonTimestamp(DateTime date) {
+  final now = DateTime.now();
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+
+  if (now.year == date.year && now.month == date.month && now.day == date.day) {
+    return 'Bugun $hour:$minute';
+  }
+
+  final yesterday = now.subtract(const Duration(days: 1));
+  if (yesterday.year == date.year &&
+      yesterday.month == date.month &&
+      yesterday.day == date.day) {
+    return 'Dun $hour:$minute';
+  }
+
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')} $hour:$minute';
 }
 
 class _RecentlyViewedPreviewList extends ConsumerWidget {

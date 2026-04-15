@@ -74,6 +74,7 @@ class CompareScreen extends ConsumerStatefulWidget {
 }
 
 class _CompareScreenState extends ConsumerState<CompareScreen> {
+  bool _skipNextHistorySave = false;
   List<String> get _selectedProductIds =>
       ref.read(compareSessionProvider).selectedProductIds;
   List<ProductEntity>? get _comparedProducts =>
@@ -108,6 +109,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       final comp = comparison as dynamic;
       final ids = (comp.itemIds as List).cast<String>();
       if (ids.isNotEmpty) {
+        _skipNextHistorySave = true;
         ref.read(compareSessionProvider.notifier).state = ref
             .read(compareSessionProvider)
             .copyWith(selectedProductIds: ids);
@@ -304,8 +306,10 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     setState(() {});
 
     // Save comparison to Firestore for history
+    final shouldPersistHistory = !_skipNextHistorySave;
+    _skipNextHistorySave = false;
     final user = ref.read(userProfileProvider).valueOrNull;
-    if (user != null) {
+    if (shouldPersistHistory && user != null) {
       final title = products.map((p) => p.name).join(' vs ');
       try {
         await ref
