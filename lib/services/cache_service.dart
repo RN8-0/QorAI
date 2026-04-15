@@ -4,6 +4,7 @@
 /// Hive local cache (single layer — server cache removed in PB migration)
 /// Cache key: MD5(productIds + profileHash + country)
 /// Cache duration: 24 hours (products), 1 hour (trend analyses)
+library;
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -12,7 +13,7 @@ import 'dart:convert';
 class CacheService {
   static const String _cacheBoxName = 'compair_cache';
   static const String _settingsBoxName = 'compair_settings';
-  
+
   late Box<String> _localBox;
   late Box _settingsBox;
 
@@ -71,7 +72,19 @@ class CacheService {
   }
 
   bool isCountryManuallySet() {
-    return _settingsBox.get('country_manually_set', defaultValue: false) as bool;
+    return _settingsBox.get('country_manually_set', defaultValue: false)
+        as bool;
+  }
+
+  // ─── Display Settings ───
+  void saveTextScale(double value) {
+    _settingsBox.put('text_scale', value);
+  }
+
+  double getTextScale() {
+    final value = _settingsBox.get('text_scale', defaultValue: 1.0);
+    if (value is num) return value.toDouble();
+    return 1.0;
   }
 
   /// Get value (local cache only) - Section 7.4
@@ -107,10 +120,7 @@ class CacheService {
     if (!_localBox.isOpen) return;
     await _localBox.put(
       key,
-      jsonEncode({
-        'data': value,
-        'expiresAt': expiresAt.toIso8601String(),
-      }),
+      jsonEncode({'data': value, 'expiresAt': expiresAt.toIso8601String()}),
     );
   }
 

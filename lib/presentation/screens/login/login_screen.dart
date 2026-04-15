@@ -28,15 +28,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // Registration data
   DateTime? _birthDate;
   String? _gender;
-  static const List<String> _genderValues = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+  static const List<String> _genderValues = [
+    'Male',
+    'Female',
+    'Non-binary',
+    'Prefer not to say',
+  ];
 
   String _localizedGender(BuildContext context, String gender) {
     switch (gender) {
-      case 'Male': return context.l10n?.male ?? 'Male';
-      case 'Female': return context.l10n?.female ?? 'Female';
-      case 'Non-binary': return context.l10n?.nonBinary ?? 'Non-binary';
-      case 'Prefer not to say': return context.l10n?.preferNotToSay ?? 'Prefer not to say';
-      default: return gender;
+      case 'Male':
+        return context.l10n?.male ?? 'Male';
+      case 'Female':
+        return context.l10n?.female ?? 'Female';
+      case 'Non-binary':
+        return context.l10n?.nonBinary ?? 'Non-binary';
+      case 'Prefer not to say':
+        return context.l10n?.preferNotToSay ?? 'Prefer not to say';
+      default:
+        return gender;
     }
   }
 
@@ -115,12 +125,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _signInWithEmail() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showError(context.l10n?.pleaseEnterEmailAndPassword ?? 'Please enter email and password');
+      _showError(
+        context.l10n?.pleaseEnterEmailAndPassword ??
+            'Please enter email and password',
+      );
       return;
     }
 
     setState(() => _isLoading = true);
-    final result = await ref.read(authRepositoryProvider).signInWithEmail(
+    final result = await ref
+        .read(authRepositoryProvider)
+        .signInWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -141,19 +156,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _passwordController.text.isEmpty ||
         _birthDate == null ||
         _gender == null) {
-      _showError(context.l10n?.pleaseFillAllFields ?? 'Please fill in all fields (Name, Email, Password, Birth Date, & Gender)');
+      _showError(
+        context.l10n?.pleaseFillAllFields ??
+            'Please fill in all fields (Name, Email, Password, Birth Date, & Gender)',
+      );
       return;
     }
 
     // COPPA compliance: users must be at least 13 years old
     final age = DateTime.now().difference(_birthDate!).inDays ~/ 365;
     if (age < 13) {
-      _showError(context.l10n?.mustBe13OrOlder ?? 'You must be at least 13 years old to use Compair.');
+      _showError(
+        context.l10n?.mustBe13OrOlder ??
+            'You must be at least 13 years old to use Compair.',
+      );
       return;
     }
 
     setState(() => _isLoading = true);
-    final result = await ref.read(authRepositoryProvider).signUpWithEmail(
+    final result = await ref
+        .read(authRepositoryProvider)
+        .signUpWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           displayName: _nameController.text.trim(),
@@ -173,18 +196,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _forgotPassword() async {
     if (_emailController.text.isEmpty) {
-      _showError(context.l10n?.pleaseEnterEmailToReset ?? 'Please enter your email to reset password');
+      _showError(
+        context.l10n?.pleaseEnterEmailToReset ??
+            'Please enter your email to reset password',
+      );
       return;
     }
 
     setState(() => _isLoading = true);
-    final result = await ref.read(authRepositoryProvider).sendPasswordResetEmail(_emailController.text.trim());
+    final result = await ref
+        .read(authRepositoryProvider)
+        .sendPasswordResetEmail(_emailController.text.trim());
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     switch (result) {
       case Success():
-        _showSuccess(context.l10n?.passwordResetEmailSent ?? 'Password reset email sent!');
+        _showSuccess(
+          context.l10n?.passwordResetEmailSent ?? 'Password reset email sent!',
+        );
       case Failure(error: final error):
         _showError(error.message);
     }
@@ -292,7 +322,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         color: context.backgroundColor,
         padding: EdgeInsets.only(
           top: MediaQuery.of(context).padding.top + 8,
-          bottom: 12, left: 4, right: 24,
+          bottom: 12,
+          left: 4,
+          right: 24,
         ),
         child: Row(
           children: [
@@ -310,17 +342,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(width: 4),
             Image.asset(
               'assets/logo/compair_logo.png',
-              width: 32, height: 32,
+              width: 32,
+              height: 32,
               filterQuality: FilterQuality.high,
             ),
             const SizedBox(width: 8),
             ShaderMask(
               blendMode: BlendMode.srcIn,
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [AppTheme.neonCyan, AppTheme.neonPurple],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height * 1.2)),
+              shaderCallback: (bounds) =>
+                  const LinearGradient(
+                    colors: [AppTheme.neonCyan, AppTheme.neonPurple],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(
+                    Rect.fromLTWH(0, 0, bounds.width, bounds.height * 1.2),
+                  ),
               child: const Padding(
                 padding: EdgeInsets.only(bottom: 2),
                 child: Text(
@@ -379,11 +415,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 20),
                 ShaderMask(
                   blendMode: BlendMode.srcIn,
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [AppTheme.neonCyan, AppTheme.neonPurple, AppTheme.neonPink],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height * 1.2)),
+                  shaderCallback: (bounds) =>
+                      const LinearGradient(
+                        colors: [
+                          AppTheme.neonCyan,
+                          AppTheme.neonPurple,
+                          AppTheme.neonPink,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(
+                        Rect.fromLTWH(0, 0, bounds.width, bounds.height * 1.2),
+                      ),
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
@@ -400,7 +443,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  context.l10n?.smarterDecisions ?? 'Smarter Decisions, Powered by AI',
+                  context.l10n?.smarterDecisions ??
+                      'Smarter Decisions, Powered by AI',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -452,7 +496,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   GestureDetector(
                     onTap: () => context.go(AppRoutes.home),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 24,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(30),
@@ -508,10 +555,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ).createShader(bounds),
                   child: const Text(
                     'G',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -532,10 +576,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildAppleButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? Colors.white : const Color(0xFF111111);
+    final foregroundColor = isDark ? const Color(0xFF111111) : Colors.white;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.18)
+              : const Color(0xFF111111),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -547,14 +600,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.apple, color: context.backgroundColor, size: 24),
-                SizedBox(width: 12),
+                Icon(Icons.apple, color: foregroundColor, size: 24),
+                const SizedBox(width: 12),
                 Text(
                   context.l10n?.continueWithApple ?? 'Continue with Apple',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: context.backgroundColor,
+                    color: foregroundColor,
                   ),
                 ),
               ],
@@ -638,7 +691,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildTermsText() {
     return Text.rich(
       TextSpan(
-        text: context.l10n?.byContinuingYouAgree ?? 'By continuing you agree to our ',
+        text:
+            context.l10n?.byContinuingYouAgree ??
+            'By continuing you agree to our ',
         style: TextStyle(fontSize: 12, color: context.textSecondary),
         children: [
           WidgetSpan(
@@ -700,7 +755,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    context.l10n?.signInToYourAccount ?? 'Sign in to your account',
+                    context.l10n?.signInToYourAccount ??
+                        'Sign in to your account',
                     style: TextStyle(
                       fontSize: 15,
                       color: context.textTertiaryColor,
@@ -720,7 +776,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     icon: Icons.lock_outline_rounded,
                     isPassword: true,
                     obscureText: _obscurePassword,
-                    onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onToggle: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                   Align(
                     alignment: Alignment.centerRight,
@@ -748,8 +805,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onTap: () => setState(() => _mode = LoginMode.register),
                       child: Text.rich(
                         TextSpan(
-                          text: context.l10n?.dontHaveAccount ?? "Don't have an account? ",
-                          style: TextStyle(fontSize: 14, color: context.textTertiaryColor),
+                          text:
+                              context.l10n?.dontHaveAccount ??
+                              "Don't have an account? ",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: context.textTertiaryColor,
+                          ),
                           children: [
                             TextSpan(
                               text: context.l10n?.createOne ?? 'Create one',
@@ -799,7 +861,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    context.l10n?.joinSmarterWay ?? 'Join the smarter way to decide',
+                    context.l10n?.joinSmarterWay ??
+                        'Join the smarter way to decide',
                     style: TextStyle(
                       fontSize: 15,
                       color: context.textTertiaryColor,
@@ -825,7 +888,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     icon: Icons.lock_outline_rounded,
                     isPassword: true,
                     obscureText: _obscurePassword,
-                    onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onToggle: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                   const SizedBox(height: 14),
                   // Birth Date Picker
@@ -837,16 +901,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: context.dividerColor, width: 1.5),
+                        border: Border.all(
+                          color: context.dividerColor,
+                          width: 1.5,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.calendar_month_rounded, color: context.textSecondary, size: 20),
+                          Icon(
+                            Icons.calendar_month_rounded,
+                            color: context.textSecondary,
+                            size: 20,
+                          ),
                           const SizedBox(width: 12),
                           Text(
                             _birthDate == null
                                 ? (context.l10n?.birthDate ?? 'Birth Date')
-                                : DateFormat('MMMM d, yyyy').format(_birthDate!),
+                                : DateFormat(
+                                    'MMMM d, yyyy',
+                                  ).format(_birthDate!),
                             style: TextStyle(
                               color: _birthDate == null
                                   ? context.textSecondary
@@ -866,24 +939,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: context.dividerColor, width: 1.5),
+                      border: Border.all(
+                        color: context.dividerColor,
+                        width: 1.5,
+                      ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _gender,
                         hint: Text(
                           context.l10n?.gender ?? 'Gender',
-                          style: TextStyle(color: context.textSecondary, fontSize: 15),
+                          style: TextStyle(
+                            color: context.textSecondary,
+                            fontSize: 15,
+                          ),
                         ),
                         dropdownColor: context.surfaceElevatedColor,
-                        icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.textSecondary),
+                        icon: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: context.textSecondary,
+                        ),
                         isExpanded: true,
                         items: _genderValues.map((String gender) {
                           return DropdownMenuItem<String>(
                             value: gender,
                             child: Text(
                               _localizedGender(context, gender),
-                              style: TextStyle(color: context.textPrimary, fontSize: 15),
+                              style: TextStyle(
+                                color: context.textPrimary,
+                                fontSize: 15,
+                              ),
                             ),
                           );
                         }).toList(),
@@ -907,8 +992,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onTap: () => setState(() => _mode = LoginMode.email),
                       child: Text.rich(
                         TextSpan(
-                          text: context.l10n?.alreadyHaveAccount ?? 'Already have an account? ',
-                          style: TextStyle(fontSize: 14, color: context.textTertiaryColor),
+                          text:
+                              context.l10n?.alreadyHaveAccount ??
+                              'Already have an account? ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: context.textTertiaryColor,
+                          ),
                           children: [
                             TextSpan(
                               text: context.l10n?.signInLink ?? 'Sign in',
@@ -933,22 +1023,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // ─── SHARED WIDGETS ──────────────────────────────────────────────────
-
-  Widget _buildBackButton() {
-    return GestureDetector(
-      onTap: _goBack,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: context.dividerColor),
-        ),
-        child: Icon(Icons.arrow_back_rounded, color: context.textPrimary, size: 20),
-      ),
-    );
-  }
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -993,7 +1067,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ? const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
                   )
                 : Text(
                     label,
@@ -1068,7 +1145,11 @@ class _FocusableTextFieldState extends State<_FocusableTextField> {
           decoration: InputDecoration(
             hintText: widget.hint,
             hintStyle: TextStyle(color: context.textSecondary),
-            prefixIcon: Icon(widget.icon, color: context.textSecondary, size: 20),
+            prefixIcon: Icon(
+              widget.icon,
+              color: context.textSecondary,
+              size: 20,
+            ),
             suffixIcon: widget.isPassword
                 ? IconButton(
                     icon: Icon(
@@ -1082,7 +1163,10 @@ class _FocusableTextFieldState extends State<_FocusableTextField> {
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 18,
+              horizontal: 16,
+            ),
           ),
         ),
       ),

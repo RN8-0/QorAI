@@ -261,6 +261,45 @@ class AuthRepository {
     _pb.authStore.clear();
   }
 
+  Future<Result<void>> deleteCurrentUser() async {
+    final uid = _currentUid;
+    if (uid == null) {
+      return const Failure(
+        AuthException(message: 'Silinecek oturum acik bir hesap bulunamadi'),
+      );
+    }
+
+    try {
+      try {
+        final recentlyViewed = await _pb
+            .collection('recently_viewed')
+            .getFullList(filter: 'userId = "$uid"');
+        for (final record in recentlyViewed) {
+          await _pb.collection('recently_viewed').delete(record.id);
+        }
+      } catch (e) {
+        debugPrint(
+          '[auth] failed to delete related recently_viewed records: $e',
+        );
+      }
+
+      await _pb.collection('users').delete(uid);
+      _pb.authStore.clear();
+      return const Success(null);
+    } on ClientException catch (e) {
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } catch (e) {
+      return Failure(
+        AuthException(
+          message: 'Hesap silinemedi: ${e.toString()}',
+          originalError: e,
+        ),
+      );
+    }
+  }
+
   Future<Result<void>> updateUserProfile({
     required String uid,
     required Map<String, dynamic> quizData,
@@ -281,8 +320,9 @@ class AuthRepository {
     final message = e.response['message'] as String? ?? '';
     if (e.statusCode == 400) {
       if (data['email'] != null) return 'This email address is already in use';
-      if (data['password'] != null)
+      if (data['password'] != null) {
         return 'Password is too short (min 8 chars)';
+      }
       // Show PB's own message for OAuth/other 400 errors
       if (message.isNotEmpty &&
           message != 'Something went wrong while processing your request.') {
@@ -317,8 +357,9 @@ class AuthRepository {
         return 'Sunucu hatası: $detail';
       default:
         if (status == 401) return 'Google ile kimlik doğrulaması başarısız.';
-        if (status >= 500)
+        if (status >= 500) {
           return 'Sunucu geçici olarak kullanılamıyor. Lütfen tekrar deneyin.';
+        }
         return code.isNotEmpty
             ? '$code: $detail'
             : (detail.isNotEmpty ? detail : 'Bilinmeyen hata ($status)');

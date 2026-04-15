@@ -8,7 +8,9 @@ part of 'providers.dart';
 final selectedCategoryProvider = StateProvider<String?>((ref) => null);
 
 /// Selected country — auto-detected via IP on first use, persisted in CacheService
-final selectedCountryProvider = StateNotifierProvider<CountryNotifier, String>((ref) {
+final selectedCountryProvider = StateNotifierProvider<CountryNotifier, String>((
+  ref,
+) {
   return CountryNotifier(ref.read(cacheServiceProvider), ref);
 });
 
@@ -31,7 +33,8 @@ class CountryNotifier extends StateNotifier<String> {
     _ref.listen(detectedLocationProvider, (_, next) {
       next.whenData((location) {
         // Only auto-set if user hasn't manually chosen
-        if (!_cacheService.isCountryManuallySet() && location.countryCode.isNotEmpty) {
+        if (!_cacheService.isCountryManuallySet() &&
+            location.countryCode.isNotEmpty) {
           state = location.countryCode;
           _cacheService.saveCountry(location.countryCode);
           _cacheService.saveCurrency(location.currency);
@@ -71,7 +74,20 @@ class LocaleNotifier extends StateNotifier<Locale?> {
   final CacheService _cacheService;
 
   /// Supported language codes matching AppLocalizations.supportedLocales
-  static const _supported = {'ar','de','en','es','fr','it','ja','nl','pl','pt','sv','tr'};
+  static const _supported = {
+    'ar',
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+    'ja',
+    'nl',
+    'pl',
+    'pt',
+    'sv',
+    'tr',
+  };
 
   LocaleNotifier(this._cacheService) : super(null) {
     _load();
@@ -124,13 +140,34 @@ final hideNavBarProvider = StateProvider<bool>((ref) => false);
 
 /// Current page context for the floating AI chat bubble.
 /// Updated by screens when they load (product name, category, etc.)
-final aiPageContextProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
+final aiPageContextProvider = StateProvider<Map<String, dynamic>?>(
+  (ref) => null,
+);
 
 /// Text scale factor for display settings
-final textScaleProvider = StateProvider<double>((ref) => 1.0);
+final textScaleProvider = StateNotifierProvider<TextScaleNotifier, double>((
+  ref,
+) {
+  return TextScaleNotifier(ref.read(cacheServiceProvider));
+});
+
+class TextScaleNotifier extends StateNotifier<double> {
+  final CacheService _cacheService;
+
+  TextScaleNotifier(this._cacheService) : super(1.0) {
+    state = _cacheService.getTextScale();
+  }
+
+  void setTextScale(double scale) {
+    state = scale;
+    _cacheService.saveTextScale(scale);
+  }
+}
 
 /// Theme mode manager (System, Light, Dark) - Section 14
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((
+  ref,
+) {
   return ThemeModeNotifier(ref.read(cacheServiceProvider));
 });
 
@@ -160,25 +197,37 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 /// Always fetches the full product record (with specs, images, description etc.)
 /// from PocketBase. List/feed caches use lean field projection and lack detail fields.
 final productDetailProvider =
-    FutureProvider.family<Result<ProductEntity>, String>((ref, productId) async {
-  try {
-    return await ref.read(productRepositoryProvider).getProduct(productId)
-        .timeout(const Duration(seconds: 25));
-  } catch (e) {
-    return Failure(ServerException(message: 'Product load timed out. Check your connection.'));
-  }
-});
+    FutureProvider.family<Result<ProductEntity>, String>((
+      ref,
+      productId,
+    ) async {
+      try {
+        return await ref
+            .read(productRepositoryProvider)
+            .getProduct(productId)
+            .timeout(const Duration(seconds: 25));
+      } catch (e) {
+        return Failure(
+          ServerException(
+            message: 'Product load timed out. Check your connection.',
+          ),
+        );
+      }
+    });
 
 /// Category list
-final categoriesProvider =
-    FutureProvider<Result<List<CategoryModel>>>((ref) async {
+final categoriesProvider = FutureProvider<Result<List<CategoryModel>>>((
+  ref,
+) async {
   // Try Hive cache first (categories rarely change)
   try {
     final cacheService = ref.read(cacheServiceProvider);
-    final cached = await cacheService.getLocal<List>('categories_v1');
+    final cached = cacheService.getLocal<List>('categories_v1');
     if (cached != null && cached.isNotEmpty) {
       final cats = cached
-          .map((e) => CategoryModel.fromMap(Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) => CategoryModel.fromMap(Map<String, dynamic>.from(e as Map)),
+          )
           .toList();
       return Success(cats);
     }
@@ -191,7 +240,7 @@ final categoriesProvider =
       final cacheService = ref.read(cacheServiceProvider);
       await cacheService.setLocal(
         'categories_v1',
-        (result as Success<List<CategoryModel>>).data.map((c) => c.toMap()).toList(),
+        result.data.map((c) => c.toMap()).toList(),
         duration: const Duration(hours: 24),
       );
     } catch (_) {}
@@ -219,10 +268,14 @@ int _storageCapacityMB(ProductEntity p) {
   if (m == null) return 0; // no storage suffix → base model → show in list
   final val = int.tryParse(m.group(1)!) ?? 0;
   switch (m.group(2)!.toLowerCase()) {
-    case 'tb': return val * 1024 * 1024;
-    case 'gb': return val * 1024;
-    case 'mb': return val;
-    default: return 0;
+    case 'tb':
+      return val * 1024 * 1024;
+    case 'gb':
+      return val * 1024;
+    case 'mb':
+      return val;
+    default:
+      return 0;
   }
 }
 
@@ -236,7 +289,8 @@ List<ProductEntity> deduplicateVariants(List<ProductEntity> products) {
     // Primary dedup: variantGroup
     final key = p.variantGroup.isNotEmpty ? p.variantGroup : p.id;
     final existing = seen[key];
-    if (existing == null || _storageCapacityMB(p) < _storageCapacityMB(existing)) {
+    if (existing == null ||
+        _storageCapacityMB(p) < _storageCapacityMB(existing)) {
       seen[key] = p;
     }
     // Secondary dedup: normalized name (catches same product with different IDs)
@@ -259,13 +313,19 @@ String _normalizeProductName(String name) {
   return name
       .toLowerCase()
       // Strip storage in parentheses: (256GB), (1 TB), (512 MB)
-      .replaceAll(RegExp(r'\s*\(\d+\s*(?:gb|tb|mb)\)', caseSensitive: false), '')
+      .replaceAll(
+        RegExp(r'\s*\(\d+\s*(?:gb|tb|mb)\)', caseSensitive: false),
+        '',
+      )
       // Strip standalone storage anywhere: 256GB, 1TB, 512 MB
       .replaceAll(RegExp(r'\b\d+\s*(?:gb|tb|mb)\b', caseSensitive: false), '')
       // Strip RAM+Storage combos: 8/256, 12/512
       .replaceAll(RegExp(r'\b\d+/\d+\b'), '')
       // Strip connectivity: Wi-Fi + Cellular, Wi-Fi+Cellular, Wi-Fi, WiFi, 5G, LTE, Cellular
-      .replaceAll(RegExp(r'\bwi-fi\s*\+\s*cellular\b', caseSensitive: false), '')
+      .replaceAll(
+        RegExp(r'\bwi-fi\s*\+\s*cellular\b', caseSensitive: false),
+        '',
+      )
       .replaceAll(RegExp(r'\bwi-fi\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\bwifi\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\bcellular\b', caseSensitive: false), '')
@@ -277,9 +337,21 @@ String _normalizeProductName(String name) {
       .replaceAll(RegExp(r'\bblack\s*titanium\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\bwhite\s*titanium\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\bdesert\s*titanium\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\b(?:starlight|midnight|silver|gold|black|white|blue|purple|pink|red|green|yellow|orange|graphite|sierra\s*blue|alpine\s*green|deep\s*purple|product\s*red)\b', caseSensitive: false), '')
+      .replaceAll(
+        RegExp(
+          r'\b(?:starlight|midnight|silver|gold|black|white|blue|purple|pink|red|green|yellow|orange|graphite|sierra\s*blue|alpine\s*green|deep\s*purple|product\s*red)\b',
+          caseSensitive: false,
+        ),
+        '',
+      )
       // Strip color parentheticals: (Black), (Cosmic Black)
-      .replaceAll(RegExp(r'\s*\([^)]*(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight)[^)]*\)', caseSensitive: false), '')
+      .replaceAll(
+        RegExp(
+          r'\s*\([^)]*(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight)[^)]*\)',
+          caseSensitive: false,
+        ),
+        '',
+      )
       // Normalize whitespace and trailing separators
       .replaceAll(RegExp(r'[\s\-,/]+$'), '')
       .replaceAll(RegExp(r'\s{2,}'), ' ')
@@ -296,4 +368,3 @@ final _categoryCacheMap = <String, List<ProductEntity>>{};
 
 /// Son aramalar (local state)
 final recentSearchesProvider = StateProvider<List<String>>((ref) => []);
-
