@@ -119,36 +119,130 @@ String? _recordImageUrl(RecordModel record) {
   return null;
 }
 
+DateTime? _recordDateValue(dynamic value) {
+  if (value is String && value.trim().isNotEmpty) {
+    return DateTime.tryParse(value.trim());
+  }
+  return null;
+}
+
+DateTime? _recordBestDate(RecordModel record) {
+  final data = record.data;
+  return _recordDateValue(data['lastUpdated']) ??
+      _recordDateValue(data['createdAt']) ??
+      _recordDateValue(data['scrapedAt']) ??
+      _recordDateValue(record.getStringValue('updated')) ??
+      _recordDateValue(record.getStringValue('created'));
+}
+
+double _quizCoverScore(RecordModel record) {
+  final data = record.data;
+  final techScore = (data['techScore'] as num?)?.toDouble() ?? 0;
+  final trendScore = (data['trendScore'] as num?)?.toDouble() ?? 0;
+  final referenceDate = _recordBestDate(record);
+  final ageDays = referenceDate == null
+      ? 9999
+      : DateTime.now().difference(referenceDate).inDays;
+
+  final recencyBonus = switch (ageDays) {
+    <= 120 => 18.0,
+    <= 240 => 12.0,
+    <= 365 => 7.0,
+    <= 540 => 2.0,
+    <= 900 => -6.0,
+    _ => -14.0,
+  };
+
+  return techScore + (trendScore * 0.08) + recencyBonus;
+}
+
 final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
   ref,
 ) async {
   try {
-    final entries = await Future.wait(
-      _quizCategoryUniverse.map((category) async {
-        try {
-          final result = await pb
-              .collection(AppConstants.productsCollection)
-              .getList(
-                page: 1,
-                perPage: 1,
-                sort: '-created',
-                filter: 'category = "$category"',
-                fields: 'category,imageURL,imageUrl,images',
-              );
+    final bestByCategory = <String, ({double score, String image})>{};
 
-          if (result.items.isEmpty) return null;
-          final image = _recordImageUrl(result.items.first);
-          if (image == null || image.isEmpty) return null;
-          return MapEntry(category, image);
-        } catch (_) {
-          return null;
+    for (var page = 1; page <= 4; page++) {
+      final result = await pb
+          .collection(AppConstants.productsCollection)
+          .getList(
+            page: page,
+            perPage: 200,
+            sort: '-techScore,-trendScore,-created',
+            fields:
+                'category,imageURL,imageUrl,images,techScore,trendScore,lastUpdated,createdAt,scrapedAt',
+          );
+
+      for (final record in result.items) {
+        final category = record.data['category']?.toString();
+        if (category == null || !_quizCategoryUniverse.contains(category)) {
+          continue;
         }
-      }),
-    );
+
+        final image = _recordImageUrl(record);
+        if (image == null || image.isEmpty) continue;
+
+        final score = _quizCoverScore(record);
+        final existing = bestByCategory[category];
+        if (existing == null || score > existing.score) {
+          bestByCategory[category] = (score: score, image: image);
+        }
+      }
+    }
+
+    final missingCategories = _quizCategoryUniverse
+        .where((category) => !bestByCategory.containsKey(category))
+        .toList();
+
+    if (missingCategories.isNotEmpty) {
+      final fallbacks = await Future.wait(
+        missingCategories.map((category) async {
+          try {
+            final result = await pb
+                .collection(AppConstants.productsCollection)
+                .getList(
+                  page: 1,
+                  perPage: 12,
+                  sort: '-techScore,-trendScore,-created',
+                  filter: 'category = "$category"',
+                  fields:
+                      'category,imageURL,imageUrl,images,techScore,trendScore,lastUpdated,createdAt,scrapedAt',
+                );
+
+            RecordModel? bestRecord;
+            double bestScore = double.negativeInfinity;
+            for (final record in result.items) {
+              final image = _recordImageUrl(record);
+              if (image == null || image.isEmpty) continue;
+              final score = _quizCoverScore(record);
+              if (score > bestScore) {
+                bestScore = score;
+                bestRecord = record;
+              }
+            }
+
+            if (bestRecord == null) return null;
+            final image = _recordImageUrl(bestRecord);
+            if (image == null || image.isEmpty) return null;
+            return MapEntry(category, image);
+          } catch (_) {
+            return null;
+          }
+        }),
+      );
+
+      for (final entry in fallbacks) {
+        if (entry != null) {
+          bestByCategory[entry.key] = (
+            score: bestByCategory[entry.key]?.score ?? 0,
+            image: entry.value,
+          );
+        }
+      }
+    }
 
     return {
-      for (final entry in entries)
-        if (entry != null) entry.key: entry.value,
+      for (final entry in bestByCategory.entries) entry.key: entry.value.image,
     };
   } catch (e, st) {
     debugPrint('[Quiz] quizCategoryVisualsProvider failed: $e\n$st');
@@ -1874,8 +1968,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final colors =
         _accentMap[option.value] ??
         const [AppTheme.brandCyan, AppTheme.brandBlue];
-    final hasArtwork = imageUrl != null && imageUrl.trim().isNotEmpty;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedScale(
@@ -1933,14 +2025,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       ),
                     ),
                     Positioned.fill(
-                      child: Padding(
-                        padding: EdgeInsets.all(
-                          hasArtwork ? (dimmed ? 10 : 8) : (dimmed ? 16 : 14),
-                        ),
-                        child: _buildOptionArtwork(
-                          option: option,
-                          imageUrl: imageUrl,
-                          circular: true,
+                      child: ClipOval(
+                        child: Padding(
+                          padding: EdgeInsets.all(dimmed ? 16 : 14),
+                          child: _buildOptionArtwork(
+                            option: option,
+                            imageUrl: imageUrl,
+                            circular: true,
+                          ),
                         ),
                       ),
                     ),
