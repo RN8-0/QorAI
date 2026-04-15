@@ -57,6 +57,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   String? _detectedClipboardUrl; // Legacy - kept for old widgets
   String? _lastSavedSingleHistoryKey;
   String? _lastSavedCompareHistoryKey;
+  bool _singleSubmitInFlight = false;
 
   // === COMPARE TAB (up to 4 links) ===
   final List<TextEditingController> _compareControllers = List.generate(
@@ -148,6 +149,28 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     // Clipboard detection disabled — users paste manually via the paste button
   }
 
+  void _showLinkSnackBar(
+    String message, {
+    Color backgroundColor = AppTheme.error,
+  }) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.plusJakartaSans(
+            color: context.surfaceVariantColor,
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   bool _isValidUrl(String text) {
     final uri = Uri.tryParse(text.trim());
     if (uri == null) return false;
@@ -187,23 +210,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     TextEditingController controller, {
     FocusNode? focusNode,
   }) async {
+    final invalidClipboardMessage = _linkText(
+      context,
+      tr: 'Panoda gecerli bir baglanti bulunamadi.',
+      en: 'No valid URL was found in the clipboard.',
+    );
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final pastedUrl = _extractUrlCandidate(data?.text ?? '');
     if (pastedUrl == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _linkText(
-              context,
-              tr: 'Panoda gecerli bir baglanti bulunamadi.',
-              en: 'No valid URL was found in the clipboard.',
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      _showLinkSnackBar(invalidClipboardMessage);
       return;
     }
 
@@ -280,37 +295,47 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   /// Single Analysis tab — start quiz flow for one URL
   Future<void> _startSingleAnalysis() async {
+    if (_singleSubmitInFlight) return;
+    final startFailureMessage = _linkText(
+      context,
+      tr: 'Analiz baslatilamadi. Lutfen tekrar deneyin.',
+      en: 'Analysis could not be started. Please try again.',
+    );
     final normalizedUrl = _extractUrlCandidate(_singleUrlController.text);
     final url = normalizedUrl ?? _singleUrlController.text.trim();
     if (normalizedUrl != null && _singleUrlController.text != normalizedUrl) {
       _singleUrlController.text = normalizedUrl;
     }
     if (url.isEmpty || !_isValidUrl(url)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n?.pleaseEnterValidUrl ??
-                'Please enter a valid product URL',
-            style: GoogleFonts.plusJakartaSans(
-              color: context.surfaceVariantColor,
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      _showLinkSnackBar(
+        context.l10n?.pleaseEnterValidUrl ?? 'Please enter a valid product URL',
       );
       return;
     }
 
+    setState(() => _singleSubmitInFlight = true);
     _singleFocusNode.unfocus();
-    ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
-    await ref
-        .read(linkQuizProvider.notifier)
-        .analyzeAndStartQuiz(url, _getOrCreateUser());
-    if (mounted) _quizEntryController.forward(from: 0.0);
+    HapticFeedback.selectionClick();
+    try {
+      ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
+      await ref
+          .read(linkQuizProvider.notifier)
+          .analyzeAndStartQuiz(url, _getOrCreateUser());
+      final latestState = ref.read(linkQuizProvider);
+      if (latestState.phase == LinkFlowPhase.idle &&
+          latestState.error != null &&
+          latestState.error!.trim().isNotEmpty) {
+        _showLinkSnackBar(latestState.error!);
+      } else if (mounted) {
+        _quizEntryController.forward(from: 0.0);
+      }
+    } catch (_) {
+      _showLinkSnackBar(startFailureMessage);
+    } finally {
+      if (mounted) {
+        setState(() => _singleSubmitInFlight = false);
+      }
+    }
   }
 
   /// Compare tab — analyze all URLs via background-safe provider
@@ -380,6 +405,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   @override
   Widget build(BuildContext context) {
     final quizState = ref.watch(linkQuizProvider);
+    ref.listen<LinkQuizState>(linkQuizProvider, (prev, next) {
+      if (!mounted) return;
+      final error = next.error?.trim();
+      if (error != null &&
+          error.isNotEmpty &&
+          error != prev?.error &&
+          next.phase == LinkFlowPhase.idle) {
+        _showLinkSnackBar(error);
+      }
+    });
     ref.listen<bool>(premiumProvider, (prev, next) {
       if (!mounted || prev == next || !next) return;
       final currentQuiz = ref.read(linkQuizProvider);
@@ -390,6 +425,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       ref.read(compareAnalysisProvider.notifier).reset();
     });
     final compareState = ref.watch(compareAnalysisProvider);
+    ref.listen<CompareAnalysisState>(compareAnalysisProvider, (prev, next) {
+      if (!mounted) return;
+      final error = next.error?.trim();
+      if (error != null && error.isNotEmpty && error != prev?.error) {
+        _showLinkSnackBar(error);
+      }
+    });
     final isWorking =
         quizState.phase == LinkFlowPhase.analyzing ||
         quizState.phase == LinkFlowPhase.quizLoading ||
@@ -741,6 +783,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   /// TAB 1: Single Analysis
   Widget _buildSingleAnalysisTab(bool isWorking) {
     final quizState = ref.watch(linkQuizProvider);
+    final singleWorking = isWorking || _singleSubmitInFlight;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
@@ -878,7 +921,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 const SizedBox(height: 16),
                 // Analyze button
                 Opacity(
-                  opacity: isWorking ? 0.7 : 1,
+                  opacity: singleWorking ? 0.7 : 1,
                   child: GradientButton(
                     width: double.infinity,
                     height: 54,
@@ -890,7 +933,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         AppTheme.brandSkyBlue,
                       ],
                     ),
-                    onPressed: isWorking
+                    onPressed: singleWorking
                         ? null
                         : () {
                             FocusScope.of(context).unfocus();
@@ -900,7 +943,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (isWorking) ...[
+                        if (singleWorking) ...[
                           const SizedBox(
                             width: 18,
                             height: 18,
