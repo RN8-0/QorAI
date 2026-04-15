@@ -2684,148 +2684,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: double.infinity,
-                            height: 300,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(32),
-                              gradient: LinearGradient(
-                                colors: _isDarkTheme
-                                    ? const [
-                                        Color(0xFF102033),
-                                        Color(0xFF0A1624),
-                                      ]
-                                    : const [Colors.white, Color(0xFFEAF4FF)],
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(32),
-                              child: Stack(
-                                children: [
-                                  if (heroImage != null)
-                                    Positioned.fill(
-                                      child: CachedNetworkImage(
-                                        imageUrl: heroImage,
-                                        fit: BoxFit.cover,
-                                        errorWidget: (context, url, error) =>
-                                            const SizedBox.shrink(),
-                                      ),
-                                    ),
-                                  Positioned.fill(
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            if (_isDarkTheme)
-                                              Colors.black.withValues(
-                                                alpha: 0.18,
-                                              )
-                                            else
-                                              Colors.white.withValues(
-                                                alpha: 0.10,
-                                              ),
-                                            if (_isDarkTheme)
-                                              Colors.black.withValues(
-                                                alpha: 0.2,
-                                              )
-                                            else
-                                              Colors.white.withValues(
-                                                alpha: 0.48,
-                                              ),
-                                            if (_isDarkTheme)
-                                              const Color(0xFF07101A)
-                                            else
-                                              AppTheme.backgroundLightMode,
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(24),
-                                    child: Stack(
-                                      children: [
-                                        Align(
-                                          alignment: Alignment.topLeft,
-                                          child: Container(
-                                            width: 58,
-                                            height: 58,
-                                            decoration: const BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: AppTheme.brandCyan,
-                                            ),
-                                            child: const Icon(
-                                              Icons.check_rounded,
-                                              color: Colors.black,
-                                              size: 30,
-                                            ),
-                                          ),
-                                        ),
-                                        if (heroImage == null)
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Icon(
-                                              _optionIcons[heroCategory] ??
-                                                  Icons.auto_awesome_rounded,
-                                              size: 120,
-                                              color: Colors.white.withValues(
-                                                alpha: _isDarkTheme
-                                                    ? 0.12
-                                                    : 0.24,
-                                              ),
-                                            ),
-                                          ),
-                                        Align(
-                                          alignment: Alignment.bottomLeft,
-                                          child: ConstrainedBox(
-                                            constraints: const BoxConstraints(
-                                              minHeight: 0,
-                                            ),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  _buildProfileHeadline(
-                                                    heroCategory,
-                                                  ),
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: 30,
-                                                    height: 1.08,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: _primaryTextColor,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                Text(
-                                                  _buildProfileSubheadline(),
-                                                  maxLines: 4,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    height: 1.45,
-                                                    color: _secondaryTextColor,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          _buildCompletionHeroCard(
+                            heroCategory: heroCategory,
+                            heroImage: heroImage,
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
                           if (heroTags.isNotEmpty)
                             Wrap(
                               spacing: 8,
@@ -2851,21 +2714,24 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                           if (topCategories.isNotEmpty)
                             const SizedBox(height: 14),
                           _completionCard(
-                            title: _t('Keşif DNA', 'Discovery DNA'),
+                            title: _t('Keşif profili', 'Discovery profile'),
                             body: _buildDiscoverySummary(),
                             color: AppTheme.brandCyan,
                             icon: Icons.auto_awesome_rounded,
                           ),
                           const SizedBox(height: 12),
                           _completionCard(
-                            title: _t('Kurulu ekosistem', 'Current setup'),
+                            title: _t('Mevcut kurulum', 'Current setup'),
                             body: _buildSetupSummary(),
                             color: AppTheme.neonPurple,
                             icon: Icons.devices_rounded,
                           ),
                           const SizedBox(height: 12),
                           _completionCard(
-                            title: _t('AI karar dili', 'AI decision language'),
+                            title: _t(
+                              'Karar öncelikleri',
+                              'Decision priorities',
+                            ),
                             body: _buildDecisionSummary(),
                             color: AppTheme.green500,
                             icon: Icons.psychology_alt_rounded,
@@ -2915,6 +2781,147 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompletionHeroCard({
+    required String heroCategory,
+    required String? heroImage,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: AppTheme.brandCyan.withValues(
+            alpha: _isDarkTheme ? 0.22 : 0.18,
+          ),
+        ),
+        boxShadow: [
+          if (!_isDarkTheme)
+            const BoxShadow(
+              color: Color(0x120F172A),
+              blurRadius: 22,
+              offset: Offset(0, 10),
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.brandCyan,
+            ),
+            child: const Icon(
+              Icons.check_rounded,
+              color: Colors.black,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _t('Profilin hazır', 'Your profile is ready'),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                        color: AppTheme.brandCyan,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _buildProfileHeadline(heroCategory),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 28,
+                        height: 1.08,
+                        fontWeight: FontWeight.w900,
+                        color: _primaryTextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _buildProfileSubheadline(),
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        color: _secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              _buildCompletionThumbnail(
+                heroCategory: heroCategory,
+                heroImage: heroImage,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletionThumbnail({
+    required String heroCategory,
+    required String? heroImage,
+  }) {
+    return Container(
+      width: 96,
+      height: 96,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _borderColor),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: heroImage != null
+          ? Padding(
+              padding: const EdgeInsets.all(10),
+              child: CachedNetworkImage(
+                imageUrl: heroImage,
+                fit: BoxFit.contain,
+                errorWidget: (context, url, error) =>
+                    _buildCompletionThumbnailFallback(heroCategory),
+              ),
+            )
+          : _buildCompletionThumbnailFallback(heroCategory),
+    );
+  }
+
+  Widget _buildCompletionThumbnailFallback(String heroCategory) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors:
+              _accentMap[heroCategory] ??
+              const [AppTheme.brandCyan, AppTheme.brandBlue],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          _optionIcons[heroCategory] ?? Icons.auto_awesome_rounded,
+          size: 36,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -3044,7 +3051,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   String _buildProfileHeadline(String heroCategory) {
     final leadingCategory = _labelForCategory(heroCategory);
-    return _t('$leadingCategory için hazırsın', 'Ready for $leadingCategory');
+    return _t(
+      '$leadingCategory odaklı keşif',
+      '$leadingCategory-focused discovery',
+    );
   }
 
   String _buildProfileSubheadline() {
@@ -3061,8 +3071,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ? _t('dengeli bir profil', 'a balanced profile')
         : fragments.join(' · ');
     return _t(
-      'Compair artık $descriptor sinyallerini ana sayfa, AI açıklamaları ve kategori sıralamalarına yansıtacak.',
-      'Compair will now reflect your $descriptor signals across home ranking, AI explanations, and category priorities.',
+      'Compair artık $descriptor sinyallerini ana sayfada, AI açıklamalarında ve kategori sıralamalarında kullanacak.',
+      'Compair will now use your $descriptor signals across home ranking, AI explanations, and category priorities.',
     );
   }
 
@@ -3073,8 +3083,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         .toList();
     if (categories.isEmpty) {
       return _t(
-        'Keşif akışı davranış verilerinle birlikte dengeli şekilde şekillenecek.',
-        'Discovery will balance itself progressively with your behavior data.',
+        'Keşif akışı, davranış verilerin geldikçe daha isabetli hale gelecek.',
+        'Discovery will become more accurate as your behavior data builds up.',
       );
     }
 
@@ -3082,14 +3092,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final categoryText = categories.join(', ');
     if (priorities.isEmpty) {
       return _t(
-        'Ana odak: $categoryText. Ana sayfa bu alanları daha yukarı taşıyacak.',
-        'Primary focus: $categoryText. Home will push these categories higher.',
+        'Ana odak alanların: $categoryText. Ana sayfa bu kategorileri daha görünür gösterecek.',
+        'Your primary focus areas are $categoryText. Home will surface these categories more prominently.',
       );
     }
 
     return _t(
-      'Ana odak: $categoryText. Karar dili: ${priorities.join(', ')}.',
-      'Primary focus: $categoryText. Decision language: ${priorities.join(', ')}.',
+      'Ana odak alanların: $categoryText. Karar önceliklerin: ${priorities.join(', ')}.',
+      'Your primary focus areas are $categoryText. Decision priorities: ${priorities.join(', ')}.',
     );
   }
 
@@ -3100,13 +3110,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final devices = _currentDevices.take(4).map(_labelForOwnedDevice).toList();
     if (devices.isEmpty) {
       return _t(
-        '$ecosystem sinyali baz alınacak; cihaz bağlantıları kullandıkça netleşecek.',
-        '$ecosystem will be the base signal; device compatibility will sharpen as you use the app.',
+        '$ecosystem sinyali temel alınacak. Cihaz bağlantıları, kullanım arttıkça daha netleşecek.',
+        '$ecosystem will be the core signal. Device compatibility will sharpen as you use the app.',
       );
     }
 
     return _t(
-      '$ecosystem kurulumu algılandı. Aktif cihazlar: ${devices.join(', ')}.',
+      '$ecosystem kurulumu algılandı. Aktif cihazların: ${devices.join(', ')}.',
       '$ecosystem setup detected. Active devices: ${devices.join(', ')}.',
     );
   }
@@ -3114,12 +3124,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   String _buildDecisionSummary() {
     if (_priorities.isEmpty) {
       return _t(
-        'AI ilk etapta fiyat, kalite ve uyumu dengeli agirliklarla kullanacak.',
+        'AI ilk aşamada fiyat, kalite ve uyumu dengeli ağırlıklarla değerlendirecek.',
         'AI will begin with balanced weights across price, quality, and compatibility.',
       );
     }
     return _t(
-      'AI aciklamalari once ${_priorities.take(3).map(_labelForPriority).join(', ')} odaklariyla sekillenecek.',
+      'AI açıklamaları önce ${_priorities.take(3).map(_labelForPriority).join(', ')} başlıklarına odaklanacak.',
       'AI explanations will prioritize ${_priorities.take(3).map(_labelForPriority).join(', ')}.',
     );
   }
@@ -3139,7 +3149,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       );
     }
     return _t(
-      '$profession profili, $usage modu ve $age davranış bandı birlikte kullanılacak.',
+      '$profession profili, $usage modu ve $age davranış bandı birlikte değerlendirilecek.',
       '$profession profile, $usage mode, and the $age behavior band will work together.',
     );
   }
@@ -3148,7 +3158,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final filtered = _subscriptions.where((item) => item != 'none').toList();
     if (filtered.isEmpty) {
       return _t(
-        'Sade bir servis profili algilandi. Compair yeni servis ve ekosistem onerilerine daha acik olacak.',
+        'Daha sade bir servis profili algılandı. Compair, yeni servis ve ekosistem önerilerine daha açık kalacak.',
         'A lighter service profile was detected. Compair will stay more open to new service and ecosystem suggestions.',
       );
     }
@@ -3160,7 +3170,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ? _t('orta', 'medium')
         : _t('hafif', 'light');
     return _t(
-      '$density servis yogunlugu algilandi: ${labels.join(', ')}.',
+      '$density servis yoğunluğu algılandı: ${labels.join(', ')}.',
       '$density service density detected: ${labels.join(', ')}.',
     );
   }
