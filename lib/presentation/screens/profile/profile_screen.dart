@@ -1006,7 +1006,8 @@ class _ComparisonPreviewList extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: InkWell(
-            onTap: () => context.push(AppRoutes.comparisons),
+            onTap: () =>
+                context.push(AppRoutes.comparisonResult, extra: comparison),
             borderRadius: BorderRadius.circular(12),
             child: Row(
               children: [

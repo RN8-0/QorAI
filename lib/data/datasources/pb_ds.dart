@@ -512,17 +512,19 @@ class PbDataSource {
       final user = await _pb
           .collection(AppConstants.usersCollection)
           .getOne(comparison.userId);
-      final history = List<Map<String, dynamic>>.from(
-        (user.data['comparisonHistory'] as List? ?? const []).map(
-          (item) => Map<String, dynamic>.from(item as Map),
-        ),
+      final rawHistory = user.data['comparisonHistory'];
+      final history = _parseHistoryEntries(
+        rawHistory is List ? rawHistory : null,
       );
       history.insert(0, {
+        'id': recordId,
         'comparisonId': recordId,
+        'items': comparison.itemIds,
         'productIds': comparison.itemIds,
         'title': comparison.title,
         'category': comparison.category,
         'winnerId': comparison.winnerId,
+        'aiAnalysis': comparison.aiAnalysis,
         'createdAt': comparison.createdAt.toIso8601String(),
       });
       final trimmedHistory = history.take(50).toList();
@@ -550,20 +552,37 @@ class PbDataSource {
     int page = 1,
   }) async {
     try {
-      final result = await _pb
-          .collection(AppConstants.comparisonsCollection)
-          .getList(
-            page: page,
-            perPage: limit,
-            filter: 'userId = "$userId"',
-            sort: '-created',
-          )
-          .timeout(const Duration(seconds: 15));
-      final comparisons = result.items.map(ComparisonModel.fromPb).toList();
-      if (comparisons.isNotEmpty) {
-        return comparisons;
+      final comparisons = <ComparisonModel>[];
+
+      try {
+        final result = await _pb
+            .collection(AppConstants.comparisonsCollection)
+            .getList(
+              page: page,
+              perPage: limit,
+              filter: 'userId = "$userId"',
+              sort: '-created',
+            )
+            .timeout(const Duration(seconds: 15));
+        comparisons.addAll(
+          result.items.map(ComparisonModel.fromPb).where(_isValidComparison),
+        );
+      } catch (e) {
+        debugPrint('[PB] getUserComparisons collection fallback: $e');
       }
-      return _getUserComparisonsFromHistory(userId, limit: limit);
+
+      final historyComparisons = await _getUserComparisonsFromHistory(
+        userId,
+        limit: limit,
+      );
+      comparisons.addAll(historyComparisons.where(_isValidComparison));
+
+      final merged = _mergeComparisons(comparisons, limit: limit);
+      if (merged.isNotEmpty) {
+        return merged;
+      }
+
+      return const <ComparisonModel>[];
     } catch (e) {
       try {
         return await _getUserComparisonsFromHistory(userId, limit: limit);
@@ -582,16 +601,48 @@ class PbDataSource {
     final user = await _pb
         .collection(AppConstants.usersCollection)
         .getOne(userId);
-    final history = List<Map<String, dynamic>>.from(
-      (user.data['comparisonHistory'] as List? ?? const []).map(
-        (item) => Map<String, dynamic>.from(item as Map),
-      ),
+    final rawHistory = user.data['comparisonHistory'];
+    final history = _parseHistoryEntries(
+      rawHistory is List ? rawHistory : null,
     );
 
     return history
         .take(limit)
         .map((entry) => _comparisonFromHistoryEntry(userId, entry))
+        .where(_isValidComparison)
         .toList();
+  }
+
+  List<Map<String, dynamic>> _parseHistoryEntries(List? rawEntries) {
+    if (rawEntries == null || rawEntries.isEmpty) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    final entries = <Map<String, dynamic>>[];
+    for (final rawEntry in rawEntries) {
+      final parsed = _normalizeHistoryEntry(rawEntry);
+      if (parsed != null) {
+        entries.add(parsed);
+      }
+    }
+    return entries;
+  }
+
+  Map<String, dynamic>? _normalizeHistoryEntry(dynamic rawEntry) {
+    if (rawEntry is Map) {
+      return Map<String, dynamic>.from(rawEntry);
+    }
+
+    if (rawEntry is String && rawEntry.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawEntry);
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+
+    return null;
   }
 
   ComparisonModel _comparisonFromHistoryEntry(
@@ -616,6 +667,49 @@ class PbDataSource {
           DateTime.tryParse((entry['createdAt'] as String?) ?? '') ??
           DateTime.now(),
     );
+  }
+
+  bool _isValidComparison(ComparisonModel comparison) {
+    return comparison.itemIds.length >= 2;
+  }
+
+  List<ComparisonModel> _mergeComparisons(
+    List<ComparisonModel> comparisons, {
+    required int limit,
+  }) {
+    final unique = <String, ComparisonModel>{};
+
+    for (final comparison in comparisons) {
+      final key = _comparisonMergeKey(comparison);
+      final existing = unique[key];
+      if (existing == null ||
+          comparison.createdAt.isAfter(existing.createdAt) ||
+          (existing.title == null || existing.title!.trim().isEmpty) &&
+              (comparison.title?.trim().isNotEmpty ?? false)) {
+        unique[key] = comparison;
+      }
+    }
+
+    final merged = unique.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (merged.length <= limit) {
+      return merged;
+    }
+    return merged.take(limit).toList();
+  }
+
+  String _comparisonMergeKey(ComparisonModel comparison) {
+    final explicitId = comparison.id.trim();
+    if (explicitId.isNotEmpty && !explicitId.contains('_')) {
+      return explicitId;
+    }
+
+    final sortedIds = [...comparison.itemIds]..sort();
+    if (sortedIds.isNotEmpty) {
+      return sortedIds.join('|');
+    }
+
+    return explicitId;
   }
 
   Future<List<ComparisonModel>> getPredefinedComparisons({

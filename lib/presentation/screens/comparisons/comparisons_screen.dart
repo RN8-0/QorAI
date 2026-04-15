@@ -192,11 +192,7 @@ class _ComparisonCard extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        // Load comparison into compare screen
-        ref.read(compareSessionProvider.notifier).state = CompareSessionData(
-          selectedProductIds: comparison.itemIds,
-        );
-        context.go(AppRoutes.compare);
+        context.push(AppRoutes.comparisonResult, extra: comparison);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

@@ -23,6 +23,9 @@ class ComparisonModel extends ComparisonEntity {
 
   factory ComparisonModel.fromPb(RecordModel record) {
     final data = Map<String, dynamic>.from(record.data);
+    final notes = data['notes'] is Map
+        ? Map<String, dynamic>.from(data['notes'] as Map)
+        : const <String, dynamic>{};
     final itemIds = List<String>.from(
       data['items'] ?? data['productIds'] ?? [],
     );
@@ -53,12 +56,13 @@ class ComparisonModel extends ComparisonEntity {
       userId: data['userId'] ?? '',
       itemIds: itemIds,
       scores: scores,
-      aiAnalysis: data['aiAnalysis'] ?? '',
-      winnerId: data['winner'],
-      userChoiceId: data['userChoice'],
-      category: data['category'] ?? '',
+      aiAnalysis: (data['aiAnalysis'] ?? notes['aiAnalysis'] ?? '') as String,
+      winnerId: (data['winner'] ?? notes['winnerId']) as String?,
+      userChoiceId: data['userChoice'] as String?,
+      category: (data['category'] ?? notes['category'] ?? '') as String,
       createdAt:
           _parseDate(data['created']) ??
+          _parseDate(notes['createdAt']) ??
           _parseDate(data['createdAt']) ??
           DateTime.now(),
       isPublic: data['isPublic'] ?? false,
