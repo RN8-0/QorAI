@@ -96,6 +96,7 @@ flutter:
     - assets/logo/
     - assets/lottie/
     - assets/icons/
+    - assets/icons/quiz_logos/
     - assets/en_tr_specs.json
 
 flutter_launcher_icons:

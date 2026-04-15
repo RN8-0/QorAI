@@ -1815,7 +1815,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     selected: _interestCategories.contains(option.value),
                     onTap: () =>
                         _toggleMulti('interestCategories', option.value),
-                    imageUrl: _resolveOptionImageUrl(option, covers),
+                    imageUrl: _resolveOptionImageUrl(step, option, covers),
                     size: itemWidth.clamp(92.0, 110.0),
                   ),
                 );
@@ -1863,7 +1863,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         _toggleMulti(step.field, option.value);
                       }
                     },
-                    imageUrl: _resolveOptionImageUrl(option, covers),
+                    imageUrl: _resolveOptionImageUrl(step, option, covers),
                     size: circleSize,
                   ),
                 );
@@ -1905,7 +1905,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     _toggleMulti(step.field, option.value);
                   }
                 },
-                imageUrl: _resolveOptionImageUrl(option, covers),
+                imageUrl: _resolveOptionImageUrl(step, option, covers),
               ),
             ),
           );
@@ -2251,12 +2251,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     );
   }
 
+  bool _stepUsesProductCovers(String field) =>
+      field == 'interestCategories' || field == 'currentDevices';
+
   String? _resolveOptionImageUrl(
+    _QuizStep step,
     _QuizOption option,
     Map<String, String> covers,
   ) {
-    return _logoSvgUrlByValue[option.value] ??
-        covers[option.coverCategory ?? option.value];
+    final logoAsset = _logoSvgUrlByValue[option.value];
+    if (logoAsset != null) return logoAsset;
+    if (!_stepUsesProductCovers(step.field)) return null;
+    return covers[option.coverCategory ?? option.value];
   }
 
   Widget _buildBottomBar(_QuizStep step) {
