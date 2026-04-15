@@ -1318,5 +1318,11 @@
   "startAnalysis": "بدء التحليل",
   "typeLabel": "اكتب",
   "webPoweredInsights": "رؤى مدعومة بالويب",
-  "webPoweredInsightsDesc": "أسعار فورية، آراء Reddit والمنتديات"
+  "webPoweredInsightsDesc": "أسعار فورية، آراء Reddit والمنتديات",
+  "noSimilarProductsFound": "لم يتم العثور على منتجات مشابهة",
+  "aiCompatibilityAnalysis": "تحليل التوافق المدعوم بالذكاء الاصطناعي",
+  "analysisHistoryTooltip": "سجل التحليلات",
+  "pasteProductLinkCardTitle": "ألصق رابط المنتج",
+  "pasteProductLinkSubtitle": "احصل على تحليل مدعوم بالذكاء الاصطناعي مع اختبار",
+  "howComparisonWorks": "كيف تعمل المقارنة"
 }

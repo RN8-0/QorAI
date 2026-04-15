@@ -1318,5 +1318,11 @@
   "startAnalysis": "Analyse starten",
   "typeLabel": "Eingabe",
   "webPoweredInsights": "Webbasierte Insights",
-  "webPoweredInsightsDesc": "Echtzeitpreise, Reddit- & Forenmeinungen"
+  "webPoweredInsightsDesc": "Echtzeitpreise, Reddit- & Forenmeinungen",
+  "noSimilarProductsFound": "Keine ähnlichen Produkte gefunden",
+  "aiCompatibilityAnalysis": "KI-gestützte Kompatibilitätsanalyse",
+  "analysisHistoryTooltip": "Analyseverlauf",
+  "pasteProductLinkCardTitle": "Produktlink einfügen",
+  "pasteProductLinkSubtitle": "Erhalten Sie eine KI-gestützte Analyse mit Quiz",
+  "howComparisonWorks": "So funktioniert der Vergleich"
 }

@@ -3514,6 +3514,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get productLabel => 'Ürün';
 
   @override
+  String get noSimilarProductsFound => 'Benzer ürün bulunamadı';
+
+  @override
   String get readyToCompare => 'Hazır — karşılaştırın!';
 
   @override

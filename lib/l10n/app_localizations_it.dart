@@ -3494,7 +3494,8 @@ class AppLocalizationsIt extends AppLocalizations {
       'AI-powered price trend analysis & best time to buy';
 
   @override
-  String get aiCompatibilityAnalysis => 'AI-powered compatibility analysis';
+  String get aiCompatibilityAnalysis =>
+      'Analisi di compatibilità basata sull\'IA';
 
   @override
   String get completeQuiz => 'Complete Quiz';
@@ -3513,16 +3514,19 @@ class AppLocalizationsIt extends AppLocalizations {
   String get productLabel => 'Product';
 
   @override
+  String get noSimilarProductsFound => 'Nessun prodotto simile trovato';
+
+  @override
   String get readyToCompare => 'Ready to compare!';
 
   @override
-  String get analysisHistoryTooltip => 'Analysis History';
+  String get analysisHistoryTooltip => 'Cronologia analisi';
 
   @override
-  String get pasteProductLinkCardTitle => 'Paste Product Link';
+  String get pasteProductLinkCardTitle => 'Incolla link del prodotto';
 
   @override
-  String get pasteProductLinkSubtitle => 'Get AI-powered analysis with quiz';
+  String get pasteProductLinkSubtitle => 'Ottieni un\'analisi IA con quiz';
 
   @override
   String get compareProductsSubtitle => 'Add 2-4 product links to compare';
@@ -3538,7 +3542,7 @@ class AppLocalizationsIt extends AppLocalizations {
       'AI is comparing your products side by side';
 
   @override
-  String get howComparisonWorks => 'How Comparison Works';
+  String get howComparisonWorks => 'Come funziona il confronto';
 
   @override
   String get addLinksCompareTitle => 'Add 2-4 Links';

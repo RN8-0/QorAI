@@ -1318,5 +1318,11 @@
   "startAnalysis": "分析開始",
   "typeLabel": "入力",
   "webPoweredInsights": "ウェブ連携インサイト",
-  "webPoweredInsightsDesc": "リアルタイム価格、Redditやフォーラムの意見"
+  "webPoweredInsightsDesc": "リアルタイム価格、Redditやフォーラムの意見",
+  "noSimilarProductsFound": "類似商品が見つかりません",
+  "aiCompatibilityAnalysis": "AIによる互換性分析",
+  "analysisHistoryTooltip": "分析履歴",
+  "pasteProductLinkCardTitle": "商品リンクを貼り付け",
+  "pasteProductLinkSubtitle": "クイズ付きのAI分析を取得",
+  "howComparisonWorks": "比較の仕組み"
 }

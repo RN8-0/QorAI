@@ -90,6 +90,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     super.dispose();
   }
 
+  @override
   void initState() {
     super.initState();
     _groupedSpecs = _buildGroupedSpecs();
@@ -123,6 +124,57 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   }
 
   String _localizedFeature(String feature) => '${feature}_${_appLang}';
+
+  Widget _buildMatchScoreRing({
+    required double progress,
+    required Color color,
+    required double size,
+    required double strokeWidth,
+    required double fontSize,
+  }) {
+    final clampedProgress = progress.clamp(0.0, 1.0);
+    final innerSize = max(size - (strokeWidth * 2) - 8, 0.0);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: Size.square(size),
+            painter: _MatchScoreRingPainter(
+              progress: clampedProgress,
+              color: color,
+              backgroundColor: color.withValues(alpha: 0.14),
+              strokeWidth: strokeWidth,
+            ),
+          ),
+          Container(
+            width: innerSize,
+            height: innerSize,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).colorScheme.surface,
+              border: Border.all(color: color.withValues(alpha: 0.08)),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '${(clampedProgress * 100).toInt()}%',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Cache key for Firestore AI result cache
   String get _aiCacheDocId {
@@ -1997,37 +2049,12 @@ Rules:
                             tween: Tween(begin: 0, end: matchScore / 100),
                             duration: const Duration(milliseconds: 1000),
                             curve: Curves.easeOutCubic,
-                            builder: (_, value, __) => SizedBox(
-                              width: 80,
-                              height: 80,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  CircularProgressIndicator(
-                                    value: value,
-                                    strokeWidth: 6,
-                                    backgroundColor: matchColor.withValues(
-                                      alpha: 0.12,
-                                    ),
-                                    color: matchColor,
-                                  ),
-                                  SizedBox(
-                                    width: 48,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        '${(value * 100).toInt()}%',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w900,
-                                          color: matchColor,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            builder: (_, value, __) => _buildMatchScoreRing(
+                              progress: value,
+                              color: matchColor,
+                              size: 80,
+                              strokeWidth: 7,
+                              fontSize: 20,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -5169,7 +5196,10 @@ Rules:
             ),
             const SizedBox(height: 12),
             Text(
-              'No similar products found',
+              context.l10n?.noSimilarProductsFound ??
+                  (_isTr
+                      ? 'Benzer urun bulunamadi'
+                      : 'No similar products found'),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 color: context.textTertiaryColor,
@@ -5556,39 +5586,14 @@ Rules:
                                         milliseconds: 1200,
                                       ),
                                       curve: Curves.easeOutCubic,
-                                      builder: (context, value, _) => SizedBox(
-                                        width: 44,
-                                        height: 44,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            CircularProgressIndicator(
-                                              value: value,
-                                              strokeWidth: 3.5,
-                                              backgroundColor: matchColor
-                                                  .withValues(alpha: 0.12),
-                                              color: matchColor,
-                                            ),
-                                            SizedBox(
-                                              width: 24,
-                                              child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text(
-                                                  '${(value * 100).toInt()}%',
-                                                  textAlign: TextAlign.center,
-                                                  style:
-                                                      GoogleFonts.plusJakartaSans(
-                                                        fontSize: 10,
-                                                        fontWeight:
-                                                            FontWeight.w900,
-                                                        color: matchColor,
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                      builder: (context, value, _) =>
+                                          _buildMatchScoreRing(
+                                            progress: value,
+                                            color: matchColor,
+                                            size: 46,
+                                            strokeWidth: 4,
+                                            fontSize: 11,
+                                          ),
                                     ),
                                   const SizedBox(height: 8),
                                   // Product name
@@ -5621,7 +5626,8 @@ Rules:
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
-                                        _isTr ? 'Detay' : 'Detail',
+                                        context.l10n?.details ??
+                                            (_isTr ? 'Detaylar' : 'Details'),
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w700,
@@ -6941,5 +6947,51 @@ class _CompareRepliesSectionState
         );
       },
     );
+  }
+}
+
+class _MatchScoreRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color backgroundColor;
+  final double strokeWidth;
+
+  const _MatchScoreRingPainter({
+    required this.progress,
+    required this.color,
+    required this.backgroundColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width / 2) - (strokeWidth / 2);
+    final backgroundPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..color = backgroundColor;
+    final foregroundPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+
+    canvas.drawCircle(center, radius, backgroundPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      2 * pi * progress.clamp(0.0, 1.0),
+      false,
+      foregroundPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MatchScoreRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }

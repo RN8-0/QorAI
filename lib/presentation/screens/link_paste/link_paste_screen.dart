@@ -149,12 +149,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   bool _isValidUrl(String text) {
-    try {
-      final uri = Uri.parse(text);
-      return uri.scheme == 'http' || uri.scheme == 'https';
-    } catch (_) {
-      return false;
-    }
+    final uri = Uri.tryParse(text.trim());
+    if (uri == null) return false;
+    final isWebUrl = uri.scheme == 'http' || uri.scheme == 'https';
+    if (!isWebUrl) return false;
+    final host = uri.host.trim();
+    return host.isNotEmpty && (host.contains('.') || host == 'localhost');
   }
 
   String? _extractUrlCandidate(String text) {
@@ -162,10 +162,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (trimmed.isEmpty) return null;
 
     final match = RegExp("https?://[^\\s<>\"'`]+").firstMatch(trimmed);
-    final candidate = (match?.group(0) ?? trimmed)
+    var candidate = (match?.group(0) ?? trimmed)
         .replaceAll(RegExp(r'[)\],.;]+$'), '')
         .trim();
-    return _isValidUrl(candidate) ? candidate : null;
+    if (candidate.startsWith('//')) {
+      candidate = 'https:$candidate';
+    } else if (!candidate.toLowerCase().startsWith('http://') &&
+        !candidate.toLowerCase().startsWith('https://')) {
+      if (candidate.toLowerCase().startsWith('www.') ||
+          (!candidate.contains(' ') && candidate.contains('.'))) {
+        candidate = 'https://$candidate';
+      }
+    }
+
+    final uri = Uri.tryParse(candidate);
+    if (uri == null) return null;
+    final normalized = uri
+        .replace(scheme: uri.scheme.toLowerCase(), host: uri.host.toLowerCase())
+        .toString();
+    return _isValidUrl(normalized) ? normalized : null;
   }
 
   Future<void> _pasteClipboardInto(
@@ -793,10 +808,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   child: TextField(
                     controller: _singleUrlController,
                     focusNode: _singleFocusNode,
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.go,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       color: context.textPrimary,
                     ),
+                    onTapOutside: (_) => _singleFocusNode.unfocus(),
                     decoration: InputDecoration(
                       hintText: 'https://www.amazon.com/product...',
                       hintStyle: GoogleFonts.inter(
@@ -857,35 +877,47 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 ),
                 const SizedBox(height: 16),
                 // Analyze button
-                GestureDetector(
-                  onTap: isWorking ? null : _startSingleAnalysis,
-                  child: Container(
+                Opacity(
+                  opacity: isWorking ? 0.7 : 1,
+                  child: GradientButton(
+                    width: double.infinity,
                     height: 54,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          AppTheme.brandBlue,
-                          AppTheme.brandDeepBlue,
-                          AppTheme.brandSkyBlue,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(27),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.brandBlue.withValues(alpha: 0.35),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
+                    borderRadius: BorderRadius.circular(27),
+                    gradient: const LinearGradient(
+                      colors: [
+                        AppTheme.brandBlue,
+                        AppTheme.brandDeepBlue,
+                        AppTheme.brandSkyBlue,
                       ],
                     ),
+                    onPressed: isWorking
+                        ? null
+                        : () {
+                            FocusScope.of(context).unfocus();
+                            _startSingleAnalysis();
+                          },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.auto_awesome,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                        if (isWorking) ...[
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          const Icon(
+                            Icons.auto_awesome,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         Text(
                           context.l10n?.analyzeWithAi ?? 'Analyze with AI',

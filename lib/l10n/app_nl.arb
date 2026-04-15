@@ -1318,5 +1318,11 @@
   "startAnalysis": "Analyse Starten",
   "typeLabel": "Type",
   "webPoweredInsights": "Webgebaseerde Inzichten",
-  "webPoweredInsightsDesc": "Realtime prijzen, Reddit- en forummeningen"
+  "webPoweredInsightsDesc": "Realtime prijzen, Reddit- en forummeningen",
+  "noSimilarProductsFound": "Geen vergelijkbare producten gevonden",
+  "aiCompatibilityAnalysis": "AI-gestuurde compatibiliteitsanalyse",
+  "analysisHistoryTooltip": "Analysegeschiedenis",
+  "pasteProductLinkCardTitle": "Productlink plakken",
+  "pasteProductLinkSubtitle": "Ontvang AI-gestuurde analyse met quiz",
+  "howComparisonWorks": "Hoe de vergelijking werkt"
 }

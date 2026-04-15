@@ -3502,6 +3502,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get productLabel => 'Product';
 
   @override
+  String get noSimilarProductsFound => 'No similar products found';
+
+  @override
   String get readyToCompare => 'Ready to compare!';
 
   @override

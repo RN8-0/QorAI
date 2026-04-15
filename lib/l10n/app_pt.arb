@@ -1318,5 +1318,11 @@
   "startAnalysis": "Iniciar Análise",
   "typeLabel": "Digite",
   "webPoweredInsights": "Insights da Web",
-  "webPoweredInsightsDesc": "Preços em tempo real, opiniões do Reddit e fóruns"
+  "webPoweredInsightsDesc": "Preços em tempo real, opiniões do Reddit e fóruns",
+  "noSimilarProductsFound": "Nenhum produto semelhante encontrado",
+  "aiCompatibilityAnalysis": "Análise de compatibilidade com IA",
+  "analysisHistoryTooltip": "Histórico de análises",
+  "pasteProductLinkCardTitle": "Cole o link do produto",
+  "pasteProductLinkSubtitle": "Obtenha análise com IA e quiz",
+  "howComparisonWorks": "Como a comparação funciona"
 }

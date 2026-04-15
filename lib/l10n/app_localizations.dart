@@ -6808,6 +6808,12 @@ abstract class AppLocalizations {
   /// **'Product'**
   String get productLabel;
 
+  /// No description provided for @noSimilarProductsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No similar products found'**
+  String get noSimilarProductsFound;
+
   /// No description provided for @readyToCompare.
   ///
   /// In en, this message translates to:

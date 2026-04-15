@@ -1318,5 +1318,11 @@
   "startAnalysis": "Starta Analys",
   "typeLabel": "Skriv",
   "webPoweredInsights": "Webbdrivna Insikter",
-  "webPoweredInsightsDesc": "Realtidspriser, Reddit- och forumåsikter"
+  "webPoweredInsightsDesc": "Realtidspriser, Reddit- och forumåsikter",
+  "noSimilarProductsFound": "Inga liknande produkter hittades",
+  "aiCompatibilityAnalysis": "AI-driven kompatibilitetsanalys",
+  "analysisHistoryTooltip": "Analyshistorik",
+  "pasteProductLinkCardTitle": "Klistra in produktlänk",
+  "pasteProductLinkSubtitle": "Få AI-driven analys med quiz",
+  "howComparisonWorks": "Hur jämförelsen fungerar"
 }
