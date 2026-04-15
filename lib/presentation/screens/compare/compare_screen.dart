@@ -10,7 +10,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
@@ -398,16 +397,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: context.textPrimary),
-          onPressed: () {
-            if (GoRouter.of(context).canPop()) {
-              context.pop();
-              return;
-            }
-            context.go(AppRoutes.home);
-          },
-        ),
+        leading: _products != null
+            ? IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: context.textPrimary),
+                onPressed: _resetComparison,
+              )
+            : null,
         title: ShaderMask(
           shaderCallback: (bounds) => _accentGradient.createShader(bounds),
           child: Text(
