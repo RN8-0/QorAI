@@ -9,7 +9,6 @@ final comparisonStateProvider =
     StateNotifierProvider<ComparisonNotifier, ComparisonState>((ref) {
       return ComparisonNotifier(
         comparisonRepo: ref.read(comparisonRepositoryProvider),
-        subscriptionService: ref.read(subscriptionServiceProvider),
         ref: ref,
       );
     });
@@ -50,15 +49,12 @@ class ComparisonState {
 /// Comparison state manager
 class ComparisonNotifier extends StateNotifier<ComparisonState> {
   final ComparisonRepositoryImpl _comparisonRepo;
-  final SubscriptionService _subscriptionService;
   final Ref _ref;
 
   ComparisonNotifier({
     required ComparisonRepositoryImpl comparisonRepo,
-    required SubscriptionService subscriptionService,
     required Ref ref,
   }) : _comparisonRepo = comparisonRepo,
-       _subscriptionService = subscriptionService,
        _ref = ref,
        super(const ComparisonState());
 
@@ -83,7 +79,7 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     if (state.selectedProductIds.length < 2) return;
 
     // Free tier limit check
-    final limitResult = _subscriptionService.recordComparison();
+    final limitResult = _ref.read(subscriptionServiceProvider).recordComparison();
     if (limitResult.isFailure) {
       state = state.copyWith(
         error:
@@ -141,7 +137,6 @@ final linkAnalysisProvider =
     StateNotifierProvider<LinkAnalysisNotifier, LinkAnalysisState>((ref) {
       return LinkAnalysisNotifier(
         aiRepo: ref.read(aiRepositoryProvider),
-        subscriptionService: ref.read(subscriptionServiceProvider),
         ref: ref,
       );
     });
@@ -172,15 +167,12 @@ class LinkAnalysisState {
 
 class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
   final AIRepository _aiRepo;
-  final SubscriptionService _subscriptionService;
   final Ref _ref;
 
   LinkAnalysisNotifier({
     required AIRepository aiRepo,
-    required SubscriptionService subscriptionService,
     required Ref ref,
   }) : _aiRepo = aiRepo,
-       _subscriptionService = subscriptionService,
        _ref = ref,
        super(const LinkAnalysisState());
 
@@ -189,7 +181,7 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
   /// Analyze link - Section 9.1
   Future<void> analyzeLink(String url, UserEntity user) async {
     // Free tier limit check
-    final limitResult = _subscriptionService.recordLinkPaste();
+    final limitResult = _ref.read(subscriptionServiceProvider).recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
         error:
@@ -277,7 +269,6 @@ class LinkQuizState {
 class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   final AIRepository _aiRepo;
   final GeminiService _gemini;
-  final SubscriptionService _subscriptionService;
   final BehaviorTrackingService _behaviorTracking;
   final PbDataSource _pbDs;
   final Ref _ref;
@@ -285,13 +276,11 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   LinkQuizNotifier({
     required AIRepository aiRepo,
     required GeminiService gemini,
-    required SubscriptionService subscriptionService,
     required BehaviorTrackingService behaviorTracking,
     required PbDataSource pbDs,
     required Ref ref,
   }) : _aiRepo = aiRepo,
        _gemini = gemini,
-       _subscriptionService = subscriptionService,
        _behaviorTracking = behaviorTracking,
        _pbDs = pbDs,
        _ref = ref,
@@ -302,7 +291,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   /// Step 1: Analyze link + validate product + generate quiz.
   Future<void> analyzeAndStartQuiz(String url, UserEntity user) async {
     // Rate limit
-    final limitResult = _subscriptionService.recordLinkPaste();
+    final limitResult = _ref.read(subscriptionServiceProvider).recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
@@ -580,7 +569,6 @@ final linkQuizProvider = StateNotifierProvider<LinkQuizNotifier, LinkQuizState>(
     return LinkQuizNotifier(
       aiRepo: ref.read(aiRepositoryProvider),
       gemini: ref.read(geminiServiceProvider),
-      subscriptionService: ref.read(subscriptionServiceProvider),
       behaviorTracking: ref.read(behaviorTrackingProvider),
       pbDs: ref.read(pbDataSourceProvider),
       ref: ref,

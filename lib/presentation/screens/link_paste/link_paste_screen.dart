@@ -317,19 +317,26 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     _singleFocusNode.unfocus();
     HapticFeedback.selectionClick();
     try {
+      debugPrint('[LinkPaste] Step1: calling trackLinkPaste');
       ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
+      debugPrint('[LinkPaste] Step2: calling analyzeAndStartQuiz');
       await ref
           .read(linkQuizProvider.notifier)
           .analyzeAndStartQuiz(url, _getOrCreateUser());
+      debugPrint('[LinkPaste] Step3: analyzeAndStartQuiz done, reading state');
       final latestState = ref.read(linkQuizProvider);
+      debugPrint('[LinkPaste] Step4: phase=${latestState.phase}, error=${latestState.error}');
       if (latestState.phase == LinkFlowPhase.idle &&
           latestState.error != null &&
           latestState.error!.trim().isNotEmpty) {
+        debugPrint('[LinkPaste] Step5a: showing error snackbar: ${latestState.error}');
         _showLinkSnackBar(latestState.error!);
       } else if (mounted) {
+        debugPrint('[LinkPaste] Step5b: forwarding quiz animation');
         _quizEntryController.forward(from: 0.0);
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[LinkPaste] EXCEPTION in _startSingleAnalysis: $e\n$st');
       _showLinkSnackBar(startFailureMessage);
     } finally {
       if (mounted) {
