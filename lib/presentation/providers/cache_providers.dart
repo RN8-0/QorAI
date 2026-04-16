@@ -955,6 +955,7 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
+  static const int _detailMatchCacheVersion = 2;
   final Ref _ref;
   final String _productId;
   _GeminiMatchScoreNotifier(this._ref, this._productId)
@@ -989,11 +990,27 @@ class _GeminiMatchScoreNotifier
       final gemini = _ref.read(geminiServiceProvider);
       final behaviorAsync = _ref.read(behaviorSignalsProvider);
       final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
+      final weightVector = await _loadWeightVector(user.uid);
+      final focusAreas = _buildFocusAreas(
+        user: user,
+        weightVector: weightVector,
+      );
+      final productHighlights = _buildProductHighlights(
+        product: product,
+        focusAreas: focusAreas,
+      );
+      final tradeOffs = _buildTradeOffs(
+        product: product,
+        focusAreas: focusAreas,
+      );
 
       final profileJson = {
         'ecosystem': user.ecosystem,
         'budgetRange': user.budgetRange,
         'priorities': user.priorities,
+        if (focusAreas.isNotEmpty) 'focusAreas': focusAreas,
+        if (weightVector.isNotEmpty)
+          'topWeights': _topWeightedTraits(weightVector),
         'currentDevices': user.currentDevices,
         'interestCategories': user.interestCategories,
         'primaryCategory': user.primaryCategory,
@@ -1023,27 +1040,36 @@ class _GeminiMatchScoreNotifier
         'brand': product.brand ?? '',
         'category': product.category,
         'techScore': product.techScore,
+        'highlights': productHighlights,
+        if (tradeOffs.isNotEmpty) 'tradeOffs': tradeOffs,
         'specs': topSpecs,
         if (product.pros.isNotEmpty) 'pros': product.pros.take(5).toList(),
         if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
       };
 
       final prompt =
-          'You are a tech product recommendation expert. '
-          'Analyze how well this product matches this specific user\'s needs and preferences.\n\n'
+          'You write the short "Your Match" product-fit explanation shown under a score card in a shopping app. '
+          'Analyze how well this product fits this specific user.\n\n'
           'User profile:\n${jsonEncode(profileJson)}\n\n'
           'Product:\n${jsonEncode(productJson)}\n\n'
           'Score this product 0-100 for this user. Be realistic and differentiate:\n'
-          '- 90-100: Perfect match (ecosystem, budget, priorities all align)\n'
+          '- 90-100: Excellent fit because the product\'s standout strengths strongly match the user\'s top priorities\n'
           '- 70-89: Good match with minor trade-offs\n'
           '- 50-69: Decent but notable mismatches\n'
-          '- 30-49: Poor match (wrong ecosystem, over budget, wrong priorities)\n'
+          '- 30-49: Poor match because key priorities are not addressed or trade-offs are too important\n'
           '- 0-29: Very poor match\n\n'
+          'Scoring rules:\n'
+          '- Prioritize the user\'s highest-weight needs and explicit priorities first\n'
+          '- Focus on the product\'s standout features and real trade-offs only\n'
+          '- For categories like laptops, cameras, TVs and monitors, do NOT over-penalize ecosystem by default\n'
+          '- Mention ecosystem only if it materially changes the decision, and never make it the whole explanation\n'
+          '- If the product is technically exceptional, acknowledge that when relevant\n\n'
           'IMPORTANT for the "reason" field: Write the explanation addressing the user directly in second person. '
           'Do NOT use third person phrases like "the user", "user\'s", "their". '
           'Use "you", "your", "yours" instead. '
-          'Example: "Your Apple ecosystem preference and high budget make this a perfect fit for you." '
-          'NOT: "The user\'s Apple ecosystem preference makes this a good match."\n\n'
+          'The reason must mention only the most relevant 1-2 standout product strengths and, if needed, one concrete trade-off. '
+          'Do not mention generic ecosystem compatibility unless it is genuinely decisive. '
+          'Avoid bland phrases like "good for your ecosystem" when stronger product-specific points exist.\n\n'
           'Return ONLY this JSON:\n'
           '{"matchScore": <int>, "reason": "<max 2 sentences, second person>", '
           '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
@@ -1102,10 +1128,26 @@ class _GeminiMatchScoreNotifier
       behavior: behavior,
     );
     if (fs > 0) {
+      final focusAreas = _buildFocusAreas(user: user, weightVector: const {});
+      final highlights = _buildProductHighlights(
+        product: product,
+        focusAreas: focusAreas,
+      );
+      final tradeOffs = _buildTradeOffs(
+        product: product,
+        focusAreas: focusAreas,
+      );
       state = AsyncValue.data(
         GeminiMatchResult(
           matchScore: fs.toInt(),
-          reason: '',
+          reason: _buildLocalReason(
+            score: fs.toInt(),
+            focusAreas: focusAreas,
+            highlights: highlights,
+            tradeOffs: tradeOffs,
+          ),
+          topMatchFactors: highlights.take(3).toList(),
+          missingFactors: tradeOffs.take(2).toList(),
           isFromGemini: false,
         ),
       );
@@ -1132,6 +1174,9 @@ class _GeminiMatchScoreNotifier
           ?.trim()
           .toLowerCase();
       if (cachedLanguage == null || cachedLanguage != langCode) return null;
+      final cachedVersion = (cached['detailMatchCacheVersion'] as num?)
+          ?.toInt();
+      if (cachedVersion != _detailMatchCacheVersion) return null;
       return GeminiMatchResult(
         matchScore: _safeInt(cached['matchScore'], 0),
         reason: (cached['reason'] as String?) ?? '',
@@ -1162,18 +1207,328 @@ class _GeminiMatchScoreNotifier
       final matchCache = Map<String, dynamic>.from(
         userRecord.data['match_cache'] as Map? ?? {},
       );
+      final existingProductCache = Map<String, dynamic>.from(
+        matchCache[_productId] as Map? ?? {},
+      );
       matchCache[_productId] = {
+        ...existingProductCache,
         'matchScore': result.matchScore,
         'reason': result.reason,
         'topMatchFactors': result.topMatchFactors,
         'missingFactors': result.missingFactors,
         'language': langCode,
         'timestamp': DateTime.now().toUtc().toIso8601String(),
+        'detailMatchCacheVersion': _detailMatchCacheVersion,
       };
       await pb
           .collection('users')
           .update(uid, body: {'match_cache': matchCache});
     } catch (_) {}
+  }
+
+  Future<Map<String, double>> _loadWeightVector(String uid) async {
+    try {
+      final userRecord = await pb.collection('users').getOne(uid);
+      final raw = userRecord.data['weightVector'] as Map<String, dynamic>?;
+      if (raw == null) return const {};
+      return raw.map((key, value) {
+        final numeric = value is num ? value.toDouble() : 0.0;
+        return MapEntry(key, numeric.clamp(0.0, 1.0));
+      });
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  List<Map<String, Object>> _topWeightedTraits(
+    Map<String, double> weightVector,
+  ) {
+    final entries = weightVector.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return entries
+        .take(5)
+        .map(
+          (entry) => {
+            'trait': _focusLabel(_normalizeFocusKey(entry.key) ?? entry.key),
+            'weight': entry.value.toStringAsFixed(2),
+          },
+        )
+        .toList();
+  }
+
+  List<String> _buildFocusAreas({
+    required UserEntity user,
+    required Map<String, double> weightVector,
+  }) {
+    final scores = <String, double>{};
+
+    void addScore(String rawKey, double score) {
+      final key = _normalizeFocusKey(rawKey);
+      if (key == null) return;
+      final current = scores[key] ?? 0;
+      if (score > current) scores[key] = score;
+    }
+
+    for (var i = 0; i < user.priorities.length; i++) {
+      addScore(user.priorities[i], 1.0 - (i * 0.08));
+    }
+    for (final entry in weightVector.entries) {
+      addScore(entry.key, entry.value);
+    }
+
+    final ranked = scores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final nonEcosystem = ranked
+        .where((entry) => entry.key != 'ecosystem')
+        .toList();
+    final ecosystem = ranked
+        .where((entry) => entry.key == 'ecosystem')
+        .toList();
+    final ordered = <MapEntry<String, double>>[
+      ...nonEcosystem,
+      if (ecosystem.isNotEmpty &&
+          (ecosystem.first.value >= 0.8 || nonEcosystem.length < 2))
+        ecosystem.first,
+    ];
+
+    return ordered.take(4).map((entry) => _focusLabel(entry.key)).toList();
+  }
+
+  List<String> _buildProductHighlights({
+    required ProductEntity product,
+    required List<String> focusAreas,
+  }) {
+    final highlights = <({String text, double score})>[];
+    final focusKeywords = focusAreas.map(_focusKeywordsForLabel).toList();
+
+    double focusScore(String source) {
+      final lower = source.toLowerCase();
+      var score = 0.0;
+      for (final keywords in focusKeywords) {
+        if (keywords.any(lower.contains)) score += 1.6;
+      }
+      return score;
+    }
+
+    for (final pro in product.pros.take(5)) {
+      final score = 2.4 + focusScore(pro);
+      highlights.add((text: pro.trim(), score: score));
+    }
+
+    for (final entry in product.keySpecs.entries) {
+      final value = entry.value.toString().trim();
+      if (value.isEmpty) continue;
+      final text = '${entry.key}: $value';
+      final score = 1.4 + focusScore(text);
+      highlights.add((text: text, score: score));
+    }
+
+    if (product.techScore >= 90) {
+      highlights.add((
+        text: 'Tech score ${product.techScore.toStringAsFixed(0)}/100',
+        score:
+            focusAreas.any((area) => area == 'Performance' || area == 'Gaming')
+            ? 3.0
+            : 1.5,
+      ));
+    }
+
+    highlights.sort((a, b) => b.score.compareTo(a.score));
+    final deduped = <String>[];
+    for (final entry in highlights) {
+      final normalized = entry.text.toLowerCase();
+      if (deduped.any(
+        (text) =>
+            normalized.contains(text.toLowerCase()) ||
+            text.toLowerCase().contains(normalized),
+      )) {
+        continue;
+      }
+      deduped.add(entry.text);
+      if (deduped.length >= 6) break;
+    }
+    return deduped;
+  }
+
+  List<String> _buildTradeOffs({
+    required ProductEntity product,
+    required List<String> focusAreas,
+  }) {
+    final issues = <String>[];
+    for (final con in product.cons.take(3)) {
+      final text = con.trim();
+      if (text.isNotEmpty) issues.add(text);
+    }
+
+    final lowerFocus = focusAreas.map((area) => area.toLowerCase()).toList();
+    if (lowerFocus.contains('portability')) {
+      final weightValue = product.keySpecs.entries
+          .firstWhere(
+            (entry) => entry.key.toLowerCase().contains('weight'),
+            orElse: () => const MapEntry('', ''),
+          )
+          .value;
+      if (weightValue.isNotEmpty) {
+        issues.add(
+          'Portability depends on its ${weightValue.toLowerCase()} weight.',
+        );
+      }
+    }
+
+    return issues.take(3).toList();
+  }
+
+  String _buildLocalReason({
+    required int score,
+    required List<String> focusAreas,
+    required List<String> highlights,
+    required List<String> tradeOffs,
+  }) {
+    final langCode = (_ref.read(localeProvider)?.languageCode ?? 'en')
+        .toLowerCase();
+    final isTr = langCode == 'tr';
+    final focusText = focusAreas.take(2).join(isTr ? ' ve ' : ' and ');
+    final topHighlight = highlights.isNotEmpty ? highlights.first : '';
+    final topTradeOff = tradeOffs.isNotEmpty ? tradeOffs.first : '';
+
+    if (isTr) {
+      if (topHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
+        return 'Bu urun $focusText tarafinda "$topHighlight" ile guclu, ancak "$topTradeOff" noktasini da hesaba katmalisin.';
+      }
+      if (topHighlight.isNotEmpty) {
+        return 'Bu urun $focusText onceliklerinde ozellikle "$topHighlight" sayesinde one cikiyor.';
+      }
+      if (score >= 75) {
+        return 'Bu urun onceliklerinin buyuk kismini iyi karsiliyor.';
+      }
+      if (score >= 55) {
+        return 'Bu urun sende ise yarayabilir ama belirgin tavizler var.';
+      }
+      return 'Bu urun onceliklerinle tam ortusmuyor.';
+    }
+
+    if (topHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
+      return 'You get a strong fit for $focusText thanks to $topHighlight, but $topTradeOff is a real trade-off.';
+    }
+    if (topHighlight.isNotEmpty) {
+      return 'You get a strong fit for $focusText, especially because of $topHighlight.';
+    }
+    if (score >= 75) {
+      return 'You get a strong fit across most of your top priorities.';
+    }
+    if (score >= 55) {
+      return 'You get a decent fit here, but there are clear trade-offs.';
+    }
+    return 'This product misses too many of your top priorities.';
+  }
+
+  String? _normalizeFocusKey(String raw) {
+    final key = raw.trim().toLowerCase();
+    switch (key) {
+      case 'price':
+      case 'price_sensitivity':
+      case 'value':
+        return 'price';
+      case 'quality':
+      case 'build_quality':
+      case 'durability':
+        return 'build_quality';
+      case 'design':
+        return 'design';
+      case 'performance':
+        return 'performance';
+      case 'battery':
+        return 'battery';
+      case 'camera':
+        return 'camera';
+      case 'portability':
+        return 'portability';
+      case 'gaming':
+        return 'gaming';
+      case 'creator':
+      case 'content_consumption':
+      case 'display':
+        return 'display';
+      case 'productivity':
+        return 'productivity';
+      case 'audio_quality':
+      case 'audio':
+        return 'audio';
+      case 'ecosystem':
+      case 'ecosystem_lock':
+        return 'ecosystem';
+      default:
+        return null;
+    }
+  }
+
+  String _focusLabel(String key) {
+    switch (key) {
+      case 'price':
+        return 'Value';
+      case 'build_quality':
+        return 'Build Quality';
+      case 'design':
+        return 'Design';
+      case 'performance':
+        return 'Performance';
+      case 'battery':
+        return 'Battery';
+      case 'camera':
+        return 'Camera';
+      case 'portability':
+        return 'Portability';
+      case 'gaming':
+        return 'Gaming';
+      case 'display':
+        return 'Display';
+      case 'productivity':
+        return 'Productivity';
+      case 'audio':
+        return 'Audio';
+      case 'ecosystem':
+        return 'Ecosystem';
+      default:
+        return key;
+    }
+  }
+
+  List<String> _focusKeywordsForLabel(String label) {
+    switch (label) {
+      case 'Value':
+        return ['price', 'value', 'affordable', 'budget'];
+      case 'Build Quality':
+        return ['build', 'quality', 'premium', 'durable', 'material'];
+      case 'Design':
+        return ['design', 'thin', 'slim', 'stylish'];
+      case 'Performance':
+        return ['performance', 'processor', 'cpu', 'gpu', 'ram', 'chip'];
+      case 'Battery':
+        return ['battery', 'mah', 'charging', 'runtime'];
+      case 'Camera':
+        return ['camera', 'photo', 'video', 'sensor', 'zoom', 'mp'];
+      case 'Portability':
+        return ['portable', 'light', 'weight', 'thin', 'compact'];
+      case 'Gaming':
+        return ['gaming', 'gpu', 'rtx', 'refresh', 'fps', 'cooling'];
+      case 'Display':
+        return ['display', 'screen', 'brightness', 'resolution', 'oled', 'hdr'];
+      case 'Productivity':
+        return [
+          'productivity',
+          'multitasking',
+          'ram',
+          'storage',
+          'keyboard',
+          'cpu',
+        ];
+      case 'Audio':
+        return ['audio', 'speaker', 'dolby', 'anc', 'sound'];
+      case 'Ecosystem':
+        return ['ecosystem', 'apple', 'android', 'windows', 'google'];
+      default:
+        return const [];
+    }
   }
 
   void reset() => state = const AsyncValue.data(null);

@@ -132,11 +132,6 @@ class _ComparisonsScreenState extends ConsumerState<ComparisonsScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.small(
-        onPressed: () => context.go(AppRoutes.compare),
-        backgroundColor: _accent,
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-      ),
     );
   }
 }
@@ -367,7 +362,8 @@ class _ComparisonCard extends ConsumerWidget {
                           child: async.when(
                             data: (product) => _ProductThumb(product: product),
                             loading: () => _ProductThumbPlaceholder(),
-                            error: (_, __) => _ProductThumbPlaceholder(),
+                            error: (error, stackTrace) =>
+                                _ProductThumbPlaceholder(),
                           ),
                         ),
                       ),
@@ -436,8 +432,9 @@ class _ProductThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (product == null || product!.imageURL.isEmpty)
+    if (product == null || product!.imageURL.isEmpty) {
       return _ProductThumbPlaceholder();
+    }
     return Container(
       width: 56,
       height: 56,
@@ -450,7 +447,7 @@ class _ProductThumb extends StatelessWidget {
       child: CachedNetworkImage(
         imageUrl: product!.imageURL,
         fit: BoxFit.cover,
-        errorWidget: (_, __, ___) => Icon(
+        errorWidget: (context, url, error) => Icon(
           Icons.image_outlined,
           size: 20,
           color: context.textTertiaryColor,

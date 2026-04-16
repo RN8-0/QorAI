@@ -90,6 +90,11 @@ class SpecDirectionService {
     'camera sensor size': SpecDirection.neutral,
     'video fps value': SpecDirection.higher,
     'front camera fps value': SpecDirection.higher,
+    'video recording': SpecDirection.higher,
+    'video recording resolution': SpecDirection.higher,
+    'video resolution': SpecDirection.higher,
+    'screen resolution': SpecDirection.higher,
+    'display resolution': SpecDirection.higher,
     'dxomark': SpecDirection.higher,
     'optical zoom': SpecDirection.higher,
     'digital zoom': SpecDirection.higher,
@@ -384,8 +389,10 @@ class SpecDirectionService {
     final componentResult = _compareByComponentRanking(specKey, values);
     if (componentResult >= 0) return componentResult;
 
-    // 3. Extract numeric values for numeric comparison
-    final nums = values.map(_extractNumber).toList();
+    // 3. Extract comparable numeric values (unit-aware + resolution-aware)
+    final nums = values
+        .map((value) => _extractComparableNumber(specKey, value))
+        .toList();
     if (nums.every((n) => n != null)) {
       final doubles = nums.cast<double>();
       final maxVal = doubles.reduce((a, b) => a > b ? a : b);
@@ -454,6 +461,25 @@ class SpecDirectionService {
         .trim();
   }
 
+  static double? _extractComparableNumber(String specKey, String value) {
+    final normalizedKey = _normalizeKey(specKey);
+    final normalizedValue = value.toLowerCase().trim();
+
+    final resolutionScore = _extractResolutionScore(
+      normalizedKey,
+      normalizedValue,
+    );
+    if (resolutionScore != null) return resolutionScore;
+
+    final storageValue = _extractStorageInGb(normalizedKey, normalizedValue);
+    if (storageValue != null) return storageValue;
+
+    final weightValue = _extractWeightInGrams(normalizedKey, normalizedValue);
+    if (weightValue != null) return weightValue;
+
+    return _extractNumber(normalizedValue);
+  }
+
   static double? _extractNumber(String value) {
     final cleaned = value
         .replaceAll(',', '.')
@@ -464,6 +490,114 @@ class SpecDirectionService {
     if (match == null) return null;
     return double.tryParse(match.group(0)!);
   }
+
+  static double? _extractResolutionScore(String key, String value) {
+    final looksLikeResolution =
+        key.contains('resolution') ||
+        key.contains('video recording') ||
+        key.contains('recording') ||
+        key.contains('display') ||
+        key.contains('screen') ||
+        RegExp(r'\d+\s*[kp]\b', caseSensitive: false).hasMatch(value) ||
+        RegExp(
+          r'\d{3,5}\s*[x×]\s*\d{3,5}',
+          caseSensitive: false,
+        ).hasMatch(value);
+    if (!looksLikeResolution) return null;
+
+    final dimensionsMatch = RegExp(
+      r'(\d{3,5})\s*[x×]\s*(\d{3,5})',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (dimensionsMatch != null) {
+      final width = double.tryParse(dimensionsMatch.group(1)!);
+      final height = double.tryParse(dimensionsMatch.group(2)!);
+      if (width != null && height != null) {
+        return width * height;
+      }
+    }
+
+    for (final entry in _resolutionAliases.entries) {
+      if (value.contains(entry.key)) return entry.value;
+    }
+    return null;
+  }
+
+  static double? _extractStorageInGb(String key, String value) {
+    final looksLikeStorage =
+        key.contains('storage') ||
+        key.contains('memory') ||
+        key.contains('ram') ||
+        key.contains('cache') ||
+        key.contains('vram');
+    if (!looksLikeStorage) return null;
+
+    final match = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(tb|gb|mb)',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (match == null) return null;
+
+    final amount = double.tryParse(match.group(1)!);
+    final unit = match.group(2)?.toLowerCase();
+    if (amount == null || unit == null) return null;
+    switch (unit) {
+      case 'tb':
+        return amount * 1024;
+      case 'gb':
+        return amount;
+      case 'mb':
+        return amount / 1024;
+      default:
+        return null;
+    }
+  }
+
+  static double? _extractWeightInGrams(String key, String value) {
+    if (!key.contains('weight')) return null;
+
+    final match = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(kg|g|lb|lbs|oz)',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (match == null) return null;
+
+    final amount = double.tryParse(match.group(1)!);
+    final unit = match.group(2)?.toLowerCase();
+    if (amount == null || unit == null) return null;
+    switch (unit) {
+      case 'kg':
+        return amount * 1000;
+      case 'g':
+        return amount;
+      case 'lb':
+      case 'lbs':
+        return amount * 453.59237;
+      case 'oz':
+        return amount * 28.3495;
+      default:
+        return null;
+    }
+  }
+
+  static const Map<String, double> _resolutionAliases = {
+    '8k': 7680 * 4320,
+    'uhd 8k': 7680 * 4320,
+    '5k': 5120 * 2880,
+    '4k': 3840 * 2160,
+    'uhd': 3840 * 2160,
+    'ultra hd': 3840 * 2160,
+    'qhd': 2560 * 1440,
+    '2k': 2560 * 1440,
+    'wqhd': 2560 * 1440,
+    'fhd+': 2400 * 1080,
+    'fhd': 1920 * 1080,
+    'full hd': 1920 * 1080,
+    '1080p': 1920 * 1080,
+    'hd+': 1600 * 900,
+    'hd': 1280 * 720,
+    '720p': 1280 * 720,
+  };
 
   static bool _matchesLowerBetter(String key) {
     const lowerKeywords = [
@@ -534,10 +668,7 @@ class SpecDirectionService {
   /// Analyzes a list of unknown spec keys via Gemini (through the PB proxy)
   /// and writes results to the spec_directions collection.
   /// Called once from admin panel → results cached forever.
-  Future<void> analyzeAndCacheViaGemini(
-    List<String> specKeys, [
-    String? _legacyKey,
-  ]) async {
+  Future<void> analyzeAndCacheViaGemini(List<String> specKeys) async {
     if (specKeys.isEmpty) return;
 
     const endpoint = '$kPbBaseUrl/api/ai/gemini';
