@@ -24,7 +24,7 @@ const kTypesenseApiKey = String.fromEnvironment(
 
 const kTypesenseUrl = String.fromEnvironment(
   'TS_URL',
-  defaultValue: 'http://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io',
+  defaultValue: 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io',
 );
 
 const String _kPbAuthKey = 'pb_auth_store';
