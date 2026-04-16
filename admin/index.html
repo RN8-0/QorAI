@@ -38,6 +38,18 @@
           </span>
           <span>Google ile devam et</span>
         </button>
+
+        <p class="login-or">veya e-posta ile</p>
+        <form id="pbLoginForm" onsubmit="loginWithPbEmail(event)" style="width:100%;max-width:280px;">
+          <input id="pbEmail" type="email" placeholder="Admin e-posta" required
+            style="width:100%;padding:10px 14px;border:1px solid #444;border-radius:8px;background:#1a1a2e;color:#fff;font-size:14px;margin-bottom:8px;box-sizing:border-box;">
+          <input id="pbPassword" type="password" placeholder="Sifre" required
+            style="width:100%;padding:10px 14px;border:1px solid #444;border-radius:8px;background:#1a1a2e;color:#fff;font-size:14px;margin-bottom:10px;box-sizing:border-box;">
+          <button type="submit" id="pbLoginBtn"
+            style="width:100%;padding:10px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;">
+            Giris Yap
+          </button>
+        </form>
       </div>
       <div class="login-note">
         <span>Giris yalnizca yetkili yonetici hesaplari icin aciktir.</span>

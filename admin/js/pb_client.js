@@ -369,3 +369,34 @@ function loginWithGoogle() {
 function loginWithPb() {
   return gisSignIn();
 }
+
+async function loginWithPbEmail(event) {
+  if (event) event.preventDefault();
+  const email = document.getElementById('pbEmail')?.value?.trim();
+  const password = document.getElementById('pbPassword')?.value;
+  if (!email || !password) {
+    setLoginError('E-posta ve sifre gerekli.');
+    return;
+  }
+  setLoginError('');
+  setLoginLoading(true);
+  const btn = document.getElementById('pbLoginBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const authData = await getPb().collection('_superusers').authWithPassword(email, password);
+    const user = {
+      email: authData.record.email,
+      name: authData.record.email.split('@')[0],
+      picture: '',
+      uid: authData.record.id,
+    };
+    if (_adminAuthCallback) _adminAuthCallback(user, null);
+  } catch (error) {
+    try { getPb().authStore.clear(); } catch (_) {}
+    setLoginLoading(false);
+    if (btn) btn.disabled = false;
+    const msg = error?.message || 'Giris basarisiz. E-posta veya sifre hatali.';
+    setLoginError(msg);
+    if (_adminAuthCallback) _adminAuthCallback(null, msg);
+  }
+}
