@@ -188,21 +188,34 @@ function _initGIS() {
     auto_select: false,
     use_fedcm_for_prompt: true,
   });
-
-  const slot = document.getElementById('googleSignInButton');
-  if (slot) {
-    google.accounts.id.renderButton(slot, {
-      type: 'standard',
-      shape: 'pill',
-      theme: 'filled_black',
-      text: 'continue_with',
-      size: 'large',
-      logo_alignment: 'left',
-      width: 300,
-      locale: 'tr',
-    });
-  }
   _gisInitialized = true;
+}
+
+function _triggerGoogleSignIn() {
+  if (!_gisInitialized) {
+    setLoginError('Google henuz yuklenmedi, lutfen bekleyin.');
+    return;
+  }
+  setLoginLoading(true);
+  google.accounts.id.prompt((notification) => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      // FedCM popup couldn't show — fallback to renderButton in a hidden div
+      const slot = document.getElementById('googleSignInButton');
+      if (slot) {
+        slot.style.display = 'block';
+        google.accounts.id.renderButton(slot, {
+          type: 'standard',
+          shape: 'pill',
+          theme: 'filled_black',
+          text: 'signin_with',
+          size: 'large',
+          width: 300,
+          locale: 'tr',
+        });
+        setLoginLoading(false);
+      }
+    }
+  });
 }
 
 function gisOnLoad() {
