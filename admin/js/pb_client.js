@@ -221,6 +221,9 @@ function _triggerGoogleSignIn() {
 function gisOnLoad() {
   _initGIS();
 }
+// Bridge: if GIS loaded before pb_client.js, init now
+window._gisOnLoadReal = gisOnLoad;
+if (window._gisReady) gisOnLoad();
 
 function initGIS(callback) {
   _adminAuthCallback = callback;

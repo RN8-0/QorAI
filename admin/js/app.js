@@ -22,7 +22,7 @@ async function checkAdmin(email) {
 }
 
 function showAdminApp(email) {
-  _currentAdminEmail = normalizeAdminEmail(email);
+  _currentAdminEmail = _normalizeEmail(email);
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = '';
   document.getElementById('sidebarUser').textContent = _currentAdminEmail;
@@ -72,7 +72,7 @@ function logout() { logoutAdmin(); }
 
 // Session restore: if previously logged in, restore session
 document.addEventListener('DOMContentLoaded', () => {
-  const savedEmail = normalizeAdminEmail(sessionStorage.getItem(ADMIN_EMAIL_STORAGE_KEY));
+  const savedEmail = _normalizeEmail(sessionStorage.getItem(ADMIN_EMAIL_STORAGE_KEY));
   document.getElementById('loginLoading').style.display = 'flex';
   checkAdmin(savedEmail).then(isAdm => {
     document.getElementById('loginLoading').style.display = 'none';
@@ -103,7 +103,7 @@ initGIS(async (userInfo, err) => {
   try {
     const isAdm = await checkAdmin(userInfo.email);
     if (!isAdm) { showUnauthorized(userInfo.email); return; }
-    sessionStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, normalizeAdminEmail(userInfo.email));
+    sessionStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, _normalizeEmail(userInfo.email));
     showAdminApp(userInfo.email);
   } catch (e) {
     document.getElementById('loginError').textContent = 'Error: ' + e.message;
