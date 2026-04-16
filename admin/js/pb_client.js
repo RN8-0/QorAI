@@ -13,6 +13,7 @@ const ALLOWED_ADMIN_EMAILS = Object.freeze([
 let _pb = null;
 let _adminAuthCallback = null;
 let _gisInitialized = false;
+let _tokenClient = null;
 
 function getPb() {
   if (!_pb) _pb = new PocketBase(PB_URL);
@@ -170,51 +171,69 @@ function setLoginError(message = '') {
   if (el) el.textContent = message;
 }
 
-function renderGoogleButton(retryCount = 0) {
-  const host = document.getElementById('googleSignInButton');
-  if (!host) return;
-  if (!window.google?.accounts?.id) {
-    if (retryCount < 20) {
-      setTimeout(() => renderGoogleButton(retryCount + 1), 250);
-      return;
+function setLoginButtonDisabled(disabled) {
+  const button = document.getElementById('loginGoogleBtn');
+  if (!button) return;
+  button.disabled = !!disabled;
+}
+
+function ensureGoogleClients(retryCount = 0) {
+  if (window.google?.accounts?.id && window.google?.accounts?.oauth2) {
+    if (!_gisInitialized) {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_WEB_CLIENT_ID,
+        callback: handleGoogleCredential,
+        cancel_on_tap_outside: true,
+        auto_select: false,
+      });
+      _tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_WEB_CLIENT_ID,
+        scope: 'openid email profile',
+        callback: handleGoogleAccessToken,
+        error_callback: (error) => {
+          setLoginLoading(false);
+          setLoginButtonDisabled(false);
+          const message = error?.message || error?.type || 'Google girisi baslatilamadi.';
+          setLoginError(message);
+        },
+      });
+      _gisInitialized = true;
     }
-    host.innerHTML = '<div class="login-render-error">Google Sign-In yuklenemedi. Sayfayi yenileyip tekrar deneyin.</div>';
-    return;
+    return Promise.resolve();
   }
-  if (!_gisInitialized) {
-    google.accounts.id.initialize({
-      client_id: GOOGLE_WEB_CLIENT_ID,
-      callback: handleGoogleCredential,
-      cancel_on_tap_outside: true,
-      auto_select: false,
-    });
-    _gisInitialized = true;
+
+  if (retryCount >= 30) {
+    setLoginButtonDisabled(false);
+    setLoginError('Google girisi yuklenemedi. Sayfayi yenileyip tekrar dene.');
+    return Promise.reject(new Error('google_unavailable'));
   }
-  host.innerHTML = '';
-  google.accounts.id.renderButton(host, {
-    theme: 'outline',
-    size: 'large',
-    text: 'continue_with',
-    shape: 'pill',
-    width: Math.min(360, Math.max(260, host.offsetWidth || 320)),
+
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      ensureGoogleClients(retryCount + 1).then(resolve).catch(reject);
+    }, 250);
   });
 }
 
 function initGIS(callback) {
   _adminAuthCallback = callback;
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => renderGoogleButton(), { once: true });
+    document.addEventListener('DOMContentLoaded', () => {
+      setLoginButtonDisabled(false);
+      ensureGoogleClients().catch(() => {});
+    }, { once: true });
     return;
   }
-  renderGoogleButton();
+  ensureGoogleClients().catch(() => {});
 }
 
-async function completeGoogleAdminLogin(idToken) {
+async function completeGoogleAdminLogin({ idToken = '', accessToken = '' } = {}) {
   const res = await fetch(`${PB_URL}/api/admin/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       idToken,
+      accessToken,
       audience: GOOGLE_WEB_CLIENT_ID,
     }),
   });
@@ -248,14 +267,16 @@ async function completeGoogleAdminLogin(idToken) {
   return payload;
 }
 
-async function handleGoogleCredential(response) {
+async function handleGoogleAccessToken(response) {
   setLoginError('');
   setLoginLoading(true);
   try {
-    if (!response?.credential) {
-      throw new Error('Google kimlik bilgisi alinamadi.');
+    if (!response?.access_token) {
+      throw new Error('Google erisim anahtari alinamadi.');
     }
-    const payload = await completeGoogleAdminLogin(response.credential);
+    const payload = await completeGoogleAdminLogin({
+      accessToken: response.access_token,
+    });
     const user = {
       email: normalizeAdminEmail(payload.adminEmail),
       name: payload.adminName || normalizeAdminEmail(payload.adminEmail).split('@')[0],
@@ -266,15 +287,55 @@ async function handleGoogleCredential(response) {
   } catch (error) {
     try { getPb().authStore.clear(); } catch (_) {}
     setLoginLoading(false);
+    setLoginButtonDisabled(false);
     const message = error?.message || 'Admin girisi basarisiz oldu.';
     setLoginError(message);
     if (_adminAuthCallback) _adminAuthCallback(null, message);
   }
 }
 
-function gisSignIn() {
-  renderGoogleButton();
-  try { window.google?.accounts?.id?.prompt(); } catch (_) {}
+async function handleGoogleCredential(response) {
+  setLoginError('');
+  setLoginLoading(true);
+  try {
+    if (!response?.credential) {
+      throw new Error('Google kimlik bilgisi alinamadi.');
+    }
+    const payload = await completeGoogleAdminLogin({
+      idToken: response.credential,
+    });
+    const user = {
+      email: normalizeAdminEmail(payload.adminEmail),
+      name: payload.adminName || normalizeAdminEmail(payload.adminEmail).split('@')[0],
+      picture: payload.picture || '',
+      uid: payload.record?.id || '',
+    };
+    if (_adminAuthCallback) _adminAuthCallback(user, null);
+  } catch (error) {
+    try { getPb().authStore.clear(); } catch (_) {}
+    setLoginLoading(false);
+    setLoginButtonDisabled(false);
+    const message = error?.message || 'Admin girisi basarisiz oldu.';
+    setLoginError(message);
+    if (_adminAuthCallback) _adminAuthCallback(null, message);
+  }
+}
+
+async function gisSignIn() {
+  setLoginError('');
+  setLoginButtonDisabled(true);
+  setLoginLoading(true);
+  try {
+    await ensureGoogleClients();
+    if (_tokenClient) {
+      _tokenClient.requestAccessToken({ prompt: 'consent' });
+      return;
+    }
+    window.google?.accounts?.id?.prompt();
+  } catch (_) {
+    setLoginLoading(false);
+    setLoginButtonDisabled(false);
+  }
 }
 
 function gisRevoke(_email) {
@@ -283,9 +344,9 @@ function gisRevoke(_email) {
 }
 
 function loginWithGoogle() {
-  gisSignIn();
+  return gisSignIn();
 }
 
 function loginWithPb() {
-  gisSignIn();
+  return gisSignIn();
 }
