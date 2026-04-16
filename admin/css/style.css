@@ -287,6 +287,7 @@ textarea.input{resize:vertical}
 
 /* ── SCRAPER ── */
 .proxy-status{font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--bg);border:1px solid var(--border)}
+.proxy-helper-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .scraper-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg);border-radius:10px;padding:4px;border:1px solid var(--border)}
 .scraper-tab{flex:1;padding:10px 16px;border:none;border-radius:8px;background:transparent;color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
 .scraper-tab:hover{color:var(--text1);background:var(--bg2)}

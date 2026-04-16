@@ -8,11 +8,13 @@
 
 const PROXY_URL = 'http://localhost:3456';
 const EPEY_BASE = 'https://www.epey.com';
+const PROXY_START_COMMAND = 'npm run scraper:proxy';
 
 let scraperRunning = false;
 let scraperAbort = false;
 let _scrapeStartTime = null;
 let _scrapeProductCount = 0;
+let _proxyPollTimer = null;
 
 // Pending AI translation terms (shared with dictionary.js collectUntranslatedTerms)
 const _pendingAITerms = new Set();
@@ -107,6 +109,28 @@ async function checkProxy() {
   if (el) el.innerHTML = '<span style="color:var(--red)">● Proxy: Offline</span>';
   if (card) card.style.display = '';
   return false;
+}
+
+async function copyProxyCommand() {
+  try {
+    await navigator.clipboard.writeText(PROXY_START_COMMAND);
+    toast('Proxy baslatma komutu panoya kopyalandi.', 's');
+  } catch (_) {
+    toast(`Komutu elle calistir: ${PROXY_START_COMMAND}`, 'i', 6000);
+  }
+}
+
+function openLocalProxyHealth() {
+  window.open(`${PROXY_URL}/health`, '_blank', 'noopener');
+}
+
+function ensureProxyPolling() {
+  if (_proxyPollTimer) return;
+  _proxyPollTimer = window.setInterval(() => {
+    if (document.getElementById('scraperView')?.classList.contains('active')) {
+      checkProxy();
+    }
+  }, 5000);
 }
 
 async function proxyFetch(url, retries = 3) {

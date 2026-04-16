@@ -117,7 +117,7 @@ function showView(name){
   if(name==='users')loadUsers();
   if(name==='appcontrol')loadAppConfig();
   if(name==='algorithm')loadAlgorithmConfig();
-  if(name==='scraper'){checkProxy();populateScraperCategories()}
+  if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
 }
 

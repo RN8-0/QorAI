@@ -336,9 +336,14 @@
         <!-- Proxy connection info -->
         <div class="card" id="proxyInfoCard" style="border-left:3px solid var(--amber)">
           <div class="card-title">⚡ Local Proxy Required</div>
-          <p class="text-muted" style="margin-bottom:8px">Run the proxy on your machine so requests use your IP address:</p>
-          <code class="code-block">node scripts/scraper-proxy.js</code>
-          <p class="text-muted" style="margin-top:8px;font-size:11px">Proxy runs on <b>localhost:3456</b>. Only epey.com domains are allowed.</p>
+          <p class="text-muted" style="margin-bottom:8px">Proxy bu cihazda calisir ve scrape istekleri bu cihazin IP adresiyle gider.</p>
+          <code class="code-block" id="proxyCommandBlock">npm run scraper:proxy</code>
+          <div class="proxy-helper-actions">
+            <button class="btn btn-primary btn-sm" onclick="copyProxyCommand()">Copy Start Command</button>
+            <a class="btn btn-sm" href="start-scraper-proxy.bat" download>Download Windows Launcher</a>
+            <button class="btn btn-sm" onclick="openLocalProxyHealth()">Open Local Health</button>
+          </div>
+          <p class="text-muted" style="margin-top:8px;font-size:11px">Proxy <b>localhost:3456</b> uzerinde calisir. Tarayici butonu Node sureci baslatamaz; launcher bu yuzden eklendi. Sadece epey.com domainleri aciktir.</p>
         </div>
 
         <!-- Scraper Tabs -->
