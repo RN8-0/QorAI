@@ -8,14 +8,13 @@ const ADMIN_EMAIL_STORAGE_KEY = 'admin_email';
 
 // ── ADMIN AUTH ──
 
-async function checkAdmin(email) {
+async function checkAdmin(_email) {
   try {
     const pb = getPb();
     const rec = pb.authStore.record;
     return (
       pb.authStore.isValid &&
-      rec?.collectionName === '_superusers' &&
-      isAllowedAdminEmail(email)
+      rec?.collectionName === '_superusers'
     );
   } catch (_) {}
   return false;
@@ -49,7 +48,7 @@ function showUnauthorized(email) {
     el.innerHTML = `<div class="unauth-card">
       <div style="font-size:48px;margin-bottom:16px">🚫</div>
       <h2>Access Denied</h2>
-      <p>Only the approved Google admin accounts can access this panel. <strong>${email}</strong> is not on the allowlist.</p>
+      <p>Bu hesap admin paneline erisemiyor: <strong>${email}</strong>.</p>
       <button class="btn btn-primary" onclick="logoutAdmin()" style="margin-right:8px">Sign Out</button>
     </div>`;
     document.body.appendChild(el);
@@ -58,10 +57,8 @@ function showUnauthorized(email) {
 }
 
 function logoutAdmin() {
-  const emailToRevoke = _currentAdminEmail;
   _currentAdminEmail = '';
   sessionStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
-  if (emailToRevoke) gisRevoke(emailToRevoke);
   getPb().authStore.clear();
   showLoginScreen();
   const unauthEl = document.getElementById('unauthScreen');
