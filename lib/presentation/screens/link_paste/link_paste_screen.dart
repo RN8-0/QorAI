@@ -21,6 +21,8 @@ import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:compair/presentation/screens/link_paste/link_analysis_history_screen.dart';
+import 'package:compair/core/constants.dart';
+import 'package:compair/presentation/widgets/paywall_sheet.dart';
 
 // ── Part files ──
 part 'widgets/quiz_widgets.dart';
@@ -789,6 +791,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         children: [
+          // Usage badge for free users
+          _buildLinkUsageBadge(),
           // Single URL input card
           GlassContainer(
             padding: const EdgeInsets.all(20),
@@ -996,6 +1000,100 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLinkUsageBadge() {
+    final sub = ref.watch(subscriptionServiceProvider);
+    if (sub.isPremium) return const SizedBox.shrink();
+
+    final remaining = sub.remainingLinkPastes;
+    final total = AppConstants.freeLinkPasteLimit;
+    final progress = (total - remaining) / total;
+    final isLow = remaining <= 1;
+    final barColor = isLow ? AppTheme.error : AppTheme.brandBlue;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: context.surfaceElevatedColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isLow
+                ? AppTheme.error.withValues(alpha: 0.3)
+                : AppTheme.brandBlue.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(Icons.link_rounded, size: 16, color: barColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Link Analizi',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '$remaining/$total/hafta',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: barColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress.clamp(0.0, 1.0),
+                          minHeight: 4,
+                          backgroundColor: barColor.withValues(alpha: 0.12),
+                          valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => showPaywallSheet(context),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.auto_awesome, size: 13, color: AppTheme.brandSkyBlue),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Premium ile sınırsız kullan',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.brandSkyBlue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
     );
   }
 
@@ -1500,7 +1598,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            context.l10n?.howItWorks ?? 'How It Works',
+            context.l10n?.howItWorks ?? 'Nasıl Çalışır?',
             style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w800,
               fontSize: 15,
@@ -1511,23 +1609,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           const SizedBox(height: 12),
           _buildStep(
             1,
-            context.l10n?.pasteLink ?? 'Paste Link',
+            context.l10n?.pasteLink ?? 'Linki Yapıştır',
             context.l10n?.dropProductUrl ??
-                'Drop any product URL from 100+ stores',
+                '100+ mağazadan herhangi bir ürün linkini yapıştırın — AI ürünü otomatik tanır',
             Icons.link_rounded,
           ),
           _buildStep(
             2,
             context.l10n?.aiQuiz ?? 'AI Quiz',
             context.l10n?.answerQuickQuestions ??
-                'Answer quick questions about your needs',
+                'Kullanım ihtiyaçlarınıza göre kısa sorular cevaplayın',
             Icons.quiz_outlined,
           ),
           _buildStep(
             3,
-            context.l10n?.matchScoreLabel ?? 'Match Score',
+            context.l10n?.matchScoreLabel ?? 'Eşleşme Puanı',
             context.l10n?.getPersonalizedScore ??
-                'Get personalized compatibility score',
+                'Size özel uyumluluk puanı ve detaylı analiz alın',
             Icons.stars_rounded,
           ),
         ],
@@ -1542,44 +1640,61 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       [AppTheme.brandCyan, AppTheme.brandBlue],
     ];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: colors[num - 1]),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(child: Icon(icon, color: Colors.white, size: 20)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: context.textPrimary,
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: colors[num - 1],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors[num - 1].first.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: context.textTertiaryColor,
-                  ),
+                child: Center(child: Icon(icon, color: Colors.white, size: 22)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: context.textTertiaryColor,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        )
+        .animate(delay: (num * 100).ms)
+        .fadeIn(duration: 400.ms)
+        .slideX(begin: 0.06);
   }
 
   Widget _buildCompareInfoCards() {

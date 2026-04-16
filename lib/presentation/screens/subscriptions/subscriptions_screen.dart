@@ -13,10 +13,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:compair/core/theme.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
+import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:compair/presentation/screens/subscriptions/subscription_history_screen.dart';
 
@@ -199,7 +201,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
                     // Idle: input + suggestions
                     if (state.phase == SubFlowPhase.idle) ...[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
+                      _buildUsageBadge(),
+                      const SizedBox(height: 16),
                       _buildInputCard(isWorking),
                       const SizedBox(height: 20),
                       if (state.error != null) ...[
@@ -774,6 +778,81 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     );
   }
 
+  // ── Usage Badge ────────────────────────────────────────────────────────────
+
+  Widget _buildUsageBadge() {
+    final sub = ref.watch(subscriptionServiceProvider);
+    if (sub.isPremium) return const SizedBox.shrink();
+
+    final remaining = sub.remainingSubscriptionAnalyses;
+    final total = AppConstants.freeSubscriptionAnalysisLimit;
+    final remainingAi = sub.remainingAIQuestions;
+    final totalAi = AppConstants.freeAiQuestionLimit;
+    final progress = (total - remaining) / total;
+    final progressAi = (totalAi - remainingAi) / totalAi;
+    final isLow = remaining <= 1;
+    final barColor = isLow ? AppTheme.error : _kAccent;
+    final barColorAi = remainingAi <= 3 ? AppTheme.error : _kPrimary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.surfaceElevatedColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isLow
+              ? AppTheme.error.withValues(alpha: 0.3)
+              : _kPrimary.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Subscription analysis limit
+          _UsageMeter(
+            icon: Icons.analytics_outlined,
+            label: 'Abonelik Analizi',
+            remaining: remaining,
+            total: total,
+            period: '/ay',
+            progress: progress,
+            color: barColor,
+          ),
+          const SizedBox(height: 8),
+          // AI question limit
+          _UsageMeter(
+            icon: Icons.auto_awesome,
+            label: 'AI Sorusu',
+            remaining: remainingAi,
+            total: totalAi,
+            period: '/gün',
+            progress: progressAi,
+            color: barColorAi,
+          ),
+          const SizedBox(height: 8),
+          // Premium upsell
+          GestureDetector(
+            onTap: () => showPaywallSheet(context),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.auto_awesome, size: 13, color: _kAccent),
+                const SizedBox(width: 4),
+                Text(
+                  'Premium ile sınırsız kullan',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _kAccent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1);
+  }
+
   // ── Input Card ─────────────────────────────────────────────────────────────
 
   Widget _buildInputCard(bool isWorking) {
@@ -847,68 +926,72 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       }).toList(),
                     ),
                   ),
-                // Text field
-                TextField(
-                  controller: _inputCtrl,
-                  focusNode: _inputFocus,
-                  style: GoogleFonts.inter(
-                    color: context.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: _chips.isEmpty
-                        ? (context.l10n?.subscriptionInputHint ??
-                              'Type a subscription (e.g. Netflix)')
-                        : (context.l10n?.addAnotherSubscription ??
-                              'Add another…'),
-                    hintStyle: GoogleFonts.inter(
-                      color: context.textTertiaryColor.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w400,
-                      fontSize: 13,
-                    ),
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.only(left: 14, right: 8),
-                      child: Icon(
-                        Icons.subscriptions_rounded,
-                        color: _kPrimary.withValues(alpha: 0.7),
-                        size: 18,
+                // Text field with isolated suffix rebuild
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _inputCtrl,
+                  builder: (context, value, _) {
+                    return TextField(
+                      controller: _inputCtrl,
+                      focusNode: _inputFocus,
+                      style: GoogleFonts.inter(
+                        color: context.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 0,
-                      minHeight: 0,
-                    ),
-                    suffixIcon: _inputCtrl.text.isNotEmpty
-                        ? GestureDetector(
-                            onTap: () => _addChip(_inputCtrl.text),
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: _kPrimary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.add_rounded,
-                                color: _kPrimary,
-                                size: 16,
-                              ),
-                            ),
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    filled: false,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 0,
-                      vertical: 12,
-                    ),
-                  ),
-                  onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText: _chips.isEmpty
+                            ? (context.l10n?.subscriptionInputHint ??
+                                  'Type a subscription (e.g. Netflix)')
+                            : (context.l10n?.addAnotherSubscription ??
+                                  'Add another…'),
+                        hintStyle: GoogleFonts.inter(
+                          color: context.textTertiaryColor.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w400,
+                          fontSize: 13,
+                        ),
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.only(left: 14, right: 8),
+                          child: Icon(
+                            Icons.subscriptions_rounded,
+                            color: _kPrimary.withValues(alpha: 0.7),
+                            size: 18,
+                          ),
+                        ),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 0,
+                          minHeight: 0,
+                        ),
+                        suffixIcon: value.text.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () => _addChip(_inputCtrl.text),
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: _kPrimary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.add_rounded,
+                                    color: _kPrimary,
+                                    size: 16,
+                                  ),
+                                ),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        filled: false,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 12,
+                        ),
+                      ),
                   onSubmitted: (v) {
                     if (v.trim().isNotEmpty) _addChip(v);
                   },
                   textInputAction: TextInputAction.done,
+                );
+                  },
                 ),
               ],
             ),
@@ -1090,28 +1173,28 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   Widget _buildInfoCards() {
     final items = [
       _InfoItem(
-        icon: Icons.search_rounded,
+        icon: Icons.travel_explore_rounded,
         gradient: const [_kPrimary, _kDeep],
-        title: context.l10n?.webPoweredInsights ?? 'Web-Powered Insights',
+        title: context.l10n?.webPoweredInsights ?? 'Web Destekli İçgörüler',
         subtitle:
             context.l10n?.webPoweredInsightsDesc ??
-            'Real-time pricing, Reddit & forum opinions',
+            'Gerçek zamanlı fiyatlar, Reddit ve forum yorumları, kullanıcı deneyimleri — AI web\'i tarayarak en güncel bilgileri toplar',
       ),
       _InfoItem(
         icon: Icons.quiz_outlined,
         gradient: const [_kSecondary, Color(0xFFF97316)],
-        title: context.l10n?.personalizedQuiz ?? 'Personalized Quiz',
+        title: context.l10n?.personalizedQuiz ?? 'Kişiselleştirilmiş Quiz',
         subtitle:
             context.l10n?.personalizedQuizDesc ??
-            'AI tailors questions to your usage patterns',
+            'AI, kullanım alışkanlıklarınıza göre sorular oluşturur — cevaplarınız analizi kişiselleştirir',
       ),
       _InfoItem(
         icon: Icons.psychology_outlined,
         gradient: const [_kAccent, Color(0xFF10B981)],
-        title: context.l10n?.smartCompatibility ?? 'Smart Compatibility',
+        title: context.l10n?.smartCompatibility ?? 'Akıllı Uyumluluk',
         subtitle:
             context.l10n?.smartCompatibilityDesc ??
-            'Match score based on your profile & answers',
+            'Profilinize ve cevaplarınıza göre eşleşme puanı — size en uygun aboneliği bulun',
       ),
     ];
 
@@ -1124,16 +1207,28 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               child: GlassContainer(
                 padding: const EdgeInsets.all(16),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: item.gradient),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: item.gradient,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: item.gradient.first.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Center(
-                        child: Icon(item.icon, color: Colors.white, size: 22),
+                        child: Icon(item.icon, color: Colors.white, size: 24),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -1149,12 +1244,13 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                               color: context.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           Text(
                             item.subtitle,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               color: context.textTertiaryColor,
+                              height: 1.4,
                             ),
                           ),
                         ],
@@ -1164,9 +1260,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 ),
               ),
             )
-            .animate(delay: (i * 100).ms)
-            .fadeIn(duration: 400.ms)
-            .slideX(begin: 0.05);
+            .animate(delay: (i * 120).ms)
+            .fadeIn(duration: 500.ms)
+            .slideY(begin: 0.08);
       }).toList(),
     );
   }
@@ -1198,6 +1294,74 @@ class _InfoItem {
     required this.title,
     required this.subtitle,
   });
+}
+
+class _UsageMeter extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int remaining;
+  final int total;
+  final String period;
+  final double progress;
+  final Color color;
+
+  const _UsageMeter({
+    required this.icon,
+    required this.label,
+    required this.remaining,
+    required this.total,
+    required this.period,
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    '$remaining/$total$period',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0),
+                  minHeight: 4,
+                  backgroundColor: color.withValues(alpha: 0.12),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ─── Sub Quiz View ───────────────────────────────────────────────────────────
