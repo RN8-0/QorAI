@@ -91,13 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Admin auth callback
-initGIS(async (userInfo, err) => {
+// Admin auth callback (email/password)
+window._adminLoginCallback = async (userInfo, err) => {
   document.getElementById('loginLoading').style.display = 'none';
   if (err || !userInfo) {
-    if (err !== 'access_denied' && err !== 'popup_closed_by_user') {
-      document.getElementById('loginError').textContent = err || 'Login failed';
-    }
+    document.getElementById('loginError').textContent = err || 'Login failed';
     return;
   }
   try {
@@ -109,12 +107,7 @@ initGIS(async (userInfo, err) => {
     document.getElementById('loginError').textContent = 'Error: ' + e.message;
     console.error('Admin auth callback error:', e);
   }
-});
-
-// Legacy button handler retained for old inline references.
-async function loginWithGoogle() {
-  if (typeof gisSignIn === 'function') return gisSignIn();
-}
+};
 
 // ── THEME ──
 (function(){const t=localStorage.getItem('theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');const i=document.getElementById('themeIcon');const l=document.getElementById('themeLabel');if(i)i.textContent='☀️';if(l)l.textContent='Light'}})();

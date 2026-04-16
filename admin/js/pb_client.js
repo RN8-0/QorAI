@@ -4,11 +4,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
-const GOOGLE_WEB_CLIENT_ID = '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
 
 let _pb = null;
-let _adminAuthCallback = null;
-let _gisInitialized = false;
 
 function getPb() {
   if (!_pb) _pb = new PocketBase(PB_URL);
@@ -150,7 +147,7 @@ function _clean(data) {
   return clean;
 }
 
-// ─── GOOGLE ADMIN AUTH ────────────────────────────────────────────
+// ─── ADMIN AUTH (Email/Password) ──────────────────────────────────
 
 function setLoginLoading(visible) {
   const el = document.getElementById('loginLoading');
@@ -162,141 +159,42 @@ function setLoginError(message = '') {
   if (el) el.textContent = message;
 }
 
-function ensureGoogleClients(retryCount = 0) {
-  if (window.google?.accounts?.id) {
-    if (!_gisInitialized) _initGIS();
-    return Promise.resolve();
-  }
-
-  if (retryCount >= 30) {
-    setLoginError('Google girisi yuklenemedi. Sayfayi yenileyip tekrar dene.');
-    return Promise.reject(new Error('google_unavailable'));
-  }
-
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      ensureGoogleClients(retryCount + 1).then(resolve).catch(reject);
-    }, 250);
-  });
-}
-
-function _initGIS() {
-  google.accounts.id.initialize({
-    client_id: GOOGLE_WEB_CLIENT_ID,
-    callback: handleGoogleCredential,
-    cancel_on_tap_outside: true,
-    auto_select: false,
-    use_fedcm_for_prompt: true,
-  });
-  _gisInitialized = true;
-}
-
-function _triggerGoogleSignIn() {
-  if (!_gisInitialized) {
-    setLoginError('Google henuz yuklenmedi, lutfen bekleyin.');
-    return;
-  }
-  setLoginLoading(true);
-  google.accounts.id.prompt((notification) => {
-    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      // FedCM popup couldn't show — fallback to renderButton in a hidden div
-      const slot = document.getElementById('googleSignInButton');
-      if (slot) {
-        slot.style.display = 'block';
-        google.accounts.id.renderButton(slot, {
-          type: 'standard',
-          shape: 'pill',
-          theme: 'filled_black',
-          text: 'signin_with',
-          size: 'large',
-          width: 300,
-          locale: 'tr',
-        });
-        setLoginLoading(false);
-      }
-    }
-  });
-}
-
-function gisOnLoad() {
-  _initGIS();
-}
-// Bridge: if GIS loaded before pb_client.js, init now
-window._gisOnLoadReal = gisOnLoad;
-if (window._gisReady) gisOnLoad();
-
-function initGIS(callback) {
-  _adminAuthCallback = callback;
-  if (window.google?.accounts?.id && !_gisInitialized) {
-    _initGIS();
-  }
-}
-
-async function completeGoogleAdminLogin({ idToken = '', accessToken = '' } = {}) {
-  const res = await fetch(`${PB_URL}/api/admin/auth/google`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      idToken,
-      accessToken,
-      audience: GOOGLE_WEB_CLIENT_ID,
-    }),
-  });
-
-  let payload = {};
-  try { payload = await res.json(); } catch (_) {}
-
-  if (!res.ok) {
-    if (payload?.error === 'admin_not_allowed') {
-      throw new Error('Bu Google hesabi admin paneline yetkili degil.');
-    }
-    if (payload?.error === 'invalid_token') {
-      throw new Error('Google kimlik dogrulamasi basarisiz oldu.');
-    }
-    if (payload?.error === 'missing_superuser_env' || payload?.error === 'superuser_not_found') {
-      throw new Error('PocketBase admin oturumu sunucuda hazir degil.');
-    }
-    throw new Error(payload?.error || 'Admin girisi basarisiz oldu.');
-  }
-
-  // Server-side whitelist enforces allowed emails
-  const authRecord = {
-    id: payload.record?.id,
-    email: payload.record?.email,
-    collectionName: '_superusers',
-  };
-  getPb().authStore.save(payload.token, authRecord);
-  return payload;
-}
-
-async function handleGoogleCredential(response) {
+async function handleLoginSubmit(event) {
+  event.preventDefault();
   setLoginError('');
   setLoginLoading(true);
+
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!email || !password) {
+    setLoginError('E-posta ve sifre gerekli.');
+    setLoginLoading(false);
+    return;
+  }
+
   try {
-    if (!response?.credential) {
-      throw new Error('Google kimlik bilgisi alinamadi.');
-    }
-    const payload = await completeGoogleAdminLogin({
-      idToken: response.credential,
-    });
+    const pb = getPb();
+    const authData = await pb.collection('_superusers').authWithPassword(email, password);
     const user = {
-      email: _normalizeEmail(payload.adminEmail),
-      name: payload.adminName || _normalizeEmail(payload.adminEmail).split('@')[0],
-      picture: payload.picture || '',
-      uid: payload.record?.id || '',
+      email: _normalizeEmail(authData.record.email),
+      name: _normalizeEmail(authData.record.email).split('@')[0],
+      uid: authData.record.id,
     };
-    if (_adminAuthCallback) _adminAuthCallback(user, null);
+    if (window._adminLoginCallback) window._adminLoginCallback(user, null);
   } catch (error) {
     try { getPb().authStore.clear(); } catch (_) {}
     setLoginLoading(false);
-    const message = error?.message || 'Admin girisi basarisiz oldu.';
-    setLoginError(message);
-    if (_adminAuthCallback) _adminAuthCallback(null, message);
+    const message = error?.message || 'Giris basarisiz oldu.';
+    if (message.includes('Failed to authenticate')) {
+      setLoginError('E-posta veya sifre hatali.');
+    } else {
+      setLoginError(message);
+    }
   }
 }
 
-function gisRevoke(_email) {
-  try { window.google?.accounts?.id?.disableAutoSelect(); } catch (_) {}
+function logoutAdmin() {
   try { getPb().authStore.clear(); } catch (_) {}
 }
 
