@@ -16,7 +16,7 @@ let _scrapeStartTime = null;
 let _scrapeProductCount = 0;
 let _proxyPollTimer = null;
 
-// Pending AI translation terms (shared with dictionary.js collectUntranslatedTerms)
+// Pending untranslated Turkish terms (shared with dictionary.js collectUntranslatedTerms)
 const _pendingAITerms = new Set();
 
 // ═══════════════════════════════════════
@@ -833,7 +833,7 @@ async function scrapeProductDetail(html, url, categoryId) {
   // ── Variant Group ──
   const variantGroup = normalizeVariantGroupFromSlug(productSlug);
 
-  // ── Collect untranslated terms for AI translation ──
+  // ── Collect untranslated Turkish terms for free backlog sync ──
   if (dict && dict.collectUntranslatedTerms) {
     dict.collectUntranslatedTerms({
       name: originalName,
@@ -1096,7 +1096,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
         errorStreak = 0;
         slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
 
-        // Trigger AI translation every 5 products
+        // Periodically persist untranslated terms for later reuse
         if (results.added > 0 && results.added % 5 === 0) {
           triggerAITranslation();
         }
@@ -1173,17 +1173,32 @@ async function computePriceSegments(categoryId) {
 }
 
 // ═══════════════════════════════════════
-//  17. AI TRANSLATION (Gemini)
+//  17. FREE TRANSLATION BACKLOG
 // ═══════════════════════════════════════
 
-async function geminiTranslateBatch(terms) {
+async function persistTranslationBacklog(terms) {
   if (!terms || terms.length === 0) return {};
-  const batch = terms.slice(0, 100);
+  const batch = [...new Set(terms.map(t => String(t || '').trim()).filter(Boolean))].slice(0, 200);
+  if (batch.length === 0) return {};
 
-  slog(`AI translating ${batch.length} terms...`, 'info');
+  try {
+    const existingDoc = await pbGetDoc('app_config', 'translation_backlog');
+    const existing = existingDoc.exists ? existingDoc.data() : {};
+    const existingTerms = Array.isArray(existing.terms) ? existing.terms : [];
+    const mergedTerms = [...new Set([...existingTerms, ...batch])].sort((a, b) => a.localeCompare(b, 'tr'));
 
-  // Cloud Function not available — skip AI translation
-  slog(`AI translation skipped (Cloud Function not available)`, 'info');
+    await pbSetDoc('app_config', 'translation_backlog', {
+      terms: mergedTerms,
+      count: mergedTerms.length,
+      mode: 'free-dictionary',
+      updatedAt: new Date().toISOString(),
+    });
+
+    slog(`Saved ${batch.length} untranslated terms to PocketBase backlog (${mergedTerms.length} total)`, 'info');
+  } catch (e) {
+    console.warn('Failed to persist translation backlog:', e);
+    slog(`Translation backlog save failed: ${e.message}`, 'warn');
+  }
   return {};
 }
 
@@ -1213,9 +1228,9 @@ function triggerAITranslation() {
   if (_pendingAITerms.size === 0) return;
   const terms = [..._pendingAITerms].slice(0, 100);
   _pendingAITerms.clear();
-  // Fire and forget
-  geminiTranslateBatch(terms).catch(e => {
-    console.warn('AI translation background error:', e);
+  // Free mode: persist unknown Turkish terms for later review/reuse.
+  persistTranslationBacklog(terms).catch(e => {
+    console.warn('Translation backlog background error:', e);
   });
 }
 
@@ -1306,7 +1321,7 @@ async function startBulkScrape() {
     await computePriceSegments(categoryId);
   }
 
-  // Final AI translation flush
+  // Final untranslated backlog flush
   triggerAITranslation();
 
   slog(`\n═══ Bulk scrape complete ═══`, 'success');
@@ -1416,7 +1431,7 @@ async function scrapeByUrl() {
     slog('Product saved to PocketBase!', 'success');
     toast(`${existingDoc?.exists ? 'Updated' : 'Added'}: ${product.name}`, 's');
 
-    // Trigger AI translation
+    // Persist untranslated terms after single-item scrape
     triggerAITranslation();
 
     // Refresh in-memory list
