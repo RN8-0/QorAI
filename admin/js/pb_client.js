@@ -4,12 +4,27 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const GOOGLE_WEB_CLIENT_ID = '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
+const ALLOWED_ADMIN_EMAILS = Object.freeze([
+  'arainunger@gmail.com',
+  'araingamex@gmail.com',
+]);
 
 let _pb = null;
+let _adminAuthCallback = null;
+let _gisInitialized = false;
 
 function getPb() {
   if (!_pb) _pb = new PocketBase(PB_URL);
   return _pb;
+}
+
+function normalizeAdminEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function isAllowedAdminEmail(email) {
+  return ALLOWED_ADMIN_EMAILS.includes(normalizeAdminEmail(email));
 }
 
 async function pbEnsureAuth() {
@@ -143,48 +158,134 @@ function _clean(data) {
   return clean;
 }
 
-// ─── PB SUPERUSER AUTH ────────────────────────────────────────────
-// Admin panel authenticates directly against PocketBase _superusers.
-// Credentials are provided by the admin on the login form and persisted by
-// PocketBase authStore instead of being hardcoded in the client bundle.
+// ─── GOOGLE ADMIN AUTH ────────────────────────────────────────────
 
-let _adminAuthCallback = null;
-
-function initGIS(callback) {
-  // Legacy name kept so app.js doesn't need rewriting everywhere.
-  _adminAuthCallback = callback;
+function setLoginLoading(visible) {
+  const el = document.getElementById('loginLoading');
+  if (el) el.style.display = visible ? 'flex' : 'none';
 }
 
-// Admin login form handler — called by #loginForm submit.
-async function loginWithPb() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  const errEl = document.getElementById('loginError');
-  errEl.textContent = '';
-  document.getElementById('loginLoading').style.display = 'flex';
+function setLoginError(message = '') {
+  const el = document.getElementById('loginError');
+  if (el) el.textContent = message;
+}
+
+function renderGoogleButton(retryCount = 0) {
+  const host = document.getElementById('googleSignInButton');
+  if (!host) return;
+  if (!window.google?.accounts?.id) {
+    if (retryCount < 20) {
+      setTimeout(() => renderGoogleButton(retryCount + 1), 250);
+      return;
+    }
+    host.innerHTML = '<div class="login-render-error">Google Sign-In yuklenemedi. Sayfayi yenileyip tekrar deneyin.</div>';
+    return;
+  }
+  if (!_gisInitialized) {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_WEB_CLIENT_ID,
+      callback: handleGoogleCredential,
+      cancel_on_tap_outside: true,
+      auto_select: false,
+    });
+    _gisInitialized = true;
+  }
+  host.innerHTML = '';
+  google.accounts.id.renderButton(host, {
+    theme: 'outline',
+    size: 'large',
+    text: 'continue_with',
+    shape: 'pill',
+    width: Math.min(360, Math.max(260, host.offsetWidth || 320)),
+  });
+}
+
+function initGIS(callback) {
+  _adminAuthCallback = callback;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => renderGoogleButton(), { once: true });
+    return;
+  }
+  renderGoogleButton();
+}
+
+async function completeGoogleAdminLogin(idToken) {
+  const res = await fetch(`${PB_URL}/api/admin/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      idToken,
+      audience: GOOGLE_WEB_CLIENT_ID,
+    }),
+  });
+
+  let payload = {};
+  try { payload = await res.json(); } catch (_) {}
+
+  if (!res.ok) {
+    if (payload?.error === 'admin_not_allowed') {
+      throw new Error('Bu Google hesabi admin paneline yetkili degil.');
+    }
+    if (payload?.error === 'invalid_token') {
+      throw new Error('Google kimlik dogrulamasi basarisiz oldu.');
+    }
+    if (payload?.error === 'missing_superuser_env' || payload?.error === 'superuser_not_found') {
+      throw new Error('PocketBase admin oturumu sunucuda hazir degil.');
+    }
+    throw new Error(payload?.error || 'Admin girisi basarisiz oldu.');
+  }
+
+  if (!isAllowedAdminEmail(payload.adminEmail)) {
+    throw new Error('Bu Google hesabi admin paneline yetkili degil.');
+  }
+
+  const authRecord = {
+    id: payload.record?.id,
+    email: payload.record?.email,
+    collectionName: '_superusers',
+  };
+  getPb().authStore.save(payload.token, authRecord);
+  return payload;
+}
+
+async function handleGoogleCredential(response) {
+  setLoginError('');
+  setLoginLoading(true);
   try {
-    const pb = getPb();
-    const auth = await pb.collection('_superusers').authWithPassword(email, password);
+    if (!response?.credential) {
+      throw new Error('Google kimlik bilgisi alinamadi.');
+    }
+    const payload = await completeGoogleAdminLogin(response.credential);
     const user = {
-      email: auth.record.email,
-      name: auth.record.email.split('@')[0],
-      picture: '',
-      uid: auth.record.id,
+      email: normalizeAdminEmail(payload.adminEmail),
+      name: payload.adminName || normalizeAdminEmail(payload.adminEmail).split('@')[0],
+      picture: payload.picture || '',
+      uid: payload.record?.id || '',
     };
     if (_adminAuthCallback) _adminAuthCallback(user, null);
-  } catch (e) {
-    document.getElementById('loginLoading').style.display = 'none';
-    errEl.textContent = 'Invalid email or password';
-    if (_adminAuthCallback) _adminAuthCallback(null, 'invalid_credentials');
+  } catch (error) {
+    try { getPb().authStore.clear(); } catch (_) {}
+    setLoginLoading(false);
+    const message = error?.message || 'Admin girisi basarisiz oldu.';
+    setLoginError(message);
+    if (_adminAuthCallback) _adminAuthCallback(null, message);
   }
 }
 
-// Backwards-compatible shim — old app.js may still call this.
 function gisSignIn() {
-  document.getElementById('loginError').textContent =
-    'Please sign in with your admin email and password above.';
+  renderGoogleButton();
+  try { window.google?.accounts?.id?.prompt(); } catch (_) {}
 }
 
 function gisRevoke(_email) {
+  try { window.google?.accounts?.id?.disableAutoSelect(); } catch (_) {}
   try { getPb().authStore.clear(); } catch (_) {}
+}
+
+function loginWithGoogle() {
+  gisSignIn();
+}
+
+function loginWithPb() {
+  gisSignIn();
 }

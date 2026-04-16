@@ -4,30 +4,41 @@
 
 // PocketBase client initialized in pb_client.js
 let _currentAdminEmail = '';
+const ADMIN_EMAIL_STORAGE_KEY = 'admin_email';
 
 // ── ADMIN AUTH ──
 
 async function checkAdmin(email) {
-  // PB _superusers are implicitly admins — no whitelist check needed.
   try {
     const pb = getPb();
     const rec = pb.authStore.record;
-    if (rec && rec.collectionName === '_superusers') return true;
+    return (
+      pb.authStore.isValid &&
+      rec?.collectionName === '_superusers' &&
+      isAllowedAdminEmail(email)
+    );
   } catch (_) {}
-  // Legacy whitelist check (for non-superuser admin emails stored in app_config).
-  try {
-    const doc = await pbGetDoc('app_config', 'admins');
-    if (!doc.exists) return false;
-    const data = doc.data();
-    const emails = data.emails || data.value?.emails || [];
-    return emails.includes(email);
-  } catch (e) {
-    console.error('Admin check failed:', e);
-    return false;
-  }
+  return false;
+}
+
+function showAdminApp(email) {
+  _currentAdminEmail = normalizeAdminEmail(email);
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = '';
+  document.getElementById('sidebarUser').textContent = _currentAdminEmail;
+  const unauthEl = document.getElementById('unauthScreen');
+  if (unauthEl) unauthEl.style.display = 'none';
+  refreshDashboard();
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appContainer').style.display = 'none';
 }
 
 function showUnauthorized(email) {
+  sessionStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
+  try { getPb().authStore.clear(); } catch (_) {}
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'none';
   let el = document.getElementById('unauthScreen');
@@ -38,7 +49,7 @@ function showUnauthorized(email) {
     el.innerHTML = `<div class="unauth-card">
       <div style="font-size:48px;margin-bottom:16px">🚫</div>
       <h2>Access Denied</h2>
-      <p>The account <strong>${email}</strong> is not authorized to access the admin panel.</p>
+      <p>Only the approved Google admin accounts can access this panel. <strong>${email}</strong> is not on the allowlist.</p>
       <button class="btn btn-primary" onclick="logoutAdmin()" style="margin-right:8px">Sign Out</button>
     </div>`;
     document.body.appendChild(el);
@@ -49,11 +60,10 @@ function showUnauthorized(email) {
 function logoutAdmin() {
   const emailToRevoke = _currentAdminEmail;
   _currentAdminEmail = '';
-  sessionStorage.removeItem('admin_email');
+  sessionStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
   if (emailToRevoke) gisRevoke(emailToRevoke);
   getPb().authStore.clear();
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('appContainer').style.display = 'none';
+  showLoginScreen();
   const unauthEl = document.getElementById('unauthScreen');
   if (unauthEl) unauthEl.style.display = 'none';
 }
@@ -62,29 +72,23 @@ function logout() { logoutAdmin(); }
 
 // Session restore: if previously logged in, restore session
 document.addEventListener('DOMContentLoaded', () => {
-  const savedEmail = sessionStorage.getItem('admin_email');
-  if (savedEmail) {
-    document.getElementById('loginLoading').style.display = 'flex';
-    checkAdmin(savedEmail).then(isAdm => {
-      document.getElementById('loginLoading').style.display = 'none';
-      if (isAdm) {
-        _currentAdminEmail = savedEmail;
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('appContainer').style.display = '';
-        document.getElementById('sidebarUser').textContent = savedEmail;
-        refreshDashboard();
-      } else {
-        sessionStorage.removeItem('admin_email');
-        document.getElementById('loginScreen').style.display = 'flex';
-      }
-    }).catch(() => {
-      document.getElementById('loginLoading').style.display = 'none';
-      document.getElementById('loginScreen').style.display = 'flex';
-    });
-  } else {
+  const savedEmail = normalizeAdminEmail(sessionStorage.getItem(ADMIN_EMAIL_STORAGE_KEY));
+  document.getElementById('loginLoading').style.display = 'flex';
+  checkAdmin(savedEmail).then(isAdm => {
     document.getElementById('loginLoading').style.display = 'none';
-    document.getElementById('loginScreen').style.display = 'flex';
-  }
+    if (isAdm) {
+      showAdminApp(savedEmail);
+      return;
+    }
+    sessionStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
+    getPb().authStore.clear();
+    showLoginScreen();
+  }).catch(() => {
+    document.getElementById('loginLoading').style.display = 'none';
+    sessionStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
+    getPb().authStore.clear();
+    showLoginScreen();
+  });
 });
 
 // Admin auth callback
@@ -99,22 +103,17 @@ initGIS(async (userInfo, err) => {
   try {
     const isAdm = await checkAdmin(userInfo.email);
     if (!isAdm) { showUnauthorized(userInfo.email); return; }
-    _currentAdminEmail = userInfo.email;
-    sessionStorage.setItem('admin_email', userInfo.email);
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('appContainer').style.display = '';
-    document.getElementById('sidebarUser').textContent = userInfo.email;
-    refreshDashboard();
+    sessionStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, normalizeAdminEmail(userInfo.email));
+    showAdminApp(userInfo.email);
   } catch (e) {
     document.getElementById('loginError').textContent = 'Error: ' + e.message;
     console.error('Admin auth callback error:', e);
   }
 });
 
-// Legacy button handler — the new login form calls loginWithPb() directly
-// from pb_client.js via its onsubmit. Kept for any stray references.
+// Legacy button handler retained for old inline references.
 async function loginWithGoogle() {
-  if (typeof loginWithPb === 'function') return loginWithPb();
+  if (typeof gisSignIn === 'function') return gisSignIn();
 }
 
 // ── THEME ──

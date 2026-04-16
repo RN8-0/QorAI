@@ -70,7 +70,7 @@ node scripts/scraper-proxy.js
 Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 
 ### Security
-- Admin access restricted to PocketBase superuser credentials entered at login and app-level controls
+- Admin access restricted to Google Sign-In for `arainunger@gmail.com` and `araingamex@gmail.com`, then upgraded to a PocketBase superuser session on the backend
 - User deletion and product/app management are handled directly through PocketBase
 - No Firebase Auth / Firestore dependency remains in runtime flows
 

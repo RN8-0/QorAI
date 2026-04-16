@@ -1,32 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compair Admin</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
-  <link rel="stylesheet" href="css/style.css">
-</head>
+    <title>Compair Admin</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
 <body>
 
   <!-- ============ LOGIN ============ -->
   <div id="loginScreen" class="login-screen">
     <div class="login-bg"></div>
-    <div class="login-card">
-      <div class="login-header">
-        <div class="login-logo-icon">⚡</div>
-        <h1>Compair</h1>
-        <p>Admin Panel</p>
+      <div class="login-card">
+        <div class="login-header">
+          <div class="login-logo-icon">⚡</div>
+          <h1>Compair</h1>
+          <p>Admin Panel</p>
+        </div>
+      <div class="login-copy">
+        <h2>Google ile yonetici girisi</h2>
+        <p>Admin paneline sadece yetkili Google hesabi ile girilebilir.</p>
       </div>
-      <form id="loginForm" onsubmit="event.preventDefault(); loginWithPb();" style="display:flex;flex-direction:column;gap:12px">
-        <input class="input" id="loginEmail" type="email" placeholder="admin@compair.local" autocomplete="username" required>
-        <input class="input" id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
-        <button class="btn btn-primary" type="submit">Sign In</button>
-      </form>
+      <div id="googleSignInButton" class="google-signin-slot"></div>
+      <div class="login-note">
+        <span>Yetkili hesaplar</span>
+        <strong>arainunger@gmail.com</strong>
+        <strong>araingamex@gmail.com</strong>
+      </div>
       <div id="loginError" class="login-error"></div>
       <div id="loginLoading" class="login-loading" style="display:none">
         <div class="spinner"></div>
-        <span>Signing in...</span>
+        <span>Google ile giris yapiliyor...</span>
       </div>
     </div>
   </div>
