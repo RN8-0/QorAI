@@ -158,6 +158,140 @@ class ProfileWeights {
 
 /// Profile algorithm service
 class ProfileAlgorithmService {
+  static const List<String> gamingFocusedCategories = [
+    'gpus',
+    'monitors',
+    'keyboards',
+    'mice',
+    'headphones',
+    'consoles',
+    'gamepads',
+    'vr-headsets',
+    'desktops',
+    'laptops',
+    'cpus',
+    'ram',
+    'ssd',
+    'coolers',
+    'cases',
+  ];
+
+  static const List<String> creatorFocusedCategories = [
+    'cameras',
+    'lenses',
+    'gimbals',
+    'tripods',
+    'monitors',
+    'laptops',
+    'microphones',
+    'headphones',
+    'tablets',
+  ];
+
+  static const List<String> productivityFocusedCategories = [
+    'laptops',
+    'monitors',
+    'tablets',
+    'smartphones',
+    'keyboards',
+    'mice',
+    'webcams',
+    'routers',
+    'printers',
+  ];
+
+  static const Map<String, List<String>> professionCategoryBoosts = {
+    'student': ['laptops', 'tablets', 'headphones', 'smartphones', 'e-readers'],
+    'engineer': ['laptops', 'monitors', 'cpus', 'gpus', 'keyboards', 'mice'],
+    'designer': ['monitors', 'tablets', 'laptops', 'cameras', 'smartphones'],
+    'developer': [
+      'laptops',
+      'monitors',
+      'keyboards',
+      'mice',
+      'desktops',
+      'routers',
+    ],
+    'content_creator': [
+      'cameras',
+      'microphones',
+      'monitors',
+      'laptops',
+      'gimbals',
+      'tripods',
+    ],
+    'video_editor': [
+      'monitors',
+      'laptops',
+      'microphones',
+      'headphones',
+      'cameras',
+    ],
+    'photographer': ['cameras', 'lenses', 'tripods', 'gimbals', 'monitors'],
+    'gamer': gamingFocusedCategories,
+    'manager': [
+      'smartphones',
+      'laptops',
+      'smartwatches',
+      'tablets',
+      'headphones',
+    ],
+    'product_manager': [
+      'laptops',
+      'smartphones',
+      'tablets',
+      'monitors',
+      'headphones',
+    ],
+    'entrepreneur': [
+      'smartphones',
+      'laptops',
+      'tablets',
+      'monitors',
+      'routers',
+    ],
+    'healthcare': ['tablets', 'smartwatches', 'smartphones', 'laptops'],
+    'educator': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
+    'teacher': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
+    'finance': ['laptops', 'monitors', 'smartphones', 'tablets'],
+    'data_analyst': ['laptops', 'monitors', 'tablets', 'keyboards'],
+    'architect': ['monitors', 'laptops', 'tablets', 'gpus', 'desktops'],
+    'sales_marketing': ['smartphones', 'laptops', 'tablets', 'cameras'],
+    'lawyer': ['laptops', 'tablets', 'smartphones', 'headphones'],
+    'researcher': ['laptops', 'tablets', 'e-readers', 'monitors'],
+    'other': ['smartphones', 'laptops', 'headphones'],
+  };
+
+  static const Map<String, List<String>> usageIntentCategoryBoosts = {
+    'gaming_setup': gamingFocusedCategories,
+    'creator_setup': creatorFocusedCategories,
+    'productivity_setup': productivityFocusedCategories,
+    'entertainment_setup': [
+      'tvs',
+      'headphones',
+      'speakers',
+      'soundbars',
+      'projectors',
+      'media-players',
+      'tablets',
+    ],
+    'price_tracking': ['smartphones', 'laptops', 'gpus', 'tvs', 'powerbanks'],
+    'research': ['laptops', 'cameras', 'monitors', 'smartphones'],
+    'quick_decision': [
+      'smartphones',
+      'headphones',
+      'smartwatches',
+      'powerbanks',
+    ],
+    'all': [],
+  };
+
+  static List<String> categoriesForProfession(String? profession) =>
+      professionCategoryBoosts[profession] ?? const [];
+
+  static List<String> categoriesForUsageIntent(String? usageIntent) =>
+      usageIntentCategoryBoosts[usageIntent] ?? const [];
+
   /// Calculate user profile vector
   /// This vector converts the user's preferences into numerical values.
   /// Dimensions: ecosystem(2) + budget(1) + priorities(6) + categories(22) +
@@ -412,6 +546,8 @@ class ProfileAlgorithmService {
       total += 3;
     }
 
+    total += _calculateUserIntentBoost(user, product);
+
     return total.clamp(0, 100);
   }
 
@@ -483,85 +619,41 @@ class ProfileAlgorithmService {
       categories[cat] = (categories[cat] ?? 0) + 1.0;
     }
 
-    // Boost categories based on profession
-    const professionCategoryBoost = <String, List<String>>{
-      'student': [
-        'laptops',
-        'tablets',
-        'headphones',
-        'smartphones',
-        'e-readers',
-      ],
-      'engineer': ['laptops', 'monitors', 'cpus', 'gpus', 'keyboards', 'mice'],
-      'designer': ['monitors', 'tablets', 'laptops', 'cameras', 'smartphones'],
-      'developer': [
-        'laptops',
-        'monitors',
-        'keyboards',
-        'mice',
-        'desktops',
-        'routers',
-      ],
-      'content_creator': [
-        'cameras',
-        'microphones',
-        'monitors',
-        'laptops',
-        'gimbals',
-        'tripods',
-      ],
-      'video_editor': [
-        'monitors',
-        'laptops',
-        'microphones',
-        'headphones',
-        'cameras',
-      ],
-      'photographer': ['cameras', 'lenses', 'tripods', 'gimbals', 'monitors'],
-      'gamer': [
-        'gpus',
-        'monitors',
-        'keyboards',
-        'mice',
-        'headphones',
-        'consoles',
-      ],
-      'manager': [
-        'smartphones',
-        'laptops',
-        'smartwatches',
-        'tablets',
-        'headphones',
-      ],
-      'product_manager': [
-        'laptops',
-        'smartphones',
-        'tablets',
-        'monitors',
-        'headphones',
-      ],
-      'entrepreneur': [
-        'smartphones',
-        'laptops',
-        'tablets',
-        'monitors',
-        'routers',
-      ],
-      'healthcare': ['tablets', 'smartwatches', 'smartphones', 'laptops'],
-      'educator': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
-      'teacher': ['laptops', 'tablets', 'projectors', 'webcams', 'headphones'],
-      'finance': ['laptops', 'monitors', 'smartphones', 'tablets'],
-      'data_analyst': ['laptops', 'monitors', 'tablets', 'keyboards'],
-      'architect': ['monitors', 'laptops', 'tablets', 'gpus', 'desktops'],
-      'sales_marketing': ['smartphones', 'laptops', 'tablets', 'cameras'],
-      'lawyer': ['laptops', 'tablets', 'smartphones', 'headphones'],
-      'researcher': ['laptops', 'tablets', 'e-readers', 'monitors'],
-      'other': ['smartphones', 'laptops', 'headphones'],
-    };
-    final boostedCats = professionCategoryBoost[user.profession] ?? [];
-    for (int i = 0; i < boostedCats.length; i++) {
-      final boost = 0.8 - (i * 0.15); // 0.8, 0.65, 0.5, 0.35, 0.2
-      categories[boostedCats[i]] = (categories[boostedCats[i]] ?? 0) + boost;
+    _applyRankedCategoryBoost(
+      categories,
+      categoriesForProfession(user.profession),
+      start: 0.8,
+      decay: 0.15,
+    );
+    _applyRankedCategoryBoost(
+      categories,
+      categoriesForUsageIntent(user.usageIntent),
+      start: 1.05,
+      decay: 0.14,
+    );
+    if (user.priorities.contains('gaming')) {
+      _applyRankedCategoryBoost(
+        categories,
+        gamingFocusedCategories,
+        start: 0.95,
+        decay: 0.10,
+      );
+    }
+    if (user.priorities.contains('creator')) {
+      _applyRankedCategoryBoost(
+        categories,
+        creatorFocusedCategories,
+        start: 0.75,
+        decay: 0.10,
+      );
+    }
+    if (user.priorities.contains('productivity')) {
+      _applyRankedCategoryBoost(
+        categories,
+        productivityFocusedCategories,
+        start: 0.75,
+        decay: 0.10,
+      );
     }
 
     // Move user's primary category to the top
@@ -654,6 +746,137 @@ class ProfileAlgorithmService {
   // ═══════════════════════════════════════════════════════
   // HELPER METHODS
   // ═══════════════════════════════════════════════════════
+
+  void _applyRankedCategoryBoost(
+    Map<String, double> categories,
+    List<String> boostedCats, {
+    required double start,
+    required double decay,
+  }) {
+    for (var i = 0; i < boostedCats.length; i++) {
+      final boost = (start - (i * decay)).clamp(0.15, start);
+      categories[boostedCats[i]] = (categories[boostedCats[i]] ?? 0) + boost;
+    }
+  }
+
+  double _calculateUserIntentBoost(UserEntity user, ProductEntity product) {
+    final category = product.category.toLowerCase().trim();
+    var boost = 0.0;
+
+    boost +=
+        _rankedCategoryMatch(
+          category,
+          categoriesForUsageIntent(user.usageIntent),
+        ) *
+        8.0;
+    boost +=
+        _rankedCategoryMatch(
+          category,
+          categoriesForProfession(user.profession),
+        ) *
+        6.0;
+    if (user.priorities.contains('gaming')) {
+      boost += _rankedCategoryMatch(category, gamingFocusedCategories) * 5.0;
+    }
+    if (user.priorities.contains('creator')) {
+      boost += _rankedCategoryMatch(category, creatorFocusedCategories) * 4.0;
+    }
+    if (user.priorities.contains('productivity')) {
+      boost +=
+          _rankedCategoryMatch(category, productivityFocusedCategories) * 4.0;
+    }
+
+    final keywordBlob =
+        '${product.name} ${product.tags.join(' ')} ${product.pros.join(' ')} ${product.specs}'
+            .toLowerCase();
+    if (_isGamingUser(user) &&
+        [
+          'gaming',
+          'rtx',
+          'fps',
+          '144hz',
+          '165hz',
+          '240hz',
+        ].any(keywordBlob.contains)) {
+      boost += 3.0;
+    }
+    if (_isCreatorUser(user) &&
+        [
+          'creator',
+          'video',
+          'photo',
+          '4k',
+          'color gamut',
+          'render',
+        ].any(keywordBlob.contains)) {
+      boost += 2.5;
+    }
+    if (_isProductivityUser(user) &&
+        [
+          'office',
+          'multitask',
+          'battery',
+          'portable',
+          'keyboard',
+        ].any(keywordBlob.contains)) {
+      boost += 2.0;
+    }
+
+    return boost.clamp(0.0, 14.0);
+  }
+
+  double _rankedCategoryMatch(String category, List<String> boostedCats) {
+    final index = boostedCats.indexOf(category);
+    if (index == -1) return 0.0;
+    return (1.0 - (index * 0.08)).clamp(0.35, 1.0);
+  }
+
+  bool _isGamingUser(UserEntity user) {
+    return user.usageIntent == 'gaming_setup' ||
+        user.profession == 'gamer' ||
+        user.priorities.contains('gaming');
+  }
+
+  bool _isCreatorUser(UserEntity user) {
+    return user.usageIntent == 'creator_setup' ||
+        const {
+          'content_creator',
+          'video_editor',
+          'photographer',
+        }.contains(user.profession) ||
+        user.priorities.contains('creator');
+  }
+
+  bool _isProductivityUser(UserEntity user) {
+    return user.usageIntent == 'productivity_setup' ||
+        const {
+          'developer',
+          'engineer',
+          'manager',
+          'product_manager',
+        }.contains(user.profession) ||
+        user.priorities.contains('productivity');
+  }
+
+  double _neutralEcosystemBaseline(UserEntity user, ProductEntity product) {
+    final category = product.category.toLowerCase().trim();
+    if (gamingFocusedCategories.contains(category) && _isGamingUser(user)) {
+      return 0.9;
+    }
+    if (creatorFocusedCategories.contains(category) && _isCreatorUser(user)) {
+      return 0.86;
+    }
+    if (productivityFocusedCategories.contains(category) &&
+        _isProductivityUser(user)) {
+      return 0.84;
+    }
+    if (gamingFocusedCategories.contains(category) ||
+        creatorFocusedCategories.contains(category) ||
+        productivityFocusedCategories.contains(category)) {
+      return 0.8;
+    }
+    return 0.68;
+  }
 
   bool _hasAnyDevice(UserEntity user, List<String> candidates) {
     return user.currentDevices.any(candidates.contains);
@@ -802,7 +1025,9 @@ class ProfileAlgorithmService {
       inferredEcosystem = 'neutral';
     }
 
-    if (inferredEcosystem == 'neutral') return 0.60;
+    if (inferredEcosystem == 'neutral') {
+      return _neutralEcosystemBaseline(user, product);
+    }
     if (user.ecosystem == 'mixed') return 0.72;
     if (user.ecosystem == inferredEcosystem) return 1.0;
     if ({
@@ -926,6 +1151,21 @@ class ProfileAlgorithmService {
     double matchCount = 0;
     final productPros = product.pros.join(' ').toLowerCase();
     final productSpecs = product.specs.toString().toLowerCase();
+    final productTags = product.tags.join(' ').toLowerCase();
+    final productName = product.name.toLowerCase();
+    final productCategory = product.category.toLowerCase();
+
+    bool hasKeyword(List<String> keywords) {
+      for (final keyword in keywords) {
+        if (productPros.contains(keyword) ||
+            productSpecs.contains(keyword) ||
+            productTags.contains(keyword) ||
+            productName.contains(keyword)) {
+          return true;
+        }
+      }
+      return false;
+    }
 
     for (final priority in user.priorities) {
       // Simple keyword matching - NLP could be used in production
@@ -961,7 +1201,8 @@ class ProfileAlgorithmService {
               productPros.contains('güçlü') ||
               productPros.contains('powerful') ||
               productSpecs.contains('performans') ||
-              productSpecs.contains('performance')) {
+              productSpecs.contains('performance') ||
+              product.techScore >= 85) {
             matchCount++;
           }
           break;
@@ -1004,29 +1245,47 @@ class ProfileAlgorithmService {
           }
           break;
         case 'gaming':
-          if (productPros.contains('gaming') ||
-              productPros.contains('oyun') ||
-              productSpecs.contains('refresh rate') ||
-              productSpecs.contains('rtx') ||
-              productSpecs.contains('fps')) {
+          if (gamingFocusedCategories.contains(productCategory) ||
+              hasKeyword([
+                'gaming',
+                'oyun',
+                'refresh rate',
+                '144hz',
+                '165hz',
+                '240hz',
+                'rtx',
+                'fps',
+                'geforce',
+              ])) {
             matchCount++;
           }
           break;
         case 'creator':
-          if (productPros.contains('creator') ||
-              productPros.contains('editing') ||
-              productPros.contains('render') ||
-              productSpecs.contains('color gamut') ||
-              productSpecs.contains('4k')) {
+          if (creatorFocusedCategories.contains(productCategory) ||
+              hasKeyword([
+                'creator',
+                'editing',
+                'render',
+                'color gamut',
+                '4k',
+                'video',
+                'photo',
+                'color accuracy',
+              ])) {
             matchCount++;
           }
           break;
         case 'productivity':
-          if (productPros.contains('productivity') ||
-              productPros.contains('office') ||
-              productPros.contains('multitask') ||
-              productSpecs.contains('battery') ||
-              productSpecs.contains('screen size')) {
+          if (productivityFocusedCategories.contains(productCategory) ||
+              hasKeyword([
+                'productivity',
+                'office',
+                'multitask',
+                'battery',
+                'screen size',
+                'keyboard',
+                'portable',
+              ])) {
             matchCount++;
           }
           break;

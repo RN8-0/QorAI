@@ -837,6 +837,7 @@ class _PredictionCacheNotifier
     extends StateNotifier<AsyncValue<PredictionResult?>> {
   final Ref _ref;
   final String _productId;
+  static const int _predictionCacheVersion = 3;
   _PredictionCacheNotifier(this._ref, this._productId)
     : super(const AsyncValue.data(null));
 
@@ -850,15 +851,23 @@ class _PredictionCacheNotifier
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
+    final heuristic = _buildHeuristicPrediction(
+      productName: productName,
+      category: category,
+      price: price,
+      language: language,
+      productContext: productContext,
+    );
 
     // Disk cache check
     final normalizedLanguage = language.trim().toLowerCase();
-    final cacheKey = 'prediction_v2_${normalizedLanguage}_$_productId';
+    final cacheKey =
+        'prediction_v${_predictionCacheVersion}_${normalizedLanguage}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     try {
       final cached = await cache.get<String>(cacheKey);
       if (cached != null && cached.isNotEmpty) {
-        final parsed = _parsePrediction(cached);
+        final parsed = _mergeWithHeuristic(_parsePrediction(cached), heuristic);
         if (parsed.hasUsableContent) {
           state = AsyncValue.data(parsed);
           return;
@@ -870,6 +879,7 @@ class _PredictionCacheNotifier
       final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
       final result = await deepseek.jsonFreeTextQuery(
+        'Current year: ${DateTime.now().year}.\n'
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "trend": "<up/down/stable>",\n'
@@ -885,8 +895,10 @@ class _PredictionCacheNotifier
         '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n'
         '${productContext.isEmpty ? '' : '- Product context: $productContext\n'}\n'
         'Base analysis on this specific product\'s category, brand, price tier, likely release timing, and notable specs. '
+        'Use release timing and category replacement cycles to decide whether the product is more likely to drop soon or stay stable. '
         'If the product appears premium, mid-range, budget, new, or aging, reflect that difference in the answer. '
-        'Different products must not receive the same percentage or reasoning by default. '
+        'Different products must not receive the same percentage, buy/wait decision, or reasoning by default. '
+        'Avoid stock phrases and explain the product-specific trigger behind the prediction. '
         'trendPercentage is the expected price change amount in percent.',
         language: language,
       );
@@ -895,11 +907,11 @@ class _PredictionCacheNotifier
             .set(cacheKey, result, duration: const Duration(hours: 24))
             .catchError((_) {});
       }
-      state = AsyncValue.data(_parsePrediction(result));
-    } catch (e) {
       state = AsyncValue.data(
-        PredictionResult(rawFallback: 'Unable to predict prices.'),
+        _mergeWithHeuristic(_parsePrediction(result), heuristic),
       );
+    } catch (e) {
+      state = AsyncValue.data(heuristic);
     }
   }
 
@@ -920,6 +932,198 @@ class _PredictionCacheNotifier
       );
       return PredictionResult(rawFallback: raw);
     }
+  }
+
+  PredictionResult _mergeWithHeuristic(
+    PredictionResult parsed,
+    PredictionResult heuristic,
+  ) {
+    if (parsed.rawFallback != null) {
+      return heuristic;
+    }
+    final reasoning = parsed.reasoning.trim();
+    return PredictionResult(
+      trend: _normalizeTrend(parsed.trend) ?? heuristic.trend,
+      trendPercentage: parsed.trendPercentage > 0
+          ? parsed.trendPercentage
+          : heuristic.trendPercentage,
+      bestTimeToBuy: parsed.bestTimeToBuy.trim().isNotEmpty
+          ? parsed.bestTimeToBuy.trim()
+          : heuristic.bestTimeToBuy,
+      expectedDrop: parsed.expectedDrop.trim().isNotEmpty
+          ? parsed.expectedDrop.trim()
+          : heuristic.expectedDrop,
+      buyOrWait: parsed.buyOrWait.trim().isNotEmpty
+          ? parsed.buyOrWait.trim()
+          : heuristic.buyOrWait,
+      reasoning: !_looksGenericPrediction(reasoning)
+          ? reasoning
+          : heuristic.reasoning,
+    );
+  }
+
+  PredictionResult _buildHeuristicPrediction({
+    required String productName,
+    required String category,
+    required String price,
+    required String language,
+    required String productContext,
+  }) {
+    final isTr = language.toLowerCase().startsWith('tr');
+    final normalizedCategory = category.trim().toLowerCase();
+    final normalizedName = productName.toLowerCase();
+    final normalizedContext = productContext.toLowerCase();
+    final releaseYear = _extractInt(
+      productContext,
+      RegExp(r'release year:\s*(20\d{2})'),
+    );
+    final techScore = _extractDouble(
+      productContext,
+      RegExp(r'tech score:\s*([0-9]+(?:\.[0-9]+)?)'),
+    );
+    final priceValue = _extractPriceValue(price);
+    final currentYear = DateTime.now().year;
+    final age = releaseYear == null ? null : currentYear - releaseYear;
+    final fastCycle = {
+      'smartphones',
+      'laptops',
+      'tablets',
+      'gpus',
+      'monitors',
+      'smartwatches',
+      'tvs',
+      'cameras',
+      'consoles',
+    }.contains(normalizedCategory);
+    final slowerCycle = {
+      'headphones',
+      'speakers',
+      'keyboards',
+      'mice',
+      'webcams',
+      'routers',
+      'powerbanks',
+    }.contains(normalizedCategory);
+    final premium =
+        (techScore != null && techScore >= 88) ||
+        priceValue >= 1200 ||
+        priceValue >= 50000 ||
+        [
+          'ultra',
+          'pro',
+          'max',
+          'flagship',
+          'rtx',
+          'studio',
+        ].any(normalizedName.contains);
+
+    var trend = 'stable';
+    var trendPercentage = 5;
+    var buyOrWait = 'buy';
+
+    if (age != null && age <= 0) {
+      trend = 'down';
+      trendPercentage = fastCycle ? 12 : 8;
+      buyOrWait = premium || fastCycle ? 'wait' : 'buy';
+    } else if (age == 1) {
+      trend = 'down';
+      trendPercentage = fastCycle ? 8 : 6;
+      buyOrWait = premium ? 'wait' : 'buy';
+    } else if (age != null && age >= 3) {
+      trend = slowerCycle ? 'stable' : 'down';
+      trendPercentage = slowerCycle ? 3 : 5;
+      buyOrWait = 'buy';
+    } else if (premium) {
+      trend = 'down';
+      trendPercentage = fastCycle ? 9 : 6;
+      buyOrWait = 'wait';
+    } else if (slowerCycle) {
+      trend = 'stable';
+      trendPercentage = 3;
+      buyOrWait = 'buy';
+    }
+
+    final bestTimeToBuy = isTr
+        ? switch (buyOrWait) {
+            'wait' =>
+              'Bir sonraki kampanya ya da yeni nesil duyurusu oncesi 1-3 ay izlemek daha mantikli gorunuyor.',
+            _ =>
+              'Fiyat hareketi sinirli oldugu icin uygun bir teklif yakalandiginda hemen alinabilir.',
+          }
+        : switch (buyOrWait) {
+            'wait' =>
+              'Waiting for the next sale window or the next product-cycle announcement over the next 1-3 months looks smarter.',
+            _ =>
+              'Price movement looks limited, so buying as soon as you find a strong deal makes sense.',
+          };
+
+    final expectedDrop = isTr
+        ? trend == 'down'
+              ? 'Kisa vadede yaklasik %$trendPercentage civari bir geri cekilme potansiyeli var.'
+              : 'Fiyatin yakin donemde yatay kalmasi daha olasi.'
+        : trend == 'down'
+        ? 'There is roughly a $trendPercentage% downside window in the near term.'
+        : 'Pricing is more likely to stay flat in the near term.';
+
+    final lifecycleText = age == null
+        ? (isTr
+              ? 'kategori dongusu ve teknik seviye'
+              : 'category cycle and technical tier')
+        : age <= 1
+        ? (isTr ? 'yeni urun zamani' : 'its recent release timing')
+        : (isTr
+              ? 'olgunlasmis urun donemi'
+              : 'its more mature lifecycle stage');
+    final reasoning = isTr
+        ? '${productName.trim()} icin tahmin $lifecycleText, fiyat seviyesi ve ${normalizedContext.contains('brand:') ? 'marka konumu' : 'kategori hizi'} uzerinden kuruldu. ${buyOrWait == 'wait' ? 'Yeni ve premium yapida oldugu icin indirim marji daha yuksek.' : 'Fiyat hareketi sinirli oldugu icin buyuk bir dusus beklentisi zayif.'}'
+        : 'The forecast for ${productName.trim()} is driven by $lifecycleText, its current price tier, and category pace. ${buyOrWait == 'wait' ? 'Because it looks newer or more premium, the discount window is more likely to improve soon.' : 'Because the pricing already looks settled, a major drop is less likely.'}';
+
+    return PredictionResult(
+      trend: trend,
+      trendPercentage: trendPercentage,
+      bestTimeToBuy: bestTimeToBuy,
+      expectedDrop: expectedDrop,
+      buyOrWait: buyOrWait,
+      reasoning: reasoning,
+    );
+  }
+
+  String? _normalizeTrend(String raw) {
+    final value = raw.trim().toLowerCase();
+    if (value.contains('down') || value.contains('drop')) return 'down';
+    if (value.contains('up') || value.contains('rise')) return 'up';
+    if (value.contains('stable') || value.contains('flat')) return 'stable';
+    return null;
+  }
+
+  bool _looksGenericPrediction(String text) {
+    final lower = text.trim().toLowerCase();
+    if (lower.isEmpty || lower.length < 24) return true;
+    return lower.contains('unable to predict') ||
+        lower.contains('prices vary') ||
+        lower.contains('depends on the market') ||
+        lower.contains('depends on market') ||
+        lower.contains('belirsiz') ||
+        lower.contains('degisken olabilir');
+  }
+
+  int? _extractInt(String source, RegExp regex) {
+    final match = regex.firstMatch(source);
+    return match == null ? null : int.tryParse(match.group(1)!);
+  }
+
+  double? _extractDouble(String source, RegExp regex) {
+    final match = regex.firstMatch(source);
+    return match == null ? null : double.tryParse(match.group(1)!);
+  }
+
+  double _extractPriceValue(String rawPrice) {
+    final cleaned = rawPrice.replaceAll(RegExp(r'[^0-9,\.]'), '');
+    if (cleaned.isEmpty) return 0;
+    final normalized = cleaned.contains(',') && cleaned.contains('.')
+        ? cleaned.replaceAll(',', '')
+        : cleaned.replaceAll(',', '.');
+    return double.tryParse(normalized) ?? 0;
   }
 
   void reset() => state = const AsyncValue.data(null);
@@ -955,7 +1159,7 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
-  static const int _detailMatchCacheVersion = 2;
+  static const int _detailMatchCacheVersion = 3;
   final Ref _ref;
   final String _productId;
   _GeminiMatchScoreNotifier(this._ref, this._productId)
@@ -1047,9 +1251,13 @@ class _GeminiMatchScoreNotifier
         if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
       };
 
+      final fallbackReason = _buildLocalReason(
+        highlights: productHighlights,
+        tradeOffs: tradeOffs,
+      );
       final prompt =
-          'You write the short "Your Match" product-fit explanation shown under a score card in a shopping app. '
-          'Analyze how well this product fits this specific user.\n\n'
+          'You calculate a personalized product-match score for a shopping app and also write the short text shown below that score card. '
+          'The score is user-specific, but the short text is a product spotlight only.\n\n'
           'User profile:\n${jsonEncode(profileJson)}\n\n'
           'Product:\n${jsonEncode(productJson)}\n\n'
           'Score this product 0-100 for this user. Be realistic and differentiate:\n'
@@ -1064,14 +1272,14 @@ class _GeminiMatchScoreNotifier
           '- For categories like laptops, cameras, TVs and monitors, do NOT over-penalize ecosystem by default\n'
           '- Mention ecosystem only if it materially changes the decision, and never make it the whole explanation\n'
           '- If the product is technically exceptional, acknowledge that when relevant\n\n'
-          'IMPORTANT for the "reason" field: Write the explanation addressing the user directly in second person. '
-          'Do NOT use third person phrases like "the user", "user\'s", "their". '
-          'Use "you", "your", "yours" instead. '
-          'The reason must mention only the most relevant 1-2 standout product strengths and, if needed, one concrete trade-off. '
-          'Do not mention generic ecosystem compatibility unless it is genuinely decisive. '
-          'Avoid bland phrases like "good for your ecosystem" when stronger product-specific points exist.\n\n'
+          'IMPORTANT for the "reason" field:\n'
+          '- It is NOT a fit explanation and must NOT address the user\n'
+          '- Do NOT use "you", "your", "fit", "match", or "for this user"\n'
+          '- Summarize only the product\'s standout 1-3 strengths and, if truly relevant, one concrete limitation\n'
+          '- Keep it to max 2 short sentences and make it product-specific\n'
+          '- Mention ecosystem only if it is a decisive product characteristic\n\n'
           'Return ONLY this JSON:\n'
-          '{"matchScore": <int>, "reason": "<max 2 sentences, second person>", '
+          '{"matchScore": <int>, "reason": "<max 2 short product-focused sentences>", '
           '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
           '"missingFactors": ["<missing1>", "<missing2>"]}';
 
@@ -1079,7 +1287,7 @@ class _GeminiMatchScoreNotifier
       final map = _decodeJsonMap(result);
 
       final score = _safeInt(map['matchScore'], 50).clamp(0, 100);
-      final reason = (map['reason'] as String?) ?? '';
+      final reason = ((map['reason'] as String?) ?? '').trim();
       final factors =
           (map['topMatchFactors'] as List?)
               ?.map((e) => e.toString())
@@ -1091,7 +1299,7 @@ class _GeminiMatchScoreNotifier
 
       final matchResult = GeminiMatchResult(
         matchScore: score,
-        reason: reason,
+        reason: reason.isNotEmpty ? reason : fallbackReason,
         topMatchFactors: factors,
         missingFactors: missing,
         isFromGemini: true,
@@ -1141,8 +1349,6 @@ class _GeminiMatchScoreNotifier
         GeminiMatchResult(
           matchScore: fs.toInt(),
           reason: _buildLocalReason(
-            score: fs.toInt(),
-            focusAreas: focusAreas,
             highlights: highlights,
             tradeOffs: tradeOffs,
           ),
@@ -1379,47 +1585,53 @@ class _GeminiMatchScoreNotifier
   }
 
   String _buildLocalReason({
-    required int score,
-    required List<String> focusAreas,
     required List<String> highlights,
     required List<String> tradeOffs,
   }) {
     final langCode = (_ref.read(localeProvider)?.languageCode ?? 'en')
         .toLowerCase();
     final isTr = langCode == 'tr';
-    final focusText = focusAreas.take(2).join(isTr ? ' ve ' : ' and ');
-    final topHighlight = highlights.isNotEmpty ? highlights.first : '';
+    final firstHighlight = highlights.isNotEmpty ? highlights.first : '';
+    final secondHighlight = highlights.length > 1 ? highlights[1] : '';
     final topTradeOff = tradeOffs.isNotEmpty ? tradeOffs.first : '';
 
     if (isTr) {
-      if (topHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
-        return 'Bu urun $focusText tarafinda "$topHighlight" ile guclu, ancak "$topTradeOff" noktasini da hesaba katmalisin.';
+      if (firstHighlight.isNotEmpty && secondHighlight.isNotEmpty) {
+        final base = '$firstHighlight ve $secondHighlight ile one cikiyor.';
+        if (topTradeOff.isNotEmpty) {
+          return '$base $topTradeOff ana taviz noktasi olarak dikkat cekiyor.';
+        }
+        return base;
       }
-      if (topHighlight.isNotEmpty) {
-        return 'Bu urun $focusText onceliklerinde ozellikle "$topHighlight" sayesinde one cikiyor.';
+      if (firstHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
+        return '$firstHighlight ile one cikiyor. $topTradeOff ana siniri olarak gorulmeli.';
       }
-      if (score >= 75) {
-        return 'Bu urun onceliklerinin buyuk kismini iyi karsiliyor.';
+      if (firstHighlight.isNotEmpty) {
+        return '$firstHighlight ile one cikiyor.';
       }
-      if (score >= 55) {
-        return 'Bu urun sende ise yarayabilir ama belirgin tavizler var.';
+      if (topTradeOff.isNotEmpty) {
+        return '$topTradeOff bu urunde dikkat edilmesi gereken ana nokta.';
       }
-      return 'Bu urun onceliklerinle tam ortusmuyor.';
+      return 'Teknik seviye, genel denge ve kategori icindeki konumuyla dikkat ceken bir profil sunuyor.';
     }
 
-    if (topHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
-      return 'You get a strong fit for $focusText thanks to $topHighlight, but $topTradeOff is a real trade-off.';
+    if (firstHighlight.isNotEmpty && secondHighlight.isNotEmpty) {
+      final base = '$firstHighlight and $secondHighlight stand out most.';
+      if (topTradeOff.isNotEmpty) {
+        return '$base $topTradeOff is the main trade-off to keep in mind.';
+      }
+      return base;
     }
-    if (topHighlight.isNotEmpty) {
-      return 'You get a strong fit for $focusText, especially because of $topHighlight.';
+    if (firstHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
+      return '$firstHighlight is the main standout. $topTradeOff is the clearest limitation.';
     }
-    if (score >= 75) {
-      return 'You get a strong fit across most of your top priorities.';
+    if (firstHighlight.isNotEmpty) {
+      return '$firstHighlight is the clearest standout.';
     }
-    if (score >= 55) {
-      return 'You get a decent fit here, but there are clear trade-offs.';
+    if (topTradeOff.isNotEmpty) {
+      return '$topTradeOff is the main limitation to keep in mind.';
     }
-    return 'This product misses too many of your top priorities.';
+    return 'It stands out through its overall technical balance and category position.';
   }
 
   String? _normalizeFocusKey(String raw) {

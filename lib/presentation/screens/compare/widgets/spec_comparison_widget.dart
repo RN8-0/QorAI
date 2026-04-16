@@ -839,7 +839,7 @@ Return ONLY valid JSON, no markdown, no explanation:
     final sw = Stopwatch()..start();
     try {
       // Check Firestore cache first
-      final cached = await _loadAiCache(_localizedFeature('prediction_v3'));
+      final cached = await _loadAiCache(_localizedFeature('prediction_v4'));
       if (cached != null && cached['result'] != null) {
         final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
@@ -888,7 +888,7 @@ Return ONLY valid JSON, no markdown, no explanation:
           .join(',\n    ');
 
       final prompt =
-          '''You are a tech price analyst. Predict price trends for ALL of the following products. Address the user as "you/your". ALL text in $langName.
+          '''You are a tech price analyst. Predict price trends for ALL of the following products. Address the user as "you/your". ALL text in $langName. Current year: ${DateTime.now().year}.
 
 Products (you MUST analyze ALL ${widget.products.length}):
 $productLines
@@ -905,7 +905,8 @@ Rules:
 - confidence: integer 0-100
 - reason: 1-2 sentences for the user
 - You MUST include all ${widget.products.length} products, one entry per product in the same order as listed above
-- Use the brand, release timing, price tier, and key specs to differentiate similar models
+- Use the brand, release timing, category replacement cycle, price tier, and key specs to differentiate similar models
+- Explain the concrete product-specific trigger behind the prediction
 - Do NOT give identical trend, change_percent, or best_time_to_buy values to multiple products unless their inputs are effectively the same''';
 
       debugPrint('[Compair] Prediction starting');
@@ -931,7 +932,7 @@ Rules:
             _predictionLoading = false;
           });
           _saveToSession();
-          _saveAiCache(_localizedFeature('prediction_v3'), {
+          _saveAiCache(_localizedFeature('prediction_v4'), {
             'result': resultStr,
             'structured': result.data,
           });

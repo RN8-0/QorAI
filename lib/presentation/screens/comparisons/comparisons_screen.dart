@@ -113,7 +113,7 @@ class _ComparisonsScreenState extends ConsumerState<ComparisonsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 108, 16, 100),
                   itemCount: comparisons.length,
                   itemBuilder: (ctx, i) =>
-                      _ComparisonCard(comparison: comparisons[i], index: i),
+                      _ComparisonCard(comparison: comparisons[i]),
                 );
               },
               failure: (err) => ListView(
@@ -229,8 +229,7 @@ class _EmptyState extends StatelessWidget {
 
 class _ComparisonCard extends ConsumerWidget {
   final ComparisonEntity comparison;
-  final int index;
-  const _ComparisonCard({required this.comparison, required this.index});
+  const _ComparisonCard({required this.comparison});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -303,48 +302,25 @@ class _ComparisonCard extends ConsumerWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (comparison.occurrenceCount > 1) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          '${comparison.occurrenceCount} kez karsilastirildi',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _accent,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _accent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '#${index + 1}',
+                      const SizedBox(height: 4),
+                      Text(
+                        '${comparison.occurrenceCount} kez karsilastirildi',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           color: _accent,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      size: 20,
-                      color: _accent,
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: _accent,
+                  ),
                 ),
               ],
             ),
@@ -411,17 +387,14 @@ class _ComparisonCard extends ConsumerWidget {
   }
 
   String _formatDateLabel(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) return 'Bugun';
-    if (diff.inDays == 1) return 'Dun';
-    if (diff.inDays < 7) return '${diff.inDays} gun once';
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')}.${local.year}';
   }
 
   String _formatTime(DateTime date) {
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    final local = date.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 }
@@ -444,13 +417,16 @@ class _ProductThumb extends StatelessWidget {
         color: context.surfaceColor,
       ),
       clipBehavior: Clip.antiAlias,
-      child: CachedNetworkImage(
-        imageUrl: product!.imageURL,
-        fit: BoxFit.cover,
-        errorWidget: (context, url, error) => Icon(
-          Icons.image_outlined,
-          size: 20,
-          color: context.textTertiaryColor,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: CachedNetworkImage(
+          imageUrl: product!.imageURL,
+          fit: BoxFit.contain,
+          errorWidget: (context, url, error) => Icon(
+            Icons.image_outlined,
+            size: 20,
+            color: context.textTertiaryColor,
+          ),
         ),
       ),
     );

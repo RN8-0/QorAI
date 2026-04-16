@@ -1181,23 +1181,42 @@ HomeFeed _buildHomeFeed(
       priorityCats.add(e.key);
     }
   }
-  // Then: user's interest categories
+  // Then: explicit user intent / profile categories
   if (user != null) {
-    for (final interest in user.interestCategories) {
-      final cat = interest.toLowerCase().trim();
-      if (byCategory.containsKey(cat) &&
-          hasSufficientProducts(cat) &&
-          !priorityCats.contains(cat)) {
-        priorityCats.add(cat);
-      }
-    }
-    // Primary category
     if (user.primaryCategory != null) {
       final primary = user.primaryCategory!.toLowerCase().trim();
       if (byCategory.containsKey(primary) &&
           hasSufficientProducts(primary) &&
           !priorityCats.contains(primary)) {
         priorityCats.insert(0, primary);
+      }
+    }
+
+    final boostedCats = <String>[
+      ...ProfileAlgorithmService.categoriesForUsageIntent(user.usageIntent),
+      ...ProfileAlgorithmService.categoriesForProfession(user.profession),
+      if (user.priorities.contains('gaming'))
+        ...ProfileAlgorithmService.gamingFocusedCategories,
+      if (user.priorities.contains('creator'))
+        ...ProfileAlgorithmService.creatorFocusedCategories,
+      if (user.priorities.contains('productivity'))
+        ...ProfileAlgorithmService.productivityFocusedCategories,
+    ];
+    for (final boosted in boostedCats) {
+      final cat = boosted.toLowerCase().trim();
+      if (byCategory.containsKey(cat) &&
+          hasSufficientProducts(cat) &&
+          !priorityCats.contains(cat)) {
+        priorityCats.add(cat);
+      }
+    }
+
+    for (final interest in user.interestCategories) {
+      final cat = interest.toLowerCase().trim();
+      if (byCategory.containsKey(cat) &&
+          hasSufficientProducts(cat) &&
+          !priorityCats.contains(cat)) {
+        priorityCats.add(cat);
       }
     }
   }

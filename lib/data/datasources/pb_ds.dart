@@ -549,24 +549,70 @@ class PbDataSource {
 
   Future<String> createComparison(ComparisonModel comparison) async {
     try {
-      final record = await _pb
-          .collection(AppConstants.comparisonsCollection)
-          .create(
-            body: {
-              'userId': comparison.userId,
-              'productIds': comparison.itemIds,
-              'title': comparison.title,
-              'notes': {
-                'category': comparison.category,
-                'winnerId': comparison.winnerId,
-                'aiAnalysis': comparison.aiAnalysis,
-                'createdAt': comparison.createdAt.toIso8601String(),
-              },
-              'isShared': comparison.isPublic,
-              'shareCode': comparison.id,
+      final collection = _pb.collection(AppConstants.comparisonsCollection);
+      final nowIso = comparison.createdAt.toUtc().toIso8601String();
+      final duplicateId = await _findDuplicateComparisonRecordId(
+        userId: comparison.userId,
+        itemIds: comparison.itemIds,
+      );
+
+      late final String recordId;
+      if (duplicateId != null) {
+        final existingRecord = await collection.getOne(duplicateId);
+        final existingNotes = existingRecord.data['notes'] is Map
+            ? Map<String, dynamic>.from(existingRecord.data['notes'] as Map)
+            : <String, dynamic>{};
+        final currentCount =
+            (existingNotes['occurrenceCount'] as num?)?.toInt() ?? 1;
+        final createdValue = existingRecord.getStringValue('created');
+        final firstComparedAt =
+            existingNotes['firstComparedAt']?.toString() ??
+            existingNotes['createdAt']?.toString() ??
+            (createdValue.isNotEmpty ? createdValue : nowIso);
+
+        await collection.update(
+          duplicateId,
+          body: {
+            'userId': comparison.userId,
+            'productIds': comparison.itemIds,
+            'title': comparison.title?.trim().isNotEmpty == true
+                ? comparison.title
+                : existingRecord.data['title'],
+            'notes': {
+              'category': comparison.category,
+              'winnerId': comparison.winnerId,
+              'aiAnalysis': comparison.aiAnalysis,
+              'createdAt': firstComparedAt,
+              'firstComparedAt': firstComparedAt,
+              'lastComparedAt': nowIso,
+              'occurrenceCount': currentCount + 1,
             },
-          );
-      final recordId = record.id;
+            'isShared': comparison.isPublic,
+            'shareCode': duplicateId,
+          },
+        );
+        recordId = duplicateId;
+      } else {
+        final record = await collection.create(
+          body: {
+            'userId': comparison.userId,
+            'productIds': comparison.itemIds,
+            'title': comparison.title,
+            'notes': {
+              'category': comparison.category,
+              'winnerId': comparison.winnerId,
+              'aiAnalysis': comparison.aiAnalysis,
+              'createdAt': nowIso,
+              'firstComparedAt': nowIso,
+              'lastComparedAt': nowIso,
+              'occurrenceCount': comparison.occurrenceCount,
+            },
+            'isShared': comparison.isPublic,
+            'shareCode': comparison.id,
+          },
+        );
+        recordId = record.id;
+      }
 
       final user = await _pb
           .collection(AppConstants.usersCollection)
@@ -598,7 +644,7 @@ class PbDataSource {
               page: page,
               perPage: limit,
               filter: 'userId = "$userId"',
-              sort: '-created',
+              sort: '-updated',
             )
             .timeout(const Duration(seconds: 15));
         comparisons.addAll(
@@ -701,8 +747,14 @@ class PbDataSource {
       winnerId: entry['winnerId'] as String?,
       aiAnalysis: (entry['aiAnalysis'] as String?) ?? '',
       createdAt:
+          DateTime.tryParse((entry['lastComparedAt'] as String?) ?? '') ??
           DateTime.tryParse((entry['createdAt'] as String?) ?? '') ??
           DateTime.now(),
+      occurrenceCount:
+          (entry['occurrenceCount'] as num?)?.toInt() ??
+          (entry['compareCount'] as num?)?.toInt() ??
+          (entry['count'] as num?)?.toInt() ??
+          1,
     );
   }
 
@@ -730,13 +782,16 @@ class PbDataSource {
 
       final existing = merged[existingIndex];
       final totalCount = existing.occurrenceCount + comparison.occurrenceCount;
-      final hasBetterTitle =
-          (existing.title == null || existing.title!.trim().isEmpty) &&
-          (comparison.title?.trim().isNotEmpty ?? false);
-      final preferred = hasBetterTitle ? comparison : existing;
+      final preferred = existing.createdAt.isAfter(comparison.createdAt)
+          ? existing
+          : comparison;
+      final fallback = identical(preferred, existing) ? comparison : existing;
       merged[existingIndex] = _copyComparison(
         preferred,
         occurrenceCount: totalCount,
+        title: (preferred.title?.trim().isNotEmpty ?? false)
+            ? preferred.title
+            : fallback.title,
       );
     }
 
@@ -750,33 +805,14 @@ class PbDataSource {
     ComparisonModel existing,
     ComparisonModel candidate,
   ) {
-    final existingIds = [...existing.itemIds]..sort();
-    final candidateIds = [...candidate.itemIds]..sort();
-    if (existingIds.length != candidateIds.length) {
-      return false;
-    }
-
-    for (var index = 0; index < existingIds.length; index++) {
-      if (existingIds[index] != candidateIds[index]) {
-        return false;
-      }
-    }
-
-    final existingTitle = (existing.title ?? '').trim().toLowerCase();
-    final candidateTitle = (candidate.title ?? '').trim().toLowerCase();
-    if (existingTitle.isNotEmpty &&
-        candidateTitle.isNotEmpty &&
-        existingTitle != candidateTitle) {
-      return false;
-    }
-
-    final diff = existing.createdAt.difference(candidate.createdAt).abs();
-    return diff <= const Duration(minutes: 10);
+    return _normalizedComparisonKey(existing.itemIds) ==
+        _normalizedComparisonKey(candidate.itemIds);
   }
 
   ComparisonModel _copyComparison(
     ComparisonModel source, {
     int? occurrenceCount,
+    String? title,
   }) {
     return ComparisonModel(
       id: source.id,
@@ -789,11 +825,49 @@ class PbDataSource {
       category: source.category,
       createdAt: source.createdAt,
       isPublic: source.isPublic,
-      title: source.title,
+      title: title ?? source.title,
       isFeatured: source.isFeatured,
       isPredefined: source.isPredefined,
       occurrenceCount: occurrenceCount ?? source.occurrenceCount,
     );
+  }
+
+  Future<String?> _findDuplicateComparisonRecordId({
+    required String userId,
+    required List<String> itemIds,
+  }) async {
+    final normalizedKey = _normalizedComparisonKey(itemIds);
+    try {
+      final result = await _pb
+          .collection(AppConstants.comparisonsCollection)
+          .getList(
+            page: 1,
+            perPage: 100,
+            filter: 'userId = "$userId"',
+            sort: '-updated',
+          )
+          .timeout(const Duration(seconds: 15));
+      for (final record in result.items) {
+        final data = Map<String, dynamic>.from(record.data);
+        final rawIds = data['productIds'] ?? data['items'] ?? const <dynamic>[];
+        final comparisonIds = rawIds is List
+            ? List<String>.from(rawIds)
+            : <String>[];
+        if (_normalizedComparisonKey(comparisonIds) == normalizedKey) {
+          return record.id;
+        }
+      }
+    } catch (e) {
+      debugPrint('[PB] duplicate comparison lookup failed: $e');
+    }
+    return null;
+  }
+
+  String _normalizedComparisonKey(List<String> itemIds) {
+    final normalized =
+        itemIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toList()
+          ..sort();
+    return normalized.join('|');
   }
 
   Future<List<ComparisonModel>> getPredefinedComparisons({

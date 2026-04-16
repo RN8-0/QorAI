@@ -62,6 +62,9 @@ class ComparisonModel extends ComparisonEntity {
       userChoiceId: data['userChoice'] as String?,
       category: (data['category'] ?? notes['category'] ?? '') as String,
       createdAt:
+          _parseDate(notes['lastComparedAt']) ??
+          _parseDate(data['lastComparedAt']) ??
+          _parseDate(data['updated']) ??
           _parseDate(data['created']) ??
           _parseDate(notes['createdAt']) ??
           _parseDate(data['createdAt']) ??
@@ -70,7 +73,10 @@ class ComparisonModel extends ComparisonEntity {
       title: data['title'],
       isFeatured: data['isFeatured'] ?? false,
       isPredefined: data['isPredefined'] ?? false,
-      occurrenceCount: (notes['occurrenceCount'] as num?)?.toInt() ?? 1,
+      occurrenceCount:
+          (notes['occurrenceCount'] as num?)?.toInt() ??
+          (data['occurrenceCount'] as num?)?.toInt() ??
+          1,
     );
   }
 
