@@ -1,8 +1,9 @@
 /// Compair - AI Service Interface
 ///
 /// Abstract contract for the AI backend. The primary implementation
-/// is [GeminiService] (Gemini Flash 2.5).  DeepSeek remains available
-/// for lightweight admin-panel text tasks.
+/// is [DeepSeekService] (DeepSeek V3 — much cheaper).
+/// [GeminiService] is used ONLY for vision (analyzeImage) and
+/// web-grounded queries (groundedQuery, enhancedSubscriptionAnalysis).
 library;
 
 import 'package:compair/domain/entities/ai_entities.dart';

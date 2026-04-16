@@ -9,6 +9,7 @@
 /// Endpoint: PocketBase proxy — $kPbBaseUrl/api/ai/deepseek
 ///           (pb_hooks/deepseek.pb.js forwards to DeepSeek API,
 ///            key never leaves the server).
+library;
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
@@ -18,10 +19,12 @@ import 'package:compair/core/errors.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/domain/entities/user_entity.dart';
+import 'package:compair/services/ai_service.dart';
 import 'package:compair/services/cache_service.dart';
 
 /// DeepSeek V3 service — handles all text-based AI tasks for Compair.
-class DeepSeekService {
+/// Primary AI provider. Gemini is used ONLY for vision + web grounding.
+class DeepSeekService implements AIService {
   final Dio _dio;
   final CacheService _cacheService;
 
@@ -39,6 +42,7 @@ class DeepSeekService {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Compare 2+ products side by side.
+  @override
   Future<ComparisonResult> compare(CompareRequest req) async {
     final cacheKey = 'ds_cmp_${req.productIds.join('_')}_${req.country}';
     final cached = await _cacheService.get<Map<String, dynamic>>(cacheKey);
@@ -61,6 +65,7 @@ class DeepSeekService {
   }
 
   /// Generate personalized product recommendations.
+  @override
   Future<RecommendationResult> recommend(RecommendRequest req) async {
     final cacheKey = 'ds_rec_${req.category}_${req.country}';
     final cached = await _cacheService.get<Map<String, dynamic>>(cacheKey);
@@ -88,6 +93,7 @@ class DeepSeekService {
   }
 
   /// Analyze a product URL against the user profile.
+  @override
   Future<LinkAnalysisResult> analyzeLink(String url, UserEntity profile) async {
     debugPrint('[DeepSeek] analyzeLink called for: $url');
     final response = await _jsonRequest(
@@ -120,6 +126,7 @@ class DeepSeekService {
   }
 
   /// Calculate a single-product compatibility score.
+  @override
   Future<double> calculateScore(ScoreRequest req) async {
     final response = await _jsonRequest(
       system:
@@ -135,6 +142,7 @@ class DeepSeekService {
   }
 
   /// Natural-language question answering (single-turn).
+  @override
   Future<String> askQuestion(String question, UserEntity profile) async {
     final currentYear = DateTime.now().year;
     final response = await _jsonRequest(

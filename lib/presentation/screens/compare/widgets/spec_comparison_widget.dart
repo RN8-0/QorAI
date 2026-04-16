@@ -415,11 +415,11 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     String lang, {
     int maxTokens = 4096,
   }) async {
-    final gemini = ref.read(geminiServiceProvider);
+    final deepseek = ref.read(deepSeekServiceProvider);
     String? lastError;
     for (var attempt = 1; attempt <= 3; attempt++) {
       try {
-        final result = await gemini.jsonFreeTextQuery(
+        final result = await deepseek.jsonFreeTextQuery(
           prompt,
           language: lang,
           maxTokens: maxTokens,

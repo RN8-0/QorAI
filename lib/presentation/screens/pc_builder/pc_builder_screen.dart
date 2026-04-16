@@ -1613,8 +1613,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         'POWER_ANALYSIS: [1 sentence about GPU power connector requirements and PSU adequacy, mention specific connector type if relevant]',
       );
 
-      final geminiService = ref.read(geminiServiceProvider);
-      final response = await geminiService.freeTextQuery(buf.toString());
+      final deepseekService = ref.read(deepSeekServiceProvider);
+      final response = await deepseekService.freeTextQuery(buf.toString());
 
       if (mounted) {
         setState(() {

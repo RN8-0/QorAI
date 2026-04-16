@@ -1190,8 +1190,8 @@ class _GeminiMatchScoreNotifier
         return;
       }
 
-      // 2. Call Gemini
-      final gemini = _ref.read(geminiServiceProvider);
+      // 2. Call DeepSeek
+      final deepseek = _ref.read(deepSeekServiceProvider);
       final behaviorAsync = _ref.read(behaviorSignalsProvider);
       final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
       final weightVector = await _loadWeightVector(user.uid);
@@ -1283,7 +1283,7 @@ class _GeminiMatchScoreNotifier
           '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
           '"missingFactors": ["<missing1>", "<missing2>"]}';
 
-      final result = await gemini.jsonFreeTextQuery(prompt, language: langCode);
+      final result = await deepseek.jsonFreeTextQuery(prompt, language: langCode);
       final map = _decodeJsonMap(result);
 
       final score = _safeInt(map['matchScore'], 50).clamp(0, 100);

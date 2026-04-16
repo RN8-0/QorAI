@@ -268,19 +268,19 @@ class LinkQuizState {
 
 class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   final AIRepository _aiRepo;
-  final GeminiService _gemini;
+  final DeepSeekService _deepseek;
   final BehaviorTrackingService _behaviorTracking;
   final PbDataSource _pbDs;
   final Ref _ref;
 
   LinkQuizNotifier({
     required AIRepository aiRepo,
-    required GeminiService gemini,
+    required DeepSeekService deepseek,
     required BehaviorTrackingService behaviorTracking,
     required PbDataSource pbDs,
     required Ref ref,
   }) : _aiRepo = aiRepo,
-       _gemini = gemini,
+       _deepseek = deepseek,
        _behaviorTracking = behaviorTracking,
        _pbDs = pbDs,
        _ref = ref,
@@ -327,7 +327,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
 
     // Generate quiz
     try {
-      final quiz = await _gemini.generateQuiz(
+      final quiz = await _deepseek.generateQuiz(
         category: baseResult.category ?? 'general',
         productTitle: baseResult.metadata.title ?? 'Product',
         url: url,
@@ -395,7 +395,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     debugPrint('[LinkQuiz] submitQuiz — computing enhanced analysis');
 
     try {
-      final enhanced = await _gemini.enhancedAnalysis(
+      final enhanced = await _deepseek.enhancedAnalysis(
         baseResult: state.baseResult!,
         answeredQuestions: state.answeredQuestions,
         profile: user.copyWith(language: _appLang),
@@ -568,7 +568,7 @@ final linkQuizProvider = StateNotifierProvider<LinkQuizNotifier, LinkQuizState>(
   (ref) {
     return LinkQuizNotifier(
       aiRepo: ref.read(aiRepositoryProvider),
-      gemini: ref.read(geminiServiceProvider),
+      deepseek: ref.read(deepSeekServiceProvider),
       behaviorTracking: ref.read(behaviorTrackingProvider),
       pbDs: ref.read(pbDataSourceProvider),
       ref: ref,
@@ -660,17 +660,17 @@ class CompareAnalysisState {
 
 class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   final AIRepository _aiRepo;
-  final GeminiService _gemini;
+  final DeepSeekService _deepseek;
   final BehaviorTrackingService _behaviorTracking;
   final PbDataSource _pbDs;
 
   CompareAnalysisNotifier({
     required AIRepository aiRepo,
-    required GeminiService gemini,
+    required DeepSeekService deepseek,
     required BehaviorTrackingService behaviorTracking,
     required PbDataSource pbDs,
   }) : _aiRepo = aiRepo,
-       _gemini = gemini,
+       _deepseek = deepseek,
        _behaviorTracking = behaviorTracking,
        _pbDs = pbDs,
        super(const CompareAnalysisState());
@@ -710,7 +710,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       }
 
       debugPrint('[Compare] Generating quiz for: ${firstData.metadata.title}');
-      final quiz = await _gemini.generateQuiz(
+      final quiz = await _deepseek.generateQuiz(
         category: firstData.category ?? 'general',
         productTitle: firstData.metadata.title ?? 'Product',
         url: urls[0],
@@ -830,7 +830,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
 
     for (final data in baseResults) {
       try {
-        final enhanced = await _gemini.enhancedAnalysis(
+        final enhanced = await _deepseek.enhancedAnalysis(
           baseResult: data,
           answeredQuestions: quizAnswers,
           profile: user,
@@ -930,7 +930,7 @@ final compareAnalysisProvider =
     StateNotifierProvider<CompareAnalysisNotifier, CompareAnalysisState>((ref) {
       return CompareAnalysisNotifier(
         aiRepo: ref.read(aiRepositoryProvider),
-        gemini: ref.read(geminiServiceProvider),
+        deepseek: ref.read(deepSeekServiceProvider),
         behaviorTracking: ref.read(behaviorTrackingProvider),
         pbDs: ref.read(pbDataSourceProvider),
       );

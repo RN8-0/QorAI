@@ -97,25 +97,25 @@ final cacheServiceProvider = Provider<CacheService>((ref) {
   return CacheService();
 });
 
-/// AI Service — Gemini Flash 2.5 (core intelligence)
+/// AI Service — DeepSeek V3 (primary text intelligence, much cheaper)
 final aiServiceProvider = Provider<AIService>((ref) {
+  return DeepSeekService(
+    dio: ref.read(dioProvider),
+    cacheService: ref.read(cacheServiceProvider),
+  );
+});
+
+/// Gemini Service — ONLY for vision (analyzeImage) + web grounding (groundedQuery, enhancedSubscriptionAnalysis)
+final geminiServiceProvider = Provider<GeminiService>((ref) {
   return GeminiService(
     dio: ref.read(dioProvider),
     cacheService: ref.read(cacheServiceProvider),
   );
 });
 
-/// Gemini Service (concrete type for multimodal features like image analysis + grounding)
-final geminiServiceProvider = Provider<GeminiService>((ref) {
-  return ref.read(aiServiceProvider) as GeminiService;
-});
-
-/// DeepSeek Service — handles all text-based AI tasks (chat, compare, quiz, analysis)
+/// DeepSeek Service — primary AI for all text tasks
 final deepSeekServiceProvider = Provider<DeepSeekService>((ref) {
-  return DeepSeekService(
-    dio: ref.read(dioProvider),
-    cacheService: ref.read(cacheServiceProvider),
-  );
+  return ref.read(aiServiceProvider) as DeepSeekService;
 });
 
 /// Subscription Service (Google Play Billing)

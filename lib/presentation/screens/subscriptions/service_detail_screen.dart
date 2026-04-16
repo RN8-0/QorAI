@@ -1037,7 +1037,7 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
   Future<void> _loadReviews() async {
     // Generate AI-powered review analysis
     try {
-      final gemini = widget.ref.read(geminiServiceProvider);
+      final deepseek = widget.ref.read(deepSeekServiceProvider);
       final s = widget.service;
       final prosText = s.pros.isNotEmpty ? s.pros.join(', ') : 'N/A';
       final consText = s.cons.isNotEmpty ? s.cons.join(', ') : 'N/A';
@@ -1046,7 +1046,7 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
           'Pros: $prosText. Cons: $consText. Price range: ${s.cheapestPlan?.price ?? 0}-${s.premiumPlan?.price ?? 0} USD/mo. '
           'Write 2-3 sentences as a summary of what real users say. Be specific and honest. Plain text only.';
       final lang = Localizations.localeOf(context).languageCode;
-      final result = await gemini.freeTextQuery(prompt, language: lang);
+      final result = await deepseek.freeTextQuery(prompt, language: lang);
       if (mounted)
         setState(() {
           _aiReview = result;

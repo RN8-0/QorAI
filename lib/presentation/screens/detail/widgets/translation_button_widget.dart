@@ -23,8 +23,8 @@ class _SeeTranslationButtonState extends ConsumerState<_SeeTranslationButton> {
     setState(() => _loading = true);
     try {
       final locale = Localizations.localeOf(context).languageCode;
-      final gemini = ref.read(geminiServiceProvider);
-      final translated = await gemini.freeTextQuery(
+      final deepseek = ref.read(deepSeekServiceProvider);
+      final translated = await deepseek.freeTextQuery(
         'Translate the following product review into the user language. '
         'Preserve meaning, tone, product names, and line breaks. '
         'Return only the translated text with no quotes or extra commentary. '
