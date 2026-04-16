@@ -18,8 +18,7 @@ function _normalizeEmail(email) {
 
 async function pbEnsureAuth() {
   const pb = getPb();
-  const record = pb.authStore.record;
-  if (pb.authStore.isValid && record?.collectionName === '_superusers') return;
+  if (pb.authStore.isValid) return;
   throw new Error('Admin authentication required');
 }
 

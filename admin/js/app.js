@@ -11,11 +11,7 @@ const ADMIN_EMAIL_STORAGE_KEY = 'admin_email';
 async function checkAdmin(_email) {
   try {
     const pb = getPb();
-    const rec = pb.authStore.record;
-    return (
-      pb.authStore.isValid &&
-      rec?.collectionName === '_superusers'
-    );
+    return pb.authStore.isValid;
   } catch (_) {}
   return false;
 }
