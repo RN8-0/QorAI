@@ -146,7 +146,10 @@ function _clean(data) {
   return clean;
 }
 
-// ─── ADMIN AUTH (Email/Password) ──────────────────────────────────
+// ─── ADMIN AUTH (GitHub OAuth -> Superuser bridge) ────────────────
+
+const ADMIN_AUTH_COLLECTION = 'admins';
+const ADMIN_GITHUB_EXCHANGE_PATH = '/api/admin/auth/github/exchange';
 
 function setLoginLoading(visible) {
   const el = document.getElementById('loginLoading');
@@ -158,39 +161,77 @@ function setLoginError(message = '') {
   if (el) el.textContent = message;
 }
 
-async function handleLoginSubmit(event) {
-  event.preventDefault();
+function setLoginButtonState(disabled) {
+  const el = document.getElementById('loginBtn');
+  if (!el) return;
+  el.disabled = !!disabled;
+  el.setAttribute('aria-busy', disabled ? 'true' : 'false');
+}
+
+async function exchangeGitHubAdminSession() {
+  const pb = getPb();
+  const response = await fetch(`${PB_URL}${ADMIN_GITHUB_EXCHANGE_PATH}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: pb.authStore.token,
+    },
+    body: '{}',
+  });
+
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch (_) {}
+
+  if (!response.ok) {
+    const message =
+      payload?.message ||
+      payload?.error ||
+      'GitHub admin oturumu dogrulanamadi.';
+    throw new Error(message);
+  }
+
+  if (!payload?.token || !payload?.record) {
+    throw new Error('Sunucudan gecersiz admin oturumu dondu.');
+  }
+
+  pb.authStore.save(payload.token, payload.record);
+  return payload;
+}
+
+async function finalizeGitHubLogin(authData) {
+  if (!authData?.record) {
+    throw new Error('GitHub oturumu alinamadi.');
+  }
+
+  const payload = await exchangeGitHubAdminSession();
+  const user = {
+    email: _normalizeEmail(payload.adminEmail || payload.record.email),
+    name: payload.adminName || authData.record.name || 'admin',
+    uid: payload.record.id,
+  };
+  if (window._adminLoginCallback) window._adminLoginCallback(user, null);
+}
+
+function handleGitHubLogin() {
   setLoginError('');
   setLoginLoading(true);
+  setLoginButtonState(true);
 
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
+  const pb = getPb();
+  try { pb.authStore.clear(); } catch (_) {}
 
-  if (!email || !password) {
-    setLoginError('E-posta ve sifre gerekli.');
-    setLoginLoading(false);
-    return;
-  }
-
-  try {
-    const pb = getPb();
-    const authData = await pb.collection('_superusers').authWithPassword(email, password);
-    const user = {
-      email: _normalizeEmail(authData.record.email),
-      name: _normalizeEmail(authData.record.email).split('@')[0],
-      uid: authData.record.id,
-    };
-    if (window._adminLoginCallback) window._adminLoginCallback(user, null);
-  } catch (error) {
-    try { getPb().authStore.clear(); } catch (_) {}
-    setLoginLoading(false);
-    const message = error?.message || 'Giris basarisiz oldu.';
-    if (message.includes('Failed to authenticate')) {
-      setLoginError('E-posta veya sifre hatali.');
-    } else {
+  pb.collection(ADMIN_AUTH_COLLECTION)
+    .authWithOAuth2({ provider: 'github' })
+    .then((authData) => finalizeGitHubLogin(authData))
+    .catch((error) => {
+      try { pb.authStore.clear(); } catch (_) {}
+      setLoginLoading(false);
+      setLoginButtonState(false);
+      const message = error?.message || 'GitHub girisi basarisiz oldu.';
       setLoginError(message);
-    }
-  }
+    });
 }
 
 function logoutAdmin() {

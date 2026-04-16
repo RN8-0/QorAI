@@ -29,6 +29,7 @@ function showAdminApp(email) {
 function showLoginScreen() {
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appContainer').style.display = 'none';
+  if (typeof setLoginButtonState === 'function') setLoginButtonState(false);
 }
 
 function showUnauthorized(email) {
@@ -84,9 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Admin auth callback (email/password)
+// Admin auth callback (GitHub OAuth)
 window._adminLoginCallback = async (userInfo, err) => {
   document.getElementById('loginLoading').style.display = 'none';
+  if (typeof setLoginButtonState === 'function') setLoginButtonState(false);
   if (err || !userInfo) {
     document.getElementById('loginError').textContent = err || 'Login failed';
     return;
