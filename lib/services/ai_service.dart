@@ -19,7 +19,14 @@ abstract class AIService {
   Future<RecommendationResult> recommend(RecommendRequest req);
 
   /// Analyze a product URL against the user profile.
-  Future<LinkAnalysisResult> analyzeLink(String url, UserEntity profile);
+  /// [metadata] — pre-fetched OG tags (title, description, price, etc.).
+  /// Passing metadata lets text-only models (DeepSeek) understand what the
+  /// product actually is without needing to visit the URL.
+  Future<LinkAnalysisResult> analyzeLink(
+    String url,
+    UserEntity profile, {
+    OgMetadata? metadata,
+  });
 
   /// Calculate a single-product compatibility score.
   Future<double> calculateScore(ScoreRequest req);

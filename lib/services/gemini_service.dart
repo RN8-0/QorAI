@@ -102,7 +102,11 @@ class GeminiService implements AIService {
   }
 
   @override
-  Future<LinkAnalysisResult> analyzeLink(String url, UserEntity profile) async {
+  Future<LinkAnalysisResult> analyzeLink(
+    String url,
+    UserEntity profile, {
+    OgMetadata? metadata,
+  }) async {
     debugPrint('[Gemini] analyzeLink called for: $url');
     final response = await _jsonRequest(
       system: _linkAnalysisSystemPrompt(profile.language),

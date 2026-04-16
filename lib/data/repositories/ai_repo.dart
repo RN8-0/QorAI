@@ -75,9 +75,10 @@ class AIRepository {
         }
       }
 
-      // Step 2: AI analysis (enriched with metadata)
+      // Step 2: AI analysis (enriched with metadata so the model knows
+      //         what the product actually is without browsing the URL)
       debugPrint('[AIRepo] Starting AI analysis for: $url');
-      final result = await _aiService.analyzeLink(url, user);
+      final result = await _aiService.analyzeLink(url, user, metadata: metadata);
       debugPrint(
         '[AIRepo] AI analysis done: score=${result.aiScore}, category=${result.category}',
       );

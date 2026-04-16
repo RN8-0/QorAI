@@ -94,19 +94,38 @@ class DeepSeekService implements AIService {
 
   /// Analyze a product URL against the user profile.
   @override
-  Future<LinkAnalysisResult> analyzeLink(String url, UserEntity profile) async {
+  Future<LinkAnalysisResult> analyzeLink(
+    String url,
+    UserEntity profile, {
+    OgMetadata? metadata,
+  }) async {
     debugPrint('[DeepSeek] analyzeLink called for: $url');
+
+    // Build enriched input — metadata lets DeepSeek know what the product
+    // actually is, since it cannot visit URLs.
+    final input = <String, dynamic>{
+      'url': url,
+      'userProfile': {
+        'ecosystem': profile.ecosystem,
+        'budgetRange': profile.budgetRange,
+        'priorities': profile.priorities,
+        'country': profile.country,
+      },
+    };
+    if (metadata != null) {
+      final meta = <String, dynamic>{};
+      if (metadata.title != null) meta['title'] = metadata.title;
+      if (metadata.description != null) {
+        meta['description'] = metadata.description;
+      }
+      if (metadata.price != null) meta['price'] = metadata.price;
+      if (metadata.siteName != null) meta['siteName'] = metadata.siteName;
+      if (meta.isNotEmpty) input['productMetadata'] = meta;
+    }
+
     final response = await _jsonRequest(
       system: _linkAnalysisSystemPrompt(profile.language),
-      user: jsonEncode({
-        'url': url,
-        'userProfile': {
-          'ecosystem': profile.ecosystem,
-          'budgetRange': profile.budgetRange,
-          'priorities': profile.priorities,
-          'country': profile.country,
-        },
-      }),
+      user: jsonEncode(input),
       timeout: const Duration(seconds: 60),
     );
 
@@ -650,8 +669,13 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. Given a product URL and user profile,
-analyze the product and compute a personalized compatibility score.
+You are Compair's link analysis engine. Given a product URL, optional product
+metadata (title, description, price, site), and user profile, analyze the
+product and compute a personalized compatibility score.
+
+IMPORTANT: If "productMetadata" is provided, use its title/description to
+identify the product accurately. Do NOT guess the product category from the URL
+alone when metadata is available.
 
 LANGUAGE: You MUST write the "analysis" field in $langName.
 
@@ -664,7 +688,7 @@ Return valid JSON:
 {
   "score": 20-95,
   "analysis": "Detailed analysis in $langName",
-  "category": "product category",
+  "category": "product category (e.g. smartphones, laptops, pet food, headphones, etc.)",
   "title": "Product name/title",
   "image_url": "Product image URL if known",
   "price": "Price with currency symbol",
