@@ -5,27 +5,18 @@
 
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 const GOOGLE_WEB_CLIENT_ID = '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
-const ALLOWED_ADMIN_EMAILS = Object.freeze([
-  'arainunger@gmail.com',
-  'araingamex@gmail.com',
-]);
 
 let _pb = null;
 let _adminAuthCallback = null;
 let _gisInitialized = false;
-let _tokenClient = null;
 
 function getPb() {
   if (!_pb) _pb = new PocketBase(PB_URL);
   return _pb;
 }
 
-function normalizeAdminEmail(email) {
+function _normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
-}
-
-function isAllowedAdminEmail(email) {
-  return ALLOWED_ADMIN_EMAILS.includes(normalizeAdminEmail(email));
 }
 
 async function pbEnsureAuth() {
@@ -171,20 +162,13 @@ function setLoginError(message = '') {
   if (el) el.textContent = message;
 }
 
-function setLoginButtonDisabled(disabled) {
-  const button = document.getElementById('loginGoogleBtn');
-  if (!button) return;
-  button.disabled = !!disabled;
-}
-
 function ensureGoogleClients(retryCount = 0) {
-  if (window.google?.accounts?.id && window.google?.accounts?.oauth2) {
+  if (window.google?.accounts?.id) {
     if (!_gisInitialized) _initGIS();
     return Promise.resolve();
   }
 
   if (retryCount >= 30) {
-    setLoginButtonDisabled(false);
     setLoginError('Google girisi yuklenemedi. Sayfayi yenileyip tekrar dene.');
     return Promise.reject(new Error('google_unavailable'));
   }
@@ -205,49 +189,31 @@ function _initGIS() {
     use_fedcm_for_prompt: true,
   });
 
-  // Render official Google button — uses FedCM in Chrome 115+, no JS Origin needed
   const slot = document.getElementById('googleSignInButton');
   if (slot) {
     google.accounts.id.renderButton(slot, {
       type: 'standard',
       shape: 'pill',
-      theme: 'outline',
+      theme: 'filled_black',
       text: 'continue_with',
       size: 'large',
       logo_alignment: 'left',
-      width: 280,
+      width: 300,
       locale: 'tr',
     });
   }
-
-  // Also init token client as fallback
-  _tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_WEB_CLIENT_ID,
-    scope: 'openid email profile',
-    callback: handleGoogleAccessToken,
-    error_callback: (error) => {
-      setLoginLoading(false);
-      setLoginButtonDisabled(false);
-      const message = error?.message || error?.type || 'Google girisi baslatilamadi.';
-      setLoginError(message);
-    },
-  });
   _gisInitialized = true;
 }
 
-// Called via onload on the GIS script tag
 function gisOnLoad() {
   _initGIS();
-  setLoginButtonDisabled(false);
 }
 
 function initGIS(callback) {
   _adminAuthCallback = callback;
-  // If GIS library already loaded, initialize now
-  if (window.google?.accounts?.oauth2 && !_gisInitialized) {
+  if (window.google?.accounts?.id && !_gisInitialized) {
     _initGIS();
   }
-  setLoginButtonDisabled(!_gisInitialized);
 }
 
 async function completeGoogleAdminLogin({ idToken = '', accessToken = '' } = {}) {
@@ -277,10 +243,7 @@ async function completeGoogleAdminLogin({ idToken = '', accessToken = '' } = {})
     throw new Error(payload?.error || 'Admin girisi basarisiz oldu.');
   }
 
-  if (!isAllowedAdminEmail(payload.adminEmail)) {
-    throw new Error('Bu Google hesabi admin paneline yetkili degil.');
-  }
-
+  // Server-side whitelist enforces allowed emails
   const authRecord = {
     id: payload.record?.id,
     email: payload.record?.email,
@@ -288,33 +251,6 @@ async function completeGoogleAdminLogin({ idToken = '', accessToken = '' } = {})
   };
   getPb().authStore.save(payload.token, authRecord);
   return payload;
-}
-
-async function handleGoogleAccessToken(response) {
-  setLoginError('');
-  setLoginLoading(true);
-  try {
-    if (!response?.access_token) {
-      throw new Error('Google erisim anahtari alinamadi.');
-    }
-    const payload = await completeGoogleAdminLogin({
-      accessToken: response.access_token,
-    });
-    const user = {
-      email: normalizeAdminEmail(payload.adminEmail),
-      name: payload.adminName || normalizeAdminEmail(payload.adminEmail).split('@')[0],
-      picture: payload.picture || '',
-      uid: payload.record?.id || '',
-    };
-    if (_adminAuthCallback) _adminAuthCallback(user, null);
-  } catch (error) {
-    try { getPb().authStore.clear(); } catch (_) {}
-    setLoginLoading(false);
-    setLoginButtonDisabled(false);
-    const message = error?.message || 'Admin girisi basarisiz oldu.';
-    setLoginError(message);
-    if (_adminAuthCallback) _adminAuthCallback(null, message);
-  }
 }
 
 async function handleGoogleCredential(response) {
@@ -328,8 +264,8 @@ async function handleGoogleCredential(response) {
       idToken: response.credential,
     });
     const user = {
-      email: normalizeAdminEmail(payload.adminEmail),
-      name: payload.adminName || normalizeAdminEmail(payload.adminEmail).split('@')[0],
+      email: _normalizeEmail(payload.adminEmail),
+      name: payload.adminName || _normalizeEmail(payload.adminEmail).split('@')[0],
       picture: payload.picture || '',
       uid: payload.record?.id || '',
     };
@@ -337,24 +273,10 @@ async function handleGoogleCredential(response) {
   } catch (error) {
     try { getPb().authStore.clear(); } catch (_) {}
     setLoginLoading(false);
-    setLoginButtonDisabled(false);
     const message = error?.message || 'Admin girisi basarisiz oldu.';
     setLoginError(message);
     if (_adminAuthCallback) _adminAuthCallback(null, message);
   }
-}
-
-function gisSignIn() {
-  setLoginError('');
-  if (!_tokenClient) {
-    // GIS not ready yet — show message and retry once it loads
-    setLoginError('Google henuz yuklenmedi, lutfen saniye bekleyip tekrar dene.');
-    return;
-  }
-  setLoginButtonDisabled(true);
-  setLoginLoading(true);
-  // Call requestAccessToken DIRECTLY (no await) to preserve user gesture
-  _tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
 function gisRevoke(_email) {
@@ -362,10 +284,3 @@ function gisRevoke(_email) {
   try { getPb().authStore.clear(); } catch (_) {}
 }
 
-function loginWithGoogle() {
-  return gisSignIn();
-}
-
-function loginWithPb() {
-  return gisSignIn();
-}
