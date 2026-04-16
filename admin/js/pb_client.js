@@ -179,26 +179,7 @@ function setLoginButtonDisabled(disabled) {
 
 function ensureGoogleClients(retryCount = 0) {
   if (window.google?.accounts?.id && window.google?.accounts?.oauth2) {
-    if (!_gisInitialized) {
-      google.accounts.id.initialize({
-        client_id: GOOGLE_WEB_CLIENT_ID,
-        callback: handleGoogleCredential,
-        cancel_on_tap_outside: true,
-        auto_select: false,
-      });
-      _tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_WEB_CLIENT_ID,
-        scope: 'openid email profile',
-        callback: handleGoogleAccessToken,
-        error_callback: (error) => {
-          setLoginLoading(false);
-          setLoginButtonDisabled(false);
-          const message = error?.message || error?.type || 'Google girisi baslatilamadi.';
-          setLoginError(message);
-        },
-      });
-      _gisInitialized = true;
-    }
+    if (!_gisInitialized) _initGIS();
     return Promise.resolve();
   }
 
@@ -215,16 +196,40 @@ function ensureGoogleClients(retryCount = 0) {
   });
 }
 
+function _initGIS() {
+  google.accounts.id.initialize({
+    client_id: GOOGLE_WEB_CLIENT_ID,
+    callback: handleGoogleCredential,
+    cancel_on_tap_outside: true,
+    auto_select: false,
+  });
+  _tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_WEB_CLIENT_ID,
+    scope: 'openid email profile',
+    callback: handleGoogleAccessToken,
+    error_callback: (error) => {
+      setLoginLoading(false);
+      setLoginButtonDisabled(false);
+      const message = error?.message || error?.type || 'Google girisi baslatilamadi.';
+      setLoginError(message);
+    },
+  });
+  _gisInitialized = true;
+}
+
+// Called via onload on the GIS script tag
+function gisOnLoad() {
+  _initGIS();
+  setLoginButtonDisabled(false);
+}
+
 function initGIS(callback) {
   _adminAuthCallback = callback;
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setLoginButtonDisabled(false);
-      ensureGoogleClients().catch(() => {});
-    }, { once: true });
-    return;
+  // If GIS library already loaded, initialize now
+  if (window.google?.accounts?.oauth2 && !_gisInitialized) {
+    _initGIS();
   }
-  ensureGoogleClients().catch(() => {});
+  setLoginButtonDisabled(!_gisInitialized);
 }
 
 async function completeGoogleAdminLogin({ idToken = '', accessToken = '' } = {}) {
@@ -321,21 +326,17 @@ async function handleGoogleCredential(response) {
   }
 }
 
-async function gisSignIn() {
+function gisSignIn() {
   setLoginError('');
+  if (!_tokenClient) {
+    // GIS not ready yet — show message and retry once it loads
+    setLoginError('Google henuz yuklenmedi, lutfen saniye bekleyip tekrar dene.');
+    return;
+  }
   setLoginButtonDisabled(true);
   setLoginLoading(true);
-  try {
-    await ensureGoogleClients();
-    if (_tokenClient) {
-      _tokenClient.requestAccessToken({ prompt: 'consent' });
-      return;
-    }
-    window.google?.accounts?.id?.prompt();
-  } catch (_) {
-    setLoginLoading(false);
-    setLoginButtonDisabled(false);
-  }
+  // Call requestAccessToken DIRECTLY (no await) to preserve user gesture
+  _tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
 function gisRevoke(_email) {
