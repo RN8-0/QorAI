@@ -7,21 +7,17 @@
 //    `admins` record and upgrades the session to a PocketBase superuser token.
 // ------------------------------------------------------------
 
-const ADMINS_COLLECTION = "admins";
-
-function normalizeValue(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
 routerAdd("POST", "/api/admin/auth/github/exchange", (e) => {
   try {
+    const adminsCollection = "admins";
+    const normalizeValue = (value) => String(value || "").trim().toLowerCase();
     const authRecord = e.auth;
     if (!authRecord) {
       return e.json(401, { error: "auth_required" });
     }
 
     const collection = authRecord.collection();
-    if (!collection || collection.name !== ADMINS_COLLECTION) {
+    if (!collection || collection.name !== adminsCollection) {
       return e.json(403, { error: "invalid_admin_collection" });
     }
 
@@ -41,7 +37,9 @@ routerAdd("POST", "/api/admin/auth/github/exchange", (e) => {
       });
     }
 
-    const superuserEmail = normalizeValue($os.getenv("POCKETBASE_ADMIN_EMAIL"));
+    const superuserEmail = normalizeValue(
+      $os.getenv("POCKETBASE_ADMIN_EMAIL") || "admin@compair.local"
+    );
     if (!superuserEmail) {
       return e.json(500, { error: "missing_superuser_env" });
     }
@@ -81,4 +79,4 @@ routerAdd("POST", "/api/admin/auth/github/exchange", (e) => {
   } catch (fatalErr) {
     return e.json(500, { error: "hook_fatal", detail: String(fatalErr) });
   }
-}, $apis.requireAuth(ADMINS_COLLECTION));
+}, $apis.requireAuth("admins"));
