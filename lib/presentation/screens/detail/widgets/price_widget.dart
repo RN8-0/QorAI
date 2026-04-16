@@ -90,7 +90,8 @@ class _PriceCard extends ConsumerWidget {
 
 class _PriceComparisonSheet extends StatefulWidget {
   final ProductEntity product;
-  const _PriceComparisonSheet({required this.product});
+  final bool isPremium;
+  const _PriceComparisonSheet({required this.product, this.isPremium = false});
 
   @override
   State<_PriceComparisonSheet> createState() => _PriceComparisonSheetState();
@@ -111,13 +112,15 @@ class _PriceComparisonSheetState extends State<_PriceComparisonSheet> {
   }
 
   void _generatePriceData() {
-    // Generate realistic price trend data based on tech score and category
     final basePrice = _estimateBasePrice();
     final random = DateTime.now().millisecondsSinceEpoch;
     final points = <_PricePoint>[];
     final now = DateTime.now();
 
-    for (int i = 11; i >= 0; i--) {
+    // Free: 1 month (7 days), Premium: 12 months (90 days)
+    final monthsToShow = widget.isPremium ? 12 : 1;
+
+    for (int i = monthsToShow - 1; i >= 0; i--) {
       final month = DateTime(now.year, now.month - i, 1);
       // Products generally decrease in price over time with some fluctuation
       final ageFactor = 1.0 - (i * 0.008); // slight decrease over time

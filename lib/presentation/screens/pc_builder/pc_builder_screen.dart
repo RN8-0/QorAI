@@ -10,9 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/routing/router.dart';
 
 /// App-theme gradient (brandDeepBlue → brandBlue → brandCyan).
@@ -1343,6 +1345,16 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
   }
 
   void _openPicker(PcComponent component) async {
+    // PC Builder slot limit: block new component if free tier limit reached
+    final isNewSlot = !_selected.containsKey(component);
+    if (isNewSlot) {
+      final sub = ref.read(subscriptionServiceProvider);
+      if (!sub.isPremium && _selected.length >= AppConstants.freePcBuilderSlots) {
+        _showUpgradeSnackbar('PC Builder\'de ücretsiz sınır: ${AppConstants.freePcBuilderSlots} bileşen');
+        return;
+      }
+    }
+
     final result = await showModalBottomSheet<ProductEntity>(
       context: context,
       isScrollControlled: true,
@@ -1393,6 +1405,19 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         _celebrationController.forward(from: 0);
       }
     }
+  }
+
+  void _showUpgradeSnackbar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: SnackBarAction(
+          label: 'Premium',
+          onPressed: () => showPaywallSheet(context),
+        ),
+      ),
+    );
   }
 
   void _removeComponent(PcComponent c) {

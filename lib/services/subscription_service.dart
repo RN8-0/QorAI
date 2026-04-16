@@ -37,34 +37,42 @@ class UsageCounter {
   final int comparisons;
   final int aiQuestions;
   final int linkPastes;
+  final int subscriptionAnalyses;
   final String comparisonPeriodKey;
   final String aiPeriodKey;
   final String linkPeriodKey;
+  final String subscriptionPeriodKey;
 
   const UsageCounter({
     this.comparisons = 0,
     this.aiQuestions = 0,
     this.linkPastes = 0,
+    this.subscriptionAnalyses = 0,
     required this.comparisonPeriodKey,
     required this.aiPeriodKey,
     required this.linkPeriodKey,
+    required this.subscriptionPeriodKey,
   });
 
   UsageCounter copyWith({
     int? comparisons,
     int? aiQuestions,
     int? linkPastes,
+    int? subscriptionAnalyses,
     String? comparisonPeriodKey,
     String? aiPeriodKey,
     String? linkPeriodKey,
+    String? subscriptionPeriodKey,
   }) {
     return UsageCounter(
       comparisons: comparisons ?? this.comparisons,
       aiQuestions: aiQuestions ?? this.aiQuestions,
       linkPastes: linkPastes ?? this.linkPastes,
+      subscriptionAnalyses: subscriptionAnalyses ?? this.subscriptionAnalyses,
       comparisonPeriodKey: comparisonPeriodKey ?? this.comparisonPeriodKey,
       aiPeriodKey: aiPeriodKey ?? this.aiPeriodKey,
       linkPeriodKey: linkPeriodKey ?? this.linkPeriodKey,
+      subscriptionPeriodKey: subscriptionPeriodKey ?? this.subscriptionPeriodKey,
     );
   }
 }
@@ -103,6 +111,7 @@ class SubscriptionService extends ChangeNotifier {
   int get comparisonsUsed => _normalizedUsage().comparisons;
   int get aiQuestionsUsed => _normalizedUsage().aiQuestions;
   int get linkPastesUsed => _normalizedUsage().linkPastes;
+  int get subscriptionAnalysesUsed => _normalizedUsage().subscriptionAnalyses;
 
   bool get _hasPocketBasePremiumSnapshot {
     try {
@@ -305,9 +314,11 @@ class SubscriptionService extends ChangeNotifier {
         'comparisons': _usage.comparisons,
         'aiQuestions': _usage.aiQuestions,
         'linkPastes': _usage.linkPastes,
+        'subscriptionAnalyses': _usage.subscriptionAnalyses,
         'comparisonPeriodKey': _usage.comparisonPeriodKey,
         'aiPeriodKey': _usage.aiPeriodKey,
         'linkPeriodKey': _usage.linkPeriodKey,
+        'subscriptionPeriodKey': _usage.subscriptionPeriodKey,
       }),
     );
   }
@@ -413,10 +424,13 @@ class SubscriptionService extends ChangeNotifier {
         comparisons: data['comparisons'] as int? ?? 0,
         aiQuestions: data['aiQuestions'] as int? ?? 0,
         linkPastes: data['linkPastes'] as int? ?? 0,
+        subscriptionAnalyses: data['subscriptionAnalyses'] as int? ?? 0,
         comparisonPeriodKey:
             data['comparisonPeriodKey'] as String? ?? _dailyPeriodKey(),
         aiPeriodKey: data['aiPeriodKey'] as String? ?? _dailyPeriodKey(),
         linkPeriodKey: data['linkPeriodKey'] as String? ?? _weeklyPeriodKey(),
+        subscriptionPeriodKey:
+            data['subscriptionPeriodKey'] as String? ?? _monthlyPeriodKey(),
       );
       _usage = _normalizedUsage();
     } catch (_) {
@@ -477,6 +491,7 @@ class SubscriptionService extends ChangeNotifier {
       comparisonPeriodKey: _dailyPeriodKey(),
       aiPeriodKey: _dailyPeriodKey(),
       linkPeriodKey: _weeklyPeriodKey(),
+      subscriptionPeriodKey: _monthlyPeriodKey(),
     );
   }
 
@@ -495,9 +510,15 @@ class SubscriptionService extends ChangeNotifier {
     return '${startOfWeek.year}-${startOfWeek.month}-${startOfWeek.day}';
   }
 
+  String _monthlyPeriodKey([DateTime? now]) {
+    final date = now ?? DateTime.now();
+    return '${date.year}-${date.month}';
+  }
+
   UsageCounter _normalizedUsage() {
     final dailyKey = _dailyPeriodKey();
     final weeklyKey = _weeklyPeriodKey();
+    final monthlyKey = _monthlyPeriodKey();
     var changed = false;
     var next = _usage;
 
@@ -511,6 +532,10 @@ class SubscriptionService extends ChangeNotifier {
     }
     if (next.linkPeriodKey != weeklyKey) {
       next = next.copyWith(linkPastes: 0, linkPeriodKey: weeklyKey);
+      changed = true;
+    }
+    if (next.subscriptionPeriodKey != monthlyKey) {
+      next = next.copyWith(subscriptionAnalyses: 0, subscriptionPeriodKey: monthlyKey);
       changed = true;
     }
 
@@ -538,6 +563,12 @@ class SubscriptionService extends ChangeNotifier {
   bool get canPasteLink {
     if (isPremium) return true;
     return _normalizedUsage().linkPastes < AppConstants.freeLinkPasteLimit;
+  }
+
+  /// Can a subscription analysis be performed?
+  bool get canAnalyzeSubscription {
+    if (isPremium) return true;
+    return _normalizedUsage().subscriptionAnalyses < AppConstants.freeSubscriptionAnalysisLimit;
   }
 
   /// Record comparison usage
@@ -594,6 +625,24 @@ class SubscriptionService extends ChangeNotifier {
     return const Success(null);
   }
 
+  /// Record subscription analysis usage
+  Result<void> recordSubscriptionAnalysis() {
+    final currentUsage = _normalizedUsage();
+    if (!canAnalyzeSubscription) {
+      return Failure(
+        UsageLimitException(
+          featureName: 'subscription_analysis',
+          currentUsage: currentUsage.subscriptionAnalyses,
+          limit: AppConstants.freeSubscriptionAnalysisLimit,
+        ),
+      );
+    }
+    _usage = currentUsage.copyWith(subscriptionAnalyses: currentUsage.subscriptionAnalyses + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
+    return const Success(null);
+  }
+
   /// Remaining usage allowances
   int get remainingComparisons => isPremium
       ? -1 // Unlimited
@@ -606,4 +655,8 @@ class SubscriptionService extends ChangeNotifier {
   int get remainingLinkPastes => isPremium
       ? -1
       : AppConstants.freeLinkPasteLimit - _normalizedUsage().linkPastes;
+
+  int get remainingSubscriptionAnalyses => isPremium
+      ? -1
+      : AppConstants.freeSubscriptionAnalysisLimit - _normalizedUsage().subscriptionAnalyses;
 }

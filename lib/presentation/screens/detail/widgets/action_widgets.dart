@@ -284,12 +284,12 @@ class _QuickActionBtn extends StatelessWidget {
 }
 
 // ── Price Comparison Sheet ───────────────────────────────────────────
-void _showPriceComparison(BuildContext context, ProductEntity product) {
+void _showPriceComparison(BuildContext context, ProductEntity product, {bool isPremium = false}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => _PriceComparisonSheet(product: product),
+    builder: (ctx) => _PriceComparisonSheet(product: product, isPremium: isPremium),
   );
 }
 
@@ -343,7 +343,20 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
           : () async {
               setState(() => _isToggling = true);
               try {
-                await toggleFavorite(ref, widget.productId);
+                final wasFav = isFavorite(ref, widget.productId);
+                final result = await toggleFavorite(ref, widget.productId);
+                // If was NOT fav and result is false → limit reached
+                if (!wasFav && !result && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Koleksiyon sınırı: ${AppConstants.freeCollectionLimit} ürün. Premium\'a geçin!'),
+                      action: SnackBarAction(
+                        label: 'Premium',
+                        onPressed: () => showPaywallSheet(context),
+                      ),
+                    ),
+                  );
+                }
               } catch (_) {}
               if (mounted) setState(() => _isToggling = false);
             },

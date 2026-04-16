@@ -1029,6 +1029,13 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       );
       return;
     }
+    if (!_subService.canAnalyzeSubscription) {
+      state = state.copyWith(
+        phase: SubFlowPhase.idle,
+        error: 'Monthly subscription analysis limit reached (${AppConstants.freeSubscriptionAnalysisLimit}). Upgrade to Premium!',
+      );
+      return;
+    }
 
     state = SubQuizState(
       phase: SubFlowPhase.quizLoading,
@@ -1061,6 +1068,14 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         );
         return;
       }
+      final subQuota = _subService.recordSubscriptionAnalysis();
+      if (subQuota.isFailure) {
+        state = state.copyWith(
+          phase: SubFlowPhase.idle,
+          error: 'Monthly subscription analysis limit reached. Upgrade to Premium!',
+        );
+        return;
+      }
       state = state.copyWith(phase: SubFlowPhase.analyzing);
       await _runAnalysis(names, []);
     }
@@ -1084,6 +1099,14 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
         error: 'Daily AI limit reached. Upgrade to Premium!',
+      );
+      return;
+    }
+    final subQuota = _subService.recordSubscriptionAnalysis();
+    if (subQuota.isFailure) {
+      state = state.copyWith(
+        phase: SubFlowPhase.idle,
+        error: 'Monthly subscription analysis limit reached. Upgrade to Premium!',
       );
       return;
     }
@@ -1116,6 +1139,14 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
         error: 'Daily AI limit reached. Upgrade to Premium!',
+      );
+      return;
+    }
+    final subQuota = _subService.recordSubscriptionAnalysis();
+    if (subQuota.isFailure) {
+      state = state.copyWith(
+        phase: SubFlowPhase.idle,
+        error: 'Monthly subscription analysis limit reached. Upgrade to Premium!',
       );
       return;
     }
@@ -1447,6 +1478,16 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
 Future<bool> toggleFavorite(WidgetRef ref, String productId) async {
   final user = ref.read(userProfileProvider).valueOrNull;
   if (user == null) return false;
+
+  // Collection limit: only check when adding (not removing)
+  final isFav = user.favorites.contains(productId);
+  if (!isFav) {
+    final sub = ref.read(subscriptionServiceProvider);
+    if (!sub.isPremium && user.favorites.length >= AppConstants.freeCollectionLimit) {
+      return false;
+    }
+  }
+
   final ds = ref.read(pbDataSourceProvider);
   final result = await ds.toggleFavorite(user.uid, productId);
   ref.invalidate(userProfileProvider);
