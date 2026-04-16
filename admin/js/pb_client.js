@@ -202,7 +202,25 @@ function _initGIS() {
     callback: handleGoogleCredential,
     cancel_on_tap_outside: true,
     auto_select: false,
+    use_fedcm_for_prompt: true,
   });
+
+  // Render official Google button — uses FedCM in Chrome 115+, no JS Origin needed
+  const slot = document.getElementById('googleSignInButton');
+  if (slot) {
+    google.accounts.id.renderButton(slot, {
+      type: 'standard',
+      shape: 'pill',
+      theme: 'outline',
+      text: 'continue_with',
+      size: 'large',
+      logo_alignment: 'left',
+      width: 280,
+      locale: 'tr',
+    });
+  }
+
+  // Also init token client as fallback
   _tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_WEB_CLIENT_ID,
     scope: 'openid email profile',
