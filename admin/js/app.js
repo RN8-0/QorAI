@@ -117,7 +117,6 @@ function showView(name){
   if(name==='dashboard')refreshDashboard();
   if(name==='products'&&!allProducts.length)loadProducts();
   if(name==='users')loadUsers();
-  if(name==='appcontrol')loadAppConfig();
   if(name==='algorithm')loadAlgorithmConfig();
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
@@ -941,28 +940,6 @@ async function deleteUser(uid){
 }
 
 // ═══════════════════════════════════════
-//  APP CONTROL
-// ═══════════════════════════════════════
-async function loadAppConfig(){try{const d=await pbGetDoc('app_config','main');if(!d.exists)return;const c=d.data();const f=['adsEnabled','adBannerUnitId','adInterstitialUnitId','adRewardedUnitId','adFrequency','adsPremiumFree','homeBannerTitle','homeBannerSubtitle','homeFeaturedCategories','homeFeaturedCount','maintenanceEnabled','maintenanceMessage','appMinVersion','appForceUpdate','appLatestVersion','appUpdateUrl'];f.forEach(k=>{const el=document.getElementById(k);if(!el)return;if(el.type==='checkbox')el.checked=!!c[k];else el.value=c[k]||''})}catch(e){toast('Config error: '+e.message,'e')}}
-
-async function saveAppConfig(){
-  const c={};['adBannerUnitId','adInterstitialUnitId','adRewardedUnitId','homeBannerTitle','homeBannerSubtitle','homeFeaturedCategories','maintenanceMessage','appMinVersion','appLatestVersion','appUpdateUrl'].forEach(k=>{const el=document.getElementById(k);if(el)c[k]=el.value});
-  ['adsEnabled','adsPremiumFree','maintenanceEnabled','appForceUpdate'].forEach(k=>{const el=document.getElementById(k);if(el)c[k]=el.checked});
-  ['adFrequency','homeFeaturedCount'].forEach(k=>{const el=document.getElementById(k);if(el)c[k]=parseInt(el.value)||0});
-  c.updatedAt=serverTimestamp();
-  try{await pbSetDoc('app_config','main',c);toast('Saved','s')}catch(e){toast('Error: '+e.message,'e')}
-}
-
-async function sendPushNotification(){
-  const title=document.getElementById('pushTitle').value,body=document.getElementById('pushBody').value,topic=document.getElementById('pushTopic').value;
-  if(!title||!body){toast('Title & message required','w');return}
-  try{await pbAddDoc('notifications',{title,body,topic,sentAt:serverTimestamp(),sentBy:_currentAdminEmail||'admin'});toast('Notification queued','s');document.getElementById('pushTitle').value='';document.getElementById('pushBody').value='';document.getElementById('pushResult').innerHTML='<span style="color:var(--green)">Sent!</span>'}catch(e){toast('Error: '+e.message,'e')}
-}
-
-async function loadNotificationHistory(){
-  try{const res=await pbGetList('notifications',1,50,{sort:'-sentAt'});const el=document.getElementById('notificationHistory');if(res.empty){el.innerHTML='<p class="text-muted">No notifications yet</p>';return}
-  el.innerHTML=res.items.map(n=>{const dt=n.sentAt?new Date(n.sentAt).toLocaleString():'—';return`<div class="notif-item"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:13px">${n.title||''}</strong><span style="font-size:10px;color:var(--text3)">${dt}</span></div><div style="font-size:12px;color:var(--text2)">${n.body||''}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${n.topic||'all'} · ${n.sentBy||''}</div></div>`}).join('')}catch(e){toast('Error: '+e.message,'e')}
-}// ═══════════════════════════════════════
 //  ALGORITHM
 // ═══════════════════════════════════════
 function updateAlgoLabel(input){const id=input.id.replace(/^(weight|boost)/,'label');const el=document.getElementById(id);if(el)el.textContent=input.value+'%'}
