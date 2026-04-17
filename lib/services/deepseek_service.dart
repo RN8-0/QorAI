@@ -303,6 +303,33 @@ class DeepSeekService implements AIService {
     required List<String> subscriptionNames,
     String language = 'en',
   }) async {
+    final sortedNames = [...subscriptionNames]..sort();
+    final cacheKey = 'ds_sub_quiz_${sortedNames.join('_')}_$language';
+    try {
+      final cached = await _cacheService.get<Map<String, dynamic>>(cacheKey);
+      if (cached != null) {
+        final questions = (cached['questions'] as List<dynamic>? ?? [])
+            .asMap()
+            .entries
+            .map((e) => QuizQuestion(
+                  id: 'sq${e.key}',
+                  text: e.value['question'] as String? ?? '',
+                  options: List<String>.from(e.value['options'] ?? []),
+                ))
+            .where((q) => q.text.isNotEmpty && q.options.length >= 2)
+            .toList();
+        if (questions.isNotEmpty) {
+          return ProductQuiz(
+            id: 'sub_cached',
+            category: 'subscription',
+            productTitle: sortedNames.join(', '),
+            questions: questions,
+            createdAt: DateTime.now(),
+          );
+        }
+      }
+    } catch (_) {}
+
     final langName = _languageName(language);
     final names = subscriptionNames.join(', ');
     final isCompare = subscriptionNames.length > 1;
@@ -318,11 +345,11 @@ The goal: understand how the user uses ${isCompare ? 'these services' : 'this se
 their specific habits, preferences, and expectations.
 
 Rules:
-- Questions must be relevant to the specific service type
+- Questions must be directly relevant to the specific service type
+  (e.g. streaming: genres/frequency; music: genres/offline; AI tools: use-cases)
 - Each question has exactly 4 options
 - Keep questions conversational with emoji
-- NEVER ask about budget
-- NEVER ask about brand preference
+- NEVER ask about budget or brand preference
 - ALL text must be in $langName
 
 Return valid JSON:
@@ -338,6 +365,9 @@ Return valid JSON:
         'mode': isCompare ? 'compare' : 'single',
       }),
     );
+
+    await _cacheService.set(cacheKey, response,
+        duration: const Duration(hours: 24));
 
     final questions = (response['questions'] as List<dynamic>? ?? [])
         .asMap()

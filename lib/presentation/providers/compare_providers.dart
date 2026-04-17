@@ -987,15 +987,18 @@ class SubQuizState {
 }
 
 class SubQuizNotifier extends StateNotifier<SubQuizState> {
+  final DeepSeekService _deepseek;
   final GeminiService _gemini;
   final SubscriptionService _subService;
   final Ref _ref;
 
   SubQuizNotifier({
+    required DeepSeekService deepseek,
     required GeminiService gemini,
     required SubscriptionService subService,
     required Ref ref,
-  }) : _gemini = gemini,
+  }) : _deepseek = deepseek,
+       _gemini = gemini,
        _subService = subService,
        _ref = ref,
        super(const SubQuizState());
@@ -1043,7 +1046,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     );
 
     try {
-      final quiz = await _gemini
+      final quiz = await _deepseek
           .generateSubscriptionQuiz(
             subscriptionNames: names,
             language: _appLang,
@@ -1239,6 +1242,7 @@ final subQuizProvider = StateNotifierProvider<SubQuizNotifier, SubQuizState>((
   ref,
 ) {
   return SubQuizNotifier(
+    deepseek: ref.read(deepSeekServiceProvider),
     gemini: ref.read(geminiServiceProvider),
     subService: ref.read(subscriptionServiceProvider),
     ref: ref,
