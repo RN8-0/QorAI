@@ -14,6 +14,7 @@ import 'package:compair/core/constants.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/screens/pc_builder/pc_builder_localization.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/routing/router.dart';
 
@@ -121,7 +122,7 @@ enum PcComponent {
 }
 
 String _pcText(BuildContext context, {required String en, required String tr}) {
-  return Localizations.localeOf(context).languageCode == 'tr' ? tr : en;
+  return localizePcBuilderText(context, en: en, tr: tr);
 }
 
 // Compatibility Helper
@@ -1349,8 +1350,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     final isNewSlot = !_selected.containsKey(component);
     if (isNewSlot) {
       final sub = ref.read(subscriptionServiceProvider);
-      if (!sub.isPremium && _selected.length >= AppConstants.freePcBuilderSlots) {
-        _showUpgradeSnackbar('PC Builder\'de ücretsiz sınır: ${AppConstants.freePcBuilderSlots} bileşen');
+      if (!sub.isPremium &&
+          _selected.length >= AppConstants.freePcBuilderSlots) {
+        _showUpgradeSnackbar(
+          'PC Builder\'de ücretsiz sınır: ${AppConstants.freePcBuilderSlots} bileşen',
+        );
         return;
       }
     }

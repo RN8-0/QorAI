@@ -57,7 +57,6 @@ part 'widgets/translation_button_widget.dart';
 part 'widgets/variants_widget.dart';
 part 'widgets/youtube_player_widget.dart';
 
-
 // ═══════════════════════════════════════════════════════════
 // MAIN SCREEN
 // ═══════════════════════════════════════════════════════════
@@ -74,11 +73,18 @@ class ProductDetailScreen extends ConsumerWidget {
 
     return async.when(
       data: (result) => result.when(
-        success: (product) => _DetailBody(product: product, country: country, isDark: isDark),
-        failure: (error) => _ErrorScreen(message: error.message, onRetry: () => ref.invalidate(productDetailProvider(productId))),
+        success: (product) =>
+            _DetailBody(product: product, country: country, isDark: isDark),
+        failure: (error) => _ErrorScreen(
+          message: error.message,
+          onRetry: () => ref.invalidate(productDetailProvider(productId)),
+        ),
       ),
       loading: () => const _LoadingScreen(),
-      error: (e, _) => _ErrorScreen(message: e.toString(), onRetry: () => ref.invalidate(productDetailProvider(productId))),
+      error: (e, _) => _ErrorScreen(
+        message: e.toString(),
+        onRetry: () => ref.invalidate(productDetailProvider(productId)),
+      ),
     );
   }
 }
@@ -87,33 +93,90 @@ class ProductDetailScreen extends ConsumerWidget {
 // DETAIL BODY
 // ═══════════════════════════════════════════════════════════
 
-class _DetailBody extends ConsumerWidget {
+class _DetailBody extends ConsumerStatefulWidget {
   final ProductEntity product;
   final String country;
   final bool isDark;
-  const _DetailBody({required this.product, required this.country, required this.isDark});
+  const _DetailBody({
+    required this.product,
+    required this.country,
+    required this.isDark,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Use actual theme mode instead of hardcoded value
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  ConsumerState<_DetailBody> createState() => _DetailBodyState();
+}
 
-    // Set AI page context so the chat knows which product the user is viewing
-    Future.microtask(() {
+class _DetailBodyState extends ConsumerState<_DetailBody> {
+  String? _lastPrefetchedMatchKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncAiPageContext();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.product.id != widget.product.id) {
+      _syncAiPageContext();
+    }
+  }
+
+  void _syncAiPageContext() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(aiPageContextProvider.notifier).state = {
-        'productName': product.name,
-        'productBrand': product.brand ?? '',
-        'productCategory': product.category,
-        'techScore': product.techScore.toString(),
-        'productId': product.id,
+        'productName': widget.product.name,
+        'productBrand': widget.product.brand ?? '',
+        'productCategory': widget.product.category,
+        'techScore': widget.product.techScore.toString(),
+        'productId': widget.product.id,
       };
     });
+  }
+
+  void _prefetchMatchScore(String languageCode) {
+    final normalizedLanguageCode = languageCode.trim().toLowerCase();
+    final cacheKey = '${widget.product.id}|$normalizedLanguageCode';
+    if (_lastPrefetchedMatchKey == cacheKey) return;
+
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user == null || !user.quizCompleted) return;
+
+    _lastPrefetchedMatchKey = cacheKey;
+    final localizedKey = LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: normalizedLanguageCode,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(geminiMatchScoreProvider(localizedKey).notifier)
+          .fetchMatchScore(product: widget.product);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use actual theme mode instead of hardcoded value
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final locale = ref.watch(localeProvider);
+    final languageCode =
+        (locale?.languageCode ?? Localizations.localeOf(context).languageCode)
+            .toLowerCase();
+    final product = widget.product;
+    final country = widget.country;
+
+    _prefetchMatchScore(languageCode);
 
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-      backgroundColor: context.backgroundColor,
-      body: NestedScrollView(
+        backgroundColor: context.backgroundColor,
+        body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             SliverToBoxAdapter(child: _ViewTracker(productId: product.id)),
             // Pinned action bar with back / share / favorite buttons
@@ -130,11 +193,20 @@ class _DetailBody extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: context.backgroundColor,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.08), blurRadius: 8)],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   child: IconButton(
                     padding: EdgeInsets.zero,
-                    icon: Icon(Icons.arrow_back_ios_new, color: context.textPrimary, size: 18),
+                    icon: Icon(
+                      Icons.arrow_back_ios_new,
+                      color: context.textPrimary,
+                      size: 18,
+                    ),
                     onPressed: () => context.pop(),
                   ),
                 ),
@@ -150,17 +222,28 @@ class _DetailBody extends ConsumerWidget {
                       const SizedBox(width: 8),
                       // Share button
                       Container(
-                        width: 38, height: 38,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           color: context.backgroundColor,
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.08), blurRadius: 8)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                            ),
+                          ],
                         ),
                         child: IconButton(
                           padding: EdgeInsets.zero,
-                          icon: Icon(Icons.share_outlined, color: context.textPrimary, size: 18),
+                          icon: Icon(
+                            Icons.share_outlined,
+                            color: context.textPrimary,
+                            size: 18,
+                          ),
                           onPressed: () {
-                            final productUrl = 'https://compair.digital/product/${product.id}';
+                            final productUrl =
+                                'https://compair.digital/product/${product.id}';
                             Share.share(
                               '${product.name} — ${product.description.isNotEmpty ? product.description : 'Check it out on Compair!'}\n$productUrl',
                               subject: product.name,
@@ -170,13 +253,22 @@ class _DetailBody extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        width: 38, height: 38,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           color: context.backgroundColor,
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.08), blurRadius: 8)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                            ),
+                          ],
                         ),
-                        child: _FavoriteButton(productId: product.id, isDark: false),
+                        child: _FavoriteButton(
+                          productId: product.id,
+                          isDark: false,
+                        ),
                       ),
                     ],
                   ),
@@ -196,7 +288,11 @@ class _DetailBody extends ConsumerWidget {
             ),
             // Overview content — always visible above tabs
             SliverToBoxAdapter(
-              child: _OverviewContent(product: product, country: country, isDark: isDark),
+              child: _OverviewContent(
+                product: product,
+                country: country,
+                isDark: isDark,
+              ),
             ),
             SliverPersistentHeader(
               pinned: true,

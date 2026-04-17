@@ -5468,9 +5468,16 @@ Rules:
               setState(() => _matchScoreExpanded = !_matchScoreExpanded);
               if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
                 _matchScoreFetched = true;
+                final languageCode =
+                    Localizations.localeOf(context).languageCode;
                 for (final product in widget.products) {
                   final notifier = ref.read(
-                    geminiMatchScoreProvider(product.id).notifier,
+                    geminiMatchScoreProvider(
+                      LocalizedProductKey(
+                        productId: product.id,
+                        languageCode: languageCode,
+                      ),
+                    ).notifier,
                   );
                   notifier.fetchMatchScore(product: product);
                 }
@@ -5578,7 +5585,13 @@ Rules:
                       children: List.generate(productCount, (i) {
                         final product = widget.products[i];
                         final matchAsync = ref.watch(
-                          geminiMatchScoreProvider(product.id),
+                          geminiMatchScoreProvider(
+                            LocalizedProductKey(
+                              productId: product.id,
+                              languageCode:
+                                  Localizations.localeOf(context).languageCode,
+                            ),
+                          ),
                         );
                         final matchResult = matchAsync.valueOrNull;
                         final matchScore = matchResult?.matchScore;

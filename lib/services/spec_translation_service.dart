@@ -11,6 +11,13 @@ class SpecTranslationService {
   Map<String, String>? _enTr;
   Map<String, String>? _trEn; // Reverse lookup: TR→EN
   bool _loading = false;
+  final Map<String, String> _canonicalCache = {};
+  final Map<String, String> _labelLocaleCache = {};
+  final Map<String, String> _valueLocaleCache = {};
+
+  static final RegExp _segmentDelimiterPattern = RegExp(
+    r'(\r?\n+|•\s*|·\s*|;\s*|\s+\|\s+)',
+  );
 
   String normalize(String text) =>
       text.replaceAll('\u00A0', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -184,6 +191,20 @@ class SpecTranslationService {
   String canonicalizeToEnglish(String text) {
     final normalized = normalize(text);
     if (normalized.isEmpty) return normalized;
+    final cached = _canonicalCache[normalized];
+    if (cached != null) return cached;
+
+    final result = _transformSegments(
+      normalized,
+      _canonicalizeSingleSegmentToEnglish,
+    );
+    _canonicalCache[normalized] = result;
+    return result;
+  }
+
+  String _canonicalizeSingleSegmentToEnglish(String text) {
+    final normalized = normalize(text);
+    if (normalized.isEmpty) return normalized;
 
     final exact = normalize(translateToEn(normalized));
     if (exact.toLowerCase() != normalized.toLowerCase()) {
@@ -199,25 +220,36 @@ class SpecTranslationService {
   }
 
   String translateLabelForLocale(String text, String locale) {
-    final canonical = canonicalizeToEnglish(text);
-    if (canonical.isEmpty) return canonical;
-
-    if (locale == 'en') return canonical;
-    if (locale == 'tr') {
-      final exact = normalize(translate(canonical));
-      if (exact.toLowerCase() != canonical.toLowerCase()) return exact;
-      final wordLevel = normalize(translateWords(canonical));
-      if (wordLevel.toLowerCase() != canonical.toLowerCase()) return wordLevel;
-      return canonical;
-    }
-
-    final translated = normalize(spec_dict.translateSpec(canonical, locale));
-    return translated.toLowerCase() != canonical.toLowerCase()
-        ? translated
-        : canonical;
+    final cacheKey = '$locale|$text';
+    final cached = _labelLocaleCache[cacheKey];
+    if (cached != null) return cached;
+    final result = _transformSegments(
+      text,
+      (segment) =>
+          _translateSingleSegmentForLocale(segment, locale, isValue: false),
+    );
+    _labelLocaleCache[cacheKey] = result;
+    return result;
   }
 
   String translateValueForLocale(String text, String locale) {
+    final cacheKey = '$locale|$text';
+    final cached = _valueLocaleCache[cacheKey];
+    if (cached != null) return cached;
+    final result = _transformSegments(
+      text,
+      (segment) =>
+          _translateSingleSegmentForLocale(segment, locale, isValue: true),
+    );
+    _valueLocaleCache[cacheKey] = result;
+    return result;
+  }
+
+  String _translateSingleSegmentForLocale(
+    String text,
+    String locale, {
+    required bool isValue,
+  }) {
     final canonical = canonicalizeToEnglish(text);
     if (canonical.isEmpty) return canonical;
 
@@ -231,11 +263,37 @@ class SpecTranslationService {
     }
 
     final translated = normalize(
-      spec_dict.translateSpecValue(canonical, locale),
+      isValue
+          ? spec_dict.translateSpecValue(canonical, locale)
+          : spec_dict.translateSpec(canonical, locale),
     );
     return translated.toLowerCase() != canonical.toLowerCase()
         ? translated
         : canonical;
+  }
+
+  String _transformSegments(
+    String text,
+    String Function(String segment) transformer,
+  ) {
+    final normalized = normalize(text);
+    if (normalized.isEmpty) return normalized;
+
+    final parts = normalized.split(_segmentDelimiterPattern);
+    if (parts.length == 1) {
+      return transformer(normalized);
+    }
+
+    final buffer = StringBuffer();
+    for (final part in parts) {
+      if (part.isEmpty) continue;
+      if (_segmentDelimiterPattern.hasMatch(part)) {
+        buffer.write(part);
+        continue;
+      }
+      buffer.write(transformer(part));
+    }
+    return buffer.toString();
   }
 
   bool get isLoaded => _enTr != null && _enTr!.isNotEmpty;

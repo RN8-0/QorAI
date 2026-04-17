@@ -5,12 +5,47 @@ part of '../product_detail_screen.dart';
 // ═══════════════════════════════════════════════════════════
 
 String _scoreLevelLabel(BuildContext context, int score) {
-  final isTurkish =
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
-  if (score >= 80) return isTurkish ? 'Mükemmel' : 'Excellent';
-  if (score >= 60) return isTurkish ? 'İyi' : 'Good';
-  if (score >= 40) return isTurkish ? 'Orta' : 'Fair';
-  return isTurkish ? 'Düşük' : 'Low';
+  final languageCode =
+      Localizations.localeOf(context).languageCode.toLowerCase();
+  const labels = <String, List<String>>{
+    'ar': ['ممتاز', 'جيد', 'متوسط', 'منخفض'],
+    'de': ['Ausgezeichnet', 'Gut', 'Mittel', 'Niedrig'],
+    'en': ['Excellent', 'Good', 'Fair', 'Low'],
+    'es': ['Excelente', 'Bueno', 'Regular', 'Bajo'],
+    'fr': ['Excellent', 'Bon', 'Moyen', 'Faible'],
+    'it': ['Eccellente', 'Buono', 'Medio', 'Basso'],
+    'ja': ['優秀', '良好', '普通', '低い'],
+    'nl': ['Uitstekend', 'Goed', 'Gemiddeld', 'Laag'],
+    'pl': ['Swietny', 'Dobry', 'Sredni', 'Niski'],
+    'pt': ['Excelente', 'Bom', 'Medio', 'Baixo'],
+    'sv': ['Utmarkt', 'Bra', 'Medel', 'Lag'],
+    'tr': ['Mukemmel', 'Iyi', 'Orta', 'Dusuk'],
+  };
+  final localeLabels = labels[languageCode] ?? labels['en']!;
+  if (score >= 80) return localeLabels[0];
+  if (score >= 60) return localeLabels[1];
+  if (score >= 40) return localeLabels[2];
+  return localeLabels[3];
+}
+
+String _localizedMatchLoadingText(BuildContext context) {
+  final languageCode =
+      Localizations.localeOf(context).languageCode.toLowerCase();
+  const labels = <String, String>{
+    'ar': 'جارٍ التحليل...',
+    'de': 'Wird analysiert...',
+    'en': 'Analyzing...',
+    'es': 'Analizando...',
+    'fr': 'Analyse...',
+    'it': 'Analisi...',
+    'ja': '分析中...',
+    'nl': 'Analyseren...',
+    'pl': 'Analizowanie...',
+    'pt': 'Analisando...',
+    'sv': 'Analyserar...',
+    'tr': 'Analiz ediliyor...',
+  };
+  return labels[languageCode] ?? labels['en']!;
 }
 
 class _ScoreDuo extends ConsumerStatefulWidget {
@@ -23,38 +58,40 @@ class _ScoreDuo extends ConsumerStatefulWidget {
 
 class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     with SingleTickerProviderStateMixin {
-  bool _geminiTriggered = false;
+  String? _lastRequestedLanguage;
   bool _reasonExpanded = false;
 
-  bool get _isTurkish =>
-      (ref.read(localeProvider)?.languageCode ?? 'en').toLowerCase() == 'tr';
-
-  String _fallbackText({required String en, required String tr}) {
-    return _isTurkish ? tr : en;
-  }
-
-  void _triggerGeminiFetch() {
-    if (_geminiTriggered) return;
-    _geminiTriggered = true;
+  void _triggerGeminiFetch(LocalizedProductKey cacheKey) {
+    if (_lastRequestedLanguage == cacheKey.normalizedLanguageCode) return;
+    _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref
-          .read(geminiMatchScoreProvider(widget.product.id).notifier)
+          .read(geminiMatchScoreProvider(cacheKey).notifier)
           .fetchMatchScore(product: widget.product);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(localeProvider);
+    final languageCode =
+        (locale?.languageCode ?? Localizations.localeOf(context).languageCode)
+            .toLowerCase();
+    final cacheKey = LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: languageCode,
+    );
     final techScore = widget.product.techScore.toInt();
     final userAsync = ref.watch(userProfileProvider);
     final user = userAsync.valueOrNull;
     final quizDone = user != null && user.quizCompleted;
 
     // Trigger Gemini fetch when quiz is done
-    if (quizDone) _triggerGeminiFetch();
+    if (quizDone) _triggerGeminiFetch(cacheKey);
 
     // Watch the Gemini match score provider
-    final matchAsync = ref.watch(geminiMatchScoreProvider(widget.product.id));
+    final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
     final isLoading = matchAsync is AsyncLoading;
 
@@ -150,29 +187,35 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      context.l10n?.yourMatch ?? 'Your Match',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.slate500,
-                                        letterSpacing: 0.4,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        context.l10n?.yourMatch ?? 'Your Match',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.slate500,
+                                          letterSpacing: 0.4,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      context.l10n?.takeQuiz ?? 'Take Quiz',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppTheme.primaryBlue,
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        context.l10n?.takeQuiz ?? 'Take Quiz',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.primaryBlue,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -227,7 +270,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
             width: 44,
@@ -252,29 +294,35 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
             ),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                context.l10n?.yourMatch ?? 'Your Match',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.slate500,
-                  letterSpacing: 0.4,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.l10n?.yourMatch ?? 'Your Match',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.slate500,
+                    letterSpacing: 0.4,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _fallbackText(en: 'Analyzing...', tr: 'Analiz ediliyor...'),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.7),
+                const SizedBox(height: 2),
+                Text(
+                  _localizedMatchLoadingText(context),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.7),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -383,36 +431,43 @@ class _AnimatedScoreCellState extends State<_AnimatedScoreCell>
                 ),
               ),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(widget.icon, size: 12, color: widget.color),
-                      const SizedBox(width: 3),
-                      Text(
-                        widget.label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.slate500,
-                          letterSpacing: 0.4,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(widget.icon, size: 12, color: widget.color),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            widget.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.slate500,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _scoreLevelLabel(context, currentScore),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: widget.color,
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      _scoreLevelLabel(context, currentScore),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: widget.color,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -472,42 +527,43 @@ class _ScoreCell extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 12, color: color),
-                  const SizedBox(width: 3),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.slate500,
-                      letterSpacing: 0.4,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 12, color: color),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.slate500,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                score >= 80
-                    ? 'Excellent'
-                    : score >= 60
-                    ? 'Good'
-                    : score >= 40
-                    ? 'Fair'
-                    : 'Low',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: color,
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  _scoreLevelLabel(context, score),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -78,20 +78,24 @@ class SharedPremiumFeaturesSectionState
   @override
   Widget build(BuildContext context) {
     final pid = widget.product.id;
+    final localizedKey = LocalizedProductKey(
+      productId: pid,
+      languageCode: Localizations.localeOf(context).languageCode,
+    );
 
-    final deepAnalysisAsync = ref.watch(deepAnalysisCacheProvider(pid));
+    final deepAnalysisAsync = ref.watch(deepAnalysisCacheProvider(localizedKey));
     final deepAnalysis = deepAnalysisAsync.valueOrNull;
     final isLoadingAnalysis = deepAnalysisAsync is AsyncLoading;
 
-    final alternativesAsync = ref.watch(alternativesCacheProvider(pid));
+    final alternativesAsync = ref.watch(alternativesCacheProvider(localizedKey));
     final alternatives = alternativesAsync.valueOrNull;
     final isLoadingAlternatives = alternativesAsync is AsyncLoading;
 
-    final advisorAsync = ref.watch(advisorCacheProvider(pid));
+    final advisorAsync = ref.watch(advisorCacheProvider(localizedKey));
     final advisorResult = advisorAsync.valueOrNull;
     final isLoadingAdvisor = advisorAsync is AsyncLoading;
 
-    final predictionAsync = ref.watch(predictionCacheProvider(pid));
+    final predictionAsync = ref.watch(predictionCacheProvider(localizedKey));
     final predictionResult = predictionAsync.valueOrNull;
     final isLoadingPrediction = predictionAsync is AsyncLoading;
 
@@ -1625,7 +1629,14 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget buildMatchScoreCard() {
-    final matchAsync = ref.watch(geminiMatchScoreProvider(widget.product.id));
+    final matchAsync = ref.watch(
+      geminiMatchScoreProvider(
+        LocalizedProductKey(
+          productId: widget.product.id,
+          languageCode: Localizations.localeOf(context).languageCode,
+        ),
+      ),
+    );
     final matchResult = matchAsync.valueOrNull;
     int? matchScore;
     String? matchReason;
@@ -1724,10 +1735,16 @@ class SharedPremiumFeaturesSectionState
     });
     final lang = Localizations.localeOf(context).languageCode;
     ref
-        .read(deepAnalysisCacheProvider(widget.product.id).notifier)
+        .read(
+          deepAnalysisCacheProvider(
+            LocalizedProductKey(
+              productId: widget.product.id,
+              languageCode: lang,
+            ),
+          ).notifier,
+        )
         .startAnalysis(
           widget.product.name,
-          lang,
           category: widget.product.category,
           brand: widget.product.brand,
         );
@@ -1747,8 +1764,15 @@ class SharedPremiumFeaturesSectionState
     });
     final lang = Localizations.localeOf(context).languageCode;
     ref
-        .read(alternativesCacheProvider(widget.product.id).notifier)
-        .startQuery(widget.product.name, widget.product.category, lang);
+        .read(
+          alternativesCacheProvider(
+            LocalizedProductKey(
+              productId: widget.product.id,
+              languageCode: lang,
+            ),
+          ).notifier,
+        )
+        .startQuery(widget.product.name, widget.product.category);
   }
 
   Future<void> _toggleAdvisor() async {
@@ -1775,8 +1799,15 @@ class SharedPremiumFeaturesSectionState
         ? AppUtils.formatCurrency(priceVal, currency)
         : 'unknown price';
     ref
-        .read(advisorCacheProvider(widget.product.id).notifier)
-        .startQuery(widget.product.name, widget.product.category, price, lang);
+        .read(
+          advisorCacheProvider(
+            LocalizedProductKey(
+              productId: widget.product.id,
+              languageCode: lang,
+            ),
+          ).notifier,
+        )
+        .startQuery(widget.product.name, widget.product.category, price);
   }
 
   Future<void> _togglePrediction() async {
@@ -1803,12 +1834,18 @@ class SharedPremiumFeaturesSectionState
         ? AppUtils.formatCurrency(priceVal, currency)
         : 'unknown price';
     ref
-        .read(predictionCacheProvider(widget.product.id).notifier)
+        .read(
+          predictionCacheProvider(
+            LocalizedProductKey(
+              productId: widget.product.id,
+              languageCode: lang,
+            ),
+          ).notifier,
+        )
         .startQuery(
           widget.product.name,
           widget.product.category,
           price,
-          lang,
           productContext: _predictionProductContext(widget.product),
         );
   }

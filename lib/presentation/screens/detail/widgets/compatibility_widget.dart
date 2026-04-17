@@ -17,7 +17,14 @@ class _CompatibilityCard extends ConsumerWidget {
     if (user == null || !user.quizCompleted) return const SizedBox.shrink();
 
     // Use Gemini match score (same as _ScoreDuo)
-    final matchAsync = ref.watch(geminiMatchScoreProvider(product.id));
+    final matchAsync = ref.watch(
+      geminiMatchScoreProvider(
+        LocalizedProductKey(
+          productId: product.id,
+          languageCode: Localizations.localeOf(context).languageCode,
+        ),
+      ),
+    );
     final matchResult = matchAsync.valueOrNull;
     
     if (matchResult == null) return const SizedBox.shrink();

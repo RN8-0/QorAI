@@ -178,12 +178,14 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
     return Container(
       color: context.surfaceColor,
       child: TabBar(
-        isScrollable: false,
-        tabAlignment: TabAlignment.fill,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
         labelColor: Theme.of(context).colorScheme.primary,
         unselectedLabelColor: context.textTertiaryColor,
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 14),
         indicator: BoxDecoration(
           border: Border(
             bottom: BorderSide(

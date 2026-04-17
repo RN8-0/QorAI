@@ -68,30 +68,57 @@ class AIReviewResult {
   });
 }
 
+class LocalizedProductKey {
+  final String productId;
+  final String languageCode;
+
+  const LocalizedProductKey({
+    required this.productId,
+    required this.languageCode,
+  });
+
+  String get normalizedLanguageCode => languageCode.trim().toLowerCase();
+
+  @override
+  bool operator ==(Object other) {
+    return other is LocalizedProductKey &&
+        other.productId == productId &&
+        other.normalizedLanguageCode == normalizedLanguageCode;
+  }
+
+  @override
+  int get hashCode => Object.hash(productId, normalizedLanguageCode);
+}
+
 final aiReviewCacheProvider =
     StateNotifierProvider.family<
       _AIReviewNotifier,
       AsyncValue<AIReviewResult?>,
-      String
-    >((ref, productId) {
-      return _AIReviewNotifier(ref, productId);
+      LocalizedProductKey
+    >((ref, key) {
+      return _AIReviewNotifier(ref, key);
     });
 
 class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
   final Ref _ref;
   final String _productId;
-  _AIReviewNotifier(this._ref, this._productId)
-    : super(const AsyncValue.data(null));
+  final String _languageCode;
+  _AIReviewNotifier(this._ref, LocalizedProductKey key)
+    : _productId = key.productId,
+      _languageCode = key.normalizedLanguageCode.isEmpty
+          ? 'en'
+          : key.normalizedLanguageCode,
+      super(const AsyncValue.data(null));
 
   CacheService get _cache => _ref.read(cacheServiceProvider);
 
-  Future<void> startAnalysis(String productName, String language) async {
+  Future<void> startAnalysis(String productName) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
     state = const AsyncValue.loading();
 
     // Check disk cache first (24h TTL)
-    final cacheKey = 'ai_review_$_productId';
+    final cacheKey = 'ai_review_${_languageCode}_$_productId';
     try {
       final cached = await _cache.get<String>(cacheKey);
       if (cached != null && cached.isNotEmpty) {
@@ -105,7 +132,7 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
-      final langName = _getLanguageName(language);
+      final langName = _getLanguageName(_languageCode);
       final response = await deepseek.jsonFreeTextQuery(
         'You are a product sentiment analyst. Based on your knowledge of publicly available '
         'user reviews, Reddit threads, forum discussions, YouTube comments, and tech community '
@@ -117,7 +144,7 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
         '"satisfaction": Integer 0-100 representing overall user satisfaction percentage\n'
         '"praised": Array of 3-4 specific features/aspects users consistently praise. Write in $langName.\n'
         '"criticized": Array of 2-3 specific issues users consistently criticize. Write in $langName.',
-        language: language,
+        language: _languageCode,
       );
 
       // Save raw response to disk cache
@@ -499,22 +526,27 @@ final deepAnalysisCacheProvider =
     StateNotifierProvider.family<
       _DeepAnalysisNotifier,
       AsyncValue<DeepAnalysisResult?>,
-      String
-    >((ref, productId) {
-      return _DeepAnalysisNotifier(ref, productId);
+      LocalizedProductKey
+    >((ref, key) {
+      return _DeepAnalysisNotifier(ref, key);
     });
 
 class _DeepAnalysisNotifier
     extends StateNotifier<AsyncValue<DeepAnalysisResult?>> {
   final Ref _ref;
   final String _productId;
+  final String _languageCode;
 
-  _DeepAnalysisNotifier(this._ref, this._productId)
-    : super(const AsyncValue.data(null));
+  _DeepAnalysisNotifier(this._ref, LocalizedProductKey key)
+    : _productId = key.productId,
+      _languageCode = key.normalizedLanguageCode.isEmpty
+          ? 'en'
+          : key.normalizedLanguageCode,
+      super(const AsyncValue.data(null));
 
   Future<void> startAnalysis(
     String productName,
-    String language, {
+    {
     String category = '',
     String? brand,
     int? year,
@@ -524,7 +556,7 @@ class _DeepAnalysisNotifier
     state = const AsyncValue.loading();
 
     // Disk cache check
-    final cacheKey = 'deep_analysis_$_productId';
+    final cacheKey = 'deep_analysis_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     try {
       final cached = await cache.get<String>(cacheKey);
@@ -561,7 +593,7 @@ class _DeepAnalysisNotifier
         '- Scores should be realistic and varied (not all 80-90)\n'
         '- Pros/cons should be concise (max 10 words each)\n'
         '- Be honest and specific, not generic praise',
-        language: language,
+        language: _languageCode,
       );
       // Save to disk cache
       if (result.isNotEmpty) {
@@ -628,29 +660,33 @@ final alternativesCacheProvider =
     StateNotifierProvider.family<
       _AlternativesCacheNotifier,
       AsyncValue<AlternativesResult?>,
-      String
-    >((ref, productId) {
-      return _AlternativesCacheNotifier(ref, productId);
+      LocalizedProductKey
+    >((ref, key) {
+      return _AlternativesCacheNotifier(ref, key);
     });
 
 class _AlternativesCacheNotifier
     extends StateNotifier<AsyncValue<AlternativesResult?>> {
   final Ref _ref;
   final String _productId;
-  _AlternativesCacheNotifier(this._ref, this._productId)
-    : super(const AsyncValue.data(null));
+  final String _languageCode;
+  _AlternativesCacheNotifier(this._ref, LocalizedProductKey key)
+    : _productId = key.productId,
+      _languageCode = key.normalizedLanguageCode.isEmpty
+          ? 'en'
+          : key.normalizedLanguageCode,
+      super(const AsyncValue.data(null));
 
   Future<void> startQuery(
     String productName,
     String category,
-    String language,
   ) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
 
     // Disk cache check
-    final cacheKey = 'alternatives_$_productId';
+    final cacheKey = 'alternatives_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     try {
       final cached = await cache.get<String>(cacheKey);
@@ -680,7 +716,7 @@ class _AlternativesCacheNotifier
         '  ]\n'
         '}\n\n'
         'Provide exactly 5 real alternative products. Be specific with actual product names.',
-        language: language,
+        language: _languageCode,
       );
       if (result.isNotEmpty) {
         cache
@@ -729,22 +765,27 @@ final advisorCacheProvider =
     StateNotifierProvider.family<
       _AdvisorCacheNotifier,
       AsyncValue<AdvisorResult?>,
-      String
-    >((ref, productId) {
-      return _AdvisorCacheNotifier(ref, productId);
+      LocalizedProductKey
+    >((ref, key) {
+      return _AdvisorCacheNotifier(ref, key);
     });
 
 class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
   final Ref _ref;
   final String _productId;
-  _AdvisorCacheNotifier(this._ref, this._productId)
-    : super(const AsyncValue.data(null));
+  final String _languageCode;
+  _AdvisorCacheNotifier(this._ref, LocalizedProductKey key)
+    : _productId = key.productId,
+      _languageCode = key.normalizedLanguageCode.isEmpty
+          ? 'en'
+          : key.normalizedLanguageCode,
+      super(const AsyncValue.data(null));
 
   Future<void> startQuery(
     String productName,
     String category,
     String price,
-    String language, {
+    {
     String productContext = '',
   }) async {
     if (state is AsyncLoading) return;
@@ -752,7 +793,7 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     state = const AsyncValue.loading();
 
     // Disk cache check
-    final cacheKey = 'advisor_$_productId';
+    final cacheKey = 'advisor_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     try {
       final cached = await cache.get<String>(cacheKey);
@@ -779,7 +820,7 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
         '  "ratingExplanation": "<1 sentence explaining the rating>"\n'
         '}\n\n'
         'Be specific and honest. Reasons should be concise (max 15 words each).',
-        language: language,
+        language: _languageCode,
       );
       if (result.isNotEmpty) {
         cache
@@ -828,24 +869,29 @@ final predictionCacheProvider =
     StateNotifierProvider.family<
       _PredictionCacheNotifier,
       AsyncValue<PredictionResult?>,
-      String
-    >((ref, productId) {
-      return _PredictionCacheNotifier(ref, productId);
+      LocalizedProductKey
+    >((ref, key) {
+      return _PredictionCacheNotifier(ref, key);
     });
 
 class _PredictionCacheNotifier
     extends StateNotifier<AsyncValue<PredictionResult?>> {
   final Ref _ref;
   final String _productId;
+  final String _languageCode;
   static const int _predictionCacheVersion = 3;
-  _PredictionCacheNotifier(this._ref, this._productId)
-    : super(const AsyncValue.data(null));
+  _PredictionCacheNotifier(this._ref, LocalizedProductKey key)
+    : _productId = key.productId,
+      _languageCode = key.normalizedLanguageCode.isEmpty
+          ? 'en'
+          : key.normalizedLanguageCode,
+      super(const AsyncValue.data(null));
 
   Future<void> startQuery(
     String productName,
     String category,
     String price,
-    String language, {
+    {
     String productContext = '',
   }) async {
     if (state is AsyncLoading) return;
@@ -855,12 +901,12 @@ class _PredictionCacheNotifier
       productName: productName,
       category: category,
       price: price,
-      language: language,
+      language: _languageCode,
       productContext: productContext,
     );
 
     // Disk cache check
-    final normalizedLanguage = language.trim().toLowerCase();
+    final normalizedLanguage = _languageCode;
     final cacheKey =
         'prediction_v${_predictionCacheVersion}_${normalizedLanguage}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
@@ -900,7 +946,7 @@ class _PredictionCacheNotifier
         'Different products must not receive the same percentage, buy/wait decision, or reasoning by default. '
         'Avoid stock phrases and explain the product-specific trigger behind the prediction. '
         'trendPercentage is the expected price change amount in percent.',
-        language: language,
+        language: _languageCode,
       );
       if (result.isNotEmpty) {
         cache
@@ -1152,9 +1198,9 @@ final geminiMatchScoreProvider =
     StateNotifierProvider.family<
       _GeminiMatchScoreNotifier,
       AsyncValue<GeminiMatchResult?>,
-      String
-    >((ref, productId) {
-      return _GeminiMatchScoreNotifier(ref, productId);
+      LocalizedProductKey
+    >((ref, key) {
+      return _GeminiMatchScoreNotifier(ref, key);
     });
 
 class _GeminiMatchScoreNotifier
@@ -1162,8 +1208,13 @@ class _GeminiMatchScoreNotifier
   static const int _detailMatchCacheVersion = 3;
   final Ref _ref;
   final String _productId;
-  _GeminiMatchScoreNotifier(this._ref, this._productId)
-    : super(const AsyncValue.data(null));
+  final String _languageCode;
+  _GeminiMatchScoreNotifier(this._ref, LocalizedProductKey key)
+    : _productId = key.productId,
+      _languageCode = key.normalizedLanguageCode.isEmpty
+          ? 'en'
+          : key.normalizedLanguageCode,
+      super(const AsyncValue.data(null));
 
   Future<void> fetchMatchScore({required ProductEntity product}) async {
     if (state is AsyncLoading) return;
@@ -1176,11 +1227,9 @@ class _GeminiMatchScoreNotifier
     state = const AsyncValue.loading();
 
     try {
-      final locale = _ref.read(localeProvider);
-      final localeLangCode = locale?.languageCode.trim().toLowerCase();
       final profileLangCode = user.language.trim().toLowerCase();
-      final langCode = (localeLangCode?.isNotEmpty ?? false)
-          ? localeLangCode!
+      final langCode = _languageCode.isNotEmpty
+          ? _languageCode
           : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
 
       // 1. Check Firestore cache first (24h TTL)

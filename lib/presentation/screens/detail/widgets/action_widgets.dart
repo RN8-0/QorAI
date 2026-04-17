@@ -168,41 +168,48 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
           }
         }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: isInCompare
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-              : context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 128),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
             color: isInCompare
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-                : context.dividerColor,
-            width: 1,
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                : context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isInCompare
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                  : context.dividerColor,
+              width: 1,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isInCompare ? Icons.check_circle : Icons.compare_arrows_rounded,
-              color: isInCompare ? Theme.of(context).colorScheme.primary : context.textPrimary,
-              size: 16,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              isInCompare
-                  ? (context.l10n?.added ?? 'Added')
-                  : (context.l10n?.compareAction ?? 'Compare'),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isInCompare ? Icons.check_circle : Icons.compare_arrows_rounded,
                 color: isInCompare ? Theme.of(context).colorScheme.primary : context.textPrimary,
+                size: 16,
               ),
-            ),
-          ],
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  isInCompare
+                      ? (context.l10n?.added ?? 'Added')
+                      : (context.l10n?.compareAction ?? 'Compare'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isInCompare ? Theme.of(context).colorScheme.primary : context.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
