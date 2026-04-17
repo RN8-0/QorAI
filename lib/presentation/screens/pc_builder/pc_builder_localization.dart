@@ -109,28 +109,28 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
     'sv': 'AI-prestandaanalys',
     'ar': 'تحليل الأداء بالذكاء الاصطناعي',
   },
-  'Bottleneck detection, gaming FPS estimates and performance tier powered by Gemini AI.': {
+  'Bottleneck detection, gaming FPS estimates and performance tier powered by Compair AI.': {
     'tr':
-        'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Gemini AI ile sunulur.',
+        'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Compair AI ile sunulur.',
     'de':
-        'Engpasserkennung, Gaming-FPS-Schatzungen und Leistungsklasse mit Gemini AI.',
+        'Engpasserkennung, Gaming-FPS-Schatzungen und Leistungsklasse mit Compair AI.',
     'es':
-        'Deteccion de cuello de botella, estimaciones de FPS en juegos y nivel de rendimiento con Gemini AI.',
+        'Deteccion de cuello de botella, estimaciones de FPS en juegos y nivel de rendimiento con Compair AI.',
     'fr':
-        'Detection des goulots d etranglement, estimation FPS gaming et niveau de performance par Gemini AI.',
+        'Detection des goulots d etranglement, estimation FPS gaming et niveau de performance par Compair AI.',
     'it':
-        'Rilevamento colli di bottiglia, stime FPS gaming e fascia prestazionale con Gemini AI.',
-    'ja': 'ボトルネック検出、ゲームFPS推定、性能ランクを Gemini AI が提供します。',
+        'Rilevamento colli di bottiglia, stime FPS gaming e fascia prestazionale con Compair AI.',
+    'ja': 'ボトルネック検出、ゲームFPS推定、性能ランクを Compair AI が提供します。',
     'nl':
-        'Bottleneck-detectie, gaming-FPS-schattingen en prestatieniveau aangedreven door Gemini AI.',
+        'Bottleneck-detectie, gaming-FPS-schattingen en prestatieniveau aangedreven door Compair AI.',
     'pl':
-        'Wykrywanie waskich gardel, szacowanie FPS w grach i poziom wydajnosci przez Gemini AI.',
+        'Wykrywanie waskich gardel, szacowanie FPS w grach i poziom wydajnosci przez Compair AI.',
     'pt':
-        'Deteccao de gargalo, estimativas de FPS em jogos e nivel de desempenho com Gemini AI.',
+        'Deteccao de gargalo, estimativas de FPS em jogos e nivel de desempenho com Compair AI.',
     'sv':
-        'Flaskhalsdetektering, spel-FPS-prognoser och prestandaniva med Gemini AI.',
+        'Flaskhalsdetektering, spel-FPS-prognoser och prestandaniva med Compair AI.',
     'ar':
-        'اكتشاف عنق الزجاجة وتقدير FPS للألعاب ومستوى الأداء بواسطة Gemini AI.',
+        'اكتشاف عنق الزجاجة وتقدير FPS للألعاب ومستوى الأداء بواسطة Compair AI.',
   },
   'Power Calculation': {
     'tr': 'Guc Hesaplama',

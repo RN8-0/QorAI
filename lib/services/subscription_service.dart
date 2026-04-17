@@ -72,7 +72,8 @@ class UsageCounter {
       comparisonPeriodKey: comparisonPeriodKey ?? this.comparisonPeriodKey,
       aiPeriodKey: aiPeriodKey ?? this.aiPeriodKey,
       linkPeriodKey: linkPeriodKey ?? this.linkPeriodKey,
-      subscriptionPeriodKey: subscriptionPeriodKey ?? this.subscriptionPeriodKey,
+      subscriptionPeriodKey:
+          subscriptionPeriodKey ?? this.subscriptionPeriodKey,
     );
   }
 }
@@ -91,17 +92,26 @@ class SubscriptionService extends ChangeNotifier {
   Completer<void>? _initCompleter;
 
   SubscriptionStatus get status {
+    final pocketBaseStatus = _pocketBaseSnapshotStatus;
     if (!_status.isPremium &&
         !_profileStatus.isPremium &&
-        !_hasPocketBasePremiumSnapshot) {
+        pocketBaseStatus == null) {
       return _status;
     }
     return SubscriptionStatus(
       isPremium: true,
       activeProductId:
-          _status.activeProductId ?? _profileStatus.activeProductId,
-      purchaseDate: _status.purchaseDate ?? _profileStatus.purchaseDate,
-      expirationDate: _status.expirationDate ?? _profileStatus.expirationDate,
+          _status.activeProductId ??
+          _profileStatus.activeProductId ??
+          pocketBaseStatus?.activeProductId,
+      purchaseDate:
+          _status.purchaseDate ??
+          _profileStatus.purchaseDate ??
+          pocketBaseStatus?.purchaseDate,
+      expirationDate:
+          _status.expirationDate ??
+          _profileStatus.expirationDate ??
+          pocketBaseStatus?.expirationDate,
     );
   }
 
@@ -113,24 +123,54 @@ class SubscriptionService extends ChangeNotifier {
   int get linkPastesUsed => _normalizedUsage().linkPastes;
   int get subscriptionAnalysesUsed => _normalizedUsage().subscriptionAnalyses;
 
-  bool get _hasPocketBasePremiumSnapshot {
+  SubscriptionStatus? get _pocketBaseSnapshotStatus {
     try {
-      if (!pb.authStore.isValid) return false;
+      if (!pb.authStore.isValid) return null;
       final record = pb.authStore.record;
-      if (record == null) return false;
+      if (record == null) return null;
       final premiumFlag = record.data['isPremium'] == true;
-      if (premiumFlag) return true;
       final details = record.data['userSubscriptionDetails'];
       if (details is Map) {
         final premium = details['premium'];
         if (premium is Map && premium.isNotEmpty) {
-          return true;
+          final productId =
+              premium['productId']?.toString() ??
+              premium['activeProductId']?.toString();
+          final purchaseDate = _firstAvailableDate(premium, const [
+            'startedAt',
+            'purchaseDate',
+            'purchasedAt',
+            'originalPurchaseDate',
+            'created',
+            'updatedAt',
+          ]);
+          final expirationDate = _firstAvailableDate(premium, const [
+            'expiresAt',
+            'expirationDate',
+            'renewalDate',
+            'renewsAt',
+          ]);
+          return SubscriptionStatus(
+            isPremium: premiumFlag || productId != null || purchaseDate != null,
+            activeProductId: productId,
+            purchaseDate: purchaseDate,
+            expirationDate: expirationDate,
+          );
         }
       }
-      return false;
+      return premiumFlag ? const SubscriptionStatus(isPremium: true) : null;
     } catch (_) {
-      return false;
+      return null;
     }
+  }
+
+  DateTime? _firstAvailableDate(Map premium, List<String> keys) {
+    for (final key in keys) {
+      final value = premium[key];
+      final parsed = _parseStoredDate(value?.toString());
+      if (parsed != null) return parsed;
+    }
+    return null;
   }
 
   SubscriptionService() {
@@ -535,7 +575,10 @@ class SubscriptionService extends ChangeNotifier {
       changed = true;
     }
     if (next.subscriptionPeriodKey != monthlyKey) {
-      next = next.copyWith(subscriptionAnalyses: 0, subscriptionPeriodKey: monthlyKey);
+      next = next.copyWith(
+        subscriptionAnalyses: 0,
+        subscriptionPeriodKey: monthlyKey,
+      );
       changed = true;
     }
 
@@ -568,7 +611,8 @@ class SubscriptionService extends ChangeNotifier {
   /// Can a subscription analysis be performed?
   bool get canAnalyzeSubscription {
     if (isPremium) return true;
-    return _normalizedUsage().subscriptionAnalyses < AppConstants.freeSubscriptionAnalysisLimit;
+    return _normalizedUsage().subscriptionAnalyses <
+        AppConstants.freeSubscriptionAnalysisLimit;
   }
 
   /// Record comparison usage
@@ -637,7 +681,9 @@ class SubscriptionService extends ChangeNotifier {
         ),
       );
     }
-    _usage = currentUsage.copyWith(subscriptionAnalyses: currentUsage.subscriptionAnalyses + 1);
+    _usage = currentUsage.copyWith(
+      subscriptionAnalyses: currentUsage.subscriptionAnalyses + 1,
+    );
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -658,5 +704,6 @@ class SubscriptionService extends ChangeNotifier {
 
   int get remainingSubscriptionAnalyses => isPremium
       ? -1
-      : AppConstants.freeSubscriptionAnalysisLimit - _normalizedUsage().subscriptionAnalyses;
+      : AppConstants.freeSubscriptionAnalysisLimit -
+            _normalizedUsage().subscriptionAnalyses;
 }

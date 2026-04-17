@@ -439,8 +439,8 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       ),
       localizePcBuilderText(
         context,
-        en: 'Bottleneck detection, gaming FPS estimates and performance tier powered by Gemini AI.',
-        tr: 'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Gemini AI ile sunulur.',
+        en: 'Bottleneck detection, gaming FPS estimates and performance tier powered by Compair AI.',
+        tr: 'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Compair AI ile sunulur.',
       ),
     ),
     _Feature(

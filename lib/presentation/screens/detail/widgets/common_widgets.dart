@@ -8,7 +8,11 @@ class _BottomBar extends StatelessWidget {
   final ProductEntity product;
   final WidgetRef ref;
   final BuildContext context;
-  const _BottomBar({required this.product, required this.ref, required this.context});
+  const _BottomBar({
+    required this.product,
+    required this.ref,
+    required this.context,
+  });
 
   @override
   Widget build(BuildContext _) {
@@ -34,21 +38,33 @@ class _BottomBar extends StatelessWidget {
           onTap: () async {
             final result = await addToCollection(ref, product.id);
             if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(result.when(
-                success: (_) => context.l10n?.addedToCollection ?? '✅ Added to collection!',
-                failure: (e) => e.message,
-              )),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  result.when(
+                    success: (_) =>
+                        context.l10n?.addedToCollection ??
+                        '✅ Added to collection!',
+                    failure: (e) => e.message,
+                  ),
+                ),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
           },
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_bag_outlined, color: context.surfaceVariantColor, size: 20),
+                Icon(
+                  Icons.shopping_bag_outlined,
+                  color: context.surfaceVariantColor,
+                  size: 20,
+                ),
                 SizedBox(width: 10),
                 Text(
                   'I Bought This',
@@ -111,7 +127,11 @@ class _NewBottomBar extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.list_alt_rounded, color: AppTheme.slate500, size: 20),
+                      Icon(
+                        Icons.list_alt_rounded,
+                        color: AppTheme.slate500,
+                        size: 20,
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         'Details',
@@ -140,7 +160,11 @@ class _NewBottomBar extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.rate_review_outlined, color: AppTheme.slate500, size: 20),
+                      Icon(
+                        Icons.rate_review_outlined,
+                        color: AppTheme.slate500,
+                        size: 20,
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         context.l10n?.reviews ?? 'Reviews',
@@ -174,12 +198,16 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => 48;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: context.surfaceColor,
       child: TabBar(
         isScrollable: true,
-        tabAlignment: TabAlignment.start,
+        tabAlignment: TabAlignment.center,
         labelColor: Theme.of(context).colorScheme.primary,
         unselectedLabelColor: context.textTertiaryColor,
         indicatorSize: TabBarIndicatorSize.tab,
@@ -195,7 +223,10 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
           ),
         ),
         labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
         tabs: [
           Tab(text: context.l10n?.specsTab ?? 'Specs'),
           Tab(text: context.l10n?.reviews ?? 'Reviews'),
@@ -214,7 +245,11 @@ class _CardHeader extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _CardHeader({required this.icon, required this.label, required this.color});
+  const _CardHeader({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +305,11 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -283,9 +322,14 @@ class _CategoryEmoji extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const map = {
-      'smartphones': '📱', 'laptops': '💻', 'tablets': '📟',
-      'headphones': '🎧', 'wearables': '⌚', 'tvs': '📺',
-      'monitors': '🖥️', 'cameras': '📷',
+      'smartphones': '📱',
+      'laptops': '💻',
+      'tablets': '📟',
+      'headphones': '🎧',
+      'wearables': '⌚',
+      'tvs': '📺',
+      'monitors': '🖥️',
+      'cameras': '📷',
     };
     return Text(map[cat] ?? '📦', style: const TextStyle(fontSize: 72));
   }
@@ -295,8 +339,6 @@ class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(strokeWidth: 2),
-    );
+    return const Center(child: CircularProgressIndicator(strokeWidth: 2));
   }
 }

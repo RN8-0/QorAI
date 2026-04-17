@@ -15,8 +15,10 @@ class LegalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = switch (docType) {
-      LegalDocType.privacyPolicy => context.l10n?.privacyPolicyTitle ?? 'Privacy Policy',
-      LegalDocType.termsOfService => context.l10n?.termsOfServiceTitle ?? 'Terms of Service',
+      LegalDocType.privacyPolicy =>
+        context.l10n?.privacyPolicyTitle ?? 'Privacy Policy',
+      LegalDocType.termsOfService =>
+        context.l10n?.termsOfServiceTitle ?? 'Terms of Service',
       LegalDocType.faq => context.l10n?.faqTitle ?? 'FAQ',
     };
     return Scaffold(
@@ -29,10 +31,7 @@ class LegalScreen extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: context.surfaceVariantColor,
-            border: Border.all(
-              color: context.dividerColor,
-              width: 1.5,
-            ),
+            border: Border.all(color: context.dividerColor, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.white.withValues(alpha: 0.06),
@@ -191,7 +190,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
               '• Google Sign-In: Optional account authentication.\n'
               '• PocketBase: Authentication and application database.\n'
               '• RevenueCat: Subscription management and payment processing.\n'
-              '• Gemini / DeepSeek AI: AI-powered product analysis.\n'
+              '• Compair AI / DeepSeek AI: AI-powered product analysis.\n'
               '• YouTube: Product review videos (subject to YouTube\'s Terms of Service).\n\n'
               'We do not sell your personal data to third parties.',
         ),
@@ -409,7 +408,7 @@ class _FaqContent extends StatelessWidget {
         const _FaqItem(
           question: 'What AI technology does Compair use?',
           answer:
-              'Compair uses Gemini 2.5 Flash for real-time product analysis, link parsing, and conversational AI features. '
+              'Compair uses a multi-model AI stack for real-time product analysis, link parsing, and conversational AI features. '
               'Our proprietary algorithm combines AI insights with collaborative filtering to deliver accurate recommendations.',
         ),
         const _FaqItem(
@@ -441,10 +440,14 @@ class _FaqItemState extends State<_FaqItem> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: _expanded ? AppTheme.primaryBlue.withValues(alpha: 0.04) : context.surfaceColor,
+        color: _expanded
+            ? AppTheme.primaryBlue.withValues(alpha: 0.04)
+            : context.surfaceColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _expanded ? AppTheme.primaryBlue.withValues(alpha: 0.2) : context.dividerColor,
+          color: _expanded
+              ? AppTheme.primaryBlue.withValues(alpha: 0.2)
+              : context.dividerColor,
         ),
       ),
       child: Material(
@@ -465,7 +468,9 @@ class _FaqItemState extends State<_FaqItem> {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: _expanded ? AppTheme.primaryBlue : context.textPrimary,
+                          color: _expanded
+                              ? AppTheme.primaryBlue
+                              : context.textPrimary,
                         ),
                       ),
                     ),
@@ -474,7 +479,9 @@ class _FaqItemState extends State<_FaqItem> {
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color: _expanded ? AppTheme.primaryBlue : AppTheme.slate400,
+                        color: _expanded
+                            ? AppTheme.primaryBlue
+                            : AppTheme.slate400,
                       ),
                     ),
                   ],

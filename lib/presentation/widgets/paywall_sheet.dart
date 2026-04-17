@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -15,6 +16,167 @@ import 'package:compair/core/pb_client.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/services/subscription_service.dart';
+
+const Map<String, Map<String, String>> _paywallExactTranslations = {
+  'You are a yearly subscriber': {
+    'de': 'Sie haben ein Jahresabo',
+    'es': 'Tienes una suscripcion anual',
+    'fr': 'Vous avez un abonnement annuel',
+    'it': 'Hai un abbonamento annuale',
+    'ja': '年間プランをご利用中です',
+    'nl': 'Je hebt een jaarabonnement',
+    'pl': 'Masz subskrypcje roczna',
+    'pt': 'Voce tem uma assinatura anual',
+    'sv': 'Du har en arsprenumeration',
+    'ar': 'لديك اشتراك سنوي',
+  },
+  'You are a monthly subscriber': {
+    'de': 'Sie haben ein Monatsabo',
+    'es': 'Tienes una suscripcion mensual',
+    'fr': 'Vous avez un abonnement mensuel',
+    'it': 'Hai un abbonamento mensile',
+    'ja': '月額プランをご利用中です',
+    'nl': 'Je hebt een maandabonnement',
+    'pl': 'Masz subskrypcje miesieczna',
+    'pt': 'Voce tem uma assinatura mensal',
+    'sv': 'Du har en manadsprenumeration',
+    'ar': 'لديك اشتراك شهري',
+  },
+  'You are a premium subscriber': {
+    'de': 'Sie sind Premium-Abonnent',
+    'es': 'Eres suscriptor premium',
+    'fr': 'Vous etes abonne premium',
+    'it': 'Sei un abbonato premium',
+    'ja': 'プレミアム会員です',
+    'nl': 'Je bent premium-abonnee',
+    'pl': 'Masz subskrypcje premium',
+    'pt': 'Voce e assinante premium',
+    'sv': 'Du ar premiumprenumerant',
+    'ar': 'أنت مشترك بريميوم',
+  },
+  'Unknown': {
+    'de': 'Unbekannt',
+    'es': 'Desconocido',
+    'fr': 'Inconnu',
+    'it': 'Sconosciuto',
+    'ja': '不明',
+    'nl': 'Onbekend',
+    'pl': 'Nieznane',
+    'pt': 'Desconhecido',
+    'sv': 'Okant',
+    'ar': 'غير معروف',
+  },
+  'Your premium benefits are active and all limits are unlocked.': {
+    'de':
+        'Deine Premium-Vorteile sind aktiv und alle Limits wurden freigeschaltet.',
+    'es':
+        'Tus ventajas premium estan activas y todos los limites se han desbloqueado.',
+    'fr':
+        'Vos avantages premium sont actifs et toutes les limites sont debloquees.',
+    'it':
+        'I tuoi vantaggi premium sono attivi e tutti i limiti sono sbloccati.',
+    'ja': 'プレミアム特典が有効で、すべての制限が解除されています。',
+    'nl': 'Je premiumvoordelen zijn actief en alle limieten zijn ontgrendeld.',
+    'pl':
+        'Twoje korzysci premium sa aktywne i wszystkie limity zostaly odblokowane.',
+    'pt':
+        'Seus beneficios premium estao ativos e todos os limites foram liberados.',
+    'sv': 'Dina premiumfordelar ar aktiva och alla gransningar ar upplasta.',
+    'ar': 'مزايا بريميوم الخاصة بك مفعلة وتم فتح جميع الحدود.',
+  },
+  'Started on': {
+    'de': 'Begonnen am',
+    'es': 'Inicio',
+    'fr': 'Commence le',
+    'it': 'Iniziato il',
+    'ja': '開始日',
+    'nl': 'Gestart op',
+    'pl': 'Rozpoczeto',
+    'pt': 'Iniciado em',
+    'sv': 'Startade den',
+    'ar': 'تاريخ البدء',
+  },
+  'Estimated renewal / end': {
+    'de': 'Geschatzte Verlangerung / Ende',
+    'es': 'Renovacion / fin estimado',
+    'fr': 'Renouvellement / fin estime',
+    'it': 'Rinnovo / fine stimata',
+    'ja': '更新予定 / 終了日',
+    'nl': 'Geschatte verlenging / einddatum',
+    'pl': 'Szacowane odnowienie / zakonczenie',
+    'pt': 'Renovacao / termino estimado',
+    'sv': 'Beraknad fornyelse / slutdatum',
+    'ar': 'التجديد / الانتهاء المتوقع',
+  },
+  'Active plan': {
+    'de': 'Aktiver Plan',
+    'es': 'Plan activo',
+    'fr': 'Forfait actif',
+    'it': 'Piano attivo',
+    'ja': '現在のプラン',
+    'nl': 'Actief plan',
+    'pl': 'Aktywny plan',
+    'pt': 'Plano ativo',
+    'sv': 'Aktiv plan',
+    'ar': 'الخطة النشطة',
+  },
+  'Yearly': {
+    'de': 'Jahrlich',
+    'es': 'Anual',
+    'fr': 'Annuel',
+    'it': 'Annuale',
+    'ja': '年間',
+    'nl': 'Jaarlijks',
+    'pl': 'Roczny',
+    'pt': 'Anual',
+    'sv': 'Arlig',
+    'ar': 'سنوي',
+  },
+  'Monthly': {
+    'de': 'Monatlich',
+    'es': 'Mensual',
+    'fr': 'Mensuel',
+    'it': 'Mensile',
+    'ja': '月額',
+    'nl': 'Maandelijks',
+    'pl': 'Miesieczny',
+    'pt': 'Mensal',
+    'sv': 'Manad',
+    'ar': 'شهري',
+  },
+  'Free': {
+    'de': 'Kostenlos',
+    'es': 'Gratis',
+    'fr': 'Gratuit',
+    'it': 'Gratis',
+    'ja': '無料',
+    'nl': 'Gratis',
+    'pl': 'Darmowy',
+    'pt': 'Gratis',
+    'sv': 'Gratis',
+    'ar': 'مجاني',
+  },
+  'Your subscription is active. You can manage it from Google Play anytime.': {
+    'de':
+        'Dein Abo ist aktiv. Du kannst es jederzeit uber Google Play verwalten.',
+    'es':
+        'Tu suscripcion esta activa. Puedes gestionarla cuando quieras desde Google Play.',
+    'fr':
+        'Votre abonnement est actif. Vous pouvez le gerer a tout moment depuis Google Play.',
+    'it':
+        'Il tuo abbonamento e attivo. Puoi gestirlo in qualsiasi momento da Google Play.',
+    'ja': 'サブスクリプションは有効です。Google Play からいつでも管理できます。',
+    'nl':
+        'Je abonnement is actief. Je kunt het altijd beheren via Google Play.',
+    'pl':
+        'Twoja subskrypcja jest aktywna. Mozesz nia zarzadzac w dowolnym momencie w Google Play.',
+    'pt':
+        'Sua assinatura esta ativa. Voce pode gerencia-la a qualquer momento pelo Google Play.',
+    'sv':
+        'Din prenumeration ar aktiv. Du kan hantera den nar som helst via Google Play.',
+    'ar': 'اشتراكك نشط. يمكنك إدارته في أي وقت من خلال Google Play.',
+  },
+};
 
 void showPaywallSheet(BuildContext context) {
   context.push(AppRoutes.premium);
@@ -41,10 +203,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   late Animation<double> _floatAnim;
   late Animation<double> _enterAnim;
 
-  bool get _isTurkish => Localizations.localeOf(context).languageCode == 'tr';
+  String get _languageCode =>
+      Localizations.localeOf(context).languageCode.toLowerCase();
+
+  bool get _isTurkish => _languageCode == 'tr';
 
   String _txt({required String tr, required String en}) {
-    return _isTurkish ? tr : en;
+    if (_isTurkish) return tr;
+    if (_languageCode == 'en') return en;
+
+    final exact = _paywallExactTranslations[en]?[_languageCode];
+    if (exact != null && exact.isNotEmpty) {
+      return exact;
+    }
+
+    final translated = spec_dict.translateSpec(en, _languageCode);
+    return translated.toLowerCase() != en.toLowerCase() ? translated : en;
   }
 
   @override
@@ -233,11 +407,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     if (date == null) {
       return _txt(tr: 'Bilinmiyor', en: 'Unknown');
     }
-    final local = date.toLocal();
-    final day = local.day.toString().padLeft(2, '0');
-    final month = local.month.toString().padLeft(2, '0');
-    final year = local.year.toString();
-    return _isTurkish ? '$day.$month.$year' : '$month/$day/$year';
+    return MaterialLocalizations.of(context).formatCompactDate(date.toLocal());
   }
 
   DateTime? _resolveSubscriptionDate(
@@ -247,12 +417,165 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final directDate = isStart ? status.purchaseDate : status.expirationDate;
     if (directDate != null) return directDate;
 
+    if (!isStart &&
+        status.purchaseDate != null &&
+        status.activeProductId != null) {
+      final trialEnds = status.purchaseDate!.add(
+        Duration(days: AppConstants.trialDays),
+      );
+      return status.activeProductId == AppConstants.yearlySubscriptionId
+          ? trialEnds.add(const Duration(days: 365))
+          : trialEnds.add(const Duration(days: 30));
+    }
+
     final user = ref.read(userProfileProvider).valueOrNull;
     final premiumDetails = user?.userSubscriptionDetails['premium'];
-    final rawValue = premiumDetails?[isStart ? 'startedAt' : 'expiresAt']
+    final profileRawValue = premiumDetails?[isStart ? 'startedAt' : 'expiresAt']
         ?.toString();
-    if (rawValue == null || rawValue.isEmpty) return null;
-    return DateTime.tryParse(rawValue);
+    if (profileRawValue != null && profileRawValue.isNotEmpty) {
+      final parsed = DateTime.tryParse(profileRawValue);
+      if (parsed != null) return parsed;
+    }
+
+    final authPremium =
+        pb.authStore.record?.data['userSubscriptionDetails']?['premium'];
+    if (authPremium is Map) {
+      for (final key
+          in isStart
+              ? const ['startedAt', 'purchaseDate', 'purchasedAt', 'updatedAt']
+              : const ['expiresAt', 'expirationDate', 'renewalDate']) {
+        final rawValue = authPremium[key]?.toString();
+        if (rawValue == null || rawValue.isEmpty) continue;
+        final parsed = DateTime.tryParse(rawValue);
+        if (parsed != null) return parsed;
+      }
+    }
+
+    return null;
+  }
+
+  String _countPerDay(int count) {
+    return switch (_languageCode) {
+      'ar' => '$count/يوم',
+      'de' => '$count/Tag',
+      'es' => '$count/dia',
+      'fr' => '$count/jour',
+      'it' => '$count/giorno',
+      'ja' => '$count/日',
+      'nl' => '$count/dag',
+      'pl' => '$count/dzien',
+      'pt' => '$count/dia',
+      'sv' => '$count/dag',
+      'tr' => '$count/gun',
+      _ => '$count/day',
+    };
+  }
+
+  String _countPerWeek(int count) {
+    return switch (_languageCode) {
+      'ar' => '$count/اسبوع',
+      'de' => '$count/Woche',
+      'es' => '$count/semana',
+      'fr' => '$count/semaine',
+      'it' => '$count/settimana',
+      'ja' => '$count/週',
+      'nl' => '$count/week',
+      'pl' => '$count/tydzien',
+      'pt' => '$count/semana',
+      'sv' => '$count/vecka',
+      'tr' => '$count/hafta',
+      _ => '$count/week',
+    };
+  }
+
+  String _countDays(int count) {
+    return switch (_languageCode) {
+      'ar' => '$count يوم',
+      'de' => '$count Tage',
+      'es' => '$count dias',
+      'fr' => '$count jours',
+      'it' => '$count giorni',
+      'ja' => '$count日',
+      'nl' => '$count dagen',
+      'pl' => '$count dni',
+      'pt' => '$count dias',
+      'sv' => '$count dagar',
+      'tr' => '$count gun',
+      _ => '$count days',
+    };
+  }
+
+  String _countItems(int count) {
+    return switch (_languageCode) {
+      'ar' => '$count عنصر',
+      'de' => '$count Artikel',
+      'es' => '$count elementos',
+      'fr' => '$count articles',
+      'it' => '$count elementi',
+      'ja' => '$count件',
+      'nl' => '$count items',
+      'pl' => '$count elementow',
+      'pt' => '$count itens',
+      'sv' => '$count objekt',
+      'tr' => '$count urun',
+      _ => '$count items',
+    };
+  }
+
+  String _premiumUpsellSummary() {
+    return switch (_languageCode) {
+      'ar' =>
+        'مقارنات غير محدودة ودردشة AI وتحليل الروابط وتجربة بريميوم انظف.',
+      'de' =>
+        'Unbegrenzte Vergleiche, AI-Chat, Link-Analyse und ein klareres Premium-Erlebnis.',
+      'es' =>
+        'Comparaciones ilimitadas, chat con AI, analisis de enlaces y una experiencia premium mas limpia.',
+      'fr' =>
+        'Comparaisons illimitees, chat AI, analyse de liens et une experience premium plus epuree.',
+      'it' =>
+        'Confronti illimitati, chat AI, analisi link e un esperienza premium piu pulita.',
+      'ja' => '無制限比較、AIチャット、リンク分析、より洗練されたプレミアム体験。',
+      'nl' =>
+        'Onbeperkt vergelijken, AI-chat, linkanalyse en een schonere premiumervaring.',
+      'pl' =>
+        'Nielimitowane porownania, czat AI, analiza linkow i czystsze doswiadczenie premium.',
+      'pt' =>
+        'Comparacoes ilimitadas, chat com AI, analise de links e uma experiencia premium mais limpa.',
+      'sv' =>
+        'Obegransade jamforelser, AI-chatt, lankanalys och en renare premiumupplevelse.',
+      'tr' =>
+        'Sinirsiz karsilastirma, AI chat, link analizi ve daha temiz premium deneyim.',
+      _ =>
+        'Unlimited compare, AI chat, link analysis and a cleaner advanced experience.',
+    };
+  }
+
+  String _trialStartSummary() {
+    return switch (_languageCode) {
+      'ar' =>
+        '${AppConstants.trialDays} ايام بدون رسوم، ثم تبدأ الخطة التي اخترتها.',
+      'de' =>
+        '${AppConstants.trialDays} Tage kostenlos, danach startet dein gewahlter Plan.',
+      'es' =>
+        'Sin cargo durante ${AppConstants.trialDays} dias; luego comienza el plan que elijas.',
+      'fr' =>
+        'Aucun frais pendant ${AppConstants.trialDays} jours, puis votre formule selectionnee commence.',
+      'it' =>
+        'Nessun addebito per ${AppConstants.trialDays} giorni, poi parte il piano selezionato.',
+      'ja' => '${AppConstants.trialDays}日間は無料、その後選択したプランが開始されます。',
+      'nl' =>
+        '${AppConstants.trialDays} dagen geen kosten, daarna start je gekozen abonnement.',
+      'pl' =>
+        'Brak oplat przez ${AppConstants.trialDays} dni, a potem rozpocznie sie wybrany plan.',
+      'pt' =>
+        'Sem cobranca por ${AppConstants.trialDays} dias; depois seu plano selecionado comeca.',
+      'sv' =>
+        'Ingen kostnad i ${AppConstants.trialDays} dagar, sedan startar din valda plan.',
+      'tr' =>
+        '${AppConstants.trialDays} gun boyunca ucret alinmaz, sonra sectiginiz plan baslar.',
+      _ =>
+        'No charge for ${AppConstants.trialDays} days, then your selected plan starts.',
+    };
   }
 
   void _handlePurchaseTap() {
@@ -538,10 +861,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            _txt(
-              tr: 'Sinirsiz karsilastirma, AI chat, link analizi ve daha temiz premium deneyim.',
-              en: 'Unlimited compare, AI chat, link analysis and a cleaner advanced experience.',
-            ),
+            _premiumUpsellSummary(),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               color: context.textSecondary,
@@ -653,10 +973,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _txt(
-                    tr: '${AppConstants.trialDays} gun boyunca ucret alinmaz, sonra sectiginiz plan baslar.',
-                    en: 'No charge for ${AppConstants.trialDays} days, then your selected plan starts.',
-                  ),
+                  _trialStartSummary(),
                   style: GoogleFonts.plusJakartaSans(
                     color: context.textSecondary,
                     fontSize: 12,
@@ -961,10 +1278,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               _buildSubscriptionMetaRow(
                 icon: Icons.workspace_premium_rounded,
                 label: _txt(tr: 'Aktif plan', en: 'Active plan'),
-                value:
-                    status.activeProductId == AppConstants.yearlySubscriptionId
-                    ? (_txt(tr: 'Yillik', en: 'Yearly'))
-                    : (_txt(tr: 'Aylik', en: 'Monthly')),
+                value: switch (_planType(status.activeProductId)) {
+                  'yearly' => _txt(tr: 'Yillik', en: 'Yearly'),
+                  'monthly' => _txt(tr: 'Aylik', en: 'Monthly'),
+                  _ => 'Premium',
+                },
               ),
             ],
           ),
@@ -1023,26 +1341,26 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final rows = [
       _TableRow(
         l?.productComparisons ?? 'Product Comparisons',
-        '${AppConstants.freeComparisonLimit}/day',
+        _countPerDay(AppConstants.freeComparisonLimit),
         l?.unlimited ?? 'Unlimited',
         Icons.compare_arrows_rounded,
       ),
       _TableRow(
         l?.aiChatMessages ?? 'AI Chat Messages',
-        '${AppConstants.freeAiQuestionLimit}/day',
+        _countPerDay(AppConstants.freeAiQuestionLimit),
         l?.unlimited ?? 'Unlimited',
         Icons.smart_toy_rounded,
       ),
       _TableRow(
         l?.linkAnalysis ?? 'Link Analysis',
-        '${AppConstants.freeLinkPasteLimit}/week',
+        _countPerWeek(AppConstants.freeLinkPasteLimit),
         l?.unlimited ?? 'Unlimited',
         Icons.link_rounded,
       ),
       _TableRow(
         l?.priceHistory ?? 'Price History',
-        '${AppConstants.freePriceHistoryDays} days',
-        '${AppConstants.proPriceHistoryDays} days',
+        _countDays(AppConstants.freePriceHistoryDays),
+        _countDays(AppConstants.proPriceHistoryDays),
         Icons.show_chart_rounded,
       ),
       _TableRow(
@@ -1054,7 +1372,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       _TableRow(l?.pcBuilder ?? 'PC Builder', true, true, Icons.memory_rounded),
       _TableRow(
         l?.saveProducts ?? 'Save Products',
-        '${AppConstants.freeCollectionLimit} items',
+        _countItems(AppConstants.freeCollectionLimit),
         l?.unlimited ?? 'Unlimited',
         Icons.bookmark_rounded,
       ),

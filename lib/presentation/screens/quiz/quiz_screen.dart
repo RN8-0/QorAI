@@ -1227,10 +1227,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       ),
       service('claude', 'Claude Pro', emoji: '🤖', logoDomain: 'anthropic.com'),
       service(
-        'gemini',
-        'Gemini Advanced',
+        'google_ai_premium',
+        'Google AI Premium',
         emoji: '🤖',
-        logoDomain: 'gemini.google.com',
+        logoDomain: 'one.google.com',
       ),
       service(
         'perplexity',
