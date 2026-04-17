@@ -202,8 +202,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     // Idle: input + suggestions
                     if (state.phase == SubFlowPhase.idle) ...[
                       const SizedBox(height: 12),
-                      _buildUsageBadge(),
-                      const SizedBox(height: 16),
                       _buildInputCard(isWorking),
                       const SizedBox(height: 20),
                       if (state.error != null) ...[

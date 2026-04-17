@@ -1847,14 +1847,26 @@ class SharedPremiumFeaturesSectionState
         );
   }
 
-  /// Check AI feature limit — returns true if allowed, shows paywall if not
+  /// Check detail AI feature limit — returns true if allowed
   bool _checkAiFeatureLimit() {
     final sub = ref.read(subscriptionServiceProvider);
-    if (!sub.canUseAiFeature) {
-      showPaywallSheet(context);
+    if (!sub.canUseDetailAi) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Detail AI daily limit reached. Upgrade to Premium for unlimited access!',
+          ),
+          action: SnackBarAction(
+            label: 'Premium',
+            onPressed: () => showPaywallSheet(context),
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
       return false;
     }
-    sub.recordAiFeature();
+    sub.recordDetailAi();
     return true;
   }
 }

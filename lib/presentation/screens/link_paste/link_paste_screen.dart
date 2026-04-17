@@ -847,7 +847,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       ),
                     ),
                     const SizedBox(width: 12),
-                    _buildLinkUsageBadge(),
                   ],
                 ),
                 const SizedBox(height: 16),

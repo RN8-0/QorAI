@@ -165,13 +165,25 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
       setState(() => _expanded = !_expanded);
       return;
     }
-    // Check AI feature limit before fetching
+    // Check detail AI limit before fetching
     final sub = ref.read(subscriptionServiceProvider);
-    if (!sub.canUseAiFeature) {
-      showPaywallSheet(context);
+    if (!sub.canUseDetailAi) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Detail AI daily limit reached. Upgrade to Premium for unlimited access!',
+          ),
+          action: SnackBarAction(
+            label: 'Premium',
+            onPressed: () => showPaywallSheet(context),
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
       return;
     }
-    sub.recordAiFeature();
+    sub.recordDetailAi();
     setState(() => _expanded = true);
     ref.read(aiReviewCacheProvider(reviewKey).notifier).startAnalysis(
           widget.product.name,

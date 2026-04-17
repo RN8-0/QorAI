@@ -1352,10 +1352,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.smart_toy_rounded,
       ),
       _TableRow(
-        'AI Features',
-        _countPerDay(AppConstants.freeAiFeatureLimit),
+        'Compare AI',
+        _countPerDay(AppConstants.freeCompareAiLimit),
+        l?.unlimited ?? 'Unlimited',
+        Icons.compare_arrows_rounded,
+      ),
+      _TableRow(
+        'Detail AI',
+        _countPerDay(AppConstants.freeDetailAiLimit),
         l?.unlimited ?? 'Unlimited',
         Icons.auto_awesome_rounded,
+      ),
+      _TableRow(
+        'PC Builder AI',
+        _countPerDay(AppConstants.freePcBuilderAiLimit),
+        l?.unlimited ?? 'Unlimited',
+        Icons.memory_rounded,
       ),
       _TableRow(
         l?.linkAnalysis ?? 'Link Analysis',
@@ -1379,7 +1391,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         l?.pcBuilder ?? 'PC Builder',
         _countItems(AppConstants.freePcBuilderSlots),
         l?.unlimited ?? 'Unlimited',
-        Icons.memory_rounded,
+        Icons.build_rounded,
       ),
       _TableRow(
         l?.saveProducts ?? 'Save Products',

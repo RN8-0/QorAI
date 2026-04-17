@@ -60,7 +60,9 @@ class AppConstants {
   // Free Tier Limits - Section 12.2
   static const int freeComparisonLimit = 5; // per day
   static const int freeAiQuestionLimit = 3; // per day (AI chat)
-  static const int freeAiFeatureLimit = 2; // per day (premium AI features)
+  static const int freeCompareAiLimit = 2; // per day (compare premium AI)
+  static const int freeDetailAiLimit = 2; // per day (product detail premium AI)
+  static const int freePcBuilderAiLimit = 3; // per day (PC builder AI analysis)
   static const int freeLinkPasteLimit = 3; // per week
   static const int freeSubscriptionAnalysisLimit = 2; // per month
   static const int freePcBuilderSlots = 5; // max components in free tier

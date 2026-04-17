@@ -216,6 +216,14 @@ String _effectiveDisplayName(UserEntity? user, BuildContext context) {
   return context.l10n?.user ?? 'User';
 }
 
+/// Generates a UI Avatars URL for users without a photo
+String _fallbackAvatarUrl(UserEntity? user, BuildContext context) {
+  final name = _effectiveDisplayName(user, context);
+  final color = _avatarColorFromUid(user?.uid);
+  final hex = color.toARGB32().toRadixString(16).substring(2);
+  return 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=$hex&color=fff&size=128&bold=true';
+}
+
 class _ProfileBody extends ConsumerWidget {
   final UserEntity? user;
 
@@ -262,24 +270,12 @@ class _ProfileBody extends ConsumerWidget {
                       ),
                       child: CircleAvatar(
                         radius: 36,
-                        backgroundColor: (user?.photoURL ?? '').isEmpty
-                            ? _avatarColorFromUid(user?.uid)
-                            : context.surfaceElevatedColor,
-                        backgroundImage: (user?.photoURL ?? '').isNotEmpty
-                            ? NetworkImage(user!.photoURL!)
-                            : null,
-                        child: (user?.photoURL ?? '').isEmpty
-                            ? Text(
-                                _effectiveDisplayName(user, context)
-                                    .substring(0, 1)
-                                    .toUpperCase(),
-                                style: GoogleFonts.inter(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : null,
+                        backgroundColor: _avatarColorFromUid(user?.uid),
+                        backgroundImage: NetworkImage(
+                          (user?.photoURL ?? '').isNotEmpty
+                              ? user!.photoURL!
+                              : _fallbackAvatarUrl(user, context),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -1457,7 +1453,9 @@ class _FreemiumUsageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final aiChats = ref.watch(freemiumUsageProvider('ai_chat'));
-    final aiFeatures = ref.watch(freemiumUsageProvider('ai_feature'));
+    final compareAi = ref.watch(freemiumUsageProvider('compare_ai'));
+    final detailAi = ref.watch(freemiumUsageProvider('detail_ai'));
+    final pcBuilderAi = ref.watch(freemiumUsageProvider('pc_builder_ai'));
     final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
 
     return Container(
@@ -1517,18 +1515,36 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: 'AI Features',
-            icon: Icons.auto_awesome_rounded,
+            label: 'Compare AI',
+            icon: Icons.compare_arrows_rounded,
             color: AppTheme.premiumPurple,
-            used: aiFeatures,
-            limit: FreemiumLimits.aiFeaturesPerDay,
+            used: compareAi,
+            limit: FreemiumLimits.compareAiPerDay,
+            period: 'today',
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: 'Detail AI',
+            icon: Icons.auto_awesome_rounded,
+            color: AppTheme.brandBlue,
+            used: detailAi,
+            limit: FreemiumLimits.detailAiPerDay,
+            period: 'today',
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: 'PC Builder AI',
+            icon: Icons.memory_rounded,
+            color: AppTheme.brandSkyBlue,
+            used: pcBuilderAi,
+            limit: FreemiumLimits.pcBuilderAiPerDay,
             period: 'today',
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: context.l10n?.linkAnalysis ?? 'Link Analysis',
             icon: Icons.link_rounded,
-            color: AppTheme.brandSkyBlue,
+            color: AppTheme.warning,
             used: linkAnalyses,
             limit: FreemiumLimits.linkAnalysesPerWeek,
             period: 'this week',

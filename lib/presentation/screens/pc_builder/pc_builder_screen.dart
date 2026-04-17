@@ -1493,14 +1493,26 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
   Future<void> _runAiAnalysis() async {
     if (_aiLoading) return;
-    // Check AI feature limit
+    // Check PC Builder AI limit
     if (_aiAnalysis == null) {
       final sub = ref.read(subscriptionServiceProvider);
-      if (!sub.canUseAiFeature) {
-        showPaywallSheet(context);
+      if (!sub.canUsePcBuilderAi) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'PC Builder AI daily limit reached. Upgrade to Premium for unlimited access!',
+            ),
+            action: SnackBarAction(
+              label: 'Premium',
+              onPressed: () => showPaywallSheet(context),
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
         return;
       }
-      sub.recordAiFeature();
+      sub.recordPcBuilderAi();
     }
     final focus = _primaryUpgradeComponent;
     setState(() {

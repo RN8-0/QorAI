@@ -555,6 +555,22 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
+  void _showLimitExhaustedSnackBar(BuildContext context, String featureName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$featureName daily limit reached. Upgrade to Premium for unlimited access!',
+        ),
+        action: SnackBarAction(
+          label: 'Premium',
+          onPressed: () => showPaywallSheet(context),
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   Future<void> _toggleAiPanel(
     _AiPanelType panel,
     Future<void> Function() fetcher,
@@ -570,11 +586,11 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     // Only check limit when actually fetching new AI data
     if (shouldFetch) {
       final sub = ref.read(subscriptionServiceProvider);
-      if (!sub.canUseAiFeature) {
-        showPaywallSheet(context);
+      if (!sub.canUseCompareAi) {
+        _showLimitExhaustedSnackBar(context, 'Compare AI');
         return;
       }
-      sub.recordAiFeature();
+      sub.recordCompareAi();
     }
 
     setState(() {
@@ -5403,11 +5419,11 @@ Rules:
               if (!_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
                 // Check AI feature limit before fetching
                 final sub = ref.read(subscriptionServiceProvider);
-                if (!sub.canUseAiFeature) {
-                  showPaywallSheet(context);
+                if (!sub.canUseCompareAi) {
+                  _showLimitExhaustedSnackBar(context, 'Compare AI');
                   return;
                 }
-                sub.recordAiFeature();
+                sub.recordCompareAi();
               }
               setState(() => _matchScoreExpanded = !_matchScoreExpanded);
               if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {

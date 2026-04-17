@@ -2386,7 +2386,9 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
 class FreemiumLimits {
   static const int comparisonsPerDay = 5;
   static const int aiChatsPerDay = 3;
-  static const int aiFeaturesPerDay = 2;
+  static const int compareAiPerDay = 2;
+  static const int detailAiPerDay = 2;
+  static const int pcBuilderAiPerDay = 3;
   static const int linkAnalysesPerWeek = 3;
 }
 
@@ -2395,7 +2397,9 @@ final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
   return switch (feature) {
     'comparison' => subscription.comparisonsUsed,
     'ai_chat' => subscription.aiQuestionsUsed,
-    'ai_feature' => subscription.aiFeaturesUsed,
+    'compare_ai' => subscription.compareAiUsed,
+    'detail_ai' => subscription.detailAiUsed,
+    'pc_builder_ai' => subscription.pcBuilderAiUsed,
     'link_analysis' => subscription.linkPastesUsed,
     _ => 0,
   };
@@ -2406,7 +2410,9 @@ Future<bool> checkAndIncrementUsage(WidgetRef ref, String feature) async {
   final result = switch (feature) {
     'comparison' => subscription.recordComparison(),
     'ai_chat' => subscription.recordAIQuestion(),
-    'ai_feature' => subscription.recordAiFeature(),
+    'compare_ai' => subscription.recordCompareAi(),
+    'detail_ai' => subscription.recordDetailAi(),
+    'pc_builder_ai' => subscription.recordPcBuilderAi(),
     'link_analysis' => subscription.recordLinkPaste(),
     _ => const Success<void>(null),
   };
