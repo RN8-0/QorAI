@@ -138,24 +138,43 @@ function toast(msg,type='i',dur=4000){
 
 let catChart=null,trendChart=null;
 
+function normalizeConfigData(data){
+  if (!data || typeof data !== 'object') return {};
+  if (data.value && typeof data.value === 'object' && !Array.isArray(data.value)) {
+    return { ...data.value, key: data.key };
+  }
+  return data;
+}
+
 async function refreshDashboard(){
   try{
-    const [userDocs,compDocs]=await Promise.all([pbGetAll('users',{sort:'id'}),pbGetAll('comparisons',{sort:'id'})]);
+    const [userDocs,compDocs,statsDoc]=await Promise.all([
+      pbGetAll('users',{sort:'id'}),
+      pbGetAll('comparisons',{sort:'id'}),
+      pbGetDoc('app_config','stats').catch(()=>({exists:false,data:()=>null}))
+    ]);
     const users=userDocs.map(d=>({uid:d.id,...d.data()}));
     const cSnap={size:compDocs.length};
+    const stats=statsDoc?.exists?normalizeConfigData(statsDoc.data()):{};
+    const statsProductCount=Number(stats.productCount)||0;
+    const statsCategoryCounts=stats.categoryCounts&&typeof stats.categoryCounts==='object'?stats.categoryCounts:null;
+    const statsBrandCounts=stats.brandCounts&&typeof stats.brandCounts==='object'?stats.brandCounts:null;
+    const statsUpdatedAt=stats.updatedAt?new Date(stats.updatedAt).getTime():0;
 
     // Load 500 recent products for charts
     const sRes=await pbGetList('products',1,500,{sort:'-scrapedAt'});
     const sampleProducts=sRes.items;
     dashSampleProducts=sampleProducts;
 
-    // Don't show sample count as total — wait for real count
-    document.getElementById('dashTotalProducts').textContent='...';
+    totalProductCount=statsProductCount||0;
+    document.getElementById('dashTotalProducts').textContent=statsProductCount?statsProductCount.toLocaleString():'...';
     anim('dashTotalUsers',users.length);
     anim('dashTotalComparisons',cSnap.size||0);
 
-    // Background: count all products and update (once, no flickering)
-    countAllProductsInBackground();
+    // Refresh expensive product aggregates only when missing or stale.
+    if(!statsProductCount||!statsCategoryCounts||!statsBrandCounts||!statsUpdatedAt||(Date.now()-statsUpdatedAt)>6*3600*1000){
+      countAllProductsInBackground();
+    }
 
     const scores=sampleProducts.map(p=>p.techScore||0).filter(s=>s>0);
     document.getElementById('dashAvgScore').textContent=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';
@@ -171,9 +190,8 @@ async function refreshDashboard(){
 
     document.getElementById('dashLastUpdated').textContent='Güncellendi '+new Date().toLocaleTimeString();
 
-    // Categories — quick render from sample, real data will come from background counter
     const sampleCats={};sampleProducts.forEach(p=>{if(p.category)sampleCats[p.category]=(sampleCats[p.category]||0)+1});
-    updateCategoryChart(sampleCats);
+    updateCategoryChart(statsCategoryCounts&&Object.keys(statsCategoryCounts).length?statsCategoryCounts:sampleCats);
 
     // Daily trend (from sample)
     const daily=[];for(let i=29;i>=0;i--){const d=new Date(Date.now()-i*864e5);const k=d.toISOString().split('T')[0];const c2=sampleProducts.filter(p=>p.scrapedAt&&new Date(p.scrapedAt).toISOString().split('T')[0]===k).length;daily.push({d:k.slice(5),c:c2})}
@@ -184,12 +202,11 @@ async function refreshDashboard(){
     const rEl=document.getElementById('dashRecentProducts');
     if(rEl)rEl.innerHTML=sampleProducts.slice(0,8).map(p=>`<div class="recent-row" onclick="showView('products');setTimeout(()=>openProduct('${p.id}'),300)">${p.images?.[0]?`<img class="recent-img" src="${p.images[0]}" onerror="this.style.display='none'">`:`<div class="recent-img" style="display:flex;align-items:center;justify-content:center;font-size:14px">📦</div>`}<div class="recent-info"><div class="recent-name">${p.name||''}</div><div class="recent-meta">${p.brand||''} · ${p.category||''}</div></div>${p.techScore?`<span class="badge badge-green">${p.techScore}</span>`:''}</div>`).join('')||'<div class="placeholder">No products</div>';
 
-    // Brands — sample-based initially, background counter replaces with real data
     const brands={};sampleProducts.forEach(p=>{if(p.brand)brands[p.brand]=(brands[p.brand]||0)+1});
-    updateTopBrands(brands);
+    updateTopBrands(statsBrandCounts&&Object.keys(statsBrandCounts).length?statsBrandCounts:brands);
 
-    // Insights — initial with sample, background counter will replace
-    updateInsights(totalProductCount||sampleProducts.length,typeof CompairCategories!=='undefined'?CompairCategories.getAll().length:Object.keys(sampleCats).length);
+    const totalCats=statsCategoryCounts&&Object.keys(statsCategoryCounts).length?Object.keys(statsCategoryCounts).length:Object.keys(sampleCats).length;
+    updateInsights(statsProductCount||sampleProducts.length,totalCats);
   }catch(e){console.error(e);toast('Dashboard error: '+e.message,'e')}
 }
 
@@ -281,7 +298,7 @@ function updateCategoryChart(catCounts){
   // Update card title with total category count
   const totalCats=Object.keys(catCounts).length;
   const titleEl=cCtx.closest('.card')?.querySelector('.card-title');
-  if(titleEl)titleEl.textContent=`Kategori Dağılımı (${totalCats} kategori)`;
+  if(titleEl)titleEl.textContent=`Kategori Dağılımı (${totalCats} kategori, ${entries.length} grup)`;
 
   const cl=['#7c3aed','#22c55e','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#a855f7','#10b981','#e879f9','#94a3b8'];
   catChart=new Chart(cCtx,{type:'doughnut',data:{labels:entries.map(x=>x[0]),datasets:[{data:entries.map(x=>x[1]),backgroundColor:cl.slice(0,entries.length),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:getCSS('--text2'),font:{size:11},usePointStyle:true,padding:6}},tooltip:{callbacks:{label:function(ctx){

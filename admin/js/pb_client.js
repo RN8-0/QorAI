@@ -12,6 +12,16 @@ function getPb() {
   return _pb;
 }
 
+function _isPocketBaseRecordId(value) {
+  return /^[a-z0-9]{15}$/.test(String(value || '').trim());
+}
+
+function _escapeFilterValue(value) {
+  return String(value || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
+}
+
 function _normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
@@ -22,28 +32,62 @@ async function pbEnsureAuth() {
   throw new Error('Admin authentication required');
 }
 
+async function _findRecord(collection, identifier, data = {}) {
+  const id = String(identifier || '').trim();
+  const filters = [];
+
+  if (_isPocketBaseRecordId(id)) {
+    try {
+      return await getPb().collection(collection).getOne(id, { $autoCancel: false });
+    } catch (e) {
+      if (e.status !== 404) throw e;
+    }
+  }
+
+  if (data.key || collection === 'app_config') {
+    const key = String(data.key || id).trim();
+    if (key) filters.push(`key="${_escapeFilterValue(key)}"`);
+  }
+
+  if (data.slug || collection === 'products') {
+    const slug = String(data.slug || id).trim();
+    if (slug) filters.push(`slug="${_escapeFilterValue(slug)}"`);
+  }
+
+  if (!filters.length) return null;
+
+  const result = await getPb().collection(collection).getList(1, 1, {
+    filter: filters.join(' || '),
+    $autoCancel: false
+  });
+  return result.items[0] || null;
+}
+
+function _prepareCreateData(collection, identifier, data) {
+  const clean = { ...data };
+  const id = String(identifier || '').trim();
+
+  if ((collection === 'app_config' || clean.key !== undefined) && !clean.key && id) {
+    clean.key = id;
+  }
+
+  if ((collection === 'products' || clean.slug !== undefined) && !clean.slug && id) {
+    clean.slug = id;
+  }
+
+  return clean;
+}
+
 // ─── FIRESTORE-COMPATIBLE HELPERS ───────────────────────────────
 
 // Read single doc by ID
 async function pbGetDoc(collection, id) {
   await pbEnsureAuth();
   try {
-    const item = await getPb().collection(collection).getOne(id, { $autoCancel: false });
-    return { exists: true, id: item.id, data: () => _strip(item) };
+    const item = await _findRecord(collection, id);
+    if (item) return { exists: true, id: item.id, data: () => _strip(item) };
+    return { exists: false, id, data: () => null };
   } catch (e) {
-    if (e.status === 404) {
-      // Try filter by 'key' field fallback
-      try {
-        const result = await getPb().collection(collection).getList(1, 1, {
-          filter: `key="${id}"`, $autoCancel: false
-        });
-        if (result.items.length > 0) {
-          const doc = result.items[0];
-          return { exists: true, id: doc.id, data: () => _strip(doc) };
-        }
-      } catch {}
-      return { exists: false, id, data: () => null };
-    }
     throw e;
   }
 }
@@ -52,14 +96,11 @@ async function pbGetDoc(collection, id) {
 async function pbSetDoc(collection, id, data) {
   await pbEnsureAuth();
   const clean = _clean(data);
-  try {
-    return await getPb().collection(collection).update(id, clean, { $autoCancel: false });
-  } catch (e) {
-    if (e.status === 404) {
-      return await getPb().collection(collection).create({ id, ...clean }, { $autoCancel: false });
-    }
-    throw e;
+  const existing = await _findRecord(collection, id, clean);
+  if (existing) {
+    return await getPb().collection(collection).update(existing.id, clean, { $autoCancel: false });
   }
+  return await getPb().collection(collection).create(_prepareCreateData(collection, id, clean), { $autoCancel: false });
 }
 
 // Update existing doc

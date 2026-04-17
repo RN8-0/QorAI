@@ -845,6 +845,7 @@ async function scrapeProductDetail(html, url, categoryId) {
 
   return {
     id,
+    slug: productSlug || id,
     name: name || 'Unknown Product',
     brand,
     category,
@@ -1091,7 +1092,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
         }
 
         // Save to PocketBase
-        await pbSetDoc('products', product.id, product);
+        await pbSetDoc('products', product.slug || product.id, product);
         results.added++;
         errorStreak = 0;
         slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
@@ -1373,7 +1374,8 @@ async function scrapeByUrl() {
     slog(`ID: ${product.id}`);
 
     // Check if product already exists — merge missing data
-    const existingDoc = await pbGetDoc('products', product.id);
+    const lookupKey = product.slug || product.id;
+    const existingDoc = await pbGetDoc('products', lookupKey);
     if (existingDoc.exists) {
       const existing = existingDoc.data();
       slog('⚡ Product already exists — merging missing data...', 'info');
@@ -1427,7 +1429,9 @@ async function scrapeByUrl() {
       slog('Merging complete — saving updated product', 'info');
     }
 
-    await pbSetDoc('products', product.id, product);
+    const saved = await pbSetDoc('products', lookupKey, product);
+    if (saved?.id) product.id = saved.id;
+    if (saved?.slug) product.slug = saved.slug;
     slog('Product saved to PocketBase!', 'success');
     toast(`${existingDoc?.exists ? 'Updated' : 'Added'}: ${product.name}`, 's');
 
