@@ -82,6 +82,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <span>Aktivite Log</span>
         </a>
+        <a class="nav-link" data-view="subscriptions" onclick="showView('subscriptions')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <span>Subscriptions</span>
+        </a>
         <a class="nav-link" data-view="settings" onclick="showView('settings')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Settings</span>
@@ -503,6 +507,18 @@
         </div>
       </section>
 
+      <!-- ===== SUBSCRIPTIONS ===== -->
+      <section id="subscriptionsView" class="view">
+        <div class="view-header">
+          <h1>Subscription Services</h1>
+          <div class="view-actions">
+            <button class="btn btn-primary" onclick="openSubServiceModal()">+ Servis Ekle</button>
+            <button class="btn btn-ghost" onclick="loadSubscriptionServices()">Yenile</button>
+          </div>
+        </div>
+        <div id="subServicesList"><div class="placeholder">Yükleniyor...</div></div>
+      </section>
+
       <!-- ===== ACTIVITY LOG ===== -->
       <section id="activitylogView" class="view">
         <div class="view-header">
@@ -519,7 +535,70 @@
 
       <!-- ===== SETTINGS ===== -->
       <section id="settingsView" class="view">
-        <div class="view-header"><h1>Settings</h1></div>
+        <div class="view-header">
+          <h1>Settings</h1>
+          <div class="view-actions">
+            <button class="btn btn-primary" onclick="saveRemoteConfig()">💾 Kaydet</button>
+            <button class="btn btn-ghost" onclick="loadRemoteConfig()">Yenile</button>
+          </div>
+        </div>
+
+        <!-- Feature Flags -->
+        <div class="card">
+          <div class="card-title">🚩 Özellik Bayrakları</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Açılışta Paywall Göster</label>
+              <select class="input" id="rc_show_paywall_on_start">
+                <option value="false">Devre Dışı</option>
+                <option value="true">Aktif</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Link Paste Özelliği</label>
+              <select class="input" id="rc_feature_link_paste_enabled">
+                <option value="true">Aktif</option>
+                <option value="false">Devre Dışı</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Free Tier Limits -->
+        <div class="card">
+          <div class="card-title">📊 Ücretsiz Plan Limitleri</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Günlük AI Karşılaştırma</label>
+              <input class="input" type="number" id="rc_ai_comparison_limit_free" min="0" value="3">
+            </div>
+            <div class="form-field">
+              <label>Günlük AI Soru</label>
+              <input class="input" type="number" id="rc_free_ai_question_limit" min="0" value="15">
+            </div>
+            <div class="form-field">
+              <label>Haftalık Link Paste</label>
+              <input class="input" type="number" id="rc_free_link_paste_limit" min="0" value="3">
+            </div>
+            <div class="form-field">
+              <label>Aylık Abonelik Analizi</label>
+              <input class="input" type="number" id="rc_free_subscription_analysis_limit" min="0" value="2">
+            </div>
+          </div>
+        </div>
+
+        <!-- Display Text -->
+        <div class="card">
+          <div class="card-title">💬 Metin Ayarları</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Premium Fiyat Gösterim Metni</label>
+              <input class="input" type="text" id="rc_premium_price_display" placeholder="₺199.99 / year">
+            </div>
+          </div>
+        </div>
+
+        <!-- About -->
         <div class="card">
           <div class="card-title">About</div>
           <p class="text-muted">Compair Admin v3.0 Web<br>Hetzner &middot; PocketBase &middot; Typesense<br>&copy; 2025 Compair</p>

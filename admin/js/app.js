@@ -157,6 +157,8 @@ function showView(name){
   if(name==='algorithm')loadAlgorithmConfig();
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
+  if(name==='subscriptions')loadSubscriptionServices();
+  if(name==='settings')loadRemoteConfig();
 }
 
 // ── TOAST ──
@@ -1389,4 +1391,196 @@ async function scanBrokenImages(){
 async function loadPriceHistory(productId){
   // Price history subcollections not available in PocketBase
   return null;
+}
+
+// ═══════════════════════════════════════
+//  REMOTE CONFIG (Settings)
+// ═══════════════════════════════════════
+
+const RC_KEYS = [
+  { id: 'rc_show_paywall_on_start',            key: 'show_paywall_on_start',            type: 'bool',   def: false },
+  { id: 'rc_feature_link_paste_enabled',       key: 'feature_link_paste_enabled',       type: 'bool',   def: true  },
+  { id: 'rc_ai_comparison_limit_free',         key: 'ai_comparison_limit_free',         type: 'int',    def: 3     },
+  { id: 'rc_free_ai_question_limit',           key: 'free_ai_question_limit',           type: 'int',    def: 15    },
+  { id: 'rc_free_link_paste_limit',            key: 'free_link_paste_limit',            type: 'int',    def: 3     },
+  { id: 'rc_free_subscription_analysis_limit',key: 'free_subscription_analysis_limit', type: 'int',    def: 2     },
+  { id: 'rc_premium_price_display',           key: 'premium_price_display',            type: 'string', def: '₺199.99 / year' },
+];
+
+async function loadRemoteConfig() {
+  try {
+    const result = await pbGetList('public_config', 1, 200, {});
+    const configMap = {};
+    result.items.forEach(item => { if (item.key) configMap[item.key] = item.value; });
+    for (const def of RC_KEYS) {
+      const el = document.getElementById(def.id);
+      if (!el) continue;
+      const val = configMap[def.key] !== undefined ? configMap[def.key] : def.def;
+      el.value = String(val);
+    }
+  } catch(e) {
+    console.error('loadRemoteConfig error:', e);
+    toast('Config yüklenemedi: ' + e.message, 'e');
+  }
+}
+
+async function saveRemoteConfig() {
+  try {
+    const promises = [];
+    for (const def of RC_KEYS) {
+      const el = document.getElementById(def.id);
+      if (!el) continue;
+      let val;
+      if (def.type === 'bool')       val = el.value === 'true';
+      else if (def.type === 'int')   val = parseInt(el.value) || 0;
+      else                           val = el.value;
+      promises.push(pbSetDoc('public_config', def.key, { value: val }));
+    }
+    await Promise.all(promises);
+    logActivity('settings_update', 'Remote config güncellendi');
+    toast('Ayarlar kaydedildi', 's');
+  } catch(e) {
+    toast('Kaydetme hatası: ' + e.message, 'e');
+  }
+}
+
+// ═══════════════════════════════════════
+//  SUBSCRIPTION SERVICES
+// ═══════════════════════════════════════
+
+let _allSubServices = [];
+
+async function loadSubscriptionServices() {
+  const el = document.getElementById('subServicesList');
+  if (!el) return;
+  el.innerHTML = '<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Yükleniyor...</div>';
+  try {
+    const result = await pbGetList('subscription_services', 1, 200, { sort: 'category,name' });
+    _allSubServices = result.items || [];
+    renderSubServices();
+  } catch(e) {
+    el.innerHTML = '<div class="card"><div class="placeholder" style="color:var(--red)">Hata: ' + escHtml(e.message) + '</div></div>';
+  }
+}
+
+function renderSubServices() {
+  const el = document.getElementById('subServicesList');
+  if (!el) return;
+  if (!_allSubServices.length) {
+    el.innerHTML = '<div class="card"><div class="placeholder">Henüz servis yok. "+ Servis Ekle" ile başlayın.</div></div>';
+    return;
+  }
+  const groups = {};
+  _allSubServices.forEach(s => {
+    const cat = s.category || 'other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(s);
+  });
+  let html = '';
+  for (const [cat, services] of Object.entries(groups).sort()) {
+    html += `<div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="text-transform:capitalize">${escHtml(cat)}</div>
+      <div class="form-grid">`;
+    services.forEach(s => {
+      const id = escJs(s.id);
+      const name = escHtml(s.name || '—');
+      const logo = safeUrl(s.logo || s.logoUrl || '');
+      const isActive = s.isActive !== false;
+      html += `<div class="product-card" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          ${logo ? `<img src="${logo}" alt="" style="width:36px;height:36px;object-fit:contain;border-radius:6px">` : '<div style="width:36px;height:36px;background:var(--bg3);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>'}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:13px">${name}</div>
+            <div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.website || '')}</div>
+          </div>
+          <span class="tag ${isActive ? 'tag-green' : ''}" style="${!isActive ? 'background:var(--bg3);color:var(--text2)' : ''}">${isActive ? 'Aktif' : 'Pasif'}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-ghost" onclick="openSubServiceModal('${id}')">✏️ Düzenle</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSubService('${id}')">Sil</button>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function openSubServiceModal(id) {
+  const s = id ? _allSubServices.find(x => x.id === id) : null;
+  const title = s ? ('Servis Düzenle: ' + escHtml(s.name || '')) : 'Yeni Servis Ekle';
+  const cats = ['streaming','music','cloud','productivity','gaming','vpn','other'];
+  const catOpts = cats.map(c => `<option value="${c}"${(s?.category||'other')===c?' selected':''}>${c}</option>`).join('');
+  const body = `
+    <div class="form-grid">
+      <div class="form-field"><label>Servis Adı *</label>
+        <input class="input" id="ssName" placeholder="Netflix" value="${escHtml(s?.name||'')}"></div>
+      <div class="form-field"><label>Kategori</label>
+        <select class="input" id="ssCategory">${catOpts}</select></div>
+      <div class="form-field"><label>Logo URL</label>
+        <input class="input" id="ssLogo" placeholder="https://..." value="${escHtml(s?.logo||s?.logoUrl||'')}"></div>
+      <div class="form-field"><label>Website</label>
+        <input class="input" id="ssWebsite" placeholder="https://..." value="${escHtml(s?.website||s?.websiteUrl||'')}"></div>
+      <div class="form-field"><label>Affiliate URL</label>
+        <input class="input" id="ssAffiliateUrl" placeholder="https://..." value="${escHtml(s?.affiliateUrl||'')}"></div>
+      <div class="form-field"><label>Durum</label>
+        <select class="input" id="ssIsActive">
+          <option value="true"${s?.isActive!==false?' selected':''}>Aktif</option>
+          <option value="false"${s?.isActive===false?' selected':''}>Pasif</option>
+        </select></div>
+    </div>
+    <div class="form-field" style="margin-top:12px"><label>Açıklama</label>
+      <textarea class="input" id="ssDescription" rows="2">${escHtml(s?.description||'')}</textarea></div>
+    <div class="form-field" style="margin-top:12px"><label>Platformlar (virgülle ayır: ios,android,web)</label>
+      <input class="input" id="ssPlatforms" value="${escHtml((s?.platforms||[]).join(','))}"></div>
+    <div style="margin-top:20px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
+      <button class="btn btn-primary" onclick="saveSubService(${id?`'${escJs(id)}'`:'null'})">💾 Kaydet</button>
+    </div>`;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+async function saveSubService(id) {
+  const name = document.getElementById('ssName')?.value?.trim();
+  if (!name) { toast('Servis adı gerekli', 'w'); return; }
+  const data = {
+    name,
+    category:    document.getElementById('ssCategory')?.value || 'other',
+    logo:        document.getElementById('ssLogo')?.value?.trim() || '',
+    website:     document.getElementById('ssWebsite')?.value?.trim() || '',
+    affiliateUrl:document.getElementById('ssAffiliateUrl')?.value?.trim() || '',
+    isActive:    document.getElementById('ssIsActive')?.value === 'true',
+    description: document.getElementById('ssDescription')?.value?.trim() || '',
+    platforms:   (document.getElementById('ssPlatforms')?.value||'').split(',').map(p=>p.trim()).filter(Boolean),
+  };
+  try {
+    if (id) {
+      await pbUpdateDoc('subscription_services', id, data);
+      logActivity('sub_service_update', `Servis güncellendi: ${name}`);
+      toast('Servis güncellendi', 's');
+    } else {
+      await pbAddDoc('subscription_services', data);
+      logActivity('sub_service_add', `Servis eklendi: ${name}`);
+      toast('Servis eklendi', 's');
+    }
+    closeModal();
+    loadSubscriptionServices();
+  } catch(e) {
+    toast('Hata: ' + e.message, 'e');
+  }
+}
+
+async function deleteSubService(id) {
+  const s = _allSubServices.find(x => x.id === id);
+  if (!confirm(`"${s?.name || id}" servisini silmek istediğinizden emin misiniz?`)) return;
+  try {
+    await pbDeleteDoc('subscription_services', id);
+    logActivity('sub_service_delete', `Servis silindi: ${s?.name || id}`);
+    toast('Servis silindi', 's');
+    loadSubscriptionServices();
+  } catch(e) {
+    toast('Hata: ' + e.message, 'e');
+  }
 }
