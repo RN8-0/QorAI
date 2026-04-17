@@ -96,8 +96,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Pre-warm the product cache so search is instant
-      ref.read(productRepositoryProvider).searchProducts(query: '___warm___');
       // Load initial comparison if provided (from history screen)
       if (widget.initialComparison != null) {
         _loadInitialComparison(widget.initialComparison!);
@@ -118,14 +116,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         ref.read(compareSessionProvider.notifier).state = ref
             .read(compareSessionProvider)
             .copyWith(selectedProductIds: ids);
-        setState(() {});
         // Auto-compare if 2+ products
         if (ids.length >= 2) {
-          Future.delayed(const Duration(milliseconds: 800), () {
-            if (mounted && _selectedProductIds.length >= 2) {
-              _startComparison();
-            }
-          });
+          unawaited(_startComparison());
         }
       }
     } catch (_) {}
@@ -146,39 +139,28 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     ref.read(compareSessionProvider.notifier).state = ref
         .read(compareSessionProvider)
         .copyWith(selectedProductIds: globalIds);
-    setState(() {});
 
     // Ensure products are loaded, then auto-start comparison
     if (globalIds.length >= 2) {
-      _waitAndCompare(globalIds);
+      unawaited(_startComparison());
     }
   }
 
-  Future<void> _waitAndCompare(List<String> ids) async {
-    // Wait for all products to be loaded (max 15 retries × 500ms = 7.5s)
-    for (int attempt = 0; attempt < 15; attempt++) {
-      if (!mounted) return;
-      int loadedCount = 0;
-      for (final id in ids) {
-        final async = ref.read(productDetailProvider(id));
-        if (async.hasValue) {
-          async.value?.when(success: (_) => loadedCount++, failure: (_) {});
-        }
+  Future<List<ProductEntity>> _loadSelectedProducts(List<String> productIds) async {
+    final results = await Future.wait(
+      productIds.map((id) => ref.read(productDetailProvider(id).future)),
+    );
+
+    final products = <ProductEntity>[];
+    for (final result in results) {
+      switch (result) {
+        case Success(data: final product):
+          products.add(product);
+        default:
+          break;
       }
-      if (loadedCount >= 2) {
-        if (mounted && _comparedProducts == null) {
-          _startComparison();
-        }
-        return;
-      }
-      await Future.delayed(const Duration(milliseconds: 500));
     }
-    // Timeout - try anyway
-    if (mounted &&
-        _comparedProducts == null &&
-        _selectedProductIds.length >= 2) {
-      _startComparison();
-    }
+    return products;
   }
 
   @override
@@ -212,7 +194,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             ref.read(compareSessionProvider.notifier).state = ref
                 .read(compareSessionProvider)
                 .copyWith(selectedProductIds: newIds);
-            setState(() {});
           }
         },
         failure: (_) {},
@@ -224,7 +205,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       ref.read(compareSessionProvider.notifier).state = ref
           .read(compareSessionProvider)
           .copyWith(selectedProductIds: newIds);
-      setState(() {});
     }
   }
 
@@ -238,11 +218,11 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           .read(compareSessionProvider)
           .copyWith(selectedProductIds: newIds, clearProducts: true);
     }
-    setState(() {});
   }
 
   Future<void> _startComparison() async {
-    if (_selectedProductIds.length < 2) {
+    final selectedIds = _selectedProductIds.toList(growable: false);
+    if (selectedIds.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -253,30 +233,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       );
       return;
     }
-    // Fetch all selected products
-    final products = <ProductEntity>[];
-    bool hasLoading = false;
-    for (final id in _selectedProductIds) {
-      final productAsync = ref.read(productDetailProvider(id));
-      productAsync.when(
-        data: (result) {
-          result.when(
-            success: (product) => products.add(product),
-            failure: (_) {},
-          );
-        },
-        loading: () => hasLoading = true,
-        error: (_, __) {},
-      );
-    }
 
-    if (hasLoading) {
-      // Products still loading, retry after delay
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) _startComparison();
-      });
-      return;
-    }
+    final products = await _loadSelectedProducts(selectedIds);
+    if (!mounted) return;
 
     if (products.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -308,7 +267,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     ref.read(compareSessionProvider.notifier).state = ref
         .read(compareSessionProvider)
         .copyWith(comparedProducts: products);
-    setState(() {});
 
     // Save comparison to Firestore for history
     final shouldPersistHistory = !_skipNextHistorySave;
@@ -321,7 +279,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             .read(comparisonRepositoryProvider)
             .saveManualComparison(
               userId: user.uid,
-              productIds: _selectedProductIds.toList(),
+              productIds: selectedIds,
               category: products.first.category,
               title: title,
             );
@@ -335,14 +293,13 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     // Track comparison behavior
     ref
         .read(behaviorTrackingProvider)
-        .trackComparison(_selectedProductIds.toList());
+        .trackComparison(selectedIds);
   }
 
   void _resetComparison() {
     ref.read(compareSessionProvider.notifier).state =
         const CompareSessionData();
     ref.read(hideNavBarProvider.notifier).state = false;
-    setState(() {});
   }
 
   void _removeProductFromComparison(String productId) {
@@ -361,20 +318,17 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       selectedProductIds: newIds,
       comparedProducts: newProducts,
     );
-    setState(() {});
   }
 
   /// Directly start comparison with full ProductEntity objects (bypasses provider cache)
   void _directCompare(List<ProductEntity> products) {
     if (products.length < 2) return;
+    final productIds = products.map((p) => p.id).toList(growable: false);
     ref.read(compareSessionProvider.notifier).state = CompareSessionData(
-      selectedProductIds: products.map((p) => p.id).toList(),
+      selectedProductIds: productIds,
       comparedProducts: products,
     );
-    setState(() {});
-    ref
-        .read(behaviorTrackingProvider)
-        .trackComparison(_selectedProductIds.toList());
+    ref.read(behaviorTrackingProvider).trackComparison(productIds);
   }
 
   @override
