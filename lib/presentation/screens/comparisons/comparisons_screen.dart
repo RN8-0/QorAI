@@ -194,21 +194,35 @@ class _EmptyState extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
-                FilledButton.icon(
-                  onPressed: () => context.go(AppRoutes.compare),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _accent,
-                    foregroundColor: Colors.white,
+                GestureDetector(
+                  onTap: () => context.go(AppRoutes.compare),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18,
                       vertical: 14,
                     ),
-                    shape: RoundedRectangleBorder(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppTheme.cardShadow,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Yeni karsilastirma baslat',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Yeni karsilastirma baslat'),
                 ),
                 if (onRetry != null) ...[
                   const SizedBox(height: 12),
@@ -256,15 +270,8 @@ class _ComparisonCard extends ConsumerWidget {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _accent.withValues(alpha: 0.1)),
-          boxShadow: [
-            BoxShadow(
-              color: _accent.withValues(alpha: 0.08),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-              spreadRadius: -10,
-            ),
-          ],
+          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+          boxShadow: AppTheme.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

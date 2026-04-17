@@ -336,7 +336,7 @@ class _SubscriptionHistoryScreenState
               child: Icon(
                 Icons.compare_arrows_rounded,
                 size: 42,
-                color: _kBlue.withValues(alpha: 0.5),
+                color: _kCyan,
               ),
             ),
             const SizedBox(height: 24),
@@ -367,24 +367,41 @@ class _SubscriptionHistoryScreenState
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.compare_arrows_rounded, size: 18),
-              label: Text(
-                _historyText(
-                  context,
-                  tr: 'Karşılaştırma Yap',
-                  en: 'Start Comparison',
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: _kBlue,
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 28,
                   vertical: 14,
                 ),
-                shape: RoundedRectangleBorder(
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
                   borderRadius: BorderRadius.circular(14),
+                  boxShadow: AppTheme.cardShadow,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.compare_arrows_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _historyText(
+                        context,
+                        tr: 'Karşılaştırma Yap',
+                        en: 'Start Comparison',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -462,7 +479,8 @@ class _SubscriptionHistoryScreenState
           decoration: BoxDecoration(
             color: context.surfaceElevatedColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _kBlue.withValues(alpha: 0.08), width: 1),
+            border: Border.all(color: _kCyan.withValues(alpha: 0.15), width: 1),
+            boxShadow: AppTheme.cardShadow,
           ),
           child: Row(
             children: [

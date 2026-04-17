@@ -768,6 +768,7 @@ class _StatPill extends StatelessWidget {
               color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: color.withValues(alpha: 0.12)),
+              boxShadow: AppTheme.subtleShadow,
             ),
             child: Column(
               children: [
@@ -818,7 +819,8 @@ class _QuickActionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.12)),
+          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+          boxShadow: AppTheme.subtleShadow,
         ),
         child: Column(
           children: [
@@ -870,7 +872,8 @@ class _ContentSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.dividerColor),
+        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         children: [
@@ -1281,7 +1284,8 @@ class _ModernMenuCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.dividerColor),
+        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         children: List.generate(items.length, (index) {
@@ -1428,7 +1432,8 @@ class _FreemiumUsageCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.dividerColor),
+        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

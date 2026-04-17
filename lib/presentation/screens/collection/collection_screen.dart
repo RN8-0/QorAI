@@ -282,6 +282,7 @@ class _ShimmerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(18),
+        boxShadow: AppTheme.subtleShadow,
       ),
       child: Center(
         child: SizedBox(
@@ -304,6 +305,7 @@ class _ErrorCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(18),
+        boxShadow: AppTheme.subtleShadow,
       ),
       child: Center(
         child: Icon(
@@ -338,18 +340,10 @@ class _ProductCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
+                ? AppTheme.brandCyan.withValues(alpha: 0.15)
+                : AppTheme.brandCyan.withValues(alpha: 0.10),
           ),
-          boxShadow: isDark
-              ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          boxShadow: AppTheme.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
