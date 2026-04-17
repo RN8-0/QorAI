@@ -148,9 +148,9 @@ class _MainShellState extends ConsumerState<MainShell> {
         ),
         if (!hideNavBar)
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
+            left: AppTheme.navBarHMargin,
+            right: AppTheme.navBarHMargin,
+            bottom: bottomPadding + AppTheme.navBarBottomMargin,
             child: _FloatingNavBar(
               currentIndex: currentIndex,
               onTap: _onNavTap,
@@ -236,33 +236,102 @@ class _FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final items = _buildNavItems(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          height: _kNavBarHeight + bottomPadding,
-          padding: EdgeInsets.only(bottom: bottomPadding),
-          decoration: BoxDecoration(
-            color: isDark
-                ? AppTheme.brandDark.withValues(alpha: 0.85)
-                : context.surfaceElevatedColor.withValues(alpha: 0.95),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border(
-              top: BorderSide(color: context.dividerColor, width: 0.5),
-            ),
+    return Container(
+      height: _kNavBarHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXXL),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.48),
+            blurRadius: 28,
+            offset: const Offset(0, 8),
           ),
-          child: Row(
-            children: List.generate(items.length, (index) {
-              final item = items[index];
-              final isSelected = index == currentIndex;
-              final isCenter = index == 2; // Home — featured center button
+          BoxShadow(
+            color: AppTheme.brandCyan.withValues(alpha: 0.07),
+            blurRadius: 36,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXXL),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppTheme.brandDark.withValues(alpha: 0.88)
+                  : context.surfaceElevatedColor.withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(AppTheme.radiusXXL),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.09)
+                    : context.dividerColor,
+                width: 0.5,
+              ),
+            ),
+            child: Row(
+              children: List.generate(items.length, (index) {
+                final item = items[index];
+                final isSelected = index == currentIndex;
+                final isCenter = index == 2; // Home — featured center button
 
-              if (isCenter) {
+                if (isCenter) {
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (!kIsWeb) HapticFeedback.selectionClick();
+                        onTap(index);
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: SizedBox(
+                        height: _kNavBarHeight,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.primaryGradient,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.brandCyan.withValues(
+                                        alpha: isSelected ? 0.55 : 0.22),
+                                    blurRadius: isSelected ? 18 : 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isSelected ? item.activeIcon : item.icon,
+                                size: 22,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.label,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected
+                                    ? AppTheme.brandCyan
+                                    : AppTheme.slate500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                // Regular items — animated pill background on active
                 return Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -272,131 +341,82 @@ class _FloatingNavBar extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
                       height: _kNavBarHeight,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Floating gradient pill button — compact size
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              gradient: AppTheme.primaryGradient,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.brandCyan.withValues(alpha: isSelected ? 0.45 : 0.2),
-                                  blurRadius: isSelected ? 12 : 6,
-                                  offset: const Offset(0, 3),
+                      child: Center(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: isSelected ? 10 : 6, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.brandCyan.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 200),
+                                    child: isSelected
+                                        ? ShaderMask(
+                                            key: ValueKey('active_$index'),
+                                            shaderCallback: (bounds) =>
+                                                _brandGradient.createShader(bounds),
+                                            blendMode: BlendMode.srcIn,
+                                            child: Icon(item.activeIcon,
+                                                size: 22, color: Colors.white),
+                                          )
+                                        : Icon(
+                                            item.icon,
+                                            key: ValueKey('inactive_$index'),
+                                            size: 22,
+                                            color: AppTheme.slate500,
+                                          ),
+                                  ),
+                                  if (index == 3 && isLinkAiAnalyzing)
+                                    Positioned(
+                                      right: -4,
+                                      top: -4,
+                                      child: SizedBox(
+                                        width: 10,
+                                        height: 10,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.5,
+                                          valueColor:
+                                              const AlwaysStoppedAnimation(
+                                                  AppTheme.brandCyan),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 200),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: isSelected ? 9.5 : 9,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                                  color: isSelected
+                                      ? AppTheme.brandCyan
+                                      : AppTheme.slate500,
                                 ),
-                              ],
-                            ),
-                            child: Icon(
-                              isSelected ? item.activeIcon : item.icon,
-                              size: 20,
-                              color: Colors.white,
-                            ),
+                                child: Text(item.label),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item.label,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: isSelected ? AppTheme.brandCyan : AppTheme.slate600,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 );
-              }
-
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    if (!kIsWeb) HapticFeedback.selectionClick();
-                    onTap(index);
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    height: _kNavBarHeight,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Active indicator line at top
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          height: 2,
-                          width: isSelected ? 24 : 0,
-                          margin: const EdgeInsets.only(bottom: 6),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(1),
-                            gradient: isSelected ? _brandGradient : null,
-                            boxShadow: isSelected
-                                ? [BoxShadow(
-                                    color: AppTheme.brandCyan.withValues(alpha: 0.6),
-                                    blurRadius: 6,
-                                  )]
-                                : null,
-                          ),
-                        ),
-                        // Icon with optional loading indicator for Link AI
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: isSelected
-                                  ? ShaderMask(
-                                      key: ValueKey('active_$index'),
-                                      shaderCallback: (bounds) =>
-                                          _brandGradient.createShader(bounds),
-                                      blendMode: BlendMode.srcIn,
-                                      child: Icon(item.activeIcon, size: 22, color: Colors.white),
-                                    )
-                                  : Icon(
-                                      item.icon,
-                                      key: ValueKey('inactive_$index'),
-                                      size: 22,
-                                      color: AppTheme.slate600,
-                                    ),
-                            ),
-                            // Loading indicator for Link AI tab (index 3)
-                            if (index == 3 && isLinkAiAnalyzing)
-                              Positioned(
-                                right: -4,
-                                top: -4,
-                                child: SizedBox(
-                                  width: 10,
-                                  height: 10,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.5,
-                                    valueColor: const AlwaysStoppedAnimation(AppTheme.brandCyan),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        // Label
-                        AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: isSelected ? 9.5 : 9,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                            color: isSelected ? AppTheme.brandCyan : AppTheme.slate600,
-                          ),
-                          child: Text(item.label),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
+              }),
+            ),
           ),
         ),
       ),
@@ -692,7 +712,7 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const fabSize = 62.0;
-    const fabBottom = _kNavBarHeight + 10.0;
+    const fabBottom = _kNavBarHeight + AppTheme.navBarBottomMargin;
     const fabRight = 14.0;
 
     // Hide when actively comparing (≥2 products selected — hideNavBarProvider=true)

@@ -190,6 +190,13 @@ class AppTheme {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // ACCENT COLORS — secondary palette for AI / premium elements
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static const Color accentViolet = Color(0xFF7C3AED); // Violet-700 — AI premium
+  static const Color accentIndigo = Color(0xFF4F46E5); // Indigo-600 — secondary accent
+
+  // ─────────────────────────────────────────────────────────────────────────
   // LEGACY / COMPAT ALIASES
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -217,6 +224,20 @@ class AppTheme {
     colors: [Color(0xFF0D47A1), brandDeepBlue],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
+  );
+
+  /// Violet gradient — AI premium features
+  static const LinearGradient violetGradient = LinearGradient(
+    colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Violet → Cyan gradient — AI chat / smart features
+  static const LinearGradient aiVioletGradient = LinearGradient(
+    colors: [Color(0xFF7C3AED), brandBlue, brandCyan],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
   );
 
   /// AI gradient: Cyan → Blue
@@ -453,10 +474,10 @@ class AppTheme {
   // FLOATING NAV BAR
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const double navBarHeight       = 60.0;
-  static const double navBarBottomMargin = 0.0;   // flush to bottom
-  static const double navBarHMargin      = 0.0;   // full width
-  static const double navBarTotalClearance = navBarHeight + 20.0;  // add padding for safe area
+  static const double navBarHeight         = 60.0;
+  static const double navBarBottomMargin   = 10.0;  // floating gap above system nav
+  static const double navBarHMargin        = 16.0;  // pill horizontal margin
+  static const double navBarTotalClearance = navBarHeight + 26.0; // 60+26=86, accounts for float
 
   // ─────────────────────────────────────────────────────────────────────────
   // BORDER RADIUS

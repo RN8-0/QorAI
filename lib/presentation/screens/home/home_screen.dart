@@ -338,79 +338,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ) as String? ?? pb.authStore.record?.getStringValue('displayName')?.split(' ').first;
     
     return SliverToBoxAdapter(
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 20, 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // App logo / title
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ShaderMask(
-                          shaderCallback: (bounds) =>
-                              AppTheme.primaryGradient.createShader(
-                            Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-                          child: Text('Compair',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 22, fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.8, color: Colors.white)),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          userName != null ? '$greeting, $userName 👋' : '$greeting 👋',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: context.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _AppBarButton(
-                    icon: Icons.document_scanner_rounded,
-                    onTap: () => context.push(AppRoutes.visualScanner),
-                  ),
-                  const SizedBox(width: 8),
-                  _AppBarButton(
-                    icon: Icons.diamond_rounded,
-                    onTap: () => context.push(AppRoutes.premium),
-                    isPrimary: true,
-                  ),
-                  const SizedBox(width: 8),
-                  _AppBarButton(
-                    icon: Icons.notifications_none_rounded,
-                    onTap: () => _showNotificationsSheet(context),
-                  ),
-                  const SizedBox(width: 8),
-                  // Profile avatar button — uses Firebase Auth currentUser
-                  // for instant display, then upgrades from Firestore profile
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      context.push(AppRoutes.profile);
-                    },
-                    child: Container(
-                      width: 38, height: 38,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.25), width: 1.5),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: _buildAvatarWidget(userProfile),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppTheme.brandBlue.withValues(alpha: 0.05),
+              Colors.transparent,
             ],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 20, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // App logo / title
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShaderMask(
+                            shaderCallback: (bounds) =>
+                                AppTheme.primaryGradient.createShader(
+                              Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
+                            child: Text('Compair',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 24, fontWeight: FontWeight.w800,
+                                    letterSpacing: -1.0, color: Colors.white)),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            userName != null ? '$greeting, $userName 👋' : '$greeting 👋',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _AppBarButton(
+                      icon: Icons.document_scanner_rounded,
+                      onTap: () => context.push(AppRoutes.visualScanner),
+                    ),
+                    const SizedBox(width: 8),
+                    _AppBarButton(
+                      icon: Icons.diamond_rounded,
+                      onTap: () => context.push(AppRoutes.premium),
+                      isPrimary: true,
+                    ),
+                    const SizedBox(width: 8),
+                    _AppBarButton(
+                      icon: Icons.notifications_none_rounded,
+                      onTap: () => _showNotificationsSheet(context),
+                    ),
+                    const SizedBox(width: 8),
+                    // Profile avatar — gradient ring border for premium look
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        context.push(AppRoutes.profile);
+                      },
+                      child: Container(
+                        width: 40, height: 40,
+                        padding: const EdgeInsets.all(1.5),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(13),
+                          gradient: AppTheme.primaryGradient,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(11),
+                          child: _buildAvatarWidget(userProfile),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2114,15 +2126,31 @@ class _AppBarButton extends StatelessWidget {
       child: Container(
         width: 38, height: 38,
         decoration: BoxDecoration(
-          color: isPrimary
-              ? AppTheme.neonCyan.withValues(alpha: 0.10)
-              : context.textTertiaryColor.withValues(alpha: 0.08),
+          gradient: isPrimary
+              ? const LinearGradient(
+                  colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isPrimary ? null : context.textTertiaryColor.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isPrimary
-              ? AppTheme.neonCyan.withValues(alpha: 0.20)
-              : context.dividerColor)),
+          border: Border.all(
+            color: isPrimary
+                ? AppTheme.brandCyan.withValues(alpha: 0.35)
+                : context.dividerColor,
+            width: isPrimary ? 0.5 : 0.5,
+          ),
+          boxShadow: isPrimary
+              ? [BoxShadow(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                )]
+              : null,
+        ),
         child: Icon(icon, size: 20,
-            color: isPrimary ? AppTheme.neonCyan : context.textTertiaryColor),
+            color: isPrimary ? AppTheme.brandCyan : context.textTertiaryColor),
       ),
     );
   }
@@ -2144,15 +2172,19 @@ class _SectionHeader extends StatelessWidget {
       child: Row(children: [
         if (icon != null) ...[
           Container(
-            width: 32, height: 32,
+            width: 34, height: 34,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  (iconColor ?? AppTheme.brandBlue).withValues(alpha: 0.15),
-                  (iconColor ?? AppTheme.brandCyan).withValues(alpha: 0.08),
+                  (iconColor ?? AppTheme.brandBlue).withValues(alpha: 0.20),
+                  (iconColor ?? AppTheme.brandCyan).withValues(alpha: 0.10),
                 ],
               ),
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: (iconColor ?? AppTheme.brandCyan).withValues(alpha: 0.18),
+                width: 0.5,
+              ),
             ),
             child: Icon(icon, size: 17, color: iconColor ?? AppTheme.brandCyan),
           ),

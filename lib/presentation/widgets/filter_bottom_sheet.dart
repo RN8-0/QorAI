@@ -336,7 +336,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               20,
               12,
               20,
-              16 + MediaQuery.of(context).padding.bottom + 80,
+              16 + MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
             ),
             decoration: BoxDecoration(
               border: Border(
