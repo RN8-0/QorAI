@@ -171,7 +171,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
               'We use the information we collect to:\n\n'
               '• Provide, maintain, and improve the Compair service.\n'
               '• Personalize your product recommendations and comparisons.\n'
-              '• Process subscription payments via RevenueCat.\n'
+              '• Process subscription payments via Google Play Billing.\n'
               '• Send you service-related communications.\n'
               '• Monitor and analyze usage patterns to improve user experience.\n'
               '• Detect and prevent fraudulent activity.',
@@ -189,7 +189,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
               'Our application uses the following third-party services, each with their own privacy policies:\n\n'
               '• Google Sign-In: Optional account authentication.\n'
               '• PocketBase: Authentication and application database.\n'
-              '• RevenueCat: Subscription management and payment processing.\n'
+              '• Google Play Billing: Subscription management and payment processing.\n'
               '• Compair AI / DeepSeek AI: AI-powered product analysis.\n'
               '• YouTube: Product review videos (subject to YouTube\'s Terms of Service).\n\n'
               'We do not sell your personal data to third parties.',
