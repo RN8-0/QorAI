@@ -17,6 +17,7 @@ import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/product_image_box.dart';
+import 'package:compair/presentation/widgets/shimmer_skeleton.dart';
 import 'package:compair/presentation/widgets/subscription_logo_widget.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
@@ -386,17 +387,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                     _AppBarButton(
                       icon: Icons.document_scanner_rounded,
+                      tooltip: 'Scan product',
                       onTap: () => context.push(AppRoutes.visualScanner),
                     ),
                     const SizedBox(width: 8),
                     _AppBarButton(
                       icon: Icons.diamond_rounded,
+                      tooltip: context.l10n?.premium ?? 'Premium',
                       onTap: () => context.push(AppRoutes.premium),
                       isPrimary: true,
                     ),
                     const SizedBox(width: 8),
                     _AppBarButton(
                       icon: Icons.notifications_none_rounded,
+                      tooltip: context.l10n?.notifications ?? 'Notifications',
                       onTap: () => _showNotificationsSheet(context),
                     ),
                     const SizedBox(width: 8),
@@ -2049,15 +2053,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === SKELETON ==============================================================
 
   Widget _buildSkeletonRow({required double height, required double cardWidth}) {
-    return SizedBox(
-      height: height,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: 5,
-        itemBuilder: (_, __) => _SkeletonCard(width: cardWidth, height: height - 8),
-      ),
-    );
+    return ProductRowSkeleton(height: height, cardWidth: cardWidth, itemCount: 5);
   }
 
   Widget _buildRetryWidget({required VoidCallback onRetry}) {
@@ -2109,12 +2105,13 @@ class _AppBarButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final bool isPrimary;
+  final String? tooltip;
   const _AppBarButton({required this.icon, required this.onTap,
-      this.isPrimary = false});
+      this.isPrimary = false, this.tooltip});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final button = GestureDetector(
       onTap: () { HapticFeedback.lightImpact(); onTap(); },
       child: Container(
         width: 38, height: 38,
@@ -2145,6 +2142,12 @@ class _AppBarButton extends StatelessWidget {
         child: Icon(icon, size: 20,
             color: isPrimary ? AppTheme.brandCyan : context.textTertiaryColor),
       ),
+    );
+    if (tooltip == null || tooltip!.isEmpty) return button;
+    return Tooltip(
+      message: tooltip!,
+      preferBelow: true,
+      child: Semantics(button: true, label: tooltip, child: button),
     );
   }
 }
@@ -2812,73 +2815,8 @@ class _CmpImg extends StatelessWidget {
 
 // === SKELETON CARD ============================================================
 
-class _SkeletonCard extends StatefulWidget {
-  final double width;
-  final double height;
-  const _SkeletonCard({required this.width, required this.height});
-  @override
-  State<_SkeletonCard> createState() => _SkeletonCardState();
-}
-
-class _SkeletonCardState extends State<_SkeletonCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 1200))
-      ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.3, end: 0.7)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => Container(
-        width: widget.width, height: widget.height,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor.withValues(alpha: _anim.value + 0.2),
-          borderRadius: BorderRadius.circular(20)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(flex: 55, child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor.withValues(alpha: _anim.value + 0.3),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
-          )),
-          Expanded(flex: 45, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _bar(60, 6), const SizedBox(height: 6),
-                _bar(double.infinity, 8), const SizedBox(height: 6),
-                _bar(70, 8),
-              ],
-            ),
-          )),
-        ]),
-      ),
-    );
-  }
-
-  Widget _bar(double w, double h) => Container(
-    height: h, width: w,
-    decoration: BoxDecoration(
-      color: context.surfaceElevatedColor.withValues(alpha: _anim.value + 0.3),
-      borderRadius: BorderRadius.circular(4)),
-  );
-}
+// _SkeletonCard retired — see ProductRowSkeleton/ProductCardSkeleton in
+// lib/presentation/widgets/shimmer_skeleton.dart (shimmer-based premium loader).
 
 // === QUICK ACTION =============================================================
 

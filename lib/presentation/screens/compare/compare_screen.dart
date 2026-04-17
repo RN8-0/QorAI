@@ -31,6 +31,7 @@ import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:compair/services/youtube_service.dart';
 import 'package:compair/services/gemini_service.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
+import 'package:compair/services/share_card_service.dart';
 import 'package:compair/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:compair/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
@@ -351,6 +352,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         leading: _products != null
             ? IconButton(
                 icon: Icon(Icons.arrow_back_rounded, color: context.textPrimary),
+                tooltip: context.l10n?.back ?? 'Back',
                 onPressed: _resetComparison,
               )
             : null,
@@ -370,6 +372,17 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          if (_products != null && _products.length >= 2)
+            IconButton(
+              icon: Icon(Icons.ios_share_rounded, color: context.textPrimary),
+              tooltip: context.l10n?.share ?? 'Share',
+              onPressed: () => ShareCardService.shareComparison(
+                context: context,
+                products: _products,
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [
