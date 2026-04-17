@@ -66,7 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.red.shade600,
+        backgroundColor: AppTheme.error,
         margin: const EdgeInsets.all(20),
         duration: const Duration(seconds: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -80,7 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green.shade600,
+        backgroundColor: AppTheme.success,
         margin: const EdgeInsets.all(20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -392,8 +392,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppTheme.neonCyan.withValues(alpha: 0.08),
-                      AppTheme.neonPurple.withValues(alpha: 0.05),
+                      AppTheme.neonCyan.withValues(alpha: 0.12),
+                      AppTheme.neonPurple.withValues(alpha: 0.08),
                       Colors.transparent,
                     ],
                     stops: const [0.0, 0.5, 1.0],
@@ -621,17 +621,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildEmailGradientButton() {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.neonCyan, AppTheme.neonPurple],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.neonCyan.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppTheme.primaryBlue.withValues(alpha: 0.40),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: AppTheme.brandCyan.withValues(alpha: 0.20),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),

@@ -698,20 +698,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppTheme.brandBlue.withValues(alpha: 0.08),
-                AppTheme.brandCyan.withValues(alpha: 0.04),
+                AppTheme.brandBlue.withValues(alpha: 0.12),
+                AppTheme.brandCyan.withValues(alpha: 0.06),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppTheme.brandBlue.withValues(alpha: 0.15),
+              color: AppTheme.brandBlue.withValues(alpha: 0.20),
               width: 0.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.brandBlue.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: AppTheme.brandBlue.withValues(alpha: 0.14),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: AppTheme.brandCyan.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -728,6 +738,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: Text(context.l10n?.searchProducts ?? 'Search products...',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 15, color: context.textTertiaryColor)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.brandBlue.withValues(alpha: 0.20),
+                      AppTheme.brandCyan.withValues(alpha: 0.12),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppTheme.brandCyan.withValues(alpha: 0.25),
+                    width: 0.5,
+                  ),
+                ),
+                child: ShaderMask(
+                  shaderCallback: (bounds) =>
+                      AppTheme.primaryGradient.createShader(bounds),
+                  child: Text(
+                    'AI',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1247,24 +1284,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 52, height: 52,
+              width: 56, height: 56,
               decoration: BoxDecoration(
-                color: context.surfaceVariantColor,
+                gradient: LinearGradient(
+                  colors: [
+                    color.withValues(alpha: 0.18),
+                    color.withValues(alpha: 0.09),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: color.withValues(alpha: 0.25)),
-                boxShadow: [BoxShadow(
-                    color: color.withValues(alpha: 0.12),
-                    blurRadius: 6, offset: const Offset(0, 2))],
+                border: Border.all(color: color.withValues(alpha: 0.28), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.18),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 7),
             Text(name,
                 maxLines: 2, overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 10.5, fontWeight: FontWeight.w600,
-                    color: context.textSecondary, height: 1.2)),
+                    color: context.textPrimary.withValues(alpha: 0.80),
+                    height: 1.2)),
           ],
         ),
       ),

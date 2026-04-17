@@ -50,9 +50,9 @@ part 'widgets/youtube_widgets.dart';
 
 /// 3-layer card shadow used throughout the screen.
 const _cardShadow = [
-  BoxShadow(color: Color(0x0A6366F1), blurRadius: 4, offset: Offset(0, 1)),
-  BoxShadow(color: Color(0x086366F1), blurRadius: 12, offset: Offset(0, 4)),
-  BoxShadow(color: Color(0x066366F1), blurRadius: 24, offset: Offset(0, 8)),
+  BoxShadow(color: Color(0x12005DD9), blurRadius: 4, offset: Offset(0, 1)),
+  BoxShadow(color: Color(0x10005DD9), blurRadius: 12, offset: Offset(0, 4)),
+  BoxShadow(color: Color(0x08005DD9), blurRadius: 24, offset: Offset(0, 8)),
 ];
 
 /// Premium-style indigo/violet gradient matching subscription page.
@@ -402,7 +402,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           ? const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF0F1724), Color(0xFF141C2E), Color(0xFF0A1020)],
+              colors: [Color(0xFF0A1322), Color(0xFF111B2D), Color(0xFF080E1C)],
             )
           : LinearGradient(
               begin: Alignment.topLeft,
@@ -828,7 +828,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                   width: 20,
                   height: 20,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
+                    color: AppTheme.error,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isDark
