@@ -30,7 +30,9 @@ class ProfileScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: Theme.of(context).brightness == Brightness.dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         title: Text(
           context.l10n?.profile ?? 'Profile',
           style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
@@ -185,6 +187,35 @@ String? _resolveAuthRecordPhotoUrl(RecordModel auth) {
   return photoUrl.isEmpty ? null : photoUrl;
 }
 
+/// Kullanıcı UID hash'inden deterministik renk üretir.
+Color _avatarColorFromUid(String? uid) {
+  const colors = [
+    Color(0xFF7C3AED), // Violet
+    Color(0xFF2563EB), // Blue
+    Color(0xFF059669), // Emerald
+    Color(0xFFD97706), // Amber
+    Color(0xFFDC2626), // Red
+    Color(0xFF0891B2), // Cyan
+    Color(0xFFDB2777), // Pink
+    Color(0xFF16A34A), // Green
+  ];
+  if (uid == null || uid.isEmpty) return AppTheme.brandBlue;
+  final hash = uid.codeUnits.fold(0, (p, e) => p + e);
+  return colors[hash % colors.length];
+}
+
+/// displayName > email prefix > fallback sırasıyla etkili adı döndürür.
+String _effectiveDisplayName(UserEntity? user, BuildContext context) {
+  final name = user?.displayName;
+  if (name != null && name.isNotEmpty) return name;
+  final email = user?.email;
+  if (email != null && email.isNotEmpty) {
+    final prefix = email.split('@').first;
+    if (prefix.isNotEmpty) return prefix;
+  }
+  return context.l10n?.user ?? 'User';
+}
+
 class _ProfileBody extends ConsumerWidget {
   final UserEntity? user;
 
@@ -231,21 +262,21 @@ class _ProfileBody extends ConsumerWidget {
                       ),
                       child: CircleAvatar(
                         radius: 36,
-                        backgroundColor: context.surfaceElevatedColor,
+                        backgroundColor: (user?.photoURL ?? '').isEmpty
+                            ? _avatarColorFromUid(user?.uid)
+                            : context.surfaceElevatedColor,
                         backgroundImage: (user?.photoURL ?? '').isNotEmpty
                             ? NetworkImage(user!.photoURL!)
                             : null,
                         child: (user?.photoURL ?? '').isEmpty
                             ? Text(
-                                ((user?.displayName ?? '').isEmpty
-                                        ? 'U'
-                                        : user!.displayName)
+                                _effectiveDisplayName(user, context)
                                     .substring(0, 1)
                                     .toUpperCase(),
                                 style: GoogleFonts.inter(
                                   fontSize: 28,
                                   fontWeight: FontWeight.w800,
-                                  color: AppTheme.brandBlue,
+                                  color: Colors.white,
                                 ),
                               )
                             : null,
@@ -260,8 +291,7 @@ class _ProfileBody extends ConsumerWidget {
                             children: [
                               Flexible(
                                 child: Text(
-                                  user?.displayName ??
-                                      (context.l10n?.user ?? 'User'),
+                                  _effectiveDisplayName(user, context),
                                   style: GoogleFonts.inter(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w800,
@@ -313,13 +343,16 @@ class _ProfileBody extends ConsumerWidget {
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            user?.email ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: context.textTertiaryColor,
+                          if ((user?.email ?? '').isNotEmpty)
+                            Text(
+                              user!.email,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: context.textTertiaryColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
                         ],
                       ),
                     ),
