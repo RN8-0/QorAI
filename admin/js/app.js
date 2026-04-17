@@ -475,13 +475,26 @@ async function serverSearch(){
   g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Aranıyor...</div>';
   try{
     const esc=q.replace(/"/g,'\\"');
+    // Search by name, brand, category or slug-style id
     const filter=`name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${esc.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}"`;
-    const result=await pbGetList('products',1,200,{filter,sort:'-techScore'});
-    displayProducts=result.items;
-    allProducts=result.items;
+    const result=await pbGetList('products',1,500,{filter,sort:'-techScore'});
+    const qLow=q.toLowerCase();
+    // Sort: exact name match first, then starts-with, then contains, then rest by techScore
+    const sorted=result.items.slice().sort((a,b)=>{
+      const an=(a.name||'').toLowerCase(); const bn=(b.name||'').toLowerCase();
+      const ae=an===qLow; const be=bn===qLow;
+      if(ae&&!be)return -1; if(be&&!ae)return 1;
+      const as=an.startsWith(qLow); const bs=bn.startsWith(qLow);
+      if(as&&!bs)return -1; if(bs&&!as)return 1;
+      const ac=an.includes(qLow); const bc=bn.includes(qLow);
+      if(ac&&!bc)return -1; if(bc&&!ac)return 1;
+      return (b.techScore||0)-(a.techScore||0);
+    });
+    displayProducts=sorted;
+    allProducts=sorted;
     renderProductsPage();
     document.getElementById('productCount').textContent=result.totalItems+' sonuç';
-    if(!result.items.length)toast('"'+q+'" için sonuç bulunamadı','i');
+    if(!sorted.length)toast('"'+q+'" için sonuç bulunamadı','i');
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+e.message+'</div>'}
 }
 
