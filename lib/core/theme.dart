@@ -474,10 +474,17 @@ class AppTheme {
   // FLOATING NAV BAR
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const double navBarHeight         = 60.0;
+  static const double navBarHeight         = 64.0;
   static const double navBarBottomMargin   = 10.0;  // floating gap above system nav
   static const double navBarHMargin        = 16.0;  // pill horizontal margin
-  static const double navBarTotalClearance = navBarHeight + 26.0; // 60+26=86, accounts for float
+  static const double navBarTotalClearance = navBarHeight + 26.0; // 64+26=90, accounts for float
+
+  // Branded 3-layer card shadow (blue tinted) — used in compare & premium surfaces
+  static const List<BoxShadow> cardShadowBrand = [
+    BoxShadow(color: Color(0x12005DD9), blurRadius: 4,  offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x10005DD9), blurRadius: 12, offset: Offset(0, 4)),
+    BoxShadow(color: Color(0x08005DD9), blurRadius: 24, offset: Offset(0, 8)),
+  ];
 
   // ─────────────────────────────────────────────────────────────────────────
   // BORDER RADIUS

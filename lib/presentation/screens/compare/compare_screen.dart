@@ -48,12 +48,8 @@ part 'widgets/empty_search_widgets.dart';
 part 'widgets/spec_comparison_widget.dart';
 part 'widgets/youtube_widgets.dart';
 
-/// 3-layer card shadow used throughout the screen.
-const _cardShadow = [
-  BoxShadow(color: Color(0x12005DD9), blurRadius: 4, offset: Offset(0, 1)),
-  BoxShadow(color: Color(0x10005DD9), blurRadius: 12, offset: Offset(0, 4)),
-  BoxShadow(color: Color(0x08005DD9), blurRadius: 24, offset: Offset(0, 8)),
-];
+/// 3-layer card shadow used throughout the screen (from AppTheme).
+const _cardShadow = AppTheme.cardShadowBrand;
 
 /// Premium-style indigo/violet gradient matching subscription page.
 const _accentGradient = LinearGradient(

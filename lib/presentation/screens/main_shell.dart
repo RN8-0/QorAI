@@ -239,7 +239,9 @@ class _FloatingNavBar extends StatelessWidget {
     final items = _buildNavItems(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Container(
       height: _kNavBarHeight,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppTheme.radiusXXL),
@@ -283,18 +285,23 @@ class _FloatingNavBar extends StatelessWidget {
 
                 if (isCenter) {
                   return Expanded(
-                    child: GestureDetector(
+                    child: Semantics(
+                      button: true,
+                      selected: isSelected,
+                      label: item.label,
+                      child: GestureDetector(
                       onTap: () {
                         if (!kIsWeb) HapticFeedback.selectionClick();
                         onTap(index);
                       },
                       behavior: HitTestBehavior.opaque,
                       child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 42,
+                              height: 42,
                               decoration: BoxDecoration(
                                 gradient: AppTheme.primaryGradient,
                                 borderRadius: BorderRadius.circular(14),
@@ -313,11 +320,12 @@ class _FloatingNavBar extends StatelessWidget {
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 3),
                             Text(
                               item.label,
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9.5,
+                                fontSize: 10,
+                                height: 1.0,
                                 fontWeight: FontWeight.w700,
                                 color: isSelected
                                     ? AppTheme.brandCyan
@@ -327,12 +335,17 @@ class _FloatingNavBar extends StatelessWidget {
                           ],
                         ),
                     ),
+                    ),
                   );
                 }
 
                 // Regular items — animated pill background on active
                 return Expanded(
-                  child: GestureDetector(
+                  child: Semantics(
+                    button: true,
+                    selected: isSelected,
+                    label: item.label,
+                    child: GestureDetector(
                     onTap: () {
                       if (!kIsWeb) HapticFeedback.selectionClick();
                       onTap(index);
@@ -343,7 +356,7 @@ class _FloatingNavBar extends StatelessWidget {
                           duration: const Duration(milliseconds: 220),
                           curve: Curves.easeOutCubic,
                           padding: EdgeInsets.symmetric(
-                              horizontal: isSelected ? 10 : 6, vertical: 6),
+                              horizontal: isSelected ? 10 : 6, vertical: 4),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppTheme.brandCyan.withValues(alpha: 0.12)
@@ -395,10 +408,11 @@ class _FloatingNavBar extends StatelessWidget {
                               AnimatedDefaultTextStyle(
                                 duration: const Duration(milliseconds: 200),
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: isSelected ? 9.5 : 9,
+                                  fontSize: isSelected ? 10 : 9.5,
+                                  height: 1.0,
                                   fontWeight: isSelected
                                       ? FontWeight.w700
-                                      : FontWeight.w400,
+                                      : FontWeight.w500,
                                   color: isSelected
                                       ? AppTheme.brandCyan
                                       : AppTheme.slate500,
@@ -410,11 +424,13 @@ class _FloatingNavBar extends StatelessWidget {
                         ),
                       ),
                     ),
+                    ),
                   );
               }),
             ),
           ),
         ),
+      ),
       ),
     );
   }
