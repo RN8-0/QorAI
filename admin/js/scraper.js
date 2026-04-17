@@ -19,6 +19,15 @@ let _proxyPollTimer = null;
 // Pending untranslated Turkish terms (shared with dictionary.js collectUntranslatedTerms)
 const _pendingAITerms = new Set();
 
+function escHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ═══════════════════════════════════════
 //  1. LOGGING & PROGRESS
 // ═══════════════════════════════════════
@@ -178,10 +187,10 @@ function populateScraperCategories() {
   let flatOpts = '<option value="">Tüm Kategoriler</option>';
 
   CompairCategories.groups.forEach(group => {
-    bulkOpts += `<optgroup label="${group.name}">`;
+    bulkOpts += `<optgroup label="${escHtml(group.name)}">`;
     group.categories.forEach(cat => {
-      bulkOpts += `<option value="${cat.id}">${cat.name}</option>`;
-      flatOpts += `<option value="${cat.id}">${cat.name}</option>`;
+      bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}</option>`;
+      flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}</option>`;
     });
     bulkOpts += '</optgroup>';
   });

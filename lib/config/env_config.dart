@@ -36,6 +36,5 @@ class EnvConfig {
     return const String.fromEnvironment('REVENUECAT_ANDROID_API_KEY', defaultValue: '');
   }
 
-  static const String ipApiUrl = 'http://ip-api.com/json';
   static const String ipInfoUrl = 'https://ipinfo.io/json';
 }

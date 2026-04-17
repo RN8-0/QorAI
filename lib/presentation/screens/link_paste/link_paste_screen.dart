@@ -247,7 +247,20 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     }
     _visibleCompareFields = 2;
     _lastSavedCompareHistoryKey = null;
+  }
+
+  void _resetAllFlows() {
+    ref.read(linkQuizProvider.notifier).reset();
     ref.read(compareAnalysisProvider.notifier).reset();
+    if (!mounted) {
+      _resetLinkFields();
+      _resetCompareFields();
+      return;
+    }
+    setState(() {
+      _resetLinkFields();
+      _resetCompareFields();
+    });
   }
 
   /// Continue to next product in multi-link flow (sequential quiz per product)
@@ -260,7 +273,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     if (_currentMultiLinkIndex >= _multiLinkUrls.length) {
       ref.read(linkQuizProvider.notifier).reset();
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
       return;
     }
 
@@ -465,11 +480,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ),
                         onPressed: () {
                           HapticFeedback.mediumImpact();
-                          ref.read(linkQuizProvider.notifier).reset();
-                          ref.read(compareAnalysisProvider.notifier).reset();
-                          _resetLinkFields();
-                          _resetCompareFields();
-                          setState(() {});
+                          _resetAllFlows();
                         },
                       )
                     : Padding(
@@ -527,10 +538,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       icon: Icons.refresh_rounded,
                       onPressed: () {
                         HapticFeedback.mediumImpact();
-                        ref.read(linkQuizProvider.notifier).reset();
-                        _resetLinkFields();
-                        _resetCompareFields();
-                        setState(() {});
+                        _resetAllFlows();
                       },
                       tooltip: context.l10n?.startOver ?? 'Start over',
                     ),
@@ -3328,11 +3336,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         GestureDetector(
           onTap: () {
             HapticFeedback.mediumImpact();
-            ref.read(linkQuizProvider.notifier).reset();
-            ref.read(compareAnalysisProvider.notifier).reset();
-            _resetLinkFields();
-            _resetCompareFields();
-            setState(() {});
+            _resetAllFlows();
           },
           child: Container(
             height: 48,

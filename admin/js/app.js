@@ -291,7 +291,7 @@ function updateTopBrands(brandCounts){
   const bEl=document.getElementById('dashTopBrands');
   if(!bEl||!bSorted.length)return;
   const mx=bSorted[0][1];
-  bEl.innerHTML=bSorted.map(([b,c],i)=>`<div class="brand-row"><span class="brand-num">${i+1}</span><span class="brand-name">${b}</span><div class="brand-bar"><div class="brand-bar-fill" style="width:${Math.round(c/mx*100)}%"></div></div><span class="brand-count">${c}</span></div>`).join('');
+  bEl.innerHTML=bSorted.map(([b,c],i)=>`<div class="brand-row"><span class="brand-num">${i+1}</span><span class="brand-name">${escHtml(b)}</span><div class="brand-bar"><div class="brand-bar-fill" style="width:${Math.round(c/mx*100)}%"></div></div><span class="brand-count">${c}</span></div>`).join('');
 }
 
 function updateInsights(totalCount,totalCats){
@@ -1067,7 +1067,7 @@ function renderPinnedProducts() {
   if (!el) return;
   if (_pinnedProducts.length === 0) { el.innerHTML = '<span class="text-muted">No pinned products</span>'; return; }
   el.innerHTML = _pinnedProducts.map(id =>
-    `<span class="tag tag-green" style="cursor:pointer" onclick="removePinnedProduct('${id}')">${id} ✕</span>`
+    `<span class="tag tag-green" style="cursor:pointer" onclick="removePinnedProduct('${escJs(id)}')">${escHtml(id)} ✕</span>`
   ).join('');
 }
 
@@ -1098,7 +1098,7 @@ function renderHiddenProducts() {
   if (!el) return;
   if (_hiddenProducts.length === 0) { el.innerHTML = '<span class="text-muted">No hidden products</span>'; return; }
   el.innerHTML = _hiddenProducts.map(id =>
-    `<span class="tag tag-red" style="cursor:pointer" onclick="removeHiddenProduct('${id}')">${id} ✕</span>`
+    `<span class="tag tag-red" style="cursor:pointer" onclick="removeHiddenProduct('${escJs(id)}')">${escHtml(id)} ✕</span>`
   ).join('');
 }
 
@@ -1125,8 +1125,8 @@ function loadCategoryToggles(disabledList) {
   el.innerHTML = ALL_CATEGORIES.map(cat => {
     const checked = !_disabledCategories.includes(cat);
     return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0">
-      <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleCategory('${cat}', this.checked)">
-      <span style="font-size:13px">${cat}</span>
+      <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleCategory('${escJs(cat)}', this.checked)">
+      <span style="font-size:13px">${escHtml(cat)}</span>
     </label>`;
   }).join('');
 }
@@ -1162,7 +1162,7 @@ async function previewFeedStats() {
       total += cnt;
     }
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const empty = sorted.filter(([, c]) => c === 0).map(([n]) => n);
+    const empty = sorted.filter(([, c]) => c === 0).map(([n]) => escHtml(n));
     el.innerHTML = `
       <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px">
         <strong>📊 Feed Statistics</strong><br>
