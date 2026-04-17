@@ -2404,52 +2404,58 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             ),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: canContinue
-                    ? AppTheme.brandCyan
-                    : _buttonDisabledBg,
-                foregroundColor: canContinue
-                    ? _selectionCheckColor
-                    : _buttonDisabledFg,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
-                ),
-              ),
-              onPressed: _isSubmitting
+            child: GestureDetector(
+              onTap: _isSubmitting || !canContinue
                   ? null
-                  : () {
-                      if (!canContinue) return;
-                      _goNext();
-                    },
-              child: _isSubmitting
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          isLast
-                              ? _t('Profilimi oluştur', 'Create my profile')
-                              : _t('Devam et', 'Continue'),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Icon(
-                          isLast
-                              ? Icons.auto_awesome_rounded
-                              : Icons.arrow_forward_rounded,
-                          size: 20,
-                        ),
-                      ],
+                  : _goNext,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  gradient: canContinue ? AppTheme.primaryGradient : null,
+                  color: canContinue ? null : _buttonDisabledBg,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: canContinue ? [
+                    BoxShadow(
+                      color: AppTheme.brandCyan.withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
+                  ] : null,
+                ),
+                child: _isSubmitting
+                    ? Center(child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ))
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            isLast
+                                ? _t('Profilimi oluştur', 'Create my profile')
+                                : _t('Devam et', 'Continue'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: canContinue ? Colors.white : _buttonDisabledFg,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(
+                            isLast
+                                ? Icons.auto_awesome_rounded
+                                : Icons.arrow_forward_rounded,
+                            size: 20,
+                            color: canContinue ? Colors.white : _buttonDisabledFg,
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ],

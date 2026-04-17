@@ -453,6 +453,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   : Colors.black.withValues(alpha: 0.06),
               width: 0.5,
             ),
+            boxShadow: isDark ? null : AppTheme.subtleShadow,
           ),
           clipBehavior: Clip.hardEdge,
           child: Column(children: children),
@@ -581,10 +582,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.06),
-              width: 0.5,
+                  ? AppTheme.brandCyan.withValues(alpha: 0.15)
+                  : AppTheme.brandCyan.withValues(alpha: 0.12),
+              width: 0.8,
             ),
+            boxShadow: AppTheme.cardShadow,
           ),
           child: Row(
             children: [
