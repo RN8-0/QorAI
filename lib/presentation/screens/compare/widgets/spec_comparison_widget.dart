@@ -1,5 +1,7 @@
 part of '../compare_screen.dart';
 
+enum _AiPanelType { deepAnalysis, alternatives, advisor, prediction }
+
 class _SpecComparisonView extends ConsumerStatefulWidget {
   final List<ProductEntity> products;
   final VoidCallback onReset;
@@ -443,78 +445,278 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     return (data: null, error: lastError);
   }
 
-  Future<void> _toggleDeepAnalysis() async {
-    if (_deepAnalysisExpanded &&
-        (_deepAnalysisResult != null || _deepAnalysisStructured != null)) {
-      setState(() => _deepAnalysisExpanded = false);
-      return;
-    }
-    setState(() {
-      _deepAnalysisExpanded = true;
-      if (_deepAnalysisResult != null || _deepAnalysisStructured != null)
-        return;
-      _deepAnalysisLoading = true;
-    });
-    if (_deepAnalysisResult == null && _deepAnalysisStructured == null) {
-      await _fetchDeepAnalysis();
+  bool _isAiPanelExpanded(_AiPanelType panel) {
+    switch (panel) {
+      case _AiPanelType.deepAnalysis:
+        return _deepAnalysisExpanded;
+      case _AiPanelType.alternatives:
+        return _alternativesExpanded;
+      case _AiPanelType.advisor:
+        return _advisorExpanded;
+      case _AiPanelType.prediction:
+        return _predictionExpanded;
     }
   }
 
-  Future<void> _fetchDeepAnalysis() async {
-    if (_deepAnalysisResult != null || _deepAnalysisStructured != null) return;
+  bool _hasAiPanelData(_AiPanelType panel) {
+    switch (panel) {
+      case _AiPanelType.deepAnalysis:
+        return _deepAnalysisResult != null || _deepAnalysisStructured != null;
+      case _AiPanelType.alternatives:
+        return _alternativesResult != null || _alternativesStructured != null;
+      case _AiPanelType.advisor:
+        return _advisorResult != null || _advisorStructured != null;
+      case _AiPanelType.prediction:
+        return _predictionResult != null || _predictionStructured != null;
+    }
+  }
+
+  void _setAiPanelExpanded(_AiPanelType panel, bool value) {
+    switch (panel) {
+      case _AiPanelType.deepAnalysis:
+        _deepAnalysisExpanded = value;
+        break;
+      case _AiPanelType.alternatives:
+        _alternativesExpanded = value;
+        break;
+      case _AiPanelType.advisor:
+        _advisorExpanded = value;
+        break;
+      case _AiPanelType.prediction:
+        _predictionExpanded = value;
+        break;
+    }
+  }
+
+  void _setAiPanelLoading(_AiPanelType panel, bool value) {
+    switch (panel) {
+      case _AiPanelType.deepAnalysis:
+        _deepAnalysisLoading = value;
+        break;
+      case _AiPanelType.alternatives:
+        _alternativesLoading = value;
+        break;
+      case _AiPanelType.advisor:
+        _advisorLoading = value;
+        break;
+      case _AiPanelType.prediction:
+        _predictionLoading = value;
+        break;
+    }
+  }
+
+  void _setAiPanelData(
+    _AiPanelType panel, {
+    required String? result,
+    required Map<String, dynamic>? structured,
+  }) {
+    switch (panel) {
+      case _AiPanelType.deepAnalysis:
+        _deepAnalysisResult = result;
+        _deepAnalysisStructured = structured;
+        break;
+      case _AiPanelType.alternatives:
+        _alternativesResult = result;
+        _alternativesStructured = structured;
+        break;
+      case _AiPanelType.advisor:
+        _advisorResult = result;
+        _advisorStructured = structured;
+        break;
+      case _AiPanelType.prediction:
+        _predictionResult = result;
+        _predictionStructured = structured;
+        break;
+    }
+  }
+
+  void _setAiPanelError(
+    _AiPanelType panel, {
+    required bool hasError,
+    required String? message,
+  }) {
+    switch (panel) {
+      case _AiPanelType.deepAnalysis:
+        _deepAnalysisError = hasError;
+        _deepAnalysisErrorMsg = message;
+        break;
+      case _AiPanelType.alternatives:
+        _alternativesError = hasError;
+        _alternativesErrorMsg = message;
+        break;
+      case _AiPanelType.advisor:
+        _advisorError = hasError;
+        _advisorErrorMsg = message;
+        break;
+      case _AiPanelType.prediction:
+        _predictionError = hasError;
+        _predictionErrorMsg = message;
+        break;
+    }
+  }
+
+  Future<void> _toggleAiPanel(
+    _AiPanelType panel,
+    Future<void> Function() fetcher,
+  ) async {
+    if (_isAiPanelExpanded(panel) && _hasAiPanelData(panel)) {
+      setState(() => _setAiPanelExpanded(panel, false));
+      return;
+    }
+
+    final shouldFetch = !_hasAiPanelData(panel);
+    setState(() {
+      _setAiPanelExpanded(panel, true);
+      if (shouldFetch) {
+        _setAiPanelLoading(panel, true);
+      }
+    });
+
+    if (shouldFetch) {
+      await fetcher();
+    }
+  }
+
+  void _retryAiPanel(_AiPanelType panel, Future<void> Function() fetcher) {
+    setState(() {
+      _setAiPanelError(panel, hasError: false, message: null);
+      _setAiPanelLoading(panel, true);
+      _setAiPanelData(panel, result: null, structured: null);
+    });
+    fetcher();
+  }
+
+  void _applyAiPanelCache(
+    _AiPanelType panel,
+    String cacheResult,
+    Map<String, dynamic> parsed,
+  ) {
+    setState(() {
+      _setAiPanelData(panel, result: cacheResult, structured: parsed);
+      _setAiPanelLoading(panel, false);
+      _setAiPanelError(panel, hasError: false, message: null);
+    });
+  }
+
+  void _applyAiPanelSuccess(
+    _AiPanelType panel,
+    String result,
+    Map<String, dynamic> structured,
+  ) {
+    setState(() {
+      _setAiPanelData(panel, result: result, structured: structured);
+      _setAiPanelLoading(panel, false);
+      _setAiPanelError(panel, hasError: false, message: null);
+    });
+  }
+
+  void _applyAiPanelFailure(_AiPanelType panel, String? message) {
+    setState(() {
+      _setAiPanelError(panel, hasError: true, message: message);
+      _setAiPanelLoading(panel, false);
+    });
+  }
+
+  Future<void> _runAiPanelRequest({
+    required _AiPanelType panel,
+    required String cacheFeature,
+    required String debugLabel,
+    required String staleCacheMessage,
+    required String prompt,
+    required String lang,
+    required int maxTokens,
+    String? startMessage,
+  }) async {
+    if (_hasAiPanelData(panel)) return;
+
     final sw = Stopwatch()..start();
     try {
-      // Check Firestore cache first
-      final cached = await _loadAiCache(_localizedFeature('deep_analysis_v2'));
+      final cached = await _loadAiCache(cacheFeature);
       if (cached != null && cached['result'] != null) {
         final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
             ? Map<String, dynamic>.from(cached['structured'] as Map)
             : _tryParseJson(cacheResult);
         if (parsed == null) {
-          // Stale/unparseable cache — clear and re-fetch
-          debugPrint('[Compair] Deep Analysis cache unparseable — re-fetching');
+          debugPrint(staleCacheMessage);
         } else {
-          if (mounted)
-            setState(() {
-              _deepAnalysisResult = cacheResult;
-              _deepAnalysisStructured = parsed;
-              _deepAnalysisLoading = false;
-            });
+          if (!mounted) return;
+          _applyAiPanelCache(panel, cacheResult, parsed);
           _saveToSession();
           debugPrint(
-            '[Compair] ⏱ Deep Analysis from cache: ${sw.elapsedMilliseconds}ms',
+            '[Compair] ⏱ $debugLabel from cache: ${sw.elapsedMilliseconds}ms',
           );
           return;
         }
       }
 
-      final lang = _appLang;
-      final langName = _languageName(lang);
-      final productNames = widget.products.map((p) => p.name).join(' vs ');
-      final specSummary = widget.products
-          .map((p) {
-            final keySpecs = p.keySpecs.entries
-                .take(10)
-                .map((e) => '${e.key}: ${e.value}')
-                .join(', ');
-            return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
-          })
-          .join('\n');
+      if (startMessage != null) {
+        debugPrint(startMessage);
+      }
+      final result = await _fetchWithRetry(
+        prompt,
+        debugLabel,
+        lang,
+        maxTokens: maxTokens,
+      );
+      if (!mounted) return;
 
-      // Build dynamic category score template with ALL product names
-      final catScoreTemplate = widget.products
-          .map((p) => '"${p.name.split(' ').take(3).join(' ')}": 75')
-          .join(', ');
-      final productTemplate = widget.products
-          .map(
-            (p) =>
-                '"${p.name.split(' ').take(3).join(' ')}": {"score": 80, "strengths": ["s1", "s2"], "weaknesses": ["w1"], "best_for": "use case"}',
-          )
-          .join(',\n    ');
+      if (result.data == null) {
+        debugPrint(
+          '[Compair] $debugLabel parse FAILED — showing error: ${result.error}',
+        );
+        _applyAiPanelFailure(panel, result.error);
+      } else {
+        final resultStr = jsonEncode(result.data);
+        _applyAiPanelSuccess(panel, resultStr, result.data!);
+        _saveToSession();
+        _saveAiCache(cacheFeature, {
+          'result': resultStr,
+          'structured': result.data,
+        });
+      }
 
-      final prompt =
-          '''You are a senior tech analyst. Compare these products. Address the user as "you/your". ALL text in $langName.
+      debugPrint(
+        '[Compair] ⏱ $debugLabel from Gemini: ${sw.elapsedMilliseconds}ms',
+      );
+    } catch (e, st) {
+      debugPrint('[Compair] $debugLabel FAILED: $e\n$st');
+      if (mounted) {
+        _applyAiPanelFailure(panel, e.toString());
+      }
+    }
+  }
+
+  Future<void> _toggleDeepAnalysis() async {
+    await _toggleAiPanel(_AiPanelType.deepAnalysis, _fetchDeepAnalysis);
+  }
+
+  Future<void> _fetchDeepAnalysis() async {
+    final lang = _appLang;
+    final langName = _languageName(lang);
+    final productNames = widget.products.map((p) => p.name).join(' vs ');
+    final specSummary = widget.products
+        .map((p) {
+          final keySpecs = p.keySpecs.entries
+              .take(10)
+              .map((e) => '${e.key}: ${e.value}')
+              .join(', ');
+          return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
+        })
+        .join('\n');
+
+    final catScoreTemplate = widget.products
+        .map((p) => '"${p.name.split(' ').take(3).join(' ')}": 75')
+        .join(', ');
+    final productTemplate = widget.products
+        .map(
+          (p) =>
+              '"${p.name.split(' ').take(3).join(' ')}": {"score": 80, "strengths": ["s1", "s2"], "weaknesses": ["w1"], "best_for": "use case"}',
+        )
+        .join(',\n    ');
+
+    final prompt =
+        '''You are a senior tech analyst. Compare these products. Address the user as "you/your". ALL text in $langName.
 Products: $productNames
 
 Specs:
@@ -537,105 +739,33 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
   "recommendation": "2-3 sentence recommendation addressing you directly"
 }''';
 
-      debugPrint('[Compair] Deep Analysis starting for: $productNames');
-      final result = await _fetchWithRetry(
-        prompt,
-        'Deep Analysis',
-        lang,
-        maxTokens: 8192,
-      );
-      if (mounted) {
-        if (result.data == null) {
-          debugPrint(
-            '[Compair] Deep Analysis parse FAILED — showing error: ${result.error}',
-          );
-          setState(() {
-            _deepAnalysisError = true;
-            _deepAnalysisErrorMsg = result.error;
-            _deepAnalysisLoading = false;
-          });
-        } else {
-          final resultStr = jsonEncode(result.data);
-          setState(() {
-            _deepAnalysisResult = resultStr;
-            _deepAnalysisStructured = result.data;
-            _deepAnalysisLoading = false;
-          });
-          _saveToSession();
-          _saveAiCache(_localizedFeature('deep_analysis_v2'), {
-            'result': resultStr,
-            'structured': result.data,
-          });
-        }
-      }
-      debugPrint(
-        '[Compair] ⏱ Deep Analysis from Gemini: ${sw.elapsedMilliseconds}ms',
-      );
-    } catch (e, st) {
-      debugPrint('[Compair] Deep Analysis FAILED: $e\n$st');
-      if (mounted)
-        setState(() {
-          _deepAnalysisError = true;
-          _deepAnalysisErrorMsg = e.toString();
-          _deepAnalysisLoading = false;
-        });
-    }
+    await _runAiPanelRequest(
+      panel: _AiPanelType.deepAnalysis,
+      cacheFeature: _localizedFeature('deep_analysis_v2'),
+      debugLabel: 'Deep Analysis',
+      staleCacheMessage:
+          '[Compair] Deep Analysis cache unparseable — re-fetching',
+      prompt: prompt,
+      lang: lang,
+      maxTokens: 8192,
+      startMessage: '[Compair] Deep Analysis starting for: $productNames',
+    );
   }
 
   Future<void> _toggleAlternatives() async {
-    if (_alternativesExpanded &&
-        (_alternativesResult != null || _alternativesStructured != null)) {
-      setState(() => _alternativesExpanded = false);
-      return;
-    }
-    setState(() {
-      _alternativesExpanded = true;
-      if (_alternativesResult != null || _alternativesStructured != null)
-        return;
-      _alternativesLoading = true;
-    });
-    if (_alternativesResult == null && _alternativesStructured == null) {
-      await _fetchAlternatives();
-    }
+    await _toggleAiPanel(_AiPanelType.alternatives, _fetchAlternatives);
   }
 
   Future<void> _fetchAlternatives() async {
-    if (_alternativesResult != null || _alternativesStructured != null) return;
-    final sw = Stopwatch()..start();
-    try {
-      // Check Firestore cache first
-      final cached = await _loadAiCache(_localizedFeature('alternatives'));
-      if (cached != null && cached['result'] != null) {
-        final cacheResult = cached['result'] as String;
-        final parsed = cached['structured'] != null
-            ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cacheResult);
-        if (parsed == null) {
-          debugPrint('[Compair] Alternatives cache unparseable — re-fetching');
-        } else {
-          if (mounted)
-            setState(() {
-              _alternativesResult = cacheResult;
-              _alternativesStructured = parsed;
-              _alternativesLoading = false;
-            });
-          _saveToSession();
-          debugPrint(
-            '[Compair] ⏱ Alternatives from cache: ${sw.elapsedMilliseconds}ms',
-          );
-          return;
-        }
-      }
+    final lang = _appLang;
+    final langName = _languageName(lang);
+    final productNames = widget.products
+        .map((p) => '${p.name} (${p.brand ?? "Unknown"})')
+        .join(' vs ');
+    final category = widget.products.first.category;
 
-      final lang = _appLang;
-      final langName = _languageName(lang);
-      final productNames = widget.products
-          .map((p) => '${p.name} (${p.brand ?? "Unknown"})')
-          .join(' vs ');
-      final category = widget.products.first.category;
-
-      final prompt =
-          '''You are a tech expert. The user is comparing: $productNames in category "$category".
+    final prompt =
+        '''You are a tech expert. The user is comparing: $productNames in category "$category".
 Suggest 3-5 alternative products they should also consider. Address the user directly using "you/your". ALL text in $langName.
 
 Return ONLY valid JSON:
@@ -651,110 +781,39 @@ Return ONLY valid JSON:
   ]
 }''';
 
-      debugPrint('[Compair] Alternatives starting for: $productNames');
-      final result = await _fetchWithRetry(
-        prompt,
-        'Alternatives',
-        lang,
-        maxTokens: 2048,
-      );
-      if (mounted) {
-        if (result.data == null) {
-          debugPrint(
-            '[Compair] Alternatives parse FAILED — showing error: ${result.error}',
-          );
-          setState(() {
-            _alternativesError = true;
-            _alternativesErrorMsg = result.error;
-            _alternativesLoading = false;
-          });
-        } else {
-          final resultStr = jsonEncode(result.data);
-          setState(() {
-            _alternativesResult = resultStr;
-            _alternativesStructured = result.data;
-            _alternativesLoading = false;
-          });
-          _saveToSession();
-          _saveAiCache(_localizedFeature('alternatives'), {
-            'result': resultStr,
-            'structured': result.data,
-          });
-        }
-      }
-      debugPrint(
-        '[Compair] ⏱ Alternatives from Gemini: ${sw.elapsedMilliseconds}ms',
-      );
-    } catch (e, st) {
-      debugPrint('[Compair] Alternatives FAILED: $e\n$st');
-      if (mounted)
-        setState(() {
-          _alternativesError = true;
-          _alternativesErrorMsg = e.toString();
-          _alternativesLoading = false;
-        });
-    }
+    await _runAiPanelRequest(
+      panel: _AiPanelType.alternatives,
+      cacheFeature: _localizedFeature('alternatives'),
+      debugLabel: 'Alternatives',
+      staleCacheMessage:
+          '[Compair] Alternatives cache unparseable — re-fetching',
+      prompt: prompt,
+      lang: lang,
+      maxTokens: 2048,
+      startMessage: '[Compair] Alternatives starting for: $productNames',
+    );
   }
 
   Future<void> _toggleAdvisor() async {
-    if (_advisorExpanded &&
-        (_advisorResult != null || _advisorStructured != null)) {
-      setState(() => _advisorExpanded = false);
-      return;
-    }
-    setState(() {
-      _advisorExpanded = true;
-      if (_advisorResult != null || _advisorStructured != null) return;
-      _advisorLoading = true;
-    });
-    if (_advisorResult == null && _advisorStructured == null) {
-      await _fetchAdvisor();
-    }
+    await _toggleAiPanel(_AiPanelType.advisor, _fetchAdvisor);
   }
 
   Future<void> _fetchAdvisor() async {
-    if (_advisorResult != null || _advisorStructured != null) return;
-    final sw = Stopwatch()..start();
-    try {
-      // Check Firestore cache first
-      final cached = await _loadAiCache(_localizedFeature('advisor'));
-      if (cached != null && cached['result'] != null) {
-        final cacheResult = cached['result'] as String;
-        final parsed = cached['structured'] != null
-            ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cacheResult);
-        if (parsed == null) {
-          debugPrint('[Compair] Advisor cache unparseable — re-fetching');
-        } else {
-          if (mounted)
-            setState(() {
-              _advisorResult = cacheResult;
-              _advisorStructured = parsed;
-              _advisorLoading = false;
-            });
-          _saveToSession();
-          debugPrint(
-            '[Compair] ⏱ Advisor from cache: ${sw.elapsedMilliseconds}ms',
-          );
-          return;
-        }
-      }
+    final lang = _appLang;
+    final langName = _languageName(lang);
+    final productDetails = widget.products
+        .map((p) {
+          final specs = p.specs.entries
+              .take(10)
+              .map((e) => '${e.key}: ${e.value}')
+              .join(', ');
+          final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
+          return '${p.name} (Score: ${p.techScore}, Price: $price, Specs: $specs)';
+        })
+        .join('\n');
 
-      final lang = _appLang;
-      final langName = _languageName(lang);
-      final productDetails = widget.products
-          .map((p) {
-            final specs = p.specs.entries
-                .take(10)
-                .map((e) => '${e.key}: ${e.value}')
-                .join(', ');
-            final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
-            return '${p.name} (Score: ${p.techScore}, Price: $price, Specs: $specs)';
-          })
-          .join('\n');
-
-      final prompt =
-          '''You are a personal tech shopping advisor. Address the user directly using "you/your". ALL text in $langName.
+    final prompt =
+        '''You are a personal tech shopping advisor. Address the user directly using "you/your". ALL text in $langName.
 
 Products:
 $productDetails
@@ -775,120 +834,48 @@ Return ONLY valid JSON, no markdown, no explanation:
   "final_verdict": "2-3 sentence clear recommendation addressing you directly"
 }''';
 
-      debugPrint('[Compair] Advisor starting');
-      final result = await _fetchWithRetry(
-        prompt,
-        'Advisor',
-        lang,
-        maxTokens: 2048,
-      );
-      if (mounted) {
-        if (result.data == null) {
-          debugPrint('[Compair] Advisor FAILED: ${result.error}');
-          setState(() {
-            _advisorError = true;
-            _advisorErrorMsg = result.error;
-            _advisorLoading = false;
-          });
-        } else {
-          final resultStr = jsonEncode(result.data);
-          setState(() {
-            _advisorResult = resultStr;
-            _advisorStructured = result.data;
-            _advisorLoading = false;
-          });
-          _saveToSession();
-          _saveAiCache(_localizedFeature('advisor'), {
-            'result': resultStr,
-            'structured': result.data,
-          });
-        }
-      }
-      debugPrint(
-        '[Compair] ⏱ Advisor from Gemini: ${sw.elapsedMilliseconds}ms',
-      );
-    } catch (e, st) {
-      debugPrint('[Compair] Advisor FAILED: $e\n$st');
-      if (mounted)
-        setState(() {
-          _advisorError = true;
-          _advisorErrorMsg = e.toString();
-          _advisorLoading = false;
-        });
-    }
+    await _runAiPanelRequest(
+      panel: _AiPanelType.advisor,
+      cacheFeature: _localizedFeature('advisor'),
+      debugLabel: 'Advisor',
+      staleCacheMessage: '[Compair] Advisor cache unparseable — re-fetching',
+      prompt: prompt,
+      lang: lang,
+      maxTokens: 2048,
+      startMessage: '[Compair] Advisor starting',
+    );
   }
 
   Future<void> _togglePrediction() async {
-    if (_predictionExpanded &&
-        (_predictionResult != null || _predictionStructured != null)) {
-      setState(() => _predictionExpanded = false);
-      return;
-    }
-    setState(() {
-      _predictionExpanded = true;
-      if (_predictionResult != null || _predictionStructured != null) return;
-      _predictionLoading = true;
-    });
-    if (_predictionResult == null && _predictionStructured == null) {
-      await _fetchPrediction();
-    }
+    await _toggleAiPanel(_AiPanelType.prediction, _fetchPrediction);
   }
 
   Future<void> _fetchPrediction() async {
-    if (_predictionResult != null || _predictionStructured != null) return;
-    final sw = Stopwatch()..start();
-    try {
-      // Check Firestore cache first
-      final cached = await _loadAiCache(_localizedFeature('prediction_v4'));
-      if (cached != null && cached['result'] != null) {
-        final cacheResult = cached['result'] as String;
-        final parsed = cached['structured'] != null
-            ? Map<String, dynamic>.from(cached['structured'] as Map)
-            : _tryParseJson(cacheResult);
-        if (parsed == null) {
-          debugPrint('[Compair] Prediction cache unparseable — re-fetching');
-        } else {
-          if (mounted)
-            setState(() {
-              _predictionResult = cacheResult;
-              _predictionStructured = parsed;
-              _predictionLoading = false;
-            });
-          _saveToSession();
-          debugPrint(
-            '[Compair] ⏱ Prediction from cache: ${sw.elapsedMilliseconds}ms',
-          );
-          return;
-        }
-      }
+    final lang = _appLang;
+    final langName = _languageName(lang);
 
-      final lang = _appLang;
-      final langName = _languageName(lang);
+    final productLines = widget.products
+        .asMap()
+        .entries
+        .map((e) {
+          final idx = e.key + 1;
+          final p = e.value;
+          final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
+          return '$idx. ${p.name} — current price: $price — ${_predictionProductContext(p)}';
+        })
+        .join('\n');
 
-      // Build numbered product list with prices
-      final productLines = widget.products
-          .asMap()
-          .entries
-          .map((e) {
-            final idx = e.key + 1;
-            final p = e.value;
-            final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
-            return '$idx. ${p.name} — current price: $price — ${_predictionProductContext(p)}';
-          })
-          .join('\n');
+    final productTemplate = widget.products
+        .asMap()
+        .entries
+        .map((e) {
+          final p = e.value;
+          return '{"name": "${p.name}", "trend": "stable", "change_percent": 0, "best_time_to_buy": "now", "confidence": 70, "reason": "explanation"}';
+        })
+        .join(',\n    ');
 
-      // Build the expected products array template
-      final productTemplate = widget.products
-          .asMap()
-          .entries
-          .map((e) {
-            final p = e.value;
-            return '{"name": "${p.name}", "trend": "stable", "change_percent": 0, "best_time_to_buy": "now", "confidence": 70, "reason": "explanation"}';
-          })
-          .join(',\n    ');
-
-      final prompt =
-          '''You are a tech price analyst. Predict price trends for ALL of the following products. Address the user as "you/your". ALL text in $langName. Current year: ${DateTime.now().year}.
+    final prompt =
+        '''You are a tech price analyst. Predict price trends for ALL of the following products. Address the user as "you/your". ALL text in $langName. Current year: ${DateTime.now().year}.
 
 Products (you MUST analyze ALL ${widget.products.length}):
 $productLines
@@ -909,47 +896,16 @@ Rules:
 - Explain the concrete product-specific trigger behind the prediction
 - Do NOT give identical trend, change_percent, or best_time_to_buy values to multiple products unless their inputs are effectively the same''';
 
-      debugPrint('[Compair] Prediction starting');
-      final result = await _fetchWithRetry(
-        prompt,
-        'Prediction',
-        lang,
-        maxTokens: 4096,
-      );
-      if (mounted) {
-        if (result.data == null) {
-          debugPrint('[Compair] Prediction FAILED: ${result.error}');
-          setState(() {
-            _predictionError = true;
-            _predictionErrorMsg = result.error;
-            _predictionLoading = false;
-          });
-        } else {
-          final resultStr = jsonEncode(result.data);
-          setState(() {
-            _predictionResult = resultStr;
-            _predictionStructured = result.data;
-            _predictionLoading = false;
-          });
-          _saveToSession();
-          _saveAiCache(_localizedFeature('prediction_v4'), {
-            'result': resultStr,
-            'structured': result.data,
-          });
-        }
-      }
-      debugPrint(
-        '[Compair] ⏱ Prediction from Gemini: ${sw.elapsedMilliseconds}ms',
-      );
-    } catch (e, st) {
-      debugPrint('[Compair] Prediction FAILED: $e\n$st');
-      if (mounted)
-        setState(() {
-          _predictionError = true;
-          _predictionErrorMsg = e.toString();
-          _predictionLoading = false;
-        });
-    }
+    await _runAiPanelRequest(
+      panel: _AiPanelType.prediction,
+      cacheFeature: _localizedFeature('prediction_v4'),
+      debugLabel: 'Prediction',
+      staleCacheMessage: '[Compair] Prediction cache unparseable — re-fetching',
+      prompt: prompt,
+      lang: lang,
+      maxTokens: 4096,
+      startMessage: '[Compair] Prediction starting',
+    );
   }
 
   /// Merge spec groups from all products into a unified structure.
@@ -5326,16 +5282,7 @@ Rules:
               : null,
           isError: _advisorError,
           errorMsg: _advisorErrorMsg,
-          onRetry: () {
-            setState(() {
-              _advisorError = false;
-              _advisorErrorMsg = null;
-              _advisorLoading = true;
-              _advisorResult = null;
-              _advisorStructured = null;
-            });
-            _fetchAdvisor();
-          },
+          onRetry: () => _retryAiPanel(_AiPanelType.advisor, _fetchAdvisor),
           onTap: _toggleAdvisor,
         ),
         const SizedBox(height: 14),
@@ -5355,16 +5302,8 @@ Rules:
               : null,
           isError: _deepAnalysisError,
           errorMsg: _deepAnalysisErrorMsg,
-          onRetry: () {
-            setState(() {
-              _deepAnalysisError = false;
-              _deepAnalysisErrorMsg = null;
-              _deepAnalysisLoading = true;
-              _deepAnalysisResult = null;
-              _deepAnalysisStructured = null;
-            });
-            _fetchDeepAnalysis();
-          },
+          onRetry: () =>
+              _retryAiPanel(_AiPanelType.deepAnalysis, _fetchDeepAnalysis),
           onTap: _toggleDeepAnalysis,
         ),
         const SizedBox(height: 14),
@@ -5384,16 +5323,8 @@ Rules:
               : null,
           isError: _alternativesError,
           errorMsg: _alternativesErrorMsg,
-          onRetry: () {
-            setState(() {
-              _alternativesError = false;
-              _alternativesErrorMsg = null;
-              _alternativesLoading = true;
-              _alternativesResult = null;
-              _alternativesStructured = null;
-            });
-            _fetchAlternatives();
-          },
+          onRetry: () =>
+              _retryAiPanel(_AiPanelType.alternatives, _fetchAlternatives),
           onTap: _toggleAlternatives,
         ),
         const SizedBox(height: 14),
@@ -5413,16 +5344,8 @@ Rules:
               : null,
           isError: _predictionError,
           errorMsg: _predictionErrorMsg,
-          onRetry: () {
-            setState(() {
-              _predictionError = false;
-              _predictionErrorMsg = null;
-              _predictionLoading = true;
-              _predictionResult = null;
-              _predictionStructured = null;
-            });
-            _fetchPrediction();
-          },
+          onRetry: () =>
+              _retryAiPanel(_AiPanelType.prediction, _fetchPrediction),
           onTap: _togglePrediction,
         ),
       ],
@@ -5468,8 +5391,9 @@ Rules:
               setState(() => _matchScoreExpanded = !_matchScoreExpanded);
               if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
                 _matchScoreFetched = true;
-                final languageCode =
-                    Localizations.localeOf(context).languageCode;
+                final languageCode = Localizations.localeOf(
+                  context,
+                ).languageCode;
                 for (final product in widget.products) {
                   final notifier = ref.read(
                     geminiMatchScoreProvider(
@@ -5588,8 +5512,9 @@ Rules:
                           geminiMatchScoreProvider(
                             LocalizedProductKey(
                               productId: product.id,
-                              languageCode:
-                                  Localizations.localeOf(context).languageCode,
+                              languageCode: Localizations.localeOf(
+                                context,
+                              ).languageCode,
                             ),
                           ),
                         );
