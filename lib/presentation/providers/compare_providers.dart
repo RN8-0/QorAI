@@ -78,17 +78,6 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   Future<void> startComparison(UserEntity user) async {
     if (state.selectedProductIds.length < 2) return;
 
-    // Free tier limit check
-    final limitResult = _ref.read(subscriptionServiceProvider).recordComparison();
-    if (limitResult.isFailure) {
-      state = state.copyWith(
-        error:
-            'You have reached the daily comparison limit. Upgrade to Premium for unlimited usage!',
-        isLoading: false,
-      );
-      return;
-    }
-
     state = state.copyWith(
       isLoading: true,
       error: null,

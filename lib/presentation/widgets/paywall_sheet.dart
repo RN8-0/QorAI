@@ -1341,7 +1341,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final rows = [
       _TableRow(
         l?.productComparisons ?? 'Product Comparisons',
-        _countPerDay(AppConstants.freeComparisonLimit),
+        l?.unlimited ?? 'Unlimited',
         l?.unlimited ?? 'Unlimited',
         Icons.compare_arrows_rounded,
       ),

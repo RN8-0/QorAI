@@ -1423,7 +1423,6 @@ class _PreferenceChip extends StatelessWidget {
 class _FreemiumUsageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final comparisons = ref.watch(freemiumUsageProvider('comparison'));
     final aiChats = ref.watch(freemiumUsageProvider('ai_chat'));
     final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
 
@@ -1474,15 +1473,6 @@ class _FreemiumUsageCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _UsageRow(
-            label: context.l10n?.comparisons ?? 'Comparisons',
-            icon: Icons.compare_arrows_rounded,
-            color: AppTheme.brandBlue,
-            used: comparisons,
-            limit: FreemiumLimits.comparisonsPerDay,
-            period: 'today',
-          ),
-          const SizedBox(height: 10),
           _UsageRow(
             label: context.l10n?.aiChat ?? 'AI Chat',
             icon: Icons.auto_awesome_rounded,

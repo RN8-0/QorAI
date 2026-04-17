@@ -592,8 +592,7 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Can a comparison be made?
   bool get canCompare {
-    if (isPremium) return true;
-    return _normalizedUsage().comparisons < AppConstants.freeComparisonLimit;
+    return true;
   }
 
   /// Can an AI question be asked?
@@ -617,19 +616,6 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Record comparison usage
   Result<void> recordComparison() {
-    final currentUsage = _normalizedUsage();
-    if (!canCompare) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'comparison',
-          currentUsage: currentUsage.comparisons,
-          limit: AppConstants.freeComparisonLimit,
-        ),
-      );
-    }
-    _usage = currentUsage.copyWith(comparisons: currentUsage.comparisons + 1);
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
     return const Success(null);
   }
 
@@ -690,9 +676,7 @@ class SubscriptionService extends ChangeNotifier {
   }
 
   /// Remaining usage allowances
-  int get remainingComparisons => isPremium
-      ? -1 // Unlimited
-      : AppConstants.freeComparisonLimit - _normalizedUsage().comparisons;
+  int get remainingComparisons => -1;
 
   int get remainingAIQuestions => isPremium
       ? -1

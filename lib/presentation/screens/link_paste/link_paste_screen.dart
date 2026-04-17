@@ -739,10 +739,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       .answerQuestion(idx, answer);
                 },
                 onSubmit: () async {
-                  final user = ref.read(userProfileProvider).valueOrNull;
-                  if (user != null) {
-                    await ref.read(linkQuizProvider.notifier).submitQuiz(user);
-                  }
+                  await ref
+                      .read(linkQuizProvider.notifier)
+                      .submitQuiz(_getOrCreateUser());
                 },
                 onSkip: () {
                   ref.read(linkQuizProvider.notifier).skipQuiz();
@@ -799,8 +798,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         children: [
-          // Usage badge for free users
-          _buildLinkUsageBadge(),
           // Single URL input card
           GlassContainer(
             padding: const EdgeInsets.all(20),
@@ -849,6 +846,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ],
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    _buildLinkUsageBadge(),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1020,88 +1019,101 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final progress = (total - remaining) / total;
     final isLow = remaining <= 1;
     final barColor = isLow ? AppTheme.error : AppTheme.brandBlue;
+    final usageLabel = _linkText(
+      context,
+      tr: 'Link Analizi',
+      en: 'Link Analysis',
+    );
+    final periodLabel = _linkText(
+      context,
+      tr: '$remaining/$total hafta',
+      en: '$remaining/$total week',
+    );
+    final ctaLabel = _linkText(
+      context,
+      tr: 'Premium',
+      en: 'Premium',
+    );
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: context.surfaceElevatedColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isLow
-                ? AppTheme.error.withValues(alpha: 0.3)
-                : AppTheme.brandBlue.withValues(alpha: 0.15),
-          ),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Icon(Icons.link_rounded, size: 16, color: barColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Link Analizi',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: context.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            '$remaining/$total/hafta',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: barColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: progress.clamp(0.0, 1.0),
-                          minHeight: 4,
-                          backgroundColor: barColor.withValues(alpha: 0.12),
-                          valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => showPaywallSheet(context),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 108, maxWidth: 132),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: context.surfaceElevatedColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isLow
+                  ? AppTheme.error.withValues(alpha: 0.28)
+                  : AppTheme.brandBlue.withValues(alpha: 0.14),
             ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => showPaywallSheet(context),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.auto_awesome, size: 13, color: AppTheme.brandSkyBlue),
+                  Icon(Icons.link_rounded, size: 14, color: barColor),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      usageLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                periodLabel,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: barColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0),
+                  minHeight: 3,
+                  backgroundColor: barColor.withValues(alpha: 0.12),
+                  valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome_rounded, size: 12, color: AppTheme.brandSkyBlue),
                   const SizedBox(width: 4),
                   Text(
-                    'Premium ile sınırsız kullan',
+                    ctaLabel,
                     style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
                       color: AppTheme.brandSkyBlue,
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
+      ),
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/screens/quiz/quiz_screen.dart';
 import 'package:compair/routing/router.dart';
 
 enum LoginMode { welcome, email, register }
@@ -20,6 +22,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   LoginMode _mode = LoginMode.welcome;
   bool _isLoading = false;
+  final Set<String> _prefetchedQuizCoverUrls = <String>{};
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -87,12 +90,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  void _navigateAfterLogin(bool quizCompleted) {
+  Future<void> _navigateAfterLogin(bool quizCompleted) async {
     if (quizCompleted) {
       context.go(AppRoutes.home);
     } else {
+      setState(() => _isLoading = true);
+      try {
+        final covers = await ref.read(quizCategoryVisualsProvider.future);
+        await _prefetchQuizCovers(covers.values);
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+      if (!mounted) return;
       context.go(AppRoutes.quiz);
     }
+  }
+
+  Future<void> _prefetchQuizCovers(Iterable<String> urls) async {
+    final pending = urls
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .where(_prefetchedQuizCoverUrls.add)
+        .toList(growable: false);
+    if (pending.isEmpty) return;
+
+    await Future.wait(
+      pending.map(
+        (url) => precacheImage(CachedNetworkImageProvider(url), context).catchError((_) {}),
+      ),
+    );
   }
 
   Future<void> _signInWithGoogle() async {
@@ -227,13 +255,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       firstDate: DateTime(1920),
       lastDate: DateTime.now(),
       builder: (context, child) {
+        final baseTheme = Theme.of(context);
+        final isDark = baseTheme.brightness == Brightness.dark;
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
+          data: baseTheme.copyWith(
+            colorScheme: (isDark ? const ColorScheme.dark() : const ColorScheme.light()).copyWith(
               primary: AppTheme.primaryBlue,
               onPrimary: Colors.white,
               surface: context.surfaceColor,
-              onSurface: Colors.white,
+              onSurface: context.textPrimary,
+            ),
+            dialogTheme: baseTheme.dialogTheme.copyWith(
+              backgroundColor: context.surfaceColor,
+            ),
+            datePickerTheme: baseTheme.datePickerTheme.copyWith(
+              backgroundColor: context.surfaceColor,
+              headerBackgroundColor: AppTheme.primaryBlue,
+              headerForegroundColor: Colors.white,
+              dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return context.textPrimary;
+              }),
+              todayForegroundColor: WidgetStateProperty.all(AppTheme.primaryBlue),
+              yearForegroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return context.textPrimary;
+              }),
+              cancelButtonStyle: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryBlue,
+              ),
+              confirmButtonStyle: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryBlue,
+              ),
             ),
           ),
           child: child!,

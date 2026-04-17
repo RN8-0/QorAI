@@ -724,7 +724,7 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const fabSize = 62.0;
-    const fabBottom = _kNavBarHeight + AppTheme.navBarBottomMargin;
+    const fabBottom = AppTheme.navBarTotalClearance + 8.0;
     const fabRight = 14.0;
 
     // Hide when actively comparing (≥2 products selected — hideNavBarProvider=true)
