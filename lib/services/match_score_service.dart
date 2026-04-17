@@ -36,7 +36,7 @@ class MatchScoreService {
     }
     try {
       final record = await pb
-          .collection('app_config')
+          .collection('public_config')
           .getFirstListItem('key = "algorithm"');
       _algoConfig = record.data;
       _algoConfigFetchedAt = DateTime.now();

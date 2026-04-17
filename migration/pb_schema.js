@@ -194,6 +194,16 @@ const collections = [
     deleteRule: "@request.auth.id != '' && userId = @request.auth.id",
   },
   {
+    name: 'public_config',
+    type: 'base',
+    fields: withMeta([
+      T('key', { required: true, presentable: true }),
+      J('value'),
+    ]),
+    indexes: ['CREATE UNIQUE INDEX `idx_public_config_key` ON `public_config` (`key`)'],
+    listRule: '', viewRule: '',
+  },
+  {
     name: 'app_config',
     type: 'base',
     fields: withMeta([
@@ -201,7 +211,7 @@ const collections = [
       J('value'),
     ]),
     indexes: ['CREATE UNIQUE INDEX `idx_app_config_key` ON `app_config` (`key`)'],
-    listRule: '', viewRule: '',
+    listRule: null, viewRule: null, // admin only
   },
   {
     name: 'scraper_sources',

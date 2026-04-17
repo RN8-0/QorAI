@@ -45,7 +45,7 @@ function showUnauthorized(email) {
     el.innerHTML = `<div class="unauth-card">
       <div style="font-size:48px;margin-bottom:16px">🚫</div>
       <h2>Access Denied</h2>
-      <p>Bu hesap admin paneline erisemiyor: <strong>${email}</strong>.</p>
+      <p>Bu hesap admin paneline erisemiyor: <strong>${escHtml(email)}</strong>.</p>
       <button class="btn btn-primary" onclick="logoutAdmin()" style="margin-right:8px">Sign Out</button>
     </div>`;
     document.body.appendChild(el);
@@ -108,6 +108,43 @@ window._adminLoginCallback = async (userInfo, err) => {
 (function(){const t=localStorage.getItem('theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');const i=document.getElementById('themeIcon');const l=document.getElementById('themeLabel');if(i)i.textContent='☀️';if(l)l.textContent='Light'}})();
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme');const n=c==='light'?'':'light';if(n)document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');document.getElementById('themeIcon').textContent=n?'☀️':'🌙';document.getElementById('themeLabel').textContent=n?'Light':'Dark';localStorage.setItem('theme',n||'dark')}
 
+function escHtml(value){
+  return String(value ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function escJs(value){
+  return String(value ?? '')
+    .replace(/\\/g,'\\\\')
+    .replace(/'/g,"\\'")
+    .replace(/\r?\n/g,' ');
+}
+
+function safeUrl(value){
+  const raw = String(value ?? '').trim();
+  if(!raw) return '';
+  try{
+    const parsed = new URL(raw, window.location.origin);
+    if(parsed.protocol === 'http:' || parsed.protocol === 'https:') return escHtml(parsed.href);
+  }catch(_){}
+  return '';
+}
+
+function safeInitial(value,fallback='?'){
+  const raw = String(value ?? '').trim();
+  return escHtml((raw ? raw.charAt(0) : fallback).toUpperCase());
+}
+
+function userAvatarHtml(user){
+  const photo = safeUrl(user.photoURL);
+  if(photo) return `<img src="${photo}" alt="">`;
+  return safeInitial(user.displayName || user.email);
+}
+
 // ── NAV ──
 function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -127,7 +164,11 @@ function toast(msg,type='i',dur=4000){
   const c=document.getElementById('toastContainer');if(!c)return;
   const t=document.createElement('div');t.className='toast '+type;
   const icons={s:'✅',e:'❌',w:'⚠️',i:'ℹ️'};
-  t.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span style="flex:1">${msg}</span><button class="toast-x" onclick="this.parentElement.classList.add('removing');setTimeout(()=>this.parentElement.remove(),250)">✕</button>`;
+  const iconEl=document.createElement('span');iconEl.textContent=icons[type]||'ℹ️';
+  const textEl=document.createElement('span');textEl.style.flex='1';textEl.textContent=String(msg ?? '');
+  const closeBtn=document.createElement('button');closeBtn.className='toast-x';closeBtn.textContent='✕';
+  closeBtn.addEventListener('click',()=>{t.classList.add('removing');setTimeout(()=>t.remove(),250);});
+  t.append(iconEl,textEl,closeBtn);
   c.appendChild(t);setTimeout(()=>{if(t.parentElement){t.classList.add('removing');setTimeout(()=>t.remove(),250)}},dur);
 }
 
@@ -150,7 +191,7 @@ async function refreshDashboard(){
     const [userDocs,compDocs,statsDoc]=await Promise.all([
       pbGetAll('users',{sort:'id'}),
       pbGetAll('comparisons',{sort:'id'}),
-      pbGetDoc('app_config','stats').catch(()=>({exists:false,data:()=>null}))
+      pbGetDoc('public_config','stats').catch(()=>({exists:false,data:()=>null}))
     ]);
     const users=userDocs.map(d=>({uid:d.id,...d.data()}));
     const cSnap={size:compDocs.length};
@@ -199,7 +240,7 @@ async function refreshDashboard(){
 
     // Recent (from sample)
     const rEl=document.getElementById('dashRecentProducts');
-    if(rEl)rEl.innerHTML=sampleProducts.slice(0,8).map(p=>`<div class="recent-row" onclick="showView('products');setTimeout(()=>openProduct('${p.id}'),300)">${p.images?.[0]?`<img class="recent-img" src="${p.images[0]}" onerror="this.style.display='none'">`:`<div class="recent-img" style="display:flex;align-items:center;justify-content:center;font-size:14px">📦</div>`}<div class="recent-info"><div class="recent-name">${p.name||''}</div><div class="recent-meta">${p.brand||''} · ${p.category||''}</div></div>${p.techScore?`<span class="badge badge-green">${p.techScore}</span>`:''}</div>`).join('')||'<div class="placeholder">No products</div>';
+    if(rEl)rEl.innerHTML=sampleProducts.slice(0,8).map(p=>{const id=escJs(p.id);const img=safeUrl(p.images?.[0]);const name=escHtml(p.name||'');const brand=escHtml(p.brand||'');const category=escHtml(p.category||'');const score=Number(p.techScore)||0;return`<div class="recent-row" onclick="showView('products');setTimeout(()=>openProduct('${id}'),300)">${img?`<img class="recent-img" src="${img}" onerror="this.style.display='none'">`:`<div class="recent-img" style="display:flex;align-items:center;justify-content:center;font-size:14px">📦</div>`}<div class="recent-info"><div class="recent-name">${name}</div><div class="recent-meta">${brand} · ${category}</div></div>${score?`<span class="badge badge-green">${score}</span>`:''}</div>`;}).join('')||'<div class="placeholder">No products</div>';
 
     const brands={};sampleProducts.forEach(p=>{if(p.brand)brands[p.brand]=(brands[p.brand]||0)+1});
     updateTopBrands(statsBrandCounts&&Object.keys(statsBrandCounts).length?statsBrandCounts:brands);
@@ -240,7 +281,7 @@ async function countAllProductsInBackground(){
     updateCategoryChart(catCounts);
     updateTopBrands(brandCounts);
     updateInsights(total,Object.keys(catCounts).length);
-    pbSetDoc('app_config','stats',{productCount:total,categoryCounts:catCounts,brandCounts:brandCounts,updatedAt:new Date().toISOString()}).catch(()=>{});
+    pbSetDoc('public_config','stats',{productCount:total,categoryCounts:catCounts,brandCounts:brandCounts,updatedAt:new Date().toISOString()}).catch(()=>{});
   }catch(e){console.error('Count error:',e)}
   _bgCountRunning=false;
 }
@@ -352,7 +393,7 @@ async function loadProducts(){
     }
     // Populate filters from categories.js if available, otherwise from loaded data
     populateFiltersFromData();
-  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+e.message+'</div>'}
+  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+escHtml(e.message)+'</div>'}
 }
 
 function populateFiltersFromData(){
@@ -381,8 +422,8 @@ function populateFiltersFromData(){
   cats.sort((a,b)=>a.name.localeCompare(b.name));
   const bf=document.getElementById('brandFilter');
   const cf=document.getElementById('categoryFilter');
-  if(bf)bf.innerHTML='<option value="">Tüm Markalar</option>'+brands.map(b=>`<option>${b}</option>`).join('');
-  if(cf)cf.innerHTML='<option value="">Tüm Kategoriler</option>'+cats.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(bf)bf.innerHTML='<option value="">Tüm Markalar</option>'+brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
+  if(cf)cf.innerHTML='<option value="">Tüm Kategoriler</option>'+cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
 }
 
 function buildQuery(){
@@ -438,7 +479,7 @@ async function loadPage(direction){
 
     renderProductsPage();
   }catch(e){
-    g.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+e.message+'</div>';
+    g.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+escHtml(e.message)+'</div>';
     console.error('loadPage error:',e);
   }
 }
@@ -448,7 +489,12 @@ function renderProductsPage(){
   if(!displayProducts.length){g.innerHTML='<div class="placeholder">Ürün bulunamadı</div>';document.getElementById('pagination').innerHTML='';return}
   g.innerHTML=displayProducts.map(p=>{
     const s=p.techScore||0,sc=s>=75?'#22c55e':s>=50?'#f59e0b':'#ef4444';
-    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${p.id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${p.id}')"><div style="position:relative"><img class="product-img" src="${p.imageUrl||(p.images?.[0])||''}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="product-img-ph" style="display:none">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}</div><div class="product-info"><div class="product-brand">${p.brand||''}</div><div class="product-name">${p.name||''}</div><div class="product-meta"><span class="product-price">${p.price?p.price.toLocaleString()+' TL':''}</span><span>${p.category||''}</span></div></div></div>`;
+    const id=escJs(p.id);
+    const image=safeUrl(p.imageUrl||(p.images?.[0])||'');
+    const brand=escHtml(p.brand||'');
+    const name=escHtml(p.name||'');
+    const category=escHtml(p.category||'');
+    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${p.price?p.price.toLocaleString()+' TL':''}</span><span>${category}</span></div></div></div>`;
   }).join('');
 
   const pEl=document.getElementById('pagination');
@@ -495,7 +541,7 @@ async function serverSearch(){
     renderProductsPage();
     document.getElementById('productCount').textContent=result.totalItems+' sonuç';
     if(!sorted.length)toast('"'+q+'" için sonuç bulunamadı','i');
-  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+e.message+'</div>'}
+  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+escHtml(e.message)+'</div>'}
 }
 
 function filterProducts(){
@@ -524,40 +570,45 @@ function openProduct(id){
   const p=allProducts.find(x=>x.id===id);if(!p)return;
   document.getElementById('modalTitle').textContent=p.name;
   const body=document.getElementById('modalBody');
-  const imgs=p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[]);
+  const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);
   const sections=p.specSections&&Object.keys(p.specSections).length?p.specSections:null;
+  const safeId=escJs(p.id);
+  const safeBrand=escHtml(p.brand||'');
+  const safeName=escHtml(p.name||'');
+  const safeCategory=escHtml(p.category||'');
+  const safeSourceUrl=safeUrl(p.sourceUrl);
   let bricks='';
   function fmtSpecVal(s){
     if(s==='Yes'||s==='Var')return'<span class="yes">✓ Yes</span>';
     if(s==='No'||s==='Yok')return'<span class="no">✗ No</span>';
     // Split multi-value specs on newlines into separate lines
     if(s.includes('\n')){
-      return s.split('\n').filter(Boolean).map(line=>`<div class="pm-v-line">${line.trim()}</div>`).join('');
+      return s.split('\n').filter(Boolean).map(line=>`<div class="pm-v-line">${escHtml(line.trim())}</div>`).join('');
     }
-    return s;
+    return escHtml(s);
   }
   function specRow(k,v){
     const s=String(v),y=s==='Yes'||s==='Var',n=s==='No'||s==='Yok';
-    return`<tr><td class="pm-k">${k}</td><td class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</td></tr>`;
+    return`<tr><td class="pm-k">${escHtml(k)}</td><td class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</td></tr>`;
   }
-  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${sn}</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}).join('')}else{const flat=p.specs||{};const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>Specifications</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}
+  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}).join('')}else{const flat=p.specs||{};const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>Specifications</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
-  const catOpts=(typeof CompairCategories!=='undefined'&&CompairCategories.getAll)?CompairCategories.getAll().map(c=>`<option value="${c.id}"${c.id===p.category?' selected':''}>${c.name}</option>`).join(''):'';
-  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area"><img class="pm-main-img" id="pmMainImg" src="${imgs[0]||''}" onerror="this.style.display='none'">${imgs.length>1?`<div class="pm-thumbs">${imgs.map((u,i)=>`<img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${u}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')">`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${p.brand||''}</div><div class="pm-name">${p.name||''}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${p.category||''}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${p.id}')">✏️ Düzenle</button><button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}');closeModal()">Sil</button>${p.sourceUrl?`<a href="${p.sourceUrl}" target="_blank" class="btn btn-sm">Kaynak</a>`:''}</div></div></div>
+  const catOpts=(typeof CompairCategories!=='undefined'&&CompairCategories.getAll)?CompairCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
+  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>1?`<div class="pm-thumbs">${imgs.map((u,i)=>`<img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')">`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Düzenle</button><button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Sil</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Kaynak</a>`:''}</div></div></div>
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
       <div class="card-title">✏️ Ürün Düzenle</div>
       <div class="form-grid">
-        <div class="form-field"><label>Ad</label><input class="input" id="editName" value="${(p.name||'').replace(/"/g,'&quot;')}"></div>
-        <div class="form-field"><label>Marka</label><input class="input" id="editBrand" value="${(p.brand||'').replace(/"/g,'&quot;')}"></div>
+        <div class="form-field"><label>Ad</label><input class="input" id="editName" value="${escHtml(p.name||'')}"></div>
+        <div class="form-field"><label>Marka</label><input class="input" id="editBrand" value="${escHtml(p.brand||'')}"></div>
         <div class="form-field"><label>Kategori</label><select class="input" id="editCategory">${catOpts}</select></div>
         <div class="form-field"><label>Fiyat (TL)</label><input class="input" type="number" id="editPrice" value="${p.price_raw||''}"></div>
         <div class="form-field"><label>Tech Score</label><input class="input" type="number" id="editScore" value="${p.techScore||''}" min="0" max="100"></div>
-        <div class="form-field"><label>Görsel URL</label><input class="input" id="editImageUrl" value="${(p.imageUrl||p.images?.[0]||'').replace(/"/g,'&quot;')}"></div>
+        <div class="form-field"><label>Görsel URL</label><input class="input" id="editImageUrl" value="${escHtml(p.imageUrl||p.images?.[0]||'')}"></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-primary btn-sm" onclick="saveProductEdit('${p.id}')">💾 Kaydet</button>
+        <button class="btn btn-primary btn-sm" onclick="saveProductEdit('${safeId}')">💾 Kaydet</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleEditForm()">İptal</button>
       </div>
     </div>
@@ -601,8 +652,8 @@ let allUsers=[],filteredUsers=[],userPage=1;const UPER=50;
 async function loadUsers(){
   try{const items=await pbGetAll('users',{sort:'id'});allUsers=items.map(d=>({uid:d.id,...d.data()}));const prem=allUsers.filter(u=>u.isPremium).length;const active=allUsers.filter(u=>{const la=u.lastActive?new Date(u.lastActive):null;return la&&la>new Date(Date.now()-30*864e5)}).length;
   document.getElementById('usTotalCount').textContent=allUsers.length;document.getElementById('usPremiumCount').textContent=prem;document.getElementById('usFreeCount').textContent=allUsers.length-prem;document.getElementById('usActiveCount').textContent=active;document.getElementById('usersCount').textContent=allUsers.length;
-  const countries=[...new Set(allUsers.map(u=>u.country).filter(Boolean))].sort();document.getElementById('userCountryFilter').innerHTML='<option value="">All Countries</option>'+countries.map(c=>`<option>${c}</option>`).join('');
-  filterUsers()}catch(e){toast('Users error: '+e.message,'e')}
+  const countries=[...new Set(allUsers.map(u=>u.country).filter(Boolean))].sort();document.getElementById('userCountryFilter').innerHTML='<option value="">All Countries</option>'+countries.map(c=>`<option>${escHtml(c)}</option>`).join('');
+  filterUsers()}catch(e){toast('Users error: '+String(e.message || e),'e')}
 }
 
 function filterUsers(){
@@ -620,7 +671,7 @@ function renderUsers(){
   const list=document.getElementById('userList'),start=(userPage-1)*UPER,page=filteredUsers.slice(start,start+UPER);
   if(!page.length){list.innerHTML='<div class="placeholder">No users</div>';return}
   let h='<div class="user-hdr"><span></span><span>User</span><span>Country</span><span>Status</span><span>Joined</span></div>';
-  h+=page.map(u=>{const av=u.photoURL?`<img src="${u.photoURL}">`:(u.displayName||u.email||'?').charAt(0).toUpperCase();const j=u.createdAt?new Date(u.createdAt).toLocaleDateString():'';return`<div class="user-row" onclick="openUserDetail('${u.uid}')"><div class="user-avatar">${av}</div><div><div class="user-name">${u.displayName||'Anonymous'}</div><div class="user-email">${u.email||''}</div></div><span style="font-size:12px">${u.country||'—'}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
+  h+=page.map(u=>{const av=userAvatarHtml(u);const j=u.createdAt?new Date(u.createdAt).toLocaleDateString():'';return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
   list.innerHTML=h;
   const total=Math.ceil(filteredUsers.length/UPER),pe=document.getElementById('userPagination');
   if(total<=1){pe.innerHTML='';return}
@@ -633,6 +684,7 @@ function openUserDetail(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   document.getElementById('userModalTitle').textContent=u.displayName||'Kullanıcı';
   const b=document.getElementById('userModalBody');
+  const safeUid=escJs(uid);
   const j=u.createdAt?new Date(u.createdAt):'';
   const la=u.lastActive?new Date(u.lastActive):'';
   const jStr=j?j.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
@@ -661,46 +713,46 @@ function openUserDetail(uid){
 
   b.innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-      <div class="user-avatar" style="width:56px;height:56px;font-size:20px">${u.photoURL?`<img src="${u.photoURL}">`:(u.displayName||'?').charAt(0).toUpperCase()}</div>
+      <div class="user-avatar" style="width:56px;height:56px;font-size:20px">${userAvatarHtml(u)}</div>
       <div style="flex:1">
-        <div style="font-size:16px;font-weight:700">${u.displayName||'Anonim'}</div>
-        <div style="font-size:12px;color:var(--text2)">${u.email||''}</div>
+        <div style="font-size:16px;font-weight:700">${escHtml(u.displayName||'Anonim')}</div>
+        <div style="font-size:12px;color:var(--text2)">${escHtml(u.email||'')}</div>
         <div style="font-size:11px;color:${actColor};margin-top:2px">${activityStatus}</div>
       </div>
       <div>${u.isPremium?'<span class="badge badge-premium" style="font-size:12px;padding:6px 12px">Premium</span>':'<span class="badge badge-ghost" style="font-size:12px;padding:6px 12px">Free</span>'}</div>
     </div>
     <!-- Tab Navigation -->
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px">
-      <button class="user-tab active" data-tab="overview" onclick="switchUserTab(this,'${uid}')">📊 Genel</button>
-      <button class="user-tab" data-tab="behavior" onclick="switchUserTab(this,'${uid}')">🎯 Davranış</button>
-      <button class="user-tab" data-tab="quizzes" onclick="switchUserTab(this,'${uid}')">🧠 Quiz</button>
-      <button class="user-tab" data-tab="analysis" onclick="switchUserTab(this,'${uid}')">🤖 AI Analiz</button>
-      <button class="user-tab" data-tab="profile" onclick="switchUserTab(this,'${uid}')">👤 Profil</button>
+      <button class="user-tab active" data-tab="overview" onclick="switchUserTab(this,'${safeUid}')">📊 Genel</button>
+      <button class="user-tab" data-tab="behavior" onclick="switchUserTab(this,'${safeUid}')">🎯 Davranış</button>
+      <button class="user-tab" data-tab="quizzes" onclick="switchUserTab(this,'${safeUid}')">🧠 Quiz</button>
+      <button class="user-tab" data-tab="analysis" onclick="switchUserTab(this,'${safeUid}')">🤖 AI Analiz</button>
+      <button class="user-tab" data-tab="profile" onclick="switchUserTab(this,'${safeUid}')">👤 Profil</button>
     </div>
     <!-- Overview Tab -->
     <div class="user-tab-panel active" data-panel="overview">
       <div class="form-grid" style="margin-bottom:16px">
         <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Kayıt Tarihi</div><div style="font-size:14px;font-weight:700;margin-top:4px">${jStr}</div></div>
         <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Son Aktivite</div><div style="font-size:14px;font-weight:700;margin-top:4px">${laStr}</div></div>
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ülke</div><div style="font-size:14px;font-weight:700;margin-top:4px">${u.country||'—'}</div></div>
+        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ülke</div><div style="font-size:14px;font-weight:700;margin-top:4px">${escHtml(u.country||'—')}</div></div>
         <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:14px;font-weight:700;margin-top:4px">${compCount}</div></div>
       </div>
       <div class="card" style="margin:0 0 16px;padding:14px">
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Kullanıcı Analizi</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-          <div><span style="color:var(--text2)">Kullanıcı Tipi:</span> <b>${userType}</b></div>
+          <div><span style="color:var(--text2)">Kullanıcı Tipi:</span> <b>${escHtml(userType)}</b></div>
           <div><span style="color:var(--text2)">Üyelik Süresi:</span> <b>${daysSinceJoin} gün</b></div>
           <div><span style="color:var(--text2)">Etkileşim Oranı:</span> <b>${engRate}%</b></div>
           <div><span style="color:var(--text2)">Favoriler:</span> <b>${favCount}</b></div>
-          ${u.deviceInfo?`<div><span style="color:var(--text2)">Cihaz:</span> <b>${u.deviceInfo}</b></div>`:''}
-          ${u.appVersion?`<div><span style="color:var(--text2)">Uygulama:</span> <b>v${u.appVersion}</b></div>`:''}
-          ${u.platform?`<div><span style="color:var(--text2)">Platform:</span> <b>${u.platform}</b></div>`:''}
-          ${u.language?`<div><span style="color:var(--text2)">Dil:</span> <b>${u.language}</b></div>`:''}
+          ${u.deviceInfo?`<div><span style="color:var(--text2)">Cihaz:</span> <b>${escHtml(u.deviceInfo)}</b></div>`:''}
+          ${u.appVersion?`<div><span style="color:var(--text2)">Uygulama:</span> <b>v${escHtml(u.appVersion)}</b></div>`:''}
+          ${u.platform?`<div><span style="color:var(--text2)">Platform:</span> <b>${escHtml(u.platform)}</b></div>`:''}
+          ${u.language?`<div><span style="color:var(--text2)">Dil:</span> <b>${escHtml(u.language)}</b></div>`:''}
         </div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn ${u.isPremium?'btn-ghost':'btn-primary'}" onclick="togglePremium('${u.uid}',${!u.isPremium})">${u.isPremium?'Premium Kaldır':'Premium Yap'}</button>
-        <button class="btn btn-danger" onclick="deleteUser('${u.uid}')">Sil</button>
+        <button class="btn ${u.isPremium?'btn-ghost':'btn-primary'}" onclick="togglePremium('${safeUid}',${!u.isPremium})">${u.isPremium?'Premium Kaldır':'Premium Yap'}</button>
+        <button class="btn btn-danger" onclick="deleteUser('${safeUid}')">Sil</button>
       </div>
     </div>
     <!-- Behavior Tab -->
@@ -773,20 +825,20 @@ async function loadUserBehavior(uid){
 
     if(catInterests.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Kategori İlgi Alanları</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
-      for(const ci of catInterests)html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${ci.cat} (${ci.count})</span>`;
+      for(const ci of catInterests)html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${escHtml(ci.cat)} (${ci.count})</span>`;
       html+=`</div></div>`;
     }
 
     if(prefWeights.length){
       const maxW=prefWeights[0]?.count||1;
       html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⚖️ Tercih Ağırlıkları</div>`;
-      for(const pw of prefWeights){const pct=Math.round(pw.count/maxW*100);html+=`<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${pw.pref}</span><span style="color:var(--text3)">${pw.count}</span></div><div style="background:var(--bg3);border-radius:4px;height:6px"><div style="background:var(--primary);border-radius:4px;height:6px;width:${pct}%"></div></div></div>`;}
+      for(const pw of prefWeights){const pct=Math.round(pw.count/maxW*100);html+=`<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${escHtml(pw.pref)}</span><span style="color:var(--text3)">${pw.count}</span></div><div style="background:var(--bg3);border-radius:4px;height:6px"><div style="background:var(--primary);border-radius:4px;height:6px;width:${pct}%"></div></div></div>`;}
       html+=`</div>`;
     }
 
     if(views.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">👁️ Son Görüntülenen Ürünler</div><div style="max-height:200px;overflow-y:auto">`;
-      views.forEach(v=>{const date=v.created?new Date(v.created).toLocaleDateString('tr-TR'):'—';html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.productName||v.product||'—'}</span><span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span></div>`;});
+      views.forEach(v=>{const date=v.created?new Date(v.created).toLocaleDateString('tr-TR'):'—';html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(v.productName||v.product||'—')}</span><span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span></div>`;});
       html+=`</div></div>`;
     }
 
@@ -797,7 +849,7 @@ async function loadUserBehavior(uid){
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
 
@@ -823,12 +875,12 @@ async function loadUserQuizzes(uid){
       const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
       const answers=d.answers||[];
       const mode=d.mode==='compare'?'🔀 Compare':'🔍 Single';
-      html+=`<div class="card" style="margin:0 0 12px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-size:12px;font-weight:700">${d.category||'AI Analiz'} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode}</span></div><div style="font-size:10px;color:var(--text3)">${date}</div></div><div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div></div>`;
-      if(d.productUrl)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.productUrl}</div>`;
-      if(d.productUrls&&d.productUrls.length)for(const url of d.productUrls)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</div>`;
+      html+=`<div class="card" style="margin:0 0 12px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-size:12px;font-weight:700">${escHtml(d.category||'AI Analiz')} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode}</span></div><div style="font-size:10px;color:var(--text3)">${date}</div></div><div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div></div>`;
+      if(d.productUrl)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.productUrl)}</div>`;
+      if(d.productUrls&&d.productUrls.length)for(const url of d.productUrls)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(url)}</div>`;
       if(answers.length){
         html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
-        for(const a of answers)html+=`<div style="margin-bottom:4px;font-size:11px"><span style="color:var(--text2)">${a.question||'—'}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${a.answer||a.selectedOption||'—'}</span></div>`;
+        for(const a of answers)html+=`<div style="margin-bottom:4px;font-size:11px"><span style="color:var(--text2)">${escHtml(a.question||'—')}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${escHtml(a.answer||a.selectedOption||'—')}</span></div>`;
         html+=`</div>`;
       }
       html+=`</div>`;
@@ -836,7 +888,7 @@ async function loadUserQuizzes(uid){
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
 function closeUserModal(){document.getElementById('userModal').style.display='none'}
@@ -870,21 +922,21 @@ async function loadUserAnalysis(uid){
       html+=`<div class="card" style="margin:0 0 12px;padding:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="flex:1">
-            <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.title||'Bilinmeyen Ürün'}</div>
+            <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.title||'Bilinmeyen Ürün')}</div>
             <div style="font-size:10px;color:var(--text3)">${date} · ${mode}</div>
           </div>
           <div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div>
         </div>
-        ${p.category?`<span style="background:var(--bg3);padding:2px 8px;border-radius:8px;font-size:10px">${p.category}</span>`:''}
-        ${p.url?`<div style="font-size:10px;color:var(--primary);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.url}</div>`:''}
-        ${p.verdict?`<div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.4">${p.verdict.substring(0,150)}${p.verdict.length>150?'...':''}</div>`:''}
+        ${p.category?`<span style="background:var(--bg3);padding:2px 8px;border-radius:8px;font-size:10px">${escHtml(p.category)}</span>`:''}
+        ${p.url?`<div style="font-size:10px;color:var(--primary);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.url)}</div>`:''}
+        ${p.verdict?`<div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.4">${escHtml(p.verdict.substring(0,150))}${p.verdict.length>150?'...':''}</div>`:''}
       </div>`;
     }
 
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
 
@@ -898,14 +950,14 @@ async function loadUserProfile(uid){
     let html=`<div class="card" style="margin:0 0 16px;padding:14px">
       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">👤 Profil Özeti</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
-        <div><span style="color:var(--text2)">Ekosistem:</span> <b>${u.ecosystem||'Belirtilmemiş'}</b></div>
-        <div><span style="color:var(--text2)">Bütçe:</span> <b>${u.budgetRange||'Belirtilmemiş'}</b></div>
-        <div><span style="color:var(--text2)">Yaş Aralığı:</span> <b>${u.ageRange||'Belirtilmemiş'}</b></div>
-        <div><span style="color:var(--text2)">Meslek:</span> <b>${u.profession||'Belirtilmemiş'}</b></div>
-        <div><span style="color:var(--text2)">Cinsiyet:</span> <b>${u.gender||'Belirtilmemiş'}</b></div>
-        <div><span style="color:var(--text2)">Dil:</span> <b>${u.language||'—'}</b></div>
-        <div><span style="color:var(--text2)">Ülke:</span> <b>${u.country||'—'}</b></div>
-        <div><span style="color:var(--text2)">Kullanım:</span> <b>${u.usageIntent||'Belirtilmemiş'}</b></div>
+        <div><span style="color:var(--text2)">Ekosistem:</span> <b>${escHtml(u.ecosystem||'Belirtilmemiş')}</b></div>
+        <div><span style="color:var(--text2)">Bütçe:</span> <b>${escHtml(u.budgetRange||'Belirtilmemiş')}</b></div>
+        <div><span style="color:var(--text2)">Yaş Aralığı:</span> <b>${escHtml(u.ageRange||'Belirtilmemiş')}</b></div>
+        <div><span style="color:var(--text2)">Meslek:</span> <b>${escHtml(u.profession||'Belirtilmemiş')}</b></div>
+        <div><span style="color:var(--text2)">Cinsiyet:</span> <b>${escHtml(u.gender||'Belirtilmemiş')}</b></div>
+        <div><span style="color:var(--text2)">Dil:</span> <b>${escHtml(u.language||'—')}</b></div>
+        <div><span style="color:var(--text2)">Ülke:</span> <b>${escHtml(u.country||'—')}</b></div>
+        <div><span style="color:var(--text2)">Kullanım:</span> <b>${escHtml(u.usageIntent||'Belirtilmemiş')}</b></div>
       </div>
     </div>`;
 
@@ -916,7 +968,7 @@ async function loadUserProfile(uid){
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Öncelikler</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const p of priorities){
-        html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${p}</span>`;
+        html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${escHtml(p)}</span>`;
       }
       html+=`</div></div>`;
     }
@@ -928,7 +980,7 @@ async function loadUserProfile(uid){
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📱 Mevcut Cihazlar</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const d of devices){
-        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${d}</span>`;
+        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${escHtml(d)}</span>`;
       }
       html+=`</div></div>`;
     }
@@ -940,7 +992,7 @@ async function loadUserProfile(uid){
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📂 İlgi Kategorileri</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const c of interests){
-        html+=`<span style="background:#8b5cf620;color:#8b5cf6;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${c}</span>`;
+        html+=`<span style="background:#8b5cf620;color:#8b5cf6;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${escHtml(c)}</span>`;
       }
       html+=`</div></div>`;
     }
@@ -952,7 +1004,7 @@ async function loadUserProfile(uid){
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔔 Abonelikler</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const s of subs){
-        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${s}</span>`;
+        html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${escHtml(s)}</span>`;
       }
       html+=`</div></div>`;
     }
@@ -960,7 +1012,7 @@ async function loadUserProfile(uid){
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${e.message}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
 async function togglePremium(uid,v){try{await pbUpdateDoc('users',uid,{isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
@@ -978,14 +1030,14 @@ async function deleteUser(uid){
 // ═══════════════════════════════════════
 function updateAlgoLabel(input){const id=input.id.replace(/^(weight|boost)/,'label');const el=document.getElementById(id);if(el)el.textContent=input.value+'%'}
 
-async function loadAlgorithmConfig(){try{const d=await pbGetDoc('app_config','algorithm');if(!d.exists)return;const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist)document.getElementById('brandBlacklist').value=c.brandBlacklist;if(c.brandBoost)document.getElementById('brandBoost').value=c.brandBoost;loadPinnedProducts(c.pinnedProducts||[]);loadHiddenProducts(c.hiddenProducts||[]);loadCategoryToggles(c.disabledCategories||[])}catch(e){console.error(e)}}
+async function loadAlgorithmConfig(){try{const d=await pbGetDoc('public_config','algorithm');if(!d.exists)return;const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist)document.getElementById('brandBlacklist').value=c.brandBlacklist;if(c.brandBoost)document.getElementById('brandBoost').value=c.brandBoost;loadPinnedProducts(c.pinnedProducts||[]);loadHiddenProducts(c.hiddenProducts||[]);loadCategoryToggles(c.disabledCategories||[])}catch(e){console.error(e)}}
 
 async function saveAlgorithmConfig(){
   const c={};['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el)c[f]=parseInt(el.value)||0});
   c.brandBlacklist=document.getElementById('brandBlacklist').value;c.brandBoost=document.getElementById('brandBoost').value;
   c.pinnedProducts=_pinnedProducts||[];c.hiddenProducts=_hiddenProducts||[];c.disabledCategories=_disabledCategories||[];
   c.updatedAt=serverTimestamp();
-  try{await pbSetDoc('app_config','algorithm',c);toast('Saved','s');logActivity('algorithm_update','Algorithm config updated')}catch(e){toast('Error: '+e.message,'e')}
+  try{await pbSetDoc('public_config','algorithm',c);toast('Saved','s');logActivity('algorithm_update','Algorithm config updated')}catch(e){toast('Error: '+e.message,'e')}
 }
 
 // ═══════════════════════════════════════
@@ -1120,21 +1172,21 @@ async function previewFeedStats() {
         <div style="margin-top:8px;max-height:200px;overflow-y:auto">
           ${sorted.filter(([,c])=>c>0).map(([n,c]) =>
             `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)">
-              <span>${n}</span><span><b>${c}</b></span>
+              <span>${escHtml(n)}</span><span><b>${c}</b></span>
             </div>`
           ).join('')}
         </div>
       </div>`;
   } catch (e) {
-    el.innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
+    el.innerHTML = `<span style="color:var(--red)">Error: ${escHtml(e.message)}</span>`;
   }
 }
 
 async function clearAllUserCaches() {
   if (!confirm('This will force all users to reload their home feed on next app open. Continue?')) return;
   try {
-    // Bump the cache version in app_config so the app knows to refresh
-    await pbSetDoc('app_config','algorithm',{
+    // Bump the cache version in public_config so the app knows to refresh
+    await pbSetDoc('public_config','algorithm',{
       cacheVersion: Date.now(),
       updatedAt: serverTimestamp()
     });
@@ -1171,9 +1223,9 @@ async function loadActivityLog(){
     el.innerHTML=logs.map(l=>{
       const ts=l.timestamp?new Date(l.timestamp).toLocaleString('tr-TR'):'—';
       const icon=actionIcons[l.action]||'📋';
-      return`<div class="log-row"><span class="log-icon">${icon}</span><div class="log-info"><div class="log-detail">${l.detail||l.action}</div><div class="log-meta">${l.admin||''} · ${ts}</div></div></div>`;
+      return`<div class="log-row"><span class="log-icon">${icon}</span><div class="log-info"><div class="log-detail">${escHtml(l.detail||l.action)}</div><div class="log-meta">${escHtml(l.admin||'')} · ${ts}</div></div></div>`;
     }).join('');
-  }catch(e){el.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+e.message+'</div>'}
+  }catch(e){el.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+escHtml(e.message)+'</div>'}
 }
 
 // ═══════════════════════════════════════
@@ -1258,7 +1310,7 @@ async function importProducts(){
 async function bulkChangeCategory(){
   if(!selectedIds.size){toast('Önce ürün seçin','w');return}
   const cats=(typeof CompairCategories!=='undefined'&&CompairCategories.getAll)?CompairCategories.getAll():[];
-  const catHtml=cats.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const catHtml=cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
   const modal=document.createElement('div');
   modal.className='modal-backdrop';modal.style.display='flex';
   modal.innerHTML=`<div class="modal-box" style="max-width:400px"><div class="modal-head"><h2>Kategori Değiştir</h2><button class="modal-x" onclick="this.closest('.modal-backdrop').remove()">✕</button></div><div class="modal-body"><p style="margin-bottom:12px">${selectedIds.size} ürün için yeni kategori seçin:</p><select class="input" id="bulkCatSelect">${catHtml}</select><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" id="bulkCatConfirm">Uygula</button><button class="btn btn-ghost" onclick="this.closest('.modal-backdrop').remove()">İptal</button></div></div></div>`;
@@ -1272,14 +1324,14 @@ async function bulkChangeCategory(){
       logActivity('bulk_category',`${selectedIds.size} ürünün kategorisi "${newCat}" olarak değiştirildi`);
       toast(`${selectedIds.size} ürün güncellendi`,'s');
       modal.remove();deselectAll();renderProductsPage();
-    }catch(e){toast('Hata: '+e.message,'e')}
+    }catch(e){toast('Hata: '+String(e.message || e),'e')}
   };
 }
 
 async function bulkChangeBrand(){
   if(!selectedIds.size){toast('Önce ürün seçin','w');return}
   const brands=(typeof CompairBrands!=='undefined')?CompairBrands:[];
-  const brandHtml=brands.map(b=>`<option>${b}</option>`).join('');
+  const brandHtml=brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
   const modal=document.createElement('div');
   modal.className='modal-backdrop';modal.style.display='flex';
   modal.innerHTML=`<div class="modal-box" style="max-width:400px"><div class="modal-head"><h2>Marka Değiştir</h2><button class="modal-x" onclick="this.closest('.modal-backdrop').remove()">✕</button></div><div class="modal-body"><p style="margin-bottom:12px">${selectedIds.size} ürün için yeni marka seçin:</p><select class="input" id="bulkBrandSelect">${brandHtml}</select><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" id="bulkBrandConfirm">Uygula</button><button class="btn btn-ghost" onclick="this.closest('.modal-backdrop').remove()">İptal</button></div></div></div>`;
@@ -1324,7 +1376,7 @@ async function scanBrokenImages(){
         el.innerHTML=`<div class="placeholder" style="color:var(--green)">✅ ${checked} görsel kontrol edildi, sorun yok</div>`;
       }else{
         el.innerHTML=`<div style="margin-bottom:8px;color:var(--amber)">⚠️ ${broken.length}/${checked} kırık görsel bulundu:</div>`+
-          broken.map(p=>`<div class="log-row"><span class="log-icon">🖼️</span><div class="log-info"><div class="log-detail">${p.name||p.id}</div><div class="log-meta">${p.category||''} · ${p.brand||''}</div></div></div>`).join('');
+          broken.map(p=>`<div class="log-row"><span class="log-icon">🖼️</span><div class="log-info"><div class="log-detail">${escHtml(p.name||p.id)}</div><div class="log-meta">${escHtml(p.category||'')} · ${escHtml(p.brand||'')}</div></div></div>`).join('');
       }
     }
     toast(`Tarama tamamlandı: ${broken.length} kırık görsel`,'i');

@@ -163,7 +163,7 @@ final youtubeServiceProvider = Provider<YouTubeService>((ref) {
   return YouTubeService(dio: ref.read(dioProvider));
 });
 
-/// Remote Config Service (PocketBase app_config tabanlı)
+/// Remote Config Service (PocketBase public_config tabanli)
 final remoteConfigServiceProvider = Provider<RemoteConfigService>((ref) {
   return RemoteConfigService.fromPb(ref.read(pbDataSourceProvider));
 });

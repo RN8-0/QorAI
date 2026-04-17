@@ -1499,9 +1499,9 @@ class _FeedConfig {
 }
 
 Future<_FeedConfig> _fetchAdminConfig() async {
-  try {
-    final record = await pb
-        .collection('app_config')
+    try {
+      final record = await pb
+        .collection('public_config')
         .getFirstListItem('key = "algorithm"')
         .timeout(const Duration(seconds: 5));
     final data = record.data;
@@ -1778,7 +1778,7 @@ final aiDailyTrendingProvider = FutureProvider<List<ProductEntity>>((
   // 1. Check PocketBase cache
   try {
     final cacheRecord = await pb
-        .collection('app_config')
+        .collection('public_config')
         .getFirstListItem('key = "trending_daily"')
         .timeout(const Duration(seconds: 5));
     final data = cacheRecord.data;
@@ -1884,12 +1884,12 @@ Return only the JSON array, no explanation.''';
 
     // 5. Save to PocketBase cache
     try {
-      try {
-        final existing = await pb
-            .collection('app_config')
+        try {
+          final existing = await pb
+            .collection('public_config')
             .getFirstListItem('key = "trending_daily"');
-        await pb
-            .collection('app_config')
+          await pb
+            .collection('public_config')
             .update(
               existing.id,
               body: {
@@ -1900,10 +1900,10 @@ Return only the JSON array, no explanation.''';
             );
       } catch (_) {
         await pb
-            .collection('app_config')
-            .create(
-              body: {
-                'key': 'trending_daily',
+          .collection('public_config')
+          .create(
+            body: {
+              'key': 'trending_daily',
                 'productIds': matched.map((p) => p.id).toList(),
                 'lastUpdated': DateTime.now().toUtc().toIso8601String(),
                 'source': 'gemini',

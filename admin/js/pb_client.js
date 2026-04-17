@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const CONFIG_COLLECTIONS = new Set(['app_config', 'public_config']);
 
 let _pb = null;
 
@@ -44,7 +45,7 @@ async function _findRecord(collection, identifier, data = {}) {
     }
   }
 
-  if (data.key || collection === 'app_config') {
+  if (data.key || CONFIG_COLLECTIONS.has(collection)) {
     const key = String(data.key || id).trim();
     if (key) filters.push(`key="${_escapeFilterValue(key)}"`);
   }
@@ -67,7 +68,7 @@ function _prepareCreateData(collection, identifier, data) {
   const clean = { ...data };
   const id = String(identifier || '').trim();
 
-  if ((collection === 'app_config' || clean.key !== undefined) && !clean.key && id) {
+  if ((CONFIG_COLLECTIONS.has(collection) || clean.key !== undefined) && !clean.key && id) {
     clean.key = id;
   }
 

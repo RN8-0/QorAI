@@ -1492,12 +1492,12 @@ class PbDataSource {
   }
 
   // ────────────────────────────────────────────────────────────────────────
-  // ─── APP CONFIG (Remote Config yerine) ───
+  // ─── PUBLIC CONFIG ───
   // ────────────────────────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> getAppConfig() async {
+  Future<Map<String, dynamic>> getPublicConfig() async {
     try {
-      final result = await _pb.collection('app_config').getFullList(batch: 50);
+      final result = await _pb.collection('public_config').getFullList(batch: 50);
       final config = <String, dynamic>{};
       for (final record in result) {
         final key = record.data['key'] as String?;
@@ -1506,7 +1506,7 @@ class PbDataSource {
       }
       return config;
     } catch (e) {
-      debugPrint('[PB] getAppConfig failed: $e');
+      debugPrint('[PB] getPublicConfig failed: $e');
       return {};
     }
   }

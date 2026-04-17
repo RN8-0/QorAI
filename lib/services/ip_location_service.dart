@@ -67,31 +67,6 @@ class IpLocationService {
       debugPrint('=== COMPAIR: ipapi.co failed: $e ===');
     }
 
-    // 3) Fallback: ip-api.com (no currency field, map from country)
-    try {
-      final res = await _dio.get<Map<String, dynamic>>(
-        'http://ip-api.com/json/',
-        queryParameters: {'fields': 'countryCode,country,status'},
-        options: Options(
-          receiveTimeout: const Duration(seconds: 5),
-          sendTimeout: const Duration(seconds: 5),
-        ),
-      );
-      final data = res.data;
-      if (data != null && data['status'] == 'success') {
-        final cc = (data['countryCode'] as String?) ?? 'US';
-        final result = IpLocationResult(
-          countryCode: cc,
-          currency: _currencyFromCountry(cc),
-          countryName: (data['country'] as String?) ?? 'United States',
-        );
-        await _saveToCache(result);
-        return result;
-      }
-    } catch (e) {
-      debugPrint('=== COMPAIR: ip-api.com failed: $e ===');
-    }
-
     return const IpLocationResult();
   }
 
