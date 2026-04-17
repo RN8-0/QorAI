@@ -22,76 +22,81 @@ class AppTheme {
   // BRAND PALETTE (matching logo: Blue → Cyan)
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const Color brandCyan     = Color(0xFF00E5FF); // Logo center dot
-  static const Color brandBlue     = Color(0xFF2196F3); // Logo main body
+  static const Color brandCyan = Color(0xFF00E5FF); // Logo center dot
+  static const Color brandBlue = Color(0xFF2196F3); // Logo main body
   static const Color brandDeepBlue = Color(0xFF1565C0); // Logo dark wings
-  static const Color brandSkyBlue  = Color(0xFF4FC3F7); // Logo light parts
+  static const Color brandSkyBlue = Color(0xFF4FC3F7); // Logo light parts
 
   // Neon aliases → now map to brand blue/cyan (used across 12+ files)
-  static const Color neonCyan    = brandCyan;
-  static const Color neonPurple  = brandBlue;      // was purple, now logo blue
-  static const Color neonPink    = brandSkyBlue;    // was pink, now logo sky blue
-  static const Color neonBlue    = Color(0xFF42A5F5); // Blue-400
+  static const Color neonCyan = brandCyan;
+  static const Color neonPurple = brandBlue; // was purple, now logo blue
+  static const Color neonPink = brandSkyBlue; // was pink, now logo sky blue
+  static const Color neonBlue = Color(0xFF42A5F5); // Blue-400
 
-  static const Color primaryBlue   = brandCyan;
+  static const Color primaryBlue = brandCyan;
   static const Color secondaryNavy = Color(0xFF0A1628);
-  static const Color accentCyan    = brandCyan;
+  static const Color accentCyan = brandCyan;
 
   static const Color brandLight = brandCyan;
-  static const Color brandDark  = Color(0xFF0A1628);
+  static const Color brandDark = Color(0xFF0A1628);
 
-  // Premium — deep blue tones
-  static const Color premiumPurple      = brandDeepBlue;
-  static const Color premiumPurpleLight = Color(0xFF1E88E5);
+  // Premium — champagne gold tones
+  static const Color premiumBronze = Color(0xFF8C6112);
+  static const Color premiumGold = Color(0xFFC9971A);
+  static const Color premiumChampagne = Color(0xFFF4D27A);
+
+  // Legacy premium aliases
+  static const Color premiumPurple = premiumBronze;
+  static const Color premiumPurpleLight = premiumGold;
 
   // ─────────────────────────────────────────────────────────────────────────
   // OLED DARK SURFACES — pure black foundation
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const Color backgroundDark      = Color(0xFF000000); // Pure OLED black
-  static const Color surfaceDark         = Color(0xFF0A0A0A); // Barely visible
-  static const Color surfaceVariantDark  = Color(0xFF121212); // Cards, elevated
+  static const Color backgroundDark = Color(0xFF000000); // Pure OLED black
+  static const Color surfaceDark = Color(0xFF0A0A0A); // Barely visible
+  static const Color surfaceVariantDark = Color(0xFF121212); // Cards, elevated
   static const Color surfaceElevatedDark = Color(0xFF1A1A1A); // Modals, sheets
-  static const Color textPrimaryDark     = Color(0xFFF1F5F9); // Bright white
-  static const Color textSecondaryDark   = Color(0xFF94A3B8); // Muted gray
-  static const Color textTertiaryDark    = Color(0xFF64748B); // Subtle hint
-  static const Color dividerDark         = Color(0xFF1E293B); // Subtle border
+  static const Color textPrimaryDark = Color(0xFFF1F5F9); // Bright white
+  static const Color textSecondaryDark = Color(0xFF94A3B8); // Muted gray
+  static const Color textTertiaryDark = Color(0xFF64748B); // Subtle hint
+  static const Color dividerDark = Color(0xFF1E293B); // Subtle border
 
   // ─────────────────────────────────────────────────────────────────────────
   // LIGHT MODE SURFACES — clean white/slate foundation
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const Color backgroundLightMode      = Color(0xFFF8FAFC); // Slate 50
-  static const Color surfaceLightMode         = Color(0xFFFFFFFF); // Pure White
-  static const Color surfaceVariantLightMode  = Color(0xFFF1F5F9); // Slate 100
+  static const Color backgroundLightMode = Color(0xFFF8FAFC); // Slate 50
+  static const Color surfaceLightMode = Color(0xFFFFFFFF); // Pure White
+  static const Color surfaceVariantLightMode = Color(0xFFF1F5F9); // Slate 100
   static const Color surfaceElevatedLightMode = Color(0xFFFFFFFF); // White
-  static const Color textPrimaryLightMode     = Color(0xFF0F172A); // Slate 900
-  static const Color textSecondaryLightMode   = Color(0xFF475569); // Slate 600
-  static const Color textTertiaryLightMode    = Color(0xFF94A3B8); // Slate 400
-  static const Color dividerLightMode         = Color(0xFFE2E8F0); // Slate 200
+  static const Color textPrimaryLightMode = Color(0xFF0F172A); // Slate 900
+  static const Color textSecondaryLightMode = Color(0xFF475569); // Slate 600
+  static const Color textTertiaryLightMode = Color(0xFF94A3B8); // Slate 400
+  static const Color dividerLightMode = Color(0xFFE2E8F0); // Slate 200
 
   // Legacy light aliases — kept for backward compat (point to light mode values)
-  static const Color backgroundLight     = backgroundLightMode;
-  static const Color surfaceLight        = surfaceLightMode;
+  static const Color backgroundLight = backgroundLightMode;
+  static const Color surfaceLight = surfaceLightMode;
   static const Color surfaceVariantLight = surfaceVariantLightMode;
-  static const Color textPrimaryLight    = textPrimaryLightMode;
-  static const Color textSecondaryLight  = textSecondaryLightMode;
-  static const Color textTertiaryLight   = textTertiaryLightMode;
-  static const Color dividerLight        = dividerLightMode;
+  static const Color textPrimaryLight = textPrimaryLightMode;
+  static const Color textSecondaryLight = textSecondaryLightMode;
+  static const Color textTertiaryLight = textTertiaryLightMode;
+  static const Color dividerLight = dividerLightMode;
 
   // ─────────────────────────────────────────────────────────────────────────
   // SEMANTIC COLORS — vivid neon on dark
   // ─────────────────────────────────────────────────────────────────────────
 
   static const Color scoreExcellent = Color(0xFF10B981); // Emerald
-  static const Color scoreGood      = Color(0xFF34D399); // Emerald light
-  static const Color scoreAverage   = Color(0xFFF59E0B); // Amber
-  static const Color scorePoor      = Color(0xFFEF4444); // Rose
+  static const Color scoreGood = Color(0xFF34D399); // Emerald light
+  static const Color scoreAverage = Color(0xFFF59E0B); // Amber
+  static const Color scorePoor = Color(0xFFEF4444); // Rose
 
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
-  static const Color error   = Color(0xFFEF4444);
-  static const Color info    = neonCyan;
+  static const Color error = Color(0xFFEF4444);
+  static const Color info = neonCyan;
 
   // Legacy alias
   static const Color textDark = textPrimaryDark;
@@ -110,32 +115,32 @@ class AppTheme {
   static const Color slate800 = Color(0xFF1E293B);
 
   // Semantic palette
-  static const Color rose500    = Color(0xFFFF3B30);
-  static const Color amber500   = Color(0xFFFF9F0A);
-  static const Color green500   = Color(0xFF34C759);
+  static const Color rose500 = Color(0xFFFF3B30);
+  static const Color amber500 = Color(0xFFFF9F0A);
+  static const Color green500 = Color(0xFF34C759);
   static const Color emerald500 = Color(0xFF30D158);
-  static const Color orange500  = Color(0xFFFF6B00);
-  static const Color gold       = Color(0xFFFFD700);
+  static const Color orange500 = Color(0xFFFF6B00);
+  static const Color gold = Color(0xFFFFD700);
   static const Color goldOrange = Color(0xFFFFA500);
-  static const Color youtube    = Color(0xFFFF0000);
+  static const Color youtube = Color(0xFFFF0000);
 
   // ─────────────────────────────────────────────────────────────────────────
   // CATEGORY COLORS — centralized palette for category icons/chips
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const Color catMobile      = Color(0xFF3B82F6); // Blue-500
-  static const Color catComputers   = Color(0xFF6366F1); // Indigo-500
-  static const Color catComponents  = Color(0xFF06B6D4); // Cyan-500
-  static const Color catDisplay     = Color(0xFF10B981); // Emerald-500
-  static const Color catAudio       = Color(0xFFEC4899); // Pink-500
-  static const Color catWearables   = Color(0xFF14B8A6); // Teal-500
-  static const Color catCameras     = Color(0xFFF97316); // Orange-500
-  static const Color catGaming      = Color(0xFF8B5CF6); // Violet-500
+  static const Color catMobile = Color(0xFF3B82F6); // Blue-500
+  static const Color catComputers = Color(0xFF6366F1); // Indigo-500
+  static const Color catComponents = Color(0xFF06B6D4); // Cyan-500
+  static const Color catDisplay = Color(0xFF10B981); // Emerald-500
+  static const Color catAudio = Color(0xFFEC4899); // Pink-500
+  static const Color catWearables = Color(0xFF14B8A6); // Teal-500
+  static const Color catCameras = Color(0xFFF97316); // Orange-500
+  static const Color catGaming = Color(0xFF8B5CF6); // Violet-500
   static const Color catPeripherals = Color(0xFF0EA5E9); // Sky-500
-  static const Color catNetworking  = Color(0xFF3B82F6); // Blue-500
-  static const Color catSmartHome   = Color(0xFFF59E0B); // Amber-500
+  static const Color catNetworking = Color(0xFF3B82F6); // Blue-500
+  static const Color catSmartHome = Color(0xFFF59E0B); // Amber-500
   static const Color catAccessories = Color(0xFF22C55E); // Green-500
-  static const Color catDrones      = Color(0xFF06B6D4); // Cyan-500
+  static const Color catDrones = Color(0xFF06B6D4); // Cyan-500
 
   /// Get category group color by group key
   static Color categoryGroupColor(String groupKey) {
@@ -160,30 +165,48 @@ class AppTheme {
   /// Get color for an individual category ID
   static Color categoryColor(String categoryId) {
     const map = {
-      'smartphones': catMobile, 'tablets': catMobile,
-      'laptops': catComputers, 'desktops': catComputers,
-      'cpus': catComponents, 'gpus': catGaming, 'ram': catComponents,
-      'ssd': catComponents, 'motherboards': catComponents,
-      'psu': catComponents, 'cases': catComponents,
-      'coolers': catComponents, 'monitors': catDisplay,
-      'keyboards': catPeripherals, 'mice': catPeripherals,
+      'smartphones': catMobile,
+      'tablets': catMobile,
+      'laptops': catComputers,
+      'desktops': catComputers,
+      'cpus': catComponents,
+      'gpus': catGaming,
+      'ram': catComponents,
+      'ssd': catComponents,
+      'motherboards': catComponents,
+      'psu': catComponents,
+      'cases': catComponents,
+      'coolers': catComponents,
+      'monitors': catDisplay,
+      'keyboards': catPeripherals,
+      'mice': catPeripherals,
       'webcams': catPeripherals,
-      'tvs': catDisplay, 'projectors': catDisplay,
+      'tvs': catDisplay,
+      'projectors': catDisplay,
       'media-players': catDisplay,
-      'headphones': catAudio, 'earphones': catAudio,
-      'speakers': catAudio, 'soundbars': catAudio,
+      'headphones': catAudio,
+      'earphones': catAudio,
+      'speakers': catAudio,
+      'soundbars': catAudio,
       'microphones': catAudio,
-      'smartwatches': catWearables, 'smart-rings': catWearables,
-      'cameras': catCameras, 'action-cameras': catCameras,
-      'security-cameras': catCameras, 'ip-cameras': catCameras,
-      'dashcams': catCameras, 'gimbals': catCameras,
-      'tripods': catCameras, 'lenses': catCameras,
-      'consoles': catGaming, 'gamepads': catGaming,
+      'smartwatches': catWearables,
+      'smart-rings': catWearables,
+      'cameras': catCameras,
+      'action-cameras': catCameras,
+      'security-cameras': catCameras,
+      'ip-cameras': catCameras,
+      'dashcams': catCameras,
+      'gimbals': catCameras,
+      'tripods': catCameras,
+      'lenses': catCameras,
+      'consoles': catGaming,
+      'gamepads': catGaming,
       'vr-headsets': catGaming,
       'printers': catPeripherals,
       'routers': catNetworking,
       'robot-vacuums': catSmartHome,
-      'powerbanks': catAccessories, 'e-readers': catAccessories,
+      'powerbanks': catAccessories,
+      'e-readers': catAccessories,
       'drones': catDrones,
     };
     return map[categoryId.toLowerCase()] ?? brandBlue;
@@ -193,19 +216,23 @@ class AppTheme {
   // ACCENT COLORS — secondary palette for AI / premium elements
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const Color accentViolet = Color(0xFF7C3AED); // Violet-700 — AI premium
-  static const Color accentIndigo = Color(0xFF4F46E5); // Indigo-600 — secondary accent
+  static const Color accentViolet = Color(
+    0xFF7C3AED,
+  ); // Violet-700 — AI premium
+  static const Color accentIndigo = Color(
+    0xFF4F46E5,
+  ); // Indigo-600 — secondary accent
 
   // ─────────────────────────────────────────────────────────────────────────
   // LEGACY / COMPAT ALIASES
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const Color accentTeal  = neonCyan;
-  static const Color deepSpace   = backgroundDark;
-  static const Color glassCard   = Color(0x1AFFFFFF);
+  static const Color accentTeal = neonCyan;
+  static const Color deepSpace = backgroundDark;
+  static const Color glassCard = Color(0x1AFFFFFF);
 
-  static const Color backgroundLight_old  = backgroundDark;
-  static const Color surfaceLight_old     = surfaceDark;
+  static const Color backgroundLight_old = backgroundDark;
+  static const Color surfaceLight_old = surfaceDark;
   static const Color textPrimaryLight_old = textPrimaryDark;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -219,9 +246,9 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
-  /// Premium deep blue gradient
+  /// Premium champagne gold gradient
   static const LinearGradient premiumGradient = LinearGradient(
-    colors: [Color(0xFF0D47A1), brandDeepBlue],
+    colors: [premiumBronze, premiumGold, premiumChampagne],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -273,78 +300,75 @@ class AppTheme {
 
   /// OLED mesh background — subtle blue glow on black
   static LinearGradient get meshBackgroundGradient => LinearGradient(
-        colors: [
-          backgroundDark,
-          brandBlue.withValues(alpha: 0.03),
-          brandCyan.withValues(alpha: 0.02),
-          backgroundDark,
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        stops: const [0.0, 0.3, 0.7, 1.0],
-      );
+    colors: [
+      backgroundDark,
+      brandBlue.withValues(alpha: 0.03),
+      brandCyan.withValues(alpha: 0.02),
+      backgroundDark,
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: const [0.0, 0.3, 0.7, 1.0],
+  );
 
   /// Glass overlay — dark frosted glass
   static LinearGradient get glassGradient => LinearGradient(
-        colors: [
-          Colors.white.withValues(alpha: 0.08),
-          Colors.white.withValues(alpha: 0.04),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [
+      Colors.white.withValues(alpha: 0.08),
+      Colors.white.withValues(alpha: 0.04),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   static LinearGradient get fabAiGradient => const LinearGradient(
-        colors: [brandCyan, brandBlue],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [brandCyan, brandBlue],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   static LinearGradient get aiBannerGradient => const LinearGradient(
-        colors: [brandDeepBlue, brandBlue, brandCyan],
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      );
+    colors: [brandDeepBlue, brandBlue, brandCyan],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   static LinearGradient get subscriptionFabGradient => const LinearGradient(
-        colors: [brandCyan, brandBlue],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [brandCyan, brandBlue],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   static LinearGradient get aiChatBgGlow => LinearGradient(
-        colors: [
-          backgroundDark,
-          brandCyan.withValues(alpha: 0.04),
-          brandBlue.withValues(alpha: 0.03),
-          backgroundDark,
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
+    colors: [
+      backgroundDark,
+      brandCyan.withValues(alpha: 0.04),
+      brandBlue.withValues(alpha: 0.03),
+      backgroundDark,
+    ],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
 
   static LinearGradient categoryGradient(Color color) => LinearGradient(
-        colors: [color.withValues(alpha: 0.80), color],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [color.withValues(alpha: 0.80), color],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   static LinearGradient categoryGradientLight(Color color) => LinearGradient(
-        colors: [
-          color.withValues(alpha: 0.15),
-          color.withValues(alpha: 0.08),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.08)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // GLASS HELPERS — dark glassmorphism with neon edges
   // ─────────────────────────────────────────────────────────────────────────
 
-  static Color get glassBg          => Colors.white.withValues(alpha: 0.06);
-  static Color get glassBgLight     => Colors.white.withValues(alpha: 0.10);
-  static Color get glassBorder      => Colors.white.withValues(alpha: 0.10);
+  static Color get glassBg => Colors.white.withValues(alpha: 0.06);
+  static Color get glassBgLight => Colors.white.withValues(alpha: 0.10);
+  static Color get glassBorder => Colors.white.withValues(alpha: 0.10);
   static Color get glassBorderLight => Colors.white.withValues(alpha: 0.15);
   static const double glassBlur = 24.0;
 
@@ -353,15 +377,14 @@ class AppTheme {
     double borderRadius = 20,
     double opacity = 0.06,
     double borderOpacity = 0.10,
-  }) =>
-      BoxDecoration(
-        color: Colors.white.withValues(alpha: opacity),
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: borderOpacity),
-          width: 0.5,
-        ),
-      );
+  }) => BoxDecoration(
+    color: Colors.white.withValues(alpha: opacity),
+    borderRadius: BorderRadius.circular(borderRadius),
+    border: Border.all(
+      color: Colors.white.withValues(alpha: borderOpacity),
+      width: 0.5,
+    ),
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // SHADOWS — neon glow system on OLED
@@ -369,119 +392,121 @@ class AppTheme {
 
   /// Subtle: minimal edge glow
   static List<BoxShadow> get subtleShadow => [
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.05),
-          blurRadius: 4,
-          offset: const Offset(0, 1),
-        ),
-      ];
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.05),
+      blurRadius: 4,
+      offset: const Offset(0, 1),
+    ),
+  ];
 
   /// Card: soft ambient glow
   static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.40),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.04),
-          blurRadius: 20,
-          offset: const Offset(0, 4),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.40),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.04),
+      blurRadius: 20,
+      offset: const Offset(0, 4),
+    ),
+  ];
 
   /// Elevated: stronger glow for modals
   static List<BoxShadow> get elevatedShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.50),
-          blurRadius: 16,
-          offset: const Offset(0, 4),
-        ),
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.06),
-          blurRadius: 32,
-          offset: const Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.50),
+      blurRadius: 16,
+      offset: const Offset(0, 4),
+    ),
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.06),
+      blurRadius: 32,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   /// Neon cyan glow
   static List<BoxShadow> get primaryGlow => [
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.30),
-          blurRadius: 20,
-          offset: const Offset(0, 4),
-        ),
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.15),
-          blurRadius: 48,
-          offset: const Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.30),
+      blurRadius: 20,
+      offset: const Offset(0, 4),
+    ),
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.15),
+      blurRadius: 48,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   /// Cyan glow for AI elements
   static List<BoxShadow> get cyanGlow => [
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.35),
-          blurRadius: 20,
-          offset: const Offset(0, 4),
-        ),
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.15),
-          blurRadius: 48,
-          offset: const Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.35),
+      blurRadius: 20,
+      offset: const Offset(0, 4),
+    ),
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.15),
+      blurRadius: 48,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   static List<BoxShadow> get primaryGlowMedium => [
-        BoxShadow(
-          color: neonCyan.withValues(alpha: 0.35),
-          blurRadius: 24,
-          offset: const Offset(0, 6),
-        ),
-      ];
+    BoxShadow(
+      color: neonCyan.withValues(alpha: 0.35),
+      blurRadius: 24,
+      offset: const Offset(0, 6),
+    ),
+  ];
 
-  /// Blue glow for premium elements
+  /// Gold glow for premium elements
   static List<BoxShadow> get premiumGlow => [
-        BoxShadow(
-          color: brandDeepBlue.withValues(alpha: 0.30),
-          blurRadius: 20,
-          offset: const Offset(0, 4),
-        ),
-      ];
+    BoxShadow(
+      color: premiumGold.withValues(alpha: 0.28),
+      blurRadius: 20,
+      offset: const Offset(0, 4),
+    ),
+  ];
 
   /// Sky blue glow for highlights
   static List<BoxShadow> get pinkGlow => [
-        BoxShadow(
-          color: brandSkyBlue.withValues(alpha: 0.30),
-          blurRadius: 20,
-          offset: const Offset(0, 4),
-        ),
-      ];
+    BoxShadow(
+      color: brandSkyBlue.withValues(alpha: 0.30),
+      blurRadius: 20,
+      offset: const Offset(0, 4),
+    ),
+  ];
 
   // ─────────────────────────────────────────────────────────────────────────
   // SPACING — generous breathing room
   // ─────────────────────────────────────────────────────────────────────────
 
   static const double spacingXXS = 2.0;
-  static const double spacingXS  = 4.0;
-  static const double spacingSM  = 8.0;
-  static const double spacingMD  = 16.0;
-  static const double spacingLG  = 24.0;
-  static const double spacingXL  = 32.0;
+  static const double spacingXS = 4.0;
+  static const double spacingSM = 8.0;
+  static const double spacingMD = 16.0;
+  static const double spacingLG = 24.0;
+  static const double spacingXL = 32.0;
   static const double spacingXXL = 48.0;
 
   // ─────────────────────────────────────────────────────────────────────────
   // FLOATING NAV BAR
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const double navBarHeight         = 64.0;
-  static const double navBarBottomMargin   = 10.0;  // floating gap above system nav
-  static const double navBarHMargin        = 16.0;  // pill horizontal margin
-  static const double navBarTotalClearance = navBarHeight + 26.0; // 64+26=90, accounts for float
+  static const double navBarHeight = 64.0;
+  static const double navBarBottomMargin =
+      10.0; // floating gap above system nav
+  static const double navBarHMargin = 16.0; // pill horizontal margin
+  static const double navBarTotalClearance =
+      navBarHeight + 26.0; // 64+26=90, accounts for float
 
   // Branded 3-layer card shadow (blue tinted) — used in compare & premium surfaces
   static const List<BoxShadow> cardShadowBrand = [
-    BoxShadow(color: Color(0x12005DD9), blurRadius: 4,  offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x12005DD9), blurRadius: 4, offset: Offset(0, 1)),
     BoxShadow(color: Color(0x10005DD9), blurRadius: 12, offset: Offset(0, 4)),
     BoxShadow(color: Color(0x08005DD9), blurRadius: 24, offset: Offset(0, 8)),
   ];
@@ -490,86 +515,123 @@ class AppTheme {
   // BORDER RADIUS
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const double radiusXS    = 6.0;
-  static const double radiusSM    = 10.0;
-  static const double radiusMD    = 14.0;
-  static const double radiusLG    = 16.0;
-  static const double radiusXL    = 20.0;
-  static const double radiusXXL   = 28.0;
+  static const double radiusXS = 6.0;
+  static const double radiusSM = 10.0;
+  static const double radiusMD = 14.0;
+  static const double radiusLG = 16.0;
+  static const double radiusXL = 20.0;
+  static const double radiusXXL = 28.0;
   static const double radiusRound = 100.0;
 
-  static const double borderRadiusSmall  = radiusSM;
+  static const double borderRadiusSmall = radiusSM;
   static const double borderRadiusMedium = radiusLG;
-  static const double borderRadiusLarge  = radiusXL;
+  static const double borderRadiusLarge = radiusXL;
   static const double borderRadiusXLarge = radiusXXL;
 
   // ─────────────────────────────────────────────────────────────────────────
   // TYPOGRAPHY — tight letter-spacing, bright on dark
   // ─────────────────────────────────────────────────────────────────────────
 
-  static TextTheme _buildTextTheme(Color primary, Color secondary) =>
-      TextTheme(
-        displayLarge: GoogleFonts.plusJakartaSans(
-          fontSize: 40, fontWeight: FontWeight.w800,
-          letterSpacing: -2.0, color: primary, height: 1.05,
-        ),
-        displayMedium: GoogleFonts.plusJakartaSans(
-          fontSize: 32, fontWeight: FontWeight.w700,
-          letterSpacing: -1.0, color: primary, height: 1.10,
-        ),
-        displaySmall: GoogleFonts.plusJakartaSans(
-          fontSize: 28, fontWeight: FontWeight.w700,
-          letterSpacing: -0.8, color: primary, height: 1.15,
-        ),
-        headlineLarge: GoogleFonts.plusJakartaSans(
-          fontSize: 22, fontWeight: FontWeight.w700,
-          letterSpacing: -0.5, color: primary, height: 1.20,
-        ),
-        headlineMedium: GoogleFonts.plusJakartaSans(
-          fontSize: 20, fontWeight: FontWeight.w600,
-          letterSpacing: -0.4, color: primary, height: 1.25,
-        ),
-        headlineSmall: GoogleFonts.plusJakartaSans(
-          fontSize: 18, fontWeight: FontWeight.w600,
-          letterSpacing: -0.3, color: primary, height: 1.30,
-        ),
-        titleLarge: GoogleFonts.plusJakartaSans(
-          fontSize: 17, fontWeight: FontWeight.w600,
-          color: primary, height: 1.35,
-        ),
-        titleMedium: GoogleFonts.plusJakartaSans(
-          fontSize: 15, fontWeight: FontWeight.w500,
-          color: primary, height: 1.40,
-        ),
-        titleSmall: GoogleFonts.plusJakartaSans(
-          fontSize: 13, fontWeight: FontWeight.w600,
-          letterSpacing: 0.3, color: primary, height: 1.40,
-        ),
-        bodyLarge: GoogleFonts.plusJakartaSans(
-          fontSize: 16, fontWeight: FontWeight.w400,
-          color: secondary, height: 1.50,
-        ),
-        bodyMedium: GoogleFonts.plusJakartaSans(
-          fontSize: 15, fontWeight: FontWeight.w400,
-          color: secondary, height: 1.50,
-        ),
-        bodySmall: GoogleFonts.plusJakartaSans(
-          fontSize: 13, fontWeight: FontWeight.w400,
-          color: secondary, height: 1.50,
-        ),
-        labelLarge: GoogleFonts.plusJakartaSans(
-          fontSize: 16, fontWeight: FontWeight.w600,
-          color: primary, height: 1.40,
-        ),
-        labelMedium: GoogleFonts.plusJakartaSans(
-          fontSize: 13, fontWeight: FontWeight.w500,
-          color: primary, height: 1.40,
-        ),
-        labelSmall: GoogleFonts.plusJakartaSans(
-          fontSize: 11, fontWeight: FontWeight.w500,
-          letterSpacing: 0.5, color: secondary, height: 1.40,
-        ),
-      );
+  static TextTheme _buildTextTheme(Color primary, Color secondary) => TextTheme(
+    displayLarge: GoogleFonts.plusJakartaSans(
+      fontSize: 40,
+      fontWeight: FontWeight.w800,
+      letterSpacing: -2.0,
+      color: primary,
+      height: 1.05,
+    ),
+    displayMedium: GoogleFonts.plusJakartaSans(
+      fontSize: 32,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -1.0,
+      color: primary,
+      height: 1.10,
+    ),
+    displaySmall: GoogleFonts.plusJakartaSans(
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.8,
+      color: primary,
+      height: 1.15,
+    ),
+    headlineLarge: GoogleFonts.plusJakartaSans(
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.5,
+      color: primary,
+      height: 1.20,
+    ),
+    headlineMedium: GoogleFonts.plusJakartaSans(
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.4,
+      color: primary,
+      height: 1.25,
+    ),
+    headlineSmall: GoogleFonts.plusJakartaSans(
+      fontSize: 18,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.3,
+      color: primary,
+      height: 1.30,
+    ),
+    titleLarge: GoogleFonts.plusJakartaSans(
+      fontSize: 17,
+      fontWeight: FontWeight.w600,
+      color: primary,
+      height: 1.35,
+    ),
+    titleMedium: GoogleFonts.plusJakartaSans(
+      fontSize: 15,
+      fontWeight: FontWeight.w500,
+      color: primary,
+      height: 1.40,
+    ),
+    titleSmall: GoogleFonts.plusJakartaSans(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.3,
+      color: primary,
+      height: 1.40,
+    ),
+    bodyLarge: GoogleFonts.plusJakartaSans(
+      fontSize: 16,
+      fontWeight: FontWeight.w400,
+      color: secondary,
+      height: 1.50,
+    ),
+    bodyMedium: GoogleFonts.plusJakartaSans(
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      color: secondary,
+      height: 1.50,
+    ),
+    bodySmall: GoogleFonts.plusJakartaSans(
+      fontSize: 13,
+      fontWeight: FontWeight.w400,
+      color: secondary,
+      height: 1.50,
+    ),
+    labelLarge: GoogleFonts.plusJakartaSans(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: primary,
+      height: 1.40,
+    ),
+    labelMedium: GoogleFonts.plusJakartaSans(
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      color: primary,
+      height: 1.40,
+    ),
+    labelSmall: GoogleFonts.plusJakartaSans(
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5,
+      color: secondary,
+      height: 1.40,
+    ),
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // LIGHT THEME — Clean slate/white + brand blue accents
@@ -604,8 +666,10 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         titleTextStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 20, fontWeight: FontWeight.w700,
-          letterSpacing: -0.4, color: textPrimaryLightMode,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: textPrimaryLightMode,
         ),
         iconTheme: const IconThemeData(color: textPrimaryLightMode, size: 22),
       ),
@@ -634,7 +698,8 @@ class AppTheme {
           elevation: 0,
           shadowColor: Colors.transparent,
           textStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 16, fontWeight: FontWeight.w600,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -648,7 +713,8 @@ class AppTheme {
           ),
           side: const BorderSide(color: brandBlue, width: 1.5),
           textStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 17, fontWeight: FontWeight.w600,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -657,7 +723,8 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: brandBlue,
           textStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 15, fontWeight: FontWeight.w500,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -665,7 +732,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceVariantLightMode,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMD),
           borderSide: BorderSide(color: dividerLightMode, width: 0.5),
@@ -683,7 +753,8 @@ class AppTheme {
           borderSide: const BorderSide(color: error, width: 1),
         ),
         hintStyle: GoogleFonts.plusJakartaSans(
-          color: textTertiaryLightMode, fontSize: 15,
+          color: textTertiaryLightMode,
+          fontSize: 15,
         ),
       ),
 
@@ -694,10 +765,12 @@ class AppTheme {
         elevation: 0,
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 10, fontWeight: FontWeight.w600,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 10, fontWeight: FontWeight.w400,
+          fontSize: 10,
+          fontWeight: FontWeight.w400,
         ),
       ),
 
@@ -708,11 +781,15 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return GoogleFonts.plusJakartaSans(
-              fontSize: 10, fontWeight: FontWeight.w600, color: brandBlue,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: brandBlue,
             );
           }
           return GoogleFonts.plusJakartaSans(
-            fontSize: 10, fontWeight: FontWeight.w400, color: textTertiaryLightMode,
+            fontSize: 10,
+            fontWeight: FontWeight.w400,
+            color: textTertiaryLightMode,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -727,7 +804,9 @@ class AppTheme {
         backgroundColor: surfaceVariantLightMode,
         selectedColor: brandBlue.withValues(alpha: 0.12),
         labelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 13, fontWeight: FontWeight.w500, color: textPrimaryLightMode,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: textPrimaryLightMode,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusSM),
@@ -753,8 +832,11 @@ class AppTheme {
       ),
 
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) =>
-          states.contains(WidgetState.selected) ? Colors.white : textTertiaryLightMode),
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : textTertiaryLightMode,
+        ),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return brandBlue;
           return dividerLightMode;
@@ -766,11 +848,11 @@ class AppTheme {
         backgroundColor: surfaceLightMode,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         titleTextStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 17, fontWeight: FontWeight.w600, color: textPrimaryLightMode,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          color: textPrimaryLightMode,
         ),
       ),
 
@@ -794,7 +876,8 @@ class AppTheme {
           side: BorderSide(color: dividerLightMode, width: 0.5),
         ),
         textStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 14, color: textPrimaryLightMode,
+          fontSize: 14,
+          color: textPrimaryLightMode,
         ),
       ),
 
@@ -815,11 +898,11 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surfaceVariantLightMode,
         contentTextStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 14, fontWeight: FontWeight.w500, color: textPrimaryLightMode,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: textPrimaryLightMode,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -859,8 +942,10 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         titleTextStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 20, fontWeight: FontWeight.w700,
-          letterSpacing: -0.4, color: textPrimaryDark,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: textPrimaryDark,
         ),
         iconTheme: const IconThemeData(color: textPrimaryDark, size: 22),
       ),
@@ -891,7 +976,8 @@ class AppTheme {
           elevation: 0,
           shadowColor: Colors.transparent,
           textStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 16, fontWeight: FontWeight.w600,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -906,7 +992,8 @@ class AppTheme {
           ),
           side: const BorderSide(color: neonCyan, width: 1.5),
           textStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 17, fontWeight: FontWeight.w600,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -916,7 +1003,8 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: neonCyan,
           textStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 15, fontWeight: FontWeight.w500,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -925,7 +1013,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceVariantDark,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMD),
           borderSide: BorderSide(color: dividerDark, width: 0.5),
@@ -943,7 +1034,8 @@ class AppTheme {
           borderSide: const BorderSide(color: error, width: 1),
         ),
         hintStyle: GoogleFonts.plusJakartaSans(
-          color: textTertiaryDark, fontSize: 15,
+          color: textTertiaryDark,
+          fontSize: 15,
         ),
       ),
 
@@ -955,10 +1047,12 @@ class AppTheme {
         elevation: 0,
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 10, fontWeight: FontWeight.w600,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 10, fontWeight: FontWeight.w400,
+          fontSize: 10,
+          fontWeight: FontWeight.w400,
         ),
       ),
 
@@ -970,11 +1064,15 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return GoogleFonts.plusJakartaSans(
-              fontSize: 10, fontWeight: FontWeight.w600, color: neonCyan,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: neonCyan,
             );
           }
           return GoogleFonts.plusJakartaSans(
-            fontSize: 10, fontWeight: FontWeight.w400, color: textTertiaryDark,
+            fontSize: 10,
+            fontWeight: FontWeight.w400,
+            color: textTertiaryDark,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -990,7 +1088,9 @@ class AppTheme {
         backgroundColor: surfaceVariantDark,
         selectedColor: neonCyan.withValues(alpha: 0.15),
         labelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 13, fontWeight: FontWeight.w500, color: textPrimaryDark,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: textPrimaryDark,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusSM),
@@ -1020,8 +1120,11 @@ class AppTheme {
 
       // Switch
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) =>
-          states.contains(WidgetState.selected) ? Colors.black : textTertiaryDark),
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.black
+              : textTertiaryDark,
+        ),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return neonCyan;
           return const Color(0xFF1E293B);
@@ -1034,11 +1137,11 @@ class AppTheme {
         backgroundColor: surfaceElevatedDark,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         titleTextStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 17, fontWeight: FontWeight.w600, color: textPrimaryDark,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          color: textPrimaryDark,
         ),
       ),
 
@@ -1064,7 +1167,8 @@ class AppTheme {
           side: BorderSide(color: dividerDark, width: 0.5),
         ),
         textStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 14, color: textPrimaryDark,
+          fontSize: 14,
+          color: textPrimaryDark,
         ),
       ),
 
@@ -1087,11 +1191,11 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surfaceElevatedDark,
         contentTextStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 14, fontWeight: FontWeight.w500, color: textPrimaryDark,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: textPrimaryDark,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1121,8 +1225,7 @@ class AppTheme {
     required Brightness brightness,
     required Color light,
     required Color dark,
-  }) =>
-      brightness == Brightness.light ? light : dark;
+  }) => brightness == Brightness.light ? light : dark;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1130,9 +1233,9 @@ class AppTheme {
 // ─────────────────────────────────────────────────────────────────────────────
 
 extension ThemeExtension on BuildContext {
-  ThemeData    get theme       => Theme.of(this);
-  TextTheme    get textTheme   => Theme.of(this).textTheme;
-  ColorScheme  get colorScheme => Theme.of(this).colorScheme;
+  ThemeData get theme => Theme.of(this);
+  TextTheme get textTheme => Theme.of(this).textTheme;
+  ColorScheme get colorScheme => Theme.of(this).colorScheme;
 
   bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
 
@@ -1140,17 +1243,28 @@ extension ThemeExtension on BuildContext {
   AppLocalizations? get l10n => AppLocalizations.of(this);
 
   // Semantic color shortcuts
-  Color get primaryColor   => isDarkMode ? AppTheme.neonCyan    : AppTheme.brandBlue;
-  Color get secondaryColor => isDarkMode ? AppTheme.neonPurple  : AppTheme.brandDeepBlue;
-  Color get accentColor    => isDarkMode ? AppTheme.neonCyan    : AppTheme.brandBlue;
+  Color get primaryColor => isDarkMode ? AppTheme.neonCyan : AppTheme.brandBlue;
+  Color get secondaryColor =>
+      isDarkMode ? AppTheme.neonPurple : AppTheme.brandDeepBlue;
+  Color get accentColor => isDarkMode ? AppTheme.neonCyan : AppTheme.brandBlue;
 
   // Surface / text / divider
-  Color get backgroundColor    => isDarkMode ? AppTheme.backgroundDark       : AppTheme.backgroundLightMode;
-  Color get surfaceColor       => isDarkMode ? AppTheme.surfaceDark           : AppTheme.surfaceLightMode;
-  Color get surfaceVariantColor => isDarkMode ? AppTheme.surfaceVariantDark   : AppTheme.surfaceVariantLightMode;
-  Color get surfaceElevatedColor => isDarkMode ? AppTheme.surfaceElevatedDark : AppTheme.surfaceElevatedLightMode;
-  Color get textPrimary        => isDarkMode ? AppTheme.textPrimaryDark       : AppTheme.textPrimaryLightMode;
-  Color get textSecondary      => isDarkMode ? AppTheme.textSecondaryDark     : AppTheme.textSecondaryLightMode;
-  Color get textTertiaryColor  => isDarkMode ? AppTheme.textTertiaryDark      : AppTheme.textTertiaryLightMode;
-  Color get dividerColor       => isDarkMode ? AppTheme.dividerDark           : AppTheme.dividerLightMode;
+  Color get backgroundColor =>
+      isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLightMode;
+  Color get surfaceColor =>
+      isDarkMode ? AppTheme.surfaceDark : AppTheme.surfaceLightMode;
+  Color get surfaceVariantColor => isDarkMode
+      ? AppTheme.surfaceVariantDark
+      : AppTheme.surfaceVariantLightMode;
+  Color get surfaceElevatedColor => isDarkMode
+      ? AppTheme.surfaceElevatedDark
+      : AppTheme.surfaceElevatedLightMode;
+  Color get textPrimary =>
+      isDarkMode ? AppTheme.textPrimaryDark : AppTheme.textPrimaryLightMode;
+  Color get textSecondary =>
+      isDarkMode ? AppTheme.textSecondaryDark : AppTheme.textSecondaryLightMode;
+  Color get textTertiaryColor =>
+      isDarkMode ? AppTheme.textTertiaryDark : AppTheme.textTertiaryLightMode;
+  Color get dividerColor =>
+      isDarkMode ? AppTheme.dividerDark : AppTheme.dividerLightMode;
 }

@@ -17,6 +17,11 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/services/subscription_service.dart';
 
+const _kPremiumBase = AppTheme.premiumGold;
+const _kPremiumLight = AppTheme.premiumChampagne;
+const _kPremiumDeep = AppTheme.premiumBronze;
+const _kPremiumGradient = AppTheme.premiumGradient;
+
 const Map<String, Map<String, String>> _paywallExactTranslations = {
   'You are a yearly subscriber': {
     'de': 'Sie haben ein Jahresabo',
@@ -616,11 +621,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(
-              Icons.account_circle_rounded,
-              color: AppTheme.brandBlue,
-              size: 24,
-            ),
+            Icon(Icons.account_circle_rounded, color: _kPremiumBase, size: 24),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -660,7 +661,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.brandBlue,
+              backgroundColor: _kPremiumBase,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -722,17 +723,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             Positioned(
               top: -50,
               right: -40,
-              child: _buildOrb(180, AppTheme.brandBlue, 0.10),
+              child: _buildOrb(180, _kPremiumBase, 0.10),
             ),
             Positioned(
               top: 120,
               left: -70,
-              child: _buildOrb(150, AppTheme.brandCyan, 0.08),
+              child: _buildOrb(150, _kPremiumLight, 0.08),
             ),
             Positioned(
               bottom: 150,
               right: -20,
-              child: _buildOrb(130, AppTheme.brandDeepBlue, 0.08),
+              child: _buildOrb(130, _kPremiumDeep, 0.08),
             ),
 
             // Content
@@ -808,10 +809,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
+        border: Border.all(color: _kPremiumBase.withValues(alpha: 0.20)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.brandBlue.withValues(alpha: 0.10),
+            color: _kPremiumBase.withValues(alpha: 0.12),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
@@ -827,11 +828,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 width: 74,
                 height: 74,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
+                  gradient: _kPremiumGradient,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.brandBlue.withValues(alpha: 0.28),
+                      color: _kPremiumBase.withValues(alpha: 0.28),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -897,13 +898,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppTheme.brandBlue.withValues(alpha: 0.18),
-                    AppTheme.brandCyan.withValues(alpha: 0.14),
+                    _kPremiumBase.withValues(alpha: 0.18),
+                    _kPremiumLight.withValues(alpha: 0.18),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.28),
+                  color: _kPremiumBase.withValues(alpha: 0.28),
                 ),
               ),
               child: Row(
@@ -911,7 +912,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 children: [
                   const Icon(
                     Icons.auto_awesome_rounded,
-                    color: AppTheme.brandCyan,
+                    color: _kPremiumDeep,
                     size: 14,
                   ),
                   const SizedBox(width: 6),
@@ -1037,7 +1038,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             price: yearlyPrice,
             sub: yearlyMonthly,
             badge: 'SAVE $savingsPct%',
-            badgeColor: const Color(0xFFF59E0B),
+            badgeColor: _kPremiumBase,
           ),
         ),
         const SizedBox(width: 12),
@@ -1074,9 +1075,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           gradient: isSelected
               ? LinearGradient(
                   colors: [
-                    AppTheme.brandDeepBlue.withValues(alpha: 0.28),
-                    AppTheme.brandBlue.withValues(alpha: 0.20),
-                    AppTheme.brandCyan.withValues(alpha: 0.14),
+                    _kPremiumDeep.withValues(alpha: 0.26),
+                    _kPremiumBase.withValues(alpha: 0.18),
+                    _kPremiumLight.withValues(alpha: 0.16),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -1085,7 +1086,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           color: isSelected ? null : context.surfaceVariantColor,
           border: Border.all(
             color: isSelected
-                ? AppTheme.brandCyan.withValues(alpha: 0.6)
+                ? _kPremiumBase.withValues(alpha: 0.65)
                 : context.dividerColor,
             width: isSelected ? 2 : 1,
           ),
@@ -1147,9 +1148,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? AppTheme.brandBlue : Colors.transparent,
+                color: isSelected ? _kPremiumBase : Colors.transparent,
                 border: Border.all(
-                  color: isSelected ? AppTheme.brandBlue : context.dividerColor,
+                  color: isSelected ? _kPremiumBase : context.dividerColor,
                   width: 2,
                 ),
               ),
@@ -1170,8 +1171,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget _buildActiveSubscriptionSection(SubscriptionService service) {
     final status = service.status;
     final accent = status.activeProductId == AppConstants.yearlySubscriptionId
-        ? AppTheme.brandCyan
-        : AppTheme.brandBlue;
+        ? _kPremiumLight
+        : _kPremiumBase;
 
     return Column(
       children: [
@@ -1199,7 +1200,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 width: 76,
                 height: 76,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
+                  gradient: _kPremiumGradient,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -1302,10 +1303,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppTheme.brandBlue.withValues(alpha: 0.12),
+            color: _kPremiumBase.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, size: 18, color: AppTheme.brandBlue),
+          child: Icon(icon, size: 18, color: _kPremiumBase),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1446,7 +1447,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
+                      gradient: _kPremiumGradient,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -1523,7 +1524,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       child: Text(
         value.toString(),
         style: GoogleFonts.plusJakartaSans(
-          color: isPro ? AppTheme.brandCyan : context.textSecondary,
+          color: isPro ? _kPremiumBase : context.textSecondary,
           fontSize: 11,
           fontWeight: isPro ? FontWeight.w700 : FontWeight.w500,
         ),
@@ -1536,13 +1537,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final features = [
       (
         Icons.link_rounded,
-        AppTheme.brandBlue,
+        _kPremiumBase,
         'Smart Link Analysis',
         'Paste any product URL for instant AI product analysis.',
       ),
       (
         Icons.compare_arrows_rounded,
-        AppTheme.brandDeepBlue,
+        _kPremiumDeep,
         'Side-by-Side Compare',
         'Compare more products with AI summaries and better context.',
       ),
@@ -1628,9 +1629,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.brandBlue.withValues(
-                  alpha: 0.22 + pulse * 0.08,
-                ),
+                color: _kPremiumBase.withValues(alpha: 0.22 + pulse * 0.08),
                 blurRadius: 20 + pulse * 12,
                 offset: const Offset(0, 6),
               ),
@@ -1644,7 +1643,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         height: 58,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: _kPremiumGradient,
             borderRadius: BorderRadius.circular(18),
           ),
           child: ElevatedButton(

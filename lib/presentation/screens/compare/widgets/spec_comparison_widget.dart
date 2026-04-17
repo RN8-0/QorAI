@@ -4646,35 +4646,49 @@ Rules:
           // Pill-style tab bar (always visible)
           Container(
             color: context.surfaceColor,
-            child: TabBar(
-              isScrollable: false,
-              tabAlignment: TabAlignment.fill,
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: context.textTertiaryColor,
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              indicator: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2.5,
-                  ),
-                ),
-              ),
-              labelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              tabs: [
-                Tab(text: context.l10n?.specsTab ?? 'Specs'),
-                Tab(text: context.l10n?.reviews ?? 'Reviews'),
-                Tab(text: context.l10n?.similarTab ?? 'Similar'),
-                Tab(text: context.l10n?.proTab ?? 'Premium'),
-              ],
+            child: Builder(
+              builder: (context) {
+                final controller = DefaultTabController.of(context);
+                return AnimatedBuilder(
+                  animation: controller.animation!,
+                  builder: (context, _) {
+                    final isPremiumSelected =
+                        (controller.animation?.value.round() ??
+                            controller.index) ==
+                        3;
+                    final activeTabColor = isPremiumSelected
+                        ? AppTheme.premiumGold
+                        : Theme.of(context).colorScheme.primary;
+                    return TabBar(
+                      isScrollable: false,
+                      tabAlignment: TabAlignment.fill,
+                      labelColor: activeTabColor,
+                      unselectedLabelColor: context.textTertiaryColor,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      indicator: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: activeTabColor, width: 2.5),
+                        ),
+                      ),
+                      labelStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      tabs: [
+                        Tab(text: context.l10n?.specsTab ?? 'Specs'),
+                        Tab(text: context.l10n?.reviews ?? 'Reviews'),
+                        Tab(text: context.l10n?.similarTab ?? 'Similar'),
+                        Tab(text: context.l10n?.proTab ?? 'Premium'),
+                      ],
+                    );
+                  },
+                );
+              },
             ),
           ),
 
@@ -5416,7 +5430,9 @@ Rules:
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
-              if (!_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
+              if (!_matchScoreExpanded &&
+                  !_matchScoreFetched &&
+                  quizCompleted) {
                 // Check AI feature limit before fetching
                 final sub = ref.read(subscriptionServiceProvider);
                 if (!sub.canUseCompareAi) {
