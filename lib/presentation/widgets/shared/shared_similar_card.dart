@@ -27,6 +27,7 @@ class SharedSimilarGridCard extends StatelessWidget {
             width: 0.8,
           ),
           boxShadow: [
+            ...AppTheme.cardShadow,
             BoxShadow(
               color: AppTheme.brandCyan.withValues(alpha: 0.06),
               blurRadius: 10,

@@ -193,12 +193,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                   decoration: BoxDecoration(
                     color: context.backgroundColor,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    border: Border.all(color: context.dividerColor),
+                    boxShadow: AppTheme.cardShadow,
                   ),
                   child: IconButton(
                     padding: EdgeInsets.zero,
@@ -227,12 +223,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                         decoration: BoxDecoration(
                           color: context.backgroundColor,
                           shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                            ),
-                          ],
+                          border: Border.all(color: context.dividerColor),
+                          boxShadow: AppTheme.cardShadow,
                         ),
                         child: IconButton(
                           padding: EdgeInsets.zero,
@@ -258,12 +250,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                         decoration: BoxDecoration(
                           color: context.backgroundColor,
                           shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                            ),
-                          ],
+                          border: Border.all(color: context.dividerColor),
+                          boxShadow: AppTheme.cardShadow,
                         ),
                         child: _FavoriteButton(
                           productId: product.id,

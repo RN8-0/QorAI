@@ -615,11 +615,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.12)),
+          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
           boxShadow: [
+            ...AppTheme.cardShadow,
             BoxShadow(
-              color: AppTheme.brandBlue.withValues(alpha: 0.04),
-              blurRadius: 14,
+              color: AppTheme.brandBlue.withValues(alpha: 0.08),
+              blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
@@ -1368,18 +1369,25 @@ class _ProductListTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: context.surfaceVariantColor,
+            gradient: LinearGradient(
+              colors: [
+                context.surfaceVariantColor,
+                context.surfaceVariantColor.withValues(alpha: 0.92),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.08),
+              color: AppTheme.brandBlue.withValues(alpha: 0.12),
+              width: 0.8,
             ),
             boxShadow: [
+              ...AppTheme.cardShadow,
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: AppTheme.brandCyan.withValues(alpha: 0.05),
+                blurRadius: 12,
+                spreadRadius: -2,
               ),
             ],
           ),
@@ -1416,7 +1424,7 @@ class _ProductListTile extends StatelessWidget {
                         Text(
                           product.brand!.toUpperCase(),
                           style: GoogleFonts.plusJakartaSans(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: AppTheme.primaryBlue,
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.8,
@@ -1446,15 +1454,13 @@ class _ProductListTile extends StatelessWidget {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.1),
+                                gradient: AppTheme.primaryGradient,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 '\$${usPrice.round()}',
                                 style: GoogleFonts.plusJakartaSans(
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 12,
                                 ),

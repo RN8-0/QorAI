@@ -140,7 +140,7 @@ class TrendCard extends StatelessWidget {
                       Text(
                         product.brand!,
                         style: TextStyle(
-                          color: context.surfaceColor,
+                          color: context.textTertiaryColor,
                           fontSize: 12,
                         ),
                       ),

@@ -23,16 +23,15 @@ class _ProductNameCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.15),
+                gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.4)),
               ),
               child: Text(
                 product.brand!,
                 style: const TextStyle(
                   fontSize: 12,
-                  color: AppTheme.primaryBlue,
-                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),

@@ -119,11 +119,13 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
           decoration: BoxDecoration(
             color: context.surfaceVariantColor,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.10)),
             boxShadow: [
+              ...AppTheme.cardShadow,
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: AppTheme.brandCyan.withValues(alpha: 0.05),
+                blurRadius: 10,
+                spreadRadius: -2,
               ),
             ],
           ),
