@@ -593,68 +593,84 @@ function parseSpecs(doc) {
   // ── PRIMARY: #ozellikler section ──
   const ozellikler = doc.querySelector('#ozellikler');
   if (ozellikler) {
-    let currentSection = 'General';
 
-    // Section headers from h3
-    const h3s = ozellikler.querySelectorAll('h3');
-    const sectionStarts = new Map();
-    h3s.forEach(h3 => {
-      sectionStarts.set(h3, h3.textContent.trim());
-    });
+    // Helper: parse all li items from a UL and add to specs
+    function parseLiList(ul, sectionName) {
+      if (!specSections[sectionName]) specSections[sectionName] = {};
+      ul.querySelectorAll('li').forEach(li => {
+        const strong = li.querySelector('strong');
+        if (!strong) return;
+        const key = strong.textContent.trim();
+        if (!key) return;
 
-    // Walk through children to maintain section context
-    const children = ozellikler.children;
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-
-      if (child.tagName === 'H3') {
-        currentSection = child.textContent.trim();
-        if (!specSections[currentSection]) specSections[currentSection] = {};
-        continue;
-      }
-
-      if (child.tagName === 'UL' || child.querySelector('ul')) {
-        const ul = child.tagName === 'UL' ? child : child.querySelector('ul');
-        if (!ul) continue;
-
-        ul.querySelectorAll('li').forEach(li => {
-          const strong = li.querySelector('strong');
-          if (!strong) return;
-          const key = strong.textContent.trim();
-          if (!key) return;
-
-          // Value: from span.cell, handling <a> and multiple <span>
-          let value = '';
-          const cellSpan = li.querySelector('span.cell');
-          if (cellSpan) {
-            const anchors = cellSpan.querySelectorAll('a');
-            if (anchors.length > 0) {
-              value = Array.from(anchors).map(a => a.textContent.trim()).filter(Boolean).join('\n');
+        let value = '';
+        const cellSpan = li.querySelector('span.cell');
+        if (cellSpan) {
+          const anchors = cellSpan.querySelectorAll('a');
+          if (anchors.length > 0) {
+            value = Array.from(anchors).map(a => a.textContent.trim()).filter(Boolean).join('\n');
+          }
+          if (!value) {
+            const innerSpans = cellSpan.querySelectorAll('span');
+            if (innerSpans.length > 1) {
+              value = Array.from(innerSpans).map(s => s.textContent.trim()).filter(Boolean).join('\n');
             }
-            if (!value) {
-              const innerSpans = cellSpan.querySelectorAll('span');
-              if (innerSpans.length > 1) {
-                value = Array.from(innerSpans).map(s => s.textContent.trim()).filter(Boolean).join('\n');
+          }
+          if (!value) value = cellSpan.textContent.trim();
+        } else {
+          const clone = li.cloneNode(true);
+          const sc = clone.querySelector('strong');
+          if (sc) sc.remove();
+          value = clone.textContent.trim();
+        }
+
+        if (key && value && key.length < 200 && value.length < 1000) {
+          specs[key] = value;
+          specSections[sectionName][key] = value;
+        }
+      });
+    }
+
+    // Strategy 1: masonry-brick layout (e.g. epey.com)
+    // Each brick contains one h3 (section) + one ul (specs list)
+    const bricks = ozellikler.querySelectorAll('.masonry-brick');
+    if (bricks.length > 0) {
+      bricks.forEach(brick => {
+        const h3 = brick.querySelector('h3');
+        const sectionName = h3
+          ? (h3.querySelector('span')?.textContent.trim() || h3.textContent.trim())
+          : 'General';
+        const ul = brick.querySelector('ul');
+        if (ul) parseLiList(ul, sectionName);
+      });
+    }
+
+    // Strategy 2: flat children walk (h3 followed by ul as siblings)
+    if (Object.keys(specs).length === 0) {
+      let currentSection = 'General';
+      const walk = (parent) => {
+        for (const child of parent.children) {
+          if (child.tagName === 'H3') {
+            currentSection = child.querySelector('span')?.textContent.trim()
+              || child.textContent.trim();
+            if (!specSections[currentSection]) specSections[currentSection] = {};
+          } else if (child.tagName === 'UL') {
+            parseLiList(child, currentSection);
+          } else if (child.children.length > 0) {
+            // Recurse one level into wrapper divs
+            for (const sub of child.children) {
+              if (sub.tagName === 'H3') {
+                currentSection = sub.querySelector('span')?.textContent.trim()
+                  || sub.textContent.trim();
+                if (!specSections[currentSection]) specSections[currentSection] = {};
+              } else if (sub.tagName === 'UL') {
+                parseLiList(sub, currentSection);
               }
             }
-            if (!value) {
-              value = cellSpan.textContent.trim();
-            }
-          } else {
-            // Fallback: everything after <strong>
-            const clone = li.cloneNode(true);
-            const strongClone = clone.querySelector('strong');
-            if (strongClone) strongClone.remove();
-            value = clone.textContent.trim();
           }
-
-          if (key && value && key.length < 200 && value.length < 1000) {
-            specs[key] = value;
-            if (!specSections[currentSection]) specSections[currentSection] = {};
-            specSections[currentSection][key] = value;
-          }
-        });
-      }
+        }
+      };
+      walk(ozellikler);
     }
   }
 
