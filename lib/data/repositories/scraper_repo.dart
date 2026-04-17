@@ -13,19 +13,36 @@ class ScraperRepository {
 
   ScraperRepository({PocketBase? pbClient}) : _pb = pbClient ?? pb;
 
-  // ─── Scraper Sources ───
+  // ─── Stream helper ───
 
-  /// Get all scraper sources ordered by priority
-  Stream<List<ScraperSource>> watchSources() {
-    final controller = StreamController<List<ScraperSource>>();
+  /// Safe realtime stream: guards controller.add/addError with hasListener check
+  /// so in-flight fetches after subscriber cancellation are silently dropped.
+  Stream<List<T>> _watchCol<T>({
+    required String collection,
+    required Future<List<T>> Function() fetch,
+  }) {
+    final controller = StreamController<List<T>>();
     UnsubscribeFunc? unsub;
-    _fetchSources().then(controller.add).catchError(controller.addError);
-    _pb.collection('scraper_sources').subscribe('*', (e) {
-      _fetchSources().then(controller.add).catchError(controller.addError);
-    }).then((fn) => unsub = fn);
+
+    void emitSafe() {
+      fetch().then((data) {
+        if (controller.hasListener) controller.add(data);
+      }).catchError((Object e) {
+        if (controller.hasListener) controller.addError(e);
+      });
+    }
+
+    emitSafe();
+    _pb.collection(collection).subscribe('*', (_) => emitSafe()).then((fn) => unsub = fn);
     controller.onCancel = () => unsub?.call();
     return controller.stream;
   }
+
+  // ─── Scraper Sources ───
+
+  /// Get all scraper sources ordered by priority
+  Stream<List<ScraperSource>> watchSources() =>
+      _watchCol(collection: 'scraper_sources', fetch: _fetchSources);
 
   Future<List<ScraperSource>> _fetchSources() async {
     final result = await _pb.collection('scraper_sources').getFullList(sort: 'priority');
@@ -90,16 +107,8 @@ class ScraperRepository {
   // ─── Scraper Brands ───
 
   /// Get all brands
-  Stream<List<ScraperBrand>> watchBrands() {
-    final controller = StreamController<List<ScraperBrand>>();
-    UnsubscribeFunc? unsub;
-    _fetchBrands().then(controller.add).catchError(controller.addError);
-    _pb.collection('scraper_brands').subscribe('*', (e) {
-      _fetchBrands().then(controller.add).catchError(controller.addError);
-    }).then((fn) => unsub = fn);
-    controller.onCancel = () => unsub?.call();
-    return controller.stream;
-  }
+  Stream<List<ScraperBrand>> watchBrands() =>
+      _watchCol(collection: 'scraper_brands', fetch: _fetchBrands);
 
   Future<List<ScraperBrand>> _fetchBrands() async {
     final result = await _pb.collection('scraper_brands').getFullList(sort: 'name');
@@ -155,16 +164,8 @@ class ScraperRepository {
   // ─── Scraper Schedules ───
 
   /// Get all schedules
-  Stream<List<ScraperSchedule>> watchSchedules() {
-    final controller = StreamController<List<ScraperSchedule>>();
-    UnsubscribeFunc? unsub;
-    _fetchSchedules().then(controller.add).catchError(controller.addError);
-    _pb.collection('scraper_schedules').subscribe('*', (e) {
-      _fetchSchedules().then(controller.add).catchError(controller.addError);
-    }).then((fn) => unsub = fn);
-    controller.onCancel = () => unsub?.call();
-    return controller.stream;
-  }
+  Stream<List<ScraperSchedule>> watchSchedules() =>
+      _watchCol(collection: 'scraper_schedules', fetch: _fetchSchedules);
 
   Future<List<ScraperSchedule>> _fetchSchedules() async {
     final result = await _pb.collection('scraper_schedules').getFullList(sort: 'name');
@@ -207,16 +208,8 @@ class ScraperRepository {
   // ─── Scraper Logs ───
 
   /// Get recent logs
-  Stream<List<ScraperLog>> watchLogs({int limit = 20}) {
-    final controller = StreamController<List<ScraperLog>>();
-    UnsubscribeFunc? unsub;
-    _fetchLogs(limit: limit).then(controller.add).catchError(controller.addError);
-    _pb.collection('scraper_logs').subscribe('*', (e) {
-      _fetchLogs(limit: limit).then(controller.add).catchError(controller.addError);
-    }).then((fn) => unsub = fn);
-    controller.onCancel = () => unsub?.call();
-    return controller.stream;
-  }
+  Stream<List<ScraperLog>> watchLogs({int limit = 20}) =>
+      _watchCol(collection: 'scraper_logs', fetch: () => _fetchLogs(limit: limit));
 
   Future<List<ScraperLog>> _fetchLogs({int limit = 20}) async {
     final result = await _pb.collection('scraper_logs').getList(
@@ -243,16 +236,8 @@ class ScraperRepository {
   // ─── Category Templates ───
 
   /// Get all category templates
-  Stream<List<CategoryTemplate>> watchCategoryTemplates() {
-    final controller = StreamController<List<CategoryTemplate>>();
-    UnsubscribeFunc? unsub;
-    _fetchCategoryTemplates().then(controller.add).catchError(controller.addError);
-    _pb.collection('category_templates').subscribe('*', (e) {
-      _fetchCategoryTemplates().then(controller.add).catchError(controller.addError);
-    }).then((fn) => unsub = fn);
-    controller.onCancel = () => unsub?.call();
-    return controller.stream;
-  }
+  Stream<List<CategoryTemplate>> watchCategoryTemplates() =>
+      _watchCol(collection: 'category_templates', fetch: _fetchCategoryTemplates);
 
   Future<List<CategoryTemplate>> _fetchCategoryTemplates() async {
     final result = await _pb.collection('category_templates').getFullList();
@@ -287,16 +272,8 @@ class ScraperRepository {
   // ─── Subscription Services ───
 
   /// Get all subscription services
-  Stream<List<StreamingService>> watchStreamingServices() {
-    final controller = StreamController<List<StreamingService>>();
-    UnsubscribeFunc? unsub;
-    _fetchStreamingServices().then(controller.add).catchError(controller.addError);
-    _pb.collection('subscription_services').subscribe('*', (e) {
-      _fetchStreamingServices().then(controller.add).catchError(controller.addError);
-    }).then((fn) => unsub = fn);
-    controller.onCancel = () => unsub?.call();
-    return controller.stream;
-  }
+  Stream<List<StreamingService>> watchStreamingServices() =>
+      _watchCol(collection: 'subscription_services', fetch: _fetchStreamingServices);
 
   Future<List<StreamingService>> _fetchStreamingServices() async {
     final result = await _pb.collection('subscription_services').getFullList(sort: 'category');

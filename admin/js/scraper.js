@@ -41,7 +41,7 @@ function slog(msg, type = 'info') {
     error: 'var(--red)', warn: 'var(--amber)'
   };
   const icons = { info: 'ℹ️', success: '✅', error: '❌', warn: '⚠️' };
-  const escaped = String(msg).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const escaped = escHtml(msg);
   el.innerHTML += `<div class="slog-line" style="color:${colors[type] || colors.info}">[${ts}] ${icons[type] || ''} ${escaped}</div>`;
   el.scrollTop = el.scrollHeight;
 }

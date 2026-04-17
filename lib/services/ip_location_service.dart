@@ -87,16 +87,6 @@ class IpLocationService {
       });
     } catch (_) {}
   }
-
-  static String _currencyFromCountry(String countryCode) {
-    const map = {
-      'US': 'USD', 'GB': 'GBP', 'DE': 'EUR', 'FR': 'EUR', 'IT': 'EUR',
-      'ES': 'EUR', 'NL': 'EUR', 'CA': 'CAD', 'AU': 'AUD', 'JP': 'JPY',
-      'IN': 'INR', 'TR': 'TRY', 'SE': 'SEK', 'PL': 'PLN', 'MX': 'MXN',
-      'BR': 'BRL', 'SG': 'SGD', 'AE': 'AED', 'SA': 'SAR',
-    };
-    return map[countryCode] ?? 'USD';
-  }
 }
 
 final ipLocationServiceProvider = Provider<IpLocationService>((ref) {
