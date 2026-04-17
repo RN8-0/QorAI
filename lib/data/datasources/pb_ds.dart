@@ -53,6 +53,46 @@ class PbDataSource {
     );
   }
 
+  Stream<T> _createRealtimeStream<T>({
+    required String collection,
+    String topic = '*',
+    required Future<T> Function() load,
+    bool Function(RecordSubscriptionEvent event)? shouldReload,
+  }) {
+    late final StreamController<T> controller;
+    late final dynamic subscription;
+
+    Future<void> emitSnapshot() async {
+      try {
+        final data = await load();
+        if (!controller.isClosed) {
+          controller.add(data);
+        }
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
+      }
+    }
+
+    controller = StreamController<T>(
+      onListen: () {
+        unawaited(emitSnapshot());
+      },
+      onCancel: () async {
+        await subscription.unsubscribe();
+      },
+    );
+
+    subscription = _pb.collection(collection).subscribe(topic, (event) {
+      if (shouldReload == null || shouldReload(event)) {
+        unawaited(emitSnapshot());
+      }
+    });
+
+    return controller.stream;
+  }
+
   // ────────────────────────────────────────────────────────────────────────
   // ─── USERS ───
   // ────────────────────────────────────────────────────────────────────────
@@ -72,23 +112,11 @@ class PbDataSource {
   }
 
   Stream<UserModel?> watchUser(String uid) {
-    final controller = StreamController<UserModel?>();
-    _pb.collection(AppConstants.usersCollection).subscribe(uid, (e) {
-      if (e.action == 'delete') {
-        controller.add(null);
-      } else {
-        try {
-          controller.add(UserModel.fromPb(e.record!));
-        } catch (_) {}
-      }
-    });
-    // Fetch initial value
-    getUser(uid)
-        .then((u) {
-          if (!controller.isClosed) controller.add(u);
-        })
-        .catchError((_) {});
-    return controller.stream;
+    return _createRealtimeStream<UserModel?>(
+      collection: AppConstants.usersCollection,
+      topic: uid,
+      load: () => getUser(uid),
+    );
   }
 
   Future<void> createUser(UserModel user) async {
@@ -155,18 +183,11 @@ class PbDataSource {
   }
 
   Stream<List<String>> watchRecentlyViewed(String uid) {
-    final controller = StreamController<List<String>>();
-    getRecentlyViewed(uid).then((ids) {
-      if (!controller.isClosed) controller.add(ids);
-    });
-    _pb.collection('recently_viewed').subscribe('*', (e) {
-      if (e.record?.data['userId'] == uid) {
-        getRecentlyViewed(uid).then((ids) {
-          if (!controller.isClosed) controller.add(ids);
-        });
-      }
-    });
-    return controller.stream;
+    return _createRealtimeStream<List<String>>(
+      collection: 'recently_viewed',
+      load: () => getRecentlyViewed(uid),
+      shouldReload: (event) => event.record?.data['userId'] == uid,
+    );
   }
 
   // ─── User Activity Arrays (stored in user document) ───
@@ -1012,56 +1033,45 @@ class PbDataSource {
     String productId, {
     int limit = 30,
   }) {
-    final controller = StreamController<List<ReviewModel>>();
-    getProductReviews(productId, limit: limit).then((reviews) {
-      if (!controller.isClosed) controller.add(reviews);
-    });
-    _pb.collection(AppConstants.reviewsCollection).subscribe('*', (e) {
-      if (e.record?.data['productId'] == productId) {
-        getProductReviews(productId, limit: limit).then((reviews) {
-          if (!controller.isClosed) controller.add(reviews);
-        });
-      }
-    });
-    return controller.stream;
+    return _createRealtimeStream<List<ReviewModel>>(
+      collection: AppConstants.reviewsCollection,
+      load: () => getProductReviews(productId, limit: limit),
+      shouldReload: (event) => event.record?.data['productId'] == productId,
+    );
   }
 
   Stream<List<ReviewModel>> watchUserReviews(String userId, {int limit = 50}) {
-    final controller = StreamController<List<ReviewModel>>();
-    _pb
-        .collection(AppConstants.reviewsCollection)
-        .getList(
-          page: 1,
-          perPage: limit,
-          filter: 'userId = "$userId"',
-          sort: '-created',
-        )
-        .then((r) {
-          if (!controller.isClosed) {
-            controller.add(r.items.map((r) => ReviewModel.fromPb(r)).toList());
-          }
-        });
-    return controller.stream;
+    return _createRealtimeStream<List<ReviewModel>>(
+      collection: AppConstants.reviewsCollection,
+      load: () async {
+        final result = await _pb
+            .collection(AppConstants.reviewsCollection)
+            .getList(
+              page: 1,
+              perPage: limit,
+              filter: 'userId = "$userId"',
+              sort: '-created',
+            );
+        return result.items.map(ReviewModel.fromPb).toList();
+      },
+      shouldReload: (event) => event.record?.data['userId'] == userId,
+    );
   }
 
   // ─── Review Replies (sub-table via replies collection) ───
 
   Stream<List<Map<String, dynamic>>> watchReviewReplies(
-    String collection,
+    String collectionSource,
     String reviewId,
   ) {
-    final controller = StreamController<List<Map<String, dynamic>>>();
-    _fetchReplies(reviewId).then((replies) {
-      if (!controller.isClosed) controller.add(replies);
-    });
-    _pb.collection('review_replies').subscribe('*', (e) {
-      if (e.record?.data['reviewId'] == reviewId) {
-        _fetchReplies(reviewId).then((replies) {
-          if (!controller.isClosed) controller.add(replies);
-        });
-      }
-    });
-    return controller.stream;
+    if (collectionSource.isEmpty) {
+      debugPrint('[PB] watchReviewReplies called without collection source');
+    }
+    return _createRealtimeStream<List<Map<String, dynamic>>>(
+      collection: 'review_replies',
+      load: () => _fetchReplies(reviewId),
+      shouldReload: (event) => event.record?.data['reviewId'] == reviewId,
+    );
   }
 
   Future<List<Map<String, dynamic>>> _fetchReplies(String reviewId) async {
@@ -1447,38 +1457,21 @@ class PbDataSource {
   }
 
   Stream<List<ChatConversation>> streamChatConversations(String userId) {
-    final controller = StreamController<List<ChatConversation>>();
-    _pb
-        .collection('chat_conversations')
-        .getList(
-          page: 1,
-          perPage: 50,
-          filter: 'userId = "$userId"',
-          sort: '-updated',
-        )
-        .then((r) {
-          if (!controller.isClosed) {
-            controller.add(r.items.map(ChatConversation.fromPb).toList());
-          }
-        });
-    _pb.collection('chat_conversations').subscribe('*', (e) {
-      if (e.record?.data['userId'] == userId) {
-        _pb
+    return _createRealtimeStream<List<ChatConversation>>(
+      collection: 'chat_conversations',
+      load: () async {
+        final result = await _pb
             .collection('chat_conversations')
             .getList(
               page: 1,
               perPage: 50,
               filter: 'userId = "$userId"',
               sort: '-updated',
-            )
-            .then((r) {
-              if (!controller.isClosed) {
-                controller.add(r.items.map(ChatConversation.fromPb).toList());
-              }
-            });
-      }
-    });
-    return controller.stream;
+            );
+        return result.items.map(ChatConversation.fromPb).toList();
+      },
+      shouldReload: (event) => event.record?.data['userId'] == userId,
+    );
   }
 
   Future<ChatConversation?> getChatConversation(

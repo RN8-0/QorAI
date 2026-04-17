@@ -584,6 +584,81 @@ class HomeFeed {
   });
 }
 
+class _ViewedBehaviorSnapshot {
+  final Map<String, double> categoryScores;
+  final Map<String, double> brandScores;
+
+  const _ViewedBehaviorSnapshot({
+    this.categoryScores = const {},
+    this.brandScores = const {},
+  });
+}
+
+_ViewedBehaviorSnapshot? _cachedViewedBehaviorSnapshot;
+DateTime? _cachedViewedBehaviorAt;
+const _viewedBehaviorCacheTtl = Duration(minutes: 5);
+
+_ViewedBehaviorSnapshot _loadViewedBehaviorSnapshot() {
+  final cachedSnapshot = _cachedViewedBehaviorSnapshot;
+  final cachedAt = _cachedViewedBehaviorAt;
+  if (cachedSnapshot != null &&
+      cachedAt != null &&
+      DateTime.now().difference(cachedAt) < _viewedBehaviorCacheTtl) {
+    return cachedSnapshot;
+  }
+
+  final viewedCategoryScores = <String, double>{};
+  final viewedBrandScores = <String, double>{};
+
+  try {
+    final box = Hive.box('user_data');
+    if (!box.isOpen) {
+      return const _ViewedBehaviorSnapshot();
+    }
+
+    final viewedRaw = box.get('viewed_products') as List<dynamic>? ?? [];
+    for (var i = 0; i < viewedRaw.length; i++) {
+      final item = viewedRaw[i];
+      if (item is! Map) continue;
+
+      final cat = (item['category'] as String? ?? '').toLowerCase().trim();
+      final brand = (item['brand'] as String? ?? '').toLowerCase().trim();
+      final recencyWeight = 1.0 / (1 + i * 0.1);
+
+      if (cat.isNotEmpty) {
+        viewedCategoryScores[cat] =
+            (viewedCategoryScores[cat] ?? 0) + recencyWeight;
+      }
+      if (brand.isNotEmpty) {
+        viewedBrandScores[brand] =
+            (viewedBrandScores[brand] ?? 0) + recencyWeight;
+      }
+    }
+  } catch (_) {
+    return const _ViewedBehaviorSnapshot();
+  }
+
+  final maxCatScore = viewedCategoryScores.values.fold(
+    1.0,
+    (a, b) => a > b ? a : b,
+  );
+  final maxBrandScore = viewedBrandScores.values.fold(
+    1.0,
+    (a, b) => a > b ? a : b,
+  );
+
+  viewedCategoryScores.updateAll((k, v) => v / maxCatScore);
+  viewedBrandScores.updateAll((k, v) => v / maxBrandScore);
+
+  final snapshot = _ViewedBehaviorSnapshot(
+    categoryScores: Map.unmodifiable(viewedCategoryScores),
+    brandScores: Map.unmodifiable(viewedBrandScores),
+  );
+  _cachedViewedBehaviorSnapshot = snapshot;
+  _cachedViewedBehaviorAt = DateTime.now();
+  return snapshot;
+}
+
 HomeFeed _buildHomeFeed(
   List<ProductEntity> products,
   String country, {
@@ -748,42 +823,9 @@ HomeFeed _buildHomeFeed(
   }
 
   // ── USER PROFILE PERSONALIZATION BOOST ─────────────────────────────────────
-  // Calculate behavior-based category & brand affinities from Hive viewed products
-  final viewedCategoryScores = <String, double>{};
-  final viewedBrandScores = <String, double>{};
-  try {
-    final box = Hive.box('user_data');
-    final viewedRaw = box.get('viewed_products') as List<dynamic>? ?? [];
-    for (var i = 0; i < viewedRaw.length; i++) {
-      final item = viewedRaw[i];
-      if (item is Map) {
-        final cat = (item['category'] as String? ?? '').toLowerCase().trim();
-        final brand = (item['brand'] as String? ?? '').toLowerCase().trim();
-        // Recency weight: more recent views = stronger signal (exponential decay)
-        final recencyWeight = 1.0 / (1 + i * 0.1);
-        if (cat.isNotEmpty) {
-          viewedCategoryScores[cat] =
-              (viewedCategoryScores[cat] ?? 0) + recencyWeight;
-        }
-        if (brand.isNotEmpty) {
-          viewedBrandScores[brand] =
-              (viewedBrandScores[brand] ?? 0) + recencyWeight;
-        }
-      }
-    }
-  } catch (_) {}
-
-  // Normalize scores to 0-1 range
-  final maxCatScore = viewedCategoryScores.values.fold(
-    1.0,
-    (a, b) => a > b ? a : b,
-  );
-  final maxBrandScore = viewedBrandScores.values.fold(
-    1.0,
-    (a, b) => a > b ? a : b,
-  );
-  viewedCategoryScores.updateAll((k, v) => v / maxCatScore);
-  viewedBrandScores.updateAll((k, v) => v / maxBrandScore);
+  final viewedBehavior = _loadViewedBehaviorSnapshot();
+  final viewedCategoryScores = viewedBehavior.categoryScores;
+  final viewedBrandScores = viewedBehavior.brandScores;
 
   double userBoost(ProductEntity p) {
     if (user == null) return 1.0;
@@ -927,7 +969,8 @@ HomeFeed _buildHomeFeed(
   }
 
   // ── YouTube-style composite score WITH user personalization ────────────────
-  double youtubeScore(ProductEntity p) {
+  final scoreCache = <String, double>{};
+  double youtubeScore(ProductEntity p) => scoreCache.putIfAbsent(p.id, () {
     final engagement = (p.trendScore / 10.0).clamp(0.0, 1.0);
 
     final year = estimateYear(p);
@@ -948,7 +991,6 @@ HomeFeed _buildHomeFeed(
     else
       recency = 0.05;
 
-    // Bonus for products with recent createdAt (freshly scraped = up-to-date)
     if (p.createdAt != null) {
       final daysSinceCreated = DateTime.now().difference(p.createdAt!).inDays;
       if (daysSinceCreated < 90)
@@ -958,11 +1000,10 @@ HomeFeed _buildHomeFeed(
     }
 
     final quality = (p.techScore / 100.0).clamp(0.0, 1.0);
-
     return ((engagement * 0.30) + (recency * 0.30) + (quality * 0.25) + 0.15) *
         brandBoost(p) *
         userBoost(p);
-  }
+  });
 
   // ── By category: scored, top 60 each with brand diversity ─────────────────
   final byCategory = <String, List<ProductEntity>>{};
@@ -1286,10 +1327,38 @@ const _feedCategories = [
 
 /// In-memory feed cache for instant access across providers
 HomeFeed? _inMemoryFeed;
+final Set<String> _legacyFeedCacheCleanupUsers = <String>{};
 
 /// Clear in-memory feed cache (called from pull-to-refresh)
 void clearInMemoryFeedCache() {
   _inMemoryFeed = null;
+  _cachedViewedBehaviorSnapshot = null;
+  _cachedViewedBehaviorAt = null;
+}
+
+void _scheduleLegacyFeedCacheCleanup(CacheService cache, UserEntity? user) {
+  final cacheOwner = user?.uid ?? 'anon';
+  if (!_legacyFeedCacheCleanupUsers.add(cacheOwner)) return;
+
+  for (final ver in const [
+    'v17_modern',
+    'v18',
+    'v19',
+    'v20',
+    'v21',
+    'v22',
+    'v23',
+    'v24',
+    'v25',
+    'v26',
+    'v27',
+    'v28',
+  ]) {
+    final key = ver == 'v17_modern'
+        ? 'home_feed_$ver'
+        : 'home_feed_${ver}_$cacheOwner';
+    unawaited(cache.delete(key));
+  }
 }
 
 /// Flag to prevent concurrent background refreshes
@@ -1319,29 +1388,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   // Cache key includes user UID for personalized feeds
   final cacheKey = 'home_feed_v29_${user?.uid ?? "anon"}';
-
-  // Clear ALL old cache versions
-  try {
-    for (final ver in [
-      'v17_modern',
-      'v18',
-      'v19',
-      'v20',
-      'v21',
-      'v22',
-      'v23',
-      'v24',
-      'v25',
-      'v26',
-      'v27',
-      'v28',
-    ]) {
-      final key = ver == 'v17_modern'
-          ? 'home_feed_$ver'
-          : 'home_feed_${ver}_${user?.uid ?? "anon"}';
-      cache.delete(key);
-    }
-  } catch (_) {}
+  _scheduleLegacyFeedCacheCleanup(cache, user);
 
   // Start admin config fetch CONCURRENTLY (don't block product loading)
   final configFuture = _fetchAdminConfig();
@@ -1677,52 +1724,48 @@ void _saveProductsToCache(
   } catch (_) {}
 }
 
+AsyncValue<T> _mapHomeFeed<T>(Ref ref, T Function(HomeFeed feed) selector) {
+  final feed = ref.watch(homeFeedProvider);
+  return feed.whenData(selector);
+}
+
 /// Convenience: trending products derived from home feed
-final trendingProductsProvider = FutureProvider<List<ProductEntity>>((
-  ref,
-) async {
-  final feed = await ref
-      .watch(homeFeedProvider.future)
-      .timeout(const Duration(seconds: 20));
-  return feed.trending;
-});
+final trendingProductsProvider = Provider<AsyncValue<List<ProductEntity>>>(
+  (ref) => _mapHomeFeed(ref, (feed) => feed.trending),
+);
 
 /// Convenience: featured products derived from home feed
-final featuredProductsProvider = FutureProvider<List<ProductEntity>>((
-  ref,
-) async {
-  final feed = await ref.watch(homeFeedProvider.future);
-  return feed.featured;
-});
+final featuredProductsProvider = Provider<AsyncValue<List<ProductEntity>>>(
+  (ref) => _mapHomeFeed(ref, (feed) => feed.featured),
+);
 
 /// Convenience: new arrivals derived from home feed
-final newArrivalsProvider = FutureProvider<List<ProductEntity>>((ref) async {
-  final feed = await ref.watch(homeFeedProvider.future);
-  return feed.newArrivals;
-});
+final newArrivalsProvider = Provider<AsyncValue<List<ProductEntity>>>(
+  (ref) => _mapHomeFeed(ref, (feed) => feed.newArrivals),
+);
 
 /// Convenience: discover products derived from home feed (hidden gems)
-final discoverProductsProvider = FutureProvider<List<ProductEntity>>((
-  ref,
-) async {
-  final feed = await ref.watch(homeFeedProvider.future);
-  return feed.discover;
-});
+final discoverProductsProvider = Provider<AsyncValue<List<ProductEntity>>>(
+  (ref) => _mapHomeFeed(ref, (feed) => feed.discover),
+);
 
 /// Category cover photos derived from home feed (no extra queries)
-final categoryCoversProvider = FutureProvider<Map<String, String>>((ref) async {
-  final feed = await ref.watch(homeFeedProvider.future);
-  final covers = <String, String>{};
-  for (final entry in feed.byCategory.entries) {
-    if (entry.value.isNotEmpty) {
-      final best = entry.value.firstWhere(
-        (p) => p.imageURL.isNotEmpty,
-        orElse: () => entry.value.first,
-      );
-      if (best.imageURL.isNotEmpty) covers[entry.key] = best.imageURL;
+final categoryCoversProvider = Provider<AsyncValue<Map<String, String>>>((ref) {
+  return _mapHomeFeed(ref, (feed) {
+    final covers = <String, String>{};
+    for (final entry in feed.byCategory.entries) {
+      if (entry.value.isNotEmpty) {
+        final best = entry.value.firstWhere(
+          (p) => p.imageURL.isNotEmpty,
+          orElse: () => entry.value.first,
+        );
+        if (best.imageURL.isNotEmpty) {
+          covers[entry.key] = best.imageURL;
+        }
+      }
     }
-  }
-  return covers;
+    return covers;
+  });
 });
 
 /// Daily AI trending provider — daily queries Gemini for the most searched tech products,

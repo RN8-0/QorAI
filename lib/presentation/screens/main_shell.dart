@@ -12,8 +12,6 @@ import "package:go_router/go_router.dart";
 import "package:google_fonts/google_fonts.dart";
 import "package:compair/core/app_keys.dart";
 import "package:compair/presentation/providers/providers.dart";
-// pcBuilderProductsProvider buradan erişilir (providers.dart part file)
-import "package:compair/domain/entities/product_entity.dart";
 import "package:compair/presentation/screens/ai_chat/ai_chat_screen.dart";
 import "package:compair/services/connectivity_service.dart";
 import "package:compair/routing/router.dart";
@@ -39,35 +37,14 @@ class _MainShellState extends ConsumerState<MainShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _warmCache();
+      _primeBackgroundState();
     });
   }
 
-  Future<void> _warmCache() async {
-    try {
-      ref.read(pbDataSourceProvider).preWarmSearchFunction();
-      ref.read(pbDataSourceProvider).warmUpCache();
-    } catch (_) {}
-    // Kick off IP-based country detection in background
+  void _primeBackgroundState() {
     try {
       ref.read(countryInitProvider);
     } catch (_) {}
-    // Preload PC Builder categories in PARALLEL batches of 4
-    // to maximize speed while avoiding Firestore SDK connection throttling
-    Future.microtask(() async {
-      const pcCats = [
-        'cpus', 'gpus', 'ram', 'ssd',
-        'psu', 'cases', 'coolers', 'motherboards',
-        'monitors', 'keyboards', 'mice', 'headsets',
-      ];
-      const batchSize = 4;
-      for (var i = 0; i < pcCats.length; i += batchSize) {
-        final batch = pcCats.skip(i).take(batchSize);
-        await Future.wait(
-          batch.map((cat) => ref.read(pcBuilderProductsProvider(cat).future).catchError((_) => <ProductEntity>[])),
-        );
-      }
-    });
   }
 
   int _indexFromLocation(String location) {

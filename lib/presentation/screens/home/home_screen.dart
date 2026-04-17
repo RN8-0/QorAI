@@ -160,6 +160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final userProfile = ref.watch(userProfileProvider);
+    final homeFeed = ref.watch(homeFeedProvider);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -225,7 +226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 onSeeAll: () => context.push(AppRoutes.search),
               ),
             ),
-            SliverToBoxAdapter(child: _buildTrendsSection()),
+            SliverToBoxAdapter(child: _buildTrendsSection(homeFeed)),
 
             // ── NEW ARRIVALS ────────────────────────────────────────────────
             SliverToBoxAdapter(
@@ -241,7 +242,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
             // ── DYNAMIC PRIORITY CATEGORIES ─────────────────────────────────
             // Categories are ordered by user behavior & profile (no more hardcoded!)
-            ..._buildPriorityCategorySections(),
+            ..._buildPriorityCategorySections(homeFeed),
 
             // ── VALUE PICKS ──────────────────────────────────────────────
             ..._buildValuePicksSection(),
@@ -1357,10 +1358,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === PERSONALIZED SECTION ==================================================
 
   Widget _buildPersonalizedSection() {
-    final userProfile = ref.watch(userProfileProvider);
-    final user = userProfile.valueOrNull;
-    final algorithmService = ref.read(profileAlgorithmServiceProvider);
-
     return SizedBox(
       height: 230,
       child: ref.watch(personalizedRecommendationsProvider).when(
@@ -1410,18 +1407,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Shows header + products only if the category has data
 
   List<Widget> _buildCategoryBlock({
+    required AsyncValue<HomeFeed> homeFeed,
     required String title,
     required String categoryId,
     required IconData icon,
     required Color iconColor,
     bool wide = true,
   }) {
-    final feed = ref.watch(homeFeedProvider);
-    final productCount = feed.whenOrNull(
+    final productCount = homeFeed.whenOrNull(
       data: (f) => f.byCategory[categoryId]?.length ?? 0,
     ) ?? 0;
     // During loading show skeleton; once loaded, require at least 3 products
-    final isLoading = feed.isLoading;
+    final isLoading = homeFeed.isLoading;
     if (!isLoading && productCount < 1) return [];
 
     final routeName = categoryId == 'cpus' ? 'CPUs' : title;
@@ -1437,18 +1434,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       SliverToBoxAdapter(
         child: wide
-            ? _buildWideProductCards(categoryId)
-            : _buildCompactGridSection(categoryId),
+            ? _buildWideProductCards(homeFeed, categoryId)
+            : _buildCompactGridSection(homeFeed, categoryId),
       ),
     ];
   }
 
   // === WIDE PRODUCT CARDS ====================================================
 
-  Widget _buildWideProductCards(String categoryId) {
+  Widget _buildWideProductCards(
+    AsyncValue<HomeFeed> homeFeed,
+    String categoryId,
+  ) {
     return SizedBox(
       height: 230,
-      child: ref.watch(homeFeedProvider).when(
+      child: homeFeed.when(
         data: (feed) {
           var products = feed.byCategory[categoryId] ?? [];
           if (products.isEmpty) return const SizedBox.shrink();
@@ -1492,10 +1492,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === COMPACT GRID SECTION (now horizontal scroll) ===========================
 
-  Widget _buildCompactGridSection(String categoryId) {
+  Widget _buildCompactGridSection(
+    AsyncValue<HomeFeed> homeFeed,
+    String categoryId,
+  ) {
     return SizedBox(
       height: 230,
-      child: ref.watch(homeFeedProvider).when(
+      child: homeFeed.when(
         data: (feed) {
           var products = feed.byCategory[categoryId] ?? [];
           if (products.isEmpty) return const SizedBox.shrink();
@@ -1536,10 +1539,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === TRENDING ==============================================================
 
-  Widget _buildTrendsSection() {
+  Widget _buildTrendsSection(AsyncValue<HomeFeed> homeFeed) {
     return SizedBox(
       height: 230,
-      child: ref.watch(homeFeedProvider).when(
+      child: homeFeed.when(
         data: (feed) {
           if (!_firstDataLogged) {
             _firstDataLogged = true;
@@ -1921,11 +1924,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   /// Dynamic category sections — ordered by user behavior & profile priority
-  List<Widget> _buildPriorityCategorySections() {
-    final feed = ref.watch(homeFeedProvider);
+  List<Widget> _buildPriorityCategorySections(AsyncValue<HomeFeed> homeFeed) {
     final sections = <Widget>[];
 
-    final priorityCategories = feed.whenOrNull(
+    final priorityCategories = homeFeed.whenOrNull(
       data: (f) => f.priorityCategories,
     ) ?? [];
 
@@ -1936,15 +1938,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     int shown = 0;
     for (final category in categoriesToShow) {
-      final productCount = feed.whenOrNull(
+      final productCount = homeFeed.whenOrNull(
         data: (f) => f.byCategory[category]?.length ?? 0,
       ) ?? 0;
-      final isLoading = feed.isLoading;
+      final isLoading = homeFeed.isLoading;
       if (!isLoading && productCount < 4) continue;
 
       final info = _categoryMeta(category);
       final isWide = shown < 6; // First 6 categories are wide cards
       sections.addAll(_buildCategoryBlock(
+        homeFeed: homeFeed,
         title: info['title'] as String,
         categoryId: category,
         icon: info['icon'] as IconData,
@@ -2003,10 +2006,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return {...info, 'color': AppTheme.categoryColor(cat)};
   }
 
-  Widget _buildCategoryProductsRow(String category) {
+  Widget _buildCategoryProductsRow(
+    AsyncValue<HomeFeed> homeFeed,
+    String category,
+  ) {
     return SizedBox(
       height: 230,
-      child: ref.watch(homeFeedProvider).when(
+      child: homeFeed.when(
         data: (feed) {
           final products = feed.byCategory[category] ?? [];
           if (products.isEmpty) return const SizedBox.shrink();

@@ -76,7 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.home,
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: false,
 
     // Page transition animation - Section 14.4 (300ms, Curves.easeInOut)
     routes: [
@@ -154,14 +154,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: AppRoutes.linkPaste,
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: LinkPasteScreen(key: UniqueKey()),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: LinkPasteScreen(),
             ),
           ),
           GoRoute(
             path: AppRoutes.subscriptions,
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: SubscriptionsScreen(key: UniqueKey()),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: SubscriptionsScreen(),
             ),
           ),
         ],
