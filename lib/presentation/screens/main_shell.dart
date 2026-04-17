@@ -266,11 +266,13 @@ class _FloatingNavBar extends StatelessWidget {
                   ? AppTheme.brandDark.withValues(alpha: 0.88)
                   : context.surfaceElevatedColor.withValues(alpha: 0.96),
               borderRadius: BorderRadius.circular(AppTheme.radiusXXL),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.09)
-                    : context.dividerColor,
-                width: 0.5,
+              border: Border.symmetric(
+                horizontal: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.09)
+                      : context.dividerColor,
+                  width: 0.5,
+                ),
               ),
             ),
             child: Row(

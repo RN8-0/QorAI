@@ -686,6 +686,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === SEARCH BAR ============================================================
 
   Widget _buildSearchBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       child: GestureDetector(
@@ -696,73 +697,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppTheme.brandBlue.withValues(alpha: 0.12),
-                AppTheme.brandCyan.withValues(alpha: 0.06),
-              ],
-            ),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : context.surfaceVariantColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppTheme.brandBlue.withValues(alpha: 0.20),
-              width: 0.5,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : context.dividerColor,
+              width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.brandBlue.withValues(alpha: 0.14),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-              ),
-              BoxShadow(
-                color: AppTheme.brandCyan.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              ShaderMask(
-                shaderCallback: (bounds) =>
-                    AppTheme.primaryGradient.createShader(bounds),
-                child: const Icon(Icons.search_rounded, size: 22, color: Colors.white),
-              ),
+              Icon(Icons.search_rounded, size: 22, color: context.textTertiaryColor),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(context.l10n?.searchProducts ?? 'Search products...',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15, color: context.textTertiaryColor)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.brandBlue.withValues(alpha: 0.20),
-                      AppTheme.brandCyan.withValues(alpha: 0.12),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppTheme.brandCyan.withValues(alpha: 0.25),
-                    width: 0.5,
-                  ),
-                ),
-                child: ShaderMask(
-                  shaderCallback: (bounds) =>
-                      AppTheme.primaryGradient.createShader(bounds),
-                  child: Text(
-                    'AI',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white),
+                child: Text(
+                  context.l10n?.searchProducts ?? 'Search Products',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    color: context.textTertiaryColor,
                   ),
                 ),
               ),
@@ -1271,6 +1227,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final icon = cat['icon'] as IconData;
     final name = cat['name'] as String;
     final id = cat['id'] as String;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -1286,28 +1243,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Container(
               width: 56, height: 56,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    color.withValues(alpha: 0.18),
-                    color.withValues(alpha: 0.09),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: isDark
+                    ? color.withValues(alpha: 0.15)
+                    : color.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: color.withValues(alpha: 0.28), width: 0.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.18),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.22),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
               ),
               child: Icon(icon, color: color, size: 24),
             ),
