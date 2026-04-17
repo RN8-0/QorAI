@@ -1851,6 +1851,82 @@ function _qualityIssues(p, minSpecs, minImages) {
   return issues;
 }
 
+// Normalize a single image URL (upgrade size prefix)
+function _normImgUrl(u) { return u ? u.replace(/\/[ksmtc]_/g, '/b_').trim() : u; }
+
+// Deduplicate + normalize + cap at 8 for a product's image list
+function _cleanImgList(imgs) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of (imgs || [])) {
+    const u = _normImgUrl(raw);
+    if (u && !seen.has(u)) { seen.add(u); out.push(u); }
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+// One-shot bulk image cleanup: normalize URLs, remove duplicates, cap at 8
+async function fixAllImages() {
+  if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
+  scraperRunning = true;
+  scraperAbort = false;
+  document.getElementById('btnFixImages').style.display = 'none';
+  document.getElementById('btnStopQuality').style.display = '';
+  clearScraperLog();
+  slog('══ Görsel Temizleme Başladı ══', 'info');
+  slog('Tüm ürünler taranıyor: URL normalize + duplikat kaldır + max 8...', 'info');
+
+  let products = [];
+  try {
+    const total = (await getPb().collection('products').getList(1, 1, {})).totalItems;
+    const pages = Math.ceil(total / 500);
+    slog(`Toplam ${total} ürün, ${pages} sayfa`, 'info');
+    for (let page = 1; page <= pages && !scraperAbort; page++) {
+      const r = await getPb().collection('products').getList(page, 500, {});
+      products.push(...r.items);
+      updateProgress(page, pages, 'Yükleniyor');
+    }
+  } catch(e) { slog('Yükleme hatası: ' + e.message, 'error'); _finishQualityScan(); return; }
+
+  slog(`✓ ${products.length} ürün yüklendi. Temizleniyor...`, 'success');
+
+  let fixed = 0, skipped = 0;
+  for (let i = 0; i < products.length && !scraperAbort; i++) {
+    const p = products[i];
+    updateProgress(i + 1, products.length, 'Temizleniyor');
+
+    const cleaned = _cleanImgList(p.images);
+    const cleanedUrl = _normImgUrl(p.imageUrl || p.imageURL || cleaned[0] || '');
+
+    // Only update if something changed
+    const needsUpdate = (cleaned.length !== (p.images || []).length)
+      || cleaned.some((v, idx) => v !== (p.images || [])[idx])
+      || cleanedUrl !== (p.imageUrl || p.imageURL || '');
+
+    if (!needsUpdate) { skipped++; continue; }
+
+    try {
+      await pbUpdateDoc('products', p.id, {
+        images: cleaned,
+        imageUrl: cleanedUrl,
+        imageURL: cleanedUrl,
+      });
+      fixed++;
+      if (fixed <= 20 || fixed % 100 === 0) {
+        slog(`  ✓ ${p.name || p.id}: ${(p.images||[]).length} → ${cleaned.length} görsel`, 'success');
+      }
+    } catch(e) {
+      slog(`  ✗ ${p.name || p.id}: ${e.message}`, 'error');
+    }
+  }
+
+  slog(`\n══ Tamamlandı ══`, 'success');
+  slog(`✓ Düzeltildi: ${fixed} | Zaten temiz: ${skipped}`, 'success');
+  _finishQualityScan();
+  document.getElementById('btnFixImages').style.display = '';
+}
+
 async function startQualityScan() {
   if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
   if (!(await checkProxy())) { toast('Önce proxy\'yi başlatın', 'e'); return; }
@@ -1968,19 +2044,11 @@ async function startQualityScan() {
 
         const update = { qualityFixedAt: new Date().toISOString() };
 
-        // Images: normalize + deduplicate (fix /k_ vs /b_ mismatch causing duplicates)
-        const _normImg = u => u ? u.replace(/\/[ksmtc]_/g, '/b_').trim() : u;
-        const existingImages = (p.images || []).map(_normImg).filter(Boolean);
-        const freshImages = (fresh.images || []).map(_normImg).filter(Boolean);
-        const seenImgs = new Set(freshImages);
-        const mergedImages = [...freshImages];
-        for (const img of existingImages) { if (!seenImgs.has(img)) { seenImgs.add(img); mergedImages.push(img); } }
-        const mergedSliced = mergedImages.slice(0, 8);
-        if (mergedSliced.length !== existingImages.length || !mergedSliced.every((v,i)=>v===existingImages[i]) || (fresh.imageUrl && !p.imageUrl)) {
-          update.images = mergedSliced;
-          update.imageUrl = mergedSliced[0] || '';
-          update.imageURL = mergedSliced[0] || '';
-        }
+        // Images: use helper to normalize + deduplicate + cap at 8
+        const mergedSliced = _cleanImgList([...(fresh.images || []), ...(p.images || [])]);
+        update.images = mergedSliced;
+        update.imageUrl = mergedSliced[0] || '';
+        update.imageURL = mergedSliced[0] || '';
 
         // Specs: use whichever has more
         const existingSpecCount = p.specsCount || Object.keys(p.specs || {}).length;
