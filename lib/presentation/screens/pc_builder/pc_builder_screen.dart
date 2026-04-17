@@ -1493,6 +1493,15 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
   Future<void> _runAiAnalysis() async {
     if (_aiLoading) return;
+    // Check AI feature limit
+    if (_aiAnalysis == null) {
+      final sub = ref.read(subscriptionServiceProvider);
+      if (!sub.canUseAiFeature) {
+        showPaywallSheet(context);
+        return;
+      }
+      sub.recordAiFeature();
+    }
     final focus = _primaryUpgradeComponent;
     setState(() {
       _aiLoading = true;

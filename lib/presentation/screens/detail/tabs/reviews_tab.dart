@@ -165,6 +165,13 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
       setState(() => _expanded = !_expanded);
       return;
     }
+    // Check AI feature limit before fetching
+    final sub = ref.read(subscriptionServiceProvider);
+    if (!sub.canUseAiFeature) {
+      showPaywallSheet(context);
+      return;
+    }
+    sub.recordAiFeature();
     setState(() => _expanded = true);
     ref.read(aiReviewCacheProvider(reviewKey).notifier).startAnalysis(
           widget.product.name,

@@ -36,20 +36,24 @@ class SubscriptionStatus {
 class UsageCounter {
   final int comparisons;
   final int aiQuestions;
+  final int aiFeatures;
   final int linkPastes;
   final int subscriptionAnalyses;
   final String comparisonPeriodKey;
   final String aiPeriodKey;
+  final String aiFeaturePeriodKey;
   final String linkPeriodKey;
   final String subscriptionPeriodKey;
 
   const UsageCounter({
     this.comparisons = 0,
     this.aiQuestions = 0,
+    this.aiFeatures = 0,
     this.linkPastes = 0,
     this.subscriptionAnalyses = 0,
     required this.comparisonPeriodKey,
     required this.aiPeriodKey,
+    required this.aiFeaturePeriodKey,
     required this.linkPeriodKey,
     required this.subscriptionPeriodKey,
   });
@@ -57,20 +61,24 @@ class UsageCounter {
   UsageCounter copyWith({
     int? comparisons,
     int? aiQuestions,
+    int? aiFeatures,
     int? linkPastes,
     int? subscriptionAnalyses,
     String? comparisonPeriodKey,
     String? aiPeriodKey,
+    String? aiFeaturePeriodKey,
     String? linkPeriodKey,
     String? subscriptionPeriodKey,
   }) {
     return UsageCounter(
       comparisons: comparisons ?? this.comparisons,
       aiQuestions: aiQuestions ?? this.aiQuestions,
+      aiFeatures: aiFeatures ?? this.aiFeatures,
       linkPastes: linkPastes ?? this.linkPastes,
       subscriptionAnalyses: subscriptionAnalyses ?? this.subscriptionAnalyses,
       comparisonPeriodKey: comparisonPeriodKey ?? this.comparisonPeriodKey,
       aiPeriodKey: aiPeriodKey ?? this.aiPeriodKey,
+      aiFeaturePeriodKey: aiFeaturePeriodKey ?? this.aiFeaturePeriodKey,
       linkPeriodKey: linkPeriodKey ?? this.linkPeriodKey,
       subscriptionPeriodKey:
           subscriptionPeriodKey ?? this.subscriptionPeriodKey,
@@ -120,6 +128,7 @@ class SubscriptionService extends ChangeNotifier {
   List<ProductDetails> get products => _products;
   int get comparisonsUsed => _normalizedUsage().comparisons;
   int get aiQuestionsUsed => _normalizedUsage().aiQuestions;
+  int get aiFeaturesUsed => _normalizedUsage().aiFeatures;
   int get linkPastesUsed => _normalizedUsage().linkPastes;
   int get subscriptionAnalysesUsed => _normalizedUsage().subscriptionAnalyses;
 
@@ -353,10 +362,12 @@ class SubscriptionService extends ChangeNotifier {
       jsonEncode({
         'comparisons': _usage.comparisons,
         'aiQuestions': _usage.aiQuestions,
+        'aiFeatures': _usage.aiFeatures,
         'linkPastes': _usage.linkPastes,
         'subscriptionAnalyses': _usage.subscriptionAnalyses,
         'comparisonPeriodKey': _usage.comparisonPeriodKey,
         'aiPeriodKey': _usage.aiPeriodKey,
+        'aiFeaturePeriodKey': _usage.aiFeaturePeriodKey,
         'linkPeriodKey': _usage.linkPeriodKey,
         'subscriptionPeriodKey': _usage.subscriptionPeriodKey,
       }),
@@ -463,11 +474,14 @@ class SubscriptionService extends ChangeNotifier {
       _usage = UsageCounter(
         comparisons: data['comparisons'] as int? ?? 0,
         aiQuestions: data['aiQuestions'] as int? ?? 0,
+        aiFeatures: data['aiFeatures'] as int? ?? 0,
         linkPastes: data['linkPastes'] as int? ?? 0,
         subscriptionAnalyses: data['subscriptionAnalyses'] as int? ?? 0,
         comparisonPeriodKey:
             data['comparisonPeriodKey'] as String? ?? _dailyPeriodKey(),
         aiPeriodKey: data['aiPeriodKey'] as String? ?? _dailyPeriodKey(),
+        aiFeaturePeriodKey:
+            data['aiFeaturePeriodKey'] as String? ?? _dailyPeriodKey(),
         linkPeriodKey: data['linkPeriodKey'] as String? ?? _weeklyPeriodKey(),
         subscriptionPeriodKey:
             data['subscriptionPeriodKey'] as String? ?? _monthlyPeriodKey(),
@@ -530,6 +544,7 @@ class SubscriptionService extends ChangeNotifier {
     return UsageCounter(
       comparisonPeriodKey: _dailyPeriodKey(),
       aiPeriodKey: _dailyPeriodKey(),
+      aiFeaturePeriodKey: _dailyPeriodKey(),
       linkPeriodKey: _weeklyPeriodKey(),
       subscriptionPeriodKey: _monthlyPeriodKey(),
     );
@@ -570,6 +585,10 @@ class SubscriptionService extends ChangeNotifier {
       next = next.copyWith(aiQuestions: 0, aiPeriodKey: dailyKey);
       changed = true;
     }
+    if (next.aiFeaturePeriodKey != dailyKey) {
+      next = next.copyWith(aiFeatures: 0, aiFeaturePeriodKey: dailyKey);
+      changed = true;
+    }
     if (next.linkPeriodKey != weeklyKey) {
       next = next.copyWith(linkPastes: 0, linkPeriodKey: weeklyKey);
       changed = true;
@@ -599,6 +618,12 @@ class SubscriptionService extends ChangeNotifier {
   bool get canAskAI {
     if (isPremium) return true;
     return _normalizedUsage().aiQuestions < AppConstants.freeAiQuestionLimit;
+  }
+
+  /// Can a premium AI feature be used? (deep analysis, advisor, etc.)
+  bool get canUseAiFeature {
+    if (isPremium) return true;
+    return _normalizedUsage().aiFeatures < AppConstants.freeAiFeatureLimit;
   }
 
   /// Can a link be pasted?
@@ -632,6 +657,24 @@ class SubscriptionService extends ChangeNotifier {
       );
     }
     _usage = currentUsage.copyWith(aiQuestions: currentUsage.aiQuestions + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
+    return const Success(null);
+  }
+
+  /// Record premium AI feature usage
+  Result<void> recordAiFeature() {
+    final currentUsage = _normalizedUsage();
+    if (!canUseAiFeature) {
+      return Failure(
+        UsageLimitException(
+          featureName: 'ai_feature',
+          currentUsage: currentUsage.aiFeatures,
+          limit: AppConstants.freeAiFeatureLimit,
+        ),
+      );
+    }
+    _usage = currentUsage.copyWith(aiFeatures: currentUsage.aiFeatures + 1);
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -681,6 +724,10 @@ class SubscriptionService extends ChangeNotifier {
   int get remainingAIQuestions => isPremium
       ? -1
       : AppConstants.freeAiQuestionLimit - _normalizedUsage().aiQuestions;
+
+  int get remainingAiFeatures => isPremium
+      ? -1
+      : AppConstants.freeAiFeatureLimit - _normalizedUsage().aiFeatures;
 
   int get remainingLinkPastes => isPremium
       ? -1

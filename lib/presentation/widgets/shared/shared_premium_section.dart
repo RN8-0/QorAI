@@ -8,6 +8,7 @@ import 'package:compair/core/theme.dart';
 import 'package:compair/core/utils.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/paywall_sheet.dart';
 
 /// Shared premium features section used by both detail and compare screens.
 /// Shows expandable AI analysis sections: Deep Analysis, Alternatives, Advisor, Prediction.
@@ -1729,20 +1730,19 @@ class SharedPremiumFeaturesSectionState
       });
       return;
     }
+    final lang = Localizations.localeOf(context).languageCode;
+    final key = LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: lang,
+    );
+    final hasData = ref.read(deepAnalysisCacheProvider(key)).valueOrNull != null;
+    if (!hasData && !_checkAiFeatureLimit()) return;
     setState(() {
       _deepAnalysisExpanded = true;
       _deepAnalysisUserCollapsed = false;
     });
-    final lang = Localizations.localeOf(context).languageCode;
     ref
-        .read(
-          deepAnalysisCacheProvider(
-            LocalizedProductKey(
-              productId: widget.product.id,
-              languageCode: lang,
-            ),
-          ).notifier,
-        )
+        .read(deepAnalysisCacheProvider(key).notifier)
         .startAnalysis(
           widget.product.name,
           category: widget.product.category,
@@ -1758,20 +1758,19 @@ class SharedPremiumFeaturesSectionState
       });
       return;
     }
+    final lang = Localizations.localeOf(context).languageCode;
+    final key = LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: lang,
+    );
+    final hasData = ref.read(alternativesCacheProvider(key)).valueOrNull != null;
+    if (!hasData && !_checkAiFeatureLimit()) return;
     setState(() {
       _alternativesExpanded = true;
       _alternativesUserCollapsed = false;
     });
-    final lang = Localizations.localeOf(context).languageCode;
     ref
-        .read(
-          alternativesCacheProvider(
-            LocalizedProductKey(
-              productId: widget.product.id,
-              languageCode: lang,
-            ),
-          ).notifier,
-        )
+        .read(alternativesCacheProvider(key).notifier)
         .startQuery(widget.product.name, widget.product.category);
   }
 
@@ -1783,11 +1782,17 @@ class SharedPremiumFeaturesSectionState
       });
       return;
     }
+    final lang = Localizations.localeOf(context).languageCode;
+    final key = LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: lang,
+    );
+    final hasData = ref.read(advisorCacheProvider(key)).valueOrNull != null;
+    if (!hasData && !_checkAiFeatureLimit()) return;
     setState(() {
       _advisorExpanded = true;
       _advisorUserCollapsed = false;
     });
-    final lang = Localizations.localeOf(context).languageCode;
     final country = ref.read(selectedCountryProvider);
     final currency = ref.read(currencyProvider);
     final priceVal =
@@ -1799,14 +1804,7 @@ class SharedPremiumFeaturesSectionState
         ? AppUtils.formatCurrency(priceVal, currency)
         : 'unknown price';
     ref
-        .read(
-          advisorCacheProvider(
-            LocalizedProductKey(
-              productId: widget.product.id,
-              languageCode: lang,
-            ),
-          ).notifier,
-        )
+        .read(advisorCacheProvider(key).notifier)
         .startQuery(widget.product.name, widget.product.category, price);
   }
 
@@ -1818,11 +1816,17 @@ class SharedPremiumFeaturesSectionState
       });
       return;
     }
+    final lang = Localizations.localeOf(context).languageCode;
+    final key = LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: lang,
+    );
+    final hasData = ref.read(predictionCacheProvider(key)).valueOrNull != null;
+    if (!hasData && !_checkAiFeatureLimit()) return;
     setState(() {
       _predictionExpanded = true;
       _predictionUserCollapsed = false;
     });
-    final lang = Localizations.localeOf(context).languageCode;
     final country = ref.read(selectedCountryProvider);
     final currency = ref.read(currencyProvider);
     final priceVal =
@@ -1834,20 +1838,24 @@ class SharedPremiumFeaturesSectionState
         ? AppUtils.formatCurrency(priceVal, currency)
         : 'unknown price';
     ref
-        .read(
-          predictionCacheProvider(
-            LocalizedProductKey(
-              productId: widget.product.id,
-              languageCode: lang,
-            ),
-          ).notifier,
-        )
+        .read(predictionCacheProvider(key).notifier)
         .startQuery(
           widget.product.name,
           widget.product.category,
           price,
           productContext: _predictionProductContext(widget.product),
         );
+  }
+
+  /// Check AI feature limit — returns true if allowed, shows paywall if not
+  bool _checkAiFeatureLimit() {
+    final sub = ref.read(subscriptionServiceProvider);
+    if (!sub.canUseAiFeature) {
+      showPaywallSheet(context);
+      return false;
+    }
+    sub.recordAiFeature();
+    return true;
   }
 }
 

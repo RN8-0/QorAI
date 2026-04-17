@@ -1457,6 +1457,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final aiChats = ref.watch(freemiumUsageProvider('ai_chat'));
+    final aiFeatures = ref.watch(freemiumUsageProvider('ai_feature'));
     final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
 
     return Container(
@@ -1508,10 +1509,19 @@ class _FreemiumUsageCard extends ConsumerWidget {
           const SizedBox(height: 14),
           _UsageRow(
             label: context.l10n?.aiChat ?? 'AI Chat',
-            icon: Icons.auto_awesome_rounded,
+            icon: Icons.smart_toy_rounded,
             color: AppTheme.brandCyan,
             used: aiChats,
             limit: FreemiumLimits.aiChatsPerDay,
+            period: 'today',
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: 'AI Features',
+            icon: Icons.auto_awesome_rounded,
+            color: AppTheme.premiumPurple,
+            used: aiFeatures,
+            limit: FreemiumLimits.aiFeaturesPerDay,
             period: 'today',
           ),
           const SizedBox(height: 10),

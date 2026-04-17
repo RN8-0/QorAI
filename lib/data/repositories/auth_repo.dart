@@ -42,11 +42,14 @@ class AuthRepository {
     String? gender,
   }) async {
     try {
+      final name = displayName ?? email.split('@').first;
+      final avatarUrl = 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=random&color=fff&size=128&bold=true';
       final body = <String, dynamic>{
         'email': email,
         'password': password,
         'passwordConfirm': password,
-        'name': displayName ?? email.split('@').first,
+        'name': name,
+        'photoURL': avatarUrl,
       };
       if (birthDate != null) body['birthDate'] = birthDate.toIso8601String();
       if (gender != null) body['gender'] = gender;

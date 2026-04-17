@@ -559,12 +559,24 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     _AiPanelType panel,
     Future<void> Function() fetcher,
   ) async {
+    // Collapsing — no limit check needed
     if (_isAiPanelExpanded(panel) && _hasAiPanelData(panel)) {
       setState(() => _setAiPanelExpanded(panel, false));
       return;
     }
 
     final shouldFetch = !_hasAiPanelData(panel);
+
+    // Only check limit when actually fetching new AI data
+    if (shouldFetch) {
+      final sub = ref.read(subscriptionServiceProvider);
+      if (!sub.canUseAiFeature) {
+        showPaywallSheet(context);
+        return;
+      }
+      sub.recordAiFeature();
+    }
+
     setState(() {
       _setAiPanelExpanded(panel, true);
       if (shouldFetch) {
@@ -5388,6 +5400,15 @@ Rules:
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
+              if (!_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
+                // Check AI feature limit before fetching
+                final sub = ref.read(subscriptionServiceProvider);
+                if (!sub.canUseAiFeature) {
+                  showPaywallSheet(context);
+                  return;
+                }
+                sub.recordAiFeature();
+              }
               setState(() => _matchScoreExpanded = !_matchScoreExpanded);
               if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
                 _matchScoreFetched = true;

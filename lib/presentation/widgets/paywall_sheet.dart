@@ -1346,10 +1346,16 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.compare_arrows_rounded,
       ),
       _TableRow(
-        l?.aiChatMessages ?? 'AI Chat Messages',
+        l?.aiChatMessages ?? 'AI Chat',
         _countPerDay(AppConstants.freeAiQuestionLimit),
         l?.unlimited ?? 'Unlimited',
         Icons.smart_toy_rounded,
+      ),
+      _TableRow(
+        'AI Features',
+        _countPerDay(AppConstants.freeAiFeatureLimit),
+        l?.unlimited ?? 'Unlimited',
+        Icons.auto_awesome_rounded,
       ),
       _TableRow(
         l?.linkAnalysis ?? 'Link Analysis',
@@ -1369,7 +1375,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         true,
         Icons.play_circle_rounded,
       ),
-      _TableRow(l?.pcBuilder ?? 'PC Builder', true, true, Icons.memory_rounded),
+      _TableRow(
+        l?.pcBuilder ?? 'PC Builder',
+        _countItems(AppConstants.freePcBuilderSlots),
+        l?.unlimited ?? 'Unlimited',
+        Icons.memory_rounded,
+      ),
       _TableRow(
         l?.saveProducts ?? 'Save Products',
         _countItems(AppConstants.freeCollectionLimit),
