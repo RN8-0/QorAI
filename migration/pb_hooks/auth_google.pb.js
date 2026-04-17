@@ -92,9 +92,8 @@ routerAdd("POST", "/api/auth/google", (e) => {
       const rand = $security.randomString(40);
       user.set("password", rand);
       user.set("passwordConfirm", rand);
-      // Google users are verified accounts — mark quiz as completed so they
-      // go directly to the home screen (not the onboarding quiz flow).
-      try { user.set("quizCompleted", true); } catch (_) {}
+      // New Google users must complete the onboarding quiz before using the app.
+      // quizCompleted defaults to false — do not override it here.
       // NOTE: avatar is a file-type field in PB; we store the Google picture URL
       // in a separate text field "avatarUrl" if it exists, or skip it.
       try { if (picture) user.set("avatarUrl", picture); } catch (_) {}

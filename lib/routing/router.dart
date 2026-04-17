@@ -311,6 +311,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Check auth state (PocketBase)
       final isLoggedIn = pb.authStore.isValid;
+      final record = pb.authStore.record;
 
       // Public routes (no auth required)
       const publicRoutes = [
@@ -342,6 +343,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn &&
           (location == AppRoutes.login || location == AppRoutes.onboarding)) {
         return AppRoutes.home;
+      }
+
+      // Force onboarding quiz for real (non-anonymous) users who haven't completed it.
+      // Anonymous guests use guest_*@compair.local emails and are exempt.
+      if (isLoggedIn && record != null) {
+        final email = record.data['email']?.toString() ?? '';
+        final isAnonymous = email.endsWith('@compair.local');
+        if (!isAnonymous) {
+          final quizCompleted = record.data['quizCompleted'] == true;
+          if (!quizCompleted && location != AppRoutes.quiz) {
+            return AppRoutes.quiz;
+          }
+        }
       }
 
       return null;

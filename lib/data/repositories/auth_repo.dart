@@ -307,6 +307,23 @@ class AuthRepository {
     try {
       quizData['quizCompleted'] = true;
       await _pbDS.updateUser(uid, quizData);
+
+      // Reflect quizCompleted=true in the local authStore so router redirect
+      // does not loop back to /quiz after the user finishes.
+      final record = _pb.authStore.record;
+      if (record != null && record.id == uid) {
+        final merged = Map<String, dynamic>.from(record.data)..addAll(quizData);
+        final updatedRecord = RecordModel.fromJson({
+          'id': record.id,
+          'collectionId': record.collectionId,
+          'collectionName': record.collectionName,
+          'created': record.get<String>('created'),
+          'updated': record.get<String>('updated'),
+          ...merged,
+        });
+        _pb.authStore.save(_pb.authStore.token, updatedRecord);
+      }
+
       return const Success(null);
     } catch (e) {
       return Failure(
