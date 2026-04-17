@@ -272,42 +272,63 @@ function updateCategoryChart(catCounts){
   if(!cCtx)return;
   if(catChart)catChart.destroy();
 
-  // Group by CompairCategories groups (13 groups instead of 42 individual categories)
-  const groupData={};
-  const catToGroup={};
-  const groupCatDetails={};
+  // Map category IDs to display names
+  const catIdToName={};
   if(typeof CompairCategories!=='undefined'&&CompairCategories.groups){
-    CompairCategories.groups.forEach(g=>{
-      groupCatDetails[g.name]=[];
-      g.categories.forEach(c=>{catToGroup[c.id]=g.name});
-    });
-  }
-  for(const [catId,count] of Object.entries(catCounts)){
-    const group=catToGroup[catId]||'Diğer';
-    groupData[group]=(groupData[group]||0)+count;
-    if(!groupCatDetails[group])groupCatDetails[group]=[];
-    const catName=(typeof CompairCategories!=='undefined'&&CompairCategories.getById)?
-      (CompairCategories.getById(catId)?.name||catId):catId;
-    groupCatDetails[group].push({name:catName,count});
+    CompairCategories.groups.forEach(g=>{g.categories.forEach(c=>{catIdToName[c.id]=c.name})});
   }
 
-  const entries=Object.entries(groupData).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
+  // Show ALL individual categories sorted by count
+  const entries=Object.entries(catCounts).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
   if(!entries.length)return;
 
-  // Update card title with total category count
-  const totalCats=Object.keys(catCounts).length;
+  const totalCats=entries.length;
   const titleEl=cCtx.closest('.card')?.querySelector('.card-title');
-  if(titleEl)titleEl.textContent=`Kategori Dağılımı (${totalCats} kategori, ${entries.length} grup)`;
+  if(titleEl)titleEl.textContent=`KATEGORİ DAĞILIMI (${totalCats} KATEGORİ)`;
 
-  const cl=['#7c3aed','#22c55e','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#a855f7','#10b981','#e879f9','#94a3b8'];
-  catChart=new Chart(cCtx,{type:'doughnut',data:{labels:entries.map(x=>x[0]),datasets:[{data:entries.map(x=>x[1]),backgroundColor:cl.slice(0,entries.length),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:getCSS('--text2'),font:{size:11},usePointStyle:true,padding:6}},tooltip:{callbacks:{label:function(ctx){
-    const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
-    const pct=((ctx.parsed/total)*100).toFixed(1);
-    const group=ctx.label;
-    const details=groupCatDetails[group]||[];
-    const detailStr=details.sort((a,b)=>b.count-a.count).slice(0,5).map(d=>`${d.name}: ${d.count}`).join(', ');
-    return[`${group}: ${ctx.parsed.toLocaleString()} (${pct}%)`,detailStr];
-  }}}},cutout:'60%'}});
+  // Generate distinct colors for up to 50 categories
+  const cl=['#7c3aed','#22c55e','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4',
+    '#a855f7','#10b981','#e879f9','#64748b','#dc2626','#16a34a','#d97706','#2563eb','#7e22ce','#15803d',
+    '#b45309','#1d4ed8','#6d28d9','#047857','#92400e','#1e40af','#581c87','#065f46','#78350f','#1e3a8a',
+    '#4c1d95','#064e3b','#c026d3','#0284c7','#ca8a04','#b91c1c','#0891b2','#7c2d12','#4338ca','#0f766e',
+    '#a21caf','#0369a1','#9a3412','#4d7c0f','#be123c','#0e7490','#854d0e','#6366f1','#84cc16','#f43f5e'];
+
+  // Set canvas height based on number of categories (22px per bar)
+  const barH=22;
+  const newH=Math.max(300,totalCats*barH+60);
+  cCtx.style.height=newH+'px';
+  cCtx.parentElement.style.overflowY='auto';
+  cCtx.parentElement.style.maxHeight='580px';
+
+  catChart=new Chart(cCtx,{
+    type:'bar',
+    data:{
+      labels:entries.map(([id])=>catIdToName[id]||id),
+      datasets:[{
+        data:entries.map(x=>x[1]),
+        backgroundColor:entries.map((_,i)=>cl[i%cl.length]),
+        borderRadius:3,
+        borderWidth:0
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+          const pct=((ctx.parsed.x/total)*100).toFixed(1);
+          return`${ctx.parsed.x.toLocaleString()} ürün (${pct}%)`;
+        }}}
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:getCSS('--text2'),font:{size:10}}},
+        y:{grid:{display:false},ticks:{color:getCSS('--text2'),font:{size:11}}}
+      }
+    }
+  });
 }
 
 // ═══════════════════════════════════════
