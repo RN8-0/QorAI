@@ -287,9 +287,7 @@ class _FloatingNavBar extends StatelessWidget {
                         onTap(index);
                       },
                       behavior: HitTestBehavior.opaque,
-                      child: SizedBox(
-                        height: _kNavBarHeight,
-                        child: Column(
+                      child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
@@ -326,7 +324,6 @@ class _FloatingNavBar extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ),
                     ),
                   );
                 }
@@ -339,9 +336,7 @@ class _FloatingNavBar extends StatelessWidget {
                       onTap(index);
                     },
                     behavior: HitTestBehavior.opaque,
-                    child: SizedBox(
-                      height: _kNavBarHeight,
-                      child: Center(
+                    child: Center(
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 220),
                           curve: Curves.easeOutCubic,
@@ -413,8 +408,7 @@ class _FloatingNavBar extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ),
-                );
+                  );
               }),
             ),
           ),
