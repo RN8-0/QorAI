@@ -951,6 +951,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get linkAnalysis => 'Analyse de lien';
 
   @override
+  String get linkCompare => 'Comparaison de liens';
+
+  @override
+  String get subAnalysis => 'Analyse d\'abonnement';
+
+  @override
+  String get productScan => 'Scan de produit';
+
+  @override
+  String get dailyUsage => 'Utilisation quotidienne';
+
+  @override
+  String get dailyLimitReached => 'Limite quotidienne atteinte';
+
+  @override
+  String get dailyLimitMessage =>
+      'Vous avez utilisé tous vos crédits gratuits pour aujourd\'hui. Passez à Premium pour un accès illimité.';
+
+  @override
+  String get goPremium => 'Passer Premium';
+
+  @override
+  String get continueFree => 'Continuer gratuitement';
+
+  @override
   String get library => 'Bibliothèque';
 
   @override

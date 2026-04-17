@@ -1457,13 +1457,19 @@ class _FreemiumUsageCard extends ConsumerWidget {
     final detailAi = ref.watch(freemiumUsageProvider('detail_ai'));
     final pcBuilderAi = ref.watch(freemiumUsageProvider('pc_builder_ai'));
     final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
+    final linkCompare = ref.watch(freemiumUsageProvider('link_compare'));
+    final subAnalyses = ref.watch(freemiumUsageProvider('subscription_analysis'));
+    final productScan = ref.watch(freemiumUsageProvider('product_scan'));
+
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final todayLabel = isTr ? 'bugun' : 'today';
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+        border: Border.all(color: AppTheme.premiumBase.withValues(alpha: 0.15)),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
@@ -1474,11 +1480,11 @@ class _FreemiumUsageCard extends ConsumerWidget {
               Icon(
                 Icons.pie_chart_rounded,
                 size: 18,
-                color: AppTheme.brandBlue,
+                color: AppTheme.premiumBase,
               ),
               const SizedBox(width: 8),
               Text(
-                'Daily Usage',
+                isTr ? 'Gunluk Kullanim' : 'Daily Usage',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1489,7 +1495,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.1),
+                  color: AppTheme.premiumBase.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1497,7 +1503,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.brandBlue,
+                    color: AppTheme.premiumBase,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1511,16 +1517,16 @@ class _FreemiumUsageCard extends ConsumerWidget {
             color: AppTheme.brandCyan,
             used: aiChats,
             limit: FreemiumLimits.aiChatsPerDay,
-            period: 'today',
+            period: todayLabel,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: 'Compare AI',
             icon: Icons.compare_arrows_rounded,
-            color: AppTheme.premiumPurple,
+            color: AppTheme.premiumBase,
             used: compareAi,
             limit: FreemiumLimits.compareAiPerDay,
-            period: 'today',
+            period: todayLabel,
           ),
           const SizedBox(height: 10),
           _UsageRow(
@@ -1529,7 +1535,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
             color: AppTheme.brandBlue,
             used: detailAi,
             limit: FreemiumLimits.detailAiPerDay,
-            period: 'today',
+            period: todayLabel,
           ),
           const SizedBox(height: 10),
           _UsageRow(
@@ -1538,16 +1544,43 @@ class _FreemiumUsageCard extends ConsumerWidget {
             color: AppTheme.brandSkyBlue,
             used: pcBuilderAi,
             limit: FreemiumLimits.pcBuilderAiPerDay,
-            period: 'today',
+            period: todayLabel,
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: context.l10n?.linkAnalysis ?? 'Link Analysis',
+            label: isTr ? 'Link Analizi' : 'Link Analysis',
             icon: Icons.link_rounded,
             color: AppTheme.warning,
             used: linkAnalyses,
-            limit: FreemiumLimits.linkAnalysesPerWeek,
-            period: 'this week',
+            limit: FreemiumLimits.linkAnalysesPerDay,
+            period: todayLabel,
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: isTr ? 'Link Karsilastirma' : 'Link Compare',
+            icon: Icons.compare_rounded,
+            color: AppTheme.premiumLight,
+            used: linkCompare,
+            limit: FreemiumLimits.linkComparePerDay,
+            period: todayLabel,
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: isTr ? 'Abonelik Analizi' : 'Sub Analysis',
+            icon: Icons.subscriptions_rounded,
+            color: AppTheme.brandDeepBlue,
+            used: subAnalyses,
+            limit: FreemiumLimits.subscriptionAnalysesPerDay,
+            period: todayLabel,
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: isTr ? 'Urun Tarama' : 'Product Scan',
+            icon: Icons.qr_code_scanner_rounded,
+            color: const Color(0xFF10B981),
+            used: productScan,
+            limit: FreemiumLimits.productScanPerDay,
+            period: todayLabel,
           ),
         ],
       ),

@@ -1936,6 +1936,54 @@ abstract class AppLocalizations {
   /// **'Link Analysis'**
   String get linkAnalysis;
 
+  /// No description provided for @linkCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Link Compare'**
+  String get linkCompare;
+
+  /// No description provided for @subAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub Analysis'**
+  String get subAnalysis;
+
+  /// No description provided for @productScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Product Scan'**
+  String get productScan;
+
+  /// No description provided for @dailyUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Usage'**
+  String get dailyUsage;
+
+  /// No description provided for @dailyLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Limit Reached'**
+  String get dailyLimitReached;
+
+  /// No description provided for @dailyLimitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You have used all your free credits for today. Upgrade to Premium for unlimited access.'**
+  String get dailyLimitMessage;
+
+  /// No description provided for @goPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Premium'**
+  String get goPremium;
+
+  /// No description provided for @continueFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Free'**
+  String get continueFree;
+
   /// No description provided for @library.
   ///
   /// In en, this message translates to:

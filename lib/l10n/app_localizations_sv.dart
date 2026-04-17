@@ -938,6 +938,31 @@ class AppLocalizationsSv extends AppLocalizations {
   String get linkAnalysis => 'Länkanalys';
 
   @override
+  String get linkCompare => 'Länkjämförelse';
+
+  @override
+  String get subAnalysis => 'Prenumerationsanalys';
+
+  @override
+  String get productScan => 'Produktskanning';
+
+  @override
+  String get dailyUsage => 'Daglig användning';
+
+  @override
+  String get dailyLimitReached => 'Daglig gräns uppnådd';
+
+  @override
+  String get dailyLimitMessage =>
+      'Du har använt alla dina gratis credits för idag. Uppgradera till Premium för obegränsad åtkomst.';
+
+  @override
+  String get goPremium => 'Bli Premium';
+
+  @override
+  String get continueFree => 'Fortsätt gratis';
+
+  @override
   String get library => 'Bibliotek';
 
   @override

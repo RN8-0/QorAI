@@ -947,6 +947,31 @@ class AppLocalizationsTr extends AppLocalizations {
   String get linkAnalysis => 'Bağlantı Analizi';
 
   @override
+  String get linkCompare => 'Link Karşılaştırma';
+
+  @override
+  String get subAnalysis => 'Abonelik Analizi';
+
+  @override
+  String get productScan => 'Ürün Tarama';
+
+  @override
+  String get dailyUsage => 'Günlük Kullanım';
+
+  @override
+  String get dailyLimitReached => 'Günlük Limit Doldu';
+
+  @override
+  String get dailyLimitMessage =>
+      'Bugünlük ücretsiz haklarınızı kullandınız. Sınırsız erişim için Premium\'a yükseltin.';
+
+  @override
+  String get goPremium => 'Premium\'a Geç';
+
+  @override
+  String get continueFree => 'Ücretsiz Devam Et';
+
+  @override
   String get library => 'Kütüphane';
 
   @override

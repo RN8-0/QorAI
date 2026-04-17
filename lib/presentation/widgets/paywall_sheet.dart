@@ -294,16 +294,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     setState(() => _isPurchasing = false);
     switch (result) {
       case Success():
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.l10n?.paywallPurchaseSuccess ??
-                  'Welcome to Compair Premium! 🎉',
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF10B981),
-          ),
-        );
+        if (mounted) _showPurchaseSuccessScreen();
       case Failure(error: final e):
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -476,23 +467,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     };
   }
 
-  String _countPerWeek(int count) {
-    return switch (_languageCode) {
-      'ar' => '$count/اسبوع',
-      'de' => '$count/Woche',
-      'es' => '$count/semana',
-      'fr' => '$count/semaine',
-      'it' => '$count/settimana',
-      'ja' => '$count/週',
-      'nl' => '$count/week',
-      'pl' => '$count/tydzien',
-      'pt' => '$count/semana',
-      'sv' => '$count/vecka',
-      'tr' => '$count/hafta',
-      _ => '$count/week',
-    };
-  }
-
   String _countDays(int count) {
     return switch (_languageCode) {
       'ar' => '$count يوم',
@@ -581,6 +555,155 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       _ =>
         'No charge for ${AppConstants.trialDays} days, then your selected plan starts.',
     };
+  }
+
+  void _showPurchaseSuccessScreen() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'PurchaseSuccess',
+      barrierColor: Colors.black87,
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (ctx, anim, secondAnim) {
+        return FadeTransition(
+          opacity: anim,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+              CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+            ),
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: context.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: _kPremiumBase.withValues(alpha: 0.3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _kPremiumBase.withValues(alpha: 0.25),
+                      blurRadius: 40,
+                      offset: const Offset(0, 16),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.elasticOut,
+                      builder: (_, val, child) => Transform.scale(
+                        scale: val,
+                        child: child,
+                      ),
+                      child: Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          gradient: _kPremiumGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: _kPremiumBase.withValues(alpha: 0.4),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 44,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _txt(
+                        tr: 'Hosgeldiniz!',
+                        en: 'Welcome!',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: context.textPrimary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ShaderMask(
+                      shaderCallback: (bounds) =>
+                          _kPremiumGradient.createShader(bounds),
+                      child: Text(
+                        'COMPAIR PREMIUM',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      _txt(
+                        tr: 'Tum AI ozelliklerine sinirsiz erisim artik sizin! Keyifle kullanin.',
+                        en: 'You now have unlimited access to all AI features! Enjoy.',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: context.textSecondary,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: _kPremiumGradient,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            setState(() {});
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            _txt(
+                              tr: 'Harika, basla!',
+                              en: 'Awesome, let\'s go!',
+                            ),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _handlePurchaseTap() {
@@ -1339,48 +1462,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
 
   Widget _buildComparisonTable() {
     final l = context.l10n;
+    final unlimited = l?.unlimited ?? 'Unlimited';
     final rows = [
+      // ── Free features (available to everyone) ──
       _TableRow(
         l?.productComparisons ?? 'Product Comparisons',
-        l?.unlimited ?? 'Unlimited',
-        l?.unlimited ?? 'Unlimited',
+        true,
+        true,
         Icons.compare_arrows_rounded,
-      ),
-      _TableRow(
-        l?.aiChatMessages ?? 'AI Chat',
-        _countPerDay(AppConstants.freeAiQuestionLimit),
-        l?.unlimited ?? 'Unlimited',
-        Icons.smart_toy_rounded,
-      ),
-      _TableRow(
-        'Compare AI',
-        _countPerDay(AppConstants.freeCompareAiLimit),
-        l?.unlimited ?? 'Unlimited',
-        Icons.compare_arrows_rounded,
-      ),
-      _TableRow(
-        'Detail AI',
-        _countPerDay(AppConstants.freeDetailAiLimit),
-        l?.unlimited ?? 'Unlimited',
-        Icons.auto_awesome_rounded,
-      ),
-      _TableRow(
-        'PC Builder AI',
-        _countPerDay(AppConstants.freePcBuilderAiLimit),
-        l?.unlimited ?? 'Unlimited',
-        Icons.memory_rounded,
-      ),
-      _TableRow(
-        l?.linkAnalysis ?? 'Link Analysis',
-        _countPerWeek(AppConstants.freeLinkPasteLimit),
-        l?.unlimited ?? 'Unlimited',
-        Icons.link_rounded,
-      ),
-      _TableRow(
-        l?.priceHistory ?? 'Price History',
-        _countDays(AppConstants.freePriceHistoryDays),
-        _countDays(AppConstants.proPriceHistoryDays),
-        Icons.show_chart_rounded,
       ),
       _TableRow(
         l?.youtubeReviews ?? 'YouTube Reviews',
@@ -1389,15 +1478,83 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.play_circle_rounded,
       ),
       _TableRow(
+        _txt(tr: 'Urun Arama', en: 'Product Search'),
+        true,
+        true,
+        Icons.search_rounded,
+      ),
+      _TableRow(
+        _txt(tr: 'Kategoriler', en: 'Categories'),
+        true,
+        true,
+        Icons.category_rounded,
+      ),
+      // ── Limited AI features (free with daily caps) ──
+      _TableRow(
+        l?.aiChatMessages ?? 'AI Chat',
+        _countPerDay(AppConstants.freeAiQuestionLimit),
+        unlimited,
+        Icons.smart_toy_rounded,
+      ),
+      _TableRow(
+        'Compare AI',
+        _countPerDay(AppConstants.freeCompareAiLimit),
+        unlimited,
+        Icons.compare_arrows_rounded,
+      ),
+      _TableRow(
+        'Detail AI',
+        _countPerDay(AppConstants.freeDetailAiLimit),
+        unlimited,
+        Icons.auto_awesome_rounded,
+      ),
+      _TableRow(
+        'PC Builder AI',
+        _countPerDay(AppConstants.freePcBuilderAiLimit),
+        unlimited,
+        Icons.memory_rounded,
+      ),
+      _TableRow(
+        l?.linkAnalysis ?? 'Link Analysis',
+        _countPerDay(AppConstants.freeLinkPasteLimit),
+        unlimited,
+        Icons.link_rounded,
+      ),
+      _TableRow(
+        _txt(tr: 'Link Karsilastirma', en: 'Link Compare'),
+        _countPerDay(AppConstants.freeLinkCompareLimit),
+        unlimited,
+        Icons.compare_rounded,
+      ),
+      _TableRow(
+        _txt(tr: 'Abonelik Analizi', en: 'Sub Analysis'),
+        _countPerDay(AppConstants.freeSubscriptionAnalysisLimit),
+        unlimited,
+        Icons.subscriptions_rounded,
+      ),
+      _TableRow(
+        _txt(tr: 'Urun Tarama', en: 'Product Scan'),
+        _countPerDay(AppConstants.freeProductScanLimit),
+        unlimited,
+        Icons.qr_code_scanner_rounded,
+      ),
+      // ── Premium-only features ──
+      _TableRow(
+        l?.priceHistory ?? 'Price History',
+        _countDays(AppConstants.freePriceHistoryDays),
+        _countDays(AppConstants.proPriceHistoryDays),
+        Icons.show_chart_rounded,
+      ),
+      _TableRow(
         l?.pcBuilder ?? 'PC Builder',
         _countItems(AppConstants.freePcBuilderSlots),
-        l?.unlimited ?? 'Unlimited',
+        unlimited,
         Icons.build_rounded,
       ),
       _TableRow(
         l?.saveProducts ?? 'Save Products',
         _countItems(AppConstants.freeCollectionLimit),
-        l?.unlimited ?? 'Unlimited',
+        unlimited,
         Icons.bookmark_rounded,
       ),
       _TableRow(
@@ -1512,9 +1669,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         child: Icon(
           value ? Icons.check_circle_rounded : Icons.cancel_rounded,
           color: value
-              ? (isPro
-                    ? AppTheme.success
-                    : context.textTertiaryColor.withValues(alpha: 0.6))
+              ? AppTheme.success
               : context.textTertiaryColor.withValues(alpha: 0.4),
           size: 18,
         ),

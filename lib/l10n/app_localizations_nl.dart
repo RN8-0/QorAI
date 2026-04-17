@@ -944,6 +944,31 @@ class AppLocalizationsNl extends AppLocalizations {
   String get linkAnalysis => 'Linkanalyse';
 
   @override
+  String get linkCompare => 'Link vergelijken';
+
+  @override
+  String get subAnalysis => 'Abonnement-analyse';
+
+  @override
+  String get productScan => 'Product scan';
+
+  @override
+  String get dailyUsage => 'Dagelijks gebruik';
+
+  @override
+  String get dailyLimitReached => 'Dagelijkse limiet bereikt';
+
+  @override
+  String get dailyLimitMessage =>
+      'Je hebt al je gratis credits voor vandaag gebruikt. Upgrade naar Premium voor onbeperkte toegang.';
+
+  @override
+  String get goPremium => 'Premium worden';
+
+  @override
+  String get continueFree => 'Gratis doorgaan';
+
+  @override
   String get library => 'Bibliotheek';
 
   @override

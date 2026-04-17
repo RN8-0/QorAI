@@ -40,14 +40,18 @@ class UsageCounter {
   final int detailAi;
   final int pcBuilderAi;
   final int linkPastes;
+  final int linkCompare;
   final int subscriptionAnalyses;
+  final int productScan;
   final String comparisonPeriodKey;
   final String aiPeriodKey;
   final String compareAiPeriodKey;
   final String detailAiPeriodKey;
   final String pcBuilderAiPeriodKey;
   final String linkPeriodKey;
+  final String linkComparePeriodKey;
   final String subscriptionPeriodKey;
+  final String productScanPeriodKey;
 
   const UsageCounter({
     this.comparisons = 0,
@@ -56,14 +60,18 @@ class UsageCounter {
     this.detailAi = 0,
     this.pcBuilderAi = 0,
     this.linkPastes = 0,
+    this.linkCompare = 0,
     this.subscriptionAnalyses = 0,
+    this.productScan = 0,
     required this.comparisonPeriodKey,
     required this.aiPeriodKey,
     required this.compareAiPeriodKey,
     required this.detailAiPeriodKey,
     required this.pcBuilderAiPeriodKey,
     required this.linkPeriodKey,
+    required this.linkComparePeriodKey,
     required this.subscriptionPeriodKey,
+    required this.productScanPeriodKey,
   });
 
   UsageCounter copyWith({
@@ -73,14 +81,18 @@ class UsageCounter {
     int? detailAi,
     int? pcBuilderAi,
     int? linkPastes,
+    int? linkCompare,
     int? subscriptionAnalyses,
+    int? productScan,
     String? comparisonPeriodKey,
     String? aiPeriodKey,
     String? compareAiPeriodKey,
     String? detailAiPeriodKey,
     String? pcBuilderAiPeriodKey,
     String? linkPeriodKey,
+    String? linkComparePeriodKey,
     String? subscriptionPeriodKey,
+    String? productScanPeriodKey,
   }) {
     return UsageCounter(
       comparisons: comparisons ?? this.comparisons,
@@ -89,15 +101,19 @@ class UsageCounter {
       detailAi: detailAi ?? this.detailAi,
       pcBuilderAi: pcBuilderAi ?? this.pcBuilderAi,
       linkPastes: linkPastes ?? this.linkPastes,
+      linkCompare: linkCompare ?? this.linkCompare,
       subscriptionAnalyses: subscriptionAnalyses ?? this.subscriptionAnalyses,
+      productScan: productScan ?? this.productScan,
       comparisonPeriodKey: comparisonPeriodKey ?? this.comparisonPeriodKey,
       aiPeriodKey: aiPeriodKey ?? this.aiPeriodKey,
       compareAiPeriodKey: compareAiPeriodKey ?? this.compareAiPeriodKey,
       detailAiPeriodKey: detailAiPeriodKey ?? this.detailAiPeriodKey,
       pcBuilderAiPeriodKey: pcBuilderAiPeriodKey ?? this.pcBuilderAiPeriodKey,
       linkPeriodKey: linkPeriodKey ?? this.linkPeriodKey,
+      linkComparePeriodKey: linkComparePeriodKey ?? this.linkComparePeriodKey,
       subscriptionPeriodKey:
           subscriptionPeriodKey ?? this.subscriptionPeriodKey,
+      productScanPeriodKey: productScanPeriodKey ?? this.productScanPeriodKey,
     );
   }
 }
@@ -148,7 +164,9 @@ class SubscriptionService extends ChangeNotifier {
   int get detailAiUsed => _normalizedUsage().detailAi;
   int get pcBuilderAiUsed => _normalizedUsage().pcBuilderAi;
   int get linkPastesUsed => _normalizedUsage().linkPastes;
+  int get linkCompareUsed => _normalizedUsage().linkCompare;
   int get subscriptionAnalysesUsed => _normalizedUsage().subscriptionAnalyses;
+  int get productScanUsed => _normalizedUsage().productScan;
 
   SubscriptionStatus? get _pocketBaseSnapshotStatus {
     try {
@@ -384,14 +402,18 @@ class SubscriptionService extends ChangeNotifier {
         'detailAi': _usage.detailAi,
         'pcBuilderAi': _usage.pcBuilderAi,
         'linkPastes': _usage.linkPastes,
+        'linkCompare': _usage.linkCompare,
         'subscriptionAnalyses': _usage.subscriptionAnalyses,
+        'productScan': _usage.productScan,
         'comparisonPeriodKey': _usage.comparisonPeriodKey,
         'aiPeriodKey': _usage.aiPeriodKey,
         'compareAiPeriodKey': _usage.compareAiPeriodKey,
         'detailAiPeriodKey': _usage.detailAiPeriodKey,
         'pcBuilderAiPeriodKey': _usage.pcBuilderAiPeriodKey,
         'linkPeriodKey': _usage.linkPeriodKey,
+        'linkComparePeriodKey': _usage.linkComparePeriodKey,
         'subscriptionPeriodKey': _usage.subscriptionPeriodKey,
+        'productScanPeriodKey': _usage.productScanPeriodKey,
       }),
     );
   }
@@ -500,7 +522,9 @@ class SubscriptionService extends ChangeNotifier {
         detailAi: data['detailAi'] as int? ?? 0,
         pcBuilderAi: data['pcBuilderAi'] as int? ?? 0,
         linkPastes: data['linkPastes'] as int? ?? 0,
+        linkCompare: data['linkCompare'] as int? ?? 0,
         subscriptionAnalyses: data['subscriptionAnalyses'] as int? ?? 0,
+        productScan: data['productScan'] as int? ?? 0,
         comparisonPeriodKey:
             data['comparisonPeriodKey'] as String? ?? _dailyPeriodKey(),
         aiPeriodKey: data['aiPeriodKey'] as String? ?? _dailyPeriodKey(),
@@ -510,9 +534,13 @@ class SubscriptionService extends ChangeNotifier {
             data['detailAiPeriodKey'] as String? ?? _dailyPeriodKey(),
         pcBuilderAiPeriodKey:
             data['pcBuilderAiPeriodKey'] as String? ?? _dailyPeriodKey(),
-        linkPeriodKey: data['linkPeriodKey'] as String? ?? _weeklyPeriodKey(),
+        linkPeriodKey: data['linkPeriodKey'] as String? ?? _dailyPeriodKey(),
+        linkComparePeriodKey:
+            data['linkComparePeriodKey'] as String? ?? _dailyPeriodKey(),
         subscriptionPeriodKey:
-            data['subscriptionPeriodKey'] as String? ?? _monthlyPeriodKey(),
+            data['subscriptionPeriodKey'] as String? ?? _dailyPeriodKey(),
+        productScanPeriodKey:
+            data['productScanPeriodKey'] as String? ?? _dailyPeriodKey(),
       );
       _usage = _normalizedUsage();
     } catch (_) {
@@ -569,14 +597,17 @@ class SubscriptionService extends ChangeNotifier {
   // ─── Free Tier Limit Control ───
 
   UsageCounter _emptyUsage() {
+    final dk = _dailyPeriodKey();
     return UsageCounter(
-      comparisonPeriodKey: _dailyPeriodKey(),
-      aiPeriodKey: _dailyPeriodKey(),
-      compareAiPeriodKey: _dailyPeriodKey(),
-      detailAiPeriodKey: _dailyPeriodKey(),
-      pcBuilderAiPeriodKey: _dailyPeriodKey(),
-      linkPeriodKey: _weeklyPeriodKey(),
-      subscriptionPeriodKey: _monthlyPeriodKey(),
+      comparisonPeriodKey: dk,
+      aiPeriodKey: dk,
+      compareAiPeriodKey: dk,
+      detailAiPeriodKey: dk,
+      pcBuilderAiPeriodKey: dk,
+      linkPeriodKey: dk,
+      linkComparePeriodKey: dk,
+      subscriptionPeriodKey: dk,
+      productScanPeriodKey: dk,
     );
   }
 
@@ -585,25 +616,8 @@ class SubscriptionService extends ChangeNotifier {
     return '${date.year}-${date.month}-${date.day}';
   }
 
-  String _weeklyPeriodKey([DateTime? now]) {
-    final date = now ?? DateTime.now();
-    final startOfWeek = DateTime(
-      date.year,
-      date.month,
-      date.day,
-    ).subtract(Duration(days: date.weekday - 1));
-    return '${startOfWeek.year}-${startOfWeek.month}-${startOfWeek.day}';
-  }
-
-  String _monthlyPeriodKey([DateTime? now]) {
-    final date = now ?? DateTime.now();
-    return '${date.year}-${date.month}';
-  }
-
   UsageCounter _normalizedUsage() {
     final dailyKey = _dailyPeriodKey();
-    final weeklyKey = _weeklyPeriodKey();
-    final monthlyKey = _monthlyPeriodKey();
     var changed = false;
     var next = _usage;
 
@@ -627,15 +641,23 @@ class SubscriptionService extends ChangeNotifier {
       next = next.copyWith(pcBuilderAi: 0, pcBuilderAiPeriodKey: dailyKey);
       changed = true;
     }
-    if (next.linkPeriodKey != weeklyKey) {
-      next = next.copyWith(linkPastes: 0, linkPeriodKey: weeklyKey);
+    if (next.linkPeriodKey != dailyKey) {
+      next = next.copyWith(linkPastes: 0, linkPeriodKey: dailyKey);
       changed = true;
     }
-    if (next.subscriptionPeriodKey != monthlyKey) {
+    if (next.linkComparePeriodKey != dailyKey) {
+      next = next.copyWith(linkCompare: 0, linkComparePeriodKey: dailyKey);
+      changed = true;
+    }
+    if (next.subscriptionPeriodKey != dailyKey) {
       next = next.copyWith(
         subscriptionAnalyses: 0,
-        subscriptionPeriodKey: monthlyKey,
+        subscriptionPeriodKey: dailyKey,
       );
+      changed = true;
+    }
+    if (next.productScanPeriodKey != dailyKey) {
+      next = next.copyWith(productScan: 0, productScanPeriodKey: dailyKey);
       changed = true;
     }
 
@@ -676,10 +698,16 @@ class SubscriptionService extends ChangeNotifier {
     return _normalizedUsage().pcBuilderAi < AppConstants.freePcBuilderAiLimit;
   }
 
-  /// Can a link be pasted?
+  /// Can a link be pasted? (single analysis)
   bool get canPasteLink {
     if (isPremium) return true;
     return _normalizedUsage().linkPastes < AppConstants.freeLinkPasteLimit;
+  }
+
+  /// Can link compare tab be used?
+  bool get canUseLinkCompare {
+    if (isPremium) return true;
+    return _normalizedUsage().linkCompare < AppConstants.freeLinkCompareLimit;
   }
 
   /// Can a subscription analysis be performed?
@@ -687,6 +715,12 @@ class SubscriptionService extends ChangeNotifier {
     if (isPremium) return true;
     return _normalizedUsage().subscriptionAnalyses <
         AppConstants.freeSubscriptionAnalysisLimit;
+  }
+
+  /// Can a product scan be performed?
+  bool get canScanProduct {
+    if (isPremium) return true;
+    return _normalizedUsage().productScan < AppConstants.freeProductScanLimit;
   }
 
   /// Record comparison usage
@@ -804,6 +838,42 @@ class SubscriptionService extends ChangeNotifier {
     return const Success(null);
   }
 
+  /// Record link compare tab usage
+  Result<void> recordLinkCompare() {
+    final currentUsage = _normalizedUsage();
+    if (!canUseLinkCompare) {
+      return Failure(
+        UsageLimitException(
+          featureName: 'link_compare',
+          currentUsage: currentUsage.linkCompare,
+          limit: AppConstants.freeLinkCompareLimit,
+        ),
+      );
+    }
+    _usage = currentUsage.copyWith(linkCompare: currentUsage.linkCompare + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
+    return const Success(null);
+  }
+
+  /// Record product scan usage
+  Result<void> recordProductScan() {
+    final currentUsage = _normalizedUsage();
+    if (!canScanProduct) {
+      return Failure(
+        UsageLimitException(
+          featureName: 'product_scan',
+          currentUsage: currentUsage.productScan,
+          limit: AppConstants.freeProductScanLimit,
+        ),
+      );
+    }
+    _usage = currentUsage.copyWith(productScan: currentUsage.productScan + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
+    return const Success(null);
+  }
+
   /// Remaining usage allowances
   int get remainingComparisons => -1;
 
@@ -827,8 +897,16 @@ class SubscriptionService extends ChangeNotifier {
       ? -1
       : AppConstants.freeLinkPasteLimit - _normalizedUsage().linkPastes;
 
+  int get remainingLinkCompare => isPremium
+      ? -1
+      : AppConstants.freeLinkCompareLimit - _normalizedUsage().linkCompare;
+
   int get remainingSubscriptionAnalyses => isPremium
       ? -1
       : AppConstants.freeSubscriptionAnalysisLimit -
             _normalizedUsage().subscriptionAnalyses;
+
+  int get remainingProductScan => isPremium
+      ? -1
+      : AppConstants.freeProductScanLimit - _normalizedUsage().productScan;
 }

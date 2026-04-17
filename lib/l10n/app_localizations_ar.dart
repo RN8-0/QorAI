@@ -933,6 +933,31 @@ class AppLocalizationsAr extends AppLocalizations {
   String get linkAnalysis => 'تحليل الرابط';
 
   @override
+  String get linkCompare => 'مقارنة الروابط';
+
+  @override
+  String get subAnalysis => 'تحليل الاشتراك';
+
+  @override
+  String get productScan => 'فحص المنتج';
+
+  @override
+  String get dailyUsage => 'الاستخدام اليومي';
+
+  @override
+  String get dailyLimitReached => 'تم الوصول للحد اليومي';
+
+  @override
+  String get dailyLimitMessage =>
+      'لقد استخدمت جميع رصيدك المجاني لليوم. قم بالترقية إلى بريميوم للوصول غير المحدود.';
+
+  @override
+  String get goPremium => 'الترقية لبريميوم';
+
+  @override
+  String get continueFree => 'متابعة مجانية';
+
+  @override
   String get library => 'المكتبة';
 
   @override

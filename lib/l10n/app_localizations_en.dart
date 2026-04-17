@@ -942,6 +942,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkAnalysis => 'Link Analysis';
 
   @override
+  String get linkCompare => 'Link Compare';
+
+  @override
+  String get subAnalysis => 'Sub Analysis';
+
+  @override
+  String get productScan => 'Product Scan';
+
+  @override
+  String get dailyUsage => 'Daily Usage';
+
+  @override
+  String get dailyLimitReached => 'Daily Limit Reached';
+
+  @override
+  String get dailyLimitMessage =>
+      'You have used all your free credits for today. Upgrade to Premium for unlimited access.';
+
+  @override
+  String get goPremium => 'Go Premium';
+
+  @override
+  String get continueFree => 'Continue Free';
+
+  @override
   String get library => 'Library';
 
   @override

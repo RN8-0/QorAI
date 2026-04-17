@@ -2388,8 +2388,11 @@ class FreemiumLimits {
   static const int aiChatsPerDay = 3;
   static const int compareAiPerDay = 2;
   static const int detailAiPerDay = 2;
-  static const int pcBuilderAiPerDay = 3;
-  static const int linkAnalysesPerWeek = 3;
+  static const int pcBuilderAiPerDay = 2;
+  static const int linkAnalysesPerDay = 3;
+  static const int linkComparePerDay = 2;
+  static const int subscriptionAnalysesPerDay = 3;
+  static const int productScanPerDay = 2;
 }
 
 final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
@@ -2401,6 +2404,9 @@ final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
     'detail_ai' => subscription.detailAiUsed,
     'pc_builder_ai' => subscription.pcBuilderAiUsed,
     'link_analysis' => subscription.linkPastesUsed,
+    'link_compare' => subscription.linkCompareUsed,
+    'subscription_analysis' => subscription.subscriptionAnalysesUsed,
+    'product_scan' => subscription.productScanUsed,
     _ => 0,
   };
 });
@@ -2414,6 +2420,9 @@ Future<bool> checkAndIncrementUsage(WidgetRef ref, String feature) async {
     'detail_ai' => subscription.recordDetailAi(),
     'pc_builder_ai' => subscription.recordPcBuilderAi(),
     'link_analysis' => subscription.recordLinkPaste(),
+    'link_compare' => subscription.recordLinkCompare(),
+    'subscription_analysis' => subscription.recordSubscriptionAnalysis(),
+    'product_scan' => subscription.recordProductScan(),
     _ => const Success<void>(null),
   };
   return result.isSuccess;

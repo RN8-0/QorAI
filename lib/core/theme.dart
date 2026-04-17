@@ -40,14 +40,17 @@ class AppTheme {
   static const Color brandLight = brandCyan;
   static const Color brandDark = Color(0xFF0A1628);
 
-  // Premium — champagne gold tones
-  static const Color premiumBronze = Color(0xFF8C6112);
-  static const Color premiumGold = Color(0xFFC9971A);
-  static const Color premiumChampagne = Color(0xFFF4D27A);
+  // Premium — violet tones
+  static const Color premiumDeep = Color(0xFF5B21B6);     // Deep violet
+  static const Color premiumBase = Color(0xFF7C3AED);     // Main violet
+  static const Color premiumLight = Color(0xFFA78BFA);    // Light violet
 
-  // Legacy premium aliases
-  static const Color premiumPurple = premiumBronze;
-  static const Color premiumPurpleLight = premiumGold;
+  // Legacy premium aliases (backward compat)
+  static const Color premiumBronze = premiumDeep;
+  static const Color premiumGold = premiumBase;
+  static const Color premiumChampagne = premiumLight;
+  static const Color premiumPurple = premiumDeep;
+  static const Color premiumPurpleLight = premiumBase;
 
   // ─────────────────────────────────────────────────────────────────────────
   // OLED DARK SURFACES — pure black foundation
@@ -246,9 +249,9 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
-  /// Premium champagne gold gradient
+  /// Premium violet gradient
   static const LinearGradient premiumGradient = LinearGradient(
-    colors: [premiumBronze, premiumGold, premiumChampagne],
+    colors: [premiumDeep, premiumBase, premiumLight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -463,10 +466,10 @@ class AppTheme {
     ),
   ];
 
-  /// Gold glow for premium elements
+  /// Violet glow for premium elements
   static List<BoxShadow> get premiumGlow => [
     BoxShadow(
-      color: premiumGold.withValues(alpha: 0.28),
+      color: premiumBase.withValues(alpha: 0.28),
       blurRadius: 20,
       offset: const Offset(0, 4),
     ),
