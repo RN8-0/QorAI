@@ -1380,14 +1380,19 @@ async function scrapeByUrl() {
       const existing = existingDoc.data();
       slog('⚡ Product already exists — merging missing data...', 'info');
 
-      // Merge images: add new ones that don't exist
-      const existingImages = existing.images || [];
-      const newImages = product.images || [];
+      // Merge images: normalize URLs (upgrade size prefix) before dedup
+      const _normImg = u => u ? u.replace(/\/[ksmtc]_/g, '/b_').trim() : u;
+      const existingImages = (existing.images || []).map(_normImg).filter(Boolean);
+      const newImages = (product.images || []).map(_normImg).filter(Boolean);
+      const seenImgs = new Set(existingImages);
       const mergedImages = [...existingImages];
       for (const img of newImages) {
-        if (!mergedImages.includes(img)) mergedImages.push(img);
+        if (!seenImgs.has(img)) { seenImgs.add(img); mergedImages.push(img); }
       }
-      product.images = mergedImages;
+      const mergedSliced = mergedImages.slice(0, 8);
+      product.images = mergedSliced;
+      if (product.imageUrl) product.imageUrl = _normImg(product.imageUrl);
+      if (product.imageURL) product.imageURL = _normImg(product.imageURL);
       if (mergedImages.length > existingImages.length) {
         slog(`  + ${mergedImages.length - existingImages.length} new images added (total: ${mergedImages.length})`, 'success');
       }
@@ -1963,14 +1968,18 @@ async function startQualityScan() {
 
         const update = { qualityFixedAt: new Date().toISOString() };
 
-        // Images: merge fresh + existing, prefer fresh
-        const existingImages = p.images || [];
-        const freshImages = fresh.images || [];
-        const mergedImages = [...new Set([...freshImages, ...existingImages])].filter(Boolean);
-        if (mergedImages.length > existingImages.length || (fresh.imageUrl && !p.imageUrl)) {
-          update.images = mergedImages;
-          update.imageUrl = mergedImages[0] || '';
-          update.imageURL = mergedImages[0] || '';
+        // Images: normalize + deduplicate (fix /k_ vs /b_ mismatch causing duplicates)
+        const _normImg = u => u ? u.replace(/\/[ksmtc]_/g, '/b_').trim() : u;
+        const existingImages = (p.images || []).map(_normImg).filter(Boolean);
+        const freshImages = (fresh.images || []).map(_normImg).filter(Boolean);
+        const seenImgs = new Set(freshImages);
+        const mergedImages = [...freshImages];
+        for (const img of existingImages) { if (!seenImgs.has(img)) { seenImgs.add(img); mergedImages.push(img); } }
+        const mergedSliced = mergedImages.slice(0, 8);
+        if (mergedSliced.length !== existingImages.length || !mergedSliced.every((v,i)=>v===existingImages[i]) || (fresh.imageUrl && !p.imageUrl)) {
+          update.images = mergedSliced;
+          update.imageUrl = mergedSliced[0] || '';
+          update.imageURL = mergedSliced[0] || '';
         }
 
         // Specs: use whichever has more
