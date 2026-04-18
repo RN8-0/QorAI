@@ -95,20 +95,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithX() async {
-    setState(() => _isLoading = true);
-    final result = await ref.read(authRepositoryProvider).signInWithX();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    switch (result) {
-      case Success(data: final user):
-        _navigateAfterLogin(user.quizCompleted);
-      case Failure(error: final error):
-        _showError(error.message);
-    }
-  }
-
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -264,9 +250,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 14),
                   // Apple button
                   _buildAppleButton(),
-                  const SizedBox(height: 14),
-                  // X (Twitter) button
-                  _buildXButton(),
                   const SizedBox(height: 24),
                   // Divider with "or"
                   _buildOrDivider(),
@@ -386,53 +369,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: foregroundColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildXButton() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white : const Color(0xFF0F1419),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.18)
-              : const Color(0xFF0F1419),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _signInWithX,
-          borderRadius: BorderRadius.circular(30),
-          child: SizedBox(
-            height: 56,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '𝕏',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: isDark ? const Color(0xFF0F1419) : Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  context.l10n?.continueWithX ?? 'Continue with X',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? const Color(0xFF0F1419) : Colors.white,
                   ),
                 ),
               ],

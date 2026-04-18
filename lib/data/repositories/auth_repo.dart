@@ -176,7 +176,9 @@ class AuthRepository {
   }
 
   Future<Result<UserEntity>> signInWithX() async {
-    return _signInWithOAuth2('twitter', scopes: ['tweet.read', 'users.read']);
+    return const Failure(
+      AuthException(message: 'X login is no longer supported. Please use Google or Apple.'),
+    );
   }
 
   /// Generic PocketBase OAuth2 flow for social providers.
@@ -303,8 +305,6 @@ class AuthRepository {
     switch (provider) {
       case 'facebook':
         return 'Facebook';
-      case 'twitter':
-        return 'X';
       case 'apple':
         return 'Apple';
       default:
