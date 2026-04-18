@@ -190,7 +190,15 @@ class AuthRepository {
       final authFuture = _pb.collection('users').authWithOAuth2(
         providerName,
         (url) async {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
+          // inAppBrowserView (Chrome Custom Tab) keeps the app alive in the
+          // foreground so the PocketBase SSE realtime connection is not dropped.
+          final launched = await launchUrl(
+            url,
+            mode: LaunchMode.inAppBrowserView,
+          );
+          if (!launched) {
+            await launchUrl(url, mode: LaunchMode.externalApplication);
+          }
         },
         scopes: scopes,
       );
