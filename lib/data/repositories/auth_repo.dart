@@ -54,7 +54,7 @@ class AuthRepository {
       final account = await google.signIn();
       if (account == null) {
         return const Failure(
-          AuthException(message: 'Google ile giriş iptal edildi'),
+          AuthException(message: 'Google sign-in was cancelled'),
         );
       }
       final gAuth = await account.authentication;
@@ -62,7 +62,7 @@ class AuthRepository {
       if (idToken == null || idToken.isEmpty) {
         return const Failure(
           AuthException(
-            message: 'Google kimlik doğrulaması başarısız (idToken yok)',
+            message: 'Google authentication failed (no idToken)',
           ),
         );
       }
@@ -78,7 +78,7 @@ class AuthRepository {
           .timeout(
             const Duration(seconds: 20),
             onTimeout: () => throw Exception(
-              'Sunucu yanıt vermedi (timeout). İnternet bağlantınızı kontrol edin.',
+              'Server did not respond (timeout). Please check your connection.',
             ),
           );
       debugPrint('[auth] PB response ${httpResp.statusCode}: ${httpResp.body}');
@@ -106,7 +106,7 @@ class AuthRepository {
       final record = (resp['record'] as Map?)?.cast<String, dynamic>();
       if (token == null || record == null) {
         return const Failure(
-          AuthException(message: 'Sunucudan geçersiz yanıt alındı'),
+          AuthException(message: 'Invalid response from server'),
         );
       }
 
@@ -164,7 +164,7 @@ class AuthRepository {
       debugPrint('[auth] signInWithGoogle error: $e');
       return Failure(
         AuthException(
-          message: 'Google ile giriş yapılamadı: ${e.toString()}',
+          message: 'Google sign-in failed: ${e.toString()}',
           originalError: e,
         ),
       );
@@ -329,7 +329,7 @@ class AuthRepository {
     final uid = _currentUid;
     if (uid == null) {
       return const Failure(
-        AuthException(message: 'Silinecek oturum acik bir hesap bulunamadi'),
+        AuthException(message: 'No active session found to delete'),
       );
     }
 
@@ -357,7 +357,7 @@ class AuthRepository {
     } catch (e) {
       return Failure(
         AuthException(
-          message: 'Hesap silinemedi: ${e.toString()}',
+          message: 'Failed to delete account: ${e.toString()}',
           originalError: e,
         ),
       );
@@ -427,23 +427,23 @@ class AuthRepository {
   String _mapGoogleAuthError(String code, String detail, int status) {
     switch (code) {
       case 'invalid_token':
-        return 'Google kimlik doğrulaması başarısız. Lütfen tekrar deneyin.';
+        return 'Google authentication failed. Please try again.';
       case 'audience_mismatch':
-        return 'Google yapılandırma hatası (audience_mismatch). Lütfen destek ile iletişime geçin.';
+        return 'Google configuration error (audience_mismatch). Please contact support.';
       case 'missing_idToken':
-        return 'Google token alınamadı. Lütfen tekrar deneyin.';
+        return 'Could not retrieve Google token. Please try again.';
       case 'tokeninfo_failed':
-        return 'Google ile bağlantı kurulamadı. İnternet bağlantınızı kontrol edin.';
+        return 'Could not connect to Google. Please check your internet connection.';
       case 'hook_fatal':
-        return 'Sunucu hatası: $detail';
+        return 'Server error: $detail';
       default:
-        if (status == 401) return 'Google ile kimlik doğrulaması başarısız.';
+        if (status == 401) return 'Google authentication failed.';
         if (status >= 500) {
-          return 'Sunucu geçici olarak kullanılamıyor. Lütfen tekrar deneyin.';
+          return 'Server is temporarily unavailable. Please try again.';
         }
         return code.isNotEmpty
             ? '$code: $detail'
-            : (detail.isNotEmpty ? detail : 'Bilinmeyen hata ($status)');
+            : (detail.isNotEmpty ? detail : 'Unknown error ($status)');
     }
   }
 }
