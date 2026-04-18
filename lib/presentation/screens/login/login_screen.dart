@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -250,12 +248,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Google button
                   _buildGoogleButton(),
                   const SizedBox(height: 14),
-                  // Apple button — only on iOS
-                  if (Platform.isIOS) ...[
-                    _buildAppleButton(),
-                    const SizedBox(height: 14),
-                  ],
-                  const SizedBox(height: 10),
+                  // Apple button
+                  _buildAppleButton(),
+                  const SizedBox(height: 24),
                   // Divider with "or"
                   _buildOrDivider(),
                   const SizedBox(height: 16),
