@@ -118,6 +118,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   void initState() {
     super.initState();
     _syncAiPageContext();
+    // Schedule prefetch after first frame to avoid jank during route animation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _prefetchMatchScoreOnce();
+    });
   }
 
   @override
@@ -139,6 +144,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         'productId': widget.product.id,
       };
     });
+  }
+
+  void _prefetchMatchScoreOnce() {
+    final locale = ref.read(localeProvider);
+    final languageCode =
+        (locale?.languageCode ?? 'en').toLowerCase();
+    _prefetchMatchScore(languageCode);
   }
 
   void _prefetchMatchScore(String languageCode) {
@@ -165,16 +177,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
 
   @override
   Widget build(BuildContext context) {
-    // Use actual theme mode instead of hardcoded value
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final locale = ref.watch(localeProvider);
-    final languageCode =
-        (locale?.languageCode ?? Localizations.localeOf(context).languageCode)
-            .toLowerCase();
     final product = widget.product;
     final country = widget.country;
-
-    _prefetchMatchScore(languageCode);
 
     return DefaultTabController(
       length: 4,
@@ -291,13 +296,15 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               delegate: _StickyTabBarDelegate(),
             ),
           ],
-          body: TabBarView(
-            children: [
-              _SpecsTabContent(product: product, isDark: isDark),
-              _ReviewsTab(product: product, isDark: isDark),
-              _SimilarProductsTab(product: product, isDark: isDark),
-              _AIAnalysisTab(product: product, isDark: isDark),
-            ],
+          body: RepaintBoundary(
+            child: TabBarView(
+              children: [
+                _SpecsTabContent(product: product, isDark: isDark),
+                _ReviewsTab(product: product, isDark: isDark),
+                _SimilarProductsTab(product: product, isDark: isDark),
+                _AIAnalysisTab(product: product, isDark: isDark),
+              ],
+            ),
           ),
         ),
       ),

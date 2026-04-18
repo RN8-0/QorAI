@@ -30,6 +30,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   String? _gender;
   bool _saving = false;
   bool _didSeedInitialData = false;
+  bool _isOAuthUser = false;
 
   @override
   void initState() {
@@ -38,6 +39,31 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _nameController.text = _resolveDisplayName(null, authRecord);
     _gender = _normalizeGender(null);
     _didSeedInitialData = true;
+    _checkOAuthStatus();
+  }
+
+  Future<void> _checkOAuthStatus() async {
+    final uid = pb.authStore.record?.id;
+    if (uid == null) return;
+    // Fast local check: Google sign-in stores googleEmail on the record
+    final googleEmail =
+        pb.authStore.record?.data['googleEmail'] as String? ?? '';
+    if (googleEmail.isNotEmpty) {
+      if (mounted) setState(() => _isOAuthUser = true);
+      return;
+    }
+    // Server check via REST: any linked external auth (Google, Apple, etc.)
+    try {
+      final result = await pb.send(
+        '/api/collections/users/records/$uid/external-auths',
+      );
+      final list = result is List ? result : (result as Map?)?.values.toList();
+      if ((list?.isNotEmpty ?? false) && mounted) {
+        setState(() => _isOAuthUser = true);
+      }
+    } catch (_) {
+      // Ignore — fall back to allowing edits
+    }
   }
 
   @override
@@ -99,12 +125,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               const SizedBox(height: 8),
               _buildFormCard(
                 children: [
-                  _buildTextField(
-                    controller: _nameController,
-                    label: context.l10n?.fullName ?? 'Full Name',
-                    hint: context.l10n?.fullName ?? 'Full Name',
-                    icon: Icons.person_outline_rounded,
-                  ),
+                  if (_isOAuthUser)
+                    _buildReadOnlyField(
+                      label: context.l10n?.fullName ?? 'Full Name',
+                      value: resolvedName,
+                      icon: Icons.person_outline_rounded,
+                    )
+                  else
+                    _buildTextField(
+                      controller: _nameController,
+                      label: context.l10n?.fullName ?? 'Full Name',
+                      hint: context.l10n?.fullName ?? 'Full Name',
+                      icon: Icons.person_outline_rounded,
+                    ),
                   const SizedBox(height: 14),
                   _buildReadOnlyField(
                     label: context.l10n?.email ?? 'Email',
@@ -385,7 +418,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final l10n = context.l10n;
 
     final newName = _nameController.text.trim();
-    if (newName.isEmpty) {
+    if (newName.isEmpty && !_isOAuthUser) {
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Display name cannot be empty.'),
@@ -398,8 +431,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _saving = true);
     try {
       final body = <String, dynamic>{
-        'displayName': newName,
-        'name': newName,
+        // Only update name fields if not an OAuth user
+        if (!_isOAuthUser) 'displayName': newName,
+        if (!_isOAuthUser) 'name': newName,
         'gender': _gender,
         if (_birthDate != null) 'birthDate': _birthDate!.toIso8601String(),
       };

@@ -25,5 +25,8 @@
     "puppeteer-core": "^24.40.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "jsonwebtoken": "^9.0.3"
   }
 }
