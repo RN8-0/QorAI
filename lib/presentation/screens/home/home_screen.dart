@@ -1077,9 +1077,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             width: 110,
                                             height: 184,
                                             decoration: BoxDecoration(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFFF1F5F9),
+                                              color: Colors.white,
                                               borderRadius:
                                                   BorderRadius.circular(14),
                                             ),
@@ -3372,14 +3370,13 @@ class _WideProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
+          color: isDark ? context.surfaceVariantColor : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: AppTheme.brandCyan.withValues(alpha: 0.15),
@@ -3399,7 +3396,7 @@ class _WideProductCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: imageBg,
+                    color: Colors.white,
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(16),
                     ),
@@ -3600,7 +3597,9 @@ class _CompactProductCard extends StatelessWidget {
         width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? context.surfaceVariantColor
+              : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: AppTheme.brandCyan.withValues(alpha: 0.15),
@@ -3863,14 +3862,13 @@ class _TrendingWideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
+          color: isDark ? context.surfaceVariantColor : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: AppTheme.brandCyan.withValues(alpha: 0.12),
@@ -3896,7 +3894,7 @@ class _TrendingWideCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: imageBg,
+                    color: Colors.white,
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(16),
                     ),
