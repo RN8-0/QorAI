@@ -207,7 +207,7 @@ class AuthRepository {
       final authData = await authFuture.timeout(
         const Duration(minutes: 3),
         onTimeout: () => throw TimeoutException(
-          'Giriş zaman aşımına uğradı. Lütfen tekrar deneyin.',
+          'Sign in timed out. Please try again.',
         ),
       );
 
@@ -220,7 +220,7 @@ class AuthRepository {
       if (errStr.contains('missing provider')) {
         return Failure(AuthException(
           message:
-              '${_providerDisplayName(providerName)} ile giriş henüz yapılandırılmadı. Lütfen daha sonra tekrar deneyin.',
+              '${_providerDisplayName(providerName)} sign-in is not configured yet. Please try again later.',
         ));
       }
       return Failure(
@@ -229,7 +229,7 @@ class AuthRepository {
     } on TimeoutException {
       return Failure(
         const AuthException(
-          message: 'Giriş zaman aşımına uğradı. Lütfen tekrar deneyin.',
+          message: 'Sign in timed out. Please try again.',
         ),
       );
     } catch (e) {
@@ -238,14 +238,14 @@ class AuthRepository {
           msg.contains('dismiss') ||
           msg.contains('user_cancelled')) {
         return const Failure(
-          AuthException(message: 'Giriş iptal edildi'),
+          AuthException(message: 'Sign in cancelled'),
         );
       }
       debugPrint('[auth] _signInWithOAuth2($providerName) error: $e');
       return Failure(
         AuthException(
           message:
-              '${_providerDisplayName(providerName)} ile giriş yapılamadı. Lütfen tekrar deneyin.',
+              '${_providerDisplayName(providerName)} sign-in failed. Please try again.',
           originalError: e,
         ),
       );

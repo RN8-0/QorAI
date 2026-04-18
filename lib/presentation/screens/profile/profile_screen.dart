@@ -392,7 +392,7 @@ class _ProfileBody extends ConsumerWidget {
                       value: '$viewsCount',
                       label: context.l10n?.recentlyViewed ?? 'Views',
                       color: AppTheme.brandCyan,
-                      onTap: () => context.push(AppRoutes.behaviorReport),
+                      onTap: () => context.push(AppRoutes.recentlyViewed),
                     ),
                   ],
                 ),
@@ -934,8 +934,8 @@ class _ComparisonPreviewList extends StatelessWidget {
       children: comparisons.take(3).map((comparison) {
         final isTr = Localizations.localeOf(context).languageCode == 'tr';
         final subtitle = comparison.itemIds.length >= 2
-            ? '${comparison.itemIds.length} ${isTr ? "urun" : "items"} • ${_formatComparisonTimestamp(comparison.createdAt)}${comparison.occurrenceCount > 1 ? ' • ${comparison.occurrenceCount}x' : ''}'
-            : (isTr ? 'Taslak karsilastirma' : 'Draft comparison');
+            ? '${comparison.itemIds.length} ${isTr ? "ürün" : "items"} • ${_formatComparisonTimestamp(comparison.createdAt)}${comparison.occurrenceCount > 1 ? ' • ${comparison.occurrenceCount}x' : ''}'
+            : (isTr ? 'Taslak karşılaştırma' : 'Draft comparison');
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: InkWell(
@@ -1007,14 +1007,14 @@ String _formatComparisonTimestamp(DateTime date) {
   final minute = date.minute.toString().padLeft(2, '0');
 
   if (now.year == date.year && now.month == date.month && now.day == date.day) {
-    return 'Bugun $hour:$minute';
+    return 'Today $hour:$minute';
   }
 
   final yesterday = now.subtract(const Duration(days: 1));
   if (yesterday.year == date.year &&
       yesterday.month == date.month &&
       yesterday.day == date.day) {
-    return 'Dun $hour:$minute';
+    return 'Yesterday $hour:$minute';
   }
 
   return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')} $hour:$minute';
@@ -1373,7 +1373,6 @@ class _FreemiumUsageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final aiChats = ref.watch(freemiumUsageProvider('ai_chat'));
-    final compareAi = ref.watch(freemiumUsageProvider('compare_ai'));
     final detailAi = ref.watch(freemiumUsageProvider('detail_ai'));
     final pcBuilderAi = ref.watch(freemiumUsageProvider('pc_builder_ai'));
     final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
@@ -1437,15 +1436,6 @@ class _FreemiumUsageCard extends ConsumerWidget {
             color: AppTheme.brandCyan,
             used: aiChats,
             limit: FreemiumLimits.aiChatsPerDay,
-            period: todayLabel,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: 'Compare AI',
-            icon: Icons.compare_arrows_rounded,
-            color: AppTheme.premiumBase,
-            used: compareAi,
-            limit: FreemiumLimits.compareAiPerDay,
             period: todayLabel,
           ),
           const SizedBox(height: 10),
