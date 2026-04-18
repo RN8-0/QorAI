@@ -1000,7 +1000,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favoritesSubtitle => 'Products you\'ve saved appear here';
 
   @override
-  String get favoritesEmptySubtitle => 'Tap the heart icon on any product to save it here.';
+  String get favoritesEmptySubtitle =>
+      'Tap the heart icon on any product to save it here.';
 
   @override
   String get recentlyViewed => 'Recently Viewed';

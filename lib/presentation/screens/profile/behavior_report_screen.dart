@@ -1547,7 +1547,7 @@ class _ActivityPulseStrip extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 104,
+      height: 116,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 2),

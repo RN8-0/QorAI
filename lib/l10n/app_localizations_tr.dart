@@ -1005,7 +1005,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get favoritesSubtitle => 'Kaydettiğin ürünler burada listelenir';
 
   @override
-  String get favoritesEmptySubtitle => 'Beğendiğin ürünlerin kalp ikonuna dokunarak favorilere ekleyebilirsin.';
+  String get favoritesEmptySubtitle =>
+      'Beğendiğin ürünlerin kalp ikonuna dokunarak favorilere ekleyebilirsin.';
 
   @override
   String get recentlyViewed => 'Son Görüntülenenler';

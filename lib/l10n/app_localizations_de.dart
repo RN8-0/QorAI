@@ -998,13 +998,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noFavorites => 'Noch keine Favoriten';
 
   @override
-  String get myFavorites => 'Meine Favoriten';
+  String get myFavorites => 'My Favorites';
 
   @override
-  String get favoritesSubtitle => 'Gespeicherte Produkte erscheinen hier';
+  String get favoritesSubtitle => 'Products you\'ve saved appear here';
 
   @override
-  String get favoritesEmptySubtitle => 'Tippe auf das Herz‑Symbol bei einem Produkt, um es hier zu speichern.';
+  String get favoritesEmptySubtitle =>
+      'Tap the heart icon on any product to save it here.';
 
   @override
   String get recentlyViewed => 'Kürzlich angesehen';

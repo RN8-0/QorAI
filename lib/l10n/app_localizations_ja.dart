@@ -981,13 +981,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get noFavorites => 'お気に入りはまだありません';
 
   @override
-  String get myFavorites => 'マイお気に入り';
+  String get myFavorites => 'My Favorites';
 
   @override
-  String get favoritesSubtitle => '保存した商品がここに表示されます';
+  String get favoritesSubtitle => 'Products you\'ve saved appear here';
 
   @override
-  String get favoritesEmptySubtitle => '商品のハートアイコンをタップして保存しましょう。';
+  String get favoritesEmptySubtitle =>
+      'Tap the heart icon on any product to save it here.';
 
   @override
   String get recentlyViewed => '最近見た';

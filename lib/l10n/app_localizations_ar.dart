@@ -985,13 +985,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noFavorites => 'لا توجد مفضلات بعد';
 
   @override
-  String get myFavorites => 'مفضلاتي';
+  String get myFavorites => 'My Favorites';
 
   @override
-  String get favoritesSubtitle => 'تظهر المنتجات المحفوظة هنا';
+  String get favoritesSubtitle => 'Products you\'ve saved appear here';
 
   @override
-  String get favoritesEmptySubtitle => 'اضغط على أيقونة القلب لحفظ المنتج هنا.';
+  String get favoritesEmptySubtitle =>
+      'Tap the heart icon on any product to save it here.';
 
   @override
   String get recentlyViewed => 'شوهد مؤخراً';

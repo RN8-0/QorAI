@@ -997,13 +997,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get noFavorites => 'Nenhum favorito ainda';
 
   @override
-  String get myFavorites => 'Meus Favoritos';
+  String get myFavorites => 'My Favorites';
 
   @override
-  String get favoritesSubtitle => 'Os produtos salvos aparecem aqui';
+  String get favoritesSubtitle => 'Products you\'ve saved appear here';
 
   @override
-  String get favoritesEmptySubtitle => 'Toque no ícone de coração em um produto para salvá‑lo aqui.';
+  String get favoritesEmptySubtitle =>
+      'Tap the heart icon on any product to save it here.';
 
   @override
   String get recentlyViewed => 'Vistos recentemente';

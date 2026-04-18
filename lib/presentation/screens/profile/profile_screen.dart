@@ -204,24 +204,41 @@ Color _avatarColorFromUid(String? uid) {
   return colors[hash % colors.length];
 }
 
-/// displayName > email prefix > fallback sırasıyla etkili adı döndürür.
+/// displayName > authStore fallback > email prefix > fallback sırasıyla etkili adı döndürür.
 String _effectiveDisplayName(UserEntity? user, BuildContext context) {
+  // 1. Try from loaded user entity
   final name = user?.displayName;
   if (name != null && name.isNotEmpty) return name;
+
+  // 2. Try from live auth store record (catches Google/Apple users whose
+  //    PocketBase record may not have displayName synced yet)
+  final authRecord = pb.authStore.record;
+  if (authRecord != null) {
+    final authName = _resolveAuthRecordDisplayName(authRecord).trim();
+    if (authName.isNotEmpty) return authName;
+  }
+
+  // 3. Try email prefix from loaded entity
   final email = user?.email;
   if (email != null && email.isNotEmpty) {
     final prefix = email.split('@').first;
     if (prefix.isNotEmpty) return prefix;
   }
+
   return context.l10n?.user ?? 'User';
 }
 
-/// Generates a UI Avatars URL for users without a photo
-String _fallbackAvatarUrl(UserEntity? user, BuildContext context) {
-  final name = _effectiveDisplayName(user, context);
-  final color = _avatarColorFromUid(user?.uid);
-  final hex = color.toARGB32().toRadixString(16).substring(2);
-  return 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=$hex&color=fff&size=128&bold=true';
+/// Returns the resolved photo URL: user entity > auth store > null.
+String? _resolvedPhotoUrl(UserEntity? user) {
+  final fromEntity = (user?.photoURL ?? '').trim();
+  if (fromEntity.isNotEmpty) return fromEntity;
+
+  final authRecord = pb.authStore.record;
+  if (authRecord != null) {
+    final fromAuth = _resolveAuthRecordPhotoUrl(authRecord);
+    if (fromAuth != null && fromAuth.isNotEmpty) return fromAuth;
+  }
+  return null;
 }
 
 class _ProfileBody extends ConsumerWidget {
@@ -268,13 +285,9 @@ class _ProfileBody extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      child: CircleAvatar(
+                      child: _UserAvatarWidget(
+                        user: user,
                         radius: 36,
-                        backgroundColor: _avatarColorFromUid(user?.uid),
-                        backgroundImage: (user?.photoURL ?? '').isNotEmpty
-                            ? NetworkImage(user!.photoURL!)
-                            : const AssetImage('assets/images/default_avatar.png')
-                                as ImageProvider,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -658,6 +671,65 @@ class _DatePickerRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── User Avatar Widget ────────────────────────────────────────────────────────
+/// Shows network photo for OAuth users; gradient icon avatar for email users.
+class _UserAvatarWidget extends StatelessWidget {
+  final UserEntity? user;
+  final double radius;
+
+  const _UserAvatarWidget({required this.user, this.radius = 36});
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = _resolvedPhotoUrl(user);
+
+    if (photoUrl != null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: _avatarColorFromUid(user?.uid),
+        child: ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: photoUrl,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorWidget: (_, __, ___) => _EmailAvatar(radius: radius),
+          ),
+        ),
+      );
+    }
+
+    return _EmailAvatar(radius: radius);
+  }
+}
+
+/// Consistent gradient avatar for email/password users.
+class _EmailAvatar extends StatelessWidget {
+  final double radius;
+  const _EmailAvatar({this.radius = 36});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Icon(
+        Icons.person_rounded,
+        color: Colors.white,
+        size: radius * 1.1,
       ),
     );
   }

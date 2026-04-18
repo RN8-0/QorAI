@@ -990,13 +990,14 @@ class AppLocalizationsSv extends AppLocalizations {
   String get noFavorites => 'Inga favoriter ännu';
 
   @override
-  String get myFavorites => 'Mina Favoriter';
+  String get myFavorites => 'My Favorites';
 
   @override
-  String get favoritesSubtitle => 'Sparade produkter visas här';
+  String get favoritesSubtitle => 'Products you\'ve saved appear here';
 
   @override
-  String get favoritesEmptySubtitle => 'Tryck på hjärtikonen på en produkt för att spara den här.';
+  String get favoritesEmptySubtitle =>
+      'Tap the heart icon on any product to save it here.';
 
   @override
   String get recentlyViewed => 'Nyligen visade';
