@@ -994,6 +994,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noFavorites => 'No favorites yet';
 
   @override
+  String get myFavorites => 'My Favorites';
+
+  @override
+  String get favoritesSubtitle => 'Products you\'ve saved appear here';
+
+  @override
+  String get favoritesEmptySubtitle => 'Tap the heart icon on any product to save it here.';
+
+  @override
   String get recentlyViewed => 'Recently Viewed';
 
   @override

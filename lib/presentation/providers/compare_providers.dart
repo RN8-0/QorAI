@@ -996,6 +996,13 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   void reset() => state = const SubQuizState();
 
+  /// Clear only the error message without resetting phase/inputs.
+  void clearError() {
+    if (state.error != null) {
+      state = state.copyWith(error: null);
+    }
+  }
+
   /// Restore a previously saved subscription analysis from history.
   void restoreFromHistory({
     required List<String> services,
@@ -1014,17 +1021,11 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Step 1: Generate AI quiz based on subscription names.
   Future<void> startQuiz(List<String> names) async {
-    if (!_subService.canAskAI) {
-      state = state.copyWith(
-        phase: SubFlowPhase.idle,
-        error: 'Daily AI limit reached. Upgrade to Premium!',
-      );
-      return;
-    }
     if (!_subService.canAnalyzeSubscription) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: 'Monthly subscription analysis limit reached (${AppConstants.freeSubscriptionAnalysisLimit}). Upgrade to Premium!',
+        error:
+            'Daily subscription analysis limit reached (${AppConstants.freeSubscriptionAnalysisLimit}/day). Upgrade to Premium!',
       );
       return;
     }
@@ -1052,19 +1053,12 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       );
     } catch (_) {
       // Fallback: skip quiz, go straight to analysis
-      final quota = _subService.recordAIQuestion();
-      if (quota.isFailure) {
-        state = state.copyWith(
-          phase: SubFlowPhase.idle,
-          error: 'Daily AI limit reached. Upgrade to Premium!',
-        );
-        return;
-      }
       final subQuota = _subService.recordSubscriptionAnalysis();
       if (subQuota.isFailure) {
         state = state.copyWith(
           phase: SubFlowPhase.idle,
-          error: 'Monthly subscription analysis limit reached. Upgrade to Premium!',
+          error:
+              'Daily subscription analysis limit reached. Upgrade to Premium!',
         );
         return;
       }
@@ -1086,19 +1080,12 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Step 3: Submit quiz + run enhanced grounded analysis.
   Future<void> submitQuiz() async {
-    final quota = _subService.recordAIQuestion();
-    if (quota.isFailure) {
-      state = state.copyWith(
-        phase: SubFlowPhase.idle,
-        error: 'Daily AI limit reached. Upgrade to Premium!',
-      );
-      return;
-    }
     final subQuota = _subService.recordSubscriptionAnalysis();
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: 'Monthly subscription analysis limit reached. Upgrade to Premium!',
+        error:
+            'Daily subscription analysis limit reached. Upgrade to Premium!',
       );
       return;
     }
@@ -1126,19 +1113,12 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Skip quiz → analyze with no quiz context.
   Future<void> skipQuiz() async {
-    final quota = _subService.recordAIQuestion();
-    if (quota.isFailure) {
-      state = state.copyWith(
-        phase: SubFlowPhase.idle,
-        error: 'Daily AI limit reached. Upgrade to Premium!',
-      );
-      return;
-    }
     final subQuota = _subService.recordSubscriptionAnalysis();
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: 'Monthly subscription analysis limit reached. Upgrade to Premium!',
+        error:
+            'Daily subscription analysis limit reached. Upgrade to Premium!',
       );
       return;
     }
@@ -1467,22 +1447,29 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
   );
 });
 
-/// Toggle favorite - returns new isFavorite state
+/// Toggle favorite - returns new isFavorite state (true = now favorited).
+/// Throws if the underlying PB write fails so callers can surface an error.
 Future<bool> toggleFavorite(WidgetRef ref, String productId) async {
   final user = ref.read(userProfileProvider).valueOrNull;
-  if (user == null) return false;
+  if (user == null) {
+    throw const ValidationException(
+      message: 'You need to be signed in to save favorites.',
+    );
+  }
 
-  // Collection limit: only check when adding (not removing)
+  // Collection limit: only check when adding (not removing).
   final isFav = user.favorites.contains(productId);
   if (!isFav) {
     final sub = ref.read(subscriptionServiceProvider);
-    if (!sub.isPremium && user.favorites.length >= AppConstants.freeCollectionLimit) {
+    if (!sub.isPremium &&
+        user.favorites.length >= AppConstants.freeCollectionLimit) {
       return false;
     }
   }
 
   final ds = ref.read(pbDataSourceProvider);
   final result = await ds.toggleFavorite(user.uid, productId);
+  // Poke the stream so UI updates even if realtime events are delayed.
   ref.invalidate(userProfileProvider);
   return result;
 }

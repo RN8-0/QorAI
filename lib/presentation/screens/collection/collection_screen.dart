@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/utils.dart';
@@ -10,7 +11,6 @@ import 'package:compair/core/constants.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
-import 'package:compair/routing/router.dart';
 
 class CollectionScreen extends ConsumerWidget {
   const CollectionScreen({super.key});
@@ -66,7 +66,7 @@ class _CollectionContent extends StatelessWidget {
                           ],
                         ).createShader(bounds),
                         child: Text(
-                          'Favorilerim',
+                          context.l10n?.myFavorites ?? 'My Favorites',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
@@ -118,7 +118,8 @@ class _CollectionContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Favoriye ekledigin urunler burada listelenir',
+                    context.l10n?.favoritesSubtitle ??
+                        'Products you\'ve saved appear here',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -165,40 +166,45 @@ class _EmptyState extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Animated icon container
               Container(
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.primaryBlue.withValues(alpha: 0.12),
+                      AppTheme.primaryBlue.withValues(alpha: 0.15),
                       AppTheme.brandCyan.withValues(alpha: 0.08),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(36),
+                  border: Border.all(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.22),
+                  ),
                 ),
-                child: Icon(
-                  Icons.favorite_border_rounded,
+                child: const Icon(
+                  Icons.favorite_rounded,
                   size: 56,
-                  color: AppTheme.primaryBlue,
+                  color: AppTheme.brandCyan,
                 ),
-              ),
+              )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scaleXY(begin: 1, end: 1.08, duration: 1400.ms, curve: Curves.easeInOut),
               const SizedBox(height: 28),
               Text(
-                'Henuz favori yok',
+                context.l10n?.noFavorites ?? 'No favorites yet',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                   color: context.textPrimary,
                 ),
                 textAlign: TextAlign.center,
-              ),
+              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
               const SizedBox(height: 10),
               Text(
-                'Begendigin urunleri favoriye eklediginde burada hizlica ulasabileceksin.',
+                context.l10n?.favoritesEmptySubtitle ??
+                    'Tap the heart icon on any product to save it here.',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -206,47 +212,7 @@ class _EmptyState extends StatelessWidget {
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
-              GestureDetector(
-                onTap: () => context.push(AppRoutes.search),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.search_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Urunleri Kesfet',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              ).animate(delay: 120.ms).fadeIn(duration: 400.ms),
             ],
           ),
         ),

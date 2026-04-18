@@ -555,7 +555,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get writeAReview => 'Yorum Yaz';
 
   @override
-  String get noReviewsYet => 'Henüz yorum yok';
+  String get noReviewsYet => 'Henüz yorum yapmadın';
 
   @override
   String get beFirstToReview => 'İlk yorumu siz yapın!';
@@ -997,6 +997,15 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get noFavorites => 'Henüz favori yok';
+
+  @override
+  String get myFavorites => 'Favorilerim';
+
+  @override
+  String get favoritesSubtitle => 'Kaydettiğin ürünler burada listelenir';
+
+  @override
+  String get favoritesEmptySubtitle => 'Beğendiğin ürünlerin kalp ikonuna dokunarak favorilere ekleyebilirsin.';
 
   @override
   String get recentlyViewed => 'Son Görüntülenenler';

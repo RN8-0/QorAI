@@ -2384,15 +2384,17 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
 // ─── Freemium Usage Tracking ──────────────────────────────────────────────────
 
 class FreemiumLimits {
-  static const int comparisonsPerDay = 5;
-  static const int aiChatsPerDay = 3;
-  static const int compareAiPerDay = 2;
-  static const int detailAiPerDay = 2;
-  static const int pcBuilderAiPerDay = 2;
-  static const int linkAnalysesPerDay = 3;
-  static const int linkComparePerDay = 2;
-  static const int subscriptionAnalysesPerDay = 3;
-  static const int productScanPerDay = 2;
+  // Single source of truth → AppConstants.
+  static int get comparisonsPerDay => AppConstants.freeComparisonLimit;
+  static int get aiChatsPerDay => AppConstants.freeAiQuestionLimit;
+  static int get compareAiPerDay => AppConstants.freeCompareAiLimit;
+  static int get detailAiPerDay => AppConstants.freeDetailAiLimit;
+  static int get pcBuilderAiPerDay => AppConstants.freePcBuilderAiLimit;
+  static int get linkAnalysesPerDay => AppConstants.freeLinkPasteLimit;
+  static int get linkComparePerDay => AppConstants.freeLinkCompareLimit;
+  static int get subscriptionAnalysesPerDay =>
+      AppConstants.freeSubscriptionAnalysisLimit;
+  static int get productScanPerDay => AppConstants.freeProductScanLimit;
 }
 
 final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {

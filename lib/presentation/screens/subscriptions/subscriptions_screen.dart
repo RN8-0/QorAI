@@ -77,6 +77,13 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
+    // Clear any stale error from previous session so the red banner does
+    // not greet users before they even hit "Start Analysis".
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(subQuizProvider.notifier).clearError();
+    });
+
     _orbScaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _orbController, curve: Curves.easeInOutSine),
     );
@@ -102,10 +109,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       _chips.add(trimmed);
       _inputCtrl.clear();
     });
+    ref.read(subQuizProvider.notifier).clearError();
   }
 
   void _removeChip(String name) {
     setState(() => _chips.remove(name));
+    ref.read(subQuizProvider.notifier).clearError();
   }
 
   void _startAnalysis() {

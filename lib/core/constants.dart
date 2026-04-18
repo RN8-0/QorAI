@@ -62,7 +62,7 @@ class AppConstants {
   static const int freeAiQuestionLimit = 3; // per day (AI chat)
   static const int freeCompareAiLimit = 2; // per day (compare premium AI tabs)
   static const int freeDetailAiLimit = 2; // per day per tab (product detail premium AI)
-  static const int freePcBuilderAiLimit = 2; // per day (PC builder AI analysis)
+  static const int freePcBuilderAiLimit = 3; // per day (PC builder AI analysis)
   static const int freeLinkPasteLimit = 3; // per day (link single analysis)
   static const int freeLinkCompareLimit = 2; // per day (link compare tab)
   static const int freeSubscriptionAnalysisLimit = 3; // per day

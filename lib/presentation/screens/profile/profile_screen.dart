@@ -271,11 +271,10 @@ class _ProfileBody extends ConsumerWidget {
                       child: CircleAvatar(
                         radius: 36,
                         backgroundColor: _avatarColorFromUid(user?.uid),
-                        backgroundImage: NetworkImage(
-                          (user?.photoURL ?? '').isNotEmpty
-                              ? user!.photoURL!
-                              : _fallbackAvatarUrl(user, context),
-                        ),
+                        backgroundImage: (user?.photoURL ?? '').isNotEmpty
+                            ? NetworkImage(user!.photoURL!)
+                            : const AssetImage('assets/images/default_avatar.png')
+                                as ImageProvider,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -495,35 +494,12 @@ class _ProfileBody extends ConsumerWidget {
 
               const SizedBox(height: 16),
 
-              // Favorites
-              _ContentSection(
-                title: context.l10n?.favorites ?? 'Favorites',
-                icon: Icons.favorite_rounded,
-                color: const Color(0xFFEF4444),
-                onHeaderTap: () => context.push(AppRoutes.collection),
-                child: _ProductPreviewList(
-                  products: (user?.favorites as List?) ?? [],
-                  emptyMessage: context.l10n?.noFavorites ?? 'No favorites yet',
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
               // Recently Viewed
               _ContentSection(
                 title: context.l10n?.recentlyViewed ?? 'Recently Viewed',
                 icon: Icons.history_rounded,
                 color: AppTheme.brandDeepBlue,
                 child: _RecentlyViewedPreviewList(),
-              ),
-
-              const SizedBox(height: 16),
-
-              _QuickActionCard(
-                icon: Icons.bar_chart_rounded,
-                color: AppTheme.brandDeepBlue,
-                title: context.l10n?.behaviorReport ?? 'Behavior Report',
-                onTap: () => context.push(AppRoutes.behaviorReport),
               ),
 
               const SizedBox(height: 16),
@@ -536,90 +512,6 @@ class _ProfileBody extends ConsumerWidget {
                 child: const _MyReviewsList(),
               ),
 
-              const SizedBox(height: 24),
-
-              // Log Out
-              GestureDetector(
-                onTap: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: context.surfaceColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      title: Text(
-                        context.l10n?.signOut ?? 'Sign Out',
-                        style: TextStyle(color: context.textPrimary),
-                      ),
-                      content: Text(
-                        context.l10n?.signOutConfirm ??
-                            'Are you sure you want to sign out?',
-                        style: TextStyle(color: context.textSecondary),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: Text(context.l10n?.cancel ?? 'Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: Text(
-                            context.l10n?.signOut ?? 'Sign Out',
-                            style: const TextStyle(color: Color(0xFFEF4444)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true && context.mounted) {
-                    await ref.read(authRepositoryProvider).signOut();
-                    if (context.mounted) {
-                      context.go(AppRoutes.login);
-                    }
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.logout_rounded,
-                        size: 18,
-                        color: Color(0xFFEF4444),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        context.l10n?.logOut ?? 'Log Out',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFEF4444),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  'Compair v1.0.0',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: context.textTertiaryColor,
-                  ),
-                ),
-              ),
               const SizedBox(height: 100),
             ]),
           ),
@@ -950,42 +842,6 @@ class _ContentSection extends StatelessWidget {
   }
 }
 
-class _ProductPreviewList extends ConsumerWidget {
-  final List<dynamic> products;
-  final String emptyMessage;
-
-  const _ProductPreviewList({
-    required this.products,
-    required this.emptyMessage,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (products.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            emptyMessage,
-            style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-              color: context.textTertiaryColor,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: products.take(3).map((productId) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _ProductListItem(productId: productId.toString()),
-        );
-      }).toList(),
-    );
-  }
-}
-
 class _ComparisonPreviewList extends StatelessWidget {
   final List<ComparisonEntity> comparisons;
   final String emptyMessage;
@@ -1013,9 +869,10 @@ class _ComparisonPreviewList extends StatelessWidget {
 
     return Column(
       children: comparisons.take(3).map((comparison) {
+        final isTr = Localizations.localeOf(context).languageCode == 'tr';
         final subtitle = comparison.itemIds.length >= 2
-            ? '${comparison.itemIds.length} urun • ${_formatComparisonTimestamp(comparison.createdAt)}${comparison.occurrenceCount > 1 ? ' • ${comparison.occurrenceCount} kez' : ''}'
-            : 'Taslak karsilastirma';
+            ? '${comparison.itemIds.length} ${isTr ? "urun" : "items"} • ${_formatComparisonTimestamp(comparison.createdAt)}${comparison.occurrenceCount > 1 ? ' • ${comparison.occurrenceCount}x' : ''}'
+            : (isTr ? 'Taslak karsilastirma' : 'Draft comparison');
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: InkWell(
@@ -1607,9 +1464,9 @@ class _UsageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final remaining = (limit - used).clamp(0, limit);
-    final progress = (used / limit).clamp(0.0, 1.0);
-    final isExhausted = remaining == 0;
+    final safeUsed = used.clamp(0, limit);
+    final progress = limit == 0 ? 0.0 : (safeUsed / limit).clamp(0.0, 1.0);
+    final isExhausted = safeUsed >= limit;
 
     return Row(
       children: [
@@ -1631,7 +1488,7 @@ class _UsageRow extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    isExhausted ? '0 left' : '$remaining/$limit $period',
+                    '$safeUsed/$limit $period',
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -1681,7 +1538,7 @@ class _MyReviewsList extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: Text(
-                'Henüz yorum yapmadın',
+                context.l10n?.noReviewsYet ?? 'No reviews yet',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   color: AppTheme.slate500,

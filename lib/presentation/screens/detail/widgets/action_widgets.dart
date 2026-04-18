@@ -334,11 +334,15 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
 
   @override
   Widget build(BuildContext context) {
-    final isFav = isFavorite(ref, widget.productId);
+    // Watch the profile so icon state tracks PB realtime updates.
+    final userAsync = ref.watch(userProfileProvider);
+    final isFav =
+        userAsync.valueOrNull?.favorites.contains(widget.productId) ?? false;
     return IconButton(
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
-        transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+        transitionBuilder: (child, animation) =>
+            ScaleTransition(scale: animation, child: child),
         child: Icon(
           isFav ? Icons.favorite : Icons.favorite_border,
           key: ValueKey(isFav),
@@ -352,19 +356,54 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
               try {
                 final wasFav = isFavorite(ref, widget.productId);
                 final result = await toggleFavorite(ref, widget.productId);
-                // If was NOT fav and result is false → limit reached
-                if (!wasFav && !result && mounted) {
+                if (!mounted) return;
+                if (!wasFav && !result) {
+                  // Adding was rejected → collection limit reached.
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Koleksiyon sınırı: ${AppConstants.freeCollectionLimit} ürün. Premium\'a geçin!'),
+                      content: Text(
+                        'Collection limit reached: ${AppConstants.freeCollectionLimit} items. Go Premium!',
+                      ),
                       action: SnackBarAction(
                         label: 'Premium',
                         onPressed: () => showPaywallSheet(context),
                       ),
                     ),
                   );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      duration: const Duration(milliseconds: 1200),
+                      backgroundColor: result
+                          ? Colors.redAccent.withValues(alpha: 0.9)
+                          : Colors.grey.shade700,
+                      content: Row(
+                        children: [
+                          Icon(
+                            result
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            result ? 'Added to favorites' : 'Removed from favorites',
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
-              } catch (_) {}
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: Colors.redAccent,
+                    content: Text('Could not update favorites: $e'),
+                  ),
+                );
+              }
               if (mounted) setState(() => _isToggling = false);
             },
     );

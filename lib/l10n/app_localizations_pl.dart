@@ -994,6 +994,15 @@ class AppLocalizationsPl extends AppLocalizations {
   String get noFavorites => 'Brak ulubionych';
 
   @override
+  String get myFavorites => 'Moje Ulubione';
+
+  @override
+  String get favoritesSubtitle => 'Zapisane produkty pojawią się tutaj';
+
+  @override
+  String get favoritesEmptySubtitle => 'Dotknij ikonę serca przy produkcie, aby go tutaj zapisać.';
+
+  @override
   String get recentlyViewed => 'Ostatnio oglądane';
 
   @override
