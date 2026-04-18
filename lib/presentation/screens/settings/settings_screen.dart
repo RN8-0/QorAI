@@ -158,7 +158,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       name: profileName,
                       email: profileEmail,
                       photoUrl: profilePhotoUrl,
-                      onTap: () => context.push(AppRoutes.profile),
+                      onTap: () => _showEditProfileDialog(
+                        context,
+                        profileName,
+                        profileEmail,
+                      ),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -648,22 +652,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildInitialAvatar(String name) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : 'U',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Image.asset(
+        'assets/images/default_avatar.jpeg',
+        width: 52,
+        height: 52,
+        fit: BoxFit.cover,
       ),
     );
   }
@@ -1327,5 +1322,92 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _resolveAuthPhotoUrl(RecordModel? auth) {
     if (auth == null) return '';
     return auth.getStringValue('photoURL').trim();
+  }
+
+  void _showEditProfileDialog(
+      BuildContext context, String currentName, String currentEmail) {
+    final nameController = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.surfaceVariantColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Edit Profile',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: context.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              style: TextStyle(color: context.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Display Name',
+                labelStyle: TextStyle(color: context.textSecondary),
+                filled: true,
+                fillColor: context.textTertiaryColor.withValues(alpha: 0.08),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              enabled: false,
+              style: TextStyle(color: context.textTertiaryColor),
+              decoration: InputDecoration(
+                labelText: 'Email',
+                labelStyle: TextStyle(color: context.textTertiaryColor),
+                hintText: currentEmail,
+                hintStyle: TextStyle(color: context.textTertiaryColor),
+                filled: true,
+                fillColor: context.textTertiaryColor.withValues(alpha: 0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: context.textSecondary),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              if (newName.isNotEmpty && newName != currentName) {
+                final uid = pb.authStore.record?.id;
+                if (uid != null) {
+                  await ref.read(pbDataSourceProvider).updateUser(uid, {
+                    'displayName': newName,
+                    'name': newName,
+                  });
+                }
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 }

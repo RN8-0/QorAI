@@ -1223,6 +1223,18 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
         displayName: displayName,
         text: text,
       );
+      // Send notification to review owner
+      if (widget.userId != uid) {
+        ref.read(pbDataSourceProvider).createNotification(
+          recipientId: widget.userId,
+          senderId: uid,
+          senderName: displayName,
+          type: 'review_reply',
+          title: 'New reply to your review',
+          body: text.length > 100 ? '${text.substring(0, 100)}...' : text,
+          referenceId: widget.reviewId,
+        );
+      }
       _replyCtrl.clear();
       setState(() {
         _replyInputVisible = false;

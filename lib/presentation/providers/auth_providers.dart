@@ -48,3 +48,25 @@ final countryInitProvider = FutureProvider<void>((ref) async {
   });
 });
 
+// ════════════════════════════════════════════════════
+// ─── NOTIFICATION PROVIDERS ─── (StreamProvider)
+// ════════════════════════════════════════════════════
+
+final notificationsProvider =
+    StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.when(
+    data: (uid) {
+      if (uid == null) return Stream.value([]);
+      return ref.read(pbDataSourceProvider).watchNotifications(uid);
+    },
+    loading: () => Stream.value([]),
+    error: (_, __) => Stream.value([]),
+  );
+});
+
+final unreadNotificationCountProvider = Provider<int>((ref) {
+  final notifs = ref.watch(notificationsProvider).valueOrNull ?? [];
+  return notifs.where((n) => n['read'] != true).length;
+});
+

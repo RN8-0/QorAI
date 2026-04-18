@@ -456,11 +456,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       onTap: () => context.push(AppRoutes.visualScanner),
                     ),
                     const SizedBox(width: 8),
-                    _AppBarButton(
-                      icon: Icons.notifications_none_rounded,
-                      tooltip: context.l10n?.notifications ?? 'Notifications',
-                      onTap: () => _showNotificationsSheet(context),
-                    ),
+                    _NotificationButton(),
                     const SizedBox(width: 8),
                     _AppBarButton(
                       icon: Icons.diamond_rounded,
@@ -2571,6 +2567,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           title: context.l10n?.recentlyViewed ?? 'Recently Viewed',
           icon: Icons.history_rounded,
           iconColor: const Color(0xFF6366F1),
+          onSeeAll: () => context.push(AppRoutes.recentlyViewed),
         ),
       ),
       SliverToBoxAdapter(
@@ -2917,6 +2914,71 @@ class _AppBarButton extends StatelessWidget {
       message: tooltip!,
       preferBelow: true,
       child: Semantics(button: true, label: tooltip, child: button),
+    );
+  }
+}
+
+class _NotificationButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        context.push(AppRoutes.notifications);
+      },
+      child: SizedBox(
+        width: 38,
+        height: 38,
+        child: Stack(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: context.textTertiaryColor.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: context.dividerColor,
+                  width: 0.5,
+                ),
+              ),
+              child: Icon(
+                Icons.notifications_none_rounded,
+                size: 20,
+                color: context.textTertiaryColor,
+              ),
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                top: 2,
+                right: 2,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: AppTheme.error,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      unreadCount > 9 ? '9+' : '$unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

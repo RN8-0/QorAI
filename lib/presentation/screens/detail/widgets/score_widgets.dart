@@ -87,20 +87,36 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final user = userAsync.valueOrNull;
     final quizDone = user != null && user.quizCompleted;
 
-    // Trigger Gemini fetch when quiz is done
+    // Local instant score calculation
+    int? localFitScore;
+    if (quizDone && user != null) {
+      final behaviorAsync = ref.watch(behaviorSignalsProvider);
+      final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
+      final algo = ProfileAlgorithmService();
+      localFitScore = algo
+          .calculateTotalFitScore(
+            user: user,
+            product: widget.product,
+            behavior: behavior,
+          )
+          .round()
+          .clamp(0, 100);
+    }
+
+    // Trigger DeepSeek fetch for reason text (background enrichment)
     if (quizDone) _triggerGeminiFetch(cacheKey);
 
-    // Watch the Gemini match score provider
+    // Watch DeepSeek result for reason text only
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
-    final isLoading = matchAsync is AsyncLoading;
 
-    final int? fitScore = matchResult?.matchScore;
+    // Use local score instantly, DeepSeek reason as enrichment
+    final int? fitScore = localFitScore ?? matchResult?.matchScore;
     final String? reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;
 
-    if (techScore == 0 && fitScore == null && !quizDone && !isLoading) {
+    if (techScore == 0 && fitScore == null && !quizDone) {
       return const SizedBox.shrink();
     }
 
@@ -150,9 +166,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                   ),
                 ],
                 Expanded(
-                  child: isLoading
-                      ? _buildMatchLoading(context)
-                      : fitScore != null
+                  child: fitScore != null
                       ? _AnimatedScoreCell(
                           label: context.l10n?.yourMatch ?? 'Your Match',
                           score: fitScore,

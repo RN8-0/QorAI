@@ -1114,6 +1114,100 @@ class PbDataSource {
   }
 
   // ────────────────────────────────────────────────────────────────────────
+  // ─── NOTIFICATIONS ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  Future<void> createNotification({
+    required String recipientId,
+    required String senderId,
+    required String senderName,
+    required String type,
+    required String title,
+    required String body,
+    String? referenceId,
+  }) async {
+    try {
+      await _pb.collection('notifications').create(body: {
+        'recipientId': recipientId,
+        'senderId': senderId,
+        'senderName': senderName,
+        'type': type,
+        'title': title,
+        'body': body,
+        'referenceId': referenceId ?? '',
+        'read': false,
+      });
+    } catch (e) {
+      debugPrint('[PbDs] createNotification error: $e');
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> watchNotifications(String userId) {
+    final controller = StreamController<List<Map<String, dynamic>>>();
+
+    Future<List<Map<String, dynamic>>> fetch() async {
+      try {
+        final result = await _pb.collection('notifications').getList(
+          page: 1,
+          perPage: 50,
+          filter: 'recipientId = "$userId"',
+          sort: '-created',
+        );
+        return result.items.map((r) => {'id': r.id, ...r.data}).toList();
+      } catch (e) {
+        debugPrint('[PbDs] watchNotifications fetch error: $e');
+        return [];
+      }
+    }
+
+    // Initial fetch
+    fetch().then((data) {
+      if (!controller.isClosed) controller.add(data);
+    });
+
+    // Subscribe to realtime
+    _pb.collection('notifications').subscribe('*', (e) async {
+      final data = await fetch();
+      if (!controller.isClosed) controller.add(data);
+    });
+
+    controller.onCancel = () {
+      _pb.collection('notifications').unsubscribe('*');
+    };
+
+    return controller.stream;
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    try {
+      await _pb.collection('notifications').update(
+        notificationId,
+        body: {'read': true},
+      );
+    } catch (e) {
+      debugPrint('[PbDs] markNotificationRead error: $e');
+    }
+  }
+
+  Future<void> markAllNotificationsRead(String userId) async {
+    try {
+      final result = await _pb.collection('notifications').getList(
+        page: 1,
+        perPage: 200,
+        filter: 'recipientId = "$userId" && read = false',
+      );
+      for (final item in result.items) {
+        await _pb.collection('notifications').update(
+          item.id,
+          body: {'read': true},
+        );
+      }
+    } catch (e) {
+      debugPrint('[PbDs] markAllNotificationsRead error: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
   // ─── USER LINKS ───
   // ────────────────────────────────────────────────────────────────────────
 

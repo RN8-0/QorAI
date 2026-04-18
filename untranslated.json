@@ -1,5 +1,8 @@
 {
   "ar": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -54,6 +57,9 @@
   ],
 
   "de": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -108,6 +114,9 @@
   ],
 
   "es": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -162,6 +171,9 @@
   ],
 
   "fr": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -216,6 +228,9 @@
   ],
 
   "it": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -270,6 +285,9 @@
   ],
 
   "ja": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -324,6 +342,9 @@
   ],
 
   "nl": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -378,6 +399,9 @@
   ],
 
   "pl": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -432,6 +456,9 @@
   ],
 
   "pt": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",
@@ -486,6 +513,9 @@
   ],
 
   "sv": [
+    "myFavorites",
+    "favoritesSubtitle",
+    "favoritesEmptySubtitle",
     "mustBe13OrOlder",
     "added",
     "selectComponent",

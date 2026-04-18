@@ -261,6 +261,8 @@ class _ProfileBody extends ConsumerWidget {
       comparisonHistory.length,
     );
     final favoritesCount = user?.favorites.length ?? 0;
+    final viewedAsync = ref.watch(viewedProductsProvider);
+    final viewsCount = viewedAsync.valueOrNull?.length ?? 0;
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -387,8 +389,8 @@ class _ProfileBody extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     _StatPill(
-                      value: '${user?.affiliateClicks ?? 0}',
-                      label: context.l10n?.clicks ?? 'Clicks',
+                      value: '$viewsCount',
+                      label: context.l10n?.recentlyViewed ?? 'Views',
                       color: AppTheme.brandCyan,
                       onTap: () => context.push(AppRoutes.behaviorReport),
                     ),
@@ -512,6 +514,7 @@ class _ProfileBody extends ConsumerWidget {
                 title: context.l10n?.recentlyViewed ?? 'Recently Viewed',
                 icon: Icons.history_rounded,
                 color: AppTheme.brandDeepBlue,
+                onHeaderTap: () => context.push(AppRoutes.recentlyViewed),
                 child: _RecentlyViewedPreviewList(),
               ),
 
