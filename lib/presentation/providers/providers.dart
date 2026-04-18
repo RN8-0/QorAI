@@ -189,13 +189,41 @@ final behaviorTrackingProvider = Provider<BehaviorTrackingService>((ref) {
   return BehaviorTrackingService();
 });
 
-/// Behavior Signals - loaded once per session for algorithm scoring.
-/// Reads back the behavior data collected by BehaviorTrackingService.
+/// Behavior Signals — built from real user data for personalized scoring.
+/// Combines favorites, viewed products, and quiz preferences.
 final behaviorSignalsProvider = FutureProvider<BehaviorSignals>((ref) async {
   final userAsync = ref.watch(userProfileProvider);
   final user = userAsync.valueOrNull;
   if (user == null) return BehaviorSignals.empty;
-  return BehaviorSignals.load(user.uid);
+
+  // Viewed product IDs (from PB + Hive)
+  final viewedIds =
+      ref.watch(viewedProductsProvider).valueOrNull ?? <String>[];
+
+  // productViews: each viewed product gets at least 1 view signal
+  final productViews = <String, int>{
+    for (final id in viewedIds) id: 1,
+  };
+
+  // categoryViews: derived from interest categories (weighted by position)
+  final categoryViews = <String, int>{};
+  for (int i = 0; i < user.interestCategories.length; i++) {
+    final cat = user.interestCategories[i].toLowerCase();
+    categoryViews[cat] = (user.interestCategories.length - i) * 3;
+  }
+  if (user.primaryCategory != null) {
+    final primary = user.primaryCategory!.toLowerCase();
+    categoryViews[primary] = (categoryViews[primary] ?? 0) + 10;
+  }
+
+  // favorites: direct from user profile
+  final favorites = user.favorites.toSet();
+
+  return BehaviorSignals(
+    favorites: favorites,
+    productViews: productViews,
+    categoryViews: categoryViews,
+  );
 });
 
 /// Global algorithm aggregates (cross-user collaborative signals)

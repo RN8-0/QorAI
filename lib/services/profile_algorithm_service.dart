@@ -690,7 +690,9 @@ class ProfileAlgorithmService {
     ProductEntity product,
     BehaviorSignals behavior,
   ) {
-    if (behavior == BehaviorSignals.empty) return 0;
+    if (behavior.categoryViews.isEmpty &&
+        behavior.productViews.isEmpty &&
+        behavior.favorites.isEmpty) return 0;
 
     double boost = 0;
 
