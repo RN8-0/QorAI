@@ -402,10 +402,10 @@ class AppTheme {
     ),
   ];
 
-  /// Card: soft ambient glow
+  /// Card: soft ambient glow — dark theme version
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.40),
+      color: Colors.black.withValues(alpha: 0.28),
       blurRadius: 8,
       offset: const Offset(0, 2),
     ),
@@ -413,6 +413,20 @@ class AppTheme {
       color: neonCyan.withValues(alpha: 0.04),
       blurRadius: 20,
       offset: const Offset(0, 4),
+    ),
+  ];
+
+  /// Card shadow for light theme — subtle, no dark lines
+  static const List<BoxShadow> cardShadowLight = [
+    BoxShadow(
+      color: Color(0x14000000), // 8% black
+      blurRadius: 10,
+      offset: Offset(0, 3),
+    ),
+    BoxShadow(
+      color: Color(0x08000000), // 3% black
+      blurRadius: 20,
+      offset: Offset(0, 6),
     ),
   ];
 
@@ -1270,4 +1284,8 @@ extension ThemeExtension on BuildContext {
       isDarkMode ? AppTheme.textTertiaryDark : AppTheme.textTertiaryLightMode;
   Color get dividerColor =>
       isDarkMode ? AppTheme.dividerDark : AppTheme.dividerLightMode;
+
+  /// Theme-aware card shadow — subtle in light mode, deeper in dark mode
+  List<BoxShadow> get cardShadow =>
+      isDarkMode ? AppTheme.cardShadow : AppTheme.cardShadowLight;
 }

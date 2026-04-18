@@ -536,11 +536,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildAvatarFallback(String? name) {
-    return Image.asset(
-      'assets/images/default_avatar.jpeg',
+    // Show initials for logged-in users with no photo, person icon for guests
+    final initial = (name?.isNotEmpty ?? false) ? name![0].toUpperCase() : null;
+    return Container(
       width: 38,
       height: 38,
-      fit: BoxFit.cover,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2196F3), Color(0xFF00BCD4)],
+        ),
+      ),
+      child: Center(
+        child: initial != null
+            ? Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            : const Icon(Icons.person_rounded, color: Colors.white, size: 20),
+      ),
     );
   }
 
@@ -3366,7 +3385,7 @@ class _WideProductCard extends StatelessWidget {
             color: AppTheme.brandCyan.withValues(alpha: 0.15),
             width: 0.8,
           ),
-          boxShadow: AppTheme.cardShadow,
+          boxShadow: context.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3587,7 +3606,7 @@ class _CompactProductCard extends StatelessWidget {
             color: AppTheme.brandCyan.withValues(alpha: 0.15),
             width: 0.8,
           ),
-          boxShadow: AppTheme.cardShadow,
+          boxShadow: context.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3596,8 +3615,6 @@ class _CompactProductCard extends StatelessWidget {
             Stack(
               children: [
                 Container(
-                  height: 110,
-                  width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -3740,7 +3757,7 @@ class _TrendCard extends StatelessWidget {
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.12)),
-          boxShadow: AppTheme.cardShadow,
+          boxShadow: context.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
