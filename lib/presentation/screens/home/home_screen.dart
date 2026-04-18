@@ -3390,23 +3390,25 @@ class _WideProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 155,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: isDark ? context.surfaceVariantColor : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.brandCyan.withValues(alpha: 0.15),
-            width: 0.8,
+    return Align(
+      alignment: Alignment.topLeft,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 155,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: isDark ? context.surfaceVariantColor : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppTheme.brandCyan.withValues(alpha: 0.15),
+              width: 0.8,
+            ),
+            boxShadow: context.cardShadow,
           ),
-          boxShadow: context.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
           children: [
             // Image section
             Stack(
@@ -3547,7 +3549,8 @@ class _WideProductCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -3612,140 +3615,143 @@ class _CompactProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 155,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? context.surfaceVariantColor
-              : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppTheme.brandCyan.withValues(alpha: 0.15),
-            width: 0.8,
-          ),
-          boxShadow: context.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              children: [
-                Container(
-                  height: 110,
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20),
-                    ),
-                  ),
-                  child: ProductImageBox(
-                    imageUrl: product.imageURL.isNotEmpty
-                        ? product.imageURL
-                        : null,
-                    height: 94,
-                    borderRadius: BorderRadius.circular(10),
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-                if (showNewBadge)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        context.l10n?.newBadge ?? 'NEW',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (product.techScore > 0)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${product.techScore.toInt()}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+    return Align(
+      alignment: Alignment.topLeft,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 155,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? context.surfaceVariantColor
+                : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.brandCyan.withValues(alpha: 0.15),
+              width: 0.8,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+            boxShadow: context.cardShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
                 children: [
-                  if (product.brand != null)
-                    Text(
-                      product.brand!,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        color: context.textTertiaryColor,
-                        fontWeight: FontWeight.w500,
+                  Container(
+                    height: 110,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 2),
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: context.textPrimary,
-                      height: 1.15,
+                    child: ProductImageBox(
+                      imageUrl: product.imageURL.isNotEmpty
+                          ? product.imageURL
+                          : null,
+                      height: 94,
+                      borderRadius: BorderRadius.circular(10),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
-                  if (price > 0) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      '\$${price.toStringAsFixed(0)}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryBlue,
+                  if (showNewBadge)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          context.l10n?.newBadge ?? 'NEW',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
-                  ],
+                  if (product.techScore > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${product.techScore.toInt()}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (product.brand != null)
+                      Text(
+                        product.brand!,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: context.textTertiaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 2),
+                    Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                        height: 1.15,
+                      ),
+                    ),
+                    if (price > 0) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        '\$${price.toStringAsFixed(0)}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3886,31 +3892,32 @@ class _TrendingWideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 155,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: isDark ? context.surfaceVariantColor : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.brandCyan.withValues(alpha: 0.12),
-            width: 0.8,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.brandCyan.withValues(alpha: 0.06),
-              blurRadius: 10,
-              spreadRadius: -2,
+    return Align(
+      alignment: Alignment.topLeft,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 155,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: isDark ? context.surfaceVariantColor : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppTheme.brandCyan.withValues(alpha: 0.12),
+              width: 0.8,
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Image section with rank badge
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.brandCyan.withValues(alpha: 0.06),
+                blurRadius: 10,
+                spreadRadius: -2,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
             Stack(
               children: [
                 Container(
@@ -4057,7 +4064,8 @@ class _TrendingWideCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
