@@ -28,6 +28,7 @@ import 'package:compair/core/pb_client.dart';
 // ============================================================================
 
 const double _kHorizontalCardRowHeight = 246;
+const double _kHomeFeedCardHeight = 214;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -213,7 +214,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             SliverToBoxAdapter(
               child: _SectionHeader(
                 title: context.l10n?.categories ?? 'Categories',
-                onSeeAll: () => _showAllCategoriesSheet(context),
               ),
             ),
             SliverToBoxAdapter(child: _buildCategoriesSection()),
@@ -1675,17 +1675,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     }
     return flat;
-  }
-
-  void _showAllCategoriesSheet(BuildContext context) {
-    HapticFeedback.mediumImpact();
-    final categories = _getFlatCategories(context);
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _AllCategoriesPage(categories: categories),
-        fullscreenDialog: false,
-      ),
-    );
   }
 
   Widget _buildCategoriesSection() {
@@ -3404,6 +3393,7 @@ class _WideProductCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        height: _kHomeFeedCardHeight,
         width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
@@ -3625,6 +3615,7 @@ class _CompactProductCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        height: _kHomeFeedCardHeight,
         width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
@@ -3896,6 +3887,7 @@ class _TrendingWideCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        height: _kHomeFeedCardHeight,
         width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
@@ -4295,198 +4287,6 @@ class _TrustItem extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Full-page All Categories
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AllCategoriesPage extends StatefulWidget {
-  const _AllCategoriesPage({required this.categories});
-  final List<Map<String, Object>> categories;
-
-  @override
-  State<_AllCategoriesPage> createState() => _AllCategoriesPageState();
-}
-
-class _AllCategoriesPageState extends State<_AllCategoriesPage> {
-  final _searchCtrl = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final filtered = _query.isEmpty
-        ? widget.categories
-        : widget.categories
-              .where(
-                (c) => (c['name'] as String).toLowerCase().contains(
-                  _query.toLowerCase(),
-                ),
-              )
-              .toList();
-
-    return Scaffold(
-      backgroundColor: isDark ? context.surfaceColor : AppTheme.surfaceLight,
-      appBar: AppBar(
-        backgroundColor: isDark ? context.surfaceColor : AppTheme.surfaceLight,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_rounded,
-            color: isDark ? context.textPrimary : AppTheme.textPrimaryLight,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'All Categories',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: isDark ? context.textPrimary : AppTheme.textPrimaryLight,
-          ),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '${filtered.length}',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.primaryBlue,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (v) => setState(() => _query = v),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                color: isDark ? context.textPrimary : AppTheme.textPrimaryLight,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search categories...',
-                hintStyle: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  color: isDark
-                      ? context.textSecondary
-                      : AppTheme.textSecondaryLight,
-                ),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: isDark
-                      ? context.textSecondary
-                      : AppTheme.textSecondaryLight,
-                  size: 20,
-                ),
-                suffixIcon: _query.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(
-                          Icons.close_rounded,
-                          color: isDark
-                              ? context.textSecondary
-                              : AppTheme.textSecondaryLight,
-                          size: 18,
-                        ),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: isDark
-                    ? context.surfaceVariantColor
-                    : AppTheme.surfaceVariantLight,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              itemCount: filtered.length,
-              itemBuilder: (ctx, i) {
-                final cat = filtered[i];
-                final color = cat['color'] as Color;
-                final icon = cat['icon'] as IconData;
-                final name = cat['name'] as String;
-                final id = cat['id'] as String;
-                return ListTile(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    Navigator.of(context).pop();
-                    context.push(
-                      '${AppRoutes.browse}?id=$id&name=${Uri.encodeComponent(name)}',
-                    );
-                  },
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: color, size: 22),
-                  ),
-                  title: Text(
-                    name,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? context.textPrimary
-                          : AppTheme.textPrimaryLight,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: isDark
-                        ? context.textTertiaryColor
-                        : AppTheme.textSecondaryLight,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  tileColor: Colors.transparent,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

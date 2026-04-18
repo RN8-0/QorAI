@@ -116,12 +116,14 @@ class ProductCardSkeleton extends StatelessWidget {
 class ProductRowSkeleton extends StatelessWidget {
   final double height;
   final double cardWidth;
+  final double cardHeight;
   final int itemCount;
 
   const ProductRowSkeleton({
     super.key,
     this.height = 246,
     this.cardWidth = 155,
+    this.cardHeight = 214,
     this.itemCount = 5,
   });
 
@@ -134,8 +136,10 @@ class ProductRowSkeleton extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
         physics: const NeverScrollableScrollPhysics(),
         itemCount: itemCount,
-        itemBuilder: (_, __) =>
-            ProductCardSkeleton(width: cardWidth, height: height - 16),
+        itemBuilder: (_, __) => Align(
+          alignment: Alignment.topCenter,
+          child: ProductCardSkeleton(width: cardWidth, height: cardHeight),
+        ),
       ),
     );
   }
