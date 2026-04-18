@@ -175,10 +175,6 @@ class AuthRepository {
     return _signInWithOAuth2('apple', scopes: ['name', 'email']);
   }
 
-  Future<Result<UserEntity>> signInWithFacebook() async {
-    return _signInWithOAuth2('facebook', scopes: ['email', 'public_profile']);
-  }
-
   Future<Result<UserEntity>> signInWithX() async {
     return _signInWithOAuth2('twitter', scopes: ['tweet.read', 'users.read']);
   }

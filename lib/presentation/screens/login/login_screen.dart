@@ -95,20 +95,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithFacebook() async {
-    setState(() => _isLoading = true);
-    final result = await ref.read(authRepositoryProvider).signInWithFacebook();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    switch (result) {
-      case Success(data: final user):
-        _navigateAfterLogin(user.quizCompleted);
-      case Failure(error: final error):
-        _showError(error.message);
-    }
-  }
-
   Future<void> _signInWithX() async {
     setState(() => _isLoading = true);
     final result = await ref.read(authRepositoryProvider).signInWithX();
@@ -279,9 +265,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Apple button
                   _buildAppleButton(),
                   const SizedBox(height: 14),
-                  // Facebook button
-                  _buildFacebookButton(),
-                  const SizedBox(height: 14),
                   // X (Twitter) button
                   _buildXButton(),
                   const SizedBox(height: 24),
@@ -403,40 +386,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: foregroundColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFacebookButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1877F2),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _signInWithFacebook,
-          borderRadius: BorderRadius.circular(30),
-          child: SizedBox(
-            height: 56,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.facebook_rounded, color: Colors.white, size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  context.l10n?.continueWithFacebook ?? 'Continue with Facebook',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
                   ),
                 ),
               ],
