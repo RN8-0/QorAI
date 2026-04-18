@@ -367,12 +367,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         : hour < 17
         ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
         : (context.l10n?.goodEvening ?? 'Good evening');
-    final userName =
-        userProfile.whenOrNull(
-              data: (user) => user?.displayName?.split(' ').first,
-            )
-            as String? ??
-        pb.authStore.record?.getStringValue('displayName')?.split(' ').first;
+
+    // Resolve first name: entity → authStore displayName → authStore name
+    String? _resolveFirstName() {
+      final fromEntity = userProfile.whenOrNull(
+        data: (user) {
+          final dn = user?.displayName.trim();
+          if (dn != null && dn.isNotEmpty) return dn.split(' ').first;
+          return null;
+        },
+      ) as String?;
+      if (fromEntity != null) return fromEntity;
+
+      final r = pb.authStore.record;
+      if (r == null) return null;
+      final dn = r.getStringValue('displayName').trim();
+      if (dn.isNotEmpty) return dn.split(' ').first;
+      final n = r.getStringValue('name').trim();
+      if (n.isNotEmpty) return n.split(' ').first;
+      return null;
+    }
+
+    final userName = _resolveFirstName();
 
     return SliverToBoxAdapter(
       child: Container(
@@ -423,8 +439,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           const SizedBox(height: 3),
                           Text(
                             userName != null
-                                ? '$greeting, $userName 👋'
-                                : '$greeting 👋',
+                                ? '$greeting, $userName'
+                                : greeting,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
@@ -525,23 +541,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildAvatarFallback(String? name) {
-    final initial = (name != null && name.isNotEmpty)
-        ? name[0].toUpperCase()
-        : '?';
-    return Container(
+    return Image.asset(
+      'assets/images/default_avatar.jpeg',
       width: 38,
       height: 38,
-      decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-      child: Center(
-        child: Text(
-          initial,
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      fit: BoxFit.cover,
     );
   }
 

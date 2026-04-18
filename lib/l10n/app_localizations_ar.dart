@@ -270,7 +270,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get appVersion => 'إصدار التطبيق';
 
   @override
-  String get aiChat => 'Compair';
+  String get aiChat => 'AI Chat';
 
   @override
   String get collections => 'المجموعات';

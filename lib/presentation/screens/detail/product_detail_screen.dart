@@ -25,6 +25,8 @@ import 'package:compair/services/youtube_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
+import 'package:compair/core/pb_client.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/presentation/widgets/product_image_box.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/presentation/widgets/shared/shared_key_specs_grid.dart';

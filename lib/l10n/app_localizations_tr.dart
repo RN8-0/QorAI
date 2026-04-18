@@ -272,7 +272,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get appVersion => 'Uygulama Sürümü';
 
   @override
-  String get aiChat => 'Compair';
+  String get aiChat => 'AI Sohbet';
 
   @override
   String get collections => 'Koleksiyonlar';

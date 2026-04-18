@@ -274,7 +274,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appVersion => 'Versión de la app';
 
   @override
-  String get aiChat => 'Compair';
+  String get aiChat => 'AI Chat';
 
   @override
   String get collections => 'Colecciones';

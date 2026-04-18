@@ -572,7 +572,8 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
       reviewId: review.id,
       firestoreCollection: AppConstants.reviewsCollection,
       userId: review.userId,
-      displayName: 'User',
+      displayName: _resolveReviewDisplayName(review.userId, currentUserId),
+      currentUserPhotoUrl: _resolveCurrentUserPhotoUrl(currentUserId),
       timeAgo: timeAgo,
       text: review.text,
       rating: review.rating,
@@ -609,6 +610,38 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
             }
           : null,
     );
+  }
+
+  /// Resolves display name for a review.
+  String _resolveReviewDisplayName(String reviewUserId, String? currentUserId) {
+    if (reviewUserId != currentUserId) return 'User';
+    final user = ref.read(userProfileProvider).valueOrNull;
+    final dn = user?.displayName.trim();
+    if (dn != null && dn.isNotEmpty) return dn;
+    final r = pb.authStore.record;
+    if (r != null) {
+      final authDn = r.getStringValue('displayName').trim();
+      if (authDn.isNotEmpty) return authDn;
+      final authN = r.getStringValue('name').trim();
+      if (authN.isNotEmpty) return authN;
+    }
+    final email = user?.email ?? '';
+    if (email.isNotEmpty) return email.split('@').first;
+    return 'User';
+  }
+
+  /// Resolves current user's photo URL for avatar display.
+  String? _resolveCurrentUserPhotoUrl(String? currentUserId) {
+    if (currentUserId == null) return null;
+    final user = ref.read(userProfileProvider).valueOrNull;
+    final photo = (user?.photoURL ?? '').trim();
+    if (photo.isNotEmpty) return photo;
+    final r = pb.authStore.record;
+    if (r != null) {
+      final authPhoto = r.getStringValue('photoURL').trim();
+      if (authPhoto.isNotEmpty) return authPhoto;
+    }
+    return null;
   }
 
   Widget _buildEmptyState(bool isLoggedIn) {
@@ -923,6 +956,7 @@ class _ReviewCard extends ConsumerStatefulWidget {
   final String firestoreCollection;
   final String userId;
   final String displayName;
+  final String? currentUserPhotoUrl;
   final String timeAgo;
   final String text;
   final double rating;
@@ -936,6 +970,7 @@ class _ReviewCard extends ConsumerStatefulWidget {
     required this.firestoreCollection,
     required this.userId,
     required this.displayName,
+    this.currentUserPhotoUrl,
     required this.timeAgo,
     required this.text,
     required this.rating,
@@ -988,10 +1023,25 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
           // ── Header: Avatar + Name + Time + Delete ──
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
+            child: Builder(builder: (context) {
+              final isOwner = widget.userId == widget.currentUserId;
+              Widget avatarWidget;
+              if (isOwner && widget.currentUserPhotoUrl != null) {
+                avatarWidget = CachedNetworkImage(
+                  imageUrl: widget.currentUserPhotoUrl!,
+                  imageBuilder: (_, img) => CircleAvatar(radius: 22, backgroundImage: img),
+                  errorWidget: (_, __, ___) => ClipOval(child: Image.asset(
+                    'assets/images/default_avatar.jpeg',
+                    width: 44, height: 44, fit: BoxFit.cover,
+                  )),
+                );
+              } else if (isOwner) {
+                avatarWidget = ClipOval(child: Image.asset(
+                  'assets/images/default_avatar.jpeg',
+                  width: 44, height: 44, fit: BoxFit.cover,
+                ));
+              } else {
+                avatarWidget = CircleAvatar(
                   radius: 22,
                   backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
                   child: Text(displayChar,
@@ -999,7 +1049,12 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.brandBlue)),
-                ),
+                );
+              }
+              return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                avatarWidget,
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1032,9 +1087,9 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                     ),
                   ),
               ],
-            ),
+            );
+          }),
           ),
-
           // ── Review text (collapsible) ──
           if (widget.text.isNotEmpty)
             Padding(

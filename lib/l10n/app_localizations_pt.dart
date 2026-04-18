@@ -273,7 +273,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get appVersion => 'Versão do app';
 
   @override
-  String get aiChat => 'Compair';
+  String get aiChat => 'AI Chat';
 
   @override
   String get collections => 'Coleções';

@@ -272,7 +272,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get appVersion => 'App-version';
 
   @override
-  String get aiChat => 'Compair';
+  String get aiChat => 'AI Chat';
 
   @override
   String get collections => 'Samlingar';

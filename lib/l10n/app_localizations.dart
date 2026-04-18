@@ -637,7 +637,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiChat.
   ///
   /// In en, this message translates to:
-  /// **'Compair'**
+  /// **'AI Chat'**
   String get aiChat;
 
   /// No description provided for @collections.

@@ -708,29 +708,17 @@ class _UserAvatarWidget extends StatelessWidget {
   }
 }
 
-/// Consistent gradient avatar for email/password users.
+/// Consistent avatar for email/password users — same image for everyone.
 class _EmailAvatar extends StatelessWidget {
   final double radius;
   const _EmailAvatar({this.radius = 36});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [AppTheme.brandBlue, AppTheme.brandCyan],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Icon(
-        Icons.person_rounded,
-        color: Colors.white,
-        size: radius * 1.1,
-      ),
+    return CircleAvatar(
+      radius: radius,
+      backgroundImage: const AssetImage('assets/images/default_avatar.jpeg'),
+      backgroundColor: AppTheme.brandBlue,
     );
   }
 }
