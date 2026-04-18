@@ -1228,10 +1228,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get continueWithApple => 'Apple ile Devam Et';
 
   @override
-  String get continueWithFacebook => 'Continue with Facebook';
-
-  @override
-  String get continueWithX => 'Continue with X';
+  String get continueWithEmail => 'E-posta ile Devam Et';
 
   @override
   String get or => 'veya';

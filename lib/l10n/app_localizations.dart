@@ -2446,17 +2446,11 @@ abstract class AppLocalizations {
   /// **'Continue with Apple'**
   String get continueWithApple;
 
-  /// No description provided for @continueWithFacebook.
+  /// No description provided for @continueWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Continue with Facebook'**
-  String get continueWithFacebook;
-
-  /// No description provided for @continueWithX.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue with X'**
-  String get continueWithX;
+  /// **'Continue with Email'**
+  String get continueWithEmail;
 
   /// No description provided for @or.
   ///

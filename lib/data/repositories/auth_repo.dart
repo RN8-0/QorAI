@@ -36,8 +36,80 @@ class AuthRepository {
   String? get _currentUid =>
       _pb.authStore.isValid ? _pb.authStore.record?.id : null;
 
-  // signUpWithEmail, signInWithEmail, sendPasswordResetEmail removed
-  // — email/password auth has been disabled in favor of social logins.
+  Future<Result<UserEntity>> signUpWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+    DateTime? birthDate,
+    String? gender,
+  }) async {
+    try {
+      final name = displayName ?? email.split('@').first;
+      final avatarUrl = 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=random&color=fff&size=128&bold=true';
+      final body = <String, dynamic>{
+        'email': email,
+        'password': password,
+        'passwordConfirm': password,
+        'name': name,
+        'photoURL': avatarUrl,
+      };
+      if (birthDate != null) body['birthDate'] = birthDate.toIso8601String();
+      if (gender != null) body['gender'] = gender;
+      await _pb.collection('users').create(body: body);
+      await _pb.collection('users').authWithPassword(email, password);
+      return Success(UserModel.fromPb(_pb.authStore.record!));
+    } on ClientException catch (e) {
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } catch (e) {
+      return Failure(
+        AuthException(
+          message: 'Registration failed: ${e.toString()}',
+          originalError: e,
+        ),
+      );
+    }
+  }
+
+  Future<Result<UserEntity>> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _pb.collection('users').authWithPassword(email, password);
+      return Success(UserModel.fromPb(_pb.authStore.record!));
+    } on ClientException catch (e) {
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } catch (e) {
+      return Failure(
+        AuthException(
+          message: 'Login failed: ${e.toString()}',
+          originalError: e,
+        ),
+      );
+    }
+  }
+
+  Future<Result<void>> sendPasswordResetEmail(String email) async {
+    try {
+      await _pb.collection('users').requestPasswordReset(email);
+      return const Success(null);
+    } on ClientException catch (e) {
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } catch (e) {
+      return Failure(
+        AuthException(
+          message: 'Email could not be sent: ${e.toString()}',
+          originalError: e,
+        ),
+      );
+    }
+  }
 
   /// Google Sign-In via native SDK -> PB hook (/api/auth/google).
   /// On mobile we use the free `google_sign_in` package to obtain a Google
@@ -313,9 +385,11 @@ class AuthRepository {
   }
 
   Future<Result<UserEntity>> signInAnonymously() async {
-    // Guest mode — no real auth, just navigate as unauthenticated user.
-    return const Failure(
-      AuthException(message: 'Guest mode: no account created'),
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return signUpWithEmail(
+      email: 'guest_$ts@compair.local',
+      password: 'Guest@123456',
+      displayName: 'Guest',
     );
   }
 

@@ -1214,10 +1214,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get continueWithApple => 'المتابعة مع Apple';
 
   @override
-  String get continueWithFacebook => 'Continue with Facebook';
-
-  @override
-  String get continueWithX => 'Continue with X';
+  String get continueWithEmail => 'المتابعة بالبريد الإلكتروني';
 
   @override
   String get or => 'أو';
