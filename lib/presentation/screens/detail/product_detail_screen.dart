@@ -33,6 +33,7 @@ import 'package:compair/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_premium_section.dart';
+import 'package:compair/presentation/widgets/login_required_dialog.dart';
 import 'package:compair/services/spec_translation_service.dart';
 import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:dio/dio.dart';

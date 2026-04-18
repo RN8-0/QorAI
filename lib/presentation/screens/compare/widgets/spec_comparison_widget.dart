@@ -581,6 +581,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       return;
     }
 
+    if (!requireAuth(context)) return;
+
     final shouldFetch = !_hasAiPanelData(panel);
 
     // Only check limit when actually fetching new AI data
@@ -5430,6 +5432,7 @@ Rules:
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
+              if (!requireAuth(context)) return;
               if (!_matchScoreExpanded &&
                   !_matchScoreFetched &&
                   quizCompleted) {

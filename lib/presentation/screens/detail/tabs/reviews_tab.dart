@@ -151,6 +151,7 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
   bool _expanded = false;
 
   Future<void> _handleTap() async {
+    if (!requireAuth(context)) return;
     final languageCode = Localizations.localeOf(context).languageCode;
     final reviewKey = LocalizedProductKey(
       productId: widget.product.id,

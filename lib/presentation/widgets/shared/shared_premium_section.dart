@@ -9,6 +9,7 @@ import 'package:compair/core/utils.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:compair/presentation/widgets/login_required_dialog.dart';
 
 /// Shared premium features section used by both detail and compare screens.
 /// Shows expandable AI analysis sections: Deep Analysis, Alternatives, Advisor, Prediction.
@@ -1849,6 +1850,7 @@ class SharedPremiumFeaturesSectionState
 
   /// Check detail AI feature limit — returns true if allowed
   bool _checkAiFeatureLimit() {
+    if (!requireAuth(context)) return false;
     final sub = ref.read(subscriptionServiceProvider);
     if (!sub.canUseDetailAi) {
       ScaffoldMessenger.of(context).showSnackBar(

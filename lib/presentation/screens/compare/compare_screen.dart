@@ -44,6 +44,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:compair/services/spec_translation_service.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:compair/presentation/widgets/login_required_dialog.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';

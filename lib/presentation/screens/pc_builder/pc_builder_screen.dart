@@ -16,6 +16,7 @@ import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_localization.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:compair/presentation/widgets/login_required_dialog.dart';
 import 'package:compair/routing/router.dart';
 
 /// App-theme gradient (brandDeepBlue → brandBlue → brandCyan).
@@ -1493,6 +1494,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
   Future<void> _runAiAnalysis() async {
     if (_aiLoading) return;
+    if (!requireAuth(context)) return;
     // Check PC Builder AI limit
     if (_aiAnalysis == null) {
       final sub = ref.read(subscriptionServiceProvider);
