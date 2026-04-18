@@ -12,7 +12,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/errors.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';

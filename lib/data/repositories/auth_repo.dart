@@ -1,11 +1,13 @@
 /// Compair - Auth Repository
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
@@ -170,25 +172,140 @@ class AuthRepository {
   }
 
   Future<Result<UserEntity>> signInWithApple() async {
-    // Apple Sign-In requires PB HTTPS + Apple provider configuration.
-    // Will be enabled when SSL is configured on the PocketBase server.
-    return const Failure(
-      AuthException(message: 'Apple login will be available soon'),
-    );
+    return _signInWithOAuth2('apple', scopes: ['name', 'email']);
   }
 
   Future<Result<UserEntity>> signInWithFacebook() async {
-    // Facebook OAuth2 requires PB Facebook provider configuration.
-    return const Failure(
-      AuthException(message: 'Facebook login will be available soon'),
-    );
+    return _signInWithOAuth2('facebook', scopes: ['email', 'public_profile']);
   }
 
   Future<Result<UserEntity>> signInWithX() async {
-    // X (Twitter) OAuth2 requires PB Twitter provider configuration.
-    return const Failure(
-      AuthException(message: 'X login will be available soon'),
-    );
+    return _signInWithOAuth2('twitter', scopes: ['tweet.read', 'users.read']);
+  }
+
+  /// Generic PocketBase OAuth2 flow for social providers.
+  /// Uses PB's realtime subscription: opens browser → PB handles redirect →
+  /// auth code comes back via SSE → PB exchanges code for tokens.
+  Future<Result<UserEntity>> _signInWithOAuth2(
+    String providerName, {
+    List<String> scopes = const [],
+  }) async {
+    try {
+      final authFuture = _pb.collection('users').authWithOAuth2(
+        providerName,
+        (url) async {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        },
+        scopes: scopes,
+      );
+
+      // Timeout prevents infinite loading if user closes browser
+      final authData = await authFuture.timeout(
+        const Duration(minutes: 3),
+        onTimeout: () => throw TimeoutException(
+          'Giriş zaman aşımına uğradı. Lütfen tekrar deneyin.',
+        ),
+      );
+
+      // Best-effort profile sync — only backfill empty fields
+      _syncProfileFromOAuth(authData, providerName);
+
+      return Success(UserModel.fromPb(authData.record));
+    } on ClientException catch (e) {
+      final errStr = e.originalError?.toString() ?? '';
+      if (errStr.contains('missing provider')) {
+        return Failure(AuthException(
+          message:
+              '${_providerDisplayName(providerName)} ile giriş henüz yapılandırılmadı. Lütfen daha sonra tekrar deneyin.',
+        ));
+      }
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } on TimeoutException {
+      return Failure(
+        const AuthException(
+          message: 'Giriş zaman aşımına uğradı. Lütfen tekrar deneyin.',
+        ),
+      );
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('cancel') ||
+          msg.contains('dismiss') ||
+          msg.contains('user_cancelled')) {
+        return const Failure(
+          AuthException(message: 'Giriş iptal edildi'),
+        );
+      }
+      debugPrint('[auth] _signInWithOAuth2($providerName) error: $e');
+      return Failure(
+        AuthException(
+          message:
+              '${_providerDisplayName(providerName)} ile giriş yapılamadı. Lütfen tekrar deneyin.',
+          originalError: e,
+        ),
+      );
+    }
+  }
+
+  /// Backfill empty profile fields from OAuth provider metadata.
+  /// Runs as fire-and-forget — never blocks login.
+  void _syncProfileFromOAuth(RecordAuth authData, String providerName) {
+    Future<void>.microtask(() async {
+      try {
+        final meta = authData.meta;
+        final record = authData.record;
+        if (meta.isEmpty) return;
+
+        final existingName = record.getStringValue('name');
+        final existingPhoto = record.getStringValue('photoURL');
+
+        final providerName2 = meta['name']?.toString().trim() ?? '';
+        final providerAvatar = (meta['avatarURL'] ?? meta['avatarUrl'])
+                ?.toString()
+                .trim() ??
+            '';
+
+        final updates = <String, dynamic>{};
+
+        // Only backfill if current field is empty
+        if (existingName.isEmpty && providerName2.isNotEmpty) {
+          updates['name'] = providerName2;
+          updates['displayName'] = providerName2;
+        }
+        if (existingPhoto.isEmpty && providerAvatar.isNotEmpty) {
+          updates['photoURL'] = providerAvatar;
+        }
+
+        if (updates.isNotEmpty) {
+          final updated =
+              await _pb.collection('users').update(record.id, body: updates);
+          final updatedJson = updated.toJson();
+          if (providerAvatar.isNotEmpty && existingPhoto.isEmpty) {
+            updatedJson['photoURL'] = providerAvatar;
+          }
+          _pb.authStore.save(
+            authData.token,
+            RecordModel.fromJson(updatedJson),
+          );
+        }
+      } catch (e) {
+        debugPrint('[auth] _syncProfileFromOAuth failed (non-fatal): $e');
+      }
+    });
+  }
+
+  String _providerDisplayName(String provider) {
+    switch (provider) {
+      case 'facebook':
+        return 'Facebook';
+      case 'twitter':
+        return 'X';
+      case 'apple':
+        return 'Apple';
+      default:
+        return provider;
+    }
   }
 
   Future<Result<UserEntity>> signInAnonymously() async {
