@@ -24,18 +24,29 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
     'ar': 'تم الوصول للحد اليومي',
   },
   'limitMessage': {
-    'en': 'You have used all your free credits for today. Upgrade to Premium for unlimited access to all AI features.',
-    'tr': 'Bugunluk ucretsiz haklarinizi kullandiniz. Tum AI ozelliklerine sinirsiz erisim icin Premium\'a yukselin.',
-    'de': 'Sie haben heute alle kostenlosen Credits verbraucht. Upgraden Sie auf Premium fur unbegrenzten Zugang.',
-    'es': 'Has agotado tus creditos gratuitos de hoy. Actualiza a Premium para acceso ilimitado.',
-    'fr': 'Vous avez utilise tous vos credits gratuits pour aujourd\'hui. Passez a Premium pour un acces illimite.',
-    'it': 'Hai esaurito i crediti gratuiti di oggi. Passa a Premium per accesso illimitato.',
+    'en':
+        'You have used all your free credits for today. Upgrade to Premium for unlimited access to all AI features.',
+    'tr':
+        'Bugunluk ucretsiz haklarinizi kullandiniz. Tum AI ozelliklerine sinirsiz erisim icin Premium\'a yukselin.',
+    'de':
+        'Sie haben heute alle kostenlosen Credits verbraucht. Upgraden Sie auf Premium fur unbegrenzten Zugang.',
+    'es':
+        'Has agotado tus creditos gratuitos de hoy. Actualiza a Premium para acceso ilimitado.',
+    'fr':
+        'Vous avez utilise tous vos credits gratuits pour aujourd\'hui. Passez a Premium pour un acces illimite.',
+    'it':
+        'Hai esaurito i crediti gratuiti di oggi. Passa a Premium per accesso illimitato.',
     'ja': '本日の無料クレジットを全て使い切りました。プレミアムにアップグレードして無制限アクセスを。',
-    'nl': 'Je hebt al je gratis credits voor vandaag gebruikt. Upgrade naar Premium voor onbeperkte toegang.',
-    'pl': 'Wykorzystales wszystkie darmowe kredyty na dzisiaj. Przejdz na Premium po nieograniczony dostep.',
-    'pt': 'Voce usou todos os seus creditos gratuitos de hoje. Atualize para Premium para acesso ilimitado.',
-    'sv': 'Du har anvant alla dina gratis credits for idag. Uppgradera till Premium for obegransad atkomst.',
-    'ar': 'لقد استخدمت جميع رصيدك المجاني لليوم. قم بالترقية إلى بريميوم للوصول غير المحدود.',
+    'nl':
+        'Je hebt al je gratis credits voor vandaag gebruikt. Upgrade naar Premium voor onbeperkte toegang.',
+    'pl':
+        'Wykorzystales wszystkie darmowe kredyty na dzisiaj. Przejdz na Premium po nieograniczony dostep.',
+    'pt':
+        'Voce usou todos os seus creditos gratuitos de hoje. Atualize para Premium para acesso ilimitado.',
+    'sv':
+        'Du har anvant alla dina gratis credits for idag. Uppgradera till Premium for obegransad atkomst.',
+    'ar':
+        'لقد استخدمت جميع رصيدك المجاني لليوم. قم بالترقية إلى بريميوم للوصول غير المحدود.',
   },
   'goPremium': {
     'en': 'Go Premium',
@@ -73,161 +84,157 @@ String _t(String key, String langCode) {
       key;
 }
 
-/// Shows the limit-reached bottom sheet.
+/// Shows the limit-reached centered dialog.
 /// [featureName] is for analytics/display (optional).
 void showLimitReachedDialog(BuildContext context, {String? featureName}) {
-  final langCode =
-      Localizations.localeOf(context).languageCode.toLowerCase();
+  final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
 
-  showModalBottomSheet(
+  showDialog<void>(
     context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
+    barrierColor: Colors.black.withValues(alpha: 0.45),
     builder: (ctx) => Container(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
-      ),
-      decoration: BoxDecoration(
-        color: ctx.surfaceElevatedColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border.all(
-          color: AppTheme.premiumBase.withValues(alpha: 0.15),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle bar
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: ctx.dividerColor,
-              borderRadius: BorderRadius.circular(2),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Dialog(
+        insetPadding: EdgeInsets.zero,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          decoration: BoxDecoration(
+            color: ctx.surfaceElevatedColor,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: AppTheme.premiumBase.withValues(alpha: 0.18),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.16),
+                blurRadius: 28,
+                offset: const Offset(0, 18),
+              ),
+              BoxShadow(
+                color: AppTheme.premiumBase.withValues(alpha: 0.10),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-
-          // Icon
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              gradient: AppTheme.premiumGradient,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.premiumBase.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.premiumGradient,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.premiumBase.withValues(alpha: 0.28),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: const Icon(
-              Icons.lock_clock_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Title
-          Text(
-            _t('dailyLimitReached', langCode),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: ctx.textPrimary,
-              letterSpacing: -0.3,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-
-          // Message
-          Text(
-            _t('limitMessage', langCode),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              color: ctx.textSecondary,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-
-          // Go Premium button
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: AppTheme.premiumGradient,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.premiumBase.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Colors.white,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                _t('dailyLimitReached', langCode),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: ctx.textPrimary,
+                  letterSpacing: -0.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                _t('limitMessage', langCode),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: ctx.textSecondary,
+                  height: 1.55,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: ctx.dividerColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          foregroundColor: ctx.textSecondary,
+                        ),
+                        child: Text(
+                          'Free',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.premiumGradient,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.premiumBase.withValues(
+                                alpha: 0.22,
+                              ),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            showPaywallSheet(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            'Premium',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  showPaywallSheet(context);
-                },
-                icon: const Icon(
-                  Icons.diamond_rounded,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                label: Text(
-                  _t('goPremium', langCode),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
+            ],
           ),
-          const SizedBox(height: 10),
-
-          // Continue Free button
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: ctx.dividerColor),
-                ),
-              ),
-              child: Text(
-                _t('continueFree', langCode),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: ctx.textSecondary,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     ),
   );

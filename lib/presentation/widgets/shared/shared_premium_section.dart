@@ -8,7 +8,7 @@ import 'package:compair/core/theme.dart';
 import 'package:compair/core/utils.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
 import 'package:compair/presentation/widgets/login_required_dialog.dart';
 
 /// Shared premium features section used by both detail and compare screens.
@@ -85,11 +85,15 @@ class SharedPremiumFeaturesSectionState
       languageCode: Localizations.localeOf(context).languageCode,
     );
 
-    final deepAnalysisAsync = ref.watch(deepAnalysisCacheProvider(localizedKey));
+    final deepAnalysisAsync = ref.watch(
+      deepAnalysisCacheProvider(localizedKey),
+    );
     final deepAnalysis = deepAnalysisAsync.valueOrNull;
     final isLoadingAnalysis = deepAnalysisAsync is AsyncLoading;
 
-    final alternativesAsync = ref.watch(alternativesCacheProvider(localizedKey));
+    final alternativesAsync = ref.watch(
+      alternativesCacheProvider(localizedKey),
+    );
     final alternatives = alternativesAsync.valueOrNull;
     final isLoadingAlternatives = alternativesAsync is AsyncLoading;
 
@@ -1736,7 +1740,8 @@ class SharedPremiumFeaturesSectionState
       productId: widget.product.id,
       languageCode: lang,
     );
-    final hasData = ref.read(deepAnalysisCacheProvider(key)).valueOrNull != null;
+    final hasData =
+        ref.read(deepAnalysisCacheProvider(key)).valueOrNull != null;
     if (!hasData && !_checkAiFeatureLimit()) return;
     setState(() {
       _deepAnalysisExpanded = true;
@@ -1764,7 +1769,8 @@ class SharedPremiumFeaturesSectionState
       productId: widget.product.id,
       languageCode: lang,
     );
-    final hasData = ref.read(alternativesCacheProvider(key)).valueOrNull != null;
+    final hasData =
+        ref.read(alternativesCacheProvider(key)).valueOrNull != null;
     if (!hasData && !_checkAiFeatureLimit()) return;
     setState(() {
       _alternativesExpanded = true;
@@ -1853,19 +1859,7 @@ class SharedPremiumFeaturesSectionState
     if (!requireAuth(context)) return false;
     final sub = ref.read(subscriptionServiceProvider);
     if (!sub.canUseDetailAi) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Detail AI daily limit reached. Upgrade to Premium for unlimited access!',
-          ),
-          action: SnackBarAction(
-            label: 'Premium',
-            onPressed: () => showPaywallSheet(context),
-          ),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      showLimitReachedDialog(context, featureName: 'detail-ai');
       return false;
     }
     sub.recordDetailAi();
