@@ -184,7 +184,8 @@ String _resolveAuthRecordDisplayName(RecordModel auth) {
 
 String? _resolveAuthRecordPhotoUrl(RecordModel auth) {
   final photoUrl = auth.getStringValue('photoURL').trim();
-  return photoUrl.isEmpty ? null : photoUrl;
+  if (photoUrl.isEmpty || _isGeneratedAvatarUrl(photoUrl)) return null;
+  return photoUrl;
 }
 
 /// Kullanıcı UID hash'inden deterministik renk üretir.
@@ -231,7 +232,9 @@ String _effectiveDisplayName(UserEntity? user, BuildContext context) {
 /// Returns the resolved photo URL: user entity > auth store > null.
 String? _resolvedPhotoUrl(UserEntity? user) {
   final fromEntity = (user?.photoURL ?? '').trim();
-  if (fromEntity.isNotEmpty) return fromEntity;
+  if (fromEntity.isNotEmpty && !_isGeneratedAvatarUrl(fromEntity)) {
+    return fromEntity;
+  }
 
   final authRecord = pb.authStore.record;
   if (authRecord != null) {
@@ -239,6 +242,11 @@ String? _resolvedPhotoUrl(UserEntity? user) {
     if (fromAuth != null && fromAuth.isNotEmpty) return fromAuth;
   }
   return null;
+}
+
+bool _isGeneratedAvatarUrl(String? photoUrl) {
+  final value = (photoUrl ?? '').trim().toLowerCase();
+  return value.contains('ui-avatars.com');
 }
 
 class _ProfileBody extends ConsumerWidget {
@@ -287,10 +295,7 @@ class _ProfileBody extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      child: _UserAvatarWidget(
-                        user: user,
-                        radius: 36,
-                      ),
+                      child: _UserAvatarWidget(user: user, radius: 36),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1377,7 +1382,9 @@ class _FreemiumUsageCard extends ConsumerWidget {
     final pcBuilderAi = ref.watch(freemiumUsageProvider('pc_builder_ai'));
     final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
     final linkCompare = ref.watch(freemiumUsageProvider('link_compare'));
-    final subAnalyses = ref.watch(freemiumUsageProvider('subscription_analysis'));
+    final subAnalyses = ref.watch(
+      freemiumUsageProvider('subscription_analysis'),
+    );
     final productScan = ref.watch(freemiumUsageProvider('product_scan'));
 
     final isTr = Localizations.localeOf(context).languageCode == 'tr';

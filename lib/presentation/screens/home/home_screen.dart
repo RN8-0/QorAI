@@ -27,6 +27,9 @@ import 'package:compair/core/pb_client.dart';
 // HOME SCREEN
 // ============================================================================
 
+const double _kHorizontalCardRowHeight = 246;
+const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -369,13 +372,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     // Resolve first name: entity → authStore displayName → authStore name
     String? _resolveFirstName() {
-      final fromEntity = userProfile.whenOrNull(
-        data: (user) {
-          final dn = user?.displayName.trim();
-          if (dn != null && dn.isNotEmpty) return dn.split(' ').first;
-          return null;
-        },
-      ) as String?;
+      final fromEntity =
+          userProfile.whenOrNull(
+                data: (user) {
+                  final dn = user?.displayName.trim();
+                  if (dn != null && dn.isNotEmpty) return dn.split(' ').first;
+                  return null;
+                },
+              )
+              as String?;
       if (fromEntity != null) return fromEntity;
 
       final r = pb.authStore.record;
@@ -500,16 +505,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Try Firestore profile first (has latest data)
     final firestoreWidget = userProfile.whenOrNull(
       data: (user) {
-        if ((user?.photoURL ?? '').isNotEmpty) {
+        final photoUrl = (user?.photoURL ?? '').trim();
+        if (photoUrl.isNotEmpty && !_isGeneratedAvatarUrl(photoUrl)) {
           return CachedNetworkImage(
-            imageUrl: user!.photoURL!,
+            imageUrl: photoUrl,
             width: 38,
             height: 38,
             fit: BoxFit.cover,
-            errorWidget: (_, __, ___) => _buildAvatarFallback(user.displayName),
+            errorWidget: (_, __, ___) =>
+                _buildAvatarFallback(hasSignedInUser: user != null),
           );
         }
-        return _buildAvatarFallback(user?.displayName);
+        return _buildAvatarFallback(hasSignedInUser: user != null);
       },
     );
     if (firestoreWidget != null) return firestoreWidget;
@@ -517,27 +524,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // PB not ready yet (loading) — use pb.authStore.record (sync, instant)
     final authRecord = pb.authStore.record;
     if (authRecord != null) {
-      final photoURL = authRecord.getStringValue('photoURL');
-      var displayName = authRecord.getStringValue('displayName');
-      if (displayName.isEmpty) displayName = authRecord.getStringValue('name');
-      if (photoURL.isNotEmpty) {
+      final photoURL = authRecord.getStringValue('photoURL').trim();
+      if (photoURL.isNotEmpty && !_isGeneratedAvatarUrl(photoURL)) {
         return CachedNetworkImage(
           imageUrl: photoURL,
           width: 38,
           height: 38,
           fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => _buildAvatarFallback(displayName),
+          errorWidget: (_, __, ___) =>
+              _buildAvatarFallback(hasSignedInUser: true),
         );
       }
-      return _buildAvatarFallback(displayName);
+      return _buildAvatarFallback(hasSignedInUser: true);
     }
 
-    return _buildAvatarFallback(null);
+    return _buildAvatarFallback(hasSignedInUser: false);
   }
 
-  Widget _buildAvatarFallback(String? name) {
-    // Show initials for logged-in users with no photo, person icon for guests
-    final initial = (name?.isNotEmpty ?? false) ? name![0].toUpperCase() : null;
+  bool _isGeneratedAvatarUrl(String? photoUrl) {
+    final value = (photoUrl ?? '').trim().toLowerCase();
+    return value.contains('ui-avatars.com');
+  }
+
+  Widget _buildAvatarFallback({required bool hasSignedInUser}) {
+    if (hasSignedInUser) {
+      return Image.asset(
+        'assets/images/default_avatar.jpeg',
+        width: 38,
+        height: 38,
+        fit: BoxFit.cover,
+      );
+    }
+
     return Container(
       width: 38,
       height: 38,
@@ -548,17 +566,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           colors: [Color(0xFF2196F3), Color(0xFF00BCD4)],
         ),
       ),
-      child: Center(
-        child: initial != null
-            ? Text(
-                initial,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              )
-            : const Icon(Icons.person_rounded, color: Colors.white, size: 20),
+      child: const Center(
+        child: Icon(Icons.person_rounded, color: Colors.white, size: 20),
       ),
     );
   }
@@ -1024,7 +1033,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   borderRadius: BorderRadius.circular(24),
                                   color: context.surfaceVariantColor,
                                   border: Border.all(
-                                    color: Theme.of(context).brightness == Brightness.dark
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
                                         ? context.dividerColor
                                         : Colors.black.withValues(alpha: 0.06),
                                   ),
@@ -1338,7 +1349,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Container(
       width: 1,
       height: 28,
-      color: isDark ? context.dividerColor : Colors.black.withValues(alpha: 0.08),
+      color: isDark
+          ? context.dividerColor
+          : Colors.black.withValues(alpha: 0.08),
     );
   }
 
@@ -1917,7 +1930,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildPersonalizedSection() {
     return SizedBox(
-      height: 230,
+      height: _kHorizontalCardRowHeight,
       child: ref
           .watch(personalizedRecommendationsProvider)
           .when(
@@ -1957,7 +1970,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               final display = products.take(30).toList();
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
                 itemCount: display.length,
                 itemBuilder: (context, index) {
@@ -1978,7 +1991,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 },
               );
             },
-            loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
+            loading: () => _buildSkeletonRow(
+              height: _kHorizontalCardRowHeight,
+              cardWidth: 155,
+            ),
             error: (_, __) => const SizedBox.shrink(),
           ),
     );
@@ -2033,7 +2049,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     String categoryId,
   ) {
     return SizedBox(
-      height: 230,
+      height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
         data: (feed) {
           var products = feed.byCategory[categoryId] ?? [];
@@ -2055,7 +2071,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
           return ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemCount: min(30, products.length),
             itemBuilder: (context, index) {
@@ -2080,7 +2096,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
+        loading: () => _buildSkeletonRow(
+          height: _kHorizontalCardRowHeight,
+          cardWidth: 155,
+        ),
         error: (_, __) => const SizedBox.shrink(),
       ),
     );
@@ -2093,7 +2112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     String categoryId,
   ) {
     return SizedBox(
-      height: 230,
+      height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
         data: (feed) {
           var products = feed.byCategory[categoryId] ?? [];
@@ -2115,7 +2134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           final display = products.take(30).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemCount: display.length,
             itemBuilder: (context, index) {
@@ -2133,7 +2152,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
+        loading: () => _buildSkeletonRow(
+          height: _kHorizontalCardRowHeight,
+          cardWidth: 155,
+        ),
         error: (_, __) => const SizedBox.shrink(),
       ),
     );
@@ -2143,7 +2165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildTrendsSection(AsyncValue<HomeFeed> homeFeed) {
     return SizedBox(
-      height: 230,
+      height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
         data: (feed) {
           if (!_firstDataLogged) {
@@ -2177,7 +2199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           final display = trending.take(30).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemCount: display.length,
             itemBuilder: (context, index) {
@@ -2198,7 +2220,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
+        loading: () => _buildSkeletonRow(
+          height: _kHorizontalCardRowHeight,
+          cardWidth: 155,
+        ),
         error: (e, __) =>
             _buildRetryWidget(onRetry: () => ref.invalidate(homeFeedProvider)),
       ),
@@ -2209,7 +2234,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildNewArrivalsSection() {
     return SizedBox(
-      height: 230,
+      height: _kHorizontalCardRowHeight,
       child: ref
           .watch(newArrivalsProvider)
           .when(
@@ -2237,7 +2262,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 );
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
                 itemCount: products.length,
                 itemBuilder: (context, index) {
@@ -2257,7 +2282,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 },
               );
             },
-            loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
+            loading: () => _buildSkeletonRow(
+              height: _kHorizontalCardRowHeight,
+              cardWidth: 155,
+            ),
             error: (_, __) => _buildRetryWidget(
               onRetry: () => ref.invalidate(newArrivalsProvider),
             ),
@@ -2269,7 +2297,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildDiscoverSection() {
     return SizedBox(
-      height: 230,
+      height: _kHorizontalCardRowHeight,
       child: ref
           .watch(discoverProductsProvider)
           .when(
@@ -2297,7 +2325,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 );
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
                 itemCount: products.length,
                 itemBuilder: (context, index) {
@@ -2317,7 +2345,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 },
               );
             },
-            loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
+            loading: () => _buildSkeletonRow(
+              height: _kHorizontalCardRowHeight,
+              cardWidth: 155,
+            ),
             error: (_, __) => _buildRetryWidget(
               onRetry: () => ref.invalidate(discoverProductsProvider),
             ),
@@ -2349,10 +2380,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 230,
+                  height: _kHorizontalCardRowHeight,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
                     itemCount: data.products.length,
                     itemBuilder: (context, index) {
@@ -2403,10 +2434,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 230,
+                  height: _kHorizontalCardRowHeight,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
                     itemCount: products.length,
                     itemBuilder: (context, index) {
@@ -2458,10 +2489,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 230,
+                  height: _kHorizontalCardRowHeight,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
                     itemCount: products.length,
                     itemBuilder: (context, index) {
@@ -2600,10 +2631,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       SliverToBoxAdapter(
         child: SizedBox(
-          height: 230,
+          height: _kHorizontalCardRowHeight,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemCount: min(15, recentProducts.length),
             itemBuilder: (context, index) {
@@ -2794,14 +2825,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     String category,
   ) {
     return SizedBox(
-      height: 230,
+      height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
         data: (feed) {
           final products = feed.byCategory[category] ?? [];
           if (products.isEmpty) return const SizedBox.shrink();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemCount: min(25, products.length),
             itemBuilder: (context, index) {
@@ -2816,7 +2847,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
           );
         },
-        loading: () => _buildSkeletonRow(height: 230, cardWidth: 155),
+        loading: () => _buildSkeletonRow(
+          height: _kHorizontalCardRowHeight,
+          cardWidth: 155,
+        ),
         error: (_, __) => const SizedBox.shrink(),
       ),
     );
@@ -2966,10 +3000,7 @@ class _NotificationButton extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: context.textTertiaryColor.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: context.dividerColor,
-                  width: 0.5,
-                ),
+                border: Border.all(color: context.dividerColor, width: 0.5),
               ),
               child: Icon(
                 Icons.notifications_none_rounded,

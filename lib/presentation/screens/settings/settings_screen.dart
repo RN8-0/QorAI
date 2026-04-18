@@ -158,11 +158,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       name: profileName,
                       email: profileEmail,
                       photoUrl: profilePhotoUrl,
-                      onTap: () => _showEditProfileDialog(
-                        context,
-                        profileName,
-                        profileEmail,
-                      ),
+                      onTap: () => context.push(AppRoutes.editProfile),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -260,7 +256,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: CupertinoIcons.person_fill,
                         iconBg: AppTheme.neonCyan,
                         title: context.l10n?.editProfile ?? 'Edit Profile',
-                        onTap: () => context.push(AppRoutes.quiz),
+                        onTap: () => context.push(AppRoutes.editProfile),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -634,7 +630,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildProfileAvatar({required String name, required String photoUrl}) {
-    if (photoUrl.trim().isNotEmpty) {
+    if (photoUrl.trim().isNotEmpty && !_isGeneratedAvatarUrl(photoUrl)) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: CachedNetworkImage(
@@ -1321,93 +1317,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   String _resolveAuthPhotoUrl(RecordModel? auth) {
     if (auth == null) return '';
-    return auth.getStringValue('photoURL').trim();
+    final photoUrl = auth.getStringValue('photoURL').trim();
+    return _isGeneratedAvatarUrl(photoUrl) ? '' : photoUrl;
   }
 
-  void _showEditProfileDialog(
-      BuildContext context, String currentName, String currentEmail) {
-    final nameController = TextEditingController(text: currentName);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: context.surfaceVariantColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Edit Profile',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: context.textPrimary,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: TextStyle(color: context.textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Display Name',
-                labelStyle: TextStyle(color: context.textSecondary),
-                filled: true,
-                fillColor: context.textTertiaryColor.withValues(alpha: 0.08),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              enabled: false,
-              style: TextStyle(color: context.textTertiaryColor),
-              decoration: InputDecoration(
-                labelText: 'Email',
-                labelStyle: TextStyle(color: context.textTertiaryColor),
-                hintText: currentEmail,
-                hintStyle: TextStyle(color: context.textTertiaryColor),
-                filled: true,
-                fillColor: context.textTertiaryColor.withValues(alpha: 0.05),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: context.textSecondary),
-            ),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () async {
-              final newName = nameController.text.trim();
-              if (newName.isNotEmpty && newName != currentName) {
-                final uid = pb.authStore.record?.id;
-                if (uid != null) {
-                  await ref.read(pbDataSourceProvider).updateUser(uid, {
-                    'displayName': newName,
-                    'name': newName,
-                  });
-                }
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+  bool _isGeneratedAvatarUrl(String photoUrl) {
+    return photoUrl.trim().toLowerCase().contains('ui-avatars.com');
   }
 }

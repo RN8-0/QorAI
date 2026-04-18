@@ -120,7 +120,7 @@ class ProductRowSkeleton extends StatelessWidget {
 
   const ProductRowSkeleton({
     super.key,
-    this.height = 230,
+    this.height = 246,
     this.cardWidth = 155,
     this.itemCount = 5,
   });
@@ -131,11 +131,11 @@ class ProductRowSkeleton extends StatelessWidget {
       height: height,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
         physics: const NeverScrollableScrollPhysics(),
         itemCount: itemCount,
         itemBuilder: (_, __) =>
-            ProductCardSkeleton(width: cardWidth, height: height - 8),
+            ProductCardSkeleton(width: cardWidth, height: height - 16),
       ),
     );
   }

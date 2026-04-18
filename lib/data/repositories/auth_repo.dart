@@ -45,13 +45,11 @@ class AuthRepository {
   }) async {
     try {
       final name = displayName ?? email.split('@').first;
-      final avatarUrl = 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=random&color=fff&size=128&bold=true';
       final body = <String, dynamic>{
         'email': email,
         'password': password,
         'passwordConfirm': password,
         'name': name,
-        'photoURL': avatarUrl,
       };
       if (birthDate != null) body['birthDate'] = birthDate.toIso8601String();
       if (gender != null) body['gender'] = gender;
@@ -133,9 +131,7 @@ class AuthRepository {
       final idToken = gAuth.idToken;
       if (idToken == null || idToken.isEmpty) {
         return const Failure(
-          AuthException(
-            message: 'Google authentication failed (no idToken)',
-          ),
+          AuthException(message: 'Google authentication failed (no idToken)'),
         );
       }
 
@@ -249,7 +245,9 @@ class AuthRepository {
 
   Future<Result<UserEntity>> signInWithX() async {
     return const Failure(
-      AuthException(message: 'X login is no longer supported. Please use Google or Apple.'),
+      AuthException(
+        message: 'X login is no longer supported. Please use Google or Apple.',
+      ),
     );
   }
 
@@ -261,28 +259,25 @@ class AuthRepository {
     List<String> scopes = const [],
   }) async {
     try {
-      final authFuture = _pb.collection('users').authWithOAuth2(
-        providerName,
-        (url) async {
-          // inAppBrowserView (Chrome Custom Tab) keeps the app alive in the
-          // foreground so the PocketBase SSE realtime connection is not dropped.
-          final launched = await launchUrl(
-            url,
-            mode: LaunchMode.inAppBrowserView,
-          );
-          if (!launched) {
-            await launchUrl(url, mode: LaunchMode.externalApplication);
-          }
-        },
-        scopes: scopes,
-      );
+      final authFuture = _pb.collection('users').authWithOAuth2(providerName, (
+        url,
+      ) async {
+        // inAppBrowserView (Chrome Custom Tab) keeps the app alive in the
+        // foreground so the PocketBase SSE realtime connection is not dropped.
+        final launched = await launchUrl(
+          url,
+          mode: LaunchMode.inAppBrowserView,
+        );
+        if (!launched) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        }
+      }, scopes: scopes);
 
       // Timeout prevents infinite loading if user closes browser
       final authData = await authFuture.timeout(
         const Duration(minutes: 3),
-        onTimeout: () => throw TimeoutException(
-          'Sign in timed out. Please try again.',
-        ),
+        onTimeout: () =>
+            throw TimeoutException('Sign in timed out. Please try again.'),
       );
 
       // Best-effort profile sync — only backfill empty fields
@@ -292,28 +287,26 @@ class AuthRepository {
     } on ClientException catch (e) {
       final errStr = e.originalError?.toString() ?? '';
       if (errStr.contains('missing provider')) {
-        return Failure(AuthException(
-          message:
-              '${_providerDisplayName(providerName)} sign-in is not configured yet. Please try again later.',
-        ));
+        return Failure(
+          AuthException(
+            message:
+                '${_providerDisplayName(providerName)} sign-in is not configured yet. Please try again later.',
+          ),
+        );
       }
       return Failure(
         AuthException(message: _getPbErrorMsg(e), originalError: e),
       );
     } on TimeoutException {
       return Failure(
-        const AuthException(
-          message: 'Sign in timed out. Please try again.',
-        ),
+        const AuthException(message: 'Sign in timed out. Please try again.'),
       );
     } catch (e) {
       final msg = e.toString().toLowerCase();
       if (msg.contains('cancel') ||
           msg.contains('dismiss') ||
           msg.contains('user_cancelled')) {
-        return const Failure(
-          AuthException(message: 'Sign in cancelled'),
-        );
+        return const Failure(AuthException(message: 'Sign in cancelled'));
       }
       debugPrint('[auth] _signInWithOAuth2($providerName) error: $e');
       return Failure(
@@ -339,10 +332,8 @@ class AuthRepository {
         final existingPhoto = record.getStringValue('photoURL');
 
         final providerName2 = meta['name']?.toString().trim() ?? '';
-        final providerAvatar = (meta['avatarURL'] ?? meta['avatarUrl'])
-                ?.toString()
-                .trim() ??
-            '';
+        final providerAvatar =
+            (meta['avatarURL'] ?? meta['avatarUrl'])?.toString().trim() ?? '';
 
         final updates = <String, dynamic>{};
 
@@ -356,16 +347,14 @@ class AuthRepository {
         }
 
         if (updates.isNotEmpty) {
-          final updated =
-              await _pb.collection('users').update(record.id, body: updates);
+          final updated = await _pb
+              .collection('users')
+              .update(record.id, body: updates);
           final updatedJson = updated.toJson();
           if (providerAvatar.isNotEmpty && existingPhoto.isEmpty) {
             updatedJson['photoURL'] = providerAvatar;
           }
-          _pb.authStore.save(
-            authData.token,
-            RecordModel.fromJson(updatedJson),
-          );
+          _pb.authStore.save(authData.token, RecordModel.fromJson(updatedJson));
         }
       } catch (e) {
         debugPrint('[auth] _syncProfileFromOAuth failed (non-fatal): $e');

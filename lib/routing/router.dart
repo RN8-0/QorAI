@@ -15,6 +15,7 @@ import 'package:compair/presentation/screens/compare/compare_screen.dart';
 import 'package:compair/presentation/screens/detail/product_detail_screen.dart';
 import 'package:compair/presentation/screens/profile/profile_screen.dart';
 import 'package:compair/presentation/screens/settings/settings_screen.dart';
+import 'package:compair/presentation/screens/settings/edit_profile_screen.dart';
 import 'package:compair/presentation/screens/link_paste/link_paste_screen.dart';
 import 'package:compair/presentation/screens/search/search_screen.dart';
 import 'package:compair/presentation/screens/ai_chat/ai_chat_screen.dart';
@@ -44,6 +45,7 @@ class AppRoutes {
   static const String productDetail = '/product/:id';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String editProfile = '/settings/edit-profile';
   static const String linkPaste = '/link-paste';
   static const String subscriptions = '/subscriptions';
   static const String search = '/search';
@@ -113,34 +115,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: HomeScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: HomeScreen()),
           ),
           GoRoute(
             path: AppRoutes.browse,
             pageBuilder: (context, state) {
-              final categoryId = state.uri.queryParameters['id'] ?? 'smartphones';
-              final categoryName = state.uri.queryParameters['name'] ?? 'Smartphones';
+              final categoryId =
+                  state.uri.queryParameters['id'] ?? 'smartphones';
+              final categoryName =
+                  state.uri.queryParameters['name'] ?? 'Smartphones';
               final extra = state.extra;
               List<Map<String, dynamic>>? groupItems;
               if (extra is List) {
                 groupItems = extra.cast<Map<String, dynamic>>();
               }
-              return NoTransitionPage(child: CategoryBrowseScreen(
-                categoryId: categoryId,
-                categoryName: categoryName,
-                groupItems: groupItems,
-              ));
+              return NoTransitionPage(
+                child: CategoryBrowseScreen(
+                  categoryId: categoryId,
+                  categoryName: categoryName,
+                  groupItems: groupItems,
+                ),
+              );
             },
           ),
           GoRoute(
             path: AppRoutes.aiChat,
             pageBuilder: (context, state) {
               final query = state.uri.queryParameters['q'];
-              return NoTransitionPage(
-                child: AIChatScreen(initialQuery: query),
-              );
+              return NoTransitionPage(child: AIChatScreen(initialQuery: query));
             },
           ),
           GoRoute(
@@ -148,27 +151,26 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) {
               final modeParam = state.uri.queryParameters['mode'];
               // -1 = general (show toggle), 0 = products only, 1 = subscriptions only
-              final mode = modeParam != null ? (int.tryParse(modeParam) ?? -1) : -1;
+              final mode = modeParam != null
+                  ? (int.tryParse(modeParam) ?? -1)
+                  : -1;
               return NoTransitionPage(child: CompareScreen(initialMode: mode));
             },
           ),
           GoRoute(
             path: AppRoutes.pcBuilder,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PcBuilderLandingScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: PcBuilderLandingScreen()),
           ),
           GoRoute(
             path: AppRoutes.linkPaste,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: LinkPasteScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: LinkPasteScreen()),
           ),
           GoRoute(
             path: AppRoutes.subscriptions,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SubscriptionsScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SubscriptionsScreen()),
           ),
         ],
       ),
@@ -213,6 +215,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) => CustomTransitionPage(
           child: const SettingsScreen(),
+          transitionsBuilder: _slideTransition,
+          transitionDuration: AppConstants.pageTransitionDuration,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.editProfile,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          child: const EditProfileScreen(),
           transitionsBuilder: _slideTransition,
           transitionDuration: AppConstants.pageTransitionDuration,
         ),
@@ -355,8 +366,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         AppRoutes.pcBuilder,
         AppRoutes.pcBuilderStart,
       ];
-      final isPublicRoute = publicRoutes.contains(location) ||
-          location.startsWith('/product/');
+      final isPublicRoute =
+          publicRoutes.contains(location) || location.startsWith('/product/');
 
       // Not logged in user trying to access a protected route
       if (!isLoggedIn && !isPublicRoute) {
@@ -408,15 +419,17 @@ Widget _slideTransition(
   Widget child,
 ) {
   // iOS-style: new page slides in from right, old page shifts left slightly
-  final slideIn = Tween<Offset>(
-    begin: const Offset(1.0, 0.0),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(
-    parent: animation,
-    curve: const Cubic(0.25, 0.1, 0.25, 1.0), // iOS spring-like
-  ));
-  final fadeIn = Tween<double>(begin: 0.85, end: 1.0).animate(
-    CurvedAnimation(parent: animation, curve: Curves.easeOut));
+  final slideIn = Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero)
+      .animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: const Cubic(0.25, 0.1, 0.25, 1.0), // iOS spring-like
+        ),
+      );
+  final fadeIn = Tween<double>(
+    begin: 0.85,
+    end: 1.0,
+  ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
 
   return SlideTransition(
     position: slideIn,
@@ -431,15 +444,16 @@ Widget _slideUpTransition(
   Widget child,
 ) {
   // iOS modal-style: slide up with deceleration
-  final slideUp = Tween<Offset>(
-    begin: const Offset(0.0, 0.4),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(
-    parent: animation,
-    curve: const Cubic(0.2, 0.8, 0.2, 1.0), // iOS spring
-  ));
+  final slideUp = Tween<Offset>(begin: const Offset(0.0, 0.4), end: Offset.zero)
+      .animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: const Cubic(0.2, 0.8, 0.2, 1.0), // iOS spring
+        ),
+      );
   final fadeIn = Tween<double>(begin: 0.0, end: 1.0).animate(
-    CurvedAnimation(parent: animation, curve: const Interval(0.0, 0.5)));
+    CurvedAnimation(parent: animation, curve: const Interval(0.0, 0.5)),
+  );
 
   return SlideTransition(
     position: slideUp,
