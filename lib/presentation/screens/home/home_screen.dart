@@ -777,7 +777,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             border: Border.all(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.10)
-                  : context.dividerColor,
+                  : Colors.black.withValues(alpha: 0.06),
               width: 1,
             ),
           ),
@@ -1006,7 +1006,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   borderRadius: BorderRadius.circular(24),
                                   color: context.surfaceVariantColor,
                                   border: Border.all(
-                                    color: context.dividerColor,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? context.dividerColor
+                                        : Colors.black.withValues(alpha: 0.06),
                                   ),
                                   boxShadow: [
                                     BoxShadow(
@@ -1283,7 +1285,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: context.dividerColor),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? context.dividerColor
+                : Colors.black.withValues(alpha: 0.06),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1311,8 +1317,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
   }
 
-  Widget _trustDivider() =>
-      Container(width: 1, height: 28, color: context.dividerColor);
+  Widget _trustDivider() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 1,
+      height: 28,
+      color: isDark ? context.dividerColor : Colors.black.withValues(alpha: 0.08),
+    );
+  }
 
   // === CATEGORIES ============================================================
 
@@ -3169,7 +3181,11 @@ class _ForYouCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.dividerColor),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? context.dividerColor
+                : Colors.black.withValues(alpha: 0.06),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

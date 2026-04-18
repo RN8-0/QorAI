@@ -683,7 +683,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(radiusXL)),
-          side: BorderSide(color: dividerLightMode, width: 0.5),
+          side: BorderSide.none,
         ),
         margin: EdgeInsets.zero,
       ),
@@ -819,7 +819,7 @@ class AppTheme {
       ),
 
       dividerTheme: const DividerThemeData(
-        color: dividerLightMode,
+        color: Color(0x0F000000), // Very subtle in light mode
         thickness: 0.5,
         space: 0,
       ),

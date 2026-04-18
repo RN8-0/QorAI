@@ -723,8 +723,8 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const fabSize = 62.0;
-    const fabBottom = AppTheme.navBarTotalClearance + 8.0;
+    const fabSize = 50.0;
+    const fabBottom = AppTheme.navBarTotalClearance - 2.0;
     const fabRight = 14.0;
 
     // Hide when actively comparing (≥2 products selected — hideNavBarProvider=true)
@@ -856,11 +856,11 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
                           ? Icon(Icons.close_rounded,
                               key: const ValueKey('close'),
                               color: isDark ? Colors.white : AppTheme.brandCyan,
-                              size: 24)
+                              size: 20)
                           : Image.asset(
                               key: const ValueKey('logo'),
                               'assets/logo/compair_logo.png',
-                              width: 38, height: 38,
+                              width: 30, height: 30,
                               fit: BoxFit.contain,
                             ),
                     ),

@@ -42,18 +42,43 @@ class _CollectionContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        // App bar
+        // Header with back button
         SliverToBoxAdapter(
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Back button row
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => context.pop(),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 18,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   // Title row
                   Row(
                     children: [
@@ -143,7 +168,10 @@ class _CollectionContent extends StatelessWidget {
               childAspectRatio: 0.68,
             ),
             delegate: SliverChildBuilderDelegate(
-              (ctx, i) => _CollectionProductCard(productId: productIds[i]),
+              (ctx, i) => _CollectionProductCard(productId: productIds[i])
+                  .animate(delay: Duration(milliseconds: 60 * i))
+                  .fadeIn(duration: 350.ms)
+                  .slideY(begin: 0.08, curve: Curves.easeOut),
               childCount: productIds.length,
             ),
           ),
@@ -159,13 +187,43 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+      child: Column(
+        children: [
+          // Back button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 18,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
               Container(
                 width: 120,
                 height: 120,
@@ -213,9 +271,12 @@ class _EmptyState extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ).animate(delay: 120.ms).fadeIn(duration: 400.ms),
-            ],
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

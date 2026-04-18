@@ -1235,7 +1235,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get continueWithApple => 'Continuer avec Apple';
 
   @override
-  String get continueWithEmail => 'Continuer avec l\'e-mail';
+  String get continueWithFacebook => 'Continue with Facebook';
+
+  @override
+  String get continueWithX => 'Continue with X';
 
   @override
   String get or => 'ou';

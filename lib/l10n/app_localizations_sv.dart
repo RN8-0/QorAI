@@ -1218,7 +1218,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get continueWithApple => 'Fortsätt med Apple';
 
   @override
-  String get continueWithEmail => 'Fortsätt med e-post';
+  String get continueWithFacebook => 'Continue with Facebook';
+
+  @override
+  String get continueWithX => 'Continue with X';
 
   @override
   String get or => 'eller';

@@ -1225,7 +1225,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get continueWithApple => 'Doorgaan met Apple';
 
   @override
-  String get continueWithEmail => 'Doorgaan met e-mail';
+  String get continueWithFacebook => 'Continue with Facebook';
+
+  @override
+  String get continueWithX => 'Continue with X';
 
   @override
   String get or => 'of';

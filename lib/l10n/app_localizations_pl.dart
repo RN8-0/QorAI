@@ -1222,7 +1222,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get continueWithApple => 'Kontynuuj z Apple';
 
   @override
-  String get continueWithEmail => 'Kontynuuj z e-mailem';
+  String get continueWithFacebook => 'Continue with Facebook';
+
+  @override
+  String get continueWithX => 'Continue with X';
 
   @override
   String get or => 'lub';
