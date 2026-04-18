@@ -32,7 +32,10 @@ class _PremiumFeaturesSection extends ConsumerWidget {
     final isPremium = ref.watch(subscriptionServiceProvider).isPremium;
     return SharedPremiumFeaturesSection(
       product: product,
-      onShowPriceHistory: () => _showPriceComparison(context, product, isPremium: isPremium),
+      onShowPriceHistory: () {
+        ref.read(behaviorTrackingProvider).trackPriceTap(product.id);
+        _showPriceComparison(context, product, isPremium: isPremium);
+      },
     );
   }
 }
