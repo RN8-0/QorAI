@@ -113,15 +113,29 @@ class _DetailBody extends ConsumerStatefulWidget {
 
 class _DetailBodyState extends ConsumerState<_DetailBody> {
   String? _lastPrefetchedMatchKey;
+  bool _tabViewReady = false;
 
   @override
   void initState() {
     super.initState();
     _syncAiPageContext();
-    // Schedule prefetch after first frame to avoid jank during route animation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _prefetchMatchScoreOnce();
+      // Listen to route push animation; enable tabs after animation completes
+      final route = ModalRoute.of(context);
+      final anim = route?.animation;
+      if (anim == null || anim.status == AnimationStatus.completed) {
+        if (mounted) setState(() => _tabViewReady = true);
+      } else {
+        void listener(AnimationStatus s) {
+          if (s == AnimationStatus.completed) {
+            anim.removeStatusListener(listener);
+            if (mounted) setState(() => _tabViewReady = true);
+          }
+        }
+        anim.addStatusListener(listener);
+      }
     });
   }
 
@@ -297,14 +311,16 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             ),
           ],
           body: RepaintBoundary(
-            child: TabBarView(
-              children: [
-                _SpecsTabContent(product: product, isDark: isDark),
-                _ReviewsTab(product: product, isDark: isDark),
-                _SimilarProductsTab(product: product, isDark: isDark),
-                _AIAnalysisTab(product: product, isDark: isDark),
-              ],
-            ),
+            child: _tabViewReady
+                ? TabBarView(
+                    children: [
+                      _SpecsTabContent(product: product, isDark: isDark),
+                      _ReviewsTab(product: product, isDark: isDark),
+                      _SimilarProductsTab(product: product, isDark: isDark),
+                      _AIAnalysisTab(product: product, isDark: isDark),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
         ),
       ),

@@ -32,6 +32,7 @@ import 'package:compair/presentation/screens/pc_builder/pc_builder_screen.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
 import 'package:compair/presentation/screens/visual_scanner/visual_scanner_screen.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:compair/presentation/screens/splash/splash_screen.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/core/pb_client.dart';
 
@@ -74,6 +75,8 @@ class AppRoutes {
   static const String recentlyViewed = '/recently-viewed';
   // Notifications
   static const String notifications = '/notifications';
+  // Splash
+  static const String splash = '/splash';
 }
 
 /// Root navigator key — used to ensure routes outside ShellRoute use root nav
@@ -83,11 +86,17 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: AppRoutes.home,
+    initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
 
     // Page transition animation - Section 14.4 (300ms, Curves.easeInOut)
     routes: [
+      GoRoute(
+        path: AppRoutes.splash,
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: SplashScreen(),
+        ),
+      ),
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
@@ -350,6 +359,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Public routes (no auth required)
       const publicRoutes = [
+        AppRoutes.splash,
         AppRoutes.login,
         AppRoutes.onboarding,
         AppRoutes.quiz,
@@ -368,6 +378,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ];
       final isPublicRoute =
           publicRoutes.contains(location) || location.startsWith('/product/');
+
+      // Let the splash screen handle its own navigation
+      if (location == AppRoutes.splash) return null;
 
       // Not logged in user trying to access a protected route
       if (!isLoggedIn && !isPublicRoute) {
