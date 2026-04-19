@@ -566,31 +566,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       ref.read(compareAnalysisProvider.notifier).reset();
     });
     final compareState = ref.watch(compareAnalysisProvider);
-    ref.listen<CompareAnalysisState>(compareAnalysisProvider, (prev, next) {
-      if (!mounted) return;
-      final error = next.error?.trim();
-      if (error != null && error.isNotEmpty && error != prev?.error) {
-        final isInfo =
-            error.contains('ℹ️') ||
-            error.contains('tanıyamadık') ||
-            error.contains('couldn\'t identify');
-        final isWarning =
-            error.contains('⚠️') ||
-            error.contains('aynı kategoride değil') ||
-            error.contains('same category') ||
-            error.contains('geçersiz') ||
-            error.contains('invalid');
-        _showLinkSnackBar(
-          error
-              .replaceAll('ℹ️ ', '')
-              .replaceAll('❌ ', '')
-              .replaceAll('⚠️ ', ''),
-          backgroundColor: isWarning
-              ? AppTheme.slate700
-              : (isInfo ? Colors.amber.shade800 : AppTheme.error),
-        );
-      }
-    });
     final isWorking =
         quizState.phase == LinkFlowPhase.analyzing ||
         quizState.phase == LinkFlowPhase.quizLoading ||
@@ -831,24 +806,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     // Compare error
     if (compareState.error != null) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Column(
-          children: [
-            _buildError(compareState.error!),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => ref.read(compareAnalysisProvider.notifier).reset(),
-              child: Text(
-                context.l10n?.tryAgain ?? 'Try Again',
-                style: GoogleFonts.inter(
-                  color: AppTheme.brandBlue,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Center(child: _buildCompareErrorState(compareState.error!)),
       );
     }
 
@@ -3352,6 +3312,124 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         ],
       ),
     ).animate().fadeIn(duration: 300.ms);
+  }
+
+  Widget _buildCompareErrorState(String error) {
+    final cleanError = error
+        .replaceAll('ℹ️ ', '')
+        .replaceAll('❌ ', '')
+        .replaceAll('⚠️ ', '')
+        .trim();
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child:
+          Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 24,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      context.surfaceVariantColor.withValues(alpha: 0.82),
+                      context.surfaceVariantColor.withValues(alpha: 0.62),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: AppTheme.brandBlue.withValues(alpha: 0.16),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.brandBlue.withValues(alpha: 0.22),
+                            AppTheme.brandCyan.withValues(alpha: 0.12),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: AppTheme.brandBlue.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline_rounded,
+                        color: AppTheme.brandSkyBlue,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      cleanError,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: context.textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    GestureDetector(
+                      onTap: () =>
+                          ref.read(compareAnalysisProvider.notifier).reset(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.brandBlue.withValues(alpha: 0.24),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          context.l10n?.tryAgain ?? 'Try Again',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 260.ms)
+              .slideY(
+                begin: 0.05,
+                end: 0,
+                duration: 320.ms,
+                curve: Curves.easeOutCubic,
+              ),
+    );
   }
 
   /// Multi-link comparison view (shown after all products are analyzed)
