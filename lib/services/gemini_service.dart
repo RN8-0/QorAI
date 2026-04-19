@@ -1629,11 +1629,11 @@ Return valid JSON:
 {
   "enhancedScore": 0-100,
   "factors": [
-    {"label": "Usage Fit", "score": 0-100, "emoji": "🎯"},
-    {"label": "Budget Match", "score": 0-100, "emoji": "💰"},
-    {"label": "Quality", "score": 0-100, "emoji": "⭐"},
-    {"label": "Long-term Value", "score": 0-100, "emoji": "🚀"},
-    {"label": "Lifestyle Match", "score": 0-100, "emoji": "🏠"}
+    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "🎯"},
+    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "💰"},
+    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "⭐"},
+    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "🚀"},
+    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "🏠"}
   ],
   "personaScore": 0-100,
   "personaAnalysis": "2-3 paragraph personal fit analysis — how this product fits the user's lifestyle, habits and preferences based on their quiz answers and profile. Be specific. In $langName.",
@@ -1648,6 +1648,7 @@ Return valid JSON:
 
 Important:
 - enhancedScore should differ from initialScore based on quiz answers
+- Factor labels MUST be in $langName (e.g. Turkish: "Kullanım Uyumu", "Bütçe Uyumu", "Kalite", "Uzun Vadeli Değer", "Yaşam Tarzı Uyumu")
 - Factors must reflect user's actual answers and real product details
 - personaScore: how well the product matches the user personally (0-100)
 - personaAnalysis: detailed personal fit analysis referencing quiz answers

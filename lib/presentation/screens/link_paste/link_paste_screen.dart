@@ -774,6 +774,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               answeredQuestions: compareState.quizAnswers,
               currentIndex: compareState.quizIndex,
               baseResult: compareState.firstBaseResult!,
+              allBaseResults: compareState.allBaseResults,
               onAnswer: _onCompareQuizAnswer,
               onSubmit: _onCompareQuizSubmit,
               onSkip: _onCompareQuizSkip,

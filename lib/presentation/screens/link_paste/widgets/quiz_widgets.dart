@@ -17,6 +17,97 @@ class _PhaseStep {
 }
 
 // ---------------------------------------------------------------
+// PRODUCT MINI CARD (used in quiz view)
+// ---------------------------------------------------------------
+
+class _ProductMiniCard extends StatelessWidget {
+  final LinkAnalysisResult result;
+  const _ProductMiniCard({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: result.metadata.image != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      result.metadata.image!,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.shopping_bag_rounded,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                  )
+                : const Icon(
+                    Icons.shopping_bag_rounded,
+                    color: AppTheme.primaryBlue,
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.metadata.title ??
+                      (context.l10n?.productLabel ?? 'Product'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: context.textPrimary,
+                  ),
+                ),
+                if (result.category != null)
+                  Text(
+                    result.category!,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: context.textTertiaryColor,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${result.aiScore.toStringAsFixed(0)}%',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: AppTheme.primaryBlue,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------
 // QUIZ VIEW
 // ---------------------------------------------------------------
 
@@ -25,6 +116,7 @@ class _QuizView extends StatelessWidget {
   final List<QuizQuestion> answeredQuestions;
   final int currentIndex;
   final LinkAnalysisResult baseResult;
+  final List<LinkAnalysisResult>? allBaseResults;
   final void Function(int, String) onAnswer;
   final VoidCallback onSubmit;
   final VoidCallback onSkip;
@@ -34,6 +126,7 @@ class _QuizView extends StatelessWidget {
     required this.answeredQuestions,
     required this.currentIndex,
     required this.baseResult,
+    this.allBaseResults,
     required this.onAnswer,
     required this.onSubmit,
     required this.onSkip,
@@ -50,85 +143,14 @@ class _QuizView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Product mini-card
-        GlassContainer(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: baseResult.metadata.image != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          baseResult.metadata.image!,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.shopping_bag_rounded,
-                            color: AppTheme.primaryBlue,
-                          ),
-                        ),
-                      )
-                    : const Icon(
-                        Icons.shopping_bag_rounded,
-                        color: AppTheme.primaryBlue,
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      baseResult.metadata.title ??
-                          (context.l10n?.productLabel ?? 'Product'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                    if (baseResult.category != null)
-                      Text(
-                        baseResult.category!,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: context.textTertiaryColor,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${baseResult.aiScore.toStringAsFixed(0)}%',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        // Product mini-cards — show all products in compare mode
+        if (allBaseResults != null && allBaseResults!.length >= 2)
+          ...allBaseResults!.map((result) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _ProductMiniCard(result: result),
+          ))
+        else
+          _ProductMiniCard(result: baseResult),
         const SizedBox(height: 16),
 
         // Progress bar
