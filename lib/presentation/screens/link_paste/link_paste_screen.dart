@@ -428,6 +428,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     setState(() => _singleSubmitInFlight = true);
     _singleFocusNode.unfocus();
     HapticFeedback.selectionClick();
+    // Reset previous analysis state before starting fresh
+    ref.read(linkQuizProvider.notifier).reset();
     try {
       ref.read(behaviorTrackingProvider).trackLinkPaste(url, null);
       await ref

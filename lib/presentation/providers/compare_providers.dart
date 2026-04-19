@@ -289,7 +289,8 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       return;
     }
 
-    state = state.copyWith(phase: LinkFlowPhase.analyzing, error: null);
+    // Clear ALL previous state before starting fresh analysis
+    state = const LinkQuizState(phase: LinkFlowPhase.analyzing);
 
     // Analyze link
     final localizedUser = user.copyWith(language: _appLang);
