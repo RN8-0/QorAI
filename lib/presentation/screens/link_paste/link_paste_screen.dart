@@ -994,9 +994,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             _buildError(quizState.error!),
             const SizedBox(height: 16),
           ],
-          // How it works steps
-          _buildHowItWorks(),
-          const SizedBox(height: 16),
+          // How it works — new modernized design
           _buildInfoCards(),
           SizedBox(
             height:
@@ -1610,151 +1608,201 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
-  Widget _buildHowItWorks() {
-    return GlassContainer(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n?.howItWorks ?? 'Nasıl Çalışır?',
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              color: context.textPrimary,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildStep(
-            1,
-            context.l10n?.pasteLink ?? 'Linki Yapıştır',
-            context.l10n?.dropProductUrl ??
-                '100+ mağazadan herhangi bir ürün linkini yapıştırın — AI ürünü otomatik tanır',
-            Icons.link_rounded,
-          ),
-          _buildStep(
-            2,
-            context.l10n?.aiQuiz ?? 'AI Quiz',
-            context.l10n?.answerQuickQuestions ??
-                'Kullanım ihtiyaçlarınıza göre kısa sorular cevaplayın',
-            Icons.quiz_outlined,
-          ),
-          _buildStep(
-            3,
-            context.l10n?.matchScoreLabel ?? 'Eşleşme Puanı',
-            context.l10n?.getPersonalizedScore ??
-                'Size özel uyumluluk puanı ve detaylı analiz alın',
-            Icons.stars_rounded,
-          ),
-        ],
+  Widget _buildCompareInfoCards() {
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final steps = [
+      (
+        Icons.add_link_rounded,
+        isTr ? '2-4 Bağlantı Ekle' : 'Add 2-4 Links',
+        isTr
+            ? 'Karşılaştırmak istediğin ürün URL\'lerini yapıştır'
+            : 'Paste product URLs you want to compare',
+        AppTheme.brandBlue,
       ),
-    );
-  }
-
-  Widget _buildStep(int num, String title, String subtitle, IconData icon) {
-    final colors = [
-      [AppTheme.brandBlue, AppTheme.brandSkyBlue],
-      [AppTheme.brandSkyBlue, AppTheme.orange500],
-      [AppTheme.brandCyan, AppTheme.brandBlue],
+      (
+        Icons.forum_rounded,
+        isTr ? 'İnternet Yorumları' : 'Community Voice',
+        isTr
+            ? 'Her ürün için Reddit, Trustpilot ve forumlardan gerçek yorumlar taranır'
+            : 'Real reviews scanned from Reddit, Trustpilot & forums for each product',
+        AppTheme.brandCyan,
+      ),
+      (
+        Icons.auto_awesome_rounded,
+        isTr ? 'AI Analizi' : 'AI Analysis',
+        isTr
+            ? 'AI ürünleri yan yana karşılaştırır ve sıralar'
+            : 'AI compares products side-by-side and ranks them',
+        AppTheme.brandSkyBlue,
+      ),
+      (
+        Icons.leaderboard_rounded,
+        isTr ? 'Sıralı Sonuç' : 'Ranked Result',
+        isTr
+            ? 'Artıları, eksileri ve kazananla birlikte detaylı karşılaştırma'
+            : 'Detailed side-by-side with pros, cons and the winner',
+        AppTheme.brandDeepBlue,
+      ),
     ];
-    return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 4,
+                height: 20,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: colors[num - 1],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppTheme.brandBlue, AppTheme.brandCyan],
                   ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors[num - 1].first.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: Center(child: Icon(icon, color: Colors.white, size: 22)),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: context.textTertiaryColor,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 10),
+              Text(
+                isTr
+                    ? 'Karşılaştırma Nasıl Çalışır'
+                    : 'How Comparison Works',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: context.textPrimary,
+                  letterSpacing: -0.3,
                 ),
               ),
             ],
           ),
-        )
-        .animate(delay: (num * 100).ms)
-        .fadeIn(duration: 400.ms)
-        .slideX(begin: 0.06);
-  }
-
-  Widget _buildCompareInfoCards() {
-    return GlassContainer(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n?.howComparisonWorks ?? 'How Comparison Works',
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              color: context.textPrimary,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildStep(
-            1,
-            context.l10n?.addLinksCompareTitle ?? 'Add 2-4 Links',
-            context.l10n?.addLinksCompareSubtitle ??
-                'Paste product URLs you want to compare',
-            Icons.add_link_rounded,
-          ),
-          _buildStep(
-            2,
-            context.l10n?.stepAnalyzeTitle ?? 'AI Analysis',
-            context.l10n?.analyzingProductsSubtitle ??
-                'AI is comparing your products side by side',
-            Icons.auto_awesome,
-          ),
-          _buildStep(
-            3,
-            context.l10n?.sideBySideTitle ?? 'Side-by-Side',
-            context.l10n?.sideBySideSubtitle ??
-                'See ranked comparison with pros & cons',
-            Icons.compare_arrows_rounded,
-          ),
-        ],
-      ),
+        ),
+        ...List.generate(steps.length, (i) {
+          final (icon, title, desc, color) = steps[i];
+          final isLast = i == steps.length - 1;
+          return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [color, color.withValues(alpha: 0.65)],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.28),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              '0${i + 1}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (!isLast)
+                          Container(
+                            width: 2,
+                            height: 20,
+                            margin: const EdgeInsets.symmetric(vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  color.withValues(alpha: 0.35),
+                                  color.withValues(alpha: 0.05),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: context.isDarkMode
+                              ? color.withValues(alpha: 0.06)
+                              : Colors.white.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: color.withValues(
+                              alpha: context.isDarkMode ? 0.15 : 0.18,
+                            ),
+                          ),
+                          boxShadow: context.isDarkMode
+                              ? null
+                              : AppTheme.cardShadowLight,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(icon, size: 20, color: color),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.textPrimary,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    desc,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: context.textTertiaryColor,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .animate()
+              .fadeIn(delay: (80 * i).ms, duration: 380.ms)
+              .slideX(begin: 0.04);
+        }),
+      ],
     );
   }
 
