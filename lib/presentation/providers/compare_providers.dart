@@ -584,6 +584,15 @@ final linkQuizProvider = StateNotifierProvider<LinkQuizNotifier, LinkQuizState>(
 
 enum ComparePhase { idle, analyzingFirst, quiz, analyzing, done }
 
+enum CompareErrorKind {
+  none,
+  invalidLinks,
+  duplicateLinks,
+  unrecognizedProducts,
+  categoryMismatch,
+  general,
+}
+
 /// Step type for the analyzing progress screen
 enum AnalysisStepType { scanLink, aiAnalysis, profileMatch }
 
@@ -617,6 +626,9 @@ class CompareAnalysisState {
   final LinkAnalysisResult? firstBaseResult;
   final List<LinkAnalysisResult> allBaseResults;
   final List<String> validUrls;
+  final CompareErrorKind errorKind;
+  final List<String> errorCategories;
+  final String? redirectUrl;
 
   const CompareAnalysisState({
     this.phase = ComparePhase.idle,
@@ -630,6 +642,9 @@ class CompareAnalysisState {
     this.firstBaseResult,
     this.allBaseResults = const [],
     this.validUrls = const [],
+    this.errorKind = CompareErrorKind.none,
+    this.errorCategories = const [],
+    this.redirectUrl,
   });
 
   bool get isWorking =>
@@ -647,6 +662,9 @@ class CompareAnalysisState {
     LinkAnalysisResult? firstBaseResult,
     List<LinkAnalysisResult>? allBaseResults,
     List<String>? validUrls,
+    CompareErrorKind? errorKind,
+    List<String>? errorCategories,
+    String? redirectUrl,
   }) {
     return CompareAnalysisState(
       phase: phase ?? this.phase,
@@ -660,6 +678,9 @@ class CompareAnalysisState {
       firstBaseResult: firstBaseResult ?? this.firstBaseResult,
       allBaseResults: allBaseResults ?? this.allBaseResults,
       validUrls: validUrls ?? this.validUrls,
+      errorKind: errorKind ?? this.errorKind,
+      errorCategories: errorCategories ?? this.errorCategories,
+      redirectUrl: redirectUrl ?? this.redirectUrl,
     );
   }
 }
@@ -699,6 +720,12 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         : '⚠️ ${hasMany ? '$invalidCount links are invalid.' : 'One link is invalid.'} Enter valid product page URLs in all filled fields before comparing.';
   }
 
+  static String buildDuplicateCompareLinksMessage(String lang) {
+    return lang == 'tr'
+        ? '⚠️ Aynı bağlantıyı iki kez girdiniz. Bu ürünü tekli analiz ekranında inceleyin.'
+        : '⚠️ You entered the same link twice. Review this product in the single analysis screen.';
+  }
+
   static String buildUnrecognizedCompareProductsMessage(
     String lang, {
     required int invalidCount,
@@ -709,18 +736,10 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         : '⚠️ ${hasMany ? '$invalidCount links could not be identified as products.' : 'One link could not be identified as a product.'} Please retry using only product page URLs.';
   }
 
-  static String buildCategoryMismatchMessage(
-    String lang,
-    Iterable<String> categories,
-  ) {
-    final labels = categories
-        .map((category) => category.trim())
-        .where((category) => category.isNotEmpty)
-        .toSet()
-        .join(', ');
+  static String buildCategoryMismatchMessage(String lang) {
     return lang == 'tr'
-        ? '⚠️ Bu ürünler aynı kategoride değil. Sadece aynı kategorideki ürünleri karşılaştırabilirsiniz.${labels.isNotEmpty ? ' Algılanan kategoriler: $labels.' : ''}'
-        : '⚠️ These products are not in the same category. You can only compare products from the same category.${labels.isNotEmpty ? ' Detected categories: $labels.' : ''}';
+        ? '⚠️ Bu ürünler aynı kategoride değil. Sadece aynı kategorideki ürünleri karşılaştırabilirsiniz.'
+        : '⚠️ These products are not in the same category. You can only compare products from the same category.';
   }
 
   /// Phase 1: Scan ALL URLs → validate → generate quiz
@@ -787,6 +806,9 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
             lang,
             invalidCount: invalidProductCount,
           ),
+          errorKind: CompareErrorKind.unrecognizedProducts,
+          errorCategories: const [],
+          redirectUrl: null,
         );
         return;
       }
@@ -798,6 +820,9 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
           error: lang == 'tr'
               ? 'ℹ️ Karşılaştırma için en az 2 geçerli ürün bağlantısı gereklidir. Lütfen ürün sayfası bağlantıları yapıştırın.'
               : 'ℹ️ At least 2 valid product links are needed for comparison. Please paste product page URLs.',
+          errorKind: CompareErrorKind.general,
+          errorCategories: const [],
+          redirectUrl: null,
         );
         return;
       }
@@ -809,7 +834,10 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       if (normalizedCategories.length > 1) {
         state = state.copyWith(
           phase: ComparePhase.idle,
-          error: buildCategoryMismatchMessage(lang, normalizedCategories),
+          error: buildCategoryMismatchMessage(lang),
+          errorKind: CompareErrorKind.categoryMismatch,
+          errorCategories: normalizedCategories.toList()..sort(),
+          redirectUrl: null,
         );
         return;
       }
@@ -860,6 +888,9 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       state = state.copyWith(
         phase: ComparePhase.idle,
         error: 'Failed to prepare comparison: $e',
+        errorKind: CompareErrorKind.general,
+        errorCategories: const [],
+        redirectUrl: null,
       );
     }
   }
@@ -924,6 +955,9 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       state = state.copyWith(
         phase: ComparePhase.idle,
         error: 'No products to analyze.',
+        errorKind: CompareErrorKind.general,
+        errorCategories: const [],
+        redirectUrl: null,
       );
       return;
     }
@@ -1032,8 +1066,20 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     state = const CompareAnalysisState();
   }
 
-  void showValidationError(String error, {List<String> validUrls = const []}) {
-    state = CompareAnalysisState(error: error, validUrls: validUrls);
+  void showValidationError(
+    String error, {
+    List<String> validUrls = const [],
+    CompareErrorKind errorKind = CompareErrorKind.general,
+    List<String> errorCategories = const [],
+    String? redirectUrl,
+  }) {
+    state = CompareAnalysisState(
+      error: error,
+      validUrls: validUrls,
+      errorKind: errorKind,
+      errorCategories: errorCategories,
+      redirectUrl: redirectUrl,
+    );
   }
 
   void restoreFromHistory(List<EnhancedAnalysisResult> results) {

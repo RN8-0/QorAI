@@ -487,6 +487,27 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               invalidCount: invalidInputCount,
             ),
             validUrls: validUrls,
+            errorKind: CompareErrorKind.invalidLinks,
+          );
+      return;
+    }
+
+    final seenUrls = <String>{};
+    String? duplicateUrl;
+    for (final url in validUrls) {
+      if (!seenUrls.add(url)) {
+        duplicateUrl = url;
+        break;
+      }
+    }
+    if (duplicateUrl != null) {
+      ref
+          .read(compareAnalysisProvider.notifier)
+          .showValidationError(
+            CompareAnalysisNotifier.buildDuplicateCompareLinksMessage(lang),
+            validUrls: [duplicateUrl],
+            errorKind: CompareErrorKind.duplicateLinks,
+            redirectUrl: duplicateUrl,
           );
       return;
     }
@@ -501,6 +522,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               en: '⚠️ Enter at least 2 valid product URLs to compare.',
             ),
             validUrls: validUrls,
+            errorKind: CompareErrorKind.general,
           );
       return;
     }
@@ -808,7 +830,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (compareState.error != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Center(child: _buildCompareErrorState(compareState.error!)),
+        child: Center(child: _buildCompareErrorState(compareState)),
       );
     }
 
@@ -1337,33 +1359,30 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildCompareUrlField(int index) {
+    final controller = _compareControllers[index];
     return _buildModernUrlField(
-      controller: _compareControllers[index],
+      controller: controller,
       focusNode: _compareFocusNodes[index],
       hintText:
           context.l10n?.pasteProductUrlNumbered(index + 1) ??
           'Paste product URL ${index + 1}...',
       prefixIconData: Icons.link_rounded,
-      trailing: _visibleCompareFields > 2
+      trailing: controller.text.isNotEmpty
           ? IconButton(
               icon: Icon(
                 Icons.close_rounded,
                 color: AppTheme.error.withValues(alpha: 0.78),
-                size: 18,
+                size: 15,
               ),
+              constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+              padding: EdgeInsets.zero,
+              splashRadius: 16,
               style: IconButton.styleFrom(
                 backgroundColor: AppTheme.error.withValues(alpha: 0.08),
               ),
               onPressed: () {
-                setState(() {
-                  _compareControllers[index].clear();
-                  for (int j = index; j < _visibleCompareFields - 1; j++) {
-                    _compareControllers[j].text =
-                        _compareControllers[j + 1].text;
-                  }
-                  _compareControllers[_visibleCompareFields - 1].clear();
-                  _visibleCompareFields--;
-                });
+                controller.clear();
+                setState(() {});
               },
             )
           : null,
@@ -3314,12 +3333,97 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     ).animate().fadeIn(duration: 300.ms);
   }
 
-  Widget _buildCompareErrorState(String error) {
+  String _formatCompareCategoryLabel(String category) {
+    final normalized = category.trim().toLowerCase();
+    final l10n = context.l10n;
+    switch (normalized) {
+      case 'gaming':
+        return l10n?.gaming ?? 'Gaming';
+      case 'smartphones':
+      case 'smartphone':
+        return l10n?.smartphones ?? 'Smartphones';
+      case 'laptops':
+      case 'laptop':
+        return l10n?.laptops ?? 'Laptops';
+      case 'tablets':
+      case 'tablet':
+        return l10n?.tablets ?? 'Tablets';
+      case 'headphones':
+      case 'headphone':
+        return l10n?.headphones ?? 'Headphones';
+      case 'monitors':
+      case 'monitor':
+        return l10n?.monitors ?? 'Monitors';
+      case 'jewelry':
+        return _linkText(context, tr: 'Mucevher', en: 'Jewelry');
+      case 'books':
+      case 'book':
+        return _linkText(context, tr: 'Kitaplar', en: 'Books');
+      case 'computers':
+      case 'computer':
+        return _linkText(context, tr: 'Bilgisayarlar', en: 'Computers');
+      case 'beauty':
+        return _linkText(context, tr: 'Kisisel Bakim', en: 'Beauty');
+      case 'toys':
+        return _linkText(context, tr: 'Oyuncaklar', en: 'Toys');
+      case 'sports':
+        return _linkText(context, tr: 'Spor', en: 'Sports');
+      case 'clothing':
+        return _linkText(context, tr: 'Giyim', en: 'Clothing');
+      case 'home-appliances':
+        return _linkText(context, tr: 'Ev Aletleri', en: 'Home Appliances');
+      case 'kitchen':
+        return _linkText(context, tr: 'Mutfak', en: 'Kitchen');
+      case 'furniture':
+        return _linkText(context, tr: 'Mobilya', en: 'Furniture');
+      case 'pet-supplies':
+        return _linkText(context, tr: 'Evcil Hayvan', en: 'Pet Supplies');
+      default:
+        return normalized
+            .split(RegExp(r'[-_\s]+'))
+            .where((part) => part.isNotEmpty)
+            .map(
+              (part) =>
+                  part[0].toUpperCase() +
+                  (part.length > 1 ? part.substring(1) : ''),
+            )
+            .join(' ');
+    }
+  }
+
+  void _redirectCompareToSingleAnalysis(CompareAnalysisState state) {
+    final targetUrl =
+        state.redirectUrl ??
+        (state.validUrls.isNotEmpty ? state.validUrls.first : null);
+    ref.read(compareAnalysisProvider.notifier).reset();
+    if (targetUrl != null && targetUrl.isNotEmpty) {
+      _singleUrlController.text = targetUrl;
+    }
+    _tabController.animateTo(0);
+    setState(() {});
+  }
+
+  Widget _buildCompareErrorState(CompareAnalysisState state) {
+    final error = state.error ?? '';
     final cleanError = error
         .replaceAll('ℹ️ ', '')
         .replaceAll('❌ ', '')
         .replaceAll('⚠️ ', '')
         .trim();
+    final hasLocalizedCategories =
+        state.errorKind == CompareErrorKind.categoryMismatch &&
+        state.errorCategories.isNotEmpty;
+    final localizedCategories = hasLocalizedCategories
+        ? state.errorCategories.map(_formatCompareCategoryLabel).join(', ')
+        : null;
+    final isDuplicateError = state.errorKind == CompareErrorKind.duplicateLinks;
+    final actionLabel = isDuplicateError
+        ? _linkText(
+            context,
+            tr: 'Tekli Analize Gec',
+            en: 'Go to Single Analysis',
+          )
+        : (context.l10n?.tryAgain ?? 'Try Again');
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
@@ -3386,10 +3490,28 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         height: 1.45,
                       ),
                     ),
+                    if (localizedCategories != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _linkText(
+                          context,
+                          tr: 'Algilanan kategoriler: $localizedCategories',
+                          en: 'Detected categories: $localizedCategories',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: context.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 22),
                     GestureDetector(
-                      onTap: () =>
-                          ref.read(compareAnalysisProvider.notifier).reset(),
+                      onTap: () => isDuplicateError
+                          ? _redirectCompareToSingleAnalysis(state)
+                          : ref.read(compareAnalysisProvider.notifier).reset(),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 22,
@@ -3409,7 +3531,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           ],
                         ),
                         child: Text(
-                          context.l10n?.tryAgain ?? 'Try Again',
+                          actionLabel,
                           style: GoogleFonts.inter(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,

@@ -13,15 +13,21 @@ void main() {
       expect(message, contains('2 bağlantı geçersiz'));
     });
 
-    test('builds category mismatch warning with detected categories', () {
+    test('builds category mismatch warning in Turkish', () {
       final message = CompareAnalysisNotifier.buildCategoryMismatchMessage(
         'tr',
-        {'gaming', 'jewelry'},
       );
 
       expect(message, contains('aynı kategoride değil'));
-      expect(message, contains('gaming'));
-      expect(message, contains('jewelry'));
+    });
+
+    test('builds duplicate link warning in Turkish', () {
+      final message = CompareAnalysisNotifier.buildDuplicateCompareLinksMessage(
+        'tr',
+      );
+
+      expect(message, contains('Aynı bağlantıyı'));
+      expect(message, contains('tekli analiz'));
     });
 
     test('normalizes category casing and whitespace', () {
