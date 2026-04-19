@@ -1165,6 +1165,17 @@ class SubscriptionSelectionValidation {
   bool get isValid => error == null;
 }
 
+/// Result returned by [SubQuizNotifier.validateSingleSubscriptionChip].
+class ChipAddResult {
+  final String? displayName;
+  final String? categoryKey;
+  final String? error;
+
+  const ChipAddResult({this.displayName, this.categoryKey, this.error});
+
+  bool get isValid => error == null;
+}
+
 class SubQuizNotifier extends StateNotifier<SubQuizState> {
   final DeepSeekService _deepseek;
   final GeminiService _gemini;
@@ -1283,8 +1294,110 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     );
   }
 
+  /// Validates a single subscription name typed by the user before adding it
+  /// as a chip. Handles URL detection, duplicates, local catalog lookup, AI
+  /// resolution for unknown services, and same-category enforcement.
+  Future<ChipAddResult> validateSingleSubscriptionChip({
+    required String rawName,
+    required List<String> existingDisplayNames,
+    required Map<String, String> chipCategoryMap,
+  }) async {
+    final lang = _appLang;
+    final trimmed = rawName.trim();
+
+    if (trimmed.isEmpty) {
+      return ChipAddResult(error: buildMissingSubscriptionMessage(lang));
+    }
+
+    if (looksLikeSubscriptionUrl(trimmed)) {
+      return ChipAddResult(
+        error: buildInvalidSubscriptionInputMessage(lang, isUrl: true),
+      );
+    }
+
+    // Raw-input duplicate check (fast path before any normalization)
+    if (existingDisplayNames.any(
+      (n) => n.trim().toLowerCase() == trimmed.toLowerCase(),
+    )) {
+      return ChipAddResult(
+        error: _isTurkishLanguage(lang)
+            ? '"$trimmed" zaten eklendi.'
+            : '"$trimmed" is already added.',
+      );
+    }
+
+    // Local catalog lookup (synchronous — no AI call needed)
+    String? displayName = GeminiService.normalizeSubscriptionDisplayName(
+      trimmed,
+    );
+    String? categoryKey = GeminiService.subscriptionCategoryKey(trimmed);
+
+    // Unknown service — ask AI
+    if (displayName == null || categoryKey == null) {
+      try {
+        final result = await _gemini.resolveSubscriptionSelection(
+          rawNames: [trimmed],
+          language: lang,
+        );
+        if (result.invalidNames.isNotEmpty || result.normalizedNames.isEmpty) {
+          return ChipAddResult(
+            error: buildInvalidSubscriptionInputMessage(lang),
+          );
+        }
+        displayName = result.normalizedNames.first;
+        categoryKey = result.sharedCategoryKey;
+      } catch (e) {
+        debugPrint('=== COMPAIR: chip validation failed: $e ===');
+        return ChipAddResult(
+          error: _isTurkishLanguage(lang)
+              ? 'Abonelik doğrulanırken hata oluştu. Lütfen tekrar deneyin.'
+              : 'Could not validate subscription. Please try again.',
+        );
+      }
+    }
+
+    // After normalization: reject if category still unknown
+    if (categoryKey == null || categoryKey.isEmpty) {
+      return ChipAddResult(error: buildInvalidSubscriptionInputMessage(lang));
+    }
+
+    // Post-normalization duplicate check (e.g. "HBO Max" normalizes to "HBO")
+    if (existingDisplayNames.any(
+      (n) => n.trim().toLowerCase() == displayName!.toLowerCase(),
+    )) {
+      return ChipAddResult(
+        error: _isTurkishLanguage(lang)
+            ? '"$displayName" zaten eklendi.'
+            : '"$displayName" is already added.',
+      );
+    }
+
+    // Same-category enforcement
+    if (chipCategoryMap.isNotEmpty) {
+      final existingCategories =
+          chipCategoryMap.values.where((k) => k.isNotEmpty).toSet();
+      if (existingCategories.isNotEmpty &&
+          !existingCategories.contains(categoryKey)) {
+        return ChipAddResult(
+          error: buildMixedSubscriptionCategoriesMessage(
+            lang,
+            names: [...existingDisplayNames, displayName],
+          ),
+        );
+      }
+    }
+
+    return ChipAddResult(displayName: displayName, categoryKey: categoryKey);
+  }
+
   /// Step 1: Generate AI quiz based on subscription names.
-  Future<void> startQuiz(List<String> names) async {
+  /// When [skipResolution] is true the names are treated as already validated
+  /// (pre-checked at chip-add time) — the AI resolution step is skipped to
+  /// avoid a redundant network call and potential contradictory results.
+  Future<void> startQuiz(
+    List<String> names, {
+    bool skipResolution = false,
+  }) async {
     final validation = validateSubscriptionSelection(names, _appLang);
     if (!validation.isValid) {
       showValidationError(validation.error!);
@@ -1308,6 +1421,10 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
     // ── Phase A: AI validation (separate try block — errors must NOT fall through)
     List<String> normalizedNames;
+    if (skipResolution) {
+      // Chips were pre-validated at chip-add time — trust them directly.
+      normalizedNames = pendingNames;
+    } else {
     try {
       final resolution = await _gemini.resolveSubscriptionSelection(
         rawNames: pendingNames,
@@ -1366,6 +1483,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       );
       return;
     }
+    } // end !skipResolution
 
     // ── Phase B: Quiz generation (quiz failure falls through to direct analysis)
     try {

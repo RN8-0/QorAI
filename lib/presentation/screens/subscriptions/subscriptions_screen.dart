@@ -29,6 +29,14 @@ const _kSecondary = AppTheme.brandSkyBlue;
 const _kAccent = AppTheme.brandCyan;
 const _kDeep = AppTheme.brandDeepBlue;
 
+// ─── Local model for a validated subscription chip ───────────────────────────
+
+class _ValidatedChip {
+  final String displayName;
+  final String categoryKey;
+  const _ValidatedChip({required this.displayName, required this.categoryKey});
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 class SubscriptionsScreen extends ConsumerStatefulWidget {
@@ -42,7 +50,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final TextEditingController _inputCtrl = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
-  final List<String> _chips = [];
+  final List<_ValidatedChip> _chips = [];
+  String? _chipError;
+  bool _validatingChip = false;
 
   late AnimationController _pulseController;
   late AnimationController _orbController;
@@ -102,56 +112,93 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     super.dispose();
   }
 
-  void _addChip(String name) {
-    _tryAddChip(name);
-  }
-
-  void _removeChip(String name) {
-    setState(() => _chips.remove(name));
-    ref.read(subQuizProvider.notifier).clearError();
-  }
-
-  bool _tryAddChip(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return false;
-    final exists = _chips.any(
-      (chip) => chip.trim().toLowerCase() == trimmed.toLowerCase(),
-    );
-    if (exists) {
-      _inputCtrl.clear();
-      return false;
-    }
-
+  void _removeChip(String displayName) {
     setState(() {
-      _chips.add(trimmed);
-      _inputCtrl.clear();
+      _chips.removeWhere((c) => c.displayName == displayName);
+      _chipError = null;
     });
     ref.read(subQuizProvider.notifier).clearError();
-    return true;
   }
 
-  void _startAnalysis() {
-    // Auto-add any text remaining in the input field before analyzing
+  Future<void> _addChipAsync(String name) async {
+    if (_validatingChip) return; // serialize concurrent adds
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+
+    setState(() {
+      _validatingChip = true;
+      _chipError = null;
+    });
+
+    final result = await ref
+        .read(subQuizProvider.notifier)
+        .validateSingleSubscriptionChip(
+          rawName: trimmed,
+          existingDisplayNames: _chips.map((c) => c.displayName).toList(),
+          chipCategoryMap: {
+            for (final c in _chips) c.displayName.toLowerCase(): c.categoryKey,
+          },
+        );
+
+    if (!mounted) return;
+
+    if (result.isValid) {
+      setState(() {
+        _chips.add(
+          _ValidatedChip(
+            displayName: result.displayName!,
+            categoryKey: result.categoryKey!,
+          ),
+        );
+        _inputCtrl.clear();
+        _chipError = null;
+        _validatingChip = false;
+      });
+    } else {
+      setState(() {
+        _chipError = result.error;
+        _validatingChip = false;
+      });
+    }
+  }
+
+  Future<void> _startAnalysis() async {
     final pending = _inputCtrl.text.trim();
-    if (pending.isNotEmpty && !_tryAddChip(pending)) {
-      if (_chips.isEmpty) {
-        return;
+    // Capture locale before async gap
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+
+    if (pending.isNotEmpty) {
+      // If it's just a duplicate of an already-added chip, clear it and proceed
+      final isDuplicate = _chips.any(
+        (c) => c.displayName.toLowerCase() == pending.toLowerCase(),
+      );
+      if (isDuplicate) {
+        _inputCtrl.clear();
+      } else {
+        await _addChipAsync(pending);
+        // If chip-add set an error, abort analysis
+        if (_chipError != null) return;
       }
     }
 
-    final validation = SubQuizNotifier.validateSubscriptionSelection(
-      List<String>.from(_chips),
-      Localizations.localeOf(context).languageCode,
-    );
-    if (!validation.isValid) {
-      ref.read(subQuizProvider.notifier).showValidationError(validation.error!);
+    if (_chips.isEmpty) {
+      setState(
+        () => _chipError = isTr
+            ? 'Lütfen en az bir abonelik adı girin.'
+            : 'Please enter at least one subscription.',
+      );
       return;
     }
 
+    setState(() => _chipError = null);
     _inputFocus.unfocus();
     ref
         .read(subQuizProvider.notifier)
-        .startQuiz(List.from(validation.normalizedNames));
+        .startQuiz(
+          _chips.map((c) => c.displayName).toList(),
+          skipResolution: true,
+        );
   }
 
   @override
@@ -194,6 +241,10 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     if (state.phase == SubFlowPhase.idle) ...[
                       const SizedBox(height: 12),
                       _buildInputCard(isWorking),
+                      if (_chipError != null) ...[
+                        const SizedBox(height: 8),
+                        _buildError(_chipError!),
+                      ],
                       const SizedBox(height: 20),
                       if (state.error != null) ...[
                         _buildError(state.error!),
@@ -1036,10 +1087,10 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 6,
-                    children: _chips.map((c) {
+                    children: _chips.map((chip) {
                       return Chip(
                         label: Text(
-                          c,
+                          chip.displayName,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -1051,7 +1102,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           size: 16,
                           color: _kPrimary,
                         ),
-                        onDeleted: () => _removeChip(c),
+                        onDeleted: () => _removeChip(chip.displayName),
                         backgroundColor: _kPrimary.withValues(alpha: 0.08),
                         side: BorderSide(
                           color: _kPrimary.withValues(alpha: 0.3),
@@ -1070,6 +1121,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               return TextField(
                 controller: _inputCtrl,
                 focusNode: _inputFocus,
+                enabled: !_validatingChip,
                 style: GoogleFonts.inter(
                   color: context.textPrimary,
                   fontSize: 13,
@@ -1098,9 +1150,21 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     minWidth: 0,
                     minHeight: 0,
                   ),
-                  suffixIcon: value.text.isNotEmpty
+                  suffixIcon: _validatingChip
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: _kPrimary.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        )
+                      : value.text.isNotEmpty
                       ? GestureDetector(
-                          onTap: () => _addChip(_inputCtrl.text),
+                          onTap: () => _addChipAsync(_inputCtrl.text),
                           child: Container(
                             margin: const EdgeInsets.only(right: 8),
                             padding: const EdgeInsets.all(6),
@@ -1124,7 +1188,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   ),
                 ),
                 onSubmitted: (v) {
-                  if (v.trim().isNotEmpty) _addChip(v);
+                  if (v.trim().isNotEmpty) _addChipAsync(v);
                 },
                 textInputAction: TextInputAction.done,
               );
@@ -1143,9 +1207,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             separatorBuilder: (_, index) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               final name = _suggestions[i];
-              final isAdded = _chips.contains(name);
+              final isAdded = _chips.any((c) => c.displayName == name);
               return GestureDetector(
-                onTap: isAdded ? null : () => _addChip(name),
+                onTap: isAdded ? null : () => _addChipAsync(name),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
