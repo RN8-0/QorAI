@@ -42,17 +42,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   bool _isListening = false;
   bool _speechAvailable = false;
 
-  static List<String> _getSuggestions(BuildContext context) {
-    final l = context.l10n;
-    return [
-      '📱 ${l?.suggestBestPhone ?? 'Best phone under \$500?'}',
-      '💻 ${l?.suggestCompareLaptops ?? 'Compare MacBook vs Dell XPS'}',
-      '🎧 ${l?.suggestHeadphones ?? 'Top headphones for music'}',
-      '📸 ${l?.suggestCameraPhones ?? 'Best camera phones 2025'}',
-      '🖥️ ${l?.suggestGamingMonitor ?? 'Gaming monitor recommendations'}',
-      '⌨️ ${l?.suggestMechKeyboard ?? 'Best mechanical keyboards'}',
-    ];
-  }
 
   @override
   void initState() {
@@ -197,43 +186,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   // ─── Empty State ──────────────────────────────────────────────────────────
 
   Widget _buildEmptyState() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(children: [
-        ..._getSuggestions(context).take(4).toList().asMap().entries.map((entry) =>
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                _send(entry.value.replaceAll(RegExp(r'[^\w\s\?\/\\$]'), '').trim());
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: context.dividerColor.withValues(alpha: 0.6)),
-                ),
-                child: Row(children: [
-                  Expanded(
-                    child: Text(entry.value,
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13, fontWeight: FontWeight.w500,
-                            color: context.textPrimary)),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_ios_rounded,
-                      size: 12, color: context.textTertiaryColor),
-                ]),
-              ),
-            ),
-          ).animate(delay: (50 + entry.key * 50).ms)
-              .fadeIn(duration: 250.ms).slideY(begin: 0.05),
-        ),
-      ]),
-    );
+    // Just show the welcome message area - no suggestion cards
+    return const SizedBox.shrink();
   }
 
   // ─── Header ───────────────────────────────────────────────────────────────

@@ -704,18 +704,18 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     final baseResults = <LinkAnalysisResult>[];
 
     try {
-      // Scan ALL URLs sequentially
+      // Scan ALL URLs in parallel for speed
+      final futures = <Future<Result<LinkAnalysisResult>>>[];
       for (int i = 0; i < urls.length; i++) {
         _updateStep(i, (s) => s.withActive());
         _behaviorTracking.trackLinkPaste(urls[i], null);
         debugPrint('[Compare] Scanning URL ${i + 1}/${urls.length}: ${urls[i]}');
+        futures.add(_aiRepo.analyzeLink(url: urls[i], user: localizedUser));
+      }
 
-        final Result<LinkAnalysisResult> result = await _aiRepo.analyzeLink(
-          url: urls[i],
-          user: localizedUser,
-        );
-
-        switch (result) {
+      final results = await Future.wait(futures);
+      for (int i = 0; i < results.length; i++) {
+        switch (results[i]) {
           case Success<LinkAnalysisResult>(data: final d):
             if (d.isProduct) {
               baseResults.add(d);
@@ -838,33 +838,38 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
 
     final results = <EnhancedAnalysisResult>[];
 
-    // Enhanced analysis for each pre-scanned product
+    // Enhanced analysis for all products in parallel
     for (int i = 0; i < baseResults.length; i++) {
       _updateStep(i, (s) => s.withActive());
-      try {
-        final enhanced = await _deepseek.enhancedAnalysis(
+    }
+
+    final enhancedFutures = <Future<EnhancedAnalysisResult>>[];
+    for (int i = 0; i < baseResults.length; i++) {
+      enhancedFutures.add(
+        _deepseek.enhancedAnalysis(
           baseResult: baseResults[i],
           answeredQuestions: quizAnswers,
           profile: user,
-        );
-        debugPrint(
-          '[Compare] Score for "${baseResults[i].metadata.title}": enhanced=${enhanced.enhancedScore}',
-        );
-        results.add(enhanced);
-        _updateStep(i, (s) => s.withDone());
-      } catch (e) {
-        debugPrint('[Compare] Enhanced analysis fallback: $e');
-        results.add(
-          EnhancedAnalysisResult(
+        ).then((enhanced) {
+          debugPrint(
+            '[Compare] Score for "${baseResults[i].metadata.title}": enhanced=${enhanced.enhancedScore}',
+          );
+          _updateStep(i, (s) => s.withDone());
+          return enhanced;
+        }).catchError((e) {
+          debugPrint('[Compare] Enhanced analysis fallback: $e');
+          _updateStep(i, (s) => s.withDone());
+          return EnhancedAnalysisResult(
             baseResult: baseResults[i],
             enhancedScore: baseResults[i].aiScore,
             factors: const [],
             detailedVerdict: baseResults[i].aiAnalysis,
-          ),
-        );
-        _updateStep(i, (s) => s.withDone());
-      }
+          );
+        }),
+      );
     }
+
+    results.addAll(await Future.wait(enhancedFutures));
 
     // Profile matching step (brief visual)
     final profileIdx = baseResults.length;

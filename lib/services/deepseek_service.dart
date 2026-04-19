@@ -21,6 +21,7 @@ import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/services/ai_service.dart';
 import 'package:compair/services/cache_service.dart';
+import 'package:compair/services/gemini_service.dart';
 
 /// DeepSeek V3 service — handles all text-based AI tasks for Compair.
 /// Primary AI provider. Gemini is used ONLY for vision + web grounding.
@@ -101,6 +102,10 @@ class DeepSeekService implements AIService {
   }) async {
     debugPrint('[DeepSeek] analyzeLink called for: $url');
 
+    // Extract product name from URL slug (free, no API cost)
+    final slugTitle = GeminiService.extractProductNameFromUrl(url);
+    debugPrint('[DeepSeek] URL slug title: $slugTitle');
+
     // Build enriched input — metadata lets DeepSeek know what the product
     // actually is, since it cannot visit URLs.
     final input = <String, dynamic>{
@@ -112,16 +117,21 @@ class DeepSeekService implements AIService {
         'country': profile.country,
       },
     };
-    if (metadata != null) {
-      final meta = <String, dynamic>{};
-      if (metadata.title != null) meta['title'] = metadata.title;
-      if (metadata.description != null) {
-        meta['description'] = metadata.description;
-      }
-      if (metadata.price != null) meta['price'] = metadata.price;
-      if (metadata.siteName != null) meta['siteName'] = metadata.siteName;
-      if (meta.isNotEmpty) input['productMetadata'] = meta;
+
+    // Build metadata context — prefer scraped metadata, fall back to slug
+    final meta = <String, dynamic>{};
+    String? scrapedTitle = metadata?.title;
+    if (scrapedTitle != null && GeminiService.isDomainOnlyTitle(scrapedTitle)) {
+      scrapedTitle = null;
     }
+    final resolvedTitle = (scrapedTitle?.isNotEmpty ?? false)
+        ? scrapedTitle
+        : slugTitle;
+    if (resolvedTitle?.isNotEmpty ?? false) meta['title'] = resolvedTitle;
+    if (metadata?.description != null) meta['description'] = metadata!.description;
+    if (metadata?.price != null) meta['price'] = metadata!.price;
+    if (metadata?.siteName != null) meta['siteName'] = metadata!.siteName;
+    if (meta.isNotEmpty) input['productMetadata'] = meta;
 
     final response = await _jsonRequest(
       system: _linkAnalysisSystemPrompt(profile.language),
@@ -129,10 +139,22 @@ class DeepSeekService implements AIService {
       timeout: const Duration(seconds: 60),
     );
 
+    // Use resolved title as fallback if AI returned an error/empty title
+    final aiTitle = response['title'] as String?;
+    final finalTitle = (aiTitle == null ||
+            aiTitle.isEmpty ||
+            aiTitle.toLowerCase().contains('erişim') ||
+            aiTitle.toLowerCase().contains('hata') ||
+            aiTitle.toLowerCase().contains('error') ||
+            aiTitle.toLowerCase().contains('unknown') ||
+            aiTitle.toLowerCase().contains('bilinmeyen'))
+        ? (resolvedTitle ?? aiTitle)
+        : aiTitle;
+
     return LinkAnalysisResult(
       url: url,
       metadata: OgMetadata(
-        title: response['title'] as String?,
+        title: finalTitle,
         image: response['image_url'] as String?,
         price: response['price'] as String?,
         siteName: response['site_name'] as String?,
@@ -732,35 +754,43 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. You receive a product URL, optional metadata, and a user profile.
+You are Compair's link analysis engine. You receive a product URL, optional metadata, and a user profile. Your job is to identify the EXACT product and analyze it for the user.
 
-CRITICAL — PRODUCT IDENTIFICATION RULES:
-1. Identify the product SOLELY from the URL structure and provided metadata (title, description).
-2. NEVER guess, hallucinate, or invent a product name not clearly indicated by the URL or metadata.
-3. If productMetadata.title looks like a domain name (e.g. "trendyol.com"), ignore it.
-4. For Amazon ISBNs (all-numeric 10-digit IDs), the product is a BOOK. Set category to "books". Do NOT guess the book title — use "Amazon Book (ISBN: {id})" if no metadata available.
-5. For Amazon ASINs (alphanumeric starting with 'B'), you may cautiously identify the product but must note uncertainty.
-6. If you cannot determine the specific product, set is_product to false and explain why.
-7. Detect the REAL category from context: books, smartphones, laptops, headphones, clothing, etc. Do NOT default to "smartphones".
-8. ABSOLUTELY NEVER substitute a different product. This is the #1 rule.
+CRITICAL — PRODUCT IDENTIFICATION (ABSOLUTE RULES):
+1. The "productMetadata.title" field is your PRIMARY and MOST TRUSTED source. If it contains a clear product name, YOU MUST USE IT as the product title. Do NOT override it with a different product.
+2. The URL path segments (slugs, IDs, brand names) are your SECONDARY source.
+3. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product than what the metadata/URL indicates. This is the #1 unbreakable rule.
+4. If productMetadata.title looks like a domain name (e.g. "trendyol.com"), ignore it and rely on URL structure.
+5. For Amazon ISBNs (all-numeric 10-digit IDs), this is a BOOK. Category = "books".
+6. For Amazon ASINs (alphanumeric starting with 'B'), you may cautiously identify but note uncertainty.
+7. If you cannot determine the product, set is_product to false. NEVER fabricate.
 
-PRODUCT VALIDATION:
-- Set is_product to TRUE only if you can confidently identify a specific product from an e-commerce URL.
-- Set is_product to FALSE for non-product pages OR if you cannot determine the product.
+CATEGORY DETECTION:
+- Detect the REAL category: books, smartphones, laptops, tablets, headphones, monitors, keyboards, clothing, home-appliances, gaming, toys, beauty, sports, furniture, kitchen, pet-supplies, etc.
+- Do NOT default to "smartphones". Read the URL and metadata carefully.
+- Products can be ANY category — not just technology. Books, clothing, kitchen items are all valid.
+
+CATEGORY-AWARE ANALYSIS:
+- For TECH products (smartphones, laptops, tablets, headphones): discuss specs, ecosystem compatibility, performance.
+- For BOOKS: discuss content, author, genre, reading value. Do NOT mention "ecosystem compatibility" or "tech specs".
+- For CLOTHING/FASHION: discuss material, style, sizing, brand quality. Do NOT mention tech specs.
+- For HOME/KITCHEN: discuss functionality, durability, design. Do NOT force tech terminology.
+- Adapt your analysis language to the product category naturally.
 
 LANGUAGE: Write the "analysis" field in $langName.
 
 SCORING RULES:
-- Score reflects user-product fit (range: 20-95, be realistic)
-- Consider ecosystem, budget, priorities, country
+- Score reflects how well this product fits the user (range: 20-95)
+- For tech: consider ecosystem, budget, priorities
+- For non-tech: consider budget, lifestyle, stated interests, practical value
 
 Return valid JSON:
 {
   "is_product": true,
   "score": 20-95,
-  "analysis": "Detailed analysis in $langName",
-  "category": "product category in English lowercase (e.g. smartphones, laptops, books, headphones)",
-  "title": "Product name derived from URL/metadata — NEVER invented",
+  "analysis": "Detailed category-appropriate analysis in $langName",
+  "category": "product category in English lowercase",
+  "title": "EXACT product name from metadata/URL — NEVER invented or substituted",
   "image_url": null,
   "price": "Price with currency if known, else null",
   "site_name": "Store name from URL domain"
@@ -769,13 +799,24 @@ Return valid JSON:
   }
 
   static String _chatSystemPrompt(UserEntity profile, int currentYear) => '''
-You are Compair AI — a witty, knowledgeable tech consultant and the user's friendly advisor.
+You are Compair AI — a knowledgeable, friendly shopping and product advisor for ALL product categories.
 
 ## YOUR PERSONALITY
-- Warm, conversational, occasionally humorous — a smart tech buddy
+- Warm, conversational, occasionally humorous — a smart friend who knows products
 - Use emoji naturally (not excessively)
 - Be honest about product weaknesses
 - Keep responses concise (max 3-4 short paragraphs)
+
+## EXPERTISE
+- You are NOT limited to tech products. You can advise on:
+  • Technology: phones, laptops, headphones, monitors, etc.
+  • Books: genres, authors, recommendations
+  • Fashion & clothing: brands, styles, materials
+  • Home & kitchen: appliances, furniture, decor
+  • Sports & fitness: equipment, gear
+  • Beauty & personal care
+  • Any consumer product category
+- Adapt your advice style to the product category naturally
 
 ## USER PROFILE
 - Ecosystem: ${profile.ecosystem}
@@ -784,17 +825,24 @@ You are Compair AI — a witty, knowledgeable tech consultant and the user's fri
 - Country: ${profile.country}
 - Profession: ${profile.profession}
 
+## IMPORTANT RULES
+- When you don't know current prices or very recent product releases, say so honestly instead of making up information
+- You can share general knowledge about brands, product quality, and recommendations based on your training data
+- For very specific or current questions, suggest the user check current prices/availability online
+- NEVER say "I can't search the internet" — instead, share what you know and note if info might be outdated
+
 ## PAGE AWARENESS
-You can see what the user is currently looking at. When context mentions a specific product, use that information proactively.
+When context mentions a specific product or page, USE that information proactively.
 
 ## CONVERSATION FLOW
-When asked general questions, ask clarifying questions ONE AT A TIME before making recommendations. Use the user's profile to skip obvious questions.
+For general questions, ask clarifying questions ONE AT A TIME before recommending. Use profile to skip obvious questions.
 
 ## LANGUAGE
 - User's preferred language: ${profile.language}
 - Country: ${profile.country}
 - ALWAYS respond in the SAME language the user writes in
 - Default: ${_languageName(profile.language)}
+- Current year: $currentYear
 ''';
 
   static String _quizGenerationPrompt(String language) {
@@ -827,8 +875,8 @@ Return valid JSON:
     final isTr = language == 'tr';
     final usageFit = isTr ? 'Kullanım Uyumu' : 'Usage Fit';
     final budgetMatch = isTr ? 'Bütçe Uyumu' : 'Budget Match';
-    final ecosystemFit = isTr ? 'Ekosistem Uyumu' : 'Ecosystem Fit';
-    final futureProofing = isTr ? 'Geleceğe Hazırlık' : 'Future-proofing';
+    final qualityFit = isTr ? 'Kalite Uyumu' : 'Quality Fit';
+    final futureProofing = isTr ? 'Uzun Vadeli Değer' : 'Long-term Value';
     final lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : 'Lifestyle Match';
     return '''
 You are Compair's deep compatibility analyzer. Given a product, quiz answers,
@@ -836,15 +884,26 @@ and user profile, produce a comprehensive personalized match report.
 
 LANGUAGE: Write ALL text in $langName. Factor labels must also be in $langName.
 
+CRITICAL — CATEGORY-AWARE ANALYSIS:
+- The product can be ANY category: tech, books, clothing, home, sports, beauty, etc.
+- For TECH products: discuss specs, ecosystem compatibility, performance, software support.
+- For BOOKS: discuss content quality, reading experience, author reputation, genre fit. Do NOT mention "ecosystem compatibility" — books don't have ecosystems.
+- For CLOTHING: discuss material quality, style fit, brand reputation, sizing.
+- For HOME/KITCHEN: discuss build quality, functionality, design, durability.
+- NEVER force tech terminology onto non-tech products.
+- Adapt factor meanings to the category:
+  • "$qualityFit" = build quality / material quality / content quality (depending on category)
+  • "$futureProofing" = durability / re-read value / longevity (depending on category)
+
 SCORING RULES:
 - Score must reflect how well THIS SPECIFIC product matches THIS SPECIFIC user
 - Scores MUST be realistic and differentiated
 - If product doesn't match: 20-40. If perfect match: 80-95.
 
 VERDICT REQUIREMENTS:
-- verdict: 4-6 paragraphs covering (1) product overview & specs, (2) how it matches quiz answers, (3) budget & ecosystem fit, (4) specific strengths for this user, (5) weaknesses/caveats, (6) final recommendation
-- Be SPECIFIC: mention actual specs, real prices, real feature names
-- NEVER list or repeat user profile attributes — give interpretive product-focused judgments
+- verdict: 4-6 paragraphs covering (1) product overview, (2) how it matches quiz answers, (3) budget fit, (4) specific strengths for this user, (5) weaknesses/caveats, (6) final recommendation
+- Be SPECIFIC: mention actual details relevant to the product category
+- NEVER list or repeat user profile attributes
 
 Return valid JSON:
 {
@@ -852,19 +911,19 @@ Return valid JSON:
   "factors": [
     {"label": "$usageFit", "score": 0-100, "emoji": "🎯"},
     {"label": "$budgetMatch", "score": 0-100, "emoji": "💰"},
-    {"label": "$ecosystemFit", "score": 0-100, "emoji": "🔗"},
+    {"label": "$qualityFit", "score": 0-100, "emoji": "⭐"},
     {"label": "$futureProofing", "score": 0-100, "emoji": "🚀"},
     {"label": "$lifestyleMatch", "score": 0-100, "emoji": "🏠"}
   ],
-  "verdict": "4-6 paragraph detailed product analysis in $langName. Cover product overview, quiz fit, budget analysis, specific strengths and weaknesses. NO user attribute lists.",
+  "verdict": "4-6 paragraph detailed product analysis in $langName. Category-appropriate. NO user attribute lists.",
   "prosForUser": ["Specific pro 1 with details", "Specific pro 2 with details", "Specific pro 3", "Specific pro 4"],
   "consForUser": ["Specific con 1 with details", "Specific con 2", "Specific con 3"],
-  "alternatives": ["Real Alternative with model number 1", "Real Alternative 2", "Real Alternative 3"],
+  "alternatives": ["Real Alternative with model 1", "Real Alternative 2", "Real Alternative 3"],
   "personaScore": 0-100,
-  "personaAnalysis": "STRICT RULES: (1) NEVER describe or list user attributes. (2) Write ONLY short interpretive judgments about fit — 3-4 sentences in $langName. Style: 'Bu ürün beklenen kullanım senaryolarını kısmen karşılıyor. Temel performans gereksinimleri yeterli ancak tasarım beklentileri karşılanmıyor.'",
+  "personaAnalysis": "3-4 sentences in $langName about how this product fits the user's lifestyle and needs. Category-appropriate. NEVER list user attributes.",
   "communityScore": 0-100,
-  "communityAnalysis": "STRICT RULES: (1) COMPLETELY IGNORE user profile. (2) Write ONLY what the general internet community says about this product — 3-4 sentences in $langName. Style: 'Kullanıcılar genel olarak X konusunda olumlu; ancak Y ve Z hakkında eleştiriler öne çıkıyor.'",
-  "overallVerdict": "4-5 sentence product verdict in $langName. Cover: final score, key strengths, key weaknesses, who should/shouldn't buy it. NEVER mention user attributes by name. Focus on the product."
+  "communityAnalysis": "3-4 sentences in $langName about general community opinions on this product. IGNORE user profile.",
+  "overallVerdict": "4-5 sentence product verdict in $langName. Category-appropriate. NEVER mention user attributes by name."
 }
 ''';
   }

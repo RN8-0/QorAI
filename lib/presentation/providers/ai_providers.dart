@@ -39,20 +39,20 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final locale = _ref.read(localeProvider);
     final langCode = locale?.languageCode ?? 'en';
     const greetings = <String, String>{
-      'tr': 'Merhaba! Ben yapay zeka alışveriş asistanınım. Telefon, laptop, kulaklık hakkında her şeyi sorabilirsiniz! 🚀',
-      'de': 'Hallo! Ich bin dein KI-Einkaufsassistent. Frag mich alles über Smartphones, Laptops, Kopfhörer! 🚀',
-      'fr': 'Salut! Je suis votre assistant shopping IA. Posez-moi des questions sur les téléphones, laptops, écouteurs! 🚀',
-      'es': '¡Hola! Soy tu asistente de compras IA. ¡Pregúntame sobre teléfonos, laptops, auriculares! 🚀',
-      'ar': 'مرحباً! أنا مساعدك الذكي للتسوق. اسألني عن الهواتف والأجهزة المحمولة! 🚀',
-      'ru': 'Привет! Я ваш ИИ-помощник по покупкам. Спрашивайте меня о телефонах, ноутбуках, наушниках! 🚀',
-      'zh': '你好！我是您的AI购物助手。询问手机、笔记本、耳机相关问题！🚀',
-      'ja': 'こんにちは！AIショッピングアシスタントです。スマホ・ノートPC・ヘッドホンについて何でも聞いてください！🚀',
-      'ko': '안녕하세요! AI 쇼핑 도우미입니다. 스마트폰, 노트북, 헤드폰에 대해 무엇이든 물어보세요! 🚀',
-      'pt': 'Olá! Sou seu assistente de compras IA. Pergunte-me sobre telefones, laptops, fones de ouvido! 🚀',
-      'it': 'Ciao! Sono il tuo assistente shopping IA. Chiedimi di telefoni, laptop, cuffie! 🚀',
+      'tr': 'Merhaba! Ben Compair AI asistanınım. Ürünler, markalar ve alışveriş hakkında her şeyi sorabilirsiniz! 🚀',
+      'de': 'Hallo! Ich bin dein Compair AI-Assistent. Frag mich alles über Produkte und Einkäufe! 🚀',
+      'fr': 'Salut! Je suis votre assistant Compair AI. Posez-moi des questions sur les produits et achats! 🚀',
+      'es': '¡Hola! Soy tu asistente Compair AI. ¡Pregúntame sobre productos y compras! 🚀',
+      'ar': 'مرحباً! أنا مساعدك Compair AI. اسألني عن المنتجات والتسوق! 🚀',
+      'ru': 'Привет! Я ваш ассистент Compair AI. Спрашивайте меня о продуктах и покупках! 🚀',
+      'zh': '你好！我是您的Compair AI助手。询问关于产品和购物的任何问题！🚀',
+      'ja': 'こんにちは！Compair AIアシスタントです。製品やお買い物について何でも聞いてください！🚀',
+      'ko': '안녕하세요! Compair AI 어시스턴트입니다. 제품과 쇼핑에 대해 무엇이든 물어보세요! 🚀',
+      'pt': 'Olá! Sou seu assistente Compair AI. Pergunte-me sobre produtos e compras! 🚀',
+      'it': 'Ciao! Sono il tuo assistente Compair AI. Chiedimi di prodotti e acquisti! 🚀',
     };
     final text = greetings[langCode] ??
-        'Hey! I\'m your AI shopping assistant. Ask me anything about phones, laptops, headphones! 🚀';
+        'Hey! I\'m your Compair AI assistant. Ask me anything about products and shopping! 🚀';
     final welcome = PersistedChatMsg(
       id: 'welcome',
       role: PersistedMsgRole.ai,
