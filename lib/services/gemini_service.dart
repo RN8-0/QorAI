@@ -1070,19 +1070,25 @@ Return ONLY valid JSON:
         .toList();
 
     // Step 1: Research phase — use googleSearch to gather real-time data
+    // Scale research token budget: 2048 base + 1024 per service beyond the first
+    final researchTokens = (2048 + (normalizedNames.length - 1) * 1024).clamp(
+      2048,
+      6144,
+    );
     final researchPrompt =
         '''
-Research the following subscription services: $names
+Research EACH of the following subscription services individually: ${normalizedNames.map((n) => '"$n"').join(', ')}
 
-Find for each service:
-1. What category the service belongs to
-2. Recent Reddit discussions and user opinions
-3. Trustpilot/forum reviews summary
+For EVERY service listed above, find:
+1. What category it belongs to (video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, etc.)
+2. Recent Reddit discussions and user opinions about it
+3. Trustpilot / forum review summary
 4. Key features, strengths, and limitations
 5. Recent news, updates, or catalog changes
 
+IMPORTANT: You MUST cover ALL ${normalizedNames.length} services. Do not skip any.
 Do NOT include pricing, monthly fees, yearly fees, discounts, or any cost details.
-Provide a comprehensive research summary.
+Output a clear per-service research summary, labeled with each service name.
 ''';
 
     String researchData = '';
@@ -1099,9 +1105,12 @@ Provide a comprehensive research summary.
           'tools': [
             {'googleSearch': {}},
           ],
-          'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 2048},
+          'generationConfig': {
+            'temperature': 0.2,
+            'maxOutputTokens': researchTokens,
+          },
         },
-        receiveTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 90),
         tier: AiTier.heavy,
       );
     } catch (e) {
@@ -1193,13 +1202,14 @@ ${unknownForAnalysis.isNotEmpty ? 'NOTE: The following service(s) may not be wel
 
 CRITICAL RULES:
 - ALL text values MUST be in $langName language
-- The "subscriptions" object MUST contain exactly ${normalizedNames.length} entries, one for each service: ${normalizedNames.map((n) => '"$n"').join(', ')}
+- The "subscriptions" object MUST contain exactly ${normalizedNames.length} entries, one for EACH of: ${normalizedNames.map((n) => '"$n"').join(', ')}
+- You MUST complete ALL ${normalizedNames.length} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have exactly 5 items, cons exactly 3 items — keep each item concise (max 15 words)
+- pros must have exactly 5 items, cons exactly 3 items — keep each item concise (max 12 words)
 - factors are 0-100 integers
 - Be specific and personalized, not generic
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
-- community_sentiment should be max 2 sentences
+- community_sentiment should be max 2 sentences, compatibility_explanation max 2 sentences
 
 Return ONLY valid JSON matching this exact schema:
 $jsonSchema
@@ -1233,11 +1243,17 @@ $jsonSchema
       );
     }
 
+    // Scale analysis tokens: 4096 base + 1024 per service beyond the first, max 8192
+    final analysisTokens = (4096 + (normalizedNames.length - 1) * 1024).clamp(
+      4096,
+      8192,
+    );
+
     String text;
     try {
       text = await runStructuredAnalysis(
         includeResearchData: true,
-        maxTokens: 4096,
+        maxTokens: analysisTokens,
       );
     } on AIServiceException catch (e) {
       final shouldRetryCompact =
@@ -1251,7 +1267,7 @@ $jsonSchema
       );
       text = await runStructuredAnalysis(
         includeResearchData: false,
-        maxTokens: 3072,
+        maxTokens: (analysisTokens * 0.75).round(),
       );
     }
 
