@@ -240,28 +240,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     });
   }
 
-  void _handleAutoPasteTap(
-    TextEditingController controller, {
-    FocusNode? focusNode,
-  }) {
-    // Single tap: paste from clipboard without opening keyboard
-    unawaited(
-      _pasteClipboardInto(
-        controller,
-        onlyWhenEmpty: true,
-        showInvalidFeedback: false,
-      ),
-    );
-    // Dismiss keyboard if it was opened by the TextField
-    Future.delayed(const Duration(milliseconds: 50), () {
-      if (mounted) focusNode?.unfocus();
-    });
-  }
-
-  void _handleDoubleTap(FocusNode focusNode) {
-    // Double tap: open keyboard for manual URL entry
-    focusNode.requestFocus();
-  }
+  /// Tracks which focus nodes are in "edit mode" (double-tapped)
+  final Set<FocusNode> _editModeFocusNodes = {};
 
   Widget _buildModernUrlField({
     required TextEditingController controller,
@@ -272,55 +252,75 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     TextInputAction textInputAction = TextInputAction.next,
     ValueChanged<String>? onSubmitted,
   }) {
+    final isEditMode = _editModeFocusNodes.contains(focusNode);
     return GestureDetector(
-      onDoubleTap: () => _handleDoubleTap(focusNode),
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        // Single tap: paste only, no keyboard
+        unawaited(_pasteClipboardInto(controller, onlyWhenEmpty: true, showInvalidFeedback: false));
+      },
+      onDoubleTap: () {
+        // Double tap: enter edit mode, open keyboard
+        setState(() => _editModeFocusNodes.add(focusNode));
+        focusNode.requestFocus();
+        focusNode.addListener(() {
+          if (!focusNode.hasFocus && mounted) {
+            setState(() => _editModeFocusNodes.remove(focusNode));
+          }
+        });
+      },
       child: AnimatedGradientInputShell(
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          readOnly: !focusNode.hasFocus,
-          keyboardType: TextInputType.url,
-          textInputAction: textInputAction,
-          autocorrect: false,
-          enableSuggestions: false,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: context.textPrimary,
-          ),
-          onTap: () => _handleAutoPasteTap(controller, focusNode: focusNode),
-          onTapOutside: (_) => focusNode.unfocus(),
-          onSubmitted: onSubmitted,
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: GoogleFonts.inter(
+        child: AbsorbPointer(
+          absorbing: !isEditMode,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            readOnly: !isEditMode,
+            keyboardType: TextInputType.url,
+            textInputAction: textInputAction,
+            autocorrect: false,
+            enableSuggestions: false,
+            style: GoogleFonts.inter(
               fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: context.textTertiaryColor.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w500,
+              color: context.textPrimary,
             ),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(left: 14, right: 8),
-              child: Icon(
-                prefixIconData,
-                color: AppTheme.brandBlue.withValues(alpha: 0.7),
-                size: 18,
+            onTapOutside: (_) {
+              focusNode.unfocus();
+              setState(() => _editModeFocusNodes.remove(focusNode));
+            },
+            onSubmitted: onSubmitted,
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: context.textTertiaryColor.withValues(alpha: 0.6),
               ),
-            ),
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 0,
-              minHeight: 0,
-            ),
-            suffixIcon: trailing != null
-                ? Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: trailing,
-                  )
-                : null,
-            border: InputBorder.none,
-            filled: false,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 0,
-              vertical: 12,
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 14, right: 8),
+                child: Icon(
+                  prefixIconData,
+                  color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                  size: 18,
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              suffixIcon: trailing != null
+                  ? Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: trailing,
+                    )
+                  : null,
+              border: InputBorder.none,
+              filled: false,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 0,
+                vertical: 12,
+              ),
             ),
           ),
         ),
@@ -4521,12 +4521,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 color: AppTheme.brandDeepBlue,
                 title: context.l10n?.personalMatch ?? 'Personal\nMatch',
                 emoji: '🎯',
-              ),
-              _PowerCard(
-                icon: Icons.trending_up_rounded,
-                color: AppTheme.scoreExcellent,
-                title: context.l10n?.priceHistory ?? 'Price\nHistory',
-                emoji: '📈',
               ),
             ],
           ),

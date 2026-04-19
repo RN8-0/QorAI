@@ -22,17 +22,22 @@ class _LinkAnalysisImageState extends State<_LinkAnalysisImage> {
     if (_hidden) return const SizedBox.shrink();
     return ClipRRect(
       borderRadius: widget.borderRadius,
-      child: Image.network(
-        widget.imageUrl,
-        height: 220,
+      child: Container(
+        color: Colors.white,
         width: double.infinity,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _hidden = true);
-          });
-          return const SizedBox.shrink();
-        },
+        height: 200,
+        child: Image.network(
+          widget.imageUrl,
+          height: 200,
+          width: double.infinity,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _hidden = true);
+            });
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }

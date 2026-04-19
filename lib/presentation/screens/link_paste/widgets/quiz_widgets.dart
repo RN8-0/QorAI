@@ -59,7 +59,7 @@ class _QuizView extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: baseResult.metadata.image != null
@@ -67,7 +67,9 @@ class _QuizView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
                           baseResult.metadata.image!,
-                          fit: BoxFit.cover,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => const Icon(
                             Icons.shopping_bag_rounded,
                             color: AppTheme.primaryBlue,

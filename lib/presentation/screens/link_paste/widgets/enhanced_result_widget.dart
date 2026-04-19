@@ -248,13 +248,13 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                                   Icon(
                                     Icons.favorite_rounded,
                                     size: 14,
-                                    color: context.surfaceVariantColor,
+                                    color: Colors.white,
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
                                     '${animScore.toStringAsFixed(0)}% Match',
                                     style: GoogleFonts.plusJakartaSans(
-                                      color: context.surfaceVariantColor,
+                                      color: Colors.white,
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13,
                                     ),
@@ -816,44 +816,39 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.premiumPurple, AppTheme.neonPurple],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.premiumPurple.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.premiumPurple, AppTheme.neonPurple],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.premiumPurple.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
+                          child: const Icon(
                             Icons.auto_awesome_rounded,
                             size: 18,
                             color: Colors.white,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            isTr ? 'Genel AI Özeti' : 'Overall AI Summary',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: Colors.white,
-                              letterSpacing: -0.2,
-                            ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          isTr ? 'Genel AI Özeti' : 'Overall AI Summary',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: ctx.textPrimary,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     MarkdownBody(

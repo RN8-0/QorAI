@@ -985,7 +985,7 @@ $jsonSchema
           'currentDevices': profile.currentDevices,
         },
       }),
-      thinkingBudget: 1024,
+      thinkingBudget: 512,
       timeout: const Duration(seconds: 90),
       tier: AiTier.heavy,
     );
@@ -1084,7 +1084,7 @@ $jsonSchema
 
     // Always set thinking budget to control costs.
     // Thinking tokens are billed at output price ($2.50/1M for flash).
-    final effectiveThinking = thinkingBudget ?? (tier == AiTier.heavy ? 1024 : 0);
+    final effectiveThinking = thinkingBudget ?? (tier == AiTier.heavy ? 512 : 0);
     body['generationConfig'] = {
       ...(body['generationConfig'] as Map<String, dynamic>),
       'thinkingConfig': {'thinkingBudget': effectiveThinking},
@@ -1524,14 +1524,18 @@ CRITICAL SCORING RULES:
 - NEVER give the same score to products with different specs/prices
 
 VERDICT REQUIREMENTS:
-- Write a detailed 4-6 paragraph verdict in $langName
+- Write a detailed 6-8 paragraph verdict in $langName
 - Paragraph 1: What this product actually is, key specs, and its market positioning
 - Paragraph 2: How it matches (or doesn't match) the user's stated needs and quiz answers
 - Paragraph 3: Ecosystem fit, budget analysis, and value for money assessment
 - Paragraph 4: Specific strengths and weaknesses relevant to this user's use case
-- Paragraph 5 (optional): Comparison to alternatives and final recommendation
+- Paragraph 5: Build quality, display, performance benchmarks, and daily usability insights
+- Paragraph 6: Comparison to alternatives and final recommendation
+- Paragraph 7 (optional): Long-term durability, software support, and future-proofing assessment
+- Paragraph 8 (optional): Summary and final buy/don't-buy recommendation with reasoning
 - Be SPECIFIC: mention real spec numbers, real prices, real feature names
 - DO NOT repeat the user's profile info — focus on the product analysis
+- Each paragraph should be at least 3-4 sentences long
 
 Return valid JSON:
 {
@@ -1543,9 +1547,9 @@ Return valid JSON:
     {"label": "Future-proofing", "score": 0-100, "emoji": "🚀"},
     {"label": "Lifestyle Match", "score": 0-100, "emoji": "🏠"}
   ],
-  "verdict": "4-6 paragraph detailed analysis in $langName",
-  "prosForUser": ["Specific pro 1 relevant to this user's needs", "Specific pro 2", "Specific pro 3", "Specific pro 4"],
-  "consForUser": ["Specific con 1 relevant to this user", "Specific con 2", "Specific con 3"],
+  "verdict": "6-8 paragraph detailed analysis in $langName, each paragraph 3-4 sentences minimum",
+  "prosForUser": ["Specific pro 1 relevant to this user's needs", "Specific pro 2", "Specific pro 3", "Specific pro 4", "Specific pro 5"],
+  "consForUser": ["Specific con 1 relevant to this user", "Specific con 2", "Specific con 3", "Specific con 4"],
   "alternatives": ["Real Alternative Product 1 with model number", "Real Alternative Product 2", "Real Alternative Product 3"]
 }
 
