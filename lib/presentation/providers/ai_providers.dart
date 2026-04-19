@@ -114,7 +114,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final convId = await _ensureConversation(user.uid, title);
 
     try {
-      final deepseek = _ref.read(deepSeekServiceProvider);
+      final gemini = _ref.read(geminiServiceProvider);
 
       // Text chat only — image analysis moved to Visual Scanner
       final turns = _buildTurns(trimmed, user, pageContext: pageContext);
@@ -122,7 +122,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       String accumulated = '';
 
       try {
-        await for (final chunk in deepseek.chatConversationStream(turns, user)) {
+        await for (final chunk in gemini.chatConversationStream(turns, user)) {
           accumulated += chunk;
           final cleanText = _stripJsonWrapper(accumulated);
           final aiMsg = PersistedChatMsg(
@@ -135,7 +135,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       } catch (_) {
         // Streaming failed — fallback to batch
         if (accumulated.isEmpty) {
-          final response = await deepseek.chatConversation(turns, user);
+          final response = await gemini.chatConversation(turns, user);
           accumulated = response;
         }
       }

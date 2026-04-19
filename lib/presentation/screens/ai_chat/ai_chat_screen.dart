@@ -161,13 +161,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatSessionProvider);
     final bottom = widget.isOverlay ? 0.0 : MediaQuery.of(context).padding.bottom;
-    final isEmpty = chatState.messages.length <= 1;
 
     if (widget.isOverlay) {
       return SizedBox.expand(
         child: Column(children: [
           _buildHeader(context),
-          Expanded(child: isEmpty ? _buildEmptyState() : _buildMessageList(chatState)),
+          Expanded(child: _buildMessageList(chatState)),
           _buildInputArea(bottom),
         ]),
       );
@@ -177,17 +176,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       backgroundColor: context.surfaceVariantColor,
       body: Column(children: [
         _buildHeader(context),
-        Expanded(child: isEmpty ? _buildEmptyState() : _buildMessageList(chatState)),
+        Expanded(child: _buildMessageList(chatState)),
         _buildInputArea(bottom),
       ]),
     );
-  }
-
-  // ─── Empty State ──────────────────────────────────────────────────────────
-
-  Widget _buildEmptyState() {
-    // Just show the welcome message area - no suggestion cards
-    return const SizedBox.shrink();
   }
 
   // ─── Header ───────────────────────────────────────────────────────────────
@@ -362,7 +354,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   Widget _buildInputArea(double bottomPadding) {
     final hasText = _ctrl.text.trim().isNotEmpty;
-    final extraBottom = widget.isOverlay ? 0.0 : AppTheme.navBarHeight;
+    // When keyboard is open, don't add navBar clearance (avoids overflow)
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final extraBottom = (widget.isOverlay || keyboardOpen) ? 0.0 : AppTheme.navBarHeight;
     return Container(
       padding: EdgeInsets.only(
           left: 12, right: 12, top: 8,

@@ -175,6 +175,14 @@ class GeminiService implements AIService {
         ? (resolvedTitle ?? aiTitle)
         : aiTitle;
 
+    // If title is still just an ASIN/ISBN code, prefer the AI title even if empty
+    final effectiveTitle = (finalTitle != null && 
+            (finalTitle.startsWith('Amazon ASIN') || finalTitle.startsWith('Amazon ISBN')))
+        ? (aiTitle?.isNotEmpty == true && !aiTitle!.startsWith('Amazon ASIN') && !aiTitle.startsWith('Amazon ISBN') 
+            ? aiTitle 
+            : finalTitle)
+        : finalTitle;
+
     // For known e-commerce domains, default is_product to true
     final isEcommerce = _isEcommerceDomain(url);
     final isProduct = response['is_product'] as bool? ?? isEcommerce;
@@ -182,7 +190,7 @@ class GeminiService implements AIService {
     return LinkAnalysisResult(
       url: url,
       metadata: OgMetadata(
-        title: finalTitle,
+        title: effectiveTitle,
         image: response['image_url'] as String?,
         price: response['price'] as String?,
         siteName: response['site_name'] as String?,
@@ -1410,8 +1418,8 @@ CRITICAL — PRODUCT IDENTIFICATION (ABSOLUTE RULES):
 2. URL path segments (slugs, IDs, brand names) are your SECONDARY source.
 3. "productContext.description" and "productContext.siteName" are SUPPORTING sources.
 4. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product. If the metadata says "Zeiron APX80 Ryzen 5", you MUST analyze Zeiron APX80 Ryzen 5 — NOT an iPhone or any other product. This is the #1 unbreakable rule.
-5. For Amazon ASINs (alphanumeric IDs starting with 'B'), you MAY cautiously identify but MUST note uncertainty.
-6. For Amazon ISBNs (all-numeric IDs), this is a BOOK. Category = "books". Do NOT guess the book title.
+5. For Amazon ASINs (alphanumeric IDs starting with 'B'): You MUST identify the actual product. Use the ASIN code to determine the real product name. NEVER use "Amazon ASIN XXXXXXXX" as the product title — that's just the product code, not the name. Look up the product and return its real name (e.g., "The Frozen River" not "Amazon ASIN B0DDWDBZXS").
+6. For Amazon ISBNs (all-numeric IDs), this is a BOOK. Category = "books". Identify the book by its ISBN.
 7. If productContext.title is a domain name (e.g. "trendyol.com"), treat as NO useful title — rely on URL.
 8. If you genuinely cannot determine the product, use product ID as title. NEVER fabricate.
 
@@ -1503,16 +1511,21 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
     final langName = _languageName(language);
     return '''
 You are Compair's product quiz engine. Generate a SHORT personalized quiz
-(4-6 questions) to understand the user's needs for a specific product category.
+(4-6 questions) to understand the user's needs for the SPECIFIC product being analyzed.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
-The goal: understand how the user plans to use this product, their priorities,
+The goal: understand how the user plans to use THIS specific product, their priorities,
 living situation, habits, and expectations — so we can compute an accurate
 compatibility score.
 
-Rules:
-- Questions must be relevant to the product CATEGORY (not a generic quiz)
+CRITICAL RULES:
+- Questions MUST be relevant to the specific product and its category
+- Reference the product name/type in at least 2 questions
+- For BOOKS: ask about reading preferences, genre interests, reading habits
+- For TECH: ask about usage scenarios, environment, feature priorities  
+- For CLOTHING: ask about style, occasions, comfort preferences
+- For HOME: ask about living space, household size, usage frequency
 - Each question has exactly 4 options
 - Options should cover the full spectrum of use-cases
 - Keep questions conversational with emoji
