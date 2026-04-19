@@ -525,7 +525,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           error.isNotEmpty &&
           error != prev?.error &&
           next.phase == LinkFlowPhase.idle) {
-        _showLinkSnackBar(error);
+        final isInfo = error.contains('ℹ️') || error.contains('tanıyamadık') || error.contains('couldn\'t identify');
+        _showLinkSnackBar(
+          error.replaceAll('ℹ️ ', '').replaceAll('❌ ', ''),
+          backgroundColor: isInfo ? Colors.amber.shade800 : AppTheme.error,
+        );
       }
     });
     ref.listen<bool>(premiumProvider, (prev, next) {
@@ -542,7 +546,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       if (!mounted) return;
       final error = next.error?.trim();
       if (error != null && error.isNotEmpty && error != prev?.error) {
-        _showLinkSnackBar(error);
+        final isInfo = error.contains('ℹ️') || error.contains('tanıyamadık') || error.contains('couldn\'t identify');
+        _showLinkSnackBar(
+          error.replaceAll('ℹ️ ', '').replaceAll('❌ ', ''),
+          backgroundColor: isInfo ? Colors.amber.shade800 : AppTheme.error,
+        );
       }
     });
     final isWorking =
@@ -3237,33 +3245,33 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildError(String error) {
+    // Use info style (amber) for non-critical messages, error (red) for failures
+    final isInfo = error.contains('ℹ️') || error.contains('tanıyamadık') || error.contains('couldn\'t identify');
+    final color = isInfo ? Colors.amber : AppTheme.error;
+    final icon = isInfo ? Icons.info_outline_rounded : Icons.error_outline_rounded;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.error.withValues(alpha: 0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.error.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.error.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.error_outline_rounded,
-              color: AppTheme.error,
-              size: 20,
-            ),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              error,
+              error.replaceAll('ℹ️ ', '').replaceAll('❌ ', ''),
               style: GoogleFonts.plusJakartaSans(
-                color: AppTheme.error,
+                color: color,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -3271,7 +3279,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 300.ms).shakeX(amount: 4, duration: 300.ms);
+    ).animate().fadeIn(duration: 300.ms);
   }
 
   /// Multi-link comparison view (shown after all products are analyzed)

@@ -141,7 +141,8 @@ class DeepSeekService implements AIService {
       aiAnalysis: response['analysis'] as String? ?? '',
       category: response['category'] as String?,
       analyzedAt: DateTime.now(),
-      isProduct: response['is_product'] as bool? ?? false,
+      isProduct: response['is_product'] as bool? ??
+          _isEcommerceDomain(url),
     );
   }
 
@@ -712,6 +713,20 @@ Return valid JSON:
   "winner": "<productId>"
 }
 ''';
+  }
+
+  static bool _isEcommerceDomain(String url) {
+    try {
+      final host = Uri.parse(url).host.toLowerCase();
+      const domains = [
+        'amazon', 'trendyol', 'hepsiburada', 'n11', 'gittigidiyor',
+        'mediamarkt', 'teknosa', 'vatan', 'ciceksepeti', 'kitapyurdu',
+        'idefix', 'bkmkitap', 'ebay', 'aliexpress', 'bestbuy', 'walmart',
+      ];
+      return domains.any((d) => host.contains(d));
+    } catch (_) {
+      return false;
+    }
   }
 
   static String _linkAnalysisSystemPrompt(String language) {

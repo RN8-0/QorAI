@@ -165,7 +165,9 @@ class GeminiService implements AIService {
         ? (resolvedTitle ?? aiTitle)
         : aiTitle;
 
-    final isProduct = response['is_product'] as bool? ?? false;
+    // For known e-commerce domains, default is_product to true
+    final isEcommerce = _isEcommerceDomain(url);
+    final isProduct = response['is_product'] as bool? ?? isEcommerce;
 
     return LinkAnalysisResult(
       url: url,
@@ -195,6 +197,23 @@ class GeminiService implements AIService {
       'ana sayfa', 'home', 'anasayfa', 'hoş geldiniz', 'welcome',
     ];
     return generics.any((g) => t == g);
+  }
+
+  /// Returns true if the URL belongs to a known e-commerce domain
+  static bool _isEcommerceDomain(String url) {
+    try {
+      final host = Uri.parse(url).host.toLowerCase();
+      const ecommerceDomains = [
+        'amazon', 'trendyol', 'hepsiburada', 'n11', 'gittigidiyor',
+        'mediamarkt', 'teknosa', 'vatan', 'ciceksepeti', 'dr.com',
+        'kitapyurdu', 'idefix', 'bkmkitap', 'epey.com', 'akakce',
+        'ebay', 'aliexpress', 'banggood', 'bestbuy', 'walmart',
+        'newegg', 'apple.com/shop', 'samsung.com', 'mi.com',
+      ];
+      return ecommerceDomains.any((d) => host.contains(d));
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Extract a human-readable product name from the URL path structure.
@@ -1373,17 +1392,17 @@ CRITICAL — PRODUCT IDENTIFICATION RULES (STRICT):
    a) The "productContext.title" field — this is parsed from the URL slug or page metadata. Trust it as the primary hint.
    b) The URL path segments — domain, brand names, product slugs, and IDs visible in the URL.
    c) The "productContext.description" and "productContext.siteName" fields if provided.
-2. You MUST NOT guess, hallucinate, or invent a product name. If the URL says "kitap" (book), the product is a book — not a phone.
-3. You MUST NOT default to popular products (like iPhones or Samsung Galaxy) when the URL clearly refers to something else.
-4. If productContext.title is a domain name (e.g. "trendyol.com", "amazon.com") or a generic string, treat it as NO useful title information.
-5. If you genuinely cannot determine what the specific product is from the URL and metadata, set is_product to false and explain why in the analysis field.
+2. For Amazon ASINs (e.g., "Amazon ASIN B0BWP18WHK"), you MAY look up the product from your knowledge — ASINs are unique product identifiers.
+3. For e-commerce URLs (Amazon, Trendyol, Hepsiburada, N11, etc.) with product path patterns (/dp/, -p-, -pm-), assume is_product is true.
+4. You MUST NOT invent a product name that contradicts the URL. If the URL says "kitap" (book), the product is a book — NOT a phone.
+5. If productContext.title is a domain name (e.g. "trendyol.com", "amazon.com") or generic text, treat it as NO useful title — rely on URL structure instead.
+6. If you genuinely cannot determine what the specific product is from the URL and metadata, set is_product to false and explain why.
 
 PRODUCT VALIDATION (is_product field):
-- Set is_product to TRUE only if you can confidently identify a specific, purchasable product from the URL and metadata.
+- Set is_product to TRUE if the URL is from a known e-commerce site and has a product path pattern (contains /dp/, -p-, -pm-, product IDs, etc.)
 - Set is_product to FALSE if:
   • The URL is a non-product page (news, blog, homepage, social media, video, search results)
-  • You cannot determine the specific product — do NOT guess
-  • The URL leads to a category/listing page rather than a single product
+  • The URL is clearly not from a shopping/store site
 - When is_product is false: set score to 0, category to null, and write a short explanation in $langName.
 
 CATEGORY DETECTION:

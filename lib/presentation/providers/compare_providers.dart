@@ -313,8 +313,8 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
         error: _appLang == 'tr'
-            ? '❌ Bu bağlantı bir ürün sayfası değil. Lütfen geçerli bir ürün bağlantısı yapıştırın.'
-            : '❌ This link doesn\'t appear to be a product page. Please paste a valid product link.',
+            ? 'ℹ️ Bu bağlantıdaki ürünü tanıyamadık. Lütfen bir ürün sayfasının bağlantısını yapıştırmayı deneyin.'
+            : 'ℹ️ We couldn\'t identify the product from this link. Please try pasting a product page URL.',
       );
       return;
     }
@@ -713,8 +713,8 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         state = state.copyWith(
           phase: ComparePhase.idle,
           error: lang == 'tr'
-              ? '❌ Bu bağlantı bir ürün sayfası değil. Lütfen geçerli bir ürün bağlantısı yapıştırın.'
-              : '❌ This link doesn\'t appear to be a product page. Please paste a valid product link.',
+              ? 'ℹ️ Bu bağlantıdaki ürünü tanıyamadık. Lütfen bir ürün sayfasının bağlantısını yapıştırmayı deneyin.'
+              : 'ℹ️ We couldn\'t identify the product from this link. Please try pasting a product page URL.',
         );
         return;
       }
