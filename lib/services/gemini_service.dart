@@ -1,10 +1,10 @@
-/// Compair - Gemini Flash 2.5 AI Service (Core Intelligence)
-///
-/// Unified AI backbone for the entire application.
-/// Model : gemini-2.5-flash (multimodal: text + image + vision)
-/// Endpoint: PocketBase proxy — $kPbBaseUrl/api/ai/gemini
-///           (pb_hooks/gemini.pb.js forwards to Google AI Studio,
-///            key never leaves the server).
+// Compair - Gemini Flash 2.5 AI Service (Core Intelligence)
+//
+// Unified AI backbone for the entire application.
+// Model : gemini-2.5-flash (multimodal: text + image + vision)
+// Endpoint: PocketBase proxy — $kPbBaseUrl/api/ai/gemini
+//           (pb_hooks/gemini.pb.js forwards to Google AI Studio,
+//            key never leaves the server).
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
@@ -111,6 +111,9 @@ class GeminiService implements AIService {
 
     // Extract product name from URL slug (free, no API cost)
     final slugTitle = extractProductNameFromUrl(url);
+    final amazonProductId = extractAmazonProductId(url);
+    final amazonProductIdType = extractAmazonProductIdType(url);
+    final storeDomain = _extractStoreDomain(url);
     debugPrint('[Gemini] URL slug title: $slugTitle');
 
     // Build metadata context — prefer scraped metadata, fall back to slug extraction
@@ -123,22 +126,30 @@ class GeminiService implements AIService {
     final resolvedTitle = (scrapedTitle?.isNotEmpty ?? false)
         ? scrapedTitle
         : slugTitle;
-    if (resolvedTitle?.isNotEmpty ?? false) metaContext['title'] = resolvedTitle;
+    if (resolvedTitle?.isNotEmpty ?? false) {
+      metaContext['title'] = resolvedTitle;
+    }
     if (metadata?.description?.isNotEmpty ?? false) {
       metaContext['description'] = metadata!.description;
     }
-    if (metadata?.price?.isNotEmpty ?? false) metaContext['price'] = metadata!.price;
+    if (metadata?.price?.isNotEmpty ?? false) {
+      metaContext['price'] = metadata!.price;
+    }
     if (metadata?.siteName?.isNotEmpty ?? false) {
       metaContext['siteName'] = metadata!.siteName;
     }
+    if (storeDomain != null) {
+      metaContext['storeDomain'] = storeDomain;
+    }
 
     // Add deterministic product ID type hint
-    if (slugTitle != null) {
-      if (slugTitle.startsWith('Amazon ISBN')) {
-        metaContext['productIdType'] = 'isbn10';
+    if (amazonProductId != null) {
+      metaContext['productId'] = amazonProductId;
+    }
+    if (amazonProductIdType != null) {
+      metaContext['productIdType'] = amazonProductIdType;
+      if (amazonProductIdType == 'isbn10') {
         metaContext['categoryHint'] = 'books';
-      } else if (slugTitle.startsWith('Amazon ASIN')) {
-        metaContext['productIdType'] = 'asin';
       }
     }
 
@@ -146,37 +157,64 @@ class GeminiService implements AIService {
     // When metadata scraping fails (Amazon bot detection etc.), Gemini uses
     // its built-in Google Search to look up the actual product page.
     String webResearch = '';
-    final needsResearch = resolvedTitle == null ||
+    String? researchedTitle;
+    bool researchConfirmed = false;
+    final needsResearch =
+        resolvedTitle == null ||
         resolvedTitle.startsWith('Amazon ASIN') ||
         resolvedTitle.startsWith('Amazon ISBN') ||
         (scrapedTitle == null && slugTitle == null);
-    if (needsResearch) {
+    if (needsResearch || amazonProductId != null) {
       try {
         debugPrint('[Gemini] URL research phase — looking up: $url');
-        webResearch = await _rawRequest({
-          'contents': [
-            {
-              'parts': [
-                {
-                  'text':
-                      'What product is sold at this URL? $url\n\n'
-                      'Return ONLY: product name, brand, category, price, '
-                      'and a 1-sentence description. Be concise.',
-                },
-              ],
-            },
-          ],
-          'tools': [
-            {'googleSearch': {}},
-          ],
-          'generationConfig': {
-            'temperature': 0.1,
-            'maxOutputTokens': 512,
+        webResearch = await _rawRequest(
+          {
+            'contents': [
+              {
+                'parts': [
+                  {
+                    'text': _buildLinkResearchPrompt(
+                      url: url,
+                      resolvedTitle: resolvedTitle,
+                      productId: amazonProductId,
+                      productIdType: amazonProductIdType,
+                      storeDomain: storeDomain,
+                      metadata: metadata,
+                    ),
+                  },
+                ],
+              },
+            ],
+            'tools': [
+              {'googleSearch': {}},
+            ],
+            'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 512},
           },
-        }, receiveTimeout: const Duration(seconds: 30), tier: AiTier.heavy);
+          receiveTimeout: const Duration(seconds: 30),
+          tier: AiTier.heavy,
+        );
         debugPrint(
           '[Gemini] URL research result: ${webResearch.length > 200 ? webResearch.substring(0, 200) : webResearch}',
         );
+        final evidence = parseLinkResearchEvidence(webResearch);
+        researchConfirmed =
+            evidence.identifierConfirmed &&
+            (amazonProductId == null ||
+                ((evidence.matchedUrl?.contains(amazonProductId) ?? false) ||
+                    webResearch.toUpperCase().contains(
+                      amazonProductId.toUpperCase(),
+                    )));
+        researchedTitle = evidence.productName;
+        if (researchConfirmed) {
+          metaContext['researchConfidence'] = 'verified_identifier_match';
+          if (researchedTitle?.isNotEmpty ?? false) {
+            metaContext['title'] = researchedTitle;
+          }
+          if ((metaContext['price']?.isEmpty ?? true) &&
+              (evidence.price?.isNotEmpty ?? false)) {
+            metaContext['price'] = evidence.price;
+          }
+        }
       } catch (e) {
         debugPrint('[Gemini] URL research failed (continuing without): $e');
       }
@@ -207,35 +245,55 @@ class GeminiService implements AIService {
 
     // Use slug title as fallback if AI returned an error/empty title
     final aiTitle = response['title'] as String?;
-    final finalTitle = (aiTitle == null ||
+    final fallbackTitle = researchedTitle ?? resolvedTitle;
+    final finalTitle =
+        (aiTitle == null ||
             aiTitle.isEmpty ||
             aiTitle.toLowerCase().contains('erişim') ||
             aiTitle.toLowerCase().contains('hata') ||
             aiTitle.toLowerCase().contains('error') ||
             aiTitle.toLowerCase().contains('unknown') ||
             aiTitle.toLowerCase().contains('bilinmeyen'))
-        ? (resolvedTitle ?? aiTitle)
+        ? (fallbackTitle ?? aiTitle)
         : aiTitle;
 
     // If title is still just an ASIN/ISBN code, prefer the AI title even if empty
-    final effectiveTitle = (finalTitle != null && 
-            (finalTitle.startsWith('Amazon ASIN') || finalTitle.startsWith('Amazon ISBN')))
-        ? (aiTitle?.isNotEmpty == true && !aiTitle!.startsWith('Amazon ASIN') && !aiTitle.startsWith('Amazon ISBN') 
-            ? aiTitle 
-            : finalTitle)
+    final effectiveTitle =
+        (finalTitle != null &&
+            (finalTitle.startsWith('Amazon ASIN') ||
+                finalTitle.startsWith('Amazon ISBN')))
+        ? (aiTitle?.isNotEmpty == true &&
+                  !aiTitle!.startsWith('Amazon ASIN') &&
+                  !aiTitle.startsWith('Amazon ISBN')
+              ? aiTitle
+              : finalTitle)
         : finalTitle;
+
+    final resolvedProductTitle =
+        researchConfirmed && (researchedTitle?.isNotEmpty ?? false)
+        ? researchedTitle
+        : effectiveTitle;
 
     // For known e-commerce domains, default is_product to true
     final isEcommerce = _isEcommerceDomain(url);
-    final isProduct = response['is_product'] as bool? ?? isEcommerce;
+    final hasUnresolvedAmazonIdentity =
+        amazonProductId != null &&
+        _isAmazonPlaceholderTitle(resolvedProductTitle) &&
+        !researchConfirmed;
+    final isProduct = hasUnresolvedAmazonIdentity
+        ? false
+        : (response['is_product'] as bool? ?? isEcommerce);
 
     return LinkAnalysisResult(
       url: url,
       metadata: OgMetadata(
-        title: effectiveTitle,
+        title: resolvedProductTitle,
         image: response['image_url'] as String?,
-        price: response['price'] as String?,
-        siteName: response['site_name'] as String?,
+        price: response['price'] as String? ?? metaContext['price'],
+        siteName:
+            response['site_name'] as String? ??
+            metadata?.siteName ??
+            storeDomain,
       ),
       aiScore: (response['score'] as num?)?.toDouble() ?? 0.0,
       aiAnalysis: response['analysis'] as String? ?? '',
@@ -253,8 +311,16 @@ class GeminiService implements AIService {
     }
     // Common generic page titles
     const generics = [
-      'trendyol', 'amazon', 'hepsiburada', 'n11', 'gittigidiyor',
-      'ana sayfa', 'home', 'anasayfa', 'hoş geldiniz', 'welcome',
+      'trendyol',
+      'amazon',
+      'hepsiburada',
+      'n11',
+      'gittigidiyor',
+      'ana sayfa',
+      'home',
+      'anasayfa',
+      'hoş geldiniz',
+      'welcome',
     ];
     return generics.any((g) => t == g);
   }
@@ -264,16 +330,40 @@ class GeminiService implements AIService {
     try {
       final host = Uri.parse(url).host.toLowerCase();
       const ecommerceDomains = [
-        'amazon', 'trendyol', 'hepsiburada', 'n11', 'gittigidiyor',
-        'mediamarkt', 'teknosa', 'vatan', 'ciceksepeti', 'dr.com',
-        'kitapyurdu', 'idefix', 'bkmkitap', 'epey.com', 'akakce',
-        'ebay', 'aliexpress', 'banggood', 'bestbuy', 'walmart',
-        'newegg', 'apple.com/shop', 'samsung.com', 'mi.com',
+        'amazon',
+        'trendyol',
+        'hepsiburada',
+        'n11',
+        'gittigidiyor',
+        'mediamarkt',
+        'teknosa',
+        'vatan',
+        'ciceksepeti',
+        'dr.com',
+        'kitapyurdu',
+        'idefix',
+        'bkmkitap',
+        'epey.com',
+        'akakce',
+        'ebay',
+        'aliexpress',
+        'banggood',
+        'bestbuy',
+        'walmart',
+        'newegg',
+        'apple.com/shop',
+        'samsung.com',
+        'mi.com',
       ];
       return ecommerceDomains.any((d) => host.contains(d));
     } catch (_) {
       return false;
     }
+  }
+
+  static bool _isAmazonPlaceholderTitle(String? title) {
+    return title != null &&
+        (title.startsWith('Amazon ASIN') || title.startsWith('Amazon ISBN'));
   }
 
   /// Extract a human-readable product name from the URL path structure.
@@ -284,8 +374,7 @@ class GeminiService implements AIService {
       final uri = Uri.parse(url);
       final host = uri.host.toLowerCase();
       final path = uri.path;
-      final segments =
-          path.split('/').where((s) => s.isNotEmpty).toList();
+      final segments = path.split('/').where((s) => s.isNotEmpty).toList();
 
       // Amazon: /ProductName/dp/ASIN  or  /dp/ASIN
       if (host.contains('amazon')) {
@@ -298,7 +387,10 @@ class GeminiService implements AIService {
         if (idMatch != null) {
           final productId = idMatch.group(1)!;
           // ISBN-10: 9 digits + check digit (digit or X)
-          if (RegExp(r'^\d{9}[\dX]$', caseSensitive: false).hasMatch(productId)) {
+          if (RegExp(
+            r'^\d{9}[\dX]$',
+            caseSensitive: false,
+          ).hasMatch(productId)) {
             return 'Amazon ISBN $productId';
           }
           // Alphanumeric (usually starts with B) = ASIN
@@ -310,8 +402,7 @@ class GeminiService implements AIService {
       if (host.contains('trendyol')) {
         if (segments.length >= 2) {
           final brand = segments[0];
-          final slug =
-              segments[1].replaceAll(RegExp(r'-p-\d+.*$'), '');
+          final slug = segments[1].replaceAll(RegExp(r'-p-\d+.*$'), '');
           return '$brand $slug'.replaceAll('-', ' ').trim();
         }
       }
@@ -330,24 +421,139 @@ class GeminiService implements AIService {
       if (host.contains('n11')) {
         for (final seg in segments.reversed) {
           if (seg.endsWith('.html')) {
-            return seg
-                .replaceAll('.html', '')
-                .replaceAll('-', ' ')
-                .trim();
+            return seg.replaceAll('.html', '').replaceAll('-', ' ').trim();
           }
         }
       }
 
       // Generic: longest segment that looks like a product slug
       if (segments.isNotEmpty) {
-        final best =
-            segments.reduce((a, b) => a.length > b.length ? a : b);
+        final best = segments.reduce((a, b) => a.length > b.length ? a : b);
         if (best.length > 8 && best.contains('-')) {
           return best.replaceAll(RegExp(r'[-_]'), ' ').trim();
         }
       }
     } catch (_) {}
     return null;
+  }
+
+  static String? extractAmazonProductId(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (!uri.host.toLowerCase().contains('amazon')) return null;
+      final path = uri.path;
+      final patterns = [
+        RegExp(r'/dp/([A-Za-z0-9]{10})(?:[/?]|$)', caseSensitive: false),
+        RegExp(
+          r'/gp/product/([A-Za-z0-9]{10})(?:[/?]|$)',
+          caseSensitive: false,
+        ),
+      ];
+      for (final pattern in patterns) {
+        final match = pattern.firstMatch(path);
+        if (match != null) return match.group(1)?.toUpperCase();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static String? extractAmazonProductIdType(String url) {
+    final productId = extractAmazonProductId(url);
+    if (productId == null) return null;
+    if (RegExp(r'^\d{9}[\dX]$', caseSensitive: false).hasMatch(productId)) {
+      return 'isbn10';
+    }
+    return 'asin';
+  }
+
+  @visibleForTesting
+  static ({
+    bool identifierConfirmed,
+    String? matchedUrl,
+    String? productName,
+    String? brand,
+    String? category,
+    String? price,
+  })
+  parseLinkResearchEvidence(String text) {
+    String? readField(String name) {
+      final match = RegExp(
+        '^$name\\s*:\\s*(.+)\$',
+        caseSensitive: false,
+        multiLine: true,
+      ).firstMatch(text);
+      final value = match?.group(1)?.trim();
+      if (value == null || value.isEmpty || value.toLowerCase() == 'null') {
+        return null;
+      }
+      return value;
+    }
+
+    final confirmation = readField('IDENTIFIER_CONFIRMED')?.toLowerCase();
+    return (
+      identifierConfirmed:
+          confirmation == 'yes' ||
+          confirmation == 'true' ||
+          confirmation == 'confirmed',
+      matchedUrl: readField('MATCHED_URL'),
+      productName: readField('PRODUCT_NAME'),
+      brand: readField('BRAND'),
+      category: readField('CATEGORY'),
+      price: readField('PRICE'),
+    );
+  }
+
+  static String? _extractStoreDomain(String url) {
+    try {
+      return Uri.parse(url).host.toLowerCase();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _buildLinkResearchPrompt({
+    required String url,
+    required String? resolvedTitle,
+    required String? productId,
+    required String? productIdType,
+    required String? storeDomain,
+    required OgMetadata? metadata,
+  }) {
+    final buffer = StringBuffer()
+      ..writeln('Identify the EXACT product sold at this URL.')
+      ..writeln('Target URL: $url');
+
+    if (storeDomain != null) {
+      buffer.writeln('Target store domain: $storeDomain');
+    }
+    if (productId != null && productIdType != null) {
+      buffer
+        ..writeln('Target product identifier type: $productIdType')
+        ..writeln('Target product identifier: $productId')
+        ..writeln(
+          'CRITICAL: Only accept search evidence that explicitly matches this same identifier. Ignore similar, sponsored, or alternative products.',
+        );
+    }
+    if (resolvedTitle?.isNotEmpty ?? false) {
+      buffer.writeln('Current title hint: $resolvedTitle');
+    }
+    if (metadata?.description?.isNotEmpty ?? false) {
+      buffer.writeln('Metadata description hint: ${metadata!.description}');
+    }
+    if (metadata?.price?.isNotEmpty ?? false) {
+      buffer.writeln('Metadata price hint: ${metadata!.price}');
+    }
+    buffer
+      ..writeln('Use Google Search now.')
+      ..writeln('Return EXACTLY these lines and nothing else:')
+      ..writeln('IDENTIFIER_CONFIRMED: yes|no')
+      ..writeln('MATCHED_URL: exact best matching product URL or null')
+      ..writeln('PRODUCT_NAME: exact product name or null')
+      ..writeln('BRAND: brand or null')
+      ..writeln('CATEGORY: category or null')
+      ..writeln('PRICE: price with currency or null')
+      ..writeln('DESCRIPTION: one short sentence or null');
+    return buffer.toString();
   }
 
   @override
@@ -582,7 +788,11 @@ class GeminiService implements AIService {
       'generationConfig': {'temperature': 0.1, 'maxOutputTokens': maxTokens},
     };
     // Grounded queries with web search need more time — use 90s timeout
-    return _rawRequest(body, receiveTimeout: const Duration(seconds: 90), tier: AiTier.heavy);
+    return _rawRequest(
+      body,
+      receiveTimeout: const Duration(seconds: 90),
+      tier: AiTier.heavy,
+    );
   }
 
   // ── Subscription Intelligence ────────────────────────────────────────────────
@@ -723,19 +933,23 @@ Provide a comprehensive research summary.
 
     String researchData = '';
     try {
-      researchData = await _rawRequest({
-        'contents': [
-          {
-            'parts': [
-              {'text': researchPrompt},
-            ],
-          },
-        ],
-        'tools': [
-          {'googleSearch': {}},
-        ],
-        'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 2048},
-      }, receiveTimeout: const Duration(seconds: 60), tier: AiTier.heavy);
+      researchData = await _rawRequest(
+        {
+          'contents': [
+            {
+              'parts': [
+                {'text': researchPrompt},
+              ],
+            },
+          ],
+          'tools': [
+            {'googleSearch': {}},
+          ],
+          'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 2048},
+        },
+        receiveTimeout: const Duration(seconds: 60),
+        tier: AiTier.heavy,
+      );
     } catch (e) {
       debugPrint(
         '=== COMPAIR: Research phase failed, continuing without: $e ===',
@@ -841,24 +1055,28 @@ $jsonSchema
       required bool includeResearchData,
       required int maxTokens,
     }) {
-      return _rawRequest({
-        'contents': [
-          {
-            'parts': [
-              {
-                'text': buildAnalysisPrompt(
-                  includeResearchData: includeResearchData,
-                ),
-              },
-            ],
+      return _rawRequest(
+        {
+          'contents': [
+            {
+              'parts': [
+                {
+                  'text': buildAnalysisPrompt(
+                    includeResearchData: includeResearchData,
+                  ),
+                },
+              ],
+            },
+          ],
+          'generationConfig': {
+            'responseMimeType': 'application/json',
+            'temperature': 0.3,
+            'maxOutputTokens': maxTokens,
           },
-        ],
-        'generationConfig': {
-          'responseMimeType': 'application/json',
-          'temperature': 0.3,
-          'maxOutputTokens': maxTokens,
         },
-      }, receiveTimeout: const Duration(seconds: 120), tier: AiTier.heavy);
+        receiveTimeout: const Duration(seconds: 120),
+        tier: AiTier.heavy,
+      );
     }
 
     String text;
@@ -989,17 +1207,15 @@ $jsonSchema
       system: isCompare
           ? _compareQuizGenerationPrompt(language)
           : _quizGenerationPrompt(language),
-      user: jsonEncode(isCompare
-          ? {
-              'category': category,
-              'products': allProducts,
-              'productCount': allProducts.length,
-            }
-          : {
-              'category': category,
-              'productTitle': productTitle,
-              'url': url,
-            }),
+      user: jsonEncode(
+        isCompare
+            ? {
+                'category': category,
+                'products': allProducts,
+                'productCount': allProducts.length,
+              }
+            : {'category': category, 'productTitle': productTitle, 'url': url},
+      ),
       thinkingBudget: 512,
       timeout: const Duration(seconds: 45),
       tier: AiTier.heavy,
@@ -1045,26 +1261,32 @@ $jsonSchema
     String researchData = '';
     try {
       final productName = baseResult.metadata.title ?? 'unknown';
-      researchData = await _rawRequest({
-        'contents': [
-          {
-            'parts': [
-              {
-                'text':
-                    'Research "$productName" (${baseResult.category ?? "product"}).\n'
-                    'Find: user reviews, Reddit/forum opinions, expert reviews, '
-                    'common pros/cons, known issues, and current price in ${profile.country}.\n'
-                    'Be concise — max 300 words.',
-              },
-            ],
-          },
-        ],
-        'tools': [
-          {'googleSearch': {}},
-        ],
-        'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 1024},
-      }, receiveTimeout: const Duration(seconds: 30), tier: AiTier.heavy);
-      debugPrint('[Gemini] enhancedAnalysis research: ${researchData.length} chars');
+      researchData = await _rawRequest(
+        {
+          'contents': [
+            {
+              'parts': [
+                {
+                  'text':
+                      'Research "$productName" (${baseResult.category ?? "product"}).\n'
+                      'Find: user reviews, Reddit/forum opinions, expert reviews, '
+                      'common pros/cons, known issues, and current price in ${profile.country}.\n'
+                      'Be concise — max 300 words.',
+                },
+              ],
+            },
+          ],
+          'tools': [
+            {'googleSearch': {}},
+          ],
+          'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 1024},
+        },
+        receiveTimeout: const Duration(seconds: 30),
+        tier: AiTier.heavy,
+      );
+      debugPrint(
+        '[Gemini] enhancedAnalysis research: ${researchData.length} chars',
+      );
     } catch (e) {
       debugPrint('[Gemini] enhancedAnalysis research failed (continuing): $e');
     }
@@ -1099,7 +1321,7 @@ $jsonSchema
     );
 
     // Parse factors — handle both num and string scores from Gemini
-    double _parseScore(dynamic v) {
+    double parseScore(dynamic v) {
       if (v is num) return v.toDouble();
       if (v is String) return double.tryParse(v) ?? 0.0;
       return 0.0;
@@ -1113,7 +1335,7 @@ $jsonSchema
         .map((f) {
           if (f is! Map) return null;
           final label = (f['label'] ?? f['name'] ?? '') as String;
-          final score = _parseScore(f['score'] ?? f['value']);
+          final score = parseScore(f['score'] ?? f['value']);
           final emoji = (f['emoji'] ?? f['icon'] ?? '📊') as String;
           debugPrint('[Gemini]   factor: $label = $score ($emoji)');
           return CompatibilityFactor(label: label, score: score, emoji: emoji);
@@ -1122,7 +1344,7 @@ $jsonSchema
         .where((f) => f.label.isNotEmpty)
         .toList();
 
-    final enhancedScore = _parseScore(
+    final enhancedScore = parseScore(
       response['enhancedScore'] ??
           response['enhanced_score'] ??
           response['score'],
@@ -1155,15 +1377,26 @@ $jsonSchema
             [],
       ),
       alternatives: List<String>.from(response['alternatives'] ?? []),
-      communityScore: response['communityScore'] != null || response['community_score'] != null
-          ? _parseScore(response['communityScore'] ?? response['community_score'])
+      communityScore:
+          response['communityScore'] != null ||
+              response['community_score'] != null
+          ? parseScore(
+              response['communityScore'] ?? response['community_score'],
+            )
           : null,
-      communityAnalysis: (response['communityAnalysis'] ?? response['community_analysis']) as String?,
-      personaScore: response['personaScore'] != null || response['persona_score'] != null
-          ? _parseScore(response['personaScore'] ?? response['persona_score'])
+      communityAnalysis:
+          (response['communityAnalysis'] ?? response['community_analysis'])
+              as String?,
+      personaScore:
+          response['personaScore'] != null || response['persona_score'] != null
+          ? parseScore(response['personaScore'] ?? response['persona_score'])
           : null,
-      personaAnalysis: (response['personaAnalysis'] ?? response['persona_analysis']) as String?,
-      overallVerdict: (response['overallVerdict'] ?? response['overall_verdict']) as String?,
+      personaAnalysis:
+          (response['personaAnalysis'] ?? response['persona_analysis'])
+              as String?,
+      overallVerdict:
+          (response['overallVerdict'] ?? response['overall_verdict'])
+              as String?,
     );
   }
 
@@ -1201,7 +1434,8 @@ $jsonSchema
 
     // Always set thinking budget to control costs.
     // Thinking tokens are billed at output price ($2.50/1M for flash).
-    final effectiveThinking = thinkingBudget ?? (tier == AiTier.heavy ? 512 : 0);
+    final effectiveThinking =
+        thinkingBudget ?? (tier == AiTier.heavy ? 512 : 0);
     body['generationConfig'] = {
       ...(body['generationConfig'] as Map<String, dynamic>),
       'thinkingConfig': {'thinkingBudget': effectiveThinking},
@@ -1507,11 +1741,12 @@ You are Compair's link analysis engine. You receive a product URL, optional meta
 CRITICAL — PRODUCT IDENTIFICATION (PRIORITY ORDER):
 1. "webResearch" — If provided, this contains VERIFIED data from Google Search about the URL. This is your MOST RELIABLE source for product identification. USE IT.
 2. "productContext.title" — Scraped metadata title. If it contains a clear product name, use it.
-3. URL path segments (slugs, IDs, brand names) are your TERTIARY source.
-4. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product. If the data says "Zeiron APX80 Ryzen 5", you MUST analyze that — NOT a different product.
-5. For Amazon ASINs/ISBNs: if webResearch is available, use its product name. If not, and you are NOT 100% certain about the ASIN, set is_product to false.
-6. If productContext.title is a domain name (e.g. "trendyol.com"), treat as NO useful title — rely on webResearch or URL.
-7. If you genuinely cannot determine the product, set is_product to false. NEVER fabricate.
+3. "productContext.productId" and "productContext.productIdType" are HARD CONSTRAINTS. If present, the final product MUST match that same identifier.
+4. URL path segments (slugs, IDs, brand names) are your TERTIARY source.
+5. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product. If the data says "Zeiron APX80 Ryzen 5", you MUST analyze that — NOT a different product.
+6. For Amazon ASINs/ISBNs: if webResearch is available, use its product name. If not, and you are NOT 100% certain about the ASIN, set is_product to false.
+7. If productContext.title is a domain name (e.g. "trendyol.com"), treat as NO useful title — rely on webResearch or URL.
+8. If you genuinely cannot determine the product, set is_product to false. NEVER fabricate.
 
 PRODUCT VALIDATION:
 - TRUE if URL is from e-commerce site with product path pattern
