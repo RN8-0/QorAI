@@ -749,11 +749,17 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       _updateStep(quizStepIdx, (s) => s.withActive());
 
       debugPrint('[Compare] Generating quiz for category: $primaryCategory');
+      final allProductInfo = baseResults.map((r) => {
+        'title': r.metadata.title ?? 'Product',
+        'url': r.url,
+        'category': r.category ?? primaryCategory,
+      }).toList();
       final quiz = await _gemini.generateQuiz(
         category: primaryCategory,
         productTitle: baseResults.map((r) => r.metadata.title ?? 'Product').join(' vs '),
         url: urls.first,
         language: lang,
+        allProducts: allProductInfo,
       );
       _updateStep(quizStepIdx, (s) => s.withDone());
 

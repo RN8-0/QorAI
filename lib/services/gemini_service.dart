@@ -255,8 +255,8 @@ class GeminiService implements AIService {
         final idMatch = RegExp(r'/dp/([A-Za-z0-9]{10})').firstMatch(path);
         if (idMatch != null) {
           final productId = idMatch.group(1)!;
-          // All-numeric 10-digit = ISBN-10 (book identifier)
-          if (RegExp(r'^\d{10}$').hasMatch(productId)) {
+          // ISBN-10: 9 digits + check digit (digit or X)
+          if (RegExp(r'^\d{9}[\dX]$', caseSensitive: false).hasMatch(productId)) {
             return 'Amazon ISBN $productId';
           }
           // Alphanumeric (usually starts with B) = ASIN
@@ -927,20 +927,31 @@ $jsonSchema
 
   /// Generate a short personalized quiz for a product category.
   /// Returns 4-6 questions tailored to the product type.
+  /// When [allProducts] is provided (compare mode), generates comparison-aware questions.
   Future<ProductQuiz> generateQuiz({
     required String category,
     required String productTitle,
     required String url,
     String language = 'en',
+    List<Map<String, String>>? allProducts,
   }) async {
     debugPrint('[Gemini] generateQuiz for: $productTitle ($category)');
+    final isCompare = allProducts != null && allProducts.length >= 2;
     final response = await _jsonRequest(
-      system: _quizGenerationPrompt(language),
-      user: jsonEncode({
-        'category': category,
-        'productTitle': productTitle,
-        'url': url,
-      }),
+      system: isCompare
+          ? _compareQuizGenerationPrompt(language)
+          : _quizGenerationPrompt(language),
+      user: jsonEncode(isCompare
+          ? {
+              'category': category,
+              'products': allProducts,
+              'productCount': allProducts.length,
+            }
+          : {
+              'category': category,
+              'productTitle': productTitle,
+              'url': url,
+            }),
       thinkingBudget: 512,
       timeout: const Duration(seconds: 45),
       tier: AiTier.heavy,
@@ -1073,6 +1084,15 @@ $jsonSchema
             [],
       ),
       alternatives: List<String>.from(response['alternatives'] ?? []),
+      communityScore: response['communityScore'] != null || response['community_score'] != null
+          ? _parseScore(response['communityScore'] ?? response['community_score'])
+          : null,
+      communityAnalysis: (response['communityAnalysis'] ?? response['community_analysis']) as String?,
+      personaScore: response['personaScore'] != null || response['persona_score'] != null
+          ? _parseScore(response['personaScore'] ?? response['persona_score'])
+          : null,
+      personaAnalysis: (response['personaAnalysis'] ?? response['persona_analysis']) as String?,
+      overallVerdict: (response['overallVerdict'] ?? response['overall_verdict']) as String?,
     );
   }
 
@@ -1544,6 +1564,45 @@ Return valid JSON:
 ''';
   }
 
+  static String _compareQuizGenerationPrompt(String language) {
+    final langName = _languageName(language);
+    return '''
+You are Compair's product COMPARISON quiz engine. The user is comparing multiple products.
+Generate a SHORT personalized quiz (4-6 questions) to understand the user's needs
+so we can determine which product is the BEST FIT for them.
+
+LANGUAGE: Generate ALL questions and options in $langName.
+
+The goal: understand the user's priorities, use cases, and preferences to help
+determine which of the products being compared is the best match.
+
+CRITICAL RULES:
+- You are given MULTIPLE products that are being compared
+- Questions should help differentiate between the products
+- Ask about the user's specific needs that would make one product better than another
+- Reference the actual product names in questions where relevant
+- For BOOKS: ask about reading goals, preferred topics, reading level, format preferences
+- For TECH: ask about primary use cases, feature priorities, environment
+- For CLOTHING: ask about occasions, style preferences, comfort vs looks
+- For HOME: ask about space, frequency of use, household needs
+- Each question has exactly 4 options
+- Options should represent different priorities that favor different products
+- Keep questions conversational with emoji
+- NEVER ask about budget (we already know that)
+- NEVER ask about brand preference
+- Questions should feel fun, not like a survey
+- ALL text must be in $langName
+
+Return valid JSON:
+{
+  "questions": [
+    {"question": "...", "options": ["...", "...", "...", "..."]},
+    ...
+  ]
+}
+''';
+  }
+
   static String _enhancedAnalysisPrompt(String language) {
     final langName = _languageName(language);
     return '''
@@ -1566,12 +1625,6 @@ SCORING RULES:
 - If product doesn't match: 20-40. If perfect match: 80-95.
 - NEVER give the same score to products with different specs/prices
 
-VERDICT REQUIREMENTS:
-- 6-8 paragraphs, category-appropriate, specific details
-- Be SPECIFIC: mention real details relevant to the product category
-- DO NOT repeat user's profile — focus on product analysis
-- Each paragraph: 3-4 sentences minimum
-
 Return valid JSON:
 {
   "enhancedScore": 0-100,
@@ -1582,7 +1635,12 @@ Return valid JSON:
     {"label": "Long-term Value", "score": 0-100, "emoji": "🚀"},
     {"label": "Lifestyle Match", "score": 0-100, "emoji": "🏠"}
   ],
-  "verdict": "6-8 paragraph analysis in $langName",
+  "personaScore": 0-100,
+  "personaAnalysis": "2-3 paragraph personal fit analysis — how this product fits the user's lifestyle, habits and preferences based on their quiz answers and profile. Be specific. In $langName.",
+  "communityScore": 0-100,
+  "communityAnalysis": "2-3 paragraph summary of what the online community (Reddit, YouTube reviewers, forums, Amazon reviews) generally says about this product. Include common praise and complaints. In $langName.",
+  "verdict": "3-4 paragraph overall summary in $langName",
+  "overallVerdict": "1-2 paragraph final recommendation — should the user buy this product? Clear yes/no with reasoning. In $langName.",
   "prosForUser": ["Specific pro 1", "Specific pro 2", "Specific pro 3", "Specific pro 4", "Specific pro 5"],
   "consForUser": ["Specific con 1", "Specific con 2", "Specific con 3", "Specific con 4"],
   "alternatives": ["Real Alternative 1", "Real Alternative 2", "Real Alternative 3"]
@@ -1591,11 +1649,11 @@ Return valid JSON:
 Important:
 - enhancedScore should differ from initialScore based on quiz answers
 - Factors must reflect user's actual answers and real product details
-- Usage Fit: how well product matches user's actual needs from quiz
-- Budget Match: value for money relative to user's budget
-- Quality: build/material/content quality appropriate to category
-- Long-term Value: durability, re-use value, longevity
-- Lifestyle Match: fits user's daily routine and preferences
+- personaScore: how well the product matches the user personally (0-100)
+- personaAnalysis: detailed personal fit analysis referencing quiz answers
+- communityScore: aggregate community sentiment (0-100)
+- communityAnalysis: summarize real user reviews, Reddit discussions, YouTube reviews
+- overallVerdict: final concise buy/skip recommendation
 - Pros/cons must be personalized and specific
 - Alternatives must be real products in similar price range
 - All text in $langName
