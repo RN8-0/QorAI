@@ -256,8 +256,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        // Single tap: paste only, no keyboard
-        unawaited(_pasteClipboardInto(controller, onlyWhenEmpty: true, showInvalidFeedback: false));
+        // Single tap: paste from clipboard (overwrites existing text)
+        unawaited(_pasteClipboardInto(controller, onlyWhenEmpty: false, showInvalidFeedback: false));
       },
       onDoubleTap: () {
         // Double tap: enter edit mode, open keyboard
@@ -1402,9 +1402,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     // Active detail text
     String activeDetail;
     if (isFirstPhase) {
+      final scanSteps = compareSteps.where((s) => s.type == AnalysisStepType.scanLink).toList();
+      final scannedCount = scanSteps.where((s) => s.isDone).length;
+      final totalToScan = scanSteps.length;
       activeDetail = isTr
-          ? 'İlk ürün taranıyor, quiz hazırlanıyor...'
-          : 'Scanning first product, preparing quiz...';
+          ? 'Ürünler taranıyor ($scannedCount/$totalToScan)...'
+          : 'Scanning products ($scannedCount/$totalToScan)...';
     } else if (activeStep != null) {
       switch (activeStep.type) {
         case AnalysisStepType.scanLink:
@@ -1432,21 +1435,21 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     // Heading
     final heading = isFirstPhase
-        ? (isTr ? 'İlk Ürün Analiz Ediliyor' : 'Analyzing First Product')
+        ? (isTr ? 'Ürünler Taranıyor' : 'Scanning Products')
         : (isTr ? 'Ürünler Karşılaştırılıyor' : 'Comparing Products');
 
     // Fixed phase steps for analyzingFirst visual
     final fixedPhaseSteps = <(IconData, String, String)>[
       (
         Icons.link_rounded,
-        isTr ? 'Bağlantı Taranıyor' : 'Scanning Link',
+        isTr ? 'Ürünler Taranıyor' : 'Scanning Products',
         isTr
-            ? 'URL ve ürün metadata\'sı çekiliyor'
-            : 'Fetching URL and product metadata',
+            ? 'Tüm URL\'ler ve ürün bilgileri çekiliyor'
+            : 'Fetching all URLs and product data',
       ),
       (
         Icons.fingerprint_rounded,
-        isTr ? 'Ürün Tanımlanıyor' : 'Identifying Product',
+        isTr ? 'Ürünler Tanımlanıyor' : 'Identifying Products',
         isTr
             ? 'AI ürün özelliklerini çıkartıyor'
             : 'AI extracting product details',

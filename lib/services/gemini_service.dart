@@ -132,6 +132,16 @@ class GeminiService implements AIService {
       metaContext['siteName'] = metadata!.siteName;
     }
 
+    // Add deterministic product ID type hint
+    if (slugTitle != null) {
+      if (slugTitle.startsWith('Amazon ISBN')) {
+        metaContext['productIdType'] = 'isbn10';
+        metaContext['categoryHint'] = 'books';
+      } else if (slugTitle.startsWith('Amazon ASIN')) {
+        metaContext['productIdType'] = 'asin';
+      }
+    }
+
     final userInput = <String, dynamic>{
       'url': url,
       'userProfile': {
@@ -146,8 +156,8 @@ class GeminiService implements AIService {
     final response = await _jsonRequest(
       system: _linkAnalysisSystemPrompt(profile.language),
       user: jsonEncode(userInput),
-      thinkingBudget: 1024,
-      timeout: const Duration(seconds: 75),
+      thinkingBudget: 512,
+      timeout: const Duration(seconds: 60),
       tier: AiTier.heavy,
     );
 
@@ -233,9 +243,17 @@ class GeminiService implements AIService {
         if (dpIndex > 0) {
           return segments[dpIndex - 1].replaceAll('-', ' ').trim();
         }
-        // ASIN-only URL: keep ASIN so Gemini can look it up
-        final asinMatch = RegExp(r'/dp/([A-Z0-9]{10})').firstMatch(path);
-        if (asinMatch != null) return 'Amazon ASIN ${asinMatch.group(1)}';
+        // Extract the 10-char product ID after /dp/
+        final idMatch = RegExp(r'/dp/([A-Za-z0-9]{10})').firstMatch(path);
+        if (idMatch != null) {
+          final productId = idMatch.group(1)!;
+          // All-numeric 10-digit = ISBN-10 (book identifier)
+          if (RegExp(r'^\d{10}$').hasMatch(productId)) {
+            return 'Amazon ISBN $productId';
+          }
+          // Alphanumeric (usually starts with B) = ASIN
+          return 'Amazon ASIN $productId';
+        }
       }
 
       // Trendyol: /{brand}/{product-slug}-p-{id}
@@ -1392,11 +1410,13 @@ CRITICAL — PRODUCT IDENTIFICATION RULES (STRICT):
    a) The "productContext.title" field — this is parsed from the URL slug or page metadata. Trust it as the primary hint.
    b) The URL path segments — domain, brand names, product slugs, and IDs visible in the URL.
    c) The "productContext.description" and "productContext.siteName" fields if provided.
-2. For Amazon ASINs (e.g., "Amazon ASIN B0BWP18WHK"), you MAY look up the product from your knowledge — ASINs are unique product identifiers.
-3. For e-commerce URLs (Amazon, Trendyol, Hepsiburada, N11, etc.) with product path patterns (/dp/, -p-, -pm-), assume is_product is true.
-4. You MUST NOT invent a product name that contradicts the URL. If the URL says "kitap" (book), the product is a book — NOT a phone.
-5. If productContext.title is a domain name (e.g. "trendyol.com", "amazon.com") or generic text, treat it as NO useful title — rely on URL structure instead.
-6. If you genuinely cannot determine what the specific product is from the URL and metadata, set is_product to false and explain why.
+2. For Amazon ASINs (alphanumeric IDs starting with 'B', e.g., "Amazon ASIN B0BWP18WHK"), you MAY cautiously identify the product from your knowledge, but MUST note if uncertain.
+3. For Amazon ISBNs (all-numeric IDs, e.g., "Amazon ISBN 0008609217"), this is a BOOK. Set category to "books". Do NOT guess the exact book title from training data — ISBNs are too specific. If no metadata/description is available, set title to "Amazon Book (ISBN: {id})" and provide a generic book analysis.
+4. ABSOLUTELY NEVER substitute a different product. If the URL says one thing, you MUST NOT return a different product. This is the #1 rule.
+5. For e-commerce URLs (Amazon, Trendyol, Hepsiburada, N11, etc.) with product path patterns (/dp/, -p-, -pm-), assume is_product is true.
+6. You MUST NOT invent a product name that contradicts the URL. If the URL says "kitap" (book), the product is a book — NOT a phone.
+7. If productContext.title is a domain name (e.g. "trendyol.com", "amazon.com") or generic text, treat it as NO useful title — rely on URL structure instead.
+8. If you genuinely cannot determine what the specific product is from the URL and metadata, use the product ID as the title and provide limited analysis. NEVER fabricate a product name.
 
 PRODUCT VALIDATION (is_product field):
 - Set is_product to TRUE if the URL is from a known e-commerce site and has a product path pattern (contains /dp/, -p-, -pm-, product IDs, etc.)

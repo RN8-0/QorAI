@@ -612,6 +612,7 @@ class CompareAnalysisState {
   final List<QuizQuestion> quizAnswers;
   final int quizIndex;
   final LinkAnalysisResult? firstBaseResult;
+  final List<LinkAnalysisResult> allBaseResults;
   final List<String> validUrls;
 
   const CompareAnalysisState({
@@ -624,6 +625,7 @@ class CompareAnalysisState {
     this.quizAnswers = const [],
     this.quizIndex = 0,
     this.firstBaseResult,
+    this.allBaseResults = const [],
     this.validUrls = const [],
   });
 
@@ -640,6 +642,7 @@ class CompareAnalysisState {
     List<QuizQuestion>? quizAnswers,
     int? quizIndex,
     LinkAnalysisResult? firstBaseResult,
+    List<LinkAnalysisResult>? allBaseResults,
     List<String>? validUrls,
   }) {
     return CompareAnalysisState(
@@ -652,6 +655,7 @@ class CompareAnalysisState {
       quizAnswers: quizAnswers ?? this.quizAnswers,
       quizIndex: quizIndex ?? this.quizIndex,
       firstBaseResult: firstBaseResult ?? this.firstBaseResult,
+      allBaseResults: allBaseResults ?? this.allBaseResults,
       validUrls: validUrls ?? this.validUrls,
     );
   }
@@ -674,7 +678,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
        _pbDs = pbDs,
        super(const CompareAnalysisState());
 
-  /// Phase 1: Analyze first URL → generate quiz
+  /// Phase 1: Scan ALL URLs → validate → generate quiz
   Future<void> startAnalysis(
     List<String> urls,
     UserEntity user,
@@ -683,49 +687,75 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     state = CompareAnalysisState(
       phase: ComparePhase.analyzingFirst,
       validUrls: urls,
+      steps: [
+        for (int i = 0; i < urls.length; i++)
+          AnalysisStep(
+            '${lang == 'tr' ? 'Tara' : 'Scan'} • ${lang == 'tr' ? 'Ürün' : 'Product'} ${i + 1}',
+            AnalysisStepType.scanLink,
+          ),
+        AnalysisStep(
+          lang == 'tr' ? 'Quiz Hazırlanıyor' : 'Preparing Quiz',
+          AnalysisStepType.aiAnalysis,
+        ),
+      ],
     );
 
     final localizedUser = user.copyWith(language: lang);
+    final baseResults = <LinkAnalysisResult>[];
 
     try {
-      _behaviorTracking.trackLinkPaste(urls[0], null);
-      debugPrint('[Compare] Phase 1: Analyzing first URL for quiz: ${urls[0]}');
-      final Result<LinkAnalysisResult> firstResult = await _aiRepo.analyzeLink(
-        url: urls[0],
-        user: localizedUser,
-      );
+      // Scan ALL URLs sequentially
+      for (int i = 0; i < urls.length; i++) {
+        _updateStep(i, (s) => s.withActive());
+        _behaviorTracking.trackLinkPaste(urls[i], null);
+        debugPrint('[Compare] Scanning URL ${i + 1}/${urls.length}: ${urls[i]}');
 
-      LinkAnalysisResult? firstData;
-      switch (firstResult) {
-        case Success<LinkAnalysisResult>(data: final d):
-          firstData = d;
-        case Failure<LinkAnalysisResult>(error: final err):
-          debugPrint('[Compare] First URL analysis failed: ${err.message}');
-          state = state.copyWith(
-            phase: ComparePhase.idle,
-            error: 'Could not analyze the first link: ${err.message}',
-          );
-          return;
+        final Result<LinkAnalysisResult> result = await _aiRepo.analyzeLink(
+          url: urls[i],
+          user: localizedUser,
+        );
+
+        switch (result) {
+          case Success<LinkAnalysisResult>(data: final d):
+            if (d.isProduct) {
+              baseResults.add(d);
+              _updateStep(i, (s) => s.withDone());
+            } else {
+              debugPrint('[Compare] URL ${urls[i]} is not a product, skipping');
+              _updateStep(i, (s) => s.withError());
+            }
+          case Failure<LinkAnalysisResult>(error: final err):
+            debugPrint('[Compare] URL ${urls[i]} failed: ${err.message}');
+            _updateStep(i, (s) => s.withError());
+        }
       }
 
-      // Validate first URL is a product
-      if (!firstData.isProduct) {
+      // Need at least 2 valid products for comparison
+      if (baseResults.length < 2) {
         state = state.copyWith(
           phase: ComparePhase.idle,
           error: lang == 'tr'
-              ? 'ℹ️ Bu bağlantıdaki ürünü tanıyamadık. Lütfen bir ürün sayfasının bağlantısını yapıştırmayı deneyin.'
-              : 'ℹ️ We couldn\'t identify the product from this link. Please try pasting a product page URL.',
+              ? 'ℹ️ Karşılaştırma için en az 2 geçerli ürün bağlantısı gereklidir. Lütfen ürün sayfası bağlantıları yapıştırın.'
+              : 'ℹ️ At least 2 valid product links are needed for comparison. Please paste product page URLs.',
         );
         return;
       }
 
-      debugPrint('[Compare] Generating quiz for: ${firstData.metadata.title}');
+      // Check categories match (use first product's category)
+      final primaryCategory = baseResults.first.category ?? 'general';
+
+      // Generate quiz based on all products
+      final quizStepIdx = urls.length;
+      _updateStep(quizStepIdx, (s) => s.withActive());
+
+      debugPrint('[Compare] Generating quiz for category: $primaryCategory');
       final quiz = await _deepseek.generateQuiz(
-        category: firstData.category ?? 'general',
-        productTitle: firstData.metadata.title ?? 'Product',
-        url: urls[0],
+        category: primaryCategory,
+        productTitle: baseResults.map((r) => r.metadata.title ?? 'Product').join(' vs '),
+        url: urls.first,
         language: lang,
       );
+      _updateStep(quizStepIdx, (s) => s.withDone());
 
       if (quiz.questions.isNotEmpty) {
         state = state.copyWith(
@@ -733,11 +763,12 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
           quiz: quiz,
           quizAnswers: List.from(quiz.questions),
           quizIndex: 0,
-          firstBaseResult: firstData,
+          firstBaseResult: baseResults.first,
+          allBaseResults: baseResults,
         );
       } else {
         debugPrint('[Compare] No quiz questions, proceeding to analysis');
-        await _runAnalysis(localizedUser, const [], firstData);
+        await _runAnalysis(localizedUser, const [], null, baseResults);
       }
     } catch (e) {
       debugPrint('[Compare] Phase 1 failed: $e');
@@ -760,126 +791,90 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   Future<void> submitQuiz(UserEntity user, String lang) async {
     final localizedUser = user.copyWith(language: lang);
     state = state.copyWith(phase: ComparePhase.analyzing, progress: 0);
-    await _runAnalysis(localizedUser, state.quizAnswers, state.firstBaseResult);
+    await _runAnalysis(localizedUser, state.quizAnswers, state.firstBaseResult, state.allBaseResults);
   }
 
   Future<void> skipQuiz(UserEntity user, String lang) async {
     final localizedUser = user.copyWith(language: lang);
     state = state.copyWith(phase: ComparePhase.analyzing, progress: 0);
-    await _runAnalysis(localizedUser, const [], state.firstBaseResult);
+    await _runAnalysis(localizedUser, const [], state.firstBaseResult, state.allBaseResults);
   }
 
-  /// Phase 2: Enhanced analysis on all URLs
+  /// Phase 2: Enhanced analysis on all pre-scanned products
   Future<void> _runAnalysis(
     UserEntity user,
     List<QuizQuestion> quizAnswers,
     LinkAnalysisResult? firstBaseResult,
+    List<LinkAnalysisResult> preScannedResults,
   ) async {
-    final urls = state.validUrls;
+    final baseResults = preScannedResults.isNotEmpty
+        ? preScannedResults
+        : <LinkAnalysisResult>[];
 
-    // Initialize steps
+    // Initialize steps — only AI analysis + profile match (products already scanned)
     state = state.copyWith(
       phase: ComparePhase.analyzing,
       steps: [
-        for (int i = 0; i < urls.length; i++)
-          AnalysisStep('Scanning Link ${i + 1}', AnalysisStepType.scanLink),
-        const AnalysisStep('Running AI analysis', AnalysisStepType.aiAnalysis),
+        for (int i = 0; i < baseResults.length; i++)
+          AnalysisStep(
+            'AI Analiz • ${baseResults[i].metadata.title?.split(' ').take(3).join(' ') ?? 'Ürün ${i + 1}'}',
+            AnalysisStepType.aiAnalysis,
+          ),
         const AnalysisStep(
-          'Matching with your profile',
+          'Profil Eşleştirme',
           AnalysisStepType.profileMatch,
         ),
       ],
       progress: 0,
     );
 
-    final results = <EnhancedAnalysisResult>[];
-    final baseResults = <LinkAnalysisResult>[];
-
-    // Scan each link sequentially
-    for (int i = 0; i < urls.length; i++) {
-      // Mark step as active before starting
-      _updateStep(i, (s) => s.withActive());
-      try {
-        LinkAnalysisResult data;
-        if (i == 0 && firstBaseResult != null) {
-          data = firstBaseResult;
-        } else {
-          _behaviorTracking.trackLinkPaste(urls[i], null);
-          debugPrint('[Compare] Analyzing: ${urls[i]}');
-          final Result<LinkAnalysisResult> result = await _aiRepo.analyzeLink(
-            url: urls[i],
-            user: user,
-          );
-          switch (result) {
-            case Success<LinkAnalysisResult>(data: final d):
-              data = d;
-            case Failure<LinkAnalysisResult>(error: final err):
-              debugPrint('[Compare] analyzeLink failed: ${err.message}');
-              _updateStep(i, (s) => s.withError());
-              continue;
-          }
-        }
-        // Skip non-product links
-        if (!data.isProduct) {
-          debugPrint('[Compare] URL ${urls[i]} is not a product link, skipping');
-          _updateStep(i, (s) => s.withError());
-          continue;
-        }
-        baseResults.add(data);
-        _updateStep(i, (s) => s.withDone());
-      } catch (e) {
-        debugPrint('[Compare] Unexpected error: $e');
-        _updateStep(i, (s) => s.withError());
-      }
-    }
-
     if (baseResults.isEmpty) {
       state = state.copyWith(
         phase: ComparePhase.idle,
-        error:
-            'Could not analyze any of the provided links. Please check the URLs and try again.',
+        error: 'No products to analyze.',
       );
       return;
     }
 
-    // AI analysis step
-    final aiIdx = urls.length;
-    _updateStep(aiIdx, (s) => s.withActive());
+    final results = <EnhancedAnalysisResult>[];
 
-    for (final data in baseResults) {
+    // Enhanced analysis for each pre-scanned product
+    for (int i = 0; i < baseResults.length; i++) {
+      _updateStep(i, (s) => s.withActive());
       try {
         final enhanced = await _deepseek.enhancedAnalysis(
-          baseResult: data,
+          baseResult: baseResults[i],
           answeredQuestions: quizAnswers,
           profile: user,
         );
         debugPrint(
-          '[Compare] Score for "${data.metadata.title}": enhanced=${enhanced.enhancedScore}',
+          '[Compare] Score for "${baseResults[i].metadata.title}": enhanced=${enhanced.enhancedScore}',
         );
         results.add(enhanced);
+        _updateStep(i, (s) => s.withDone());
       } catch (e) {
         debugPrint('[Compare] Enhanced analysis fallback: $e');
         results.add(
           EnhancedAnalysisResult(
-            baseResult: data,
-            enhancedScore: data.aiScore,
+            baseResult: baseResults[i],
+            enhancedScore: baseResults[i].aiScore,
             factors: const [],
-            detailedVerdict: data.aiAnalysis,
+            detailedVerdict: baseResults[i].aiAnalysis,
           ),
         );
+        _updateStep(i, (s) => s.withDone());
       }
     }
-    _updateStep(aiIdx, (s) => s.withDone());
 
     // Profile matching step (brief visual)
-    final profileIdx = urls.length + 1;
+    final profileIdx = baseResults.length;
     _updateStep(profileIdx, (s) => s.withActive());
     await Future.delayed(const Duration(milliseconds: 500));
     _updateStep(profileIdx, (s) => s.withDone());
 
-    debugPrint('[Compare] Done: ${results.length}/${urls.length} succeeded');
+    debugPrint('[Compare] Done: ${results.length}/${baseResults.length} succeeded');
 
-    // Save each analyzed product to Firestore
+    // Save each analyzed product
     for (final r in results) {
       _pbDs.saveAnalyzedProduct(user.uid, {
         'timestamp': DateTime.now().toIso8601String(),
@@ -903,7 +898,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     if (answeredQs.isNotEmpty) {
       _pbDs.saveQuizHistory(user.uid, {
         'timestamp': DateTime.now().toIso8601String(),
-        'productUrls': urls,
+        'productUrls': state.validUrls,
         'mode': 'compare',
         'answers': answeredQs,
         'scores': results.map((r) => r.enhancedScore).toList(),

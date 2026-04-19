@@ -738,11 +738,14 @@ CRITICAL — PRODUCT IDENTIFICATION RULES:
 1. Identify the product SOLELY from the URL structure and provided metadata (title, description).
 2. NEVER guess, hallucinate, or invent a product name not clearly indicated by the URL or metadata.
 3. If productMetadata.title looks like a domain name (e.g. "trendyol.com"), ignore it.
-4. If you cannot determine the specific product, set is_product to false and explain why.
-5. Detect the REAL category from context: books, smartphones, laptops, headphones, clothing, etc. Do NOT default to "smartphones".
+4. For Amazon ISBNs (all-numeric 10-digit IDs), the product is a BOOK. Set category to "books". Do NOT guess the book title — use "Amazon Book (ISBN: {id})" if no metadata available.
+5. For Amazon ASINs (alphanumeric starting with 'B'), you may cautiously identify the product but must note uncertainty.
+6. If you cannot determine the specific product, set is_product to false and explain why.
+7. Detect the REAL category from context: books, smartphones, laptops, headphones, clothing, etc. Do NOT default to "smartphones".
+8. ABSOLUTELY NEVER substitute a different product. This is the #1 rule.
 
 PRODUCT VALIDATION:
-- Set is_product to TRUE only if you can confidently identify a specific product.
+- Set is_product to TRUE only if you can confidently identify a specific product from an e-commerce URL.
 - Set is_product to FALSE for non-product pages OR if you cannot determine the product.
 
 LANGUAGE: Write the "analysis" field in $langName.
