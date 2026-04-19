@@ -786,6 +786,8 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
 
     // Scan each link sequentially
     for (int i = 0; i < urls.length; i++) {
+      // Mark step as active before starting
+      _updateStep(i, (s) => s.withActive());
       try {
         LinkAnalysisResult data;
         if (i == 0 && firstBaseResult != null) {
@@ -805,6 +807,12 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
               _updateStep(i, (s) => s.withError());
               continue;
           }
+        }
+        // Skip non-product links
+        if (!data.isProduct) {
+          debugPrint('[Compare] URL ${urls[i]} is not a product link, skipping');
+          _updateStep(i, (s) => s.withError());
+          continue;
         }
         baseResults.add(data);
         _updateStep(i, (s) => s.withDone());

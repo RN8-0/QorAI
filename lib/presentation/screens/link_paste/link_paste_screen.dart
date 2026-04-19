@@ -1356,12 +1356,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   Widget _buildCompareAnalyzingView() {
     final cState = ref.watch(compareAnalysisProvider);
-    final steps = cState.steps;
-    final totalSteps = steps.length;
-    final doneSteps = steps.where((s) => s.isDone).length;
-    final progress = totalSteps > 0 ? doneSteps / totalSteps : 0.0;
+    final isFirstPhase = cState.phase == ComparePhase.analyzingFirst;
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
 
-    IconData _stepIcon(AnalysisStepType type) {
+    IconData stepIcon(AnalysisStepType type) {
       switch (type) {
         case AnalysisStepType.scanLink:
           return Icons.link_rounded;
@@ -1372,102 +1370,390 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       }
     }
 
+    final compareSteps = cState.steps;
+    final totalSteps = compareSteps.isNotEmpty ? compareSteps.length : 3;
+    final doneCount = compareSteps.where((s) => s.isDone).length;
+    final progress = compareSteps.isNotEmpty ? doneCount / totalSteps : 0.0;
+    final percent = (progress * 100).toInt();
+
+    // Find active step
+    final AnalysisStep? activeStep = compareSteps.isEmpty
+        ? null
+        : compareSteps.where((s) => s.isActive).isEmpty
+            ? null
+            : compareSteps.firstWhere((s) => s.isActive);
+
+    // Active detail text
+    String activeDetail;
+    if (isFirstPhase) {
+      activeDetail = isTr
+          ? 'İlk ürün taranıyor, quiz hazırlanıyor...'
+          : 'Scanning first product, preparing quiz...';
+    } else if (activeStep != null) {
+      switch (activeStep.type) {
+        case AnalysisStepType.scanLink:
+          final idx = compareSteps.indexOf(activeStep);
+          final url =
+              idx < cState.validUrls.length ? cState.validUrls[idx] : '';
+          final host = Uri.tryParse(url)?.host ?? url;
+          final short = host.startsWith('www.') ? host.substring(4) : host;
+          final shortUrl =
+              short.length > 30 ? '${short.substring(0, 30)}...' : short;
+          activeDetail = isTr ? '$shortUrl taranıyor...' : 'Scanning $shortUrl...';
+        case AnalysisStepType.aiAnalysis:
+          activeDetail = isTr
+              ? 'AI derin analiz yapıyor...'
+              : 'AI performing deep analysis...';
+        case AnalysisStepType.profileMatch:
+          activeDetail = isTr
+              ? 'Profilinizle eşleştiriliyor...'
+              : 'Matching with your profile...';
+      }
+    } else {
+      activeDetail =
+          isTr ? 'Analiz tamamlanıyor...' : 'Finishing analysis...';
+    }
+
+    // Heading
+    final heading = isFirstPhase
+        ? (isTr ? 'İlk Ürün Analiz Ediliyor' : 'Analyzing First Product')
+        : (isTr ? 'Ürünler Karşılaştırılıyor' : 'Comparing Products');
+
+    // Fixed phase steps for analyzingFirst visual
+    final fixedPhaseSteps = <(IconData, String, String)>[
+      (
+        Icons.link_rounded,
+        isTr ? 'Bağlantı Taranıyor' : 'Scanning Link',
+        isTr
+            ? 'URL ve ürün metadata\'sı çekiliyor'
+            : 'Fetching URL and product metadata',
+      ),
+      (
+        Icons.fingerprint_rounded,
+        isTr ? 'Ürün Tanımlanıyor' : 'Identifying Product',
+        isTr
+            ? 'AI ürün özelliklerini çıkartıyor'
+            : 'AI extracting product details',
+      ),
+      (
+        Icons.quiz_rounded,
+        isTr ? 'Quiz Hazırlanıyor' : 'Preparing Quiz',
+        isTr
+            ? 'Kişisel sorular oluşturuluyor'
+            : 'Generating personalized questions',
+      ),
+    ];
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 24),
-            // Animated icon
-            Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.brandBlue, AppTheme.brandCyan],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 6),
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Animated orb
+          Center(
+            child: SizedBox(
+              width: 120,
+              height: 120,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: isFirstPhase
+                        ? CircularProgressIndicator(
+                            strokeWidth: 5,
+                            strokeCap: StrokeCap.round,
+                            backgroundColor:
+                                AppTheme.brandBlue.withValues(alpha: 0.1),
+                            color: AppTheme.brandCyan,
+                          )
+                        : TweenAnimationBuilder<double>(
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOutCubic,
+                            tween: Tween(begin: 0.0, end: progress),
+                            builder: (_, v, w) => CircularProgressIndicator(
+                              value: v,
+                              strokeWidth: 5,
+                              strokeCap: StrokeCap.round,
+                              backgroundColor:
+                                  AppTheme.brandBlue.withValues(alpha: 0.08),
+                              color: AppTheme.brandCyan,
+                            ),
+                          ),
+                  ),
+                  AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (_, ac) => Container(
+                      width: 90 + _pulseController.value * 6,
+                      height: 90 + _pulseController.value * 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            AppTheme.brandBlue.withValues(
+                              alpha: 0.2 + _pulseController.value * 0.12,
+                            ),
+                            AppTheme.brandBlue.withValues(alpha: 0),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.compare_arrows_rounded,
-                    color: Colors.white,
-                    size: 36,
-                  ),
-                )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(
-                  begin: const Offset(0.95, 0.95),
-                  end: const Offset(1.05, 1.05),
-                  duration: 1200.ms,
-                ),
-            const SizedBox(height: 20),
-            Text(
-              context.l10n?.analyzingProductsTitle ?? 'Analyzing Products...',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              context.l10n?.analyzingProductsSubtitle ??
-                  'AI is comparing your products side by side',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: context.textTertiaryColor,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Progress bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: progress),
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  builder: (_, val, __) => LinearProgressIndicator(
-                    value: val,
-                    backgroundColor: context.surfaceVariantColor,
-                    valueColor: const AlwaysStoppedAnimation(
-                      AppTheme.brandBlue,
                     ),
-                    minHeight: 6,
                   ),
-                ),
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.brandBlue.withValues(alpha: 0.4),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.compare_arrows_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        )
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .scale(
+                              begin: const Offset(1, 1),
+                              end: const Offset(1.1, 1.1),
+                              duration: 1200.ms,
+                            ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isFirstPhase ? '...' : '$percent%',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Step-by-step list
-            if (steps.isNotEmpty)
-              GlassContainer(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Column(
-                  children: steps.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final step = entry.value;
-                    return _buildAnalysisStepRow(step, _stepIcon(step.type), i);
-                  }).toList(),
-                ),
+          ),
+          const SizedBox(height: 16),
+          // Heading + active detail
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Column(
+              key: ValueKey(
+                isFirstPhase ? 'first' : (activeStep?.label ?? 'none'),
               ),
-            const SizedBox(height: 40),
-          ],
-        ),
+              children: [
+                Text(
+                  heading,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: context.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    activeDetail,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: context.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // URL chips (only for analyzing phase)
+          if (!isFirstPhase && cState.validUrls.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                alignment: WrapAlignment.center,
+                children: cState.validUrls.asMap().entries.map((e) {
+                  final idx = e.key;
+                  final url = e.value;
+                  final step =
+                      idx < compareSteps.length ? compareSteps[idx] : null;
+                  final host = Uri.tryParse(url)?.host ?? url;
+                  final short =
+                      host.startsWith('www.') ? host.substring(4) : host;
+                  final displayText =
+                      short.length > 20 ? '${short.substring(0, 20)}…' : short;
+
+                  Color chipColor;
+                  IconData chipIcon;
+                  if (step?.isDone == true) {
+                    chipColor = AppTheme.success;
+                    chipIcon = Icons.check_circle_rounded;
+                  } else if (step?.isActive == true) {
+                    chipColor = AppTheme.brandBlue;
+                    chipIcon = Icons.hourglass_top_rounded;
+                  } else if (step?.hasError == true) {
+                    chipColor = AppTheme.error;
+                    chipIcon = Icons.error_rounded;
+                  } else {
+                    chipColor = context.textTertiaryColor;
+                    chipIcon = Icons.link_rounded;
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: chipColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: chipColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        step?.isActive == true
+                            ? SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor:
+                                      AlwaysStoppedAnimation(chipColor),
+                                ),
+                              )
+                            : Icon(chipIcon, size: 12, color: chipColor),
+                        const SizedBox(width: 5),
+                        Text(
+                          displayText,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: chipColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+          // Steps list
+          if (isFirstPhase)
+            GlassContainer(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              child: Column(
+                children: fixedPhaseSteps.asMap().entries.map((e) {
+                  final idx = e.key;
+                  final (icon, label, detail) = e.value;
+                  final isActiveStep = idx == 0;
+                  final textColor = isActiveStep
+                      ? AppTheme.brandBlue
+                      : context.textTertiaryColor;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: Row(
+                      children: [
+                        isActiveStep
+                            ? SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: const AlwaysStoppedAnimation(
+                                    AppTheme.brandBlue,
+                                  ),
+                                  backgroundColor:
+                                      AppTheme.slate700.withValues(alpha: 0.3),
+                                ),
+                              )
+                            : Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: context.surfaceVariantColor,
+                                ),
+                                child: Icon(
+                                  icon,
+                                  size: 14,
+                                  color: context.textTertiaryColor,
+                                ),
+                              ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                label,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: isActiveStep
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                detail,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: context.textTertiaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            )
+          else if (compareSteps.isNotEmpty)
+            GlassContainer(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              child: Column(
+                children: compareSteps.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final step = entry.value;
+                  return _buildAnalysisStepRow(step, stepIcon(step.type), i);
+                }).toList(),
+              ),
+            ),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
@@ -3359,6 +3645,29 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           final medal = i == 0
               ? '🥇'
               : (i == 1 ? '🥈' : (i == 2 ? '🥉' : '#${i + 1}'));
+          final isTr =
+              Localizations.localeOf(context).languageCode == 'tr';
+          final scoreColor = r.enhancedScore >= 80
+              ? AppTheme.scoreExcellent
+              : r.enhancedScore >= 60
+              ? AppTheme.scoreGood
+              : AppTheme.scoreAverage;
+          final pScore = r.personaScore ?? 0;
+          final pColor = pScore >= 80
+              ? AppTheme.success
+              : pScore >= 60
+              ? AppTheme.scoreGood
+              : pScore >= 40
+              ? AppTheme.scoreAverage
+              : AppTheme.scorePoor;
+          final cScore = r.communityScore ?? 0;
+          final cColor = cScore >= 75
+              ? AppTheme.success
+              : cScore >= 50
+              ? AppTheme.scoreGood
+              : cScore >= 30
+              ? AppTheme.scoreAverage
+              : AppTheme.scorePoor;
 
           return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
@@ -3389,13 +3698,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color:
-                                  (r.enhancedScore >= 80
-                                          ? AppTheme.scoreExcellent
-                                          : r.enhancedScore >= 60
-                                          ? AppTheme.scoreGood
-                                          : AppTheme.scoreAverage)
-                                      .withValues(alpha: 0.12),
+                              color: scoreColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -3403,11 +3706,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13,
-                                color: r.enhancedScore >= 80
-                                    ? AppTheme.scoreExcellent
-                                    : r.enhancedScore >= 60
-                                    ? AppTheme.scoreGood
-                                    : AppTheme.scoreAverage,
+                                color: scoreColor,
                               ),
                             ),
                           ),
@@ -3442,7 +3741,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               (p) => Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
                                 child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     const Text(
                                       '✅ ',
@@ -3481,7 +3781,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               (c) => Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
                                 child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     const Text(
                                       '⚠️ ',
@@ -3501,6 +3802,252 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 ),
                               ),
                             ),
+                      ],
+                      // Personal Fit
+                      if (r.personaScore != null ||
+                          r.personaAnalysis != null) ...[
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    AppTheme.premiumPurple,
+                                    AppTheme.neonPurple,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.biotech_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                isTr ? 'Kişisel Uyum' : 'Personal Fit',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: pColor,
+                                ),
+                              ),
+                            ),
+                            if (r.personaScore != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: pColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: pColor.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${r.personaScore!.toStringAsFixed(0)}%',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: pColor,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (r.personaScore != null) ...[
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: TweenAnimationBuilder<double>(
+                              duration: const Duration(milliseconds: 800),
+                              curve: Curves.easeOutCubic,
+                              tween: Tween(
+                                begin: 0.0,
+                                end: r.personaScore! / 100,
+                              ),
+                              builder: (_, v, w) =>
+                                  LinearProgressIndicator(
+                                    value: v,
+                                    minHeight: 5,
+                                    backgroundColor:
+                                        AppTheme.slate700.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                    color: pColor,
+                                  ),
+                            ),
+                          ),
+                        ],
+                        if (r.personaAnalysis != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            r.personaAnalysis!,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: context.textSecondary,
+                              height: 1.5,
+                            ),
+                            maxLines: 5,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                      // Community Reviews
+                      if (r.communityScore != null ||
+                          r.communityAnalysis != null) ...[
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    AppTheme.brandCyan,
+                                    AppTheme.brandSkyBlue,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.forum_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                isTr
+                                    ? 'Topluluk Yorumları'
+                                    : 'Community Reviews',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: cColor,
+                                ),
+                              ),
+                            ),
+                            if (r.communityScore != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: cColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: cColor.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${r.communityScore!.toStringAsFixed(0)}%',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: cColor,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (r.communityScore != null) ...[
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: TweenAnimationBuilder<double>(
+                              duration: const Duration(milliseconds: 800),
+                              curve: Curves.easeOutCubic,
+                              tween: Tween(
+                                begin: 0.0,
+                                end: r.communityScore! / 100,
+                              ),
+                              builder: (_, v, w) =>
+                                  LinearProgressIndicator(
+                                    value: v,
+                                    minHeight: 5,
+                                    backgroundColor:
+                                        AppTheme.slate700.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                    color: cColor,
+                                  ),
+                            ),
+                          ),
+                        ],
+                        if (r.communityAnalysis != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            r.communityAnalysis!,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: context.textSecondary,
+                              height: 1.5,
+                            ),
+                            maxLines: 5,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                      // AI Summary / Overall Verdict
+                      if (r.overallVerdict != null ||
+                          r.detailedVerdict.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    AppTheme.gold,
+                                    AppTheme.goldOrange,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.auto_awesome_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isTr ? 'AI Özeti' : 'AI Summary',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          r.overallVerdict ?? r.detailedVerdict,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: context.textSecondary,
+                            height: 1.5,
+                          ),
+                          maxLines: 6,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ],
                   ),
