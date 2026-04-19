@@ -142,6 +142,47 @@ class GeminiService implements AIService {
       }
     }
 
+    // ── Step 1: Google Search research — identify product from URL ──
+    // When metadata scraping fails (Amazon bot detection etc.), Gemini uses
+    // its built-in Google Search to look up the actual product page.
+    String webResearch = '';
+    final needsResearch = resolvedTitle == null ||
+        resolvedTitle.startsWith('Amazon ASIN') ||
+        resolvedTitle.startsWith('Amazon ISBN') ||
+        (scrapedTitle == null && slugTitle == null);
+    if (needsResearch) {
+      try {
+        debugPrint('[Gemini] URL research phase — looking up: $url');
+        webResearch = await _rawRequest({
+          'contents': [
+            {
+              'parts': [
+                {
+                  'text':
+                      'What product is sold at this URL? $url\n\n'
+                      'Return ONLY: product name, brand, category, price, '
+                      'and a 1-sentence description. Be concise.',
+                },
+              ],
+            },
+          ],
+          'tools': [
+            {'googleSearch': {}},
+          ],
+          'generationConfig': {
+            'temperature': 0.1,
+            'maxOutputTokens': 512,
+          },
+        }, receiveTimeout: const Duration(seconds: 30), tier: AiTier.heavy);
+        debugPrint(
+          '[Gemini] URL research result: ${webResearch.length > 200 ? webResearch.substring(0, 200) : webResearch}',
+        );
+      } catch (e) {
+        debugPrint('[Gemini] URL research failed (continuing without): $e');
+      }
+    }
+
+    // ── Step 2: Structured JSON analysis ──
     final userInput = <String, dynamic>{
       'url': url,
       'userProfile': {
@@ -152,6 +193,7 @@ class GeminiService implements AIService {
       },
     };
     if (metaContext.isNotEmpty) userInput['productContext'] = metaContext;
+    if (webResearch.isNotEmpty) userInput['webResearch'] = webResearch;
 
     final response = await _jsonRequest(
       system: _linkAnalysisSystemPrompt(profile.language),
@@ -361,6 +403,9 @@ class GeminiService implements AIService {
           {'text': _chatSystemPrompt(profile, currentYear)},
         ],
       },
+      'tools': [
+        {'googleSearch': {}},
+      ],
       'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
     };
 
@@ -393,6 +438,9 @@ class GeminiService implements AIService {
           {'text': _chatSystemPrompt(profile, currentYear)},
         ],
       },
+      'tools': [
+        {'googleSearch': {}},
+      ],
       'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
     };
 
@@ -981,25 +1029,47 @@ $jsonSchema
   }
 
   /// Produce an enhanced compatibility analysis combining the base analysis,
-  /// quiz answers, and full user profile.
+  /// quiz answers, full user profile, and real-time web research.
   Future<EnhancedAnalysisResult> enhancedAnalysis({
     required LinkAnalysisResult baseResult,
     required List<QuizQuestion> answeredQuestions,
     required UserEntity profile,
   }) async {
     debugPrint('[Gemini] enhancedAnalysis for: ${baseResult.metadata.title}');
-    debugPrint(
-      '[Gemini] quiz answers count: ${answeredQuestions.where((q) => q.selectedOption != null).length}',
-    );
-    debugPrint(
-      '[Gemini] user profile: ecosystem=${profile.ecosystem}, budget=${profile.budgetRange}, '
-      'devices=${profile.currentDevices}, priorities=${profile.priorities}',
-    );
     final qaPairs = answeredQuestions
         .where((q) => q.selectedOption != null)
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
         .toList();
 
+    // Step 1: Google Search research — gather community reviews & real-time data
+    String researchData = '';
+    try {
+      final productName = baseResult.metadata.title ?? 'unknown';
+      researchData = await _rawRequest({
+        'contents': [
+          {
+            'parts': [
+              {
+                'text':
+                    'Research "$productName" (${baseResult.category ?? "product"}).\n'
+                    'Find: user reviews, Reddit/forum opinions, expert reviews, '
+                    'common pros/cons, known issues, and current price in ${profile.country}.\n'
+                    'Be concise — max 300 words.',
+              },
+            ],
+          },
+        ],
+        'tools': [
+          {'googleSearch': {}},
+        ],
+        'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 1024},
+      }, receiveTimeout: const Duration(seconds: 30), tier: AiTier.heavy);
+      debugPrint('[Gemini] enhancedAnalysis research: ${researchData.length} chars');
+    } catch (e) {
+      debugPrint('[Gemini] enhancedAnalysis research failed (continuing): $e');
+    }
+
+    // Step 2: Structured JSON analysis
     final response = await _jsonRequest(
       system: _enhancedAnalysisPrompt(profile.language),
       user: jsonEncode({
@@ -1021,6 +1091,7 @@ $jsonSchema
           'interestCategories': profile.interestCategories,
           'currentDevices': profile.currentDevices,
         },
+        if (researchData.isNotEmpty) 'webResearch': researchData,
       }),
       thinkingBudget: 512,
       timeout: const Duration(seconds: 90),
@@ -1431,17 +1502,16 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. You receive a product URL, optional metadata extracted from that URL, and a user profile. Your job is to identify the EXACT product and analyze it.
+You are Compair's link analysis engine. You receive a product URL, optional metadata, optional web research data, and a user profile. Your job is to identify the EXACT product and analyze it.
 
-CRITICAL — PRODUCT IDENTIFICATION (ABSOLUTE RULES):
-1. "productContext.title" is your PRIMARY and MOST TRUSTED source. If it contains a clear product name, YOU MUST USE IT. Do NOT override it with a different product.
-2. URL path segments (slugs, IDs, brand names) are your SECONDARY source.
-3. "productContext.description" and "productContext.siteName" are SUPPORTING sources.
-4. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product. If the metadata says "Zeiron APX80 Ryzen 5", you MUST analyze Zeiron APX80 Ryzen 5 — NOT an iPhone or any other product. This is the #1 unbreakable rule.
-5. For Amazon ASINs (alphanumeric IDs starting with 'B'): You MUST identify the actual product. Use the ASIN code to determine the real product name. NEVER use "Amazon ASIN XXXXXXXX" as the product title — that's just the product code, not the name. Look up the product and return its real name (e.g., "The Frozen River" not "Amazon ASIN B0DDWDBZXS").
-6. For Amazon ISBNs (all-numeric IDs), this is a BOOK. Category = "books". Identify the book by its ISBN.
-7. If productContext.title is a domain name (e.g. "trendyol.com"), treat as NO useful title — rely on URL.
-8. If you genuinely cannot determine the product, use product ID as title. NEVER fabricate.
+CRITICAL — PRODUCT IDENTIFICATION (PRIORITY ORDER):
+1. "webResearch" — If provided, this contains VERIFIED data from Google Search about the URL. This is your MOST RELIABLE source for product identification. USE IT.
+2. "productContext.title" — Scraped metadata title. If it contains a clear product name, use it.
+3. URL path segments (slugs, IDs, brand names) are your TERTIARY source.
+4. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product. If the data says "Zeiron APX80 Ryzen 5", you MUST analyze that — NOT a different product.
+5. For Amazon ASINs/ISBNs: if webResearch is available, use its product name. If not, and you are NOT 100% certain about the ASIN, set is_product to false.
+6. If productContext.title is a domain name (e.g. "trendyol.com"), treat as NO useful title — rely on webResearch or URL.
+7. If you genuinely cannot determine the product, set is_product to false. NEVER fabricate.
 
 PRODUCT VALIDATION:
 - TRUE if URL is from e-commerce site with product path pattern
@@ -1607,9 +1677,14 @@ Return valid JSON:
     final langName = _languageName(language);
     return '''
 You are Compair's deep compatibility analyzer. Given a product, quiz answers,
-and user profile, produce a comprehensive personalized match report.
+user profile, and optional web research data, produce a comprehensive personalized match report.
 
 LANGUAGE: Write ALL text in $langName.
+
+CRITICAL — USE WEB RESEARCH DATA:
+- If "webResearch" is provided, it contains REAL data from Google Search: user reviews, Reddit opinions, expert reviews, prices.
+- Use this data to populate communityScore and communityAnalysis with REAL community feedback.
+- Do NOT invent fake reviews. If webResearch has real data, reference it. If not available, analyze based on your knowledge.
 
 CRITICAL — CATEGORY-AWARE ANALYSIS:
 - The product can be ANY category: tech, books, clothing, home, sports, beauty, etc.
