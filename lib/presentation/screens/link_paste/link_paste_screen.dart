@@ -257,7 +257,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       behavior: HitTestBehavior.opaque,
       onTap: () {
         // Single tap: paste from clipboard (overwrites existing text)
-        unawaited(_pasteClipboardInto(controller, onlyWhenEmpty: false, showInvalidFeedback: false));
+        unawaited(
+          _pasteClipboardInto(
+            controller,
+            onlyWhenEmpty: false,
+            showInvalidFeedback: false,
+          ),
+        );
       },
       onDoubleTap: () {
         // Double tap: enter edit mode, open keyboard
@@ -456,43 +462,56 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   /// Compare tab — analyze all URLs via background-safe provider
   Future<void> _startCompareAnalysis() async {
     final validUrls = <String>[];
+    var invalidInputCount = 0;
     for (final controller in _compareControllers.take(_visibleCompareFields)) {
-      final normalized = _extractUrlCandidate(controller.text);
+      final rawInput = controller.text.trim();
+      if (rawInput.isEmpty) {
+        continue;
+      }
+      final normalized = _extractUrlCandidate(rawInput);
       if (normalized != null) {
         controller.text = normalized;
         validUrls.add(normalized);
+      } else {
+        invalidInputCount++;
       }
     }
 
-    if (validUrls.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _linkText(
-              context,
-              tr: 'Lutfen en az 2 gecerli urun baglantisi girin.',
-              en: 'Please enter at least 2 valid product URLs.',
+    final lang = Localizations.localeOf(context).languageCode;
+    if (invalidInputCount > 0) {
+      ref
+          .read(compareAnalysisProvider.notifier)
+          .showValidationError(
+            CompareAnalysisNotifier.buildInvalidCompareLinksMessage(
+              lang,
+              invalidCount: invalidInputCount,
             ),
-            style: GoogleFonts.plusJakartaSans(
-              color: context.surfaceVariantColor,
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+            validUrls: validUrls,
+          );
       return;
     }
+
+    if (validUrls.length < 2) {
+      ref
+          .read(compareAnalysisProvider.notifier)
+          .showValidationError(
+            _linkText(
+              context,
+              tr: '⚠️ Karşılaştırma için en az 2 geçerli ürün bağlantısı girin.',
+              en: '⚠️ Enter at least 2 valid product URLs to compare.',
+            ),
+            validUrls: validUrls,
+          );
+      return;
+    }
+
+    ref.read(compareAnalysisProvider.notifier).reset();
 
     for (final fn in _compareFocusNodes) {
       fn.unfocus();
     }
 
     final user = _getOrCreateUser();
-    final lang = Localizations.localeOf(context).languageCode;
     ref
         .read(compareAnalysisProvider.notifier)
         .startAnalysis(validUrls, user, lang);
@@ -527,7 +546,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           error.isNotEmpty &&
           error != prev?.error &&
           next.phase == LinkFlowPhase.idle) {
-        final isInfo = error.contains('ℹ️') || error.contains('tanıyamadık') || error.contains('couldn\'t identify');
+        final isInfo =
+            error.contains('ℹ️') ||
+            error.contains('tanıyamadık') ||
+            error.contains('couldn\'t identify');
         _showLinkSnackBar(
           error.replaceAll('ℹ️ ', '').replaceAll('❌ ', ''),
           backgroundColor: isInfo ? Colors.amber.shade800 : AppTheme.error,
@@ -548,10 +570,24 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       if (!mounted) return;
       final error = next.error?.trim();
       if (error != null && error.isNotEmpty && error != prev?.error) {
-        final isInfo = error.contains('ℹ️') || error.contains('tanıyamadık') || error.contains('couldn\'t identify');
+        final isInfo =
+            error.contains('ℹ️') ||
+            error.contains('tanıyamadık') ||
+            error.contains('couldn\'t identify');
+        final isWarning =
+            error.contains('⚠️') ||
+            error.contains('aynı kategoride değil') ||
+            error.contains('same category') ||
+            error.contains('geçersiz') ||
+            error.contains('invalid');
         _showLinkSnackBar(
-          error.replaceAll('ℹ️ ', '').replaceAll('❌ ', ''),
-          backgroundColor: isInfo ? Colors.amber.shade800 : AppTheme.error,
+          error
+              .replaceAll('ℹ️ ', '')
+              .replaceAll('❌ ', '')
+              .replaceAll('⚠️ ', ''),
+          backgroundColor: isWarning
+              ? AppTheme.slate700
+              : (isInfo ? Colors.amber.shade800 : AppTheme.error),
         );
       }
     });
@@ -564,7 +600,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     // Show back button when in active flow or comparison ready
     final showBack =
         quizState.phase != LinkFlowPhase.idle ||
-        compareState.phase != ComparePhase.idle;
+        compareState.phase != ComparePhase.idle ||
+        compareState.error != null;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -793,7 +830,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     }
 
     // Compare error
-    if (compareState.error != null && compareState.phase != ComparePhase.idle) {
+    if (compareState.error != null) {
       return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
@@ -1399,13 +1436,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final AnalysisStep? activeStep = compareSteps.isEmpty
         ? null
         : compareSteps.where((s) => s.isActive).isEmpty
-            ? null
-            : compareSteps.firstWhere((s) => s.isActive);
+        ? null
+        : compareSteps.firstWhere((s) => s.isActive);
 
     // Active detail text
     String activeDetail;
     if (isFirstPhase) {
-      final scanSteps = compareSteps.where((s) => s.type == AnalysisStepType.scanLink).toList();
+      final scanSteps = compareSteps
+          .where((s) => s.type == AnalysisStepType.scanLink)
+          .toList();
       final scannedCount = scanSteps.where((s) => s.isDone).length;
       final totalToScan = scanSteps.length;
       activeDetail = isTr
@@ -1415,13 +1454,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       switch (activeStep.type) {
         case AnalysisStepType.scanLink:
           final idx = compareSteps.indexOf(activeStep);
-          final url =
-              idx < cState.validUrls.length ? cState.validUrls[idx] : '';
+          final url = idx < cState.validUrls.length
+              ? cState.validUrls[idx]
+              : '';
           final host = Uri.tryParse(url)?.host ?? url;
           final short = host.startsWith('www.') ? host.substring(4) : host;
-          final shortUrl =
-              short.length > 30 ? '${short.substring(0, 30)}...' : short;
-          activeDetail = isTr ? '$shortUrl taranıyor...' : 'Scanning $shortUrl...';
+          final shortUrl = short.length > 30
+              ? '${short.substring(0, 30)}...'
+              : short;
+          activeDetail = isTr
+              ? '$shortUrl taranıyor...'
+              : 'Scanning $shortUrl...';
         case AnalysisStepType.aiAnalysis:
           activeDetail = isTr
               ? 'AI derin analiz yapıyor...'
@@ -1432,8 +1475,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               : 'Matching with your profile...';
       }
     } else {
-      activeDetail =
-          isTr ? 'Analiz tamamlanıyor...' : 'Finishing analysis...';
+      activeDetail = isTr ? 'Analiz tamamlanıyor...' : 'Finishing analysis...';
     }
 
     // Heading
@@ -1486,8 +1528,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ? CircularProgressIndicator(
                             strokeWidth: 5,
                             strokeCap: StrokeCap.round,
-                            backgroundColor:
-                                AppTheme.brandBlue.withValues(alpha: 0.1),
+                            backgroundColor: AppTheme.brandBlue.withValues(
+                              alpha: 0.1,
+                            ),
                             color: AppTheme.brandCyan,
                           )
                         : TweenAnimationBuilder<double>(
@@ -1498,8 +1541,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               value: v,
                               strokeWidth: 5,
                               strokeCap: StrokeCap.round,
-                              backgroundColor:
-                                  AppTheme.brandBlue.withValues(alpha: 0.08),
+                              backgroundColor: AppTheme.brandBlue.withValues(
+                                alpha: 0.08,
+                              ),
                               color: AppTheme.brandCyan,
                             ),
                           ),
@@ -1544,10 +1588,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.compare_arrows_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        )
+                              Icons.compare_arrows_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            )
                             .animate(onPlay: (c) => c.repeat(reverse: true))
                             .scale(
                               begin: const Offset(1, 1),
@@ -1618,13 +1662,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 children: cState.validUrls.asMap().entries.map((e) {
                   final idx = e.key;
                   final url = e.value;
-                  final step =
-                      idx < compareSteps.length ? compareSteps[idx] : null;
+                  final step = idx < compareSteps.length
+                      ? compareSteps[idx]
+                      : null;
                   final host = Uri.tryParse(url)?.host ?? url;
-                  final short =
-                      host.startsWith('www.') ? host.substring(4) : host;
-                  final displayText =
-                      short.length > 20 ? '${short.substring(0, 20)}…' : short;
+                  final short = host.startsWith('www.')
+                      ? host.substring(4)
+                      : host;
+                  final displayText = short.length > 20
+                      ? '${short.substring(0, 20)}…'
+                      : short;
 
                   Color chipColor;
                   IconData chipIcon;
@@ -1663,8 +1710,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 height: 12,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor:
-                                      AlwaysStoppedAnimation(chipColor),
+                                  valueColor: AlwaysStoppedAnimation(chipColor),
                                 ),
                               )
                             : Icon(chipIcon, size: 12, color: chipColor),
@@ -1687,10 +1733,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           // Steps list
           if (isFirstPhase)
             GlassContainer(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: fixedPhaseSteps.asMap().entries.map((e) {
                   final idx = e.key;
@@ -1712,8 +1755,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                   valueColor: const AlwaysStoppedAnimation(
                                     AppTheme.brandBlue,
                                   ),
-                                  backgroundColor:
-                                      AppTheme.slate700.withValues(alpha: 0.3),
+                                  backgroundColor: AppTheme.slate700.withValues(
+                                    alpha: 0.3,
+                                  ),
                                 ),
                               )
                             : Container(
@@ -1762,10 +1806,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             )
           else if (compareSteps.isNotEmpty)
             GlassContainer(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: compareSteps.asMap().entries.map((entry) {
                   final i = entry.key;
@@ -3251,23 +3292,45 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildError(String error) {
-    // Use info style (amber) for non-critical messages, error (red) for failures
-    final isInfo = error.contains('ℹ️') || error.contains('tanıyamadık') || error.contains('couldn\'t identify');
-    final color = isInfo ? Colors.amber : AppTheme.error;
-    final icon = isInfo ? Icons.info_outline_rounded : Icons.error_outline_rounded;
+    // Use info style (amber) for non-critical messages, neutral slate for
+    // compare validation warnings, and error (red) for failures.
+    final isInfo =
+        error.contains('ℹ️') ||
+        error.contains('tanıyamadık') ||
+        error.contains('couldn\'t identify');
+    final isWarning =
+        error.contains('⚠️') ||
+        error.contains('aynı kategoride değil') ||
+        error.contains('same category') ||
+        error.contains('geçersiz') ||
+        error.contains('invalid');
+    final color = isWarning
+        ? context.textSecondary
+        : (isInfo ? Colors.amber : AppTheme.error);
+    final icon = isWarning
+        ? Icons.info_outline_rounded
+        : (isInfo ? Icons.info_outline_rounded : Icons.error_outline_rounded);
+    final backgroundColor = isWarning
+        ? context.surfaceVariantColor.withValues(alpha: 0.6)
+        : color.withValues(alpha: 0.08);
+    final borderColor = isWarning
+        ? context.textTertiaryColor.withValues(alpha: 0.2)
+        : color.withValues(alpha: 0.2);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: isWarning
+                  ? context.textTertiaryColor.withValues(alpha: 0.08)
+                  : color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -3275,7 +3338,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              error.replaceAll('ℹ️ ', '').replaceAll('❌ ', ''),
+              error
+                  .replaceAll('ℹ️ ', '')
+                  .replaceAll('❌ ', '')
+                  .replaceAll('⚠️ ', ''),
               style: GoogleFonts.plusJakartaSans(
                 color: color,
                 fontSize: 14,
@@ -3667,8 +3733,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           final medal = i == 0
               ? '🥇'
               : (i == 1 ? '🥈' : (i == 2 ? '🥉' : '#${i + 1}'));
-          final isTr =
-              Localizations.localeOf(context).languageCode == 'tr';
+          final isTr = Localizations.localeOf(context).languageCode == 'tr';
           final scoreColor = r.enhancedScore >= 80
               ? AppTheme.scoreExcellent
               : r.enhancedScore >= 60
@@ -3763,8 +3828,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               (p) => Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
                                 child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
                                       '✅ ',
@@ -3803,8 +3867,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               (c) => Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
                                 child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
                                       '⚠️ ',
@@ -3896,16 +3959,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 begin: 0.0,
                                 end: r.personaScore! / 100,
                               ),
-                              builder: (_, v, w) =>
-                                  LinearProgressIndicator(
-                                    value: v,
-                                    minHeight: 5,
-                                    backgroundColor:
-                                        AppTheme.slate700.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                    color: pColor,
-                                  ),
+                              builder: (_, v, w) => LinearProgressIndicator(
+                                value: v,
+                                minHeight: 5,
+                                backgroundColor: AppTheme.slate700.withValues(
+                                  alpha: 0.3,
+                                ),
+                                color: pColor,
+                              ),
                             ),
                           ),
                         ],
@@ -3996,16 +4057,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 begin: 0.0,
                                 end: r.communityScore! / 100,
                               ),
-                              builder: (_, v, w) =>
-                                  LinearProgressIndicator(
-                                    value: v,
-                                    minHeight: 5,
-                                    backgroundColor:
-                                        AppTheme.slate700.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                    color: cColor,
-                                  ),
+                              builder: (_, v, w) => LinearProgressIndicator(
+                                value: v,
+                                minHeight: 5,
+                                backgroundColor: AppTheme.slate700.withValues(
+                                  alpha: 0.3,
+                                ),
+                                color: cColor,
+                              ),
                             ),
                           ),
                         ],
@@ -4035,10 +4094,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [
-                                    AppTheme.gold,
-                                    AppTheme.goldOrange,
-                                  ],
+                                  colors: [AppTheme.gold, AppTheme.goldOrange],
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),

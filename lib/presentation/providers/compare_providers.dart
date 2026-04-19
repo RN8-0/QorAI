@@ -158,19 +158,19 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
   final AIRepository _aiRepo;
   final Ref _ref;
 
-  LinkAnalysisNotifier({
-    required AIRepository aiRepo,
-    required Ref ref,
-  }) : _aiRepo = aiRepo,
-       _ref = ref,
-       super(const LinkAnalysisState());
+  LinkAnalysisNotifier({required AIRepository aiRepo, required Ref ref})
+    : _aiRepo = aiRepo,
+      _ref = ref,
+      super(const LinkAnalysisState());
 
   String get _appLang => _ref.read(localeProvider)?.languageCode ?? 'en';
 
   /// Analyze link - Section 9.1
   Future<void> analyzeLink(String url, UserEntity user) async {
     // Free tier limit check
-    final limitResult = _ref.read(subscriptionServiceProvider).recordLinkPaste();
+    final limitResult = _ref
+        .read(subscriptionServiceProvider)
+        .recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
         error:
@@ -280,7 +280,9 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
   /// Step 1: Analyze link + validate product + generate quiz.
   Future<void> analyzeAndStartQuiz(String url, UserEntity user) async {
     // Rate limit
-    final limitResult = _ref.read(subscriptionServiceProvider).recordLinkPaste();
+    final limitResult = _ref
+        .read(subscriptionServiceProvider)
+        .recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
@@ -679,6 +681,48 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
        _pbDs = pbDs,
        super(const CompareAnalysisState());
 
+  static String normalizeCompareCategory(String? category) {
+    final normalized = category?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) {
+      return '';
+    }
+    return normalized;
+  }
+
+  static String buildInvalidCompareLinksMessage(
+    String lang, {
+    required int invalidCount,
+  }) {
+    final hasMany = invalidCount > 1;
+    return lang == 'tr'
+        ? '⚠️ ${hasMany ? '$invalidCount bağlantı geçersiz.' : 'Bir bağlantı geçersiz.'} Karşılaştırma için tüm alanlara geçerli ürün sayfası linki girin.'
+        : '⚠️ ${hasMany ? '$invalidCount links are invalid.' : 'One link is invalid.'} Enter valid product page URLs in all filled fields before comparing.';
+  }
+
+  static String buildUnrecognizedCompareProductsMessage(
+    String lang, {
+    required int invalidCount,
+  }) {
+    final hasMany = invalidCount > 1;
+    return lang == 'tr'
+        ? '⚠️ ${hasMany ? '$invalidCount bağlantı ürün olarak tanınamadı.' : 'Bir bağlantı ürün olarak tanınamadı.'} Lütfen yalnızca ürün sayfası linkleriyle tekrar deneyin.'
+        : '⚠️ ${hasMany ? '$invalidCount links could not be identified as products.' : 'One link could not be identified as a product.'} Please retry using only product page URLs.';
+  }
+
+  static String buildCategoryMismatchMessage(
+    String lang,
+    Iterable<String> categories,
+  ) {
+    final labels = categories
+        .map((category) => category.trim())
+        .where((category) => category.isNotEmpty)
+        .toSet()
+        .join(', ');
+    return lang == 'tr'
+        ? '⚠️ Bu ürünler aynı kategoride değil. Sadece aynı kategorideki ürünleri karşılaştırabilirsiniz.${labels.isNotEmpty ? ' Algılanan kategoriler: $labels.' : ''}'
+        : '⚠️ These products are not in the same category. You can only compare products from the same category.${labels.isNotEmpty ? ' Detected categories: $labels.' : ''}';
+  }
+
   /// Phase 1: Scan ALL URLs → validate → generate quiz
   Future<void> startAnalysis(
     List<String> urls,
@@ -703,6 +747,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
 
     final localizedUser = user.copyWith(language: lang);
     final baseResults = <LinkAnalysisResult>[];
+    var invalidProductCount = 0;
 
     try {
       // Scan ALL URLs in parallel for speed
@@ -710,7 +755,9 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       for (int i = 0; i < urls.length; i++) {
         _updateStep(i, (s) => s.withActive());
         _behaviorTracking.trackLinkPaste(urls[i], null);
-        debugPrint('[Compare] Scanning URL ${i + 1}/${urls.length}: ${urls[i]}');
+        debugPrint(
+          '[Compare] Scanning URL ${i + 1}/${urls.length}: ${urls[i]}',
+        );
         futures.add(_aiRepo.analyzeLink(url: urls[i], user: localizedUser));
       }
 
@@ -723,12 +770,25 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
               _updateStep(i, (s) => s.withDone());
             } else {
               debugPrint('[Compare] URL ${urls[i]} is not a product, skipping');
+              invalidProductCount++;
               _updateStep(i, (s) => s.withError());
             }
           case Failure<LinkAnalysisResult>(error: final err):
             debugPrint('[Compare] URL ${urls[i]} failed: ${err.message}');
+            invalidProductCount++;
             _updateStep(i, (s) => s.withError());
         }
+      }
+
+      if (invalidProductCount > 0) {
+        state = state.copyWith(
+          phase: ComparePhase.idle,
+          error: buildUnrecognizedCompareProductsMessage(
+            lang,
+            invalidCount: invalidProductCount,
+          ),
+        );
+        return;
       }
 
       // Need at least 2 valid products for comparison
@@ -742,6 +802,18 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         return;
       }
 
+      final normalizedCategories = baseResults
+          .map((result) => normalizeCompareCategory(result.category))
+          .where((category) => category.isNotEmpty)
+          .toSet();
+      if (normalizedCategories.length > 1) {
+        state = state.copyWith(
+          phase: ComparePhase.idle,
+          error: buildCategoryMismatchMessage(lang, normalizedCategories),
+        );
+        return;
+      }
+
       // Check categories match (use first product's category)
       final primaryCategory = baseResults.first.category ?? 'general';
 
@@ -750,14 +822,20 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       _updateStep(quizStepIdx, (s) => s.withActive());
 
       debugPrint('[Compare] Generating quiz for category: $primaryCategory');
-      final allProductInfo = baseResults.map((r) => {
-        'title': r.metadata.title ?? 'Product',
-        'url': r.url,
-        'category': r.category ?? primaryCategory,
-      }).toList();
+      final allProductInfo = baseResults
+          .map(
+            (r) => {
+              'title': r.metadata.title ?? 'Product',
+              'url': r.url,
+              'category': r.category ?? primaryCategory,
+            },
+          )
+          .toList();
       final quiz = await _gemini.generateQuiz(
         category: primaryCategory,
-        productTitle: baseResults.map((r) => r.metadata.title ?? 'Product').join(' vs '),
+        productTitle: baseResults
+            .map((r) => r.metadata.title ?? 'Product')
+            .join(' vs '),
         url: urls.first,
         language: lang,
         allProducts: allProductInfo,
@@ -798,13 +876,23 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   Future<void> submitQuiz(UserEntity user, String lang) async {
     final localizedUser = user.copyWith(language: lang);
     state = state.copyWith(phase: ComparePhase.analyzing, progress: 0);
-    await _runAnalysis(localizedUser, state.quizAnswers, state.firstBaseResult, state.allBaseResults);
+    await _runAnalysis(
+      localizedUser,
+      state.quizAnswers,
+      state.firstBaseResult,
+      state.allBaseResults,
+    );
   }
 
   Future<void> skipQuiz(UserEntity user, String lang) async {
     final localizedUser = user.copyWith(language: lang);
     state = state.copyWith(phase: ComparePhase.analyzing, progress: 0);
-    await _runAnalysis(localizedUser, const [], state.firstBaseResult, state.allBaseResults);
+    await _runAnalysis(
+      localizedUser,
+      const [],
+      state.firstBaseResult,
+      state.allBaseResults,
+    );
   }
 
   /// Phase 2: Enhanced analysis on all pre-scanned products
@@ -827,10 +915,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
             'AI Analiz • ${baseResults[i].metadata.title?.split(' ').take(3).join(' ') ?? 'Ürün ${i + 1}'}',
             AnalysisStepType.aiAnalysis,
           ),
-        const AnalysisStep(
-          'Profil Eşleştirme',
-          AnalysisStepType.profileMatch,
-        ),
+        const AnalysisStep('Profil Eşleştirme', AnalysisStepType.profileMatch),
       ],
       progress: 0,
     );
@@ -853,26 +938,29 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     final enhancedFutures = <Future<EnhancedAnalysisResult>>[];
     for (int i = 0; i < baseResults.length; i++) {
       enhancedFutures.add(
-        _gemini.enhancedAnalysis(
-          baseResult: baseResults[i],
-          answeredQuestions: quizAnswers,
-          profile: user,
-        ).then((enhanced) {
-          debugPrint(
-            '[Compare] Score for "${baseResults[i].metadata.title}": enhanced=${enhanced.enhancedScore}',
-          );
-          _updateStep(i, (s) => s.withDone());
-          return enhanced;
-        }).catchError((e) {
-          debugPrint('[Compare] Enhanced analysis fallback: $e');
-          _updateStep(i, (s) => s.withDone());
-          return EnhancedAnalysisResult(
-            baseResult: baseResults[i],
-            enhancedScore: baseResults[i].aiScore,
-            factors: const [],
-            detailedVerdict: baseResults[i].aiAnalysis,
-          );
-        }),
+        _gemini
+            .enhancedAnalysis(
+              baseResult: baseResults[i],
+              answeredQuestions: quizAnswers,
+              profile: user,
+            )
+            .then((enhanced) {
+              debugPrint(
+                '[Compare] Score for "${baseResults[i].metadata.title}": enhanced=${enhanced.enhancedScore}',
+              );
+              _updateStep(i, (s) => s.withDone());
+              return enhanced;
+            })
+            .catchError((e) {
+              debugPrint('[Compare] Enhanced analysis fallback: $e');
+              _updateStep(i, (s) => s.withDone());
+              return EnhancedAnalysisResult(
+                baseResult: baseResults[i],
+                enhancedScore: baseResults[i].aiScore,
+                factors: const [],
+                detailedVerdict: baseResults[i].aiAnalysis,
+              );
+            }),
       );
     }
 
@@ -884,7 +972,9 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     await Future.delayed(const Duration(milliseconds: 500));
     _updateStep(profileIdx, (s) => s.withDone());
 
-    debugPrint('[Compare] Done: ${results.length}/${baseResults.length} succeeded');
+    debugPrint(
+      '[Compare] Done: ${results.length}/${baseResults.length} succeeded',
+    );
 
     // Save each analyzed product
     for (final r in results) {
@@ -940,6 +1030,10 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
 
   void reset() {
     state = const CompareAnalysisState();
+  }
+
+  void showValidationError(String error, {List<String> validUrls = const []}) {
+    state = CompareAnalysisState(error: error, validUrls: validUrls);
   }
 
   void restoreFromHistory(List<EnhancedAnalysisResult> results) {
@@ -1120,8 +1214,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error:
-            'Daily subscription analysis limit reached. Upgrade to Premium!',
+        error: 'Daily subscription analysis limit reached. Upgrade to Premium!',
       );
       return;
     }
@@ -1153,8 +1246,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error:
-            'Daily subscription analysis limit reached. Upgrade to Premium!',
+        error: 'Daily subscription analysis limit reached. Upgrade to Premium!',
       );
       return;
     }
