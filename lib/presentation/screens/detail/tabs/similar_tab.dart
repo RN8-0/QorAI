@@ -97,7 +97,7 @@ class _SimilarProductsSection extends ConsumerWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 0.72,
+                childAspectRatio: 0.82,
               ),
               itemCount: top.length,
               itemBuilder: (context, i) => _SimilarGridCard(product: top[i]),

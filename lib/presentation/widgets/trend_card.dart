@@ -58,6 +58,9 @@ class TrendCard extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: product.imageUrl!,
                             fit: BoxFit.contain,
+                            memCacheWidth: 600,
+                            maxWidthDiskCache: 600,
+                            fadeInDuration: const Duration(milliseconds: 100),
                             placeholder: (_, __) => Center(
                               child: Icon(
                                 Icons.image_outlined,

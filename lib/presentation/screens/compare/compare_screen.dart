@@ -45,6 +45,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:compair/services/spec_translation_service.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/presentation/widgets/login_required_dialog.dart';
+import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';
@@ -644,135 +645,67 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             // Search bar — hide when all 4 slots filled
             if (!allFilled)
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-                child: Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: isDark
-                          ? const [
-                              Color(0xFF101A2A),
-                              Color(0xFF0B1320),
-                              Color(0xFF08101B),
-                            ]
-                          : const [Color(0xFFFFFFFF), Color(0xFFF3F8FF)],
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                child: AnimatedGradientInputShell(
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    onChanged: _onSearchChanged,
+                    onTapOutside: (_) => _searchFocusNode.unfocus(),
+                    style: GoogleFonts.inter(
+                      color: context.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
                     ),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: AppTheme.brandBlue.withValues(
-                        alpha: isDark ? 0.22 : 0.12,
+                    decoration: InputDecoration(
+                      hintText:
+                          context.l10n?.searchCompareHint ??
+                          'Search products to compare...',
+                      hintStyle: GoogleFonts.inter(
+                        color: context.textTertiaryColor.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
                       ),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.brandBlue.withValues(
-                          alpha: isDark ? 0.14 : 0.08,
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 14, right: 8),
+                        child: Icon(
+                          Icons.search_rounded,
+                          color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                          size: 18,
                         ),
-                        blurRadius: isDark ? 22 : 16,
-                        offset: const Offset(0, 8),
                       ),
-                      BoxShadow(
-                        color: AppTheme.brandCyan.withValues(
-                          alpha: isDark ? 0.06 : 0.03,
-                        ),
-                        blurRadius: 28,
-                        spreadRadius: -8,
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 0,
+                        minHeight: 0,
                       ),
-                    ],
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.black.withValues(alpha: 0.18)
-                          : Colors.white.withValues(alpha: 0.84),
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      onChanged: _onSearchChanged,
-                      onTapOutside: (_) => _searchFocusNode.unfocus(),
-                      cursorColor: AppTheme.brandCyan,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: context.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      decoration: InputDecoration(
-                        hintText:
-                            context.l10n?.searchCompareHint ??
-                            'Search products to compare...',
-                        hintStyle: GoogleFonts.plusJakartaSans(
-                          color: context.textTertiaryColor,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        prefixIcon: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  AppTheme.brandBlue,
-                                  AppTheme.brandDeepBlue,
-                                  AppTheme.brandCyan,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
                                   color: AppTheme.brandBlue.withValues(
-                                    alpha: 0.32,
+                                    alpha: 0.1,
                                   ),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.search_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                        prefixIconConstraints: const BoxConstraints(
-                          minWidth: 60,
-                          minHeight: 58,
-                        ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: IconButton(
-                                  icon: Icon(
-                                    Icons.close_rounded,
-                                    size: 18,
-                                    color: context.textSecondary,
-                                  ),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: AppTheme.brandBlue
-                                        .withValues(
-                                          alpha: isDark ? 0.12 : 0.08,
-                                        ),
-                                  ),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    _onSearchChanged('');
-                                  },
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  color: AppTheme.brandBlue,
+                                  size: 16,
                                 ),
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 18,
-                        ),
+                              ),
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      filled: false,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 0,
+                        vertical: 12,
                       ),
                     ),
                   ),

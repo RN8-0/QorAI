@@ -134,6 +134,9 @@ class _ViewedProductCard extends ConsumerWidget {
                     ? CachedNetworkImage(
                         imageUrl: product.imageURL,
                         fit: BoxFit.cover,
+                        memCacheWidth: 192,
+                        maxWidthDiskCache: 192,
+                        fadeInDuration: const Duration(milliseconds: 100),
                         placeholder: (_, __) => Icon(
                           Icons.devices_rounded,
                           color:

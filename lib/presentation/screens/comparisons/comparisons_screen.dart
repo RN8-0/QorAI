@@ -429,6 +429,10 @@ class _ProductThumb extends StatelessWidget {
         child: CachedNetworkImage(
           imageUrl: product!.imageURL,
           fit: BoxFit.contain,
+          memCacheWidth: 168,
+          maxWidthDiskCache: 168,
+          fadeInDuration: const Duration(milliseconds: 100),
+          placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
           errorWidget: (context, url, error) => Icon(
             Icons.image_outlined,
             size: 20,

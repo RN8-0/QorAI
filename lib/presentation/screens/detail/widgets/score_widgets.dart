@@ -61,6 +61,11 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
   String? _lastRequestedLanguage;
   bool _reasonExpanded = false;
 
+  // Memoize fit score so we don't re-run the algorithm on every rebuild
+  // (provider watches cause frequent rebuilds — esp. during route anim).
+  int? _cachedFitScore;
+  String? _cachedFitScoreKey;
+
   void _triggerGeminiFetch(LocalizedProductKey cacheKey) {
     if (_lastRequestedLanguage == cacheKey.normalizedLanguageCode) return;
     _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
@@ -87,20 +92,28 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final user = userAsync.valueOrNull;
     final quizDone = user != null && user.quizCompleted;
 
-    // Local instant score calculation
+    // Local instant score calculation — memoized by (productId | userUpdatedAt | behavior hash)
     int? localFitScore;
     if (quizDone && user != null) {
       final behaviorAsync = ref.watch(behaviorSignalsProvider);
       final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
-      final algo = ProfileAlgorithmService();
-      localFitScore = algo
-          .calculateTotalFitScore(
-            user: user,
-            product: widget.product,
-            behavior: behavior,
-          )
-          .round()
-          .clamp(0, 100);
+      final memoKey = '${widget.product.id}|${user.uid}|${user.quizCompleted}|'
+          '${behavior.hashCode}';
+      if (_cachedFitScoreKey == memoKey && _cachedFitScore != null) {
+        localFitScore = _cachedFitScore;
+      } else {
+        final algo = ProfileAlgorithmService();
+        localFitScore = algo
+            .calculateTotalFitScore(
+              user: user,
+              product: widget.product,
+              behavior: behavior,
+            )
+            .round()
+            .clamp(0, 100);
+        _cachedFitScore = localFitScore;
+        _cachedFitScoreKey = memoKey;
+      }
     }
 
     // Trigger DeepSeek fetch for reason text (background enrichment)

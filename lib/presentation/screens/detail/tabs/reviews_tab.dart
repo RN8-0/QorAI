@@ -1283,6 +1283,9 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                 if (isOwner && widget.currentUserPhotoUrl != null) {
                   avatarWidget = CachedNetworkImage(
                     imageUrl: widget.currentUserPhotoUrl!,
+                    memCacheWidth: 132,
+                    maxWidthDiskCache: 132,
+                    fadeInDuration: const Duration(milliseconds: 100),
                     imageBuilder: (_, img) =>
                         CircleAvatar(radius: 22, backgroundImage: img),
                     errorWidget: (_, __, ___) => ClipOval(

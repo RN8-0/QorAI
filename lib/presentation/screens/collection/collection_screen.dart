@@ -393,6 +393,9 @@ class _ProductCard extends ConsumerWidget {
                           ? CachedNetworkImage(
                               imageUrl: product.imageURL,
                               fit: BoxFit.contain,
+                              memCacheWidth: 500,
+                              maxWidthDiskCache: 500,
+                              fadeInDuration: const Duration(milliseconds: 100),
                               placeholder: (_, __) => Center(
                                 child: Icon(
                                   Icons.image_outlined,

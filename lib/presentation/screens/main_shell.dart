@@ -260,9 +260,21 @@ class _FloatingNavBar extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusXXL),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-          child: Container(
+        // Light mode bg is 96% opaque, blur is imperceptible — skip it.
+        // Dark mode keeps a cheaper 10-sigma blur for glass feel.
+        child: (isDark
+            ? BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: _navBarInner(context, items, isDark),
+              )
+            : _navBarInner(context, items, isDark)),
+      ),
+    ),
+    );
+  }
+
+  Widget _navBarInner(BuildContext context, List<_NavItem> items, bool isDark) {
+    return Container(
             decoration: BoxDecoration(
               color: isDark
                   ? AppTheme.brandDark.withValues(alpha: 0.88)
@@ -428,11 +440,7 @@ class _FloatingNavBar extends StatelessWidget {
                   );
               }),
             ),
-          ),
-        ),
-      ),
-      ),
-    );
+          );
   }
 }
 

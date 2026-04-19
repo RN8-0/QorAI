@@ -18,7 +18,7 @@ class ProductImageBox extends StatefulWidget {
     required this.imageUrl,
     this.fallbackUrls = const [],
     this.width,
-    this.height = 120,
+    this.height,
     this.borderRadius,
     this.fit = BoxFit.contain,
     this.padding = const EdgeInsets.all(8),
@@ -28,7 +28,8 @@ class ProductImageBox extends StatefulWidget {
   /// Additional URLs to try if [imageUrl] fails (e.g. product.images list).
   final List<String> fallbackUrls;
   final double? width;
-  final double height;
+  /// If null, fills parent vertical space (caller must provide constraints).
+  final double? height;
   final BorderRadius? borderRadius;
   final BoxFit fit;
   final EdgeInsetsGeometry padding;
@@ -83,17 +84,19 @@ class _ProductImageBoxState extends State<ProductImageBox> {
 
     if (_urls.isNotEmpty && _idx < _urls.length) {
       final url = _urls[_idx];
+      // Decode to physical pixels, not logical — halves memory vs full-res.
+      final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
+      final targetH = widget.height ?? 140.0;
+      final cacheW = (targetH * dpr).round().clamp(120, 900);
       imageWidget = CachedNetworkImage(
         key: ValueKey(url),
         imageUrl: url,
         fit: widget.fit,
-        placeholder: (_, __) => const Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 1.5),
-          ),
-        ),
+        memCacheWidth: cacheW,
+        maxWidthDiskCache: cacheW,
+        fadeInDuration: const Duration(milliseconds: 120),
+        fadeOutDuration: Duration.zero,
+        placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
         errorWidget: (context, url, error) {
           _onError(url);
           return const Icon(

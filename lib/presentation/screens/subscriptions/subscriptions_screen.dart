@@ -19,6 +19,7 @@ import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:compair/presentation/screens/subscriptions/subscription_history_screen.dart';
 
@@ -1040,141 +1041,104 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Animated gradient border input
-        AnimatedBuilder(
-          animation: _orbController,
-          builder: (context, child) {
-            return Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: SweepGradient(
-                  colors: const [
-                    _kPrimary,
-                    _kSecondary,
-                    _kAccent,
-                    _kDeep,
-                    _kPrimary,
-                  ],
-                  transform: GradientRotation(_orbController.value * 2 * pi),
-                ),
-              ),
-              child: child,
-            );
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Column(
-              children: [
-                // Chips row
-                if (_chips.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 14,
-                      right: 14,
-                      top: 10,
-                    ),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: _chips.map((c) {
-                        return Chip(
-                          label: Text(
-                            c,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _kPrimary,
-                            ),
-                          ),
-                          deleteIcon: const Icon(
-                            Icons.close_rounded,
-                            size: 16,
+        AnimatedGradientInputShell(
+          topContent: _chips.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 14, top: 10),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: _chips.map((c) {
+                      return Chip(
+                        label: Text(
+                          c,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                             color: _kPrimary,
                           ),
-                          onDeleted: () => _removeChip(c),
-                          backgroundColor: _kPrimary.withValues(alpha: 0.08),
-                          side: BorderSide(
-                            color: _kPrimary.withValues(alpha: 0.3),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        );
-                      }).toList(),
+                        ),
+                        deleteIcon: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: _kPrimary,
+                        ),
+                        onDeleted: () => _removeChip(c),
+                        backgroundColor: _kPrimary.withValues(alpha: 0.08),
+                        side: BorderSide(color: _kPrimary.withValues(alpha: 0.3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                )
+              : null,
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _inputCtrl,
+            builder: (context, value, _) {
+              return TextField(
+                controller: _inputCtrl,
+                focusNode: _inputFocus,
+                style: GoogleFonts.inter(
+                  color: context.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: _chips.isEmpty
+                      ? (context.l10n?.subscriptionInputHint ??
+                            'Type a subscription (e.g. Netflix)')
+                      : (context.l10n?.addAnotherSubscription ??
+                            'Add another…'),
+                  hintStyle: GoogleFonts.inter(
+                    color: context.textTertiaryColor.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w400,
+                    fontSize: 13,
+                  ),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 14, right: 8),
+                    child: Icon(
+                      Icons.subscriptions_rounded,
+                      color: _kPrimary.withValues(alpha: 0.7),
+                      size: 18,
                     ),
                   ),
-                // Text field with isolated suffix rebuild
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _inputCtrl,
-                  builder: (context, value, _) {
-                    return TextField(
-                      controller: _inputCtrl,
-                      focusNode: _inputFocus,
-                      style: GoogleFonts.inter(
-                        color: context.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: _chips.isEmpty
-                            ? (context.l10n?.subscriptionInputHint ??
-                                  'Type a subscription (e.g. Netflix)')
-                            : (context.l10n?.addAnotherSubscription ??
-                                  'Add another…'),
-                        hintStyle: GoogleFonts.inter(
-                          color: context.textTertiaryColor.withValues(alpha: 0.6),
-                          fontWeight: FontWeight.w400,
-                          fontSize: 13,
-                        ),
-                        prefixIcon: Padding(
-                          padding: const EdgeInsets.only(left: 14, right: 8),
-                          child: Icon(
-                            Icons.subscriptions_rounded,
-                            color: _kPrimary.withValues(alpha: 0.7),
-                            size: 18,
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 0,
+                    minHeight: 0,
+                  ),
+                  suffixIcon: value.text.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () => _addChip(_inputCtrl.text),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: _kPrimary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.add_rounded,
+                              color: _kPrimary,
+                              size: 16,
+                            ),
                           ),
-                        ),
-                        prefixIconConstraints: const BoxConstraints(
-                          minWidth: 0,
-                          minHeight: 0,
-                        ),
-                        suffixIcon: value.text.isNotEmpty
-                            ? GestureDetector(
-                                onTap: () => _addChip(_inputCtrl.text),
-                                child: Container(
-                                  margin: const EdgeInsets.only(right: 8),
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: _kPrimary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add_rounded,
-                                    color: _kPrimary,
-                                    size: 16,
-                                  ),
-                                ),
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        filled: false,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 0,
-                          vertical: 12,
-                        ),
-                      ),
-                  onSubmitted: (v) {
-                    if (v.trim().isNotEmpty) _addChip(v);
-                  },
-                  textInputAction: TextInputAction.done,
-                );
-                  },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: 12,
+                  ),
                 ),
-              ],
-            ),
+                onSubmitted: (v) {
+                  if (v.trim().isNotEmpty) _addChip(v);
+                },
+                textInputAction: TextInputAction.done,
+              );
+            },
           ),
         ),
 

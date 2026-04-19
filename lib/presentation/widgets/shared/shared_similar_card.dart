@@ -38,89 +38,85 @@ class SharedSimilarGridCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image section
-            Stack(children: [
-              Container(
-                height: 100, width: double.infinity,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: imageBg,
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16))),
-                child: ProductImageBox(
-                  imageUrl: product.imageUrl,
-                  fallbackUrls: product.images,
-                  height: 88,
-                  borderRadius: BorderRadius.circular(10),
-                  padding: EdgeInsets.zero,
-                ),
-              ),
-              if (product.techScore > 0)
-                Positioned(top: 7, right: 7, child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentCyan.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppTheme.accentCyan.withValues(alpha: 0.3),
-                      width: 0.5)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.local_fire_department_rounded,
-                        size: 10, color: AppTheme.accentCyan),
-                    const SizedBox(width: 2),
-                    Text('${product.techScore.toInt()}',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10, fontWeight: FontWeight.w700,
-                            color: AppTheme.accentCyan)),
-                  ]),
-                )),
-            ]),
-            // Details section
+            // Image section — fills remaining vertical space so button
+            // always sits at the bottom regardless of name length.
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (product.brand != null && product.brand!.isNotEmpty)
-                          Text(product.brand!.toUpperCase(),
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 9, fontWeight: FontWeight.w600,
-                                  color: AppTheme.accentCyan,
-                                  letterSpacing: 0.6),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 2),
-                        Text(product.name,
-                            maxLines: 2, overflow: TextOverflow.ellipsis,
-                            softWrap: true,
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12, fontWeight: FontWeight.w700,
-                                color: context.textPrimary,
-                                height: 1.15)),
-                      ],
-                    ),
-                    SizedBox(
-                      width: double.infinity,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(12)),
-                        child: Text(
-                            context.l10n?.viewDetails ?? 'View Details',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10, fontWeight: FontWeight.w600,
-                                color: Colors.white)),
-                      ),
-                    ),
-                  ],
+              child: Stack(children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: imageBg,
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16))),
+                  child: ProductImageBox(
+                    imageUrl: product.imageUrl,
+                    fallbackUrls: product.images,
+                    borderRadius: BorderRadius.circular(10),
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
+                if (product.techScore > 0)
+                  Positioned(top: 7, right: 7, child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentCyan.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.accentCyan.withValues(alpha: 0.3),
+                        width: 0.5)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.local_fire_department_rounded,
+                          size: 10, color: AppTheme.accentCyan),
+                      const SizedBox(width: 2),
+                      Text('${product.techScore.toInt()}',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              color: AppTheme.accentCyan)),
+                    ]),
+                  )),
+              ]),
+            ),
+            // Details section — tight layout, button directly under name
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (product.brand != null && product.brand!.isNotEmpty)
+                    Text(product.brand!.toUpperCase(),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9, fontWeight: FontWeight.w600,
+                            color: AppTheme.accentCyan,
+                            letterSpacing: 0.6),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(product.name,
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      softWrap: true,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12, fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                          height: 1.15)),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(12)),
+                      child: Text(
+                          context.l10n?.viewDetails ?? 'View Details',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10, fontWeight: FontWeight.w600,
+                              color: Colors.white)),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

@@ -77,12 +77,10 @@ class _HeroHeaderState extends State<_HeroHeader> {
                                   child: CachedNetworkImage(
                                     imageUrl: allImages[i],
                                     fit: BoxFit.contain,
-                                    placeholder: (_, __) => const Center(
-                                      child: SizedBox(
-                                        width: 16, height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.slate600),
-                                      ),
-                                    ),
+                                    memCacheWidth: 180,
+                                    maxWidthDiskCache: 180,
+                                    fadeInDuration: const Duration(milliseconds: 100),
+                                    placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
                                     errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: AppTheme.slate600, size: 20),
                                   ),
                                 ),
@@ -126,9 +124,10 @@ class _HeroHeaderState extends State<_HeroHeader> {
                                     key: ValueKey(_selectedIndex),
                                     imageUrl: allImages[_selectedIndex],
                                     fit: BoxFit.contain,
-                                    placeholder: (_, __) => const Center(
-                                      child: CircularProgressIndicator(color: AppTheme.slate600, strokeWidth: 2),
-                                    ),
+                                    memCacheWidth: 900,
+                                    maxWidthDiskCache: 900,
+                                    fadeInDuration: const Duration(milliseconds: 120),
+                                    placeholder: (_, __) => const ColoredBox(color: Colors.white),
                                     errorWidget: (_, __, ___) =>
                                         _CategoryEmoji(cat: widget.product.categoryId),
                                   ),

@@ -56,17 +56,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     super.initState();
     _initSw.start();
     debugPrint('=== COMPAIR: HomeScreen initState ===');
+    // Hero carousel is not currently mounted (dead code path);
+    // controllers kept idle to avoid wasted frames / timer callbacks.
     _heroCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 12),
-    )..repeat(reverse: true);
+    );
     _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
     _currentHeroPage = _savedHeroPage;
     _heroPageCtrl = PageController(
       viewportFraction: 0.92,
       initialPage: _currentHeroPage,
     );
-    _startHeroAutoScroll();
   }
 
   void _startHeroAutoScroll() {
@@ -512,6 +513,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             width: 38,
             height: 38,
             fit: BoxFit.cover,
+            memCacheWidth: 114,
+            maxWidthDiskCache: 114,
+            fadeInDuration: const Duration(milliseconds: 100),
             errorWidget: (_, __, ___) =>
                 _buildAvatarFallback(hasSignedInUser: user != null),
           );
@@ -531,6 +535,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           width: 38,
           height: 38,
           fit: BoxFit.cover,
+          memCacheWidth: 114,
+          maxWidthDiskCache: 114,
+          fadeInDuration: const Duration(milliseconds: 100),
           errorWidget: (_, __, ___) =>
               _buildAvatarFallback(hasSignedInUser: true),
         );
@@ -625,6 +632,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             child: CachedNetworkImage(
                               imageUrl: heroImage,
                               fit: BoxFit.cover,
+                              memCacheWidth: 1200,
+                              maxWidthDiskCache: 1200,
+                              fadeInDuration: const Duration(milliseconds: 150),
                               errorWidget: (_, __, ___) =>
                                   const SizedBox.shrink(),
                             ),
@@ -1018,11 +1028,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       }
                       return GestureDetector(
                         onTap: () => context.push('/product/${p.id}'),
-                        child: AnimatedBuilder(
-                          animation: _heroCtrl,
-                          builder: (context, child) {
-                            final t = _heroCtrl.value;
-                            return Transform.scale(
+                        child: Transform.scale(
                               scale: scale,
                               child: Container(
                                 margin: const EdgeInsets.symmetric(
@@ -1093,13 +1099,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                                   BorderRadius.circular(14),
                                             ),
                                             padding: const EdgeInsets.all(8),
-                                            child: Transform.translate(
-                                              offset: Offset(
-                                                0,
-                                                -3 + (6 * sin(t * pi)),
-                                              ),
-                                              child: p.imageURL.isNotEmpty
-                                                  ? ProductImageBox(
+                                            child: p.imageURL.isNotEmpty
+                                                ? AnimatedBuilder(
+                                                    animation: _heroCtrl,
+                                                    child: ProductImageBox(
                                                       imageUrl: p.imageURL,
                                                       height: 143,
                                                       borderRadius:
@@ -1107,9 +1110,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                                             10,
                                                           ),
                                                       padding: EdgeInsets.zero,
-                                                    )
-                                                  : const SizedBox(),
-                                            ),
+                                                    ),
+                                                    builder: (_, child) =>
+                                                        Transform.translate(
+                                                      offset: Offset(
+                                                        0,
+                                                        -3 +
+                                                            (6 *
+                                                                sin(_heroCtrl
+                                                                        .value *
+                                                                    pi)),
+                                                      ),
+                                                      child: child,
+                                                    ),
+                                                  )
+                                                : const SizedBox(),
                                           ),
                                           const SizedBox(width: 16),
                                           // Details right
@@ -1257,9 +1272,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   ],
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            ),
                       ).animate().fadeIn(duration: 400.ms);
                     },
                   ),
@@ -4175,6 +4188,9 @@ class _CmpImg extends StatelessWidget {
             ? CachedNetworkImage(
                 imageUrl: url,
                 fit: BoxFit.contain,
+                memCacheWidth: 150,
+                maxWidthDiskCache: 150,
+                fadeInDuration: const Duration(milliseconds: 100),
                 errorWidget: (_, __, ___) => Icon(
                   Icons.devices,
                   size: 28,

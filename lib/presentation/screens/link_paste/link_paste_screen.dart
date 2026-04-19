@@ -24,6 +24,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:compair/presentation/screens/link_paste/link_analysis_history_screen.dart';
 import 'package:compair/core/constants.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
 
 // ── Part files ──
 part 'widgets/quiz_widgets.dart';
@@ -258,128 +259,62 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
-  Widget _buildAutoPasteHint() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.brandCyan.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.16)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.bolt_rounded, size: 16, color: AppTheme.brandCyan),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _linkText(
-                context,
-                tr: 'Kutucuğa dokun, panodaki son link otomatik dolsun.',
-                en: 'Tap the field to auto-fill your latest copied link.',
-              ),
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                height: 1.4,
-                fontWeight: FontWeight.w600,
-                color: context.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildModernUrlField({
     required TextEditingController controller,
     required FocusNode focusNode,
     required String hintText,
-    required Widget leading,
+    required IconData prefixIconData,
     Widget? trailing,
     TextInputAction textInputAction = TextInputAction.next,
     ValueChanged<String>? onSubmitted,
-    double minHeight = 64,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      constraints: BoxConstraints(minHeight: minHeight),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF0D1826), Color(0xFF0B1220), Color(0xFF08111B)]
-              : const [Color(0xFFFFFFFF), Color(0xFFF3F8FF)],
+    return AnimatedGradientInputShell(
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: TextInputType.url,
+        textInputAction: textInputAction,
+        autocorrect: false,
+        enableSuggestions: false,
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: context.textPrimary,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.22 : 0.12),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.16 : 0.08),
-            blurRadius: isDark ? 24 : 16,
-            offset: const Offset(0, 10),
+        onTap: () => _handleAutoPasteTap(controller, focusNode: focusNode),
+        onTapOutside: (_) => focusNode.unfocus(),
+        onSubmitted: onSubmitted,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            color: context.textTertiaryColor.withValues(alpha: 0.6),
           ),
-          BoxShadow(
-            color: AppTheme.brandCyan.withValues(alpha: isDark ? 0.08 : 0.03),
-            blurRadius: 28,
-            spreadRadius: -8,
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 14, right: 8),
+            child: Icon(
+              prefixIconData,
+              color: AppTheme.brandBlue.withValues(alpha: 0.7),
+              size: 18,
+            ),
           ),
-        ],
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.black.withValues(alpha: 0.16)
-              : Colors.white.withValues(alpha: 0.84),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-              child: leading,
-            ),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                keyboardType: TextInputType.url,
-                textInputAction: textInputAction,
-                autocorrect: false,
-                enableSuggestions: false,
-                cursorColor: AppTheme.brandCyan,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: context.textPrimary,
-                ),
-                onTap: () =>
-                    _handleAutoPasteTap(controller, focusNode: focusNode),
-                onTapOutside: (_) => focusNode.unfocus(),
-                onSubmitted: onSubmitted,
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: context.textTertiaryColor,
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                ),
-              ),
-            ),
-            if (trailing != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: trailing,
-              ),
-          ],
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 0,
+            minHeight: 0,
+          ),
+          suffixIcon: trailing != null
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: trailing,
+                )
+              : null,
+          border: InputBorder.none,
+          filled: false,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 0,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -1002,33 +937,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildAutoPasteHint(),
-                const SizedBox(height: 14),
                 _buildModernUrlField(
                   controller: _singleUrlController,
                   focusNode: _singleFocusNode,
                   textInputAction: TextInputAction.go,
                   hintText: 'https://www.amazon.com/product...',
                   onSubmitted: (_) => _startSingleAnalysis(),
-                  leading: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          AppTheme.brandBlue,
-                          AppTheme.brandDeepBlue,
-                          AppTheme.brandCyan,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.link_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
+                  prefixIconData: Icons.link_rounded,
                 ),
                 const SizedBox(height: 14),
                 // Supported stores text
@@ -1284,8 +1199,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildAutoPasteHint(),
-                const SizedBox(height: 14),
                 // URL input fields (2-4)
                 ...List.generate(
                   _visibleCompareFields,
@@ -1414,30 +1327,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       hintText:
           context.l10n?.pasteProductUrlNumbered(index + 1) ??
           'Paste product URL ${index + 1}...',
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              AppTheme.brandBlue,
-              AppTheme.brandDeepBlue,
-              AppTheme.brandCyan,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Center(
-          child: Text(
-            '${index + 1}',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ),
+      prefixIconData: Icons.link_rounded,
       trailing: _visibleCompareFields > 2
           ? IconButton(
               icon: Icon(
@@ -1460,22 +1350,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 });
               },
             )
-          : Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.brandCyan.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: AppTheme.brandCyan.withValues(alpha: 0.16),
-                ),
-              ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                color: AppTheme.brandCyan,
-                size: 18,
-              ),
-            ),
+          : null,
     );
   }
 

@@ -114,6 +114,9 @@ class _DetailBody extends ConsumerStatefulWidget {
 class _DetailBodyState extends ConsumerState<_DetailBody> {
   String? _lastPrefetchedMatchKey;
   bool _tabViewReady = false;
+  // Defer overview content (variants, description, pros/cons) to post-frame
+  // so the first frame after navigation is minimal and doesn't stutter.
+  bool _contentReady = false;
 
   @override
   void initState() {
@@ -121,6 +124,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     _syncAiPageContext();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Overview renders on next frame — keeps navigation smooth.
+      setState(() => _contentReady = true);
       _prefetchMatchScoreOnce();
       // Listen to route push animation; enable tabs after animation completes
       final route = ModalRoute.of(context);
@@ -299,11 +304,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             ),
             // Overview content — always visible above tabs
             SliverToBoxAdapter(
-              child: _OverviewContent(
-                product: product,
-                country: country,
-                isDark: isDark,
-              ),
+              child: _contentReady
+                  ? _OverviewContent(
+                      product: product,
+                      country: country,
+                      isDark: isDark,
+                    )
+                  : const SizedBox(height: 80),
             ),
             SliverPersistentHeader(
               pinned: true,
