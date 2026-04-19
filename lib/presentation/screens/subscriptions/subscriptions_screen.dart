@@ -1115,91 +1115,99 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   ),
                 )
               : null,
-          child: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _inputCtrl,
-            builder: (context, value, _) {
-              return TextField(
-                controller: _inputCtrl,
-                focusNode: _inputFocus,
-                enabled: !_validatingChip,
-                style: GoogleFonts.inter(
-                  color: context.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  hintText: _chips.isEmpty
-                      ? (context.l10n?.subscriptionInputHint ??
-                            'Type a subscription (e.g. Netflix)')
-                      : (context.l10n?.addAnotherSubscription ??
-                            'Add another…'),
-                  hintStyle: GoogleFonts.inter(
-                    color: context.textTertiaryColor.withValues(alpha: 0.6),
-                    fontWeight: FontWeight.w400,
-                    fontSize: 13,
-                  ),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(left: 14, right: 8),
-                    child: Icon(
-                      Icons.subscriptions_rounded,
-                      color: _kPrimary.withValues(alpha: 0.7),
-                      size: 18,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _inputCtrl,
+                builder: (context, value, _) {
+                  return TextField(
+                    controller: _inputCtrl,
+                    focusNode: _inputFocus,
+                    enabled: !_validatingChip,
+                    style: GoogleFonts.inter(
+                      color: _validatingChip
+                          ? Colors.transparent
+                          : context.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: _chips.isEmpty
+                          ? (context.l10n?.subscriptionInputHint ??
+                                'Type a subscription (e.g. Netflix)')
+                          : (context.l10n?.addAnotherSubscription ??
+                                'Add another…'),
+                      hintStyle: GoogleFonts.inter(
+                        color: _validatingChip
+                            ? Colors.transparent
+                            : context.textTertiaryColor.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 14, right: 8),
+                        child: Icon(
+                          Icons.subscriptions_rounded,
+                          color: _kPrimary.withValues(alpha: 0.7),
+                          size: 18,
+                        ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 0,
+                        minHeight: 0,
+                      ),
+                      suffixIcon: !_validatingChip && value.text.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () => _addChipAsync(_inputCtrl.text),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: _kPrimary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.add_rounded,
+                                  color: _kPrimary,
+                                  size: 16,
+                                ),
+                              ),
+                            )
+                          : null,
+                      suffixIconConstraints: const BoxConstraints(
+                        maxWidth: 44,
+                        maxHeight: 44,
+                      ),
+                      border: InputBorder.none,
+                      filled: false,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 0,
+                        vertical: 12,
+                      ),
+                    ),
+                    onSubmitted: (v) {
+                      if (v.trim().isNotEmpty) _addChipAsync(v);
+                    },
+                    textInputAction: TextInputAction.done,
+                  );
+                },
+              ),
+              // Centered spinner overlay while validating
+              if (_validatingChip)
+                IgnorePointer(
+                  child: Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _kPrimary.withValues(alpha: 0.85),
+                      ),
                     ),
                   ),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 0,
-                    minHeight: 0,
-                  ),
-                  suffixIcon: _validatingChip
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: Center(
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.8,
-                                color: _kPrimary.withValues(alpha: 0.7),
-                              ),
-                            ),
-                          ),
-                        )
-                      : value.text.isNotEmpty
-                      ? GestureDetector(
-                          onTap: () => _addChipAsync(_inputCtrl.text),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: _kPrimary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.add_rounded,
-                              color: _kPrimary,
-                              size: 16,
-                            ),
-                          ),
-                        )
-                      : null,
-                  suffixIconConstraints: const BoxConstraints(
-                    maxWidth: 44,
-                    maxHeight: 44,
-                  ),
-                  border: InputBorder.none,
-                  filled: false,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 0,
-                    vertical: 12,
-                  ),
                 ),
-                onSubmitted: (v) {
-                  if (v.trim().isNotEmpty) _addChipAsync(v);
-                },
-                textInputAction: TextInputAction.done,
-              );
-            },
+            ],
           ),
         ),
 
@@ -2063,15 +2071,15 @@ class _SubResultView extends StatelessWidget {
       case 'video-streaming':
         return _txt(context, tr: 'Video Platformu', en: 'Video Streaming');
       case 'music-streaming':
-        return _txt(context, tr: 'Muzik Platformu', en: 'Music Streaming');
+        return _txt(context, tr: 'Müzik Platformu', en: 'Music Streaming');
       case 'gaming':
         return _txt(context, tr: 'Oyun Platformu', en: 'Gaming');
       case 'ai-tools':
-        return _txt(context, tr: 'AI Araci', en: 'AI Tool');
+        return _txt(context, tr: 'AI Aracı', en: 'AI Tool');
       case 'cloud-storage':
         return _txt(context, tr: 'Bulut Depolama', en: 'Cloud Storage');
       case 'productivity':
-        return _txt(context, tr: 'Uretkenlik', en: 'Productivity');
+        return _txt(context, tr: 'Üretkenlik', en: 'Productivity');
       case 'bundles':
         return _txt(context, tr: 'Paket Abonelik', en: 'Bundle');
       default:
@@ -2162,7 +2170,7 @@ class _SubResultView extends StatelessWidget {
     final hasStructured = subs.isNotEmpty;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── Winner Banner (if comparing) ──
         if (hasStructured && winner.isNotEmpty) ...[
@@ -2381,84 +2389,146 @@ class _SubResultView extends StatelessWidget {
   }
 
   Widget _buildWinnerBanner(BuildContext context, Map<String, dynamic> winner) {
-    return GlassContainer(
-          padding: const EdgeInsets.all(20),
+    final winnerName = _displayName(winner['overall'] as String? ?? '');
+    final isDark = context.isDarkMode;
+    return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [
+                      const Color(0xFFFFB800).withValues(alpha: 0.14),
+                      const Color(0xFFFF6B00).withValues(alpha: 0.08),
+                    ]
+                  : [
+                      const Color(0xFFFFB800).withValues(alpha: 0.10),
+                      const Color(0xFFFF8C00).withValues(alpha: 0.06),
+                    ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: const Color(0xFFFFB800).withValues(
+                alpha: isDark ? 0.25 : 0.20,
+              ),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFB800).withValues(alpha: 0.10),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('🏆', style: TextStyle(fontSize: 40)),
-              const SizedBox(height: 8),
+              // Trophy
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFB800).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text('🏆', style: TextStyle(fontSize: 32)),
+                ),
+              ),
+              const SizedBox(height: 14),
               Text(
-                _displayName(winner['overall'] as String? ?? ''),
+                winnerName,
+                textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 26,
                   color: context.textPrimary,
+                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                _txt(context, tr: 'Genel Kazanan', en: 'Overall Winner'),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: context.textSecondary,
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFB800).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFFFFB800).withValues(alpha: 0.30),
+                  ),
+                ),
+                child: Text(
+                  _txt(context, tr: 'Genel Kazanan', en: 'Overall Winner'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFFFB800),
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 24,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
-                children: [
-                  if (winner['best_content'] != null)
-                    _buildMiniWinner(
-                      context,
-                      '✨',
-                      _txt(context, tr: 'En Iyi Icerik', en: 'Best Content'),
-                      _displayName(winner['best_content'] as String),
-                    ),
-                ],
-              ),
+              if (winner['best_content'] != null) ...[
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.black.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('✨', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Column(
+                        children: [
+                          Text(
+                            _txt(
+                              context,
+                              tr: 'En İyi İçerik',
+                              en: 'Best Content',
+                            ),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: context.textTertiaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            _displayName(winner['best_content'] as String),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              color: context.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         )
         .animate()
         .fadeIn(duration: 500.ms)
         .scale(
-          begin: const Offset(0.85, 0.85),
+          begin: const Offset(0.88, 0.88),
           end: const Offset(1, 1),
           duration: 600.ms,
           curve: Curves.elasticOut,
         );
-  }
-
-  Widget _buildMiniWinner(
-    BuildContext context,
-    String emoji,
-    String label,
-    String name,
-  ) {
-    return Column(
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 20)),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11,
-            color: context.textTertiaryColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          _displayName(name),
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            color: context.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildServiceCard(
