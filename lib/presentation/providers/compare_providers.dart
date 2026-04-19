@@ -1221,11 +1221,11 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (_isTurkishLanguage(lang)) {
       return isUrl
           ? 'Sadece abonelik adı girebilirsin. Bağlantı kabul edilmez.'
-          : 'Sadece geçerli abonelik adları kabul edilir. Link, küfür veya alakasız metin kullanmayın.';
+          : 'AI bu girdilerde geçerli bir abonelik bulamadi. Link, kufur veya alakasiz metin kabul edilmez.';
     }
     return isUrl
         ? 'Only subscription names are accepted here. Links are not allowed.'
-        : 'Only valid subscription names are accepted. Links, profanity, or unrelated text are not allowed.';
+        : 'AI could not identify a valid subscription in this input. Links, profanity, or unrelated text are not allowed.';
   }
 
   static String buildMixedSubscriptionCategoriesMessage(
@@ -1242,9 +1242,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     List<String> rawNames,
     String lang,
   ) {
-    final normalizedNames = <String>[];
-    final seen = <String>{};
-    String? categoryKey;
+    final cleanedNames = <String>[];
 
     for (final rawName in rawNames) {
       final trimmed = rawName.trim();
@@ -1255,45 +1253,17 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
           error: buildInvalidSubscriptionInputMessage(lang, isUrl: true),
         );
       }
-
-      final normalizedName = GeminiService.normalizeSubscriptionDisplayName(
-        trimmed,
-      );
-      final nextCategory = GeminiService.subscriptionCategoryKey(trimmed);
-
-      if (normalizedName == null || nextCategory == null) {
-        return SubscriptionSelectionValidation(
-          error: buildInvalidSubscriptionInputMessage(lang),
-        );
-      }
-
-      if (categoryKey != null && categoryKey != nextCategory) {
-        return SubscriptionSelectionValidation(
-          normalizedNames: List.unmodifiable(normalizedNames),
-          categoryKey: categoryKey,
-          error: buildMixedSubscriptionCategoriesMessage(
-            lang,
-            names: [...normalizedNames, normalizedName],
-          ),
-        );
-      }
-
-      categoryKey ??= nextCategory;
-      final dedupeKey = normalizedName.toLowerCase();
-      if (seen.add(dedupeKey)) {
-        normalizedNames.add(normalizedName);
-      }
+      cleanedNames.add(trimmed);
     }
 
-    if (normalizedNames.isEmpty) {
+    if (cleanedNames.isEmpty) {
       return SubscriptionSelectionValidation(
         error: buildMissingSubscriptionMessage(lang),
       );
     }
 
     return SubscriptionSelectionValidation(
-      normalizedNames: List.unmodifiable(normalizedNames),
-      categoryKey: categoryKey,
+      normalizedNames: List.unmodifiable(cleanedNames),
     );
   }
 
@@ -1320,7 +1290,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       showValidationError(validation.error!);
       return;
     }
-    final normalizedNames = validation.normalizedNames;
+    final pendingNames = validation.normalizedNames;
 
     if (!_subService.canAnalyzeSubscription) {
       state = state.copyWith(
@@ -1333,10 +1303,35 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
     state = SubQuizState(
       phase: SubFlowPhase.quizLoading,
-      subscriptionNames: normalizedNames,
+      subscriptionNames: pendingNames,
     );
 
+    var normalizedNames = pendingNames;
+
     try {
+      final resolution = await _gemini.resolveSubscriptionSelection(
+        rawNames: pendingNames,
+        language: _appLang,
+      );
+      if (resolution.invalidNames.isNotEmpty) {
+        state = state.copyWith(
+          phase: SubFlowPhase.idle,
+          error: buildInvalidSubscriptionInputMessage(_appLang),
+        );
+        return;
+      }
+      if (resolution.mixedCategories) {
+        state = state.copyWith(
+          phase: SubFlowPhase.idle,
+          error: buildMixedSubscriptionCategoriesMessage(
+            _appLang,
+            names: resolution.normalizedNames,
+          ),
+        );
+        return;
+      }
+      normalizedNames = resolution.normalizedNames;
+
       final quiz = await _deepseek
           .generateSubscriptionQuiz(
             subscriptionNames: normalizedNames,

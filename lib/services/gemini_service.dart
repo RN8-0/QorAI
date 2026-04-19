@@ -904,6 +904,154 @@ Return valid JSON:
     );
   }
 
+  Future<SubscriptionResolutionResult> resolveSubscriptionSelection({
+    required List<String> rawNames,
+    required String language,
+  }) async {
+    final cleanedNames = rawNames
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList();
+    if (cleanedNames.isEmpty) {
+      return const SubscriptionResolutionResult();
+    }
+
+    final resolved = <ResolvedSubscriptionCandidate>[];
+    final unknownNames = <String>[];
+
+    for (final name in cleanedNames) {
+      final displayName = normalizeSubscriptionDisplayName(name);
+      final categoryKey = subscriptionCategoryKey(name);
+      if (displayName != null && categoryKey != null) {
+        resolved.add(
+          ResolvedSubscriptionCandidate(
+            rawName: name,
+            displayName: displayName,
+            categoryKey: categoryKey,
+            isSubscription: true,
+          ),
+        );
+      } else {
+        unknownNames.add(name);
+      }
+    }
+
+    if (unknownNames.isNotEmpty) {
+      final langName = _languageName(language);
+      final responseText = await _rawRequest(
+        {
+          'contents': [
+            {
+              'parts': [
+                {
+                  'text':
+                      '''
+You are Compair's subscription validation engine.
+Classify whether each input below is a real subscription service.
+
+Rules:
+- Accept only real subscription-based services, memberships, or paid digital platforms.
+- Reject links, profanity, random words, products, and unrelated text.
+- If an input is a typo but clearly maps to a known subscription, normalize it.
+- Use one category only: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, bundles, news, fitness, education, other.
+- "display_name" must be the clean branded service name.
+- "reason" must be short and in $langName.
+
+Return ONLY valid JSON:
+{
+  "results": [
+    {
+      "raw_name": "string",
+      "display_name": "string or null",
+      "category": "string or null",
+      "is_subscription": true,
+      "reason": "string"
+    }
+  ]
+}
+''',
+                },
+                {
+                  'text': jsonEncode({'inputs': unknownNames}),
+                },
+              ],
+            },
+          ],
+          'tools': [
+            {'googleSearch': {}},
+          ],
+          'generationConfig': {
+            'responseMimeType': 'application/json',
+            'temperature': 0.1,
+            'maxOutputTokens': 1024,
+          },
+        },
+        receiveTimeout: const Duration(seconds: 60),
+        tier: AiTier.heavy,
+      );
+
+      final parsed = _decodeJsonObject(responseText);
+      final results = (parsed?['results'] as List?) ?? const [];
+      for (final item in results) {
+        if (item is! Map) continue;
+        final rawName = item['raw_name']?.toString().trim() ?? '';
+        if (rawName.isEmpty) continue;
+        final displayName =
+            normalizeSubscriptionDisplayName(
+              item['display_name']?.toString() ?? rawName,
+            ) ??
+            prettySubscriptionName(item['display_name']?.toString() ?? rawName);
+        resolved.add(
+          ResolvedSubscriptionCandidate(
+            rawName: rawName,
+            displayName: displayName,
+            categoryKey: item['category']?.toString().trim(),
+            isSubscription: item['is_subscription'] == true,
+            reason: item['reason']?.toString().trim(),
+          ),
+        );
+      }
+    }
+
+    final byRawName = <String, ResolvedSubscriptionCandidate>{
+      for (final item in resolved) item.rawName.toLowerCase(): item,
+    };
+    final ordered = <ResolvedSubscriptionCandidate>[];
+    final invalidNames = <String>[];
+    final normalizedNames = <String>[];
+    final seen = <String>{};
+    String? sharedCategoryKey;
+    var mixedCategories = false;
+
+    for (final rawName in cleanedNames) {
+      final candidate = byRawName[rawName.toLowerCase()];
+      if (candidate == null ||
+          !candidate.isSubscription ||
+          candidate.displayName.trim().isEmpty ||
+          (candidate.categoryKey?.trim().isEmpty ?? true)) {
+        invalidNames.add(rawName);
+        continue;
+      }
+
+      ordered.add(candidate);
+      sharedCategoryKey ??= candidate.categoryKey;
+      if (sharedCategoryKey != candidate.categoryKey) {
+        mixedCategories = true;
+      }
+      if (seen.add(candidate.displayName.toLowerCase())) {
+        normalizedNames.add(candidate.displayName);
+      }
+    }
+
+    return SubscriptionResolutionResult(
+      resolved: ordered,
+      invalidNames: invalidNames,
+      normalizedNames: normalizedNames,
+      sharedCategoryKey: sharedCategoryKey,
+      mixedCategories: mixedCategories,
+    );
+  }
+
   /// Enhanced subscription analysis combining grounded web data, quiz answers,
   /// and user profile into a structured compatibility report.
   Future<Map<String, dynamic>> enhancedSubscriptionAnalysis({
@@ -2103,6 +2251,18 @@ Important:
       category: 'video-streaming',
       context: _subscriptionContext['hbo']!,
     ),
+    'exxen': const _SubscriptionCatalogEntry(
+      displayName: 'Exxen',
+      category: 'video-streaming',
+      context:
+          'Turkish video streaming platform with local series, reality shows, sports add-ons, and exclusive originals.',
+    ),
+    'puhu tv': const _SubscriptionCatalogEntry(
+      displayName: 'Puhu TV',
+      category: 'video-streaming',
+      context:
+          'Turkish streaming platform focused on local series, movies, and original productions.',
+    ),
     'apple tv plus': _SubscriptionCatalogEntry(
       displayName: 'Apple TV+',
       category: 'video-streaming',
@@ -2212,6 +2372,10 @@ Important:
     'hbo max': 'hbo',
     'max': 'hbo',
     'hbo': 'hbo',
+    'exxen': 'exxen',
+    'exen': 'exxen',
+    'puhu tv': 'puhu tv',
+    'puhutv': 'puhu tv',
     'apple tv+': 'apple tv plus',
     'apple tv plus': 'apple tv plus',
     'chatgpt': 'chatgpt plus',
@@ -2262,6 +2426,26 @@ Important:
   static String prettySubscriptionName(String value) {
     return normalizeSubscriptionDisplayName(value) ??
         _smartSubscriptionTitle(value);
+  }
+
+  static Map<String, dynamic>? _decodeJsonObject(String text) {
+    try {
+      var clean = text.trim();
+      if (clean.startsWith('```')) {
+        clean = clean
+            .replaceFirst(RegExp(r'^```\w*\n?'), '')
+            .replaceFirst(RegExp(r'\n?```$'), '');
+      }
+      return jsonDecode(clean) as Map<String, dynamic>?;
+    } catch (_) {
+      try {
+        final match = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+        if (match == null) return null;
+        return jsonDecode(match.group(0)!) as Map<String, dynamic>?;
+      } catch (_) {
+        return null;
+      }
+    }
   }
 
   static String _smartSubscriptionTitle(String value) {
@@ -2339,5 +2523,37 @@ class _SubscriptionCatalogEntry {
     required this.displayName,
     required this.category,
     required this.context,
+  });
+}
+
+class ResolvedSubscriptionCandidate {
+  final String rawName;
+  final String displayName;
+  final String? categoryKey;
+  final bool isSubscription;
+  final String? reason;
+
+  const ResolvedSubscriptionCandidate({
+    required this.rawName,
+    required this.displayName,
+    required this.isSubscription,
+    this.categoryKey,
+    this.reason,
+  });
+}
+
+class SubscriptionResolutionResult {
+  final List<ResolvedSubscriptionCandidate> resolved;
+  final List<String> invalidNames;
+  final List<String> normalizedNames;
+  final String? sharedCategoryKey;
+  final bool mixedCategories;
+
+  const SubscriptionResolutionResult({
+    this.resolved = const [],
+    this.invalidNames = const [],
+    this.normalizedNames = const [],
+    this.sharedCategoryKey,
+    this.mixedCategories = false,
   });
 }

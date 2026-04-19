@@ -114,21 +114,16 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   bool _tryAddChip(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return false;
-
-    final validation = SubQuizNotifier.validateSubscriptionSelection([
-      ..._chips,
-      trimmed,
-    ], Localizations.localeOf(context).languageCode);
-
-    if (!validation.isValid) {
-      ref.read(subQuizProvider.notifier).showValidationError(validation.error!);
+    final exists = _chips.any(
+      (chip) => chip.trim().toLowerCase() == trimmed.toLowerCase(),
+    );
+    if (exists) {
+      _inputCtrl.clear();
       return false;
     }
 
     setState(() {
-      _chips
-        ..clear()
-        ..addAll(validation.normalizedNames);
+      _chips.add(trimmed);
       _inputCtrl.clear();
     });
     ref.read(subQuizProvider.notifier).clearError();
@@ -139,7 +134,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     // Auto-add any text remaining in the input field before analyzing
     final pending = _inputCtrl.text.trim();
     if (pending.isNotEmpty && !_tryAddChip(pending)) {
-      return;
+      if (_chips.isEmpty) {
+        return;
+      }
     }
 
     final validation = SubQuizNotifier.validateSubscriptionSelection(
@@ -150,12 +147,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       ref.read(subQuizProvider.notifier).showValidationError(validation.error!);
       return;
     }
-
-    setState(() {
-      _chips
-        ..clear()
-        ..addAll(validation.normalizedNames);
-    });
 
     _inputFocus.unfocus();
     ref

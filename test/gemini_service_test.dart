@@ -58,6 +58,7 @@ DESCRIPTION: Lightweight tripod for cameras and phones.
         GeminiService.normalizeSubscriptionDisplayName('youtube music'),
         'YouTube Music',
       );
+      expect(GeminiService.normalizeSubscriptionDisplayName('exen'), 'Exxen');
       expect(
         GeminiService.normalizeSubscriptionDisplayName('icloud+'),
         'iCloud+',

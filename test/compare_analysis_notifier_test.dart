@@ -49,24 +49,14 @@ void main() {
       expect(validation.error, contains('Bağlantı'));
     });
 
-    test('rejects mixed subscription categories', () {
+    test('allows free-text subscription candidates before AI validation', () {
       final validation = SubQuizNotifier.validateSubscriptionSelection(const [
+        'exen',
         'Netflix',
-        'YouTube Music',
-      ], 'tr');
-
-      expect(validation.isValid, isFalse);
-      expect(validation.error, contains('aynı kategoride değil'));
-    });
-
-    test('normalizes valid subscriptions to branded names', () {
-      final validation = SubQuizNotifier.validateSubscriptionSelection(const [
-        'hbo max',
-        'netflix',
       ], 'tr');
 
       expect(validation.isValid, isTrue);
-      expect(validation.normalizedNames, equals(const ['HBO', 'Netflix']));
+      expect(validation.normalizedNames, equals(const ['exen', 'Netflix']));
     });
   });
 }
