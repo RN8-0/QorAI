@@ -48,6 +48,8 @@ class SubscriptionsScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  static const int _kMaxChips = 4;
+
   final TextEditingController _inputCtrl = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
   final List<_ValidatedChip> _chips = [];
@@ -124,6 +126,18 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     if (_validatingChip) return; // serialize concurrent adds
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
+
+    // Max chip limit check
+    if (_chips.length >= _kMaxChips) {
+      final isTr =
+          Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+      setState(() {
+        _chipError = isTr
+            ? 'En fazla $_kMaxChips abonelik karşılaştırılabilir.'
+            : 'You can compare up to $_kMaxChips subscriptions.';
+      });
+      return;
+    }
 
     setState(() {
       _validatingChip = true;
@@ -1124,7 +1138,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   return TextField(
                     controller: _inputCtrl,
                     focusNode: _inputFocus,
-                    enabled: !_validatingChip,
+                    enabled: !_validatingChip && _chips.length < _kMaxChips,
                     style: GoogleFonts.inter(
                       color: _validatingChip
                           ? Colors.transparent
@@ -1157,7 +1171,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         minWidth: 0,
                         minHeight: 0,
                       ),
-                      suffixIcon: !_validatingChip && value.text.isNotEmpty
+                      suffixIcon: !_validatingChip &&
+                              value.text.isNotEmpty &&
+                              _chips.length < _kMaxChips
                           ? GestureDetector(
                               onTap: () => _addChipAsync(_inputCtrl.text),
                               child: Container(
