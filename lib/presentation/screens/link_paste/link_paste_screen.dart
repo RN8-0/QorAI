@@ -4,6 +4,7 @@
 /// Enhanced compatibility score with detailed breakdown.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
@@ -211,7 +212,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   Future<void> _pasteClipboardInto(
     TextEditingController controller, {
     FocusNode? focusNode,
+    bool onlyWhenEmpty = false,
+    bool showInvalidFeedback = true,
   }) async {
+    if (onlyWhenEmpty && controller.text.trim().isNotEmpty) {
+      focusNode?.requestFocus();
+      return;
+    }
     final invalidClipboardMessage = _linkText(
       context,
       tr: 'Panoda gecerli bir baglanti bulunamadi.',
@@ -220,7 +227,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final pastedUrl = _extractUrlCandidate(data?.text ?? '');
     if (pastedUrl == null) {
-      _showLinkSnackBar(invalidClipboardMessage);
+      if (showInvalidFeedback) {
+        _showLinkSnackBar(invalidClipboardMessage);
+      } else {
+        focusNode?.requestFocus();
+      }
       return;
     }
 
@@ -231,6 +242,147 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       );
     });
     focusNode?.requestFocus();
+  }
+
+  void _handleAutoPasteTap(
+    TextEditingController controller, {
+    FocusNode? focusNode,
+  }) {
+    unawaited(
+      _pasteClipboardInto(
+        controller,
+        focusNode: focusNode,
+        onlyWhenEmpty: true,
+        showInvalidFeedback: false,
+      ),
+    );
+  }
+
+  Widget _buildAutoPasteHint() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.brandCyan.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.bolt_rounded, size: 16, color: AppTheme.brandCyan),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _linkText(
+                context,
+                tr: 'Kutucuğa dokun, panodaki son link otomatik dolsun.',
+                en: 'Tap the field to auto-fill your latest copied link.',
+              ),
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernUrlField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hintText,
+    required Widget leading,
+    Widget? trailing,
+    TextInputAction textInputAction = TextInputAction.next,
+    ValueChanged<String>? onSubmitted,
+    double minHeight = 64,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      constraints: BoxConstraints(minHeight: minHeight),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? const [Color(0xFF0D1826), Color(0xFF0B1220), Color(0xFF08111B)]
+              : const [Color(0xFFFFFFFF), Color(0xFFF3F8FF)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.22 : 0.12),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.16 : 0.08),
+            blurRadius: isDark ? 24 : 16,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: AppTheme.brandCyan.withValues(alpha: isDark ? 0.08 : 0.03),
+            blurRadius: 28,
+            spreadRadius: -8,
+          ),
+        ],
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.16)
+              : Colors.white.withValues(alpha: 0.84),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+              child: leading,
+            ),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: TextInputType.url,
+                textInputAction: textInputAction,
+                autocorrect: false,
+                enableSuggestions: false,
+                cursorColor: AppTheme.brandCyan,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: context.textPrimary,
+                ),
+                onTap: () =>
+                    _handleAutoPasteTap(controller, focusNode: focusNode),
+                onTapOutside: (_) => focusNode.unfocus(),
+                onSubmitted: onSubmitted,
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: context.textTertiaryColor,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                ),
+              ),
+            ),
+            if (trailing != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: trailing,
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _resetLinkFields() {
@@ -850,69 +1002,32 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
-                // URL input field
-                Container(
-                  decoration: BoxDecoration(
-                    color: context.surfaceVariantColor,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: AppTheme.brandBlue.withValues(alpha: 0.2),
+                _buildAutoPasteHint(),
+                const SizedBox(height: 14),
+                _buildModernUrlField(
+                  controller: _singleUrlController,
+                  focusNode: _singleFocusNode,
+                  textInputAction: TextInputAction.go,
+                  hintText: 'https://www.amazon.com/product...',
+                  onSubmitted: (_) => _startSingleAnalysis(),
+                  leading: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          AppTheme.brandBlue,
+                          AppTheme.brandDeepBlue,
+                          AppTheme.brandCyan,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  child: TextField(
-                    controller: _singleUrlController,
-                    focusNode: _singleFocusNode,
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.go,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: context.textPrimary,
+                    child: const Icon(
+                      Icons.link_rounded,
+                      color: Colors.white,
+                      size: 20,
                     ),
-                    onTapOutside: (_) => _singleFocusNode.unfocus(),
-                    decoration: InputDecoration(
-                      hintText: 'https://www.amazon.com/product...',
-                      hintStyle: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: context.textTertiaryColor,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 14, right: 8),
-                        child: Icon(
-                          Icons.link_rounded,
-                          color: context.textTertiaryColor,
-                          size: 20,
-                        ),
-                      ),
-                      prefixIconConstraints: const BoxConstraints(minWidth: 40),
-                      suffixIcon: Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.content_paste_rounded,
-                            color: AppTheme.brandBlue,
-                            size: 18,
-                          ),
-                          onPressed: () async {
-                            await _pasteClipboardInto(
-                              _singleUrlController,
-                              focusNode: _singleFocusNode,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    onSubmitted: (_) => _startSingleAnalysis(),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -1026,11 +1141,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       tr: '$remaining/$total hafta',
       en: '$remaining/$total week',
     );
-    final ctaLabel = _linkText(
-      context,
-      tr: 'Premium',
-      en: 'Premium',
-    );
+    final ctaLabel = _linkText(context, tr: 'Premium', en: 'Premium');
 
     return Material(
       color: Colors.transparent,
@@ -1095,7 +1206,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.auto_awesome_rounded, size: 12, color: AppTheme.brandSkyBlue),
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 12,
+                    color: AppTheme.brandSkyBlue,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     ctaLabel,
@@ -1169,6 +1284,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
+                _buildAutoPasteHint(),
+                const SizedBox(height: 14),
                 // URL input fields (2-4)
                 ...List.generate(
                   _visibleCompareFields,
@@ -1186,14 +1303,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         _visibleCompareFields++;
                       }),
                       child: Container(
-                        height: 48,
+                        height: 52,
                         decoration: BoxDecoration(
-                          color: context.surfaceVariantColor,
-                          borderRadius: BorderRadius.circular(24),
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.brandBlue.withValues(alpha: 0.10),
+                              AppTheme.brandCyan.withValues(alpha: 0.05),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                            style: BorderStyle.solid,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.brandBlue.withValues(alpha: 0.08),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1280,90 +1408,49 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildCompareUrlField(int index) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+    return _buildModernUrlField(
+      controller: _compareControllers[index],
+      focusNode: _compareFocusNodes[index],
+      hintText:
+          context.l10n?.pasteProductUrlNumbered(index + 1) ??
+          'Paste product URL ${index + 1}...',
+      leading: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              AppTheme.brandBlue,
+              AppTheme.brandDeepBlue,
+              AppTheme.brandCyan,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Center(
+          child: Text(
+            '${index + 1}',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            margin: const EdgeInsets.only(left: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.brandBlue.withValues(alpha: 0.8),
-                  AppTheme.brandCyan.withValues(alpha: 0.8),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(17),
-            ),
-            child: Center(
-              child: Text(
-                '${index + 1}',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: TextField(
-              controller: _compareControllers[index],
-              focusNode: _compareFocusNodes[index],
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: context.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText:
-                    context.l10n?.pasteProductUrlNumbered(index + 1) ??
-                    'Paste product URL ${index + 1}...',
-                hintStyle: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: context.textTertiaryColor,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ),
-          // Paste button
-          IconButton(
-            icon: Icon(
-              Icons.content_paste_rounded,
-              color: AppTheme.brandCyan,
-              size: 18,
-            ),
-            onPressed: () async {
-              await _pasteClipboardInto(
-                _compareControllers[index],
-                focusNode: _compareFocusNodes[index],
-              );
-            },
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
-          // Remove button (if more than 2 fields)
-          if (_visibleCompareFields > 2)
-            IconButton(
+      trailing: _visibleCompareFields > 2
+          ? IconButton(
               icon: Icon(
                 Icons.close_rounded,
-                color: AppTheme.error.withValues(alpha: 0.7),
+                color: AppTheme.error.withValues(alpha: 0.78),
                 size: 18,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: AppTheme.error.withValues(alpha: 0.08),
               ),
               onPressed: () {
                 setState(() {
                   _compareControllers[index].clear();
-                  // Shift remaining controllers up
                   for (int j = index; j < _visibleCompareFields - 1; j++) {
                     _compareControllers[j].text =
                         _compareControllers[j + 1].text;
@@ -1372,11 +1459,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   _visibleCompareFields--;
                 });
               },
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            )
+          : Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppTheme.brandCyan.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.16),
+                ),
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: AppTheme.brandCyan,
+                size: 18,
+              ),
             ),
-        ],
-      ),
     );
   }
 
@@ -1666,9 +1765,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               ),
               const SizedBox(width: 10),
               Text(
-                isTr
-                    ? 'Karşılaştırma Nasıl Çalışır'
-                    : 'How Comparison Works',
+                isTr ? 'Karşılaştırma Nasıl Çalışır' : 'How Comparison Works',
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -1896,7 +1993,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildPhaseTimeline(LinkFlowPhase phase) {
-    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     final steps = [
       _PhaseStep(
         label: isTr ? 'Bağlantı Doğrulanıyor' : 'Validating Link',
@@ -1917,7 +2015,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         isActive: phase == LinkFlowPhase.analyzing,
       ),
       _PhaseStep(
-        label: isTr ? 'İnternet Yorumları Taranıyor' : 'Scanning Community Reviews',
+        label: isTr
+            ? 'İnternet Yorumları Taranıyor'
+            : 'Scanning Community Reviews',
         detail: isTr
             ? 'Reddit, forum, YouTube ve mağaza yorumları toplanıyor'
             : 'Gathering Reddit, forum, YouTube & store reviews',
@@ -1974,7 +2074,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       value: value,
                       strokeWidth: 6,
                       strokeCap: StrokeCap.round,
-                      backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.08),
+                      backgroundColor: AppTheme.brandBlue.withValues(
+                        alpha: 0.08,
+                      ),
                       color: AppTheme.brandCyan,
                     ),
                   ),
@@ -2085,7 +2187,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 : Colors.white.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: AppTheme.brandBlue.withValues(alpha: context.isDarkMode ? 0.15 : 0.12),
+              color: AppTheme.brandBlue.withValues(
+                alpha: context.isDarkMode ? 0.15 : 0.12,
+              ),
               width: 0.8,
             ),
             boxShadow: context.isDarkMode ? null : AppTheme.cardShadowLight,
@@ -2104,16 +2208,24 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: AppTheme.brandCyan.withValues(alpha: context.isDarkMode ? 0.06 : 0.05),
+            color: AppTheme.brandCyan.withValues(
+              alpha: context.isDarkMode ? 0.06 : 0.05,
+            ),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: AppTheme.brandCyan.withValues(alpha: context.isDarkMode ? 0.2 : 0.15),
+              color: AppTheme.brandCyan.withValues(
+                alpha: context.isDarkMode ? 0.2 : 0.15,
+              ),
               width: 0.8,
             ),
           ),
           child: Row(
             children: [
-              const Icon(Icons.verified_rounded, color: AppTheme.brandCyan, size: 16),
+              const Icon(
+                Icons.verified_rounded,
+                color: AppTheme.brandCyan,
+                size: 16,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -2234,8 +2346,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         color: step.isDone
                             ? AppTheme.success.withValues(alpha: 0.4)
                             : (context.isDarkMode
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : AppTheme.slate200),
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : AppTheme.slate200),
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),
@@ -2254,8 +2366,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     step.label,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
-                      fontWeight:
-                          step.isActive ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: step.isActive
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                       color: step.isDone
                           ? AppTheme.success
                           : step.isActive
@@ -3123,8 +3236,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             : null,
                         color: !isBest
                             ? (context.isDarkMode
-                                ? Colors.white.withValues(alpha: 0.03)
-                                : Colors.white.withValues(alpha: 0.85))
+                                  ? Colors.white.withValues(alpha: 0.03)
+                                  : Colors.white.withValues(alpha: 0.85))
                             : null,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
@@ -3175,9 +3288,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: medal.isNotEmpty ? 20 : 14,
                                 fontWeight: FontWeight.w900,
-                                color: medal.isNotEmpty
-                                    ? null
-                                    : scoreColor,
+                                color: medal.isNotEmpty ? null : scoreColor,
                               ),
                             ),
                           ),

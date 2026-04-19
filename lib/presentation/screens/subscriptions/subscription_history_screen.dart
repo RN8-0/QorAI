@@ -72,8 +72,13 @@ class _SubscriptionHistoryScreenState
       final key = (item['timestamp'] as String?) ?? '';
       if (seen.add(key)) merged.add(item);
     }
+    merged.sort((a, b) => _historyDateOf(b).compareTo(_historyDateOf(a)));
     return merged;
   }
+
+  DateTime _historyDateOf(Map<String, dynamic> item) =>
+      DateTime.tryParse(item['timestamp'] as String? ?? '') ??
+      DateTime.fromMillisecondsSinceEpoch(0);
 
   Future<void> _refreshSilently() async {
     try {
@@ -259,10 +264,13 @@ class _SubscriptionHistoryScreenState
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
+          style: IconButton.styleFrom(
+            backgroundColor: context.surfaceElevatedColor,
+          ),
           onPressed: () => Navigator.of(context).pop(),
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            size: 20,
+            size: 18,
             color: textPrimary,
           ),
         ),
@@ -281,6 +289,9 @@ class _SubscriptionHistoryScreenState
         actions: [
           if (history != null && history.isNotEmpty)
             IconButton(
+              style: IconButton.styleFrom(
+                backgroundColor: AppTheme.error.withValues(alpha: 0.10),
+              ),
               onPressed: _clearAll,
               icon: Icon(
                 Icons.delete_sweep_rounded,
@@ -300,38 +311,223 @@ class _SubscriptionHistoryScreenState
           ? const Center(child: CircularProgressIndicator(color: _kBlue))
           : (history == null || history.isEmpty)
           ? _buildEmpty(textPrimary, textTertiary)
-          : ListView.builder(
+          : ListView(
               padding: EdgeInsets.only(
-                top: 12,
+                top: 16,
                 left: 16,
                 right: 16,
                 bottom: MediaQuery.of(context).padding.bottom + 24,
               ),
-              itemCount: history.length,
-              itemBuilder: (_, i) =>
-                  _buildCard(history[i], i, textPrimary, textTertiary),
+              children: [
+                _buildHistoryHero(history, textPrimary, textTertiary),
+                const SizedBox(height: 16),
+                ...List.generate(
+                  history.length,
+                  (i) => _buildCard(history[i], i, textPrimary, textTertiary),
+                ),
+              ],
             ),
+    );
+  }
+
+  Widget _buildHistoryHero(
+    List<Map<String, dynamic>> history,
+    Color textPrimary,
+    Color textTertiary,
+  ) {
+    final latestDate = history.isEmpty
+        ? ''
+        : _formatDate(history.first['timestamp'] as String?);
+    final uniqueWinners = history
+        .map((entry) => entry['winner'] as String?)
+        .whereType<String>()
+        .where((winner) => winner.trim().isNotEmpty)
+        .toSet()
+        .length;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.brandBlue.withValues(alpha: 0.16),
+            AppTheme.brandCyan.withValues(alpha: 0.08),
+            context.surfaceElevatedColor,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.14)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [_kBlue, _kCyan]),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _kBlue.withValues(alpha: 0.22),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.history_toggle_off_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _historyText(
+                        context,
+                        tr: 'Abonelik analiz geçmişin',
+                        en: 'Your comparison archive',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _historyText(
+                        context,
+                        tr: 'Eski sonuçlara dokunarak analiz ekranını anında geri yükleyebilirsin.',
+                        en: 'Tap any result to instantly restore it on the subscriptions screen.',
+                      ),
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        height: 1.5,
+                        color: textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildHistoryStat(
+                  label: _historyText(
+                    context,
+                    tr: 'Toplam kayıt',
+                    en: 'Entries',
+                  ),
+                  value: '${history.length}',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildHistoryStat(
+                  label: _historyText(
+                    context,
+                    tr: 'Kazanan servis',
+                    en: 'Winning services',
+                  ),
+                  value: '$uniqueWinners',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildHistoryStat(
+                  label: _historyText(context, tr: 'Son analiz', en: 'Latest'),
+                  value: latestDate.isEmpty
+                      ? '--'
+                      : latestDate.split(',').first,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryStat({required String label, required String value}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: context.textTertiaryColor,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildEmpty(Color textPrimary, Color textTertiary) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 88,
-              height: 88,
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    _kBlue.withValues(alpha: 0.12),
-                    _kCyan.withValues(alpha: 0.06),
+                    _kBlue.withValues(alpha: 0.18),
+                    _kCyan.withValues(alpha: 0.08),
                   ],
                 ),
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _kBlue.withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Icon(
                 Icons.compare_arrows_rounded,
@@ -422,6 +618,18 @@ class _SubscriptionHistoryScreenState
     final date = _formatDate(entry['timestamp'] as String?);
     final analysisResult = entry['analysisResult'] as String?;
     final hasFullResult = analysisResult != null && analysisResult.isNotEmpty;
+    final title = services.isEmpty
+        ? _historyText(
+            context,
+            tr: 'Kayıtlı karşılaştırma',
+            en: 'Saved comparison',
+          )
+        : services.join(' vs ');
+    final serviceCountLabel = _historyText(
+      context,
+      tr: '${services.length} servis',
+      en: '${services.length} services',
+    );
 
     final rawScores = entry['scores'];
     Map<String, double> scores = {};
@@ -477,17 +685,31 @@ class _SubscriptionHistoryScreenState
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: context.surfaceElevatedColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _kCyan.withValues(alpha: 0.15), width: 1),
-            boxShadow: AppTheme.cardShadow,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                context.surfaceElevatedColor,
+                _kBlue.withValues(alpha: 0.06),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _kCyan.withValues(alpha: 0.14), width: 1),
+            boxShadow: [
+              ...AppTheme.cardShadow,
+              BoxShadow(
+                color: _kBlue.withValues(alpha: 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
               Container(
-                width: 48,
-                height: 48,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [_kBlue, _kCyan],
@@ -499,91 +721,129 @@ class _SubscriptionHistoryScreenState
                 child: const Icon(
                   Icons.compare_arrows_rounded,
                   color: Colors.white,
-                  size: 22,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 14),
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      services.join(' vs '),
-                      maxLines: 1,
+                      title,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
                         color: textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
+                        _buildMetaChip(
+                          icon: Icons.layers_rounded,
+                          label: serviceCountLabel,
+                          textColor: textTertiary,
+                        ),
                         if (winner != null && winner.isNotEmpty) ...[
-                          Icon(
-                            Icons.emoji_events_rounded,
-                            size: 13,
-                            color: AppTheme.amber500,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            winner,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: AppTheme.amber500,
-                              fontWeight: FontWeight.w600,
+                          _buildMetaChip(
+                            icon: Icons.emoji_events_rounded,
+                            label: winner,
+                            textColor: AppTheme.amber500,
+                            background: AppTheme.amber500.withValues(
+                              alpha: 0.10,
+                            ),
+                            borderColor: AppTheme.amber500.withValues(
+                              alpha: 0.18,
                             ),
                           ),
-                          const SizedBox(width: 8),
                         ],
                         if (date.isNotEmpty)
-                          Text(
-                            date,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: textTertiary,
-                            ),
+                          _buildMetaChip(
+                            icon: Icons.schedule_rounded,
+                            label: date,
+                            textColor: textTertiary,
                           ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              // Score badge
-              if (winnerScore != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: scoreColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: scoreColor.withValues(alpha: 0.25),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (winnerScore != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scoreColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: scoreColor.withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: Text(
+                        '${winnerScore.toInt()}%',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: scoreColor,
+                        ),
+                      ),
                     ),
+                  const SizedBox(height: 14),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: textTertiary,
+                    size: 20,
                   ),
-                  child: Text(
-                    '${winnerScore.toInt()}%',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: scoreColor,
-                    ),
-                  ),
-                )
-              else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: textTertiary,
-                  size: 20,
-                ),
+                ],
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildMetaChip({
+    required IconData icon,
+    required String label,
+    required Color textColor,
+    Color? background,
+    Color? borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: background ?? Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withValues(alpha: 0.06),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: textColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
       ),
     );
   }

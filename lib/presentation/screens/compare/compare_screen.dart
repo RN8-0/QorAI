@@ -145,7 +145,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     }
   }
 
-  Future<List<ProductEntity>> _loadSelectedProducts(List<String> productIds) async {
+  Future<List<ProductEntity>> _loadSelectedProducts(
+    List<String> productIds,
+  ) async {
     final results = await Future.wait(
       productIds.map((id) => ref.read(productDetailProvider(id).future)),
     );
@@ -173,6 +175,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   }
 
   void _onSearchChanged(String val) {
+    if (mounted) setState(() {});
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) ref.read(searchQueryProvider.notifier).state = val;
@@ -290,9 +293,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     }
 
     // Track comparison behavior
-    ref
-        .read(behaviorTrackingProvider)
-        .trackComparison(selectedIds);
+    ref.read(behaviorTrackingProvider).trackComparison(selectedIds);
   }
 
   void _resetComparison() {
@@ -353,7 +354,10 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         automaticallyImplyLeading: false,
         leading: _products != null
             ? IconButton(
-                icon: Icon(Icons.arrow_back_rounded, color: context.textPrimary),
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: context.textPrimary,
+                ),
                 tooltip: context.l10n?.back ?? 'Back',
                 onPressed: _resetComparison,
               )
@@ -521,16 +525,18 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: (count >= 2
-                                    ? AppTheme.brandCyan
-                                    : context.textTertiaryColor)
-                                .withValues(alpha: 0.1),
+                            color:
+                                (count >= 2
+                                        ? AppTheme.brandCyan
+                                        : context.textTertiaryColor)
+                                    .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: (count >= 2
-                                      ? AppTheme.brandCyan
-                                      : context.textTertiaryColor)
-                                  .withValues(alpha: 0.2),
+                              color:
+                                  (count >= 2
+                                          ? AppTheme.brandCyan
+                                          : context.textTertiaryColor)
+                                      .withValues(alpha: 0.2),
                             ),
                           ),
                           child: Text(
@@ -640,97 +646,133 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
                 child: Container(
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(18),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDark
+                          ? const [
+                              Color(0xFF101A2A),
+                              Color(0xFF0B1320),
+                              Color(0xFF08101B),
+                            ]
+                          : const [Color(0xFFFFFFFF), Color(0xFFF3F8FF)],
+                    ),
+                    borderRadius: BorderRadius.circular(22),
                     border: Border.all(
                       color: AppTheme.brandBlue.withValues(
-                        alpha: isDark ? 0.15 : 0.12,
+                        alpha: isDark ? 0.22 : 0.12,
                       ),
                     ),
-                    boxShadow: isDark
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: AppTheme.brandBlue.withValues(alpha: 0.06),
-                              blurRadius: 14,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.brandBlue.withValues(
+                          alpha: isDark ? 0.14 : 0.08,
+                        ),
+                        blurRadius: isDark ? 22 : 16,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: AppTheme.brandCyan.withValues(
+                          alpha: isDark ? 0.06 : 0.03,
+                        ),
+                        blurRadius: 28,
+                        spreadRadius: -8,
+                      ),
+                    ],
                   ),
-                  child: TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    onChanged: _onSearchChanged,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: context.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.18)
+                          : Colors.white.withValues(alpha: 0.84),
+                      borderRadius: BorderRadius.circular(22),
                     ),
-                    decoration: InputDecoration(
-                      hintText:
-                          context.l10n?.searchCompareHint ??
-                          'Search products to compare...',
-                      hintStyle: GoogleFonts.plusJakartaSans(
-                        color: context.textTertiaryColor,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      onChanged: _onSearchChanged,
+                      onTapOutside: (_) => _searchFocusNode.unfocus(),
+                      cursorColor: AppTheme.brandCyan,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: context.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                AppTheme.brandBlue,
-                                AppTheme.brandDeepBlue,
+                      decoration: InputDecoration(
+                        hintText:
+                            context.l10n?.searchCompareHint ??
+                            'Search products to compare...',
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          color: context.textTertiaryColor,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  AppTheme.brandBlue,
+                                  AppTheme.brandDeepBlue,
+                                  AppTheme.brandCyan,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.brandBlue.withValues(
+                                    alpha: 0.32,
+                                  ),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.brandBlue.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.search_rounded,
-                            color: Colors.white,
-                            size: 18,
+                            child: const Icon(
+                              Icons.search_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ),
-                      ),
-                      prefixIconConstraints: const BoxConstraints(
-                        minWidth: 52,
-                        minHeight: 52,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(
-                                Icons.close_rounded,
-                                size: 18,
-                                color: context.textSecondary,
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 16,
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 60,
+                          minHeight: 58,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: IconButton(
+                                  icon: Icon(
+                                    Icons.close_rounded,
+                                    size: 18,
+                                    color: context.textSecondary,
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: AppTheme.brandBlue
+                                        .withValues(
+                                          alpha: isDark ? 0.12 : 0.08,
+                                        ),
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _onSearchChanged('');
+                                  },
+                                ),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 18,
+                        ),
                       ),
                     ),
                   ),
