@@ -435,7 +435,8 @@ Return valid JSON:
               .toList(),
         },
       }),
-      timeout: const Duration(seconds: 60),
+      timeout: const Duration(seconds: 90),
+      maxTokens: 4096,
     );
 
     double parseScore(dynamic v) {
@@ -503,6 +504,7 @@ Return valid JSON:
     required String system,
     required String user,
     Duration? timeout,
+    int maxTokens = 4096,
   }) async {
     final text = await _rawRequest(
       [
@@ -510,6 +512,7 @@ Return valid JSON:
         {'role': 'user', 'content': user},
       ],
       timeout: timeout ?? const Duration(seconds: 60),
+      maxTokens: maxTokens,
       jsonMode: true,
     );
 
@@ -821,6 +824,11 @@ SCORING RULES:
 - Scores MUST be realistic and differentiated
 - If product doesn't match: 20-40. If perfect match: 80-95.
 
+VERDICT REQUIREMENTS:
+- verdict: 4-6 paragraphs covering (1) product overview & specs, (2) how it matches quiz answers, (3) budget & ecosystem fit, (4) specific strengths for this user, (5) weaknesses/caveats, (6) final recommendation
+- Be SPECIFIC: mention actual specs, real prices, real feature names
+- NEVER list or repeat user profile attributes — give interpretive product-focused judgments
+
 Return valid JSON:
 {
   "enhancedScore": 0-100,
@@ -831,15 +839,15 @@ Return valid JSON:
     {"label": "$futureProofing", "score": 0-100, "emoji": "🚀"},
     {"label": "$lifestyleMatch", "score": 0-100, "emoji": "🏠"}
   ],
-  "verdict": "2-3 paragraph verdict in $langName. NEVER list user attributes. Give interpretive, product-focused judgments only.",
-  "prosForUser": ["Pro 1", "Pro 2", "Pro 3"],
-  "consForUser": ["Con 1", "Con 2", "Con 3"],
-  "alternatives": ["Alt 1", "Alt 2", "Alt 3"],
+  "verdict": "4-6 paragraph detailed product analysis in $langName. Cover product overview, quiz fit, budget analysis, specific strengths and weaknesses. NO user attribute lists.",
+  "prosForUser": ["Specific pro 1 with details", "Specific pro 2 with details", "Specific pro 3", "Specific pro 4"],
+  "consForUser": ["Specific con 1 with details", "Specific con 2", "Specific con 3"],
+  "alternatives": ["Real Alternative with model number 1", "Real Alternative 2", "Real Alternative 3"],
   "personaScore": 0-100,
-  "personaAnalysis": "STRICT RULES: (1) NEVER describe or list user attributes (age, profession, ecosystem, devices, etc.). (2) Write ONLY short interpretive judgments about fit. (3) Style: 'Bu ürün, beklenen kullanım senaryolarını kısmen karşılıyor. Temel performans gereksinimleri yeterli, ancak tasarım ve multimedya beklentileri karşılanmıyor.' Max 3-4 sentences total in $langName.",
+  "personaAnalysis": "STRICT RULES: (1) NEVER describe or list user attributes. (2) Write ONLY short interpretive judgments about fit — 3-4 sentences in $langName. Style: 'Bu ürün beklenen kullanım senaryolarını kısmen karşılıyor. Temel performans gereksinimleri yeterli ancak tasarım beklentileri karşılanmıyor.'",
   "communityScore": 0-100,
-  "communityAnalysis": "STRICT RULES: (1) COMPLETELY IGNORE the user profile — do NOT mention 'sizin', 'siz', 'your', 'you', 'profiliniz', 'tercihleriniz' or any user attributes. (2) Write ONLY what the general internet community says about this product. (3) Style: 'Kullanıcılar genel olarak X konusunda olumlu; ancak Y ve Z hakkında eleştiriler öne çıkıyor.' 2-3 sentences in $langName.",
-  "overallVerdict": "Concise product verdict 3-4 sentences in $langName. Focus on the product itself. NEVER say 'profiliniz', 'tercihleriniz', 'sizin' or repeat user attributes. Summarize: score, key strengths/weaknesses, final recommendation."
+  "communityAnalysis": "STRICT RULES: (1) COMPLETELY IGNORE user profile. (2) Write ONLY what the general internet community says about this product — 3-4 sentences in $langName. Style: 'Kullanıcılar genel olarak X konusunda olumlu; ancak Y ve Z hakkında eleştiriler öne çıkıyor.'",
+  "overallVerdict": "4-5 sentence product verdict in $langName. Cover: final score, key strengths, key weaknesses, who should/shouldn't buy it. NEVER mention user attributes by name. Focus on the product."
 }
 ''';
   }

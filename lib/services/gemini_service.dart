@@ -109,104 +109,61 @@ class GeminiService implements AIService {
   }) async {
     debugPrint('[Gemini] analyzeLink called for: $url');
 
-    // Build partial metadata hint for context (client-side scrape, may be incomplete)
+    // Extract product name from URL slug (free, no API cost)
+    final slugTitle = _extractProductNameFromUrl(url);
+    debugPrint('[Gemini] URL slug title: $slugTitle');
+
+    // Build metadata context — prefer scraped metadata, fall back to slug extraction
     final metaContext = <String, String?>{};
-    if (metadata?.title?.isNotEmpty ?? false) metaContext['title'] = metadata!.title;
+    final resolvedTitle = (metadata?.title?.isNotEmpty ?? false)
+        ? metadata!.title
+        : slugTitle;
+    if (resolvedTitle?.isNotEmpty ?? false) metaContext['title'] = resolvedTitle;
     if (metadata?.description?.isNotEmpty ?? false) {
       metaContext['description'] = metadata!.description;
     }
     if (metadata?.price?.isNotEmpty ?? false) metaContext['price'] = metadata!.price;
-    if (metadata?.siteName?.isNotEmpty ?? false) metaContext['siteName'] = metadata!.siteName;
-    final metaHint = metaContext.isNotEmpty
-        ? '\nPartial page context (may be incomplete): ${jsonEncode(metaContext)}'
-        : '';
+    if (metadata?.siteName?.isNotEmpty ?? false) {
+      metaContext['siteName'] = metadata!.siteName;
+    }
 
-    // Primary: use url_context tool so Gemini fetches and reads the actual product
-    // page — this prevents wrong-product hallucinations when metadata scraping fails.
-    // url_context is incompatible with responseMimeType:application/json,
-    // so we request JSON in the prompt and parse the text response.
-    final urlContextBody = <String, dynamic>{
-      'contents': [
-        {
-          'parts': [
-            {
-              'text':
-                  'Analyze the product at this URL and return ONLY a valid JSON object (no markdown fences):\n\nURL: $url$metaHint\n\nUser profile:\n- Ecosystem: ${profile.ecosystem}\n- Budget: ${profile.budgetRange}\n- Priorities: ${profile.priorities.join(', ')}\n- Country: ${profile.country}',
-            },
-          ],
-        },
-      ],
-      'systemInstruction': {
-        'parts': [
-          {'text': _linkAnalysisSystemPrompt(profile.language)},
-        ],
-      },
-      'tools': [
-        {'url_context': {}},
-      ],
-      'generationConfig': {
-        'temperature': 0.3,
-        'maxOutputTokens': 2048,
-        'thinkingConfig': {'thinkingBudget': 512},
+    final userInput = <String, dynamic>{
+      'url': url,
+      'userProfile': {
+        'ecosystem': profile.ecosystem,
+        'budgetRange': profile.budgetRange,
+        'priorities': profile.priorities,
+        'country': profile.country,
       },
     };
+    if (metaContext.isNotEmpty) userInput['productContext'] = metaContext;
 
-    Map<String, dynamic> response = {};
-    bool usedUrlContext = false;
-
-    try {
-      final text = await _rawRequest(
-        urlContextBody,
-        receiveTimeout: const Duration(seconds: 90),
-        tier: AiTier.heavy,
-      );
-      debugPrint('[Gemini] analyzeLink url_context raw: ${text.length} chars');
-      try {
-        response = jsonDecode(text) as Map<String, dynamic>;
-      } catch (_) {
-        final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
-        if (match != null) {
-          try {
-            response = jsonDecode(match.group(0)!) as Map<String, dynamic>;
-          } catch (e) {
-            debugPrint('[Gemini] analyzeLink url_context JSON parse failed: $e');
-          }
-        }
-      }
-      if (response.isNotEmpty) usedUrlContext = true;
-    } catch (e) {
-      debugPrint('[Gemini] analyzeLink url_context failed ($e) — falling back');
-    }
-
-    // Fallback: regular _jsonRequest (no URL fetch, uses model knowledge + metadata)
-    if (!usedUrlContext) {
-      final userInput = <String, dynamic>{
-        'url': url,
-        'userProfile': {
-          'ecosystem': profile.ecosystem,
-          'budgetRange': profile.budgetRange,
-          'priorities': profile.priorities,
-          'country': profile.country,
-        },
-      };
-      if (metaContext.isNotEmpty) userInput['productMetadata'] = metaContext;
-      response = await _jsonRequest(
-        system: _linkAnalysisSystemPrompt(profile.language),
-        user: jsonEncode(userInput),
-        thinkingBudget: 512,
-        timeout: const Duration(seconds: 60),
-        tier: AiTier.heavy,
-      );
-    }
-
-    debugPrint(
-      '[Gemini] analyzeLink done (url_context=$usedUrlContext) keys: ${response.keys}',
+    final response = await _jsonRequest(
+      system: _linkAnalysisSystemPrompt(profile.language),
+      user: jsonEncode(userInput),
+      thinkingBudget: 1024,
+      timeout: const Duration(seconds: 75),
+      tier: AiTier.heavy,
     );
+
+    debugPrint('[Gemini] analyzeLink response keys: ${response.keys}');
+
+    // Use slug title as fallback if AI returned an error/empty title
+    final aiTitle = response['title'] as String?;
+    final finalTitle = (aiTitle == null ||
+            aiTitle.isEmpty ||
+            aiTitle.toLowerCase().contains('erişim') ||
+            aiTitle.toLowerCase().contains('hata') ||
+            aiTitle.toLowerCase().contains('error') ||
+            aiTitle.toLowerCase().contains('unknown') ||
+            aiTitle.toLowerCase().contains('bilinmeyen'))
+        ? (resolvedTitle ?? aiTitle)
+        : aiTitle;
 
     return LinkAnalysisResult(
       url: url,
       metadata: OgMetadata(
-        title: response['title'] as String?,
+        title: finalTitle,
         image: response['image_url'] as String?,
         price: response['price'] as String?,
         siteName: response['site_name'] as String?,
@@ -217,6 +174,72 @@ class GeminiService implements AIService {
       analyzedAt: DateTime.now(),
       isProduct: response['is_product'] as bool? ?? true,
     );
+  }
+
+  /// Extract a human-readable product name from the URL path structure.
+  /// Handles Trendyol, Amazon, Hepsiburada, N11, and generic slugs.
+  /// No API cost — pure string parsing.
+  static String? _extractProductNameFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final host = uri.host.toLowerCase();
+      final path = uri.path;
+      final segments =
+          path.split('/').where((s) => s.isNotEmpty).toList();
+
+      // Amazon: /ProductName/dp/ASIN  or  /dp/ASIN
+      if (host.contains('amazon')) {
+        final dpIndex = segments.indexOf('dp');
+        if (dpIndex > 0) {
+          return segments[dpIndex - 1].replaceAll('-', ' ').trim();
+        }
+        // ASIN-only URL: keep ASIN so Gemini can look it up
+        final asinMatch = RegExp(r'/dp/([A-Z0-9]{10})').firstMatch(path);
+        if (asinMatch != null) return 'Amazon ASIN ${asinMatch.group(1)}';
+      }
+
+      // Trendyol: /{brand}/{product-slug}-p-{id}
+      if (host.contains('trendyol')) {
+        if (segments.length >= 2) {
+          final brand = segments[0];
+          final slug =
+              segments[1].replaceAll(RegExp(r'-p-\d+.*$'), '');
+          return '$brand $slug'.replaceAll('-', ' ').trim();
+        }
+      }
+
+      // Hepsiburada: /urun/{slug}-pm-{hexid}
+      if (host.contains('hepsiburada')) {
+        for (final seg in segments) {
+          final slug = seg.replaceAll(RegExp(r'-pm-[a-zA-Z0-9]+$'), '');
+          if (slug != seg && slug.length > 5) {
+            return slug.replaceAll('-', ' ').trim();
+          }
+        }
+      }
+
+      // N11: /.../{slug}.html
+      if (host.contains('n11')) {
+        for (final seg in segments.reversed) {
+          if (seg.endsWith('.html')) {
+            return seg
+                .replaceAll('.html', '')
+                .replaceAll('-', ' ')
+                .trim();
+          }
+        }
+      }
+
+      // Generic: longest segment that looks like a product slug
+      if (segments.isNotEmpty) {
+        final best =
+            segments.reduce((a, b) => a.length > b.length ? a : b);
+        if (best.length > 8 && best.contains('-')) {
+          return best.replaceAll(RegExp(r'[-_]'), ' ').trim();
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   @override
@@ -923,7 +946,7 @@ $jsonSchema
         },
       }),
       thinkingBudget: 1024,
-      timeout: const Duration(seconds: 60),
+      timeout: const Duration(seconds: 90),
       tier: AiTier.heavy,
     );
 
@@ -1014,7 +1037,7 @@ $jsonSchema
       },
       'generationConfig': {
         'temperature': 0.7,
-        'maxOutputTokens': 4096,
+        'maxOutputTokens': 8192,
         'responseMimeType': 'application/json',
       },
     };
@@ -1323,33 +1346,45 @@ Return valid JSON:
     final langName = _languageName(language);
     return '''
 You are Compair's link analysis engine. Given a product URL and user profile,
-analyze the product and compute a personalized compatibility score.
+identify the exact product and compute a deep, personalized compatibility analysis.
 
-PRODUCT VALIDATION: If the URL/metadata clearly indicates a non-product page
-(news article, blog post, homepage, social media profile, video page, search
-results page), set is_product to false, set score to 0, and set analysis to a
-short explanation in $langName. Otherwise set is_product to true.
+PRODUCT IDENTIFICATION RULES:
+- Use the "productContext.title" field (if provided) as the primary product name hint
+- For Amazon ASINs (e.g., B0BWP18WHK), look up the exact product from your training data
+- For Trendyol/Hepsiburada/N11 slugs in the URL, parse them to identify the product
+- The "title" field in your response MUST be the REAL product name (e.g., "Samsung Galaxy S24 Ultra", "ASUS VivoBook 16X")
+- NEVER put "Access Error", "Erişim Hatası", "Unknown", "Bilinmeyen" or any error/technical message in the title
+- If you truly cannot identify the product name, use the URL slug as the title
 
-LANGUAGE: You MUST write the "analysis" field in $langName.
+PRODUCT VALIDATION:
+- If the URL clearly indicates a non-product page (news, blog, homepage, social profile, video, search results), set is_product to false, score to 0, and write a short explanation in $langName
+- E-commerce product URLs are always is_product: true
+
+LANGUAGE: ALL text fields MUST be written in $langName.
 
 SCORING RULES:
-- Score reflects how well this product fits the user's profile and needs
-- Consider the user's ecosystem, budget, priorities, and country
-- Budget phones for a budget-conscious user = higher score
-- Premium phones for a budget-conscious user = lower score
-- Score range: 20-95 (never 0 or 100, be realistic)
-- Extract the actual product name, price, and category from the URL content
+- Score reflects how well this product fits THIS specific user's profile and needs
+- Consider ecosystem compatibility, budget alignment, stated priorities, and country-specific pricing
+- Budget products for budget-conscious user = higher score; premium products = lower score
+- Be honest and realistic (range: 20–95)
 
-Return valid JSON:
+ANALYSIS REQUIREMENTS (analysis field):
+- Write 6–10 sentences of deep, specific analysis in $langName
+- Cover: what the product is, key specs/features, how it matches the user's ecosystem and priorities, budget fit, notable pros, notable cons, and a clear recommendation
+- Be specific (mention real specs, real prices, real features) — avoid vague generic statements
+- Mention 2–3 specific things this product does WELL and 1–2 specific weaknesses
+- Do NOT repeat the user's profile back to them — focus on the product
+
+Return ONLY valid JSON (no markdown fences):
 {
   "is_product": true,
   "score": 20-95,
-  "analysis": "Detailed analysis in $langName of how this product fits the user",
-  "category": "product category (e.g., smartphones, laptops)",
-  "title": "Product name/title",
-  "image_url": "Direct URL to the product image (og:image or main product photo)",
-  "price": "Price with currency symbol (e.g., \$999, €849)",
-  "site_name": "Store/site name (e.g., Amazon, Best Buy)"
+  "analysis": "6-10 sentence detailed analysis in $langName",
+  "category": "product category in English (e.g., smartphones, laptops, tablets)",
+  "title": "Exact product name (e.g., Samsung Galaxy A55 5G)",
+  "image_url": "Direct product image URL if available (og:image or main photo), else null",
+  "price": "Price with currency symbol in local market (e.g., ₺12.999, \$499), else null",
+  "site_name": "Store name (e.g., Trendyol, Amazon, Hepsiburada)"
 }
 ''';
   }
@@ -1430,7 +1465,7 @@ answers, and their full profile, produce a comprehensive personalized match repo
 LANGUAGE: Write ALL text (verdict, pros, cons, alternatives) in $langName.
 
 CRITICAL SCORING RULES:
-- Analyze the SPECIFIC product's specs, features, price, and category
+- Analyze the SPECIFIC product's real specs, features, price tier, and category
 - Score must reflect how well THIS SPECIFIC product matches THIS SPECIFIC user
 - A budget phone should score LOW on Future-proofing but potentially HIGH on Budget Match
 - A flagship phone should score differently from a mid-range phone
@@ -1440,6 +1475,16 @@ CRITICAL SCORING RULES:
 - If the product doesn't match the user's needs, scores should be LOW (20-40)
 - If it's a perfect match, scores should be HIGH (80-95)
 - NEVER give the same score to products with different specs/prices
+
+VERDICT REQUIREMENTS:
+- Write a detailed 4-6 paragraph verdict in $langName
+- Paragraph 1: What this product actually is, key specs, and its market positioning
+- Paragraph 2: How it matches (or doesn't match) the user's stated needs and quiz answers
+- Paragraph 3: Ecosystem fit, budget analysis, and value for money assessment
+- Paragraph 4: Specific strengths and weaknesses relevant to this user's use case
+- Paragraph 5 (optional): Comparison to alternatives and final recommendation
+- Be SPECIFIC: mention real spec numbers, real prices, real feature names
+- DO NOT repeat the user's profile info — focus on the product analysis
 
 Return valid JSON:
 {
@@ -1451,23 +1496,22 @@ Return valid JSON:
     {"label": "Future-proofing", "score": 0-100, "emoji": "🚀"},
     {"label": "Lifestyle Match", "score": 0-100, "emoji": "🏠"}
   ],
-  "verdict": "2-3 paragraph personalized explanation in $langName",
-  "prosForUser": ["Pro 1 specific to THIS user", "Pro 2", "Pro 3"],
-  "consForUser": ["Con 1 specific to THIS user", "Con 2", "Con 3"],
-  "alternatives": ["Alternative Product 1", "Alternative Product 2", "Alternative Product 3"]
+  "verdict": "4-6 paragraph detailed analysis in $langName",
+  "prosForUser": ["Specific pro 1 relevant to this user's needs", "Specific pro 2", "Specific pro 3", "Specific pro 4"],
+  "consForUser": ["Specific con 1 relevant to this user", "Specific con 2", "Specific con 3"],
+  "alternatives": ["Real Alternative Product 1 with model number", "Real Alternative Product 2", "Real Alternative Product 3"]
 }
 
 Important:
 - The enhancedScore should differ from initialScore based on quiz answers
-- Factors must reflect the user's actual answers, not generic metrics
-- Usage Fit: how well this product matches what the user actually needs based on quiz answers
+- Factors must reflect the user's actual answers and real product specs, not generic metrics
+- Usage Fit: how well this product matches what the user actually does based on quiz answers
 - Budget Match: value for money relative to user's stated budget range
 - Ecosystem Fit: compatibility with user's existing devices and ecosystem (Apple/Android/Windows)
-- Future-proofing: how long this product will stay relevant for the user's use case
+- Future-proofing: how long this product will stay relevant for the user's specific use case
 - Lifestyle Match: how well it fits user's daily routine, profession, and living situation
-- Pros/cons must be personalized ("Since you mostly game, the GPU is overkill for you")
-- Alternatives must be real, currently available products in a similar price range
-- The verdict should explain WHY this product is or isn't right for THIS specific user
+- Pros/cons must be personalized and specific ("The 5000mAh battery will easily last your 12-hour workdays")
+- Alternatives must be real, specific products with model numbers in a similar price range
 - All text must be in $langName
 ''';
   }
