@@ -1306,8 +1306,8 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       subscriptionNames: pendingNames,
     );
 
-    var normalizedNames = pendingNames;
-
+    // ── Phase A: AI validation (separate try block — errors must NOT fall through)
+    List<String> normalizedNames;
     try {
       final resolution = await _gemini.resolveSubscriptionSelection(
         rawNames: pendingNames,
@@ -1330,8 +1330,45 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         );
         return;
       }
-      normalizedNames = resolution.normalizedNames;
+      if (resolution.normalizedNames.isEmpty) {
+        state = state.copyWith(
+          phase: SubFlowPhase.idle,
+          error: buildInvalidSubscriptionInputMessage(_appLang),
+        );
+        return;
+      }
+      // Deduplicate by normalised name (same service entered twice)
+      final seen = <String>{};
+      final deduped = resolution.normalizedNames
+          .where((name) => seen.add(name.toLowerCase()))
+          .toList();
+      if (deduped.length < resolution.normalizedNames.length) {
+        // At least one duplicate was found — continue with deduplicated list
+      }
+      if (deduped.length == 1 && pendingNames.length > 1) {
+        // All names resolved to the same service
+        state = state.copyWith(
+          phase: SubFlowPhase.idle,
+          error: _isTurkishLanguage(_appLang)
+              ? 'Aynı aboneliği birden fazla kez girdiniz.'
+              : 'You entered the same subscription more than once.',
+        );
+        return;
+      }
+      normalizedNames = deduped;
+    } catch (e) {
+      debugPrint('=== COMPAIR: resolveSubscriptionSelection failed: $e ===');
+      state = state.copyWith(
+        phase: SubFlowPhase.idle,
+        error: _isTurkishLanguage(_appLang)
+            ? 'Abonelik doğrulanırken bir hata oluştu. Lütfen tekrar deneyin.'
+            : 'An error occurred while validating subscriptions. Please try again.',
+      );
+      return;
+    }
 
+    // ── Phase B: Quiz generation (quiz failure falls through to direct analysis)
+    try {
       final quiz = await _deepseek
           .generateSubscriptionQuiz(
             subscriptionNames: normalizedNames,
@@ -1348,7 +1385,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         currentQuestionIndex: 0,
       );
     } catch (_) {
-      // Fallback: skip quiz, go straight to analysis
+      // Fallback: quiz unavailable → go straight to analysis with validated names
       final subQuota = _subService.recordSubscriptionAnalysis();
       if (subQuota.isFailure) {
         state = state.copyWith(

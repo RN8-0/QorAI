@@ -980,11 +980,10 @@ Return ONLY valid JSON:
           'tools': [
             {'googleSearch': {}},
           ],
-          'generationConfig': {
-            'responseMimeType': 'application/json',
-            'temperature': 0.1,
-            'maxOutputTokens': 1024,
-          },
+          // NOTE: responseMimeType is intentionally omitted here — Gemini does
+          // not allow JSON-mode alongside googleSearch grounding tools.
+          // _decodeJsonObject() extracts JSON from the free-text response.
+          'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 1024},
         },
         receiveTimeout: const Duration(seconds: 60),
         tier: AiTier.heavy,
