@@ -831,15 +831,15 @@ Return valid JSON:
     {"label": "$futureProofing", "score": 0-100, "emoji": "🚀"},
     {"label": "$lifestyleMatch", "score": 0-100, "emoji": "🏠"}
   ],
-  "verdict": "2-3 paragraph personalized explanation in $langName",
+  "verdict": "2-3 paragraph verdict in $langName. NEVER list user attributes. Give interpretive, product-focused judgments only.",
   "prosForUser": ["Pro 1", "Pro 2", "Pro 3"],
   "consForUser": ["Con 1", "Con 2", "Con 3"],
   "alternatives": ["Alt 1", "Alt 2", "Alt 3"],
   "personaScore": 0-100,
-  "personaAnalysis": "2 paragraphs about how user persona + quiz answers match this product, in $langName",
+  "personaAnalysis": "STRICT RULES: (1) NEVER describe or list user attributes (age, profession, ecosystem, devices, etc.). (2) Write ONLY short interpretive judgments about fit. (3) Style: 'Bu ürün, beklenen kullanım senaryolarını kısmen karşılıyor. Temel performans gereksinimleri yeterli, ancak tasarım ve multimedya beklentileri karşılanmıyor.' Max 3-4 sentences total in $langName.",
   "communityScore": 0-100,
-  "communityAnalysis": "Deep analysis of internet reviews (Reddit, YouTube, forums, store reviews) from this user's perspective, with pros/cons from the community, in $langName",
-  "overallVerdict": "Comprehensive final summary combining all analysis — score, persona fit, community opinion — in $langName"
+  "communityAnalysis": "STRICT RULES: (1) COMPLETELY IGNORE the user profile — do NOT mention 'sizin', 'siz', 'your', 'you', 'profiliniz', 'tercihleriniz' or any user attributes. (2) Write ONLY what the general internet community says about this product. (3) Style: 'Kullanıcılar genel olarak X konusunda olumlu; ancak Y ve Z hakkında eleştiriler öne çıkıyor.' 2-3 sentences in $langName.",
+  "overallVerdict": "Concise product verdict 3-4 sentences in $langName. Focus on the product itself. NEVER say 'profiliniz', 'tercihleriniz', 'sizin' or repeat user attributes. Summarize: score, key strengths/weaknesses, final recommendation."
 }
 ''';
   }

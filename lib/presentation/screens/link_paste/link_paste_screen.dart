@@ -1930,6 +1930,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const SizedBox(height: 28),
         // Hero orb
         Center(
           child: SizedBox(
