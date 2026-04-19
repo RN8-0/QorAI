@@ -442,28 +442,53 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   // ── Phase Timeline ─────────────────────────────────────────────────────────
 
   Widget _buildPhaseTimeline(SubFlowPhase phase) {
+    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    final isQuizLoading = phase == SubFlowPhase.quizLoading;
+
+    // Detailed AI steps with rich descriptions
     final steps = [
       _PhaseStep(
-        label: context.l10n?.analyzingServices ?? 'Analyzing services...',
-        icon: Icons.search_rounded,
+        label: isTr ? 'Servisleri Tanıyoruz' : 'Identifying Services',
+        detail: isTr
+            ? 'Girdiğin abonelik isimlerini doğrulayıp kategoriye eşliyoruz'
+            : 'Validating subscription names and mapping to categories',
+        icon: Icons.fingerprint_rounded,
         isDone: phase.index > SubFlowPhase.quizLoading.index,
-        isActive: phase == SubFlowPhase.quizLoading,
+        isActive: isQuizLoading,
       ),
       _PhaseStep(
-        label: context.l10n?.generatingQuiz ?? 'Generating quiz...',
-        icon: Icons.quiz_outlined,
+        label: isTr ? 'Kişisel Quiz Hazırlanıyor' : 'Crafting Personal Quiz',
+        detail: isTr
+            ? 'Alışkanlıklarını anlamak için AI sorular oluşturuyor'
+            : 'AI is generating questions based on your habits',
+        icon: Icons.psychology_alt_rounded,
         isDone: phase.index > SubFlowPhase.quizLoading.index,
-        isActive: phase == SubFlowPhase.quizLoading,
+        isActive: isQuizLoading,
       ),
       _PhaseStep(
-        label: context.l10n?.searchingWebData ?? 'Searching web data...',
-        icon: Icons.travel_explore_rounded,
+        label: isTr ? 'İnternet Yorumları Taranıyor' : 'Scanning Community Voice',
+        detail: isTr
+            ? 'Reddit, forum ve sosyal medyadan gerçek yorumları topluyoruz'
+            : 'Collecting real reviews from Reddit, forums & social media',
+        icon: Icons.forum_rounded,
         isDone: phase == SubFlowPhase.result,
         isActive: phase == SubFlowPhase.analyzing,
       ),
       _PhaseStep(
-        label: context.l10n?.computingMatch ?? 'Computing match...',
-        icon: Icons.psychology_outlined,
+        label: isTr ? 'Olumlu / Olumsuz Özet' : 'Positive / Negative Digest',
+        detail: isTr
+            ? 'Yorumlardaki artıları ve eksileri ayrıştırıyoruz'
+            : 'Extracting pros and cons from community feedback',
+        icon: Icons.sentiment_satisfied_rounded,
+        isDone: phase == SubFlowPhase.result,
+        isActive: phase == SubFlowPhase.analyzing,
+      ),
+      _PhaseStep(
+        label: isTr ? 'Uyumluluk Hesaplanıyor' : 'Computing Compatibility',
+        detail: isTr
+            ? 'Profilin + quiz cevapların + internet verileri birleşiyor'
+            : 'Blending your profile + quiz answers + web intelligence',
+        icon: Icons.auto_graph_rounded,
         isDone: phase == SubFlowPhase.result,
         isActive: phase == SubFlowPhase.analyzing,
       ),
@@ -471,79 +496,207 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
     final doneCount = steps.where((s) => s.isDone).length;
     final percent = ((doneCount / steps.length) * 100).toInt();
+    final activeStep = steps.firstWhere(
+      (s) => s.isActive,
+      orElse: () => steps.first,
+    );
 
-    return GlassContainer(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: context.surfaceVariantColor,
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l10n?.analysisProgress ?? 'Analysis Progress',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: context.textPrimary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Hero: Big animated orb with live status ──
+        Center(
+          child: SizedBox(
+            width: 180,
+            height: 180,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Outer ring — progress
+                SizedBox(
+                  width: 180,
+                  height: 180,
+                  child: TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween(begin: 0, end: doneCount / steps.length),
+                    builder: (ctx, value, _) => CircularProgressIndicator(
+                      value: value,
+                      strokeWidth: 6,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: _kPrimary.withValues(alpha: 0.08),
+                      color: _kAccent,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                // Pulsing inner orb
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (ctx, _) {
+                    return Container(
+                      width: 130 + _pulseController.value * 8,
+                      height: 130 + _pulseController.value * 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            _kPrimary.withValues(alpha: 0.25 + _pulseController.value * 0.15),
+                            _kPrimary.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
-                  borderRadius: BorderRadius.circular(12),
+                // Inner core with icon
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [_kPrimary, _kDeep],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _kPrimary.withValues(alpha: 0.4),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(activeStep.icon, color: Colors.white, size: 30)
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(
+                            begin: const Offset(1, 1),
+                            end: const Offset(1.1, 1.1),
+                            duration: 1200.ms,
+                            curve: Curves.easeInOut,
+                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$percent%',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Text(
-                  '$percent%',
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        // ── Live status label ──
+        Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Column(
+              key: ValueKey(activeStep.label),
+              children: [
+                Text(
+                  activeStep.label,
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    color: Colors.white,
+                    fontSize: 18,
+                    color: context.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    activeStep.detail,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: context.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        // ── Step list: all steps visible, shows full flow ──
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: context.isDarkMode
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: _kPrimary.withValues(alpha: context.isDarkMode ? 0.15 : 0.12),
+              width: 0.8,
+            ),
+            boxShadow: context.isDarkMode ? null : AppTheme.cardShadowLight,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: steps.asMap().entries.map((entry) {
+              final i = entry.key;
+              final step = entry.value;
+              return _buildTimelineStep(step, i == steps.length - 1);
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // ── Sources row: credibility boost ──
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: _kAccent.withValues(alpha: context.isDarkMode ? 0.06 : 0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _kAccent.withValues(alpha: context.isDarkMode ? 0.2 : 0.15),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.verified_rounded, color: _kAccent, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isTr
+                      ? 'Kaynaklar: Reddit · Trustpilot · Forum · X · YouTube · Resmi site'
+                      : 'Sources: Reddit · Trustpilot · Forums · X · YouTube · Official',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: context.textSecondary,
+                    letterSpacing: 0.1,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: doneCount / steps.length,
-              backgroundColor: AppTheme.slate700,
-              color: _kPrimary,
-              minHeight: 4,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...steps.asMap().entries.map((entry) {
-            final i = entry.key;
-            final step = entry.value;
-            return _buildTimelineStep(step, i == steps.length - 1);
-          }),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.03);
+        ),
+      ],
+    ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _buildTimelineStep(_PhaseStep step, bool isLast) {
+    final inactiveColor = context.isDarkMode
+        ? AppTheme.slate700
+        : AppTheme.slate200;
+    final inactiveText = context.isDarkMode
+        ? AppTheme.slate400
+        : AppTheme.slate500;
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -563,11 +716,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                             colors: [AppTheme.success, AppTheme.scoreExcellent],
                           ),
                         ),
-                        child: Center(
+                        child: const Center(
                           child: Icon(
                             Icons.check_rounded,
                             size: 15,
-                            color: context.surfaceVariantColor,
+                            color: Colors.white,
                           ),
                         ),
                       ).animate().scale(
@@ -598,13 +751,13 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                                 ),
                               ],
                             ),
-                            child: Center(
+                            child: const Center(
                               child: SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: context.surfaceVariantColor,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
@@ -614,15 +767,15 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     : Container(
                         width: 28,
                         height: 28,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppTheme.slate700,
+                          color: inactiveColor,
                         ),
                         child: Center(
                           child: Icon(
                             step.icon,
                             size: 13,
-                            color: AppTheme.slate400,
+                            color: inactiveText,
                           ),
                         ),
                       ),
@@ -634,7 +787,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       decoration: BoxDecoration(
                         color: step.isDone
                             ? AppTheme.success.withValues(alpha: 0.4)
-                            : AppTheme.slate700,
+                            : inactiveColor,
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),
@@ -645,18 +798,38 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
           const SizedBox(width: 12),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-              child: Text(
-                step.label,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: step.isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: step.isDone
-                      ? AppTheme.success
-                      : step.isActive
-                      ? _kPrimary
-                      : AppTheme.slate400,
-                ),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    step.label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13.5,
+                      fontWeight: step.isActive ? FontWeight.w800 : FontWeight.w600,
+                      color: step.isDone
+                          ? AppTheme.success
+                          : step.isActive
+                              ? _kPrimary
+                              : context.textPrimary.withValues(alpha: 0.6),
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  if (step.detail.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      step.detail,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w400,
+                        color: step.isDone || step.isActive
+                            ? context.textSecondary
+                            : context.textTertiaryColor,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -1178,99 +1351,160 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   Widget _buildInfoCards() {
+    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     final items = [
       _InfoItem(
-        icon: Icons.travel_explore_rounded,
+        icon: Icons.forum_rounded,
         gradient: const [_kPrimary, _kDeep],
-        title: context.l10n?.webPoweredInsights ?? 'Web Destekli İçgörüler',
-        subtitle:
-            context.l10n?.webPoweredInsightsDesc ??
-            'Gerçek zamanlı fiyatlar, Reddit ve forum yorumları, kullanıcı deneyimleri — AI web\'i tarayarak en güncel bilgileri toplar',
+        title: isTr ? 'İnternet Yorumları' : 'Community Voice',
+        subtitle: isTr
+            ? 'Reddit, forum ve sosyal medyadan gerçek kullanıcı yorumları — olumlu/olumsuz özet'
+            : 'Real user feedback from Reddit, forums & social media — positive/negative summary',
       ),
       _InfoItem(
-        icon: Icons.quiz_outlined,
-        gradient: const [_kSecondary, Color(0xFFF97316)],
-        title: context.l10n?.personalizedQuiz ?? 'Kişiselleştirilmiş Quiz',
-        subtitle:
-            context.l10n?.personalizedQuizDesc ??
-            'AI, kullanım alışkanlıklarınıza göre sorular oluşturur — cevaplarınız analizi kişiselleştirir',
+        icon: Icons.quiz_rounded,
+        gradient: const [_kSecondary, _kAccent],
+        title: isTr ? 'Kişisel Quiz' : 'Personal Quiz',
+        subtitle: isTr
+            ? 'AI alışkanlıklarınıza göre sorular hazırlar — her cevap analizi sizin için kişiselleştirir'
+            : 'AI tailors questions to your habits — every answer personalizes the match',
       ),
       _InfoItem(
-        icon: Icons.psychology_outlined,
-        gradient: const [_kAccent, Color(0xFF10B981)],
-        title: context.l10n?.smartCompatibility ?? 'Akıllı Uyumluluk',
-        subtitle:
-            context.l10n?.smartCompatibilityDesc ??
-            'Profilinize ve cevaplarınıza göre eşleşme puanı — size en uygun aboneliği bulun',
+        icon: Icons.auto_awesome_rounded,
+        gradient: const [_kAccent, AppTheme.success],
+        title: isTr ? 'Akıllı Eşleşme' : 'Smart Match',
+        subtitle: isTr
+            ? 'Profilinize göre uyumluluk puanı ve detaylı öneri — en uygun aboneliği bulun'
+            : 'Compatibility score & detailed pick for your profile — find your best fit',
       ),
     ];
 
     return Column(
-      children: items.asMap().entries.map((entry) {
-        final i = entry.key;
-        final item = entry.value;
-        return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: GlassContainer(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: item.gradient,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: item.gradient.first.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Icon(item.icon, color: Colors.white, size: 24),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.title,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: context.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.subtitle,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              color: context.textTertiaryColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 16,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_kPrimary, _kAccent],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            )
-            .animate(delay: (i * 120).ms)
-            .fadeIn(duration: 500.ms)
-            .slideY(begin: 0.08);
-      }).toList(),
+              const SizedBox(width: 10),
+              Text(
+                isTr ? 'Nasıl Çalışır' : 'How It Works',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: context.textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...items.asMap().entries.map((entry) {
+          final i = entry.key;
+          final item = entry.value;
+          return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: context.isDarkMode
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: item.gradient.first.withValues(alpha: context.isDarkMode ? 0.18 : 0.15),
+                      width: 0.8,
+                    ),
+                    boxShadow: context.isDarkMode
+                        ? null
+                        : AppTheme.cardShadowLight,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Step number
+                      SizedBox(
+                        width: 28,
+                        child: Text(
+                          '0${i + 1}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: item.gradient.first.withValues(alpha: 0.4),
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                      // Icon pill
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: item.gradient,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: item.gradient.first.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(item.icon, color: Colors.white, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: context.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item.subtitle,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: context.textSecondary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .animate(delay: (i * 100).ms)
+              .fadeIn(duration: 400.ms)
+              .slideX(begin: 0.05);
+        }),
+      ],
     );
   }
 }
@@ -1279,11 +1513,13 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
 class _PhaseStep {
   final String label;
+  final String detail;
   final IconData icon;
   final bool isDone;
   final bool isActive;
   const _PhaseStep({
     required this.label,
+    this.detail = '',
     required this.icon,
     required this.isDone,
     required this.isActive,
@@ -1729,12 +1965,6 @@ class _SubResultView extends StatelessWidget {
     return AppTheme.error;
   }
 
-  /// Format price — AI already returns prices in user's currency
-  String _formatPrice(String rawPrice) {
-    if (rawPrice.isEmpty) return rawPrice;
-    return rawPrice;
-  }
-
   bool _isTr(BuildContext context) =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
 
@@ -2158,18 +2388,37 @@ class _SubResultView extends StatelessWidget {
   ) {
     final score = (data['compatibility_score'] as num?)?.toDouble() ?? 0;
     final explanation = data['compatibility_explanation'] as String? ?? '';
-    final price = _formatPrice(data['price'] as String? ?? '');
     final pros = List<String>.from(data['pros'] ?? []);
     final cons = List<String>.from(data['cons'] ?? []);
     final sentiment = data['community_sentiment'] as String? ?? '';
     final factors = (data['factors'] as Map<String, dynamic>?) ?? {};
+    final category = data['category'] as String? ?? '';
 
-    return GlassContainer(
+    return Container(
       padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.isDarkMode
+            ? Colors.white.withValues(alpha: 0.04)
+            : Colors.white.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _scoreColor(score).withValues(alpha: context.isDarkMode ? 0.18 : 0.22),
+          width: 1,
+        ),
+        boxShadow: context.isDarkMode
+            ? [
+                BoxShadow(
+                  color: _scoreColor(score).withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : AppTheme.cardShadowLight,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Name + Score + Price
+          // Header: Name + Category + Score
           Row(
             children: [
               Expanded(
@@ -2180,48 +2429,77 @@ class _SubResultView extends StatelessWidget {
                       name,
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w800,
-                        fontSize: 18,
+                        fontSize: 19,
                         color: context.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    if (price.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        price,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          color: _kAccent,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    if (category.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.bookmark_outline_rounded,
+                            size: 12,
+                            color: context.textTertiaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            category,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: context.textTertiaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
                 ),
               ),
-              // Large score badge
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      _scoreColor(score).withValues(alpha: 0.8),
-                      _scoreColor(score),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    '${score.toInt()}%',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                      color: Colors.white,
+              // Soft score ring — no harsh fill
+              SizedBox(
+                width: 62,
+                height: 62,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 62,
+                      height: 62,
+                      child: CircularProgressIndicator(
+                        value: score / 100,
+                        strokeWidth: 5,
+                        strokeCap: StrokeCap.round,
+                        backgroundColor: _scoreColor(score).withValues(alpha: 0.12),
+                        color: _scoreColor(score),
+                      ),
                     ),
-                  ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${score.toInt()}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: _scoreColor(score),
+                            height: 1.0,
+                          ),
+                        ),
+                        Text(
+                          '%',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 9,
+                            color: _scoreColor(score).withValues(alpha: 0.8),
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -2229,13 +2507,20 @@ class _SubResultView extends StatelessWidget {
 
           // Explanation
           if (explanation.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              explanation,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                color: context.textSecondary,
-                height: 1.4,
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _scoreColor(score).withValues(alpha: context.isDarkMode ? 0.06 : 0.05),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                explanation,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: context.textPrimary.withValues(alpha: 0.85),
+                  height: 1.55,
+                ),
               ),
             ),
           ],
@@ -2314,29 +2599,69 @@ class _SubResultView extends StatelessWidget {
               ),
           ],
 
-          // Community Sentiment
+          // Community Sentiment — web yorumları özetleri
           if (sentiment.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
               decoration: BoxDecoration(
-                color: context.surfaceElevatedColor,
-                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  colors: context.isDarkMode
+                      ? [
+                          _kPrimary.withValues(alpha: 0.10),
+                          _kAccent.withValues(alpha: 0.05),
+                        ]
+                      : [
+                          _kPrimary.withValues(alpha: 0.07),
+                          _kAccent.withValues(alpha: 0.04),
+                        ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _kPrimary.withValues(alpha: context.isDarkMode ? 0.18 : 0.15),
+                  width: 0.8,
+                ),
               ),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('💬', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      sentiment,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: context.textSecondary,
-                        height: 1.4,
-                        fontStyle: FontStyle.italic,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [_kPrimary, _kAccent],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.forum_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                       ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _isTr(context) ? 'İnternet Yorumları' : 'Community Voice',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: _kPrimary,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    sentiment,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: context.textPrimary.withValues(alpha: 0.85),
+                      height: 1.55,
                     ),
                   ),
                 ],

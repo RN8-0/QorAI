@@ -455,13 +455,13 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                 children: [
                   // Tagline row
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+                            horizontal: 11,
+                            vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -480,6 +480,15 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                                     ),
                                   ),
                             borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.brandBlue.withValues(
+                                  alpha: 0.25,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -506,18 +515,37 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                           ),
                         ),
                         const Spacer(),
-                        Text(
-                          '$count / 4',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: count >= 2
-                                ? (isDark
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (count >= 2
+                                    ? AppTheme.brandCyan
+                                    : context.textTertiaryColor)
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: (count >= 2
                                       ? AppTheme.brandCyan
-                                      : AppTheme.brandBlue)
-                                : (isDark
-                                      ? Colors.white38
-                                      : context.textTertiaryColor),
+                                      : context.textTertiaryColor)
+                                  .withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Text(
+                            '$count / 4',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: count >= 2
+                                  ? (isDark
+                                        ? AppTheme.brandCyan
+                                        : AppTheme.brandBlue)
+                                  : (isDark
+                                        ? Colors.white38
+                                        : context.textTertiaryColor),
+                            ),
                           ),
                         ),
                       ],
@@ -610,34 +638,79 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             // Search bar — hide when all 4 slots filled
             if (!allFilled)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: context.surfaceVariantColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: context.dividerColor),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: AppTheme.brandBlue.withValues(
+                        alpha: isDark ? 0.15 : 0.12,
+                      ),
+                    ),
+                    boxShadow: isDark
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppTheme.brandBlue.withValues(alpha: 0.06),
+                              blurRadius: 14,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                   ),
                   child: TextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     onChanged: _onSearchChanged,
-                    style: TextStyle(color: context.textPrimary, fontSize: 14),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: context.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                     decoration: InputDecoration(
                       hintText:
                           context.l10n?.searchCompareHint ??
                           'Search products to compare...',
-                      hintStyle: TextStyle(
+                      hintStyle: GoogleFonts.plusJakartaSans(
                         color: context.textTertiaryColor,
-                        fontSize: 14,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
                       ),
-                      prefixIcon: ShaderMask(
-                        shaderCallback: (bounds) =>
-                            _accentGradient.createShader(bounds),
-                        child: const Icon(
-                          Icons.search,
-                          color: Colors.white,
-                          size: 20,
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppTheme.brandBlue,
+                                AppTheme.brandDeepBlue,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.brandBlue.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.search_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 52,
+                        minHeight: 52,
                       ),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
@@ -656,15 +729,15 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
+                        horizontal: 4,
+                        vertical: 16,
                       ),
                     ),
                   ),
                 ),
               ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
 
             Expanded(
               child: allFilled
@@ -692,13 +765,31 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         items.add(
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Text(
-              'VS',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.brandCyan.withValues(alpha: 0.7),
-                letterSpacing: 1,
+            child: Container(
+              width: 28,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.brandCyan.withValues(alpha: 0.18),
+                    AppTheme.brandBlue.withValues(alpha: 0.12),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.35),
+                  width: 0.8,
+                ),
+              ),
+              child: Text(
+                'VS',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.brandCyan,
+                  letterSpacing: 0.8,
+                ),
               ),
             ),
           ),

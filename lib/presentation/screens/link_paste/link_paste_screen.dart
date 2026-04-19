@@ -1848,34 +1848,50 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildPhaseTimeline(LinkFlowPhase phase) {
+    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     final steps = [
       _PhaseStep(
-        label: context.l10n?.validatingUrl ?? 'Validating URL...',
+        label: isTr ? 'Bağlantı Doğrulanıyor' : 'Validating Link',
+        detail: isTr
+            ? 'URL formatı ve erişilebilirlik kontrol ediliyor'
+            : 'Checking URL format and accessibility',
         icon: Icons.link_rounded,
         isDone: phase.index >= LinkFlowPhase.analyzing.index,
         isActive: phase == LinkFlowPhase.analyzing,
       ),
       _PhaseStep(
-        label: context.l10n?.identifyingProduct ?? 'Identifying product...',
-        icon: Icons.shopping_bag_outlined,
+        label: isTr ? 'Ürün Tanımlanıyor' : 'Identifying Product',
+        detail: isTr
+            ? 'Sayfa içeriğinden ürün bilgisi ve özellikler çıkartılıyor'
+            : 'Extracting product info and specs from page content',
+        icon: Icons.fingerprint_rounded,
         isDone: phase.index >= LinkFlowPhase.quizLoading.index,
         isActive: phase == LinkFlowPhase.analyzing,
       ),
       _PhaseStep(
-        label: context.l10n?.analyzingSpecs ?? 'Analyzing specifications...',
-        icon: Icons.analytics_outlined,
+        label: isTr ? 'İnternet Yorumları Taranıyor' : 'Scanning Community Reviews',
+        detail: isTr
+            ? 'Reddit, forum, YouTube ve mağaza yorumları toplanıyor'
+            : 'Gathering Reddit, forum, YouTube & store reviews',
+        icon: Icons.forum_rounded,
         isDone: phase.index >= LinkFlowPhase.quizLoading.index,
-        isActive: phase == LinkFlowPhase.quizLoading,
+        isActive: phase == LinkFlowPhase.analyzing,
       ),
       _PhaseStep(
-        label: context.l10n?.generatingQuiz ?? 'Generating quiz...',
-        icon: Icons.quiz_outlined,
+        label: isTr ? 'Kişisel Quiz Hazırlanıyor' : 'Preparing Personal Quiz',
+        detail: isTr
+            ? 'AI kullanıma özel sorular oluşturuyor'
+            : 'AI is generating usage-tailored questions',
+        icon: Icons.psychology_alt_rounded,
         isDone: phase.index >= LinkFlowPhase.quiz.index,
         isActive: phase == LinkFlowPhase.quizLoading,
       ),
       _PhaseStep(
-        label: context.l10n?.computingMatch ?? 'Computing match...',
-        icon: Icons.psychology_outlined,
+        label: isTr ? 'Uyumluluk Hesaplanıyor' : 'Computing Compatibility',
+        detail: isTr
+            ? 'Profilin + cevapların + yorumlar birleştirilip skor üretiliyor'
+            : 'Blending your profile + answers + reviews into a score',
+        icon: Icons.auto_graph_rounded,
         isDone: phase.index >= LinkFlowPhase.result.index,
         isActive: phase == LinkFlowPhase.computing,
       ),
@@ -1883,100 +1899,191 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     final doneCount = steps.where((s) => s.isDone).length;
     final percent = ((doneCount / steps.length) * 100).toInt();
-    final estimates = {
-      LinkFlowPhase.analyzing: '~8s remaining',
-      LinkFlowPhase.quizLoading: '~4s remaining',
-      LinkFlowPhase.computing: '~3s remaining',
-    };
+    final activeStep = steps.firstWhere(
+      (s) => s.isActive,
+      orElse: () => steps.first,
+    );
 
-    return GlassContainer(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.primaryBlue, AppTheme.neonPurple],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: context.surfaceVariantColor,
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l10n?.analysisProgress ?? 'Analysis Progress',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: context.textPrimary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Hero orb
+        Center(
+          child: SizedBox(
+            width: 180,
+            height: 180,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 180,
+                  height: 180,
+                  child: TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween(begin: 0, end: doneCount / steps.length),
+                    builder: (ctx, value, _) => CircularProgressIndicator(
+                      value: value,
+                      strokeWidth: 6,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.08),
+                      color: AppTheme.brandCyan,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.primaryBlue, AppTheme.neonPurple],
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (ctx, _) => Container(
+                    width: 130 + _pulseController.value * 8,
+                    height: 130 + _pulseController.value * 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppTheme.brandBlue.withValues(
+                            alpha: 0.25 + _pulseController.value * 0.15,
+                          ),
+                          AppTheme.brandBlue.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  '$percent%',
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.brandBlue.withValues(alpha: 0.4),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(activeStep.icon, color: Colors.white, size: 30)
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(
+                            begin: const Offset(1, 1),
+                            end: const Offset(1.1, 1.1),
+                            duration: 1200.ms,
+                            curve: Curves.easeInOut,
+                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$percent%',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Column(
+              key: ValueKey(activeStep.label),
+              children: [
+                Text(
+                  activeStep.label,
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    color: Colors.white,
+                    fontSize: 18,
+                    color: context.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    activeStep.detail,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: context.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: context.isDarkMode
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: AppTheme.brandBlue.withValues(alpha: context.isDarkMode ? 0.15 : 0.12),
+              width: 0.8,
+            ),
+            boxShadow: context.isDarkMode ? null : AppTheme.cardShadowLight,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: steps.asMap().entries.map((entry) {
+              final i = entry.key;
+              final step = entry.value;
+              final isLast = i == steps.length - 1;
+              return _buildTimelineStep(step, isLast, i);
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.brandCyan.withValues(alpha: context.isDarkMode ? 0.06 : 0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppTheme.brandCyan.withValues(alpha: context.isDarkMode ? 0.2 : 0.15),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.verified_rounded, color: AppTheme.brandCyan, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isTr
+                      ? 'Kaynaklar: Reddit · Trustpilot · Forum · YouTube · Mağaza · Resmi site'
+                      : 'Sources: Reddit · Trustpilot · Forums · YouTube · Store · Official',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: context.textSecondary,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Estimated time
-          if (estimates.containsKey(phase))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                estimates[phase]!,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: context.textTertiaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: doneCount / steps.length,
-              backgroundColor: AppTheme.slate700,
-              color: AppTheme.primaryBlue,
-              minHeight: 4,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...steps.asMap().entries.map((entry) {
-            final i = entry.key;
-            final step = entry.value;
-            final isLast = i == steps.length - 1;
-            return _buildTimelineStep(step, isLast, i);
-          }),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.03);
+        ),
+      ],
+    ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _buildTimelineStep(_PhaseStep step, bool isLast, int index) {
@@ -2054,15 +2161,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         duration: const Duration(milliseconds: 400),
                         width: 28,
                         height: 28,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppTheme.slate700,
+                          color: context.isDarkMode
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : AppTheme.slate200,
                         ),
                         child: Center(
                           child: Icon(
                             step.icon,
                             size: 13,
-                            color: AppTheme.slate400,
+                            color: context.isDarkMode
+                                ? AppTheme.slate400
+                                : AppTheme.slate500,
                           ),
                         ),
                       ),
@@ -2074,7 +2185,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       decoration: BoxDecoration(
                         color: step.isDone
                             ? AppTheme.success.withValues(alpha: 0.4)
-                            : AppTheme.slate700,
+                            : (context.isDarkMode
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : AppTheme.slate200),
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),
@@ -2085,18 +2198,36 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           const SizedBox(width: 12),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-              child: Text(
-                step.label,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: step.isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: step.isDone
-                      ? AppTheme.success
-                      : step.isActive
-                      ? AppTheme.primaryBlue
-                      : AppTheme.slate400,
-                ),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    step.label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight:
+                          step.isActive ? FontWeight.w700 : FontWeight.w600,
+                      color: step.isDone
+                          ? AppTheme.success
+                          : step.isActive
+                          ? AppTheme.primaryBlue
+                          : context.textPrimary,
+                    ),
+                  ),
+                  if (step.detail.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      step.detail,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                        color: context.textTertiaryColor,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -2927,24 +3058,80 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 final isBest = i == 0;
 
                 return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isBest
-                            ? AppTheme.gold.withValues(alpha: 0.06)
-                            : context.surfaceVariantColor,
-                        borderRadius: BorderRadius.circular(14),
-                        border: isBest
-                            ? Border.all(
-                                color: AppTheme.gold.withValues(alpha: 0.3),
+                        gradient: isBest
+                            ? LinearGradient(
+                                colors: [
+                                  AppTheme.gold.withValues(
+                                    alpha: context.isDarkMode ? 0.1 : 0.08,
+                                  ),
+                                  AppTheme.goldOrange.withValues(
+                                    alpha: context.isDarkMode ? 0.06 : 0.04,
+                                  ),
+                                ],
                               )
                             : null,
+                        color: !isBest
+                            ? (context.isDarkMode
+                                ? Colors.white.withValues(alpha: 0.03)
+                                : Colors.white.withValues(alpha: 0.85))
+                            : null,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isBest
+                              ? AppTheme.gold.withValues(alpha: 0.35)
+                              : scoreColor.withValues(
+                                  alpha: context.isDarkMode ? 0.15 : 0.18,
+                                ),
+                          width: isBest ? 1.3 : 1,
+                        ),
+                        boxShadow: context.isDarkMode
+                            ? null
+                            : AppTheme.cardShadowLight,
                       ),
                       child: Row(
                         children: [
-                          Text(
-                            medal.isNotEmpty ? medal : '${i + 1}',
-                            style: GoogleFonts.plusJakartaSans(fontSize: 20),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              gradient: isBest
+                                  ? const LinearGradient(
+                                      colors: [
+                                        AppTheme.gold,
+                                        AppTheme.goldOrange,
+                                      ],
+                                    )
+                                  : null,
+                              color: !isBest
+                                  ? scoreColor.withValues(alpha: 0.12)
+                                  : null,
+                              shape: BoxShape.circle,
+                              boxShadow: isBest
+                                  ? [
+                                      BoxShadow(
+                                        color: AppTheme.gold.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              medal.isNotEmpty ? medal : '${i + 1}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: medal.isNotEmpty ? 20 : 14,
+                                fontWeight: FontWeight.w900,
+                                color: medal.isNotEmpty
+                                    ? null
+                                    : scoreColor,
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -2954,58 +3141,94 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 Text(
                                   title,
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13.5,
                                     color: context.textPrimary,
+                                    letterSpacing: -0.2,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-
                                 if (r.prosForUser.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      '✅ ${r.prosForUser.first}',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: AppTheme.success,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 12,
+                                          color: AppTheme.success,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            r.prosForUser.first,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.success,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 if (r.consForUser.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 2),
-                                    child: Text(
-                                      '⚠ ${r.consForUser.first}',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: AppTheme.warning,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.warning_rounded,
+                                          size: 12,
+                                          color: AppTheme.warning,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            r.consForUser.first,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.warning,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                               ],
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
+                              horizontal: 12,
+                              vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: scoreColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
+                              gradient: LinearGradient(
+                                colors: [
+                                  scoreColor.withValues(alpha: 0.2),
+                                  scoreColor.withValues(alpha: 0.1),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: scoreColor.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: Text(
                               '${r.enhancedScore.toStringAsFixed(0)}%',
                               style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w900,
                                 fontSize: 14,
                                 color: scoreColor,
+                                letterSpacing: -0.3,
                               ),
                             ),
                           ),
@@ -3433,80 +3656,161 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildInfoCards() {
-    return Column(
-      children: [
-        const SizedBox(height: 16),
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final steps = [
+      (
+        Icons.link_rounded,
+        isTr ? 'Bağlantıyı Yapıştır' : 'Paste Link',
+        isTr
+            ? 'Herhangi bir mağazadan ürün bağlantısını ekle'
+            : 'Drop any product URL from 100+ stores',
+        AppTheme.brandBlue,
+      ),
+      (
+        Icons.forum_rounded,
+        isTr ? 'İnternet Yorumları' : 'Community Voice',
+        isTr
+            ? 'Reddit · Trustpilot · YouTube ve forumlardan gerçek deneyimler'
+            : 'Real opinions from Reddit, Trustpilot, forums & YouTube',
+        AppTheme.brandCyan,
+      ),
+      (
+        Icons.psychology_rounded,
+        isTr ? 'Kişisel Quiz' : 'Personal Quiz',
+        isTr
+            ? 'Kısa sorularla ihtiyaçlarını tanıyalım'
+            : 'Quick questions tailored to your needs',
+        AppTheme.brandSkyBlue,
+      ),
+      (
+        Icons.diamond_rounded,
+        isTr ? 'Eşleşme Skoru' : 'Match Score',
+        isTr
+            ? 'Sana özel uyumluluk puanını al'
+            : 'Get your personalized compatibility score',
+        AppTheme.brandDeepBlue,
+      ),
+    ];
 
-        // Vertical flow steps with glassmorphic cards
-        ...List.generate(3, (i) {
-          final steps = [
-            (
-              Icons.link_rounded,
-              context.l10n?.pasteLink ?? 'Paste Link',
-              context.l10n?.dropProductUrl ??
-                  'Drop any product URL from 100+ stores',
-              AppTheme.brandBlue,
-            ),
-            (
-              Icons.psychology_rounded,
-              context.l10n?.aiQuiz ?? 'AI Quiz',
-              context.l10n?.answerQuickQuestions ??
-                  'Answer quick questions about your needs',
-              AppTheme.brandSkyBlue,
-            ),
-            (
-              Icons.diamond_rounded,
-              context.l10n?.matchScoreLabel ?? 'Match Score',
-              context.l10n?.getPersonalizedScore ??
-                  'Get personalized compatibility score',
-              AppTheme.brandCyan,
-            ),
-          ];
-          final (icon, title, desc, color) = steps[i];
-          return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+
+        // Section header with subtle accent line
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isTr ? 'Nasıl çalışır' : 'How it works',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppTheme.brandCyan.withValues(alpha: 0.15),
+                  ),
+                ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Step number + vertical line
+                    const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 11,
+                      color: AppTheme.brandCyan,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isTr ? 'AI + İnternet' : 'AI + Web',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.brandCyan,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Vertical flow steps
+        ...List.generate(steps.length, (i) {
+          final (icon, title, desc, color) = steps[i];
+          final isLast = i == steps.length - 1;
+          return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Column(
                       children: [
                         Container(
-                          width: 32,
-                          height: 32,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [color, color.withValues(alpha: 0.6)],
+                              colors: [color, color.withValues(alpha: 0.65)],
                             ),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: color.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
+                                color: color.withValues(alpha: 0.28),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
                               ),
                             ],
                           ),
                           child: Center(
                             child: Text(
-                              '${i + 1}',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
+                              '0${i + 1}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
+                                letterSpacing: -0.3,
                               ),
                             ),
                           ),
                         ),
-                        if (i < 2)
+                        if (!isLast)
                           Container(
                             width: 2,
                             height: 20,
+                            margin: const EdgeInsets.symmetric(vertical: 2),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  color.withValues(alpha: 0.4),
+                                  color.withValues(alpha: 0.35),
                                   color.withValues(alpha: 0.05),
                                 ],
                               ),
@@ -3515,20 +3819,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       ],
                     ),
                     const SizedBox(width: 14),
-                    // Content
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(14),
+                          color: context.isDarkMode
+                              ? color.withValues(alpha: 0.06)
+                              : Colors.white.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: color.withValues(alpha: 0.12),
+                            color: color.withValues(
+                              alpha: context.isDarkMode ? 0.15 : 0.18,
+                            ),
                           ),
+                          boxShadow: context.isDarkMode
+                              ? null
+                              : AppTheme.cardShadowLight,
                         ),
                         child: Row(
                           children: [
-                            Icon(icon, size: 20, color: color),
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(icon, size: 20, color: color),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -3536,19 +3854,21 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 children: [
                                   Text(
                                     title,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: context.textPrimary,
+                                      letterSpacing: -0.2,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     desc,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
                                       color: context.textTertiaryColor,
-                                      height: 1.3,
+                                      height: 1.35,
                                     ),
                                   ),
                                 ],
@@ -3562,11 +3882,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 ),
               )
               .animate()
-              .fadeIn(delay: (100 * i).ms, duration: 400.ms)
-              .slideX(begin: 0.05);
+              .fadeIn(delay: (80 * i).ms, duration: 380.ms)
+              .slideX(begin: 0.04);
         }),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
 
         // AI Powers - horizontal scroll cards
         SizedBox(
@@ -3574,6 +3894,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
+              _PowerCard(
+                icon: Icons.forum_rounded,
+                color: AppTheme.brandCyan,
+                title: isTr ? 'İnternet\nYorumları' : 'Community\nReviews',
+                emoji: '💬',
+              ),
               _PowerCard(
                 icon: Icons.memory_rounded,
                 color: AppTheme.brandBlue,
@@ -3594,7 +3920,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               ),
               _PowerCard(
                 icon: Icons.person_rounded,
-                color: AppTheme.brandCyan,
+                color: AppTheme.brandDeepBlue,
                 title: context.l10n?.personalMatch ?? 'Personal\nMatch',
                 emoji: '🎯',
               ),

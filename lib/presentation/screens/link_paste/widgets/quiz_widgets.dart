@@ -2,12 +2,14 @@ part of '../link_paste_screen.dart';
 
 class _PhaseStep {
   final String label;
+  final String detail;
   final IconData icon;
   final bool isDone;
   final bool isActive;
 
   const _PhaseStep({
     required this.label,
+    this.detail = '',
     required this.icon,
     required this.isDone,
     required this.isActive,
@@ -128,29 +130,80 @@ class _QuizView extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Progress bar
-        Row(
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: answeredCount / answeredQuestions.length,
-                  backgroundColor: AppTheme.slate700,
-                  color: AppTheme.primaryBlue,
-                  minHeight: 6,
+        Builder(
+          builder: (ctx) {
+            final progress = answeredCount / answeredQuestions.length;
+            final pct = (progress * 100).round();
+            return Row(
+              children: [
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: ctx.isDarkMode
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : AppTheme.brandBlue.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      AnimatedFractionallySizedBox(
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOut,
+                        widthFactor: progress,
+                        child: Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppTheme.brandBlue,
+                                AppTheme.brandCyan,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.brandBlue.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              '$answeredCount/${answeredQuestions.length}',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: AppTheme.slate500,
-              ),
-            ),
-          ],
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.brandBlue.withValues(
+                      alpha: ctx.isDarkMode ? 0.14 : 0.08,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Text(
+                    '$answeredCount/${answeredQuestions.length}  ·  $pct%',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11.5,
+                      color: AppTheme.brandBlue,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 20),
 
@@ -251,36 +304,91 @@ class _QuestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
+    final isDark = context.isDarkMode;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
       padding: const EdgeInsets.all(20),
-      usePrimaryTint: isActive,
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: isActive ? 0.05 : 0.03)
+            : Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isActive
+              ? AppTheme.brandBlue.withValues(alpha: 0.4)
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : AppTheme.brandBlue.withValues(alpha: 0.1)),
+          width: isActive ? 1.5 : 1,
+        ),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: AppTheme.brandBlue.withValues(
+                    alpha: isDark ? 0.2 : 0.12,
+                  ),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : (isDark ? null : AppTheme.cardShadowLight),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 28,
-                height: 28,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: isAnswered
-                      ? AppTheme.success
-                      : AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  gradient: isAnswered
+                      ? const LinearGradient(
+                          colors: [
+                            AppTheme.success,
+                            AppTheme.scoreExcellent,
+                          ],
+                        )
+                      : isActive
+                      ? const LinearGradient(
+                          colors: [
+                            AppTheme.brandBlue,
+                            AppTheme.brandDeepBlue,
+                          ],
+                        )
+                      : null,
+                  color: !isAnswered && !isActive
+                      ? (isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : AppTheme.brandBlue.withValues(alpha: 0.08))
+                      : null,
                   shape: BoxShape.circle,
+                  boxShadow: isActive && !isAnswered
+                      ? [
+                          BoxShadow(
+                            color: AppTheme.brandBlue.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Center(
                   child: isAnswered
-                      ? Icon(
-                          Icons.check,
-                          color: context.surfaceVariantColor,
-                          size: 16,
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 18,
                         )
                       : Text(
                           '${index + 1}',
                           style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                             fontSize: 13,
-                            color: AppTheme.primaryBlue,
+                            color: isActive
+                                ? Colors.white
+                                : AppTheme.brandBlue,
                           ),
                         ),
                 ),
@@ -290,9 +398,11 @@ class _QuestionCard extends StatelessWidget {
                 child: Text(
                   question.text,
                   style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     fontSize: 15,
                     color: context.textPrimary,
+                    letterSpacing: -0.2,
+                    height: 1.3,
                   ),
                 ),
               ),
@@ -307,7 +417,7 @@ class _QuestionCard extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () => onAnswer(option),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
@@ -316,38 +426,52 @@ class _QuestionCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppTheme.primaryBlue.withValues(alpha: 0.08)
-                          : context.textPrimary.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(12),
+                          ? AppTheme.brandBlue.withValues(
+                              alpha: isDark ? 0.14 : 0.08,
+                            )
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : AppTheme.brandBlue.withValues(alpha: 0.03)),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isSelected
-                            ? AppTheme.primaryBlue
-                            : AppTheme.slate700,
-                        width: isSelected ? 2 : 1,
+                            ? AppTheme.brandBlue
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : AppTheme.brandBlue.withValues(alpha: 0.12)),
+                        width: isSelected ? 1.8 : 1,
                       ),
                     ),
                     child: Row(
                       children: [
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          width: 20,
-                          height: 20,
+                          width: 22,
+                          height: 22,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isSelected
-                                ? AppTheme.primaryBlue
-                                : Colors.transparent,
+                            gradient: isSelected
+                                ? const LinearGradient(
+                                    colors: [
+                                      AppTheme.brandBlue,
+                                      AppTheme.brandDeepBlue,
+                                    ],
+                                  )
+                                : null,
+                            color: isSelected ? null : Colors.transparent,
                             border: Border.all(
                               color: isSelected
-                                  ? AppTheme.primaryBlue
-                                  : AppTheme.slate400,
+                                  ? AppTheme.brandBlue
+                                  : (isDark
+                                      ? Colors.white38
+                                      : AppTheme.slate400),
                               width: 2,
                             ),
                           ),
                           child: isSelected
-                              ? Icon(
-                                  Icons.check,
-                                  color: context.surfaceVariantColor,
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
                                   size: 14,
                                 )
                               : null,
@@ -358,11 +482,11 @@ class _QuestionCard extends StatelessWidget {
                             option,
                             style: GoogleFonts.plusJakartaSans(
                               fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
                               fontSize: 14,
                               color: isSelected
-                                  ? AppTheme.primaryBlue
+                                  ? AppTheme.brandBlue
                                   : context.textPrimary,
                             ),
                           ),
