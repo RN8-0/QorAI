@@ -522,6 +522,110 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
           const SizedBox(height: 16),
         ],
 
+        // Personal Fit Analysis
+        if (result.personaScore != null || result.personaAnalysis != null) ...[
+          Builder(
+            builder: (ctx) {
+              final isTr = Localizations.localeOf(ctx).languageCode == 'tr';
+              final pScore = result.personaScore ?? 0;
+              final pColor = pScore >= 80
+                  ? AppTheme.success
+                  : pScore >= 60
+                  ? AppTheme.scoreGood
+                  : pScore >= 40
+                  ? AppTheme.scoreAverage
+                  : AppTheme.scorePoor;
+              return GlassContainer(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.premiumPurple, AppTheme.neonPurple],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.biotech_rounded,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isTr
+                                ? 'Kişisel Uyum Analizi'
+                                : 'Personal Fit Analysis',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: ctx.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (result.personaScore != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  pColor.withValues(alpha: 0.2),
+                                  AppTheme.premiumPurple.withValues(alpha: 0.15),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: pColor.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Text(
+                              '${pScore.toStringAsFixed(0)}%',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: pColor,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (result.personaAnalysis != null) ...[
+                      const SizedBox(height: 14),
+                      MarkdownBody(
+                        data: result.personaAnalysis!,
+                        selectable: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: GoogleFonts.plusJakartaSans(
+                            color: ctx.textSecondary,
+                            fontSize: 14,
+                            height: 1.7,
+                          ),
+                          strong: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: ctx.textPrimary,
+                          ),
+                          blockSpacing: 8,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+          const SizedBox(height: 16),
+        ],
+
         // Pros & Cons
         if (result.prosForUser.isNotEmpty || result.consForUser.isNotEmpty) ...[
           // Community voice header emphasizing the pros/cons are sourced
@@ -675,73 +779,199 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
           const SizedBox(height: 16),
         ],
 
-        // AI Verdict
-        if (result.detailedVerdict.isNotEmpty) ...[
-          GlassContainer(
-            padding: const EdgeInsets.all(22),
-            usePrimaryTint: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        // Community & Internet Reviews
+        if (result.communityScore != null || result.communityAnalysis != null) ...[
+          Builder(
+            builder: (ctx) {
+              final isTr = Localizations.localeOf(ctx).languageCode == 'tr';
+              final cScore = result.communityScore ?? 0;
+              final cColor = cScore >= 75
+                  ? AppTheme.success
+                  : cScore >= 50
+                  ? AppTheme.scoreGood
+                  : cScore >= 30
+                  ? AppTheme.scoreAverage
+                  : AppTheme.scorePoor;
+              return GlassContainer(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppTheme.brandCyan, AppTheme.brandBlue],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isTr
+                                    ? 'Topluluk Yorumları'
+                                    : 'Community Reviews',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: ctx.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                'Reddit · YouTube · forums',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: ctx.textTertiaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (result.communityScore != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: cColor.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Text(
+                              '${cScore.toStringAsFixed(0)}%',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: cColor,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (result.communityAnalysis != null) ...[
+                      const SizedBox(height: 14),
+                      MarkdownBody(
+                        data: result.communityAnalysis!,
+                        selectable: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: GoogleFonts.plusJakartaSans(
+                            color: ctx.textSecondary,
+                            fontSize: 14,
+                            height: 1.7,
+                          ),
+                          strong: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: ctx.textPrimary,
+                          ),
+                          blockSpacing: 8,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+          const SizedBox(height: 16),
+        ],
+
+        // Overall AI Summary (moved to bottom, uses overallVerdict when available)
+        if (result.detailedVerdict.isNotEmpty || result.overallVerdict != null) ...[
+          Builder(
+            builder: (ctx) {
+              final isTr = Localizations.localeOf(ctx).languageCode == 'tr';
+              final verdictText = result.overallVerdict ?? result.detailedVerdict;
+              return GlassContainer(
+                padding: const EdgeInsets.all(22),
+                usePrimaryTint: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [AppTheme.premiumPurple, AppTheme.neonPurple],
                         ),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.premiumPurple.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: Icon(
-                        Icons.psychology_rounded,
-                        size: 18,
-                        color: context.surfaceVariantColor,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isTr ? 'Genel AI Özeti' : 'Overall AI Summary',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: Colors.white,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      context.l10n?.aiVerdict ??
-                          context.l10n?.aiVerdict ??
-                          context.l10n?.aiVerdict ??
-                          'AI Verdict',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: context.textPrimary,
+                    const SizedBox(height: 16),
+                    MarkdownBody(
+                      data: verdictText,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: GoogleFonts.plusJakartaSans(
+                          color: ctx.textSecondary,
+                          fontSize: 14,
+                          height: 1.7,
+                        ),
+                        strong: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: ctx.textPrimary,
+                        ),
+                        em: GoogleFonts.plusJakartaSans(
+                          fontStyle: FontStyle.italic,
+                          fontSize: 14,
+                          color: ctx.textSecondary,
+                        ),
+                        listBullet: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          color: ctx.textSecondary,
+                        ),
+                        blockSpacing: 8,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                MarkdownBody(
-                  data: result.detailedVerdict,
-                  selectable: true,
-                  styleSheet: MarkdownStyleSheet(
-                    p: GoogleFonts.plusJakartaSans(
-                      color: context.textSecondary,
-                      fontSize: 14,
-                      height: 1.7,
-                    ),
-                    strong: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: context.textPrimary,
-                    ),
-                    em: GoogleFonts.plusJakartaSans(
-                      fontStyle: FontStyle.italic,
-                      fontSize: 14,
-                      color: context.textSecondary,
-                    ),
-                    listBullet: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: context.textSecondary,
-                    ),
-                    blockSpacing: 8,
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 16),
         ],

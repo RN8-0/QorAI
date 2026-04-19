@@ -1933,14 +1933,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         // Hero orb
         Center(
           child: SizedBox(
-            width: 180,
-            height: 180,
+            width: 120,
+            height: 120,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 SizedBox(
-                  width: 180,
-                  height: 180,
+                  width: 120,
+                  height: 120,
                   child: TweenAnimationBuilder<double>(
                     duration: const Duration(milliseconds: 800),
                     curve: Curves.easeOutCubic,
@@ -1959,8 +1959,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 AnimatedBuilder(
                   animation: _pulseController,
                   builder: (ctx, _) => Container(
-                    width: 130 + _pulseController.value * 8,
-                    height: 130 + _pulseController.value * 8,
+                    width: 90 + _pulseController.value * 6,
+                    height: 90 + _pulseController.value * 6,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
@@ -1975,8 +1975,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ),
                 ),
                 Container(
-                  width: 100,
-                  height: 100,
+                  width: 70,
+                  height: 70,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
@@ -1995,7 +1995,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(activeStep.icon, color: Colors.white, size: 30)
+                      Icon(activeStep.icon, color: Colors.white, size: 20)
                           .animate(onPlay: (c) => c.repeat(reverse: true))
                           .scale(
                             begin: const Offset(1, 1),
@@ -2008,7 +2008,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         '$percent%',
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w900,
-                          fontSize: 18,
+                          fontSize: 14,
                           color: Colors.white,
                         ),
                       ),
@@ -2019,7 +2019,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         Center(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
@@ -2031,7 +2031,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w800,
-                    fontSize: 18,
+                    fontSize: 15,
                     color: context.textPrimary,
                     letterSpacing: -0.3,
                   ),
@@ -2043,7 +2043,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     activeStep.detail,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: context.textSecondary,
                       height: 1.5,
                     ),
@@ -2053,9 +2053,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: context.isDarkMode
                 ? Colors.white.withValues(alpha: 0.03)

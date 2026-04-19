@@ -137,6 +137,7 @@ class GeminiService implements AIService {
       aiAnalysis: response['analysis'] as String? ?? '',
       category: response['category'] as String?,
       analyzedAt: DateTime.now(),
+      isProduct: response['is_product'] as bool? ?? true,
     );
   }
 
@@ -1246,6 +1247,11 @@ Return valid JSON:
 You are Compair's link analysis engine. Given a product URL and user profile,
 analyze the product and compute a personalized compatibility score.
 
+PRODUCT VALIDATION: If the URL/metadata clearly indicates a non-product page
+(news article, blog post, homepage, social media profile, video page, search
+results page), set is_product to false, set score to 0, and set analysis to a
+short explanation in $langName. Otherwise set is_product to true.
+
 LANGUAGE: You MUST write the "analysis" field in $langName.
 
 SCORING RULES:
@@ -1258,6 +1264,7 @@ SCORING RULES:
 
 Return valid JSON:
 {
+  "is_product": true,
   "score": 20-95,
   "analysis": "Detailed analysis in $langName of how this product fits the user",
   "category": "product category (e.g., smartphones, laptops)",

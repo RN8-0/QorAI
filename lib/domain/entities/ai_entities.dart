@@ -135,6 +135,8 @@ class LinkAnalysisResult extends Equatable {
   final String aiAnalysis;
   final String? category;
   final DateTime analyzedAt;
+  /// false when AI determines the URL is not a product page
+  final bool isProduct;
 
   const LinkAnalysisResult({
     required this.url,
@@ -143,6 +145,7 @@ class LinkAnalysisResult extends Equatable {
     required this.aiAnalysis,
     this.category,
     required this.analyzedAt,
+    this.isProduct = true,
   });
 
   Map<String, dynamic> toJson() => {
@@ -152,6 +155,7 @@ class LinkAnalysisResult extends Equatable {
     'aiAnalysis': aiAnalysis,
     'category': category,
     'analyzedAt': analyzedAt.toIso8601String(),
+    'isProduct': isProduct,
   };
 
   factory LinkAnalysisResult.fromJson(Map<String, dynamic> j) => LinkAnalysisResult(
@@ -161,6 +165,7 @@ class LinkAnalysisResult extends Equatable {
     aiAnalysis: j['aiAnalysis'] as String,
     category: j['category'] as String?,
     analyzedAt: DateTime.parse(j['analyzedAt'] as String),
+    isProduct: j['isProduct'] as bool? ?? true,
   );
 
   @override
@@ -257,6 +262,11 @@ class EnhancedAnalysisResult extends Equatable {
   final List<String> prosForUser;
   final List<String> consForUser;
   final List<String> alternatives;
+  final double? communityScore;
+  final String? communityAnalysis;
+  final double? personaScore;
+  final String? personaAnalysis;
+  final String? overallVerdict;
 
   const EnhancedAnalysisResult({
     required this.baseResult,
@@ -266,6 +276,11 @@ class EnhancedAnalysisResult extends Equatable {
     this.prosForUser = const [],
     this.consForUser = const [],
     this.alternatives = const [],
+    this.communityScore,
+    this.communityAnalysis,
+    this.personaScore,
+    this.personaAnalysis,
+    this.overallVerdict,
   });
 
   Map<String, dynamic> toJson() => {
@@ -276,6 +291,11 @@ class EnhancedAnalysisResult extends Equatable {
     'prosForUser': prosForUser,
     'consForUser': consForUser,
     'alternatives': alternatives,
+    if (communityScore != null) 'communityScore': communityScore,
+    if (communityAnalysis != null) 'communityAnalysis': communityAnalysis,
+    if (personaScore != null) 'personaScore': personaScore,
+    if (personaAnalysis != null) 'personaAnalysis': personaAnalysis,
+    if (overallVerdict != null) 'overallVerdict': overallVerdict,
   };
 
   factory EnhancedAnalysisResult.fromJson(Map<String, dynamic> j) => EnhancedAnalysisResult(
@@ -288,6 +308,11 @@ class EnhancedAnalysisResult extends Equatable {
     prosForUser: (j['prosForUser'] as List<dynamic>? ?? []).cast<String>(),
     consForUser: (j['consForUser'] as List<dynamic>? ?? []).cast<String>(),
     alternatives: (j['alternatives'] as List<dynamic>? ?? []).cast<String>(),
+    communityScore: (j['communityScore'] as num?)?.toDouble(),
+    communityAnalysis: j['communityAnalysis'] as String?,
+    personaScore: (j['personaScore'] as num?)?.toDouble(),
+    personaAnalysis: j['personaAnalysis'] as String?,
+    overallVerdict: j['overallVerdict'] as String?,
   );
 
   @override

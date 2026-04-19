@@ -309,6 +309,16 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     }
     if (baseResult == null) return;
 
+    if (baseResult.isProduct == false) {
+      state = state.copyWith(
+        phase: LinkFlowPhase.idle,
+        error: _appLang == 'tr'
+            ? '❌ Bu bağlantı bir ürün sayfası değil. Lütfen geçerli bir ürün bağlantısı yapıştırın.'
+            : '❌ This link doesn\'t appear to be a product page. Please paste a valid product link.',
+      );
+      return;
+    }
+
     state = state.copyWith(
       phase: LinkFlowPhase.quizLoading,
       baseResult: baseResult,

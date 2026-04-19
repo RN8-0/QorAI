@@ -141,6 +141,7 @@ class DeepSeekService implements AIService {
       aiAnalysis: response['analysis'] as String? ?? '',
       category: response['category'] as String?,
       analyzedAt: DateTime.now(),
+      isProduct: response['is_product'] as bool? ?? true,
     );
   }
 
@@ -421,8 +422,17 @@ Return valid JSON:
           'priorities': profile.priorities,
           'country': profile.country,
           'ageRange': profile.effectiveAgeRange,
+          'gender': profile.gender,
+          'profession': profile.profession,
           'interestCategories': profile.interestCategories,
+          'usageIntent': profile.usageIntent,
+          'primaryCategory': profile.primaryCategory,
           'currentDevices': profile.currentDevices,
+          'profileVector': (profile.profileVector.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value)))
+              .take(5)
+              .map((e) => e.key)
+              .toList(),
         },
       }),
       timeout: const Duration(seconds: 60),
@@ -476,6 +486,11 @@ Return valid JSON:
             [],
       ),
       alternatives: List<String>.from(response['alternatives'] ?? []),
+      personaScore: () { final v = parseScore(response['personaScore']); return v > 0 ? v : null; }(),
+      personaAnalysis: response['personaAnalysis'] as String?,
+      communityScore: () { final v = parseScore(response['communityScore']); return v > 0 ? v : null; }(),
+      communityAnalysis: response['communityAnalysis'] as String?,
+      overallVerdict: response['overallVerdict'] as String?,
     );
   }
 
@@ -707,6 +722,11 @@ IMPORTANT: If "productMetadata" is provided, use its title/description to
 identify the product accurately. Do NOT guess the product category from the URL
 alone when metadata is available.
 
+PRODUCT VALIDATION: If the URL/metadata clearly indicates a non-product page
+(news article, blog post, homepage, social media profile, video page, search
+results page), set is_product to false, set score to 0, and set analysis to a
+short explanation in $langName. Otherwise set is_product to true.
+
 LANGUAGE: You MUST write the "analysis" field in $langName.
 
 SCORING RULES:
@@ -716,6 +736,7 @@ SCORING RULES:
 
 Return valid JSON:
 {
+  "is_product": true,
   "score": 20-95,
   "analysis": "Detailed analysis in $langName",
   "category": "product category (e.g. smartphones, laptops, pet food, headphones, etc.)",
@@ -783,11 +804,17 @@ Return valid JSON:
 
   static String _enhancedAnalysisPrompt(String language) {
     final langName = _languageName(language);
+    final isTr = language == 'tr';
+    final usageFit = isTr ? 'Kullanım Uyumu' : 'Usage Fit';
+    final budgetMatch = isTr ? 'Bütçe Uyumu' : 'Budget Match';
+    final ecosystemFit = isTr ? 'Ekosistem Uyumu' : 'Ecosystem Fit';
+    final futureProofing = isTr ? 'Geleceğe Hazırlık' : 'Future-proofing';
+    final lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : 'Lifestyle Match';
     return '''
 You are Compair's deep compatibility analyzer. Given a product, quiz answers,
 and user profile, produce a comprehensive personalized match report.
 
-LANGUAGE: Write ALL text in $langName.
+LANGUAGE: Write ALL text in $langName. Factor labels must also be in $langName.
 
 SCORING RULES:
 - Score must reflect how well THIS SPECIFIC product matches THIS SPECIFIC user
@@ -798,16 +825,21 @@ Return valid JSON:
 {
   "enhancedScore": 0-100,
   "factors": [
-    {"label": "Usage Fit", "score": 0-100, "emoji": "🎯"},
-    {"label": "Budget Match", "score": 0-100, "emoji": "💰"},
-    {"label": "Ecosystem Fit", "score": 0-100, "emoji": "🔗"},
-    {"label": "Future-proofing", "score": 0-100, "emoji": "🚀"},
-    {"label": "Lifestyle Match", "score": 0-100, "emoji": "🏠"}
+    {"label": "$usageFit", "score": 0-100, "emoji": "🎯"},
+    {"label": "$budgetMatch", "score": 0-100, "emoji": "💰"},
+    {"label": "$ecosystemFit", "score": 0-100, "emoji": "🔗"},
+    {"label": "$futureProofing", "score": 0-100, "emoji": "🚀"},
+    {"label": "$lifestyleMatch", "score": 0-100, "emoji": "🏠"}
   ],
   "verdict": "2-3 paragraph personalized explanation in $langName",
   "prosForUser": ["Pro 1", "Pro 2", "Pro 3"],
   "consForUser": ["Con 1", "Con 2", "Con 3"],
-  "alternatives": ["Alt 1", "Alt 2", "Alt 3"]
+  "alternatives": ["Alt 1", "Alt 2", "Alt 3"],
+  "personaScore": 0-100,
+  "personaAnalysis": "2 paragraphs about how user persona + quiz answers match this product, in $langName",
+  "communityScore": 0-100,
+  "communityAnalysis": "Deep analysis of internet reviews (Reddit, YouTube, forums, store reviews) from this user's perspective, with pros/cons from the community, in $langName",
+  "overallVerdict": "Comprehensive final summary combining all analysis — score, persona fit, community opinion — in $langName"
 }
 ''';
   }
