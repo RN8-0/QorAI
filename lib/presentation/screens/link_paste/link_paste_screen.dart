@@ -212,12 +212,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   Future<void> _pasteClipboardInto(
     TextEditingController controller, {
-    FocusNode? focusNode,
     bool onlyWhenEmpty = false,
     bool showInvalidFeedback = true,
   }) async {
     if (onlyWhenEmpty && controller.text.trim().isNotEmpty) {
-      focusNode?.requestFocus();
       return;
     }
     final invalidClipboardMessage = _linkText(
@@ -230,8 +228,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (pastedUrl == null) {
       if (showInvalidFeedback) {
         _showLinkSnackBar(invalidClipboardMessage);
-      } else {
-        focusNode?.requestFocus();
       }
       return;
     }
@@ -242,21 +238,29 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         offset: controller.text.length,
       );
     });
-    focusNode?.requestFocus();
   }
 
   void _handleAutoPasteTap(
     TextEditingController controller, {
     FocusNode? focusNode,
   }) {
+    // Single tap: paste from clipboard without opening keyboard
     unawaited(
       _pasteClipboardInto(
         controller,
-        focusNode: focusNode,
         onlyWhenEmpty: true,
         showInvalidFeedback: false,
       ),
     );
+    // Dismiss keyboard if it was opened by the TextField
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) focusNode?.unfocus();
+    });
+  }
+
+  void _handleDoubleTap(FocusNode focusNode) {
+    // Double tap: open keyboard for manual URL entry
+    focusNode.requestFocus();
   }
 
   Widget _buildModernUrlField({
@@ -268,52 +272,56 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     TextInputAction textInputAction = TextInputAction.next,
     ValueChanged<String>? onSubmitted,
   }) {
-    return AnimatedGradientInputShell(
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: TextInputType.url,
-        textInputAction: textInputAction,
-        autocorrect: false,
-        enableSuggestions: false,
-        style: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: context.textPrimary,
-        ),
-        onTap: () => _handleAutoPasteTap(controller, focusNode: focusNode),
-        onTapOutside: (_) => focusNode.unfocus(),
-        onSubmitted: onSubmitted,
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: GoogleFonts.inter(
+    return GestureDetector(
+      onDoubleTap: () => _handleDoubleTap(focusNode),
+      child: AnimatedGradientInputShell(
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          readOnly: !focusNode.hasFocus,
+          keyboardType: TextInputType.url,
+          textInputAction: textInputAction,
+          autocorrect: false,
+          enableSuggestions: false,
+          style: GoogleFonts.inter(
             fontSize: 13,
-            fontWeight: FontWeight.w400,
-            color: context.textTertiaryColor.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w500,
+            color: context.textPrimary,
           ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 8),
-            child: Icon(
-              prefixIconData,
-              color: AppTheme.brandBlue.withValues(alpha: 0.7),
-              size: 18,
+          onTap: () => _handleAutoPasteTap(controller, focusNode: focusNode),
+          onTapOutside: (_) => focusNode.unfocus(),
+          onSubmitted: onSubmitted,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: context.textTertiaryColor.withValues(alpha: 0.6),
             ),
-          ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 0,
-            minHeight: 0,
-          ),
-          suffixIcon: trailing != null
-              ? Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: trailing,
-                )
-              : null,
-          border: InputBorder.none,
-          filled: false,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 0,
-            vertical: 12,
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 14, right: 8),
+              child: Icon(
+                prefixIconData,
+                color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                size: 18,
+              ),
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 0,
+              minHeight: 0,
+            ),
+            suffixIcon: trailing != null
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: trailing,
+                  )
+                : null,
+            border: InputBorder.none,
+            filled: false,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 0,
+              vertical: 12,
+            ),
           ),
         ),
       ),

@@ -141,7 +141,7 @@ class DeepSeekService implements AIService {
       aiAnalysis: response['analysis'] as String? ?? '',
       category: response['category'] as String?,
       analyzedAt: DateTime.now(),
-      isProduct: response['is_product'] as bool? ?? true,
+      isProduct: response['is_product'] as bool? ?? false,
     );
   }
 
@@ -717,36 +717,35 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. Given a product URL, optional product
-metadata (title, description, price, site), and user profile, analyze the
-product and compute a personalized compatibility score.
+You are Compair's link analysis engine. You receive a product URL, optional metadata, and a user profile.
 
-IMPORTANT: If "productMetadata" is provided, use its title/description to
-identify the product accurately. Do NOT guess the product category from the URL
-alone when metadata is available.
+CRITICAL — PRODUCT IDENTIFICATION RULES:
+1. Identify the product SOLELY from the URL structure and provided metadata (title, description).
+2. NEVER guess, hallucinate, or invent a product name not clearly indicated by the URL or metadata.
+3. If productMetadata.title looks like a domain name (e.g. "trendyol.com"), ignore it.
+4. If you cannot determine the specific product, set is_product to false and explain why.
+5. Detect the REAL category from context: books, smartphones, laptops, headphones, clothing, etc. Do NOT default to "smartphones".
 
-PRODUCT VALIDATION: If the URL/metadata clearly indicates a non-product page
-(news article, blog post, homepage, social media profile, video page, search
-results page), set is_product to false, set score to 0, and set analysis to a
-short explanation in $langName. Otherwise set is_product to true.
+PRODUCT VALIDATION:
+- Set is_product to TRUE only if you can confidently identify a specific product.
+- Set is_product to FALSE for non-product pages OR if you cannot determine the product.
 
-LANGUAGE: You MUST write the "analysis" field in $langName.
+LANGUAGE: Write the "analysis" field in $langName.
 
 SCORING RULES:
-- Score reflects how well this product fits the user's profile and needs
-- Consider the user's ecosystem, budget, priorities, and country
-- Score range: 20-95 (never 0 or 100, be realistic)
+- Score reflects user-product fit (range: 20-95, be realistic)
+- Consider ecosystem, budget, priorities, country
 
 Return valid JSON:
 {
   "is_product": true,
   "score": 20-95,
   "analysis": "Detailed analysis in $langName",
-  "category": "product category (e.g. smartphones, laptops, pet food, headphones, etc.)",
-  "title": "Product name/title",
-  "image_url": "Product image URL if known",
-  "price": "Price with currency symbol",
-  "site_name": "Store/site name"
+  "category": "product category in English lowercase (e.g. smartphones, laptops, books, headphones)",
+  "title": "Product name derived from URL/metadata — NEVER invented",
+  "image_url": null,
+  "price": "Price with currency if known, else null",
+  "site_name": "Store name from URL domain"
 }
 ''';
   }

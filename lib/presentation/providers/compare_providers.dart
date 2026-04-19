@@ -708,6 +708,17 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
           return;
       }
 
+      // Validate first URL is a product
+      if (!firstData.isProduct) {
+        state = state.copyWith(
+          phase: ComparePhase.idle,
+          error: lang == 'tr'
+              ? '❌ Bu bağlantı bir ürün sayfası değil. Lütfen geçerli bir ürün bağlantısı yapıştırın.'
+              : '❌ This link doesn\'t appear to be a product page. Please paste a valid product link.',
+        );
+        return;
+      }
+
       debugPrint('[Compare] Generating quiz for: ${firstData.metadata.title}');
       final quiz = await _deepseek.generateQuiz(
         category: firstData.category ?? 'general',

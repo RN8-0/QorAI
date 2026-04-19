@@ -114,9 +114,14 @@ class GeminiService implements AIService {
     debugPrint('[Gemini] URL slug title: $slugTitle');
 
     // Build metadata context — prefer scraped metadata, fall back to slug extraction
+    // Filter out domain-only titles (e.g. "trendyol.com", "amazon.com")
     final metaContext = <String, String?>{};
-    final resolvedTitle = (metadata?.title?.isNotEmpty ?? false)
-        ? metadata!.title
+    String? scrapedTitle = metadata?.title;
+    if (scrapedTitle != null && _isDomainOnlyTitle(scrapedTitle)) {
+      scrapedTitle = null;
+    }
+    final resolvedTitle = (scrapedTitle?.isNotEmpty ?? false)
+        ? scrapedTitle
         : slugTitle;
     if (resolvedTitle?.isNotEmpty ?? false) metaContext['title'] = resolvedTitle;
     if (metadata?.description?.isNotEmpty ?? false) {
@@ -160,6 +165,8 @@ class GeminiService implements AIService {
         ? (resolvedTitle ?? aiTitle)
         : aiTitle;
 
+    final isProduct = response['is_product'] as bool? ?? false;
+
     return LinkAnalysisResult(
       url: url,
       metadata: OgMetadata(
@@ -172,8 +179,22 @@ class GeminiService implements AIService {
       aiAnalysis: response['analysis'] as String? ?? '',
       category: response['category'] as String?,
       analyzedAt: DateTime.now(),
-      isProduct: response['is_product'] as bool? ?? true,
+      isProduct: isProduct,
     );
+  }
+
+  /// Returns true if the title is just a domain name (not real product info)
+  static bool _isDomainOnlyTitle(String title) {
+    final t = title.trim().toLowerCase();
+    if (t.length < 30 && RegExp(r'^[a-z0-9.-]+\.[a-z]{2,}$').hasMatch(t)) {
+      return true;
+    }
+    // Common generic page titles
+    const generics = [
+      'trendyol', 'amazon', 'hepsiburada', 'n11', 'gittigidiyor',
+      'ana sayfa', 'home', 'anasayfa', 'hoş geldiniz', 'welcome',
+    ];
+    return generics.any((g) => t == g);
   }
 
   /// Extract a human-readable product name from the URL path structure.
@@ -1345,34 +1366,41 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. Given a product URL and user profile,
-identify the exact product and compute a deep, personalized compatibility analysis.
+You are Compair's link analysis engine. You receive a product URL, optional metadata extracted from that URL, and a user profile. Your job is to identify the EXACT product from the given information and analyze it.
 
-PRODUCT IDENTIFICATION RULES:
-- Use the "productContext.title" field (if provided) as the primary product name hint
-- For Amazon ASINs (e.g., B0BWP18WHK), look up the exact product from your training data
-- For Trendyol/Hepsiburada/N11 slugs in the URL, parse them to identify the product
-- The "title" field in your response MUST be the REAL product name (e.g., "Samsung Galaxy S24 Ultra", "ASUS VivoBook 16X")
-- NEVER put "Access Error", "Erişim Hatası", "Unknown", "Bilinmeyen" or any error/technical message in the title
-- If you truly cannot identify the product name, use the URL slug as the title
+CRITICAL — PRODUCT IDENTIFICATION RULES (STRICT):
+1. Your ONLY sources for identifying the product are:
+   a) The "productContext.title" field — this is parsed from the URL slug or page metadata. Trust it as the primary hint.
+   b) The URL path segments — domain, brand names, product slugs, and IDs visible in the URL.
+   c) The "productContext.description" and "productContext.siteName" fields if provided.
+2. You MUST NOT guess, hallucinate, or invent a product name. If the URL says "kitap" (book), the product is a book — not a phone.
+3. You MUST NOT default to popular products (like iPhones or Samsung Galaxy) when the URL clearly refers to something else.
+4. If productContext.title is a domain name (e.g. "trendyol.com", "amazon.com") or a generic string, treat it as NO useful title information.
+5. If you genuinely cannot determine what the specific product is from the URL and metadata, set is_product to false and explain why in the analysis field.
 
-PRODUCT VALIDATION:
-- If the URL clearly indicates a non-product page (news, blog, homepage, social profile, video, search results), set is_product to false, score to 0, and write a short explanation in $langName
-- E-commerce product URLs are always is_product: true
+PRODUCT VALIDATION (is_product field):
+- Set is_product to TRUE only if you can confidently identify a specific, purchasable product from the URL and metadata.
+- Set is_product to FALSE if:
+  • The URL is a non-product page (news, blog, homepage, social media, video, search results)
+  • You cannot determine the specific product — do NOT guess
+  • The URL leads to a category/listing page rather than a single product
+- When is_product is false: set score to 0, category to null, and write a short explanation in $langName.
 
-LANGUAGE: ALL text fields MUST be written in $langName.
+CATEGORY DETECTION:
+- Detect the REAL category from URL/metadata context: books, smartphones, laptops, tablets, headphones, monitors, keyboards, clothing, home-appliances, etc.
+- Do NOT assume "smartphones" — read the actual URL. A kitapyurdu.com URL is "books", a trendyol.com/telefon URL is "smartphones", etc.
+
+LANGUAGE: ALL text fields (analysis, title) MUST be written in $langName.
 
 SCORING RULES:
-- Score reflects how well this product fits THIS specific user's profile and needs
-- Consider ecosystem compatibility, budget alignment, stated priorities, and country-specific pricing
-- Budget products for budget-conscious user = higher score; premium products = lower score
-- Be honest and realistic (range: 20–95)
+- Score reflects how well this product fits THIS specific user's profile and needs (range: 20–95)
+- Consider ecosystem compatibility, budget alignment, stated priorities, and country availability
+- Be honest and realistic
 
 ANALYSIS REQUIREMENTS (analysis field):
 - Write 6–10 sentences of deep, specific analysis in $langName
-- Cover: what the product is, key specs/features, how it matches the user's ecosystem and priorities, budget fit, notable pros, notable cons, and a clear recommendation
-- Be specific (mention real specs, real prices, real features) — avoid vague generic statements
-- Mention 2–3 specific things this product does WELL and 1–2 specific weaknesses
+- Cover: what the product is, key specs/features, how it aligns with the user's needs, budget fit, pros, cons, and a clear recommendation
+- Be specific (mention real specs, real prices) — avoid vague statements
 - Do NOT repeat the user's profile back to them — focus on the product
 
 Return ONLY valid JSON (no markdown fences):
@@ -1380,11 +1408,11 @@ Return ONLY valid JSON (no markdown fences):
   "is_product": true,
   "score": 20-95,
   "analysis": "6-10 sentence detailed analysis in $langName",
-  "category": "product category in English (e.g., smartphones, laptops, tablets)",
-  "title": "Exact product name (e.g., Samsung Galaxy A55 5G)",
-  "image_url": "Direct product image URL if available (og:image or main photo), else null",
-  "price": "Price with currency symbol in local market (e.g., ₺12.999, \$499), else null",
-  "site_name": "Store name (e.g., Trendyol, Amazon, Hepsiburada)"
+  "category": "product category in English lowercase (e.g., smartphones, laptops, tablets, books, headphones)",
+  "title": "Exact product name derived from URL/metadata — NEVER invented",
+  "image_url": null,
+  "price": "Price with currency if found in metadata, else null",
+  "site_name": "Store name from URL domain (e.g., Trendyol, Amazon, Hepsiburada, Kitapyurdu)"
 }
 ''';
   }

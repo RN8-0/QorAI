@@ -97,6 +97,7 @@ class AIRepository {
         aiAnalysis: result.aiAnalysis,
         category: result.category,
         analyzedAt: result.analyzedAt,
+        isProduct: result.isProduct,
       );
 
       // Step 3: Save result to user_links collection
