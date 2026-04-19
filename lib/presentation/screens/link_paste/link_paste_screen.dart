@@ -62,6 +62,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   String? _lastSavedSingleHistoryKey;
   String? _lastSavedCompareHistoryKey;
   bool _singleSubmitInFlight = false;
+  bool _suppressNextClipboardPaste = false;
 
   // === COMPARE TAB (up to 4 links) ===
   final List<TextEditingController> _compareControllers = List.generate(
@@ -258,6 +259,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       behavior: HitTestBehavior.opaque,
       onTap: enableSingleTapPaste
           ? () {
+              if (_suppressNextClipboardPaste) {
+                _suppressNextClipboardPaste = false;
+                return;
+              }
               // Single tap: paste from clipboard (overwrites existing text)
               unawaited(
                 _pasteClipboardInto(
@@ -1370,22 +1375,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           context.l10n?.pasteProductUrlNumbered(index + 1) ??
           'Paste product URL ${index + 1}...',
       prefixIconData: Icons.link_rounded,
-      enableSingleTapPaste: false,
+      enableSingleTapPaste: true,
       trailing: controller.text.isNotEmpty
-          ? GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                controller.clear();
-                setState(() {});
-              },
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: Center(
-                  child: Icon(
-                    Icons.close_rounded,
-                    color: AppTheme.error.withValues(alpha: 0.78),
-                    size: 14,
+          ? Listener(
+              onPointerDown: (_) => _suppressNextClipboardPaste = true,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  controller.clear();
+                  setState(() {});
+                },
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: Center(
+                    child: Icon(
+                      Icons.close_rounded,
+                      color: AppTheme.error.withValues(alpha: 0.78),
+                      size: 14,
+                    ),
                   ),
                 ),
               ),
