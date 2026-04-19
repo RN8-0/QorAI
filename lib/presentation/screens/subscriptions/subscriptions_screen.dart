@@ -4,7 +4,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +21,7 @@ import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:compair/presentation/screens/subscriptions/subscription_history_screen.dart';
+import 'package:compair/services/gemini_service.dart';
 
 // ─── Design tokens (mapped to global AppTheme brand palette) ─────────────────
 const _kPrimary = AppTheme.brandBlue;
@@ -103,14 +103,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   void _addChip(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return;
-    if (_chips.contains(trimmed)) return;
-    setState(() {
-      _chips.add(trimmed);
-      _inputCtrl.clear();
-    });
-    ref.read(subQuizProvider.notifier).clearError();
+    _tryAddChip(name);
   }
 
   void _removeChip(String name) {
@@ -118,37 +111,56 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     ref.read(subQuizProvider.notifier).clearError();
   }
 
+  bool _tryAddChip(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return false;
+
+    final validation = SubQuizNotifier.validateSubscriptionSelection([
+      ..._chips,
+      trimmed,
+    ], Localizations.localeOf(context).languageCode);
+
+    if (!validation.isValid) {
+      ref.read(subQuizProvider.notifier).showValidationError(validation.error!);
+      return false;
+    }
+
+    setState(() {
+      _chips
+        ..clear()
+        ..addAll(validation.normalizedNames);
+      _inputCtrl.clear();
+    });
+    ref.read(subQuizProvider.notifier).clearError();
+    return true;
+  }
+
   void _startAnalysis() {
     // Auto-add any text remaining in the input field before analyzing
     final pending = _inputCtrl.text.trim();
-    if (pending.isNotEmpty && !_chips.contains(pending)) {
-      setState(() {
-        _chips.add(pending);
-        _inputCtrl.clear();
-      });
-    }
-
-    if (_chips.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n?.pleaseEnterSubscriptionName ??
-                'Please add at least one subscription',
-            style: GoogleFonts.plusJakartaSans(
-              color: context.surfaceVariantColor,
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.error,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+    if (pending.isNotEmpty && !_tryAddChip(pending)) {
       return;
     }
+
+    final validation = SubQuizNotifier.validateSubscriptionSelection(
+      List<String>.from(_chips),
+      Localizations.localeOf(context).languageCode,
+    );
+    if (!validation.isValid) {
+      ref.read(subQuizProvider.notifier).showValidationError(validation.error!);
+      return;
+    }
+
+    setState(() {
+      _chips
+        ..clear()
+        ..addAll(validation.normalizedNames);
+    });
+
     _inputFocus.unfocus();
-    ref.read(subQuizProvider.notifier).startQuiz(List.from(_chips));
+    ref
+        .read(subQuizProvider.notifier)
+        .startQuiz(List.from(validation.normalizedNames));
   }
 
   @override
@@ -164,28 +176,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       final current = ref.read(subQuizProvider);
       if (current.error != null) {
         ref.read(subQuizProvider.notifier).reset();
-      }
-    });
-
-    // Listen for errors
-    ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
-      if (!mounted) return;
-      if (next.error != null && next.error != prev?.error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              next.error!,
-              style: GoogleFonts.plusJakartaSans(
-                color: context.surfaceVariantColor,
-              ),
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.error,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
       }
     });
 
@@ -443,7 +433,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   // ── Phase Timeline ─────────────────────────────────────────────────────────
 
   Widget _buildPhaseTimeline(SubFlowPhase phase) {
-    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     final isQuizLoading = phase == SubFlowPhase.quizLoading;
 
     // Detailed AI steps with rich descriptions
@@ -467,7 +458,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         isActive: isQuizLoading,
       ),
       _PhaseStep(
-        label: isTr ? 'İnternet Yorumları Taranıyor' : 'Scanning Community Voice',
+        label: isTr
+            ? 'İnternet Yorumları Taranıyor'
+            : 'Scanning Community Voice',
         detail: isTr
             ? 'Reddit, forum ve sosyal medyadan gerçek yorumları topluyoruz'
             : 'Collecting real reviews from Reddit, forums & social media',
@@ -541,7 +534,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            _kPrimary.withValues(alpha: 0.25 + _pulseController.value * 0.15),
+                            _kPrimary.withValues(
+                              alpha: 0.25 + _pulseController.value * 0.15,
+                            ),
                             _kPrimary.withValues(alpha: 0.0),
                           ],
                         ),
@@ -640,7 +635,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 : Colors.white.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: _kPrimary.withValues(alpha: context.isDarkMode ? 0.15 : 0.12),
+              color: _kPrimary.withValues(
+                alpha: context.isDarkMode ? 0.15 : 0.12,
+              ),
               width: 0.8,
             ),
             boxShadow: context.isDarkMode ? null : AppTheme.cardShadowLight,
@@ -662,7 +659,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             color: _kAccent.withValues(alpha: context.isDarkMode ? 0.06 : 0.05),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: _kAccent.withValues(alpha: context.isDarkMode ? 0.2 : 0.15),
+              color: _kAccent.withValues(
+                alpha: context.isDarkMode ? 0.2 : 0.15,
+              ),
               width: 0.8,
             ),
           ),
@@ -773,11 +772,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           color: inactiveColor,
                         ),
                         child: Center(
-                          child: Icon(
-                            step.icon,
-                            size: 13,
-                            color: inactiveText,
-                          ),
+                          child: Icon(step.icon, size: 13, color: inactiveText),
                         ),
                       ),
                 if (!isLast)
@@ -807,12 +802,14 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     step.label,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13.5,
-                      fontWeight: step.isActive ? FontWeight.w800 : FontWeight.w600,
+                      fontWeight: step.isActive
+                          ? FontWeight.w800
+                          : FontWeight.w600,
                       color: step.isDone
                           ? AppTheme.success
                           : step.isActive
-                              ? _kPrimary
-                              : context.textPrimary.withValues(alpha: 0.6),
+                          ? _kPrimary
+                          : context.textPrimary.withValues(alpha: 0.6),
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -1065,7 +1062,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         ),
                         onDeleted: () => _removeChip(c),
                         backgroundColor: _kPrimary.withValues(alpha: 0.08),
-                        side: BorderSide(color: _kPrimary.withValues(alpha: 0.3)),
+                        side: BorderSide(
+                          color: _kPrimary.withValues(alpha: 0.3),
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1150,7 +1149,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _suggestions.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, index) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               final name = _suggestions[i];
               final isAdded = _chips.contains(name);
@@ -1315,7 +1314,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   Widget _buildInfoCards() {
-    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     final items = [
       _InfoItem(
         icon: Icons.forum_rounded,
@@ -1388,7 +1388,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         : Colors.white.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: item.gradient.first.withValues(alpha: context.isDarkMode ? 0.18 : 0.15),
+                      color: item.gradient.first.withValues(
+                        alpha: context.isDarkMode ? 0.18 : 0.15,
+                      ),
                       width: 0.8,
                     ),
                     boxShadow: context.isDarkMode
@@ -1941,7 +1943,7 @@ class _SubResultView extends StatelessWidget {
       case 'usage_fit':
         return _txt(context, tr: 'Kullanim Uyumu', en: 'Usage Fit');
       case 'value_match':
-        return _txt(context, tr: 'Fiyat / Deger Uyumu', en: 'Value Match');
+        return _txt(context, tr: 'Fayda Uyumu', en: 'Benefit Match');
       case 'content_match':
         return _txt(context, tr: 'Icerik Uyumu', en: 'Content Match');
       case 'ecosystem_fit':
@@ -1958,6 +1960,29 @@ class _SubResultView extends StatelessWidget {
                   : '',
             )
             .join(' ');
+    }
+  }
+
+  String _displayName(String raw) => GeminiService.prettySubscriptionName(raw);
+
+  String _categoryLabel(BuildContext context, String raw) {
+    switch (raw.trim().toLowerCase()) {
+      case 'video-streaming':
+        return _txt(context, tr: 'Video Platformu', en: 'Video Streaming');
+      case 'music-streaming':
+        return _txt(context, tr: 'Muzik Platformu', en: 'Music Streaming');
+      case 'gaming':
+        return _txt(context, tr: 'Oyun Platformu', en: 'Gaming');
+      case 'ai-tools':
+        return _txt(context, tr: 'AI Araci', en: 'AI Tool');
+      case 'cloud-storage':
+        return _txt(context, tr: 'Bulut Depolama', en: 'Cloud Storage');
+      case 'productivity':
+        return _txt(context, tr: 'Uretkenlik', en: 'Productivity');
+      case 'bundles':
+        return _txt(context, tr: 'Paket Abonelik', en: 'Bundle');
+      default:
+        return raw;
     }
   }
 
@@ -2072,8 +2097,12 @@ class _SubResultView extends StatelessWidget {
                       spacing: 20,
                       runSpacing: 20,
                       alignment: WrapAlignment.center,
+                      runAlignment: WrapAlignment.center,
                       children: scores.entries.map((e) {
-                        return _ScoreRing(label: e.key, score: e.value);
+                        return _ScoreRing(
+                          label: _displayName(e.key),
+                          score: e.value,
+                        );
                       }).toList(),
                     ),
                   ],
@@ -2266,7 +2295,7 @@ class _SubResultView extends StatelessWidget {
               const Text('🏆', style: TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
               Text(
-                winner['overall'] as String? ?? '',
+                _displayName(winner['overall'] as String? ?? ''),
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w800,
                   fontSize: 22,
@@ -2282,23 +2311,17 @@ class _SubResultView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Wrap(
+                spacing: 24,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
                 children: [
-                  if (winner['best_value'] != null)
-                    _buildMiniWinner(
-                      context,
-                      '💰',
-                      context.l10n?.bestValue ??
-                          _txt(context, tr: 'En Iyi Deger', en: 'Best Value'),
-                      winner['best_value'] as String,
-                    ),
                   if (winner['best_content'] != null)
                     _buildMiniWinner(
                       context,
                       '✨',
                       _txt(context, tr: 'En Iyi Icerik', en: 'Best Content'),
-                      winner['best_content'] as String,
+                      _displayName(winner['best_content'] as String),
                     ),
                 ],
               ),
@@ -2334,7 +2357,7 @@ class _SubResultView extends StatelessWidget {
           ),
         ),
         Text(
-          name,
+          _displayName(name),
           style: GoogleFonts.plusJakartaSans(
             fontSize: 13,
             color: context.textPrimary,
@@ -2366,7 +2389,9 @@ class _SubResultView extends StatelessWidget {
             : Colors.white.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: _scoreColor(score).withValues(alpha: context.isDarkMode ? 0.18 : 0.22),
+          color: _scoreColor(
+            score,
+          ).withValues(alpha: context.isDarkMode ? 0.18 : 0.22),
           width: 1,
         ),
         boxShadow: context.isDarkMode
@@ -2390,7 +2415,7 @@ class _SubResultView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name,
+                      _displayName(name),
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w800,
                         fontSize: 19,
@@ -2409,7 +2434,7 @@ class _SubResultView extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            category,
+                            _categoryLabel(context, category),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               color: context.textTertiaryColor,
@@ -2436,7 +2461,9 @@ class _SubResultView extends StatelessWidget {
                         value: score / 100,
                         strokeWidth: 5,
                         strokeCap: StrokeCap.round,
-                        backgroundColor: _scoreColor(score).withValues(alpha: 0.12),
+                        backgroundColor: _scoreColor(
+                          score,
+                        ).withValues(alpha: 0.12),
                         color: _scoreColor(score),
                       ),
                     ),
@@ -2475,7 +2502,9 @@ class _SubResultView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _scoreColor(score).withValues(alpha: context.isDarkMode ? 0.06 : 0.05),
+                color: _scoreColor(
+                  score,
+                ).withValues(alpha: context.isDarkMode ? 0.06 : 0.05),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
@@ -2584,7 +2613,9 @@ class _SubResultView extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _kPrimary.withValues(alpha: context.isDarkMode ? 0.18 : 0.15),
+                  color: _kPrimary.withValues(
+                    alpha: context.isDarkMode ? 0.18 : 0.15,
+                  ),
                   width: 0.8,
                 ),
               ),
@@ -2609,7 +2640,9 @@ class _SubResultView extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        _isTr(context) ? 'İnternet Yorumları' : 'Community Voice',
+                        _isTr(context)
+                            ? 'İnternet Yorumları'
+                            : 'Community Voice',
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
@@ -2742,11 +2775,13 @@ class _SubResultView extends StatelessWidget {
     Map<String, dynamic> comparison,
   ) {
     final sections = <_ComparisonSection>[
-      if (comparison['pricing_analysis'] != null)
+      if (comparison['service_fit_summary'] != null ||
+          comparison['pricing_analysis'] != null)
         _ComparisonSection(
-          '💰',
-          context.l10n?.pricingAnalysisTitle ?? 'Pricing Analysis',
-          comparison['pricing_analysis'] as String,
+          '🧭',
+          _txt(context, tr: 'Genel Uyum', en: 'Overall Fit'),
+          (comparison['service_fit_summary'] ?? comparison['pricing_analysis'])
+              as String,
         ),
       if (comparison['feature_comparison'] != null)
         _ComparisonSection(
@@ -2846,7 +2881,7 @@ class _ScoreRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 100,
+      width: 108,
       child: Column(
         children: [
           SizedBox(
@@ -2878,15 +2913,20 @@ class _ScoreRing extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: context.textSecondary,
+          SizedBox(
+            height: 34,
+            child: Center(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.textSecondary,
+                ),
+              ),
             ),
           ),
         ],

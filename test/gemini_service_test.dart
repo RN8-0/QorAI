@@ -50,4 +50,29 @@ DESCRIPTION: Lightweight tripod for cameras and phones.
       expect(evidence.price, 'TRY 899,00');
     });
   });
+
+  group('GeminiService subscription helpers', () {
+    test('normalizes known subscription aliases to branded display names', () {
+      expect(GeminiService.normalizeSubscriptionDisplayName('hbo max'), 'HBO');
+      expect(
+        GeminiService.normalizeSubscriptionDisplayName('youtube music'),
+        'YouTube Music',
+      );
+      expect(
+        GeminiService.normalizeSubscriptionDisplayName('icloud+'),
+        'iCloud+',
+      );
+    });
+
+    test('returns category keys for known subscriptions', () {
+      expect(
+        GeminiService.subscriptionCategoryKey('Netflix'),
+        'video-streaming',
+      );
+      expect(
+        GeminiService.subscriptionCategoryKey('Spotify'),
+        'music-streaming',
+      );
+    });
+  });
 }

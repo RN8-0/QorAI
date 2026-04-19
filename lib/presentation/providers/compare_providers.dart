@@ -1151,6 +1151,20 @@ class SubQuizState {
   );
 }
 
+class SubscriptionSelectionValidation {
+  final List<String> normalizedNames;
+  final String? categoryKey;
+  final String? error;
+
+  const SubscriptionSelectionValidation({
+    this.normalizedNames = const [],
+    this.categoryKey,
+    this.error,
+  });
+
+  bool get isValid => error == null;
+}
+
 class SubQuizNotifier extends StateNotifier<SubQuizState> {
   final DeepSeekService _deepseek;
   final GeminiService _gemini;
@@ -1172,11 +1186,115 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   void reset() => state = const SubQuizState();
 
+  void showValidationError(String message) {
+    state = state.copyWith(phase: SubFlowPhase.idle, error: message);
+  }
+
   /// Clear only the error message without resetting phase/inputs.
   void clearError() {
     if (state.error != null) {
       state = state.copyWith(error: null);
     }
+  }
+
+  static bool _isTurkishLanguage(String lang) =>
+      lang.toLowerCase().startsWith('tr');
+
+  static bool looksLikeSubscriptionUrl(String value) {
+    final lower = value.trim().toLowerCase();
+    return lower.contains('http://') ||
+        lower.contains('https://') ||
+        lower.contains('www.') ||
+        RegExp(r'\.[a-z]{2,}(/|$)').hasMatch(lower);
+  }
+
+  static String buildMissingSubscriptionMessage(String lang) {
+    return _isTurkishLanguage(lang)
+        ? 'Lütfen en az bir abonelik adı girin.'
+        : 'Please enter at least one subscription name.';
+  }
+
+  static String buildInvalidSubscriptionInputMessage(
+    String lang, {
+    bool isUrl = false,
+  }) {
+    if (_isTurkishLanguage(lang)) {
+      return isUrl
+          ? 'Sadece abonelik adı girebilirsin. Bağlantı kabul edilmez.'
+          : 'Sadece geçerli abonelik adları kabul edilir. Link, küfür veya alakasız metin kullanmayın.';
+    }
+    return isUrl
+        ? 'Only subscription names are accepted here. Links are not allowed.'
+        : 'Only valid subscription names are accepted. Links, profanity, or unrelated text are not allowed.';
+  }
+
+  static String buildMixedSubscriptionCategoriesMessage(
+    String lang, {
+    required List<String> names,
+  }) {
+    if (_isTurkishLanguage(lang)) {
+      return 'Bu abonelikler aynı kategoride değil. Yalnızca aynı platform türündeki abonelikler karşılaştırılabilir: ${names.join(', ')}';
+    }
+    return 'These subscriptions are not in the same category. Only subscriptions from the same platform type can be compared: ${names.join(', ')}';
+  }
+
+  static SubscriptionSelectionValidation validateSubscriptionSelection(
+    List<String> rawNames,
+    String lang,
+  ) {
+    final normalizedNames = <String>[];
+    final seen = <String>{};
+    String? categoryKey;
+
+    for (final rawName in rawNames) {
+      final trimmed = rawName.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (looksLikeSubscriptionUrl(trimmed)) {
+        return SubscriptionSelectionValidation(
+          error: buildInvalidSubscriptionInputMessage(lang, isUrl: true),
+        );
+      }
+
+      final normalizedName = GeminiService.normalizeSubscriptionDisplayName(
+        trimmed,
+      );
+      final nextCategory = GeminiService.subscriptionCategoryKey(trimmed);
+
+      if (normalizedName == null || nextCategory == null) {
+        return SubscriptionSelectionValidation(
+          error: buildInvalidSubscriptionInputMessage(lang),
+        );
+      }
+
+      if (categoryKey != null && categoryKey != nextCategory) {
+        return SubscriptionSelectionValidation(
+          normalizedNames: List.unmodifiable(normalizedNames),
+          categoryKey: categoryKey,
+          error: buildMixedSubscriptionCategoriesMessage(
+            lang,
+            names: [...normalizedNames, normalizedName],
+          ),
+        );
+      }
+
+      categoryKey ??= nextCategory;
+      final dedupeKey = normalizedName.toLowerCase();
+      if (seen.add(dedupeKey)) {
+        normalizedNames.add(normalizedName);
+      }
+    }
+
+    if (normalizedNames.isEmpty) {
+      return SubscriptionSelectionValidation(
+        error: buildMissingSubscriptionMessage(lang),
+      );
+    }
+
+    return SubscriptionSelectionValidation(
+      normalizedNames: List.unmodifiable(normalizedNames),
+      categoryKey: categoryKey,
+    );
   }
 
   /// Restore a previously saved subscription analysis from history.
@@ -1197,6 +1315,13 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Step 1: Generate AI quiz based on subscription names.
   Future<void> startQuiz(List<String> names) async {
+    final validation = validateSubscriptionSelection(names, _appLang);
+    if (!validation.isValid) {
+      showValidationError(validation.error!);
+      return;
+    }
+    final normalizedNames = validation.normalizedNames;
+
     if (!_subService.canAnalyzeSubscription) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
@@ -1208,13 +1333,13 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
     state = SubQuizState(
       phase: SubFlowPhase.quizLoading,
-      subscriptionNames: names,
+      subscriptionNames: normalizedNames,
     );
 
     try {
       final quiz = await _deepseek
           .generateSubscriptionQuiz(
-            subscriptionNames: names,
+            subscriptionNames: normalizedNames,
             language: _appLang,
           )
           .timeout(const Duration(seconds: 25));
@@ -1239,7 +1364,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         return;
       }
       state = state.copyWith(phase: SubFlowPhase.analyzing);
-      await _runAnalysis(names, []);
+      await _runAnalysis(normalizedNames, []);
     }
   }
 

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/services/gemini_service.dart';
 
 const _kBlue = AppTheme.brandBlue;
 const _kCyan = AppTheme.brandCyan;
@@ -15,12 +16,30 @@ const _kCyan = AppTheme.brandCyan;
 bool _isTurkishLocale(BuildContext context) =>
     Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
 
+String _prettySubscriptionName(String raw) =>
+    GeminiService.prettySubscriptionName(raw);
+
 String _historyText(
   BuildContext context, {
   required String tr,
   required String en,
 }) {
   return _isTurkishLocale(context) ? tr : en;
+}
+
+String _historyTitle(BuildContext context, List<String> services) {
+  final normalized = services.map(_prettySubscriptionName).toList();
+  if (normalized.isEmpty) {
+    return _historyText(
+      context,
+      tr: 'Kayitli abonelik analizi',
+      en: 'Saved subscription analysis',
+    );
+  }
+  if (normalized.length <= 2) {
+    return normalized.join(' vs ');
+  }
+  return '${normalized[0]} vs ${normalized[1]} +${normalized.length - 2}';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -250,6 +269,42 @@ class _SubscriptionHistoryScreenState
     return '${dt.day} $month ${dt.year}, $hour:$min';
   }
 
+  String _formatStatDate(String? ts) {
+    if (ts == null) return '--';
+    final dt = DateTime.tryParse(ts);
+    if (dt == null) return '--';
+    final months = _isTurkishLocale(context)
+        ? const [
+            'Oca',
+            'Şub',
+            'Mar',
+            'Nis',
+            'May',
+            'Haz',
+            'Tem',
+            'Ağu',
+            'Eyl',
+            'Eki',
+            'Kas',
+            'Ara',
+          ]
+        : const [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+    return '${dt.day} ${months[dt.month - 1]}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final bg = context.backgroundColor;
@@ -275,11 +330,7 @@ class _SubscriptionHistoryScreenState
           ),
         ),
         title: Text(
-          _historyText(
-            context,
-            tr: 'Geçmiş Karşılaştırmalar',
-            en: 'Comparison History',
-          ),
+          _historyText(context, tr: 'Analiz Geçmişi', en: 'Analysis History'),
           style: GoogleFonts.plusJakartaSans(
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -336,8 +387,8 @@ class _SubscriptionHistoryScreenState
     Color textTertiary,
   ) {
     final latestDate = history.isEmpty
-        ? ''
-        : _formatDate(history.first['timestamp'] as String?);
+        ? '--'
+        : _formatStatDate(history.first['timestamp'] as String?);
     final uniqueWinners = history
         .map((entry) => entry['winner'] as String?)
         .whereType<String>()
@@ -402,7 +453,7 @@ class _SubscriptionHistoryScreenState
                       _historyText(
                         context,
                         tr: 'Abonelik analiz geçmişin',
-                        en: 'Your comparison archive',
+                        en: 'Your subscription archive',
                       ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
@@ -414,7 +465,7 @@ class _SubscriptionHistoryScreenState
                     Text(
                       _historyText(
                         context,
-                        tr: 'Eski sonuçlara dokunarak analiz ekranını anında geri yükleyebilirsin.',
+                        tr: 'Eski sonuçlara dokunarak analiz ekranini aninda geri yukleyebilirsin.',
                         en: 'Tap any result to instantly restore it on the subscriptions screen.',
                       ),
                       style: GoogleFonts.inter(
@@ -446,8 +497,8 @@ class _SubscriptionHistoryScreenState
                 child: _buildHistoryStat(
                   label: _historyText(
                     context,
-                    tr: 'Kazanan servis',
-                    en: 'Winning services',
+                    tr: 'Farkli kazanan',
+                    en: 'Unique winners',
                   ),
                   value: '$uniqueWinners',
                 ),
@@ -456,9 +507,7 @@ class _SubscriptionHistoryScreenState
               Expanded(
                 child: _buildHistoryStat(
                   label: _historyText(context, tr: 'Son analiz', en: 'Latest'),
-                  value: latestDate.isEmpty
-                      ? '--'
-                      : latestDate.split(',').first,
+                  value: latestDate,
                 ),
               ),
             ],
@@ -618,13 +667,7 @@ class _SubscriptionHistoryScreenState
     final date = _formatDate(entry['timestamp'] as String?);
     final analysisResult = entry['analysisResult'] as String?;
     final hasFullResult = analysisResult != null && analysisResult.isNotEmpty;
-    final title = services.isEmpty
-        ? _historyText(
-            context,
-            tr: 'Kayıtlı karşılaştırma',
-            en: 'Saved comparison',
-          )
-        : services.join(' vs ');
+    final title = _historyTitle(context, services);
     final serviceCountLabel = _historyText(
       context,
       tr: '${services.length} servis',
@@ -731,7 +774,7 @@ class _SubscriptionHistoryScreenState
                   children: [
                     Text(
                       title,
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
@@ -739,6 +782,20 @@ class _SubscriptionHistoryScreenState
                         color: textPrimary,
                       ),
                     ),
+                    if (services.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        services.map(_prettySubscriptionName).join(' • '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: textTertiary,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -752,7 +809,7 @@ class _SubscriptionHistoryScreenState
                         if (winner != null && winner.isNotEmpty) ...[
                           _buildMetaChip(
                             icon: Icons.emoji_events_rounded,
-                            label: winner,
+                            label: _prettySubscriptionName(winner),
                             textColor: AppTheme.amber500,
                             background: AppTheme.amber500.withValues(
                               alpha: 0.10,

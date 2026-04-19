@@ -803,16 +803,19 @@ class GeminiService implements AIService {
     String language = 'en',
   }) async {
     final langName = _languageName(language);
-    final names = subscriptionNames.join(', ');
-    final isCompare = subscriptionNames.length > 1;
+    final normalizedNames = subscriptionNames
+        .map((name) => prettySubscriptionName(name))
+        .toList();
+    final names = normalizedNames.join(', ');
+    final isCompare = normalizedNames.length > 1;
 
     // Build service-specific context for better question generation
     // For unknown services, instruct AI to use its knowledge
     final knownDetails = <String>[];
     final unknownNames = <String>[];
-    for (final name in subscriptionNames) {
-      final key = name.toLowerCase().trim();
-      final context = _subscriptionContext[key];
+    for (final name in normalizedNames) {
+      final key = resolveSubscriptionCatalogKey(name);
+      final context = key != null ? _subscriptionCatalog[key]?.context : null;
       if (context != null) {
         knownDetails.add('- $name: $context');
       } else {
@@ -873,7 +876,7 @@ Return valid JSON:
 }
 ''',
       user: jsonEncode({
-        'subscriptions': subscriptionNames,
+        'subscriptions': normalizedNames,
         'mode': isCompare ? 'compare' : 'single',
       }),
       tier: AiTier.heavy,
@@ -909,8 +912,11 @@ Return valid JSON:
     required UserEntity profile,
   }) async {
     final langName = _languageName(profile.language);
-    final names = subscriptionNames.join(', ');
-    final isCompare = subscriptionNames.length > 1;
+    final normalizedNames = subscriptionNames
+        .map((name) => prettySubscriptionName(name))
+        .toList();
+    final names = normalizedNames.join(', ');
+    final isCompare = normalizedNames.length > 1;
     final qaPairs = answeredQuestions
         .where((q) => q.selectedOption != null)
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
@@ -922,12 +928,13 @@ Return valid JSON:
 Research the following subscription services: $names
 
 Find for each service:
-1. Current monthly price in ${profile.currency} for ${profile.country}
+1. What category the service belongs to
 2. Recent Reddit discussions and user opinions
 3. Trustpilot/forum reviews summary
-4. Key features and limitations
-5. Recent news or changes
+4. Key features, strengths, and limitations
+5. Recent news, updates, or catalog changes
 
+Do NOT include pricing, monthly fees, yearly fees, discounts, or any cost details.
 Provide a comprehensive research summary.
 ''';
 
@@ -961,7 +968,7 @@ Provide a comprehensive research summary.
         ? '''{
   "subscriptions": {
     "<service_name>": {
-      "price": "string - monthly price in ${profile.currency}",
+      "category": "string - shared subscription category label",
       "compatibility_score": "integer 0-100",
       "compatibility_explanation": "string - 2-3 sentences why this score",
       "pros": ["string", "string", "string", "string", "string"],
@@ -978,13 +985,12 @@ Provide a comprehensive research summary.
     }
   },
   "winner": {
-    "best_value": "string - service name",
     "best_content": "string - service name",
     "overall": "string - service name",
     "recommendation": "string - 3-4 sentence personalized recommendation explaining WHY"
   },
   "detailed_comparison": {
-    "pricing_analysis": "string - 2-3 sentences comparing prices and value",
+    "service_fit_summary": "string - 2-3 sentences comparing overall fit",
     "feature_comparison": "string - 2-3 sentences about feature differences",
     "user_experience": "string - 2-3 sentences about UX differences"
   }
@@ -992,7 +998,7 @@ Provide a comprehensive research summary.
         : '''{
   "subscriptions": {
     "$names": {
-      "price": "string - monthly price in ${profile.currency}",
+      "category": "string - service category label",
       "compatibility_score": "integer 0-100",
       "compatibility_explanation": "string - 2-3 sentences why this score",
       "pros": ["string", "string", "string", "string", "string"],
@@ -1012,8 +1018,9 @@ Provide a comprehensive research summary.
 }''';
 
     // Identify unknown services for the analysis prompt
-    final unknownForAnalysis = subscriptionNames.where((name) {
-      return _subscriptionContext[name.toLowerCase().trim()] == null;
+    final unknownForAnalysis = normalizedNames.where((name) {
+      final key = resolveSubscriptionCatalogKey(name);
+      return key == null || _subscriptionCatalog[key] == null;
     }).toList();
 
     String buildAnalysisPrompt({required bool includeResearchData}) =>
@@ -1039,12 +1046,12 @@ ${unknownForAnalysis.isNotEmpty ? 'NOTE: The following service(s) may not be wel
 
 CRITICAL RULES:
 - ALL text values MUST be in $langName language
-- The "subscriptions" object MUST contain exactly ${subscriptionNames.length} entries, one for each service: ${subscriptionNames.map((n) => '"$n"').join(', ')}
+- The "subscriptions" object MUST contain exactly ${normalizedNames.length} entries, one for each service: ${normalizedNames.map((n) => '"$n"').join(', ')}
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
 - pros must have exactly 5 items, cons exactly 3 items — keep each item concise (max 15 words)
 - factors are 0-100 integers
 - Be specific and personalized, not generic
-- Include real pricing for ${profile.country}
+- NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
 - community_sentiment should be max 2 sentences
 
 Return ONLY valid JSON matching this exact schema:
@@ -1112,7 +1119,9 @@ $jsonSchema
             .replaceFirst(RegExp(r'\n?```$'), '');
       }
       // Try parsing entire response as JSON
-      parsed = jsonDecode(clean) as Map<String, dynamic>?;
+      parsed = _normalizeSubscriptionAnalysisPayload(
+        jsonDecode(clean) as Map<String, dynamic>?,
+      );
       debugPrint('=== COMPAIR: Sub analysis JSON parsed successfully ===');
     } catch (e) {
       debugPrint('=== COMPAIR: Sub analysis JSON parse failed: $e ===');
@@ -1120,7 +1129,9 @@ $jsonSchema
       try {
         final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
         if (jsonMatch != null) {
-          parsed = jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>?;
+          parsed = _normalizeSubscriptionAnalysisPayload(
+            jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>?,
+          );
           debugPrint('=== COMPAIR: Sub analysis JSON extracted from text ===');
         }
       } catch (_) {
@@ -1141,7 +1152,7 @@ $jsonSchema
 
     // Regex fallback if JSON parse failed
     if (scores.isEmpty) {
-      for (final name in subscriptionNames) {
+      for (final name in normalizedNames) {
         final pattern = RegExp(
           RegExp.escape(name) + r'[^\n]*?(\d{1,3})\s*%',
           caseSensitive: false,
@@ -2005,13 +2016,13 @@ Important:
         'Ad-free YouTube, background play, YouTube Music included, offline downloads, YouTube Originals.',
     'youtube music':
         'Music streaming from YouTube catalog, smart recommendations, music videos, live performances, covers.',
-    'disney+':
+    'disney plus':
         'Video streaming: Disney, Marvel, Star Wars, Pixar, National Geographic. Family content, IMAX Enhanced, GroupWatch.',
     'amazon prime':
         'Video streaming + fast delivery + Prime Gaming + Prime Reading. Thursday Night Football, Originals like The Boys, Rings of Power.',
-    'hbo max':
+    'hbo':
         'Premium video streaming: HBO originals (Game of Thrones, The Last of Us), Warner Bros movies, DC content.',
-    'apple tv+':
+    'apple tv plus':
         'Apple original content: Ted Lasso, Severance, Foundation. Small but high-quality library, Apple ecosystem perks.',
     'chatgpt plus':
         'OpenAI GPT-4 access, faster responses, priority access, DALL-E image generation, Advanced Data Analysis, plugins, GPTs.',
@@ -2027,7 +2038,7 @@ Important:
         'EA games subscription: FIFA, Battlefield, Madden, early access to new releases, 10-hour trials.',
     'apple one':
         'Apple bundle: Apple Music + TV+ + Arcade + iCloud+ (+ Fitness/News in Premium). Ecosystem savings.',
-    'icloud+':
+    'icloud plus':
         'Apple cloud storage: device backup, photos sync, Private Relay VPN, Hide My Email, custom email domain.',
     'google one':
         'Google cloud storage: Drive/Gmail/Photos storage, VPN, enhanced Google support, family sharing.',
@@ -2041,7 +2052,7 @@ Important:
         'Collaborative design tool: UI/UX design, prototyping, design systems, FigJam whiteboard, Dev Mode.',
     'crunchyroll':
         'Anime streaming: largest anime library, simulcasts from Japan, manga, offline viewing.',
-    'paramount+':
+    'paramount plus':
         'Video streaming: CBS content, Paramount movies, NFL, Champions League, Originals like Yellowstone.',
     'peacock':
         'NBCUniversal streaming: The Office, live sports, news, Bravo reality TV, Peacock Originals.',
@@ -2050,4 +2061,283 @@ Important:
     'tidal':
         'Music streaming: HiFi/Master quality, artist-owned, exclusive content, Dolby Atmos, Sony 360 Reality Audio.',
   };
+
+  static final _subscriptionCatalog = <String, _SubscriptionCatalogEntry>{
+    'netflix': _SubscriptionCatalogEntry(
+      displayName: 'Netflix',
+      category: 'video-streaming',
+      context: _subscriptionContext['netflix']!,
+    ),
+    'spotify': _SubscriptionCatalogEntry(
+      displayName: 'Spotify',
+      category: 'music-streaming',
+      context: _subscriptionContext['spotify']!,
+    ),
+    'apple music': _SubscriptionCatalogEntry(
+      displayName: 'Apple Music',
+      category: 'music-streaming',
+      context: _subscriptionContext['apple music']!,
+    ),
+    'youtube premium': _SubscriptionCatalogEntry(
+      displayName: 'YouTube Premium',
+      category: 'video-streaming',
+      context: _subscriptionContext['youtube premium']!,
+    ),
+    'youtube music': _SubscriptionCatalogEntry(
+      displayName: 'YouTube Music',
+      category: 'music-streaming',
+      context: _subscriptionContext['youtube music']!,
+    ),
+    'disney plus': _SubscriptionCatalogEntry(
+      displayName: 'Disney+',
+      category: 'video-streaming',
+      context: _subscriptionContext['disney plus']!,
+    ),
+    'amazon prime': _SubscriptionCatalogEntry(
+      displayName: 'Amazon Prime',
+      category: 'video-streaming',
+      context: _subscriptionContext['amazon prime']!,
+    ),
+    'hbo': _SubscriptionCatalogEntry(
+      displayName: 'HBO',
+      category: 'video-streaming',
+      context: _subscriptionContext['hbo']!,
+    ),
+    'apple tv plus': _SubscriptionCatalogEntry(
+      displayName: 'Apple TV+',
+      category: 'video-streaming',
+      context: _subscriptionContext['apple tv plus']!,
+    ),
+    'chatgpt plus': _SubscriptionCatalogEntry(
+      displayName: 'ChatGPT Plus',
+      category: 'ai-tools',
+      context: _subscriptionContext['chatgpt plus']!,
+    ),
+    'claude pro': _SubscriptionCatalogEntry(
+      displayName: 'Claude Pro',
+      category: 'ai-tools',
+      context: _subscriptionContext['claude pro']!,
+    ),
+    'gemini advanced': _SubscriptionCatalogEntry(
+      displayName: 'Gemini Advanced',
+      category: 'ai-tools',
+      context: _subscriptionContext['gemini advanced']!,
+    ),
+    'xbox game pass': _SubscriptionCatalogEntry(
+      displayName: 'Xbox Game Pass',
+      category: 'gaming',
+      context: _subscriptionContext['xbox game pass']!,
+    ),
+    'ps plus': _SubscriptionCatalogEntry(
+      displayName: 'PS Plus',
+      category: 'gaming',
+      context: _subscriptionContext['ps plus']!,
+    ),
+    'ea play': _SubscriptionCatalogEntry(
+      displayName: 'EA Play',
+      category: 'gaming',
+      context: _subscriptionContext['ea play']!,
+    ),
+    'apple one': _SubscriptionCatalogEntry(
+      displayName: 'Apple One',
+      category: 'bundles',
+      context: _subscriptionContext['apple one']!,
+    ),
+    'icloud plus': _SubscriptionCatalogEntry(
+      displayName: 'iCloud+',
+      category: 'cloud-storage',
+      context: _subscriptionContext['icloud plus']!,
+    ),
+    'google one': _SubscriptionCatalogEntry(
+      displayName: 'Google One',
+      category: 'cloud-storage',
+      context: _subscriptionContext['google one']!,
+    ),
+    'dropbox': _SubscriptionCatalogEntry(
+      displayName: 'Dropbox',
+      category: 'cloud-storage',
+      context: _subscriptionContext['dropbox']!,
+    ),
+    'adobe cc': _SubscriptionCatalogEntry(
+      displayName: 'Adobe CC',
+      category: 'productivity',
+      context: _subscriptionContext['adobe cc']!,
+    ),
+    'notion': _SubscriptionCatalogEntry(
+      displayName: 'Notion',
+      category: 'productivity',
+      context: _subscriptionContext['notion']!,
+    ),
+    'figma': _SubscriptionCatalogEntry(
+      displayName: 'Figma',
+      category: 'productivity',
+      context: _subscriptionContext['figma']!,
+    ),
+    'crunchyroll': _SubscriptionCatalogEntry(
+      displayName: 'Crunchyroll',
+      category: 'video-streaming',
+      context: _subscriptionContext['crunchyroll']!,
+    ),
+    'paramount plus': _SubscriptionCatalogEntry(
+      displayName: 'Paramount+',
+      category: 'video-streaming',
+      context: _subscriptionContext['paramount plus']!,
+    ),
+    'peacock': _SubscriptionCatalogEntry(
+      displayName: 'Peacock',
+      category: 'video-streaming',
+      context: _subscriptionContext['peacock']!,
+    ),
+    'deezer': _SubscriptionCatalogEntry(
+      displayName: 'Deezer',
+      category: 'music-streaming',
+      context: _subscriptionContext['deezer']!,
+    ),
+    'tidal': _SubscriptionCatalogEntry(
+      displayName: 'Tidal',
+      category: 'music-streaming',
+      context: _subscriptionContext['tidal']!,
+    ),
+  };
+
+  static const _subscriptionAliases = <String, String>{
+    'disney+': 'disney plus',
+    'disney plus': 'disney plus',
+    'youtube premium': 'youtube premium',
+    'youtube music': 'youtube music',
+    'yt premium': 'youtube premium',
+    'yt music': 'youtube music',
+    'amazon prime video': 'amazon prime',
+    'prime video': 'amazon prime',
+    'hbo max': 'hbo',
+    'max': 'hbo',
+    'hbo': 'hbo',
+    'apple tv+': 'apple tv plus',
+    'apple tv plus': 'apple tv plus',
+    'chatgpt': 'chatgpt plus',
+    'chatgpt plus': 'chatgpt plus',
+    'claude': 'claude pro',
+    'claude pro': 'claude pro',
+    'gemini': 'gemini advanced',
+    'gemini advanced': 'gemini advanced',
+    'icloud+': 'icloud plus',
+    'icloud plus': 'icloud plus',
+    'paramount+': 'paramount plus',
+    'paramount plus': 'paramount plus',
+    'ps+': 'ps plus',
+    'ps plus': 'ps plus',
+  };
+
+  static String normalizeSubscriptionLookupKey(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', ' and ')
+        .replaceAll('+', ' plus ')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static String? resolveSubscriptionCatalogKey(String value) {
+    final lookup = normalizeSubscriptionLookupKey(value);
+    if (lookup.isEmpty) return null;
+    return _subscriptionAliases[lookup] ??
+        (_subscriptionCatalog.containsKey(lookup) ? lookup : null);
+  }
+
+  static bool isKnownSubscription(String value) =>
+      resolveSubscriptionCatalogKey(value) != null;
+
+  static String? subscriptionCategoryKey(String value) {
+    final key = resolveSubscriptionCatalogKey(value);
+    return key == null ? null : _subscriptionCatalog[key]?.category;
+  }
+
+  static String? normalizeSubscriptionDisplayName(String value) {
+    final key = resolveSubscriptionCatalogKey(value);
+    return key == null ? null : _subscriptionCatalog[key]?.displayName;
+  }
+
+  static String prettySubscriptionName(String value) {
+    return normalizeSubscriptionDisplayName(value) ??
+        _smartSubscriptionTitle(value);
+  }
+
+  static String _smartSubscriptionTitle(String value) {
+    const special = <String, String>{
+      'hbo': 'HBO',
+      'ai': 'AI',
+      'tv': 'TV',
+      'cc': 'CC',
+      'ea': 'EA',
+      'ps': 'PS',
+      'gpt': 'GPT',
+    };
+    return value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .map((part) {
+          final lower = part.toLowerCase();
+          if (special.containsKey(lower)) return special[lower]!;
+          if (lower.isEmpty) return lower;
+          return '${lower[0].toUpperCase()}${lower.substring(1)}';
+        })
+        .join(' ');
+  }
+
+  static Map<String, dynamic>? _normalizeSubscriptionAnalysisPayload(
+    Map<String, dynamic>? parsed,
+  ) {
+    if (parsed == null) return null;
+    final normalized = Map<String, dynamic>.from(parsed);
+
+    final rawSubscriptions = parsed['subscriptions'];
+    if (rawSubscriptions is Map) {
+      final mapped = <String, dynamic>{};
+      for (final entry in rawSubscriptions.entries) {
+        final displayName = prettySubscriptionName(entry.key.toString());
+        final data = entry.value is Map
+            ? Map<String, dynamic>.from(entry.value as Map)
+            : entry.value;
+        if (data is Map<String, dynamic>) {
+          final category = data['category']?.toString().trim();
+          if (category == null || category.isEmpty) {
+            final categoryKey = subscriptionCategoryKey(entry.key.toString());
+            if (categoryKey != null) {
+              data['category'] = categoryKey;
+            }
+          }
+        }
+        mapped[displayName] = data;
+      }
+      normalized['subscriptions'] = mapped;
+    }
+
+    final rawWinner = parsed['winner'];
+    if (rawWinner is Map) {
+      final mapped = Map<String, dynamic>.from(rawWinner);
+      for (final field in const ['best_content', 'overall']) {
+        final value = mapped[field];
+        if (value is String && value.trim().isNotEmpty) {
+          mapped[field] = prettySubscriptionName(value);
+        }
+      }
+      normalized['winner'] = mapped;
+    }
+
+    return normalized;
+  }
+}
+
+class _SubscriptionCatalogEntry {
+  final String displayName;
+  final String category;
+  final String context;
+
+  const _SubscriptionCatalogEntry({
+    required this.displayName,
+    required this.category,
+    required this.context,
+  });
 }

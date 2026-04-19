@@ -38,4 +38,35 @@ void main() {
       expect(CompareAnalysisNotifier.normalizeCompareCategory(''), isEmpty);
     });
   });
+
+  group('SubQuizNotifier validation helpers', () {
+    test('rejects URL input for subscription analysis', () {
+      final validation = SubQuizNotifier.validateSubscriptionSelection(const [
+        'https://netflix.com',
+      ], 'tr');
+
+      expect(validation.isValid, isFalse);
+      expect(validation.error, contains('Bağlantı'));
+    });
+
+    test('rejects mixed subscription categories', () {
+      final validation = SubQuizNotifier.validateSubscriptionSelection(const [
+        'Netflix',
+        'YouTube Music',
+      ], 'tr');
+
+      expect(validation.isValid, isFalse);
+      expect(validation.error, contains('aynı kategoride değil'));
+    });
+
+    test('normalizes valid subscriptions to branded names', () {
+      final validation = SubQuizNotifier.validateSubscriptionSelection(const [
+        'hbo max',
+        'netflix',
+      ], 'tr');
+
+      expect(validation.isValid, isTrue);
+      expect(validation.normalizedNames, equals(const ['HBO', 'Netflix']));
+    });
+  });
 }
