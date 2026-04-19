@@ -1231,12 +1231,12 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
   }) {
     if (_isTurkishLanguage(lang)) {
       return isUrl
-          ? 'Sadece abonelik adı girebilirsin. Bağlantı kabul edilmez.'
-          : 'AI bu girdilerde geçerli bir abonelik bulamadi. Link, kufur veya alakasiz metin kabul edilmez.';
+          ? 'Buraya yalnızca abonelik adı girebilirsin — link kabul edilmez.'
+          : 'Bu metin bir abonelik servisine benzemiyor. Lütfen Netflix, Spotify gibi bir servis adı yaz.';
     }
     return isUrl
-        ? 'Only subscription names are accepted here. Links are not allowed.'
-        : 'AI could not identify a valid subscription in this input. Links, profanity, or unrelated text are not allowed.';
+        ? 'Only subscription names are accepted here — links are not allowed.'
+        : 'This doesn\'t look like a subscription service. Please enter a name like Netflix or Spotify.';
   }
 
   static String buildMixedSubscriptionCategoriesMessage(
@@ -1244,9 +1244,9 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     required List<String> names,
   }) {
     if (_isTurkishLanguage(lang)) {
-      return 'Bu abonelikler aynı kategoride değil. Yalnızca aynı platform türündeki abonelikler karşılaştırılabilir: ${names.join(', ')}';
+      return 'Bu abonelikler farklı kategorilerde yer alıyor — yalnızca aynı tür servisler karşılaştırılabilir. (${names.join(', ')})';
     }
-    return 'These subscriptions are not in the same category. Only subscriptions from the same platform type can be compared: ${names.join(', ')}';
+    return 'These subscriptions belong to different categories — only services of the same type can be compared. (${names.join(', ')})';
   }
 
   static SubscriptionSelectionValidation validateSubscriptionSelection(

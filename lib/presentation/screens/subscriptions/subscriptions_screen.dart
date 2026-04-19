@@ -243,7 +243,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       _buildInputCard(isWorking),
                       if (_chipError != null) ...[
                         const SizedBox(height: 8),
-                        _buildError(_chipError!),
+                        _buildChipWarning(_chipError!),
                       ],
                       const SizedBox(height: 20),
                       if (state.error != null) ...[
@@ -1151,14 +1151,17 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     minHeight: 0,
                   ),
                   suffixIcon: _validatingChip
-                      ? Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: _kPrimary.withValues(alpha: 0.7),
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Center(
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.8,
+                                color: _kPrimary.withValues(alpha: 0.7),
+                              ),
                             ),
                           ),
                         )
@@ -1180,6 +1183,10 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           ),
                         )
                       : null,
+                  suffixIconConstraints: const BoxConstraints(
+                    maxWidth: 44,
+                    maxHeight: 44,
+                  ),
                   border: InputBorder.none,
                   filled: false,
                   contentPadding: const EdgeInsets.symmetric(
@@ -1354,6 +1361,37 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).shake(delay: 100.ms);
+  }
+
+  static const _kWarning = Color(0xFFFBBF24); // amber-400
+
+  Widget _buildChipWarning(String msg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: _kWarning.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _kWarning.withValues(alpha: 0.35), width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: _kWarning, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              msg,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: _kWarning,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 250.ms).slideY(begin: -0.05);
   }
 
   // ── Previous Comparisons (idle) ─────────────────────────────────────────
