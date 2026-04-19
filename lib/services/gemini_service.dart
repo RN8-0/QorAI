@@ -109,20 +109,6 @@ class GeminiService implements AIService {
   }) async {
     debugPrint('[Gemini] analyzeLink called for: $url');
 
-    // Reject non-product pages up front (homepages, search, category lists).
-    if (_isNonProductUrl(url)) {
-      debugPrint('[Gemini] URL rejected — not a product page: $url');
-      return LinkAnalysisResult(
-        url: url,
-        metadata: OgMetadata(siteName: _extractHost(url)),
-        aiScore: 0,
-        aiAnalysis: '',
-        category: null,
-        analyzedAt: DateTime.now(),
-        isProduct: false,
-      );
-    }
-
     // Extract product name from URL slug (free, no API cost)
     final slugTitle = extractProductNameFromUrl(url);
     debugPrint('[Gemini] URL slug title: $slugTitle');
@@ -159,17 +145,11 @@ class GeminiService implements AIService {
     // ── Step 1: Google Search research — identify product from URL ──
     // When metadata scraping fails (Amazon bot detection etc.), Gemini uses
     // its built-in Google Search to look up the actual product page.
-    // We ALWAYS do research when the scraped title is weak, to avoid
-    // hallucinated products.
     String webResearch = '';
-    final hasStrongTitle = scrapedTitle != null &&
-        scrapedTitle.length > 15 &&
-        !scrapedTitle.toLowerCase().contains('amazon.') &&
-        !scrapedTitle.toLowerCase().contains('trendyol') &&
-        !RegExp(r'^(home|ana\s*sayfa|search|arama|kategori|category)',
-                caseSensitive: false)
-            .hasMatch(scrapedTitle);
-    final needsResearch = !hasStrongTitle;
+    final needsResearch = resolvedTitle == null ||
+        resolvedTitle.startsWith('Amazon ASIN') ||
+        resolvedTitle.startsWith('Amazon ISBN') ||
+        (scrapedTitle == null && slugTitle == null);
     if (needsResearch) {
       try {
         debugPrint('[Gemini] URL research phase — looking up: $url');
@@ -179,12 +159,8 @@ class GeminiService implements AIService {
               'parts': [
                 {
                   'text':
-                      'Visit and identify the EXACT product at this URL: $url\n\n'
-                      'Rules:\n'
-                      '- If you cannot access the page OR cannot identify a SPECIFIC product, '
-                      'reply ONLY with: NOT_FOUND\n'
-                      '- NEVER guess a product from your training data.\n'
-                      '- If found, return: exact product name, brand, category, price (if listed), '
+                      'What product is sold at this URL? $url\n\n'
+                      'Return ONLY: product name, brand, category, price, '
                       'and a 1-sentence description. Be concise.',
                 },
               ],
@@ -201,33 +177,9 @@ class GeminiService implements AIService {
         debugPrint(
           '[Gemini] URL research result: ${webResearch.length > 200 ? webResearch.substring(0, 200) : webResearch}',
         );
-        // Validate research — if AI signaled it couldn't find the product, drop the context.
-        if (_isResearchUnreliable(webResearch)) {
-          debugPrint('[Gemini] URL research signaled NOT_FOUND — discarding');
-          webResearch = '';
-        }
       } catch (e) {
         debugPrint('[Gemini] URL research failed (continuing without): $e');
       }
-    }
-
-    // If we have NO reliable source of truth, refuse to analyze instead of
-    // letting the AI hallucinate a popular product.
-    final hasAnyTitle = (scrapedTitle?.isNotEmpty ?? false) ||
-        (slugTitle != null &&
-            !slugTitle.startsWith('Amazon ASIN') &&
-            !slugTitle.startsWith('Amazon ISBN'));
-    if (!hasAnyTitle && webResearch.isEmpty) {
-      debugPrint('[Gemini] No reliable product signal — refusing to analyze');
-      return LinkAnalysisResult(
-        url: url,
-        metadata: OgMetadata(siteName: _extractHost(url)),
-        aiScore: 0,
-        aiAnalysis: '',
-        category: null,
-        analyzedAt: DateTime.now(),
-        isProduct: false,
-      );
     }
 
     // ── Step 2: Structured JSON analysis ──
@@ -249,7 +201,6 @@ class GeminiService implements AIService {
       thinkingBudget: 512,
       timeout: const Duration(seconds: 60),
       tier: AiTier.heavy,
-      temperature: 0.2,
     );
 
     debugPrint('[Gemini] analyzeLink response keys: ${response.keys}');
@@ -267,17 +218,16 @@ class GeminiService implements AIService {
         : aiTitle;
 
     // If title is still just an ASIN/ISBN code, prefer the AI title even if empty
-    final effectiveTitle = (finalTitle != null &&
+    final effectiveTitle = (finalTitle != null && 
             (finalTitle.startsWith('Amazon ASIN') || finalTitle.startsWith('Amazon ISBN')))
-        ? (aiTitle?.isNotEmpty == true && !aiTitle!.startsWith('Amazon ASIN') && !aiTitle.startsWith('Amazon ISBN')
-            ? aiTitle
+        ? (aiTitle?.isNotEmpty == true && !aiTitle!.startsWith('Amazon ASIN') && !aiTitle.startsWith('Amazon ISBN') 
+            ? aiTitle 
             : finalTitle)
         : finalTitle;
 
-    // Trust the AI's explicit is_product verdict. Only default to false when
-    // the field is missing entirely — never auto-pass just because the URL
-    // happens to be on a known e-commerce domain.
-    final isProduct = response['is_product'] as bool? ?? false;
+    // For known e-commerce domains, default is_product to true
+    final isEcommerce = _isEcommerceDomain(url);
+    final isProduct = response['is_product'] as bool? ?? isEcommerce;
 
     return LinkAnalysisResult(
       url: url,
@@ -293,99 +243,6 @@ class GeminiService implements AIService {
       analyzedAt: DateTime.now(),
       isProduct: isProduct,
     );
-  }
-
-  /// True if the URL looks like a homepage, search, or category list rather
-  /// than a specific product page. These must never be analyzed as a product.
-  static bool _isNonProductUrl(String url) {
-    try {
-      final uri = Uri.parse(url);
-      final host = uri.host.toLowerCase();
-      final path = uri.path.toLowerCase();
-      final segments =
-          path.split('/').where((s) => s.isNotEmpty).toList();
-
-      // Bare domain / homepage
-      if (segments.isEmpty) return true;
-      if (segments.length == 1 &&
-          (segments.first == 'home' ||
-              segments.first == 'index' ||
-              segments.first == 'anasayfa')) {
-        return true;
-      }
-
-      // Search pages (query string present is a strong signal)
-      if (uri.queryParameters.containsKey('k') ||
-          uri.queryParameters.containsKey('q') ||
-          uri.queryParameters.containsKey('search') ||
-          uri.queryParameters.containsKey('keyword')) {
-        // Amazon /s?k=..., Trendyol /sr?q=... etc.
-        if (path == '/' || path == '/s' || path == '/sr' ||
-            path.contains('/search') || path.contains('/arama')) {
-          return true;
-        }
-      }
-      if (segments.contains('search') ||
-          segments.contains('arama') ||
-          (segments.length == 1 && segments.first == 's') ||
-          (segments.length == 1 && segments.first == 'sr')) {
-        return true;
-      }
-
-      // Category list pages on Turkish marketplaces
-      if (host.contains('trendyol') || host.contains('hepsiburada') ||
-          host.contains('n11') || host.contains('amazon')) {
-        // Amazon product URLs always have /dp/ or /gp/product/
-        if (host.contains('amazon')) {
-          final hasProductPath = path.contains('/dp/') ||
-              path.contains('/gp/product/') ||
-              path.contains('/gp/aw/d/');
-          if (!hasProductPath) return true;
-        }
-        // Trendyol product URLs have "-p-<digits>" suffix
-        if (host.contains('trendyol')) {
-          final hasProductPath = RegExp(r'-p-\d+').hasMatch(path);
-          if (!hasProductPath) return true;
-        }
-        // Hepsiburada product URLs have "-p-<id>" or "-pm-<id>"
-        if (host.contains('hepsiburada')) {
-          final hasProductPath = RegExp(r'-p[m]?-').hasMatch(path);
-          if (!hasProductPath) return true;
-        }
-      }
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Returns true when the grounded research result did not yield a concrete
-  /// product identification and we should refuse to use it.
-  static bool _isResearchUnreliable(String text) {
-    final t = text.trim();
-    if (t.isEmpty) return true;
-    if (t.length < 25) return true;
-    final lower = t.toLowerCase();
-    if (lower.contains('not_found')) return true;
-    if (lower.contains('cannot access') ||
-        lower.contains("can't access") ||
-        lower.contains('unable to access') ||
-        lower.contains('cannot identify') ||
-        lower.contains("can't identify") ||
-        lower.contains('unable to identify') ||
-        lower.contains('no specific product') ||
-        lower.contains('does not appear to be a specific product')) {
-      return true;
-    }
-    return false;
-  }
-
-  static String _extractHost(String url) {
-    try {
-      return Uri.parse(url).host;
-    } catch (_) {
-      return '';
-    }
   }
 
   /// Returns true if the title is just a domain name (not real product info)
@@ -1321,7 +1178,6 @@ $jsonSchema
     int? thinkingBudget,
     Duration? timeout,
     AiTier tier = AiTier.lite,
-    double temperature = 0.7,
   }) async {
     final body = <String, dynamic>{
       'contents': [
@@ -1337,7 +1193,7 @@ $jsonSchema
         ],
       },
       'generationConfig': {
-        'temperature': temperature,
+        'temperature': 0.7,
         'maxOutputTokens': 8192,
         'responseMimeType': 'application/json',
       },
@@ -1646,50 +1502,47 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. You receive a product URL, optional metadata, optional web research data, and a user profile. Your job is to identify the EXACT product and analyze it — OR refuse if you cannot.
+You are Compair's link analysis engine. You receive a product URL, optional metadata, optional web research data, and a user profile. Your job is to identify the EXACT product and analyze it.
 
-═══ ANTI-HALLUCINATION RULES (HIGHEST PRIORITY) ═══
-- NEVER invent a product name from your training memory. Do NOT guess popular products (e.g. "Dell XPS 15", "iPhone 15", "PlayStation 5") just because a URL domain is a store.
-- If the input does NOT contain concrete product evidence from the sources below, you MUST set is_product=false.
-- "Concrete evidence" = webResearch clearly names a specific product, OR productContext.title clearly names a specific product (NOT a domain, NOT a category, NOT a page label).
-- A URL alone is NEVER sufficient evidence. ASINs/ISBNs alone are NEVER sufficient evidence.
+CRITICAL — PRODUCT IDENTIFICATION (PRIORITY ORDER):
+1. "webResearch" — If provided, this contains VERIFIED data from Google Search about the URL. This is your MOST RELIABLE source for product identification. USE IT.
+2. "productContext.title" — Scraped metadata title. If it contains a clear product name, use it.
+3. URL path segments (slugs, IDs, brand names) are your TERTIARY source.
+4. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product. If the data says "Zeiron APX80 Ryzen 5", you MUST analyze that — NOT a different product.
+5. For Amazon ASINs/ISBNs: if webResearch is available, use its product name. If not, and you are NOT 100% certain about the ASIN, set is_product to false.
+6. If productContext.title is a domain name (e.g. "trendyol.com"), treat as NO useful title — rely on webResearch or URL.
+7. If you genuinely cannot determine the product, set is_product to false. NEVER fabricate.
 
-═══ PRODUCT IDENTIFICATION (PRIORITY ORDER) ═══
-1. "webResearch" (if provided) — VERIFIED data from Google Search. MOST RELIABLE source.
-2. "productContext.title" — Scraped metadata title. USE ONLY IF it names a specific product (e.g. "Apple iPhone 15 Pro 256GB"). REJECT if it is a domain ("amazon.com"), a generic label ("Laptops"), "Home", "Ana Sayfa", "Search results", "Welcome", etc.
-3. URL path segments — TERTIARY source, only to corroborate sources #1–#2.
-4. If evidence is ambiguous, partial, or missing → is_product=false.
+PRODUCT VALIDATION:
+- TRUE if URL is from e-commerce site with product path pattern
+- FALSE if non-product page or can't determine product
+- When FALSE: score=0, category=null, short explanation in $langName
 
-═══ HARD FALSE CASES ═══
-Return is_product=false when:
-- webResearch is missing AND productContext.title is missing/generic/domain-like.
-- The URL appears to be a homepage, search page, category list, or brand page (no specific product).
-- You only have an ASIN/ISBN code without webResearch confirming the product.
-- The evidence points to multiple possible products (ambiguous).
-When FALSE: set score=0, category=null, title=null, give a ONE-sentence explanation in $langName ("Bu bağlantıdan belirli bir ürün tespit edilemedi." / "No specific product could be identified from this link.").
+CATEGORY DETECTION:
+- Detect REAL category: books, smartphones, laptops, tablets, headphones, monitors, keyboards, clothing, home-appliances, gaming, toys, beauty, sports, furniture, kitchen, pet-supplies, computers, etc.
+- Do NOT assume "smartphones". Read the actual URL and metadata.
+- Products can be ANY category — not just technology.
 
-═══ CATEGORY DETECTION ═══
-Detect the ACTUAL category from evidence: books, smartphones, laptops, tablets, headphones, monitors, keyboards, clothing, home-appliances, gaming, toys, beauty, sports, furniture, kitchen, pet-supplies, computers, etc.
-Do NOT default to "smartphones" or "laptops". Read the actual data.
-
-═══ CATEGORY-AWARE ANALYSIS ═══
-- TECH: discuss specs, ecosystem, performance
-- BOOKS: discuss content, author, genre — do NOT mention "ecosystem" or "tech specs"
-- CLOTHING: discuss material, style, brand — do NOT force tech terms
-- HOME/KITCHEN: discuss functionality, design, durability
-- Adapt analysis naturally to the product category.
+CATEGORY-AWARE ANALYSIS:
+- For TECH: discuss specs, ecosystem, performance
+- For BOOKS: discuss content, author, genre. Do NOT mention "ecosystem" or "tech specs"
+- For CLOTHING: discuss material, style, brand. Do NOT force tech terminology
+- For HOME/KITCHEN: discuss functionality, design, durability
+- Adapt analysis naturally to the product category
 
 LANGUAGE: ALL text fields MUST be in $langName.
-SCORING: 20–95 when is_product=true (reflects user-product fit). 0 when false.
-ANALYSIS: 6–10 sentences, category-appropriate, specific. Do NOT repeat user's profile.
+
+SCORING: Reflects user-product fit (20-95). Consider budget, priorities, practical value.
+
+ANALYSIS: 6-10 sentences, category-appropriate, specific. Do NOT repeat user's profile.
 
 Return ONLY valid JSON:
 {
-  "is_product": true | false,
-  "score": 0 or 20-95,
-  "analysis": "6-10 sentence analysis in $langName, OR short refusal when is_product=false",
-  "category": "product category in English lowercase, or null",
-  "title": "EXACT product name from evidence, or null when is_product=false",
+  "is_product": true,
+  "score": 20-95,
+  "analysis": "6-10 sentence category-appropriate analysis in $langName",
+  "category": "product category in English lowercase",
+  "title": "EXACT product name from metadata/URL — NEVER substituted or invented",
   "image_url": null,
   "price": "Price with currency if found, else null",
   "site_name": "Store name from URL domain"

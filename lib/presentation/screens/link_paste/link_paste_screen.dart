@@ -210,6 +210,39 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return _isValidUrl(normalized) ? normalized : null;
   }
 
+  Future<void> _pasteClipboardInto(
+    TextEditingController controller, {
+    bool onlyWhenEmpty = false,
+    bool showInvalidFeedback = true,
+  }) async {
+    if (onlyWhenEmpty && controller.text.trim().isNotEmpty) {
+      return;
+    }
+    final invalidClipboardMessage = _linkText(
+      context,
+      tr: 'Panoda gecerli bir baglanti bulunamadi.',
+      en: 'No valid URL was found in the clipboard.',
+    );
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final pastedUrl = _extractUrlCandidate(data?.text ?? '');
+    if (pastedUrl == null) {
+      if (showInvalidFeedback) {
+        _showLinkSnackBar(invalidClipboardMessage);
+      }
+      return;
+    }
+
+    setState(() {
+      controller.text = pastedUrl;
+      controller.selection = TextSelection.collapsed(
+        offset: controller.text.length,
+      );
+    });
+  }
+
+  /// Tracks which focus nodes are in "edit mode" (double-tapped)
+  final Set<FocusNode> _editModeFocusNodes = {};
+
   Widget _buildModernUrlField({
     required TextEditingController controller,
     required FocusNode focusNode,
@@ -219,51 +252,76 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     TextInputAction textInputAction = TextInputAction.next,
     ValueChanged<String>? onSubmitted,
   }) {
-    return AnimatedGradientInputShell(
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: TextInputType.url,
-        textInputAction: textInputAction,
-        autocorrect: false,
-        enableSuggestions: false,
-        style: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: context.textPrimary,
-        ),
-        onTapOutside: (_) => focusNode.unfocus(),
-        onSubmitted: onSubmitted,
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-            color: context.textTertiaryColor.withValues(alpha: 0.6),
-          ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 8),
-            child: Icon(
-              prefixIconData,
-              color: AppTheme.brandBlue.withValues(alpha: 0.7),
-              size: 18,
+    final isEditMode = _editModeFocusNodes.contains(focusNode);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        // Single tap: paste from clipboard (overwrites existing text)
+        unawaited(_pasteClipboardInto(controller, onlyWhenEmpty: false, showInvalidFeedback: false));
+      },
+      onDoubleTap: () {
+        // Double tap: enter edit mode, open keyboard
+        setState(() => _editModeFocusNodes.add(focusNode));
+        focusNode.requestFocus();
+        focusNode.addListener(() {
+          if (!focusNode.hasFocus && mounted) {
+            setState(() => _editModeFocusNodes.remove(focusNode));
+          }
+        });
+      },
+      child: AnimatedGradientInputShell(
+        child: AbsorbPointer(
+          absorbing: !isEditMode,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            readOnly: !isEditMode,
+            keyboardType: TextInputType.url,
+            textInputAction: textInputAction,
+            autocorrect: false,
+            enableSuggestions: false,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: context.textPrimary,
             ),
-          ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 0,
-            minHeight: 0,
-          ),
-          suffixIcon: trailing != null
-              ? Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: trailing,
-                )
-              : null,
-          border: InputBorder.none,
-          filled: false,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 0,
-            vertical: 12,
+            onTapOutside: (_) {
+              focusNode.unfocus();
+              setState(() => _editModeFocusNodes.remove(focusNode));
+            },
+            onSubmitted: onSubmitted,
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: context.textTertiaryColor.withValues(alpha: 0.6),
+              ),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 14, right: 8),
+                child: Icon(
+                  prefixIconData,
+                  color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                  size: 18,
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              suffixIcon: trailing != null
+                  ? Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: trailing,
+                    )
+                  : null,
+              border: InputBorder.none,
+              filled: false,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 0,
+                vertical: 12,
+              ),
+            ),
           ),
         ),
       ),

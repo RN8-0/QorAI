@@ -163,7 +163,8 @@ class DeepSeekService implements AIService {
       aiAnalysis: response['analysis'] as String? ?? '',
       category: response['category'] as String?,
       analyzedAt: DateTime.now(),
-      isProduct: response['is_product'] as bool? ?? false,
+      isProduct: response['is_product'] as bool? ??
+          _isEcommerceDomain(url),
     );
   }
 
