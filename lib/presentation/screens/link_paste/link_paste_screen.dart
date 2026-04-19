@@ -251,20 +251,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     Widget? trailing,
     TextInputAction textInputAction = TextInputAction.next,
     ValueChanged<String>? onSubmitted,
+    bool enableSingleTapPaste = true,
   }) {
     final isEditMode = _editModeFocusNodes.contains(focusNode);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
-        // Single tap: paste from clipboard (overwrites existing text)
-        unawaited(
-          _pasteClipboardInto(
-            controller,
-            onlyWhenEmpty: false,
-            showInvalidFeedback: false,
-          ),
-        );
-      },
+      onTap: enableSingleTapPaste
+          ? () {
+              // Single tap: paste from clipboard (overwrites existing text)
+              unawaited(
+                _pasteClipboardInto(
+                  controller,
+                  onlyWhenEmpty: false,
+                  showInvalidFeedback: false,
+                ),
+              );
+            }
+          : null,
       onDoubleTap: () {
         // Double tap: enter edit mode, open keyboard
         setState(() => _editModeFocusNodes.add(focusNode));
@@ -1367,23 +1370,25 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           context.l10n?.pasteProductUrlNumbered(index + 1) ??
           'Paste product URL ${index + 1}...',
       prefixIconData: Icons.link_rounded,
+      enableSingleTapPaste: false,
       trailing: controller.text.isNotEmpty
-          ? IconButton(
-              icon: Icon(
-                Icons.close_rounded,
-                color: AppTheme.error.withValues(alpha: 0.78),
-                size: 15,
-              ),
-              constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-              padding: EdgeInsets.zero,
-              splashRadius: 16,
-              style: IconButton.styleFrom(
-                backgroundColor: AppTheme.error.withValues(alpha: 0.08),
-              ),
-              onPressed: () {
+          ? GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
                 controller.clear();
                 setState(() {});
               },
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: Center(
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: AppTheme.error.withValues(alpha: 0.78),
+                    size: 14,
+                  ),
+                ),
+              ),
             )
           : null,
     );
@@ -3755,8 +3760,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                     color: context.textPrimary,
                                     letterSpacing: -0.2,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 if (r.prosForUser.isNotEmpty)
                                   Padding(
@@ -3777,8 +3780,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                               fontWeight: FontWeight.w600,
                                               color: AppTheme.success,
                                             ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
@@ -3803,8 +3804,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                               fontWeight: FontWeight.w600,
                                               color: AppTheme.warning,
                                             ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
@@ -3975,8 +3974,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 fontSize: 14,
                                 color: context.textPrimary,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Container(
@@ -4179,8 +4176,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               color: context.textSecondary,
                               height: 1.5,
                             ),
-                            maxLines: 5,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ],
@@ -4277,8 +4272,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                               color: context.textSecondary,
                               height: 1.5,
                             ),
-                            maxLines: 5,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ],
@@ -4323,8 +4316,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             color: context.textSecondary,
                             height: 1.5,
                           ),
-                          maxLines: 6,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ],
@@ -4410,8 +4401,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                     color: context.textPrimary,
                                     fontWeight: FontWeight.w600,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
