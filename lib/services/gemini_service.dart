@@ -108,9 +108,79 @@ class GeminiService implements AIService {
     OgMetadata? metadata,
   }) async {
     debugPrint('[Gemini] analyzeLink called for: $url');
-    final response = await _jsonRequest(
-      system: _linkAnalysisSystemPrompt(profile.language),
-      user: jsonEncode({
+
+    // Build partial metadata hint for context (client-side scrape, may be incomplete)
+    final metaContext = <String, String?>{};
+    if (metadata?.title?.isNotEmpty ?? false) metaContext['title'] = metadata!.title;
+    if (metadata?.description?.isNotEmpty ?? false) {
+      metaContext['description'] = metadata!.description;
+    }
+    if (metadata?.price?.isNotEmpty ?? false) metaContext['price'] = metadata!.price;
+    if (metadata?.siteName?.isNotEmpty ?? false) metaContext['siteName'] = metadata!.siteName;
+    final metaHint = metaContext.isNotEmpty
+        ? '\nPartial page context (may be incomplete): ${jsonEncode(metaContext)}'
+        : '';
+
+    // Primary: use url_context tool so Gemini fetches and reads the actual product
+    // page — this prevents wrong-product hallucinations when metadata scraping fails.
+    // url_context is incompatible with responseMimeType:application/json,
+    // so we request JSON in the prompt and parse the text response.
+    final urlContextBody = <String, dynamic>{
+      'contents': [
+        {
+          'parts': [
+            {
+              'text':
+                  'Analyze the product at this URL and return ONLY a valid JSON object (no markdown fences):\n\nURL: $url$metaHint\n\nUser profile:\n- Ecosystem: ${profile.ecosystem}\n- Budget: ${profile.budgetRange}\n- Priorities: ${profile.priorities.join(', ')}\n- Country: ${profile.country}',
+            },
+          ],
+        },
+      ],
+      'systemInstruction': {
+        'parts': [
+          {'text': _linkAnalysisSystemPrompt(profile.language)},
+        ],
+      },
+      'tools': [
+        {'url_context': {}},
+      ],
+      'generationConfig': {
+        'temperature': 0.3,
+        'maxOutputTokens': 2048,
+        'thinkingConfig': {'thinkingBudget': 512},
+      },
+    };
+
+    Map<String, dynamic> response = {};
+    bool usedUrlContext = false;
+
+    try {
+      final text = await _rawRequest(
+        urlContextBody,
+        receiveTimeout: const Duration(seconds: 90),
+        tier: AiTier.heavy,
+      );
+      debugPrint('[Gemini] analyzeLink url_context raw: ${text.length} chars');
+      try {
+        response = jsonDecode(text) as Map<String, dynamic>;
+      } catch (_) {
+        final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
+        if (match != null) {
+          try {
+            response = jsonDecode(match.group(0)!) as Map<String, dynamic>;
+          } catch (e) {
+            debugPrint('[Gemini] analyzeLink url_context JSON parse failed: $e');
+          }
+        }
+      }
+      if (response.isNotEmpty) usedUrlContext = true;
+    } catch (e) {
+      debugPrint('[Gemini] analyzeLink url_context failed ($e) — falling back');
+    }
+
+    // Fallback: regular _jsonRequest (no URL fetch, uses model knowledge + metadata)
+    if (!usedUrlContext) {
+      final userInput = <String, dynamic>{
         'url': url,
         'userProfile': {
           'ecosystem': profile.ecosystem,
@@ -118,12 +188,20 @@ class GeminiService implements AIService {
           'priorities': profile.priorities,
           'country': profile.country,
         },
-      }),
-      thinkingBudget: 512,
-      timeout: const Duration(seconds: 60),
-      tier: AiTier.heavy,
+      };
+      if (metaContext.isNotEmpty) userInput['productMetadata'] = metaContext;
+      response = await _jsonRequest(
+        system: _linkAnalysisSystemPrompt(profile.language),
+        user: jsonEncode(userInput),
+        thinkingBudget: 512,
+        timeout: const Duration(seconds: 60),
+        tier: AiTier.heavy,
+      );
+    }
+
+    debugPrint(
+      '[Gemini] analyzeLink done (url_context=$usedUrlContext) keys: ${response.keys}',
     );
-    debugPrint('[Gemini] analyzeLink response keys: ${response.keys}');
 
     return LinkAnalysisResult(
       url: url,

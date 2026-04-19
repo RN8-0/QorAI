@@ -263,10 +263,11 @@ final comparisonRepositoryProvider = Provider<ComparisonRepositoryImpl>((ref) {
   );
 });
 
-/// AI Repository
+/// AI Repository — uses Gemini (with url_context grounding) for link analysis
+/// so the model can actually read the product page and avoid wrong-product hallucinations.
 final aiRepositoryProvider = Provider<AIRepository>((ref) {
   return AIRepository(
-    aiService: ref.read(aiServiceProvider),
+    aiService: ref.read(geminiServiceProvider),
     pbDS: ref.read(pbDataSourceProvider),
     metadataService: ref.read(metadataServiceProvider),
   );
