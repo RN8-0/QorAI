@@ -450,16 +450,25 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final options = def.options ?? [];
     if (options.isEmpty) return const SizedBox.shrink();
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.map((opt) {
+    // Fixed 3-column grid so all chips are equal width and symmetric.
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 2.8,
+      ),
+      itemCount: options.length,
+      itemBuilder: (context, i) {
+        final opt = options[i];
         final isSelected = selected.contains(opt.id);
         return GestureDetector(
           onTap: () => _toggleOption(def.id, opt.id),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: isSelected
                   ? AppTheme.brandCyan.withValues(alpha: 0.15)
@@ -474,15 +483,18 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             ),
             child: Text(
               opt.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? AppTheme.brandCyan : context.textSecondary,
               ),
             ),
           ),
         );
-      }).toList(),
+      },
     );
   }
 

@@ -60,7 +60,8 @@ class PbDataSource {
     bool Function(RecordSubscriptionEvent event)? shouldReload,
   }) {
     late final StreamController<T> controller;
-    late final dynamic subscription;
+    // subscribe() returns Future<UnsubscribeFunc>, not the func itself.
+    late final Future<UnsubscribeFunc> subscriptionFuture;
 
     Future<void> emitSnapshot() async {
       try {
@@ -80,11 +81,12 @@ class PbDataSource {
         unawaited(emitSnapshot());
       },
       onCancel: () async {
-        await subscription.unsubscribe();
+        final unsubscribe = await subscriptionFuture;
+        await unsubscribe();
       },
     );
 
-    subscription = _pb.collection(collection).subscribe(topic, (event) {
+    subscriptionFuture = _pb.collection(collection).subscribe(topic, (event) {
       if (shouldReload == null || shouldReload(event)) {
         unawaited(emitSnapshot());
       }

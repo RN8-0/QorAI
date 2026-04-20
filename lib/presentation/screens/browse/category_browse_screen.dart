@@ -452,15 +452,21 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         if (techCompare != 0) return techCompare;
         final trendCompare = b.trendScore.compareTo(a.trendScore);
         if (trendCompare != 0) return trendCompare;
-        return b.lastUpdated.compareTo(a.lastUpdated);
+        return (b.createdAt ?? b.lastUpdated).compareTo(
+          a.createdAt ?? a.lastUpdated,
+        );
       case _SortOption.newest:
-        return b.lastUpdated.compareTo(a.lastUpdated);
+        // Sort by actual release date (createdAt = first added to DB).
+        return (b.createdAt ?? b.lastUpdated).compareTo(
+          a.createdAt ?? a.lastUpdated,
+        );
       case _SortOption.relevance:
+        // Popular: trending products, newest first among ties.
         final trendCompare = b.trendScore.compareTo(a.trendScore);
         if (trendCompare != 0) return trendCompare;
-        final techCompare = b.techScore.compareTo(a.techScore);
-        if (techCompare != 0) return techCompare;
-        return b.lastUpdated.compareTo(a.lastUpdated);
+        return (b.createdAt ?? b.lastUpdated).compareTo(
+          a.createdAt ?? a.lastUpdated,
+        );
     }
   }
 
