@@ -730,54 +730,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               color: context.textTertiaryColor,
                             ),
                           ),
-                          if (priceStr != null || p.techScore > 0) ...[
+                          if (priceStr != null) ...[
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: [
-                                if (priceStr != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.neonCyan.withValues(
+                                      alpha: 0.10,
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.neonCyan.withValues(
-                                        alpha: 0.10,
-                                      ),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      priceStr,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppTheme.neonCyan,
-                                      ),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    priceStr,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.neonCyan,
                                     ),
                                   ),
-                                if (p.techScore > 0)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _scoreColor(
-                                        p.techScore,
-                                      ).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      'Tech ${p.techScore.round()}',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: _scoreColor(p.techScore),
-                                      ),
-                                    ),
-                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -793,12 +771,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             .slideX(begin: 0.03);
       },
     );
-  }
-
-  Color _scoreColor(double score) {
-    if (score >= 80) return const Color(0xFF34C759);
-    if (score >= 60) return const Color(0xFFFF9500);
-    return const Color(0xFFFF3B30);
   }
 }
 
@@ -840,10 +812,8 @@ class _TopRatedGrid extends ConsumerWidget {
         ),
       ),
       data: (products) {
-        // Sort by techScore descending, take top 20
-        final sorted = List<ProductEntity>.from(products)
-          ..sort((a, b) => b.techScore.compareTo(a.techScore));
-        final top = sorted.take(20).toList();
+        // Take first 20 products
+        final top = products.take(20).toList();
 
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -925,30 +895,7 @@ class _TopRatedGrid extends ConsumerWidget {
                                       ),
                                     ),
                                   ),
-                                // Tech score
-                                if (p.techScore > 0)
-                                  Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _scoreColor(p.techScore),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        p.techScore.round().toString(),
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                // Tech score badge removed
                               ],
                             ),
                           ),
@@ -1006,11 +953,5 @@ class _TopRatedGrid extends ConsumerWidget {
         );
       },
     );
-  }
-
-  Color _scoreColor(double score) {
-    if (score >= 80) return const Color(0xFF34C759);
-    if (score >= 60) return const Color(0xFFFF9500);
-    return const Color(0xFFFF3B30);
   }
 }

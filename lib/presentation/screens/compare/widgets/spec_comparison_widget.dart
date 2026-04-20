@@ -139,9 +139,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     if (releaseYear != null) {
       details.add('release year: $releaseYear');
     }
-    if (product.techScore > 0) {
-      details.add('tech score: ${product.techScore.toStringAsFixed(1)}/100');
-    }
     final highlightedSpecs = product.keySpecs.entries
         .where(
           (entry) =>
@@ -731,7 +728,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
               .take(10)
               .map((e) => '${e.key}: ${e.value}')
               .join(', ');
-          return '${p.name} (${p.brand ?? ""}): Score ${p.techScore.toInt()}/100. $keySpecs';
+          return '${p.name} (${p.brand ?? ""}): $keySpecs';
         })
         .join('\n');
 
@@ -838,7 +835,7 @@ Return ONLY valid JSON:
               .map((e) => '${e.key}: ${e.value}')
               .join(', ');
           final price = p.prices.isNotEmpty ? p.prices.values.first : 'N/A';
-          return '${p.name} (Score: ${p.techScore}, Price: $price, Specs: $specs)';
+          return '${p.name} (Price: $price, Specs: $specs)';
         })
         .join('\n');
 
@@ -4459,177 +4456,7 @@ Rules:
   // ─── Expert Scores Comparison ───
 
   Widget _buildExpertScoresComparison() {
-    final scores = widget.products.map((p) => p.techScore).toList();
-    final maxScore = scores.reduce((a, b) => a > b ? a : b);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.brandBlue.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  gradient: _accentGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.analytics_rounded,
-                  size: 20,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'TechScore',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...widget.products.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final product = entry.value;
-            final score = product.techScore;
-            final isBest =
-                score == maxScore &&
-                scores.where((s) => s == maxScore).length == 1;
-            final scoreColor = score >= 80
-                ? AppTheme.scoreExcellent
-                : score >= 60
-                ? AppTheme.scoreAverage
-                : score >= 40
-                ? AppTheme.orange500
-                : AppTheme.error;
-            final chipColors = [
-              AppTheme.brandBlue,
-              AppTheme.scoreAverage,
-              AppTheme.premiumPurpleLight,
-              AppTheme.scoreExcellent,
-            ];
-            final chipColor = chipColors[idx % 4];
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isBest
-                    ? AppTheme.scoreExcellent.withValues(alpha: 0.06)
-                    : context.surfaceColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isBest
-                      ? AppTheme.scoreExcellent.withValues(alpha: 0.2)
-                      : context.dividerColor,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: chipColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (isBest)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.scoreExcellent.withValues(
-                              alpha: 0.15,
-                            ),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '🏆',
-                            style: GoogleFonts.plusJakartaSans(fontSize: 11),
-                          ),
-                        ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              scoreColor.withValues(alpha: 0.8),
-                              scoreColor,
-                            ],
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            score.toInt().toString(),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: score / 100,
-                      minHeight: 6,
-                      backgroundColor: context.dividerColor,
-                      color: scoreColor,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
+    return SizedBox.shrink();
   }
 
   // ─── Visual Builders ───
@@ -4743,13 +4570,6 @@ Rules:
     final widgets = <Widget>[];
     for (int idx = 0; idx < widget.products.length; idx++) {
       final product = widget.products[idx];
-      final scoreColor = product.techScore >= 80
-          ? AppTheme.scoreExcellent
-          : product.techScore >= 60
-          ? AppTheme.scoreAverage
-          : product.techScore >= 40
-          ? AppTheme.orange500
-          : AppTheme.error;
 
       if (idx > 0) {
         widgets.add(const SizedBox(width: 4));
@@ -4775,40 +4595,6 @@ Rules:
                   padding: const EdgeInsets.all(6),
                 ),
                 const SizedBox(height: 6),
-                if (product.techScore > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scoreColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: scoreColor.withValues(alpha: 0.3),
-                        width: 0.5,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.memory_outlined,
-                          size: 10,
-                          color: scoreColor,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          product.techScore.toInt().toString(),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: scoreColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 const SizedBox(height: 4),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),

@@ -27,7 +27,6 @@ void main() {
   ProductEntity buildProduct({
     required String id,
     required String name,
-    required double techScore,
     required List<String> pros,
     required Map<String, dynamic> specs,
   }) {
@@ -37,7 +36,6 @@ void main() {
       brand: 'acer',
       category: 'monitors',
       subcategory: 'gaming-monitors',
-      techScore: techScore,
       prices: const {'US': 799},
       pros: pros,
       specs: specs,
@@ -60,7 +58,6 @@ void main() {
     final gamingMonitor = buildProduct(
       id: 'gaming-monitor',
       name: 'Predator X27 Gaming Monitor',
-      techScore: 91,
       pros: const ['Gaming performance', '165Hz refresh rate', 'Fast response'],
       specs: const {
         'refresh rate': '165Hz',
@@ -71,7 +68,6 @@ void main() {
     final officeMonitor = buildProduct(
       id: 'office-monitor',
       name: 'WorkView 27 Monitor',
-      techScore: 74,
       pros: const ['Office productivity', 'Comfortable panel'],
       specs: const {
         'refresh rate': '60Hz',

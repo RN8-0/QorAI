@@ -68,13 +68,13 @@ async function run(name, fn, iters = 20) {
     () => time('GET', `${PB}/api/collections/products/records?perPage=20`));
 
   await run('PB list 20 products (lean fields)',
-    () => time('GET', `${PB}/api/collections/products/records?perPage=20&fields=id,slug,name,brand,imageUrl,techScore,price_segment`));
+    () => time('GET', `${PB}/api/collections/products/records?perPage=20&fields=id,slug,name,brand,imageUrl,price_segment`));
 
   await run('PB list 50 products (lean fields)',
-    () => time('GET', `${PB}/api/collections/products/records?perPage=50&fields=id,slug,name,brand,imageUrl,techScore,price_segment`));
+    () => time('GET', `${PB}/api/collections/products/records?perPage=50&fields=id,slug,name,brand,imageUrl,price_segment`));
 
   await run('PB filter by category=phones',
-    () => time('GET', `${PB}/api/collections/products/records?perPage=20&filter=(category='phones')&fields=id,slug,name,brand,imageUrl,techScore`));
+    () => time('GET', `${PB}/api/collections/products/records?perPage=20&filter=(category='phones')&fields=id,slug,name,brand,imageUrl`));
 
   await run('PB get single product by slug',
     () => time('GET', `${PB}/api/collections/products/records?perPage=1&filter=(slug='apple-iphone-16-pro-max-1-tb')`));
@@ -86,8 +86,8 @@ async function run(name, fn, iters = 20) {
   await run('TS search "samsung galaxy"',
     () => time('GET', `${TS}/collections/products/documents/search?q=samsung%20galaxy&query_by=name,brand&per_page=20`, { 'X-TYPESENSE-API-KEY': TS_KEY }));
 
-  await run('TS browse (empty q, sort techScore)',
-    () => time('GET', `${TS}/collections/products/documents/search?q=*&query_by=name&sort_by=techScore:desc&per_page=20`, { 'X-TYPESENSE-API-KEY': TS_KEY }));
+  await run('TS browse (empty q, sort trendScore)',
+    () => time('GET', `${TS}/collections/products/documents/search?q=*&query_by=name&sort_by=trendScore:desc&per_page=20`, { 'X-TYPESENSE-API-KEY': TS_KEY }));
 
   await run('TS search + category facet',
     () => time('GET', `${TS}/collections/products/documents/search?q=*&query_by=name&filter_by=category:=phones&per_page=20`, { 'X-TYPESENSE-API-KEY': TS_KEY }));

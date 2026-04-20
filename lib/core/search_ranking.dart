@@ -143,7 +143,6 @@ SearchRank rankProductForQuery(ProductEntity product, String query) {
     return const SearchRank(score: 0);
   }
 
-  score += (product.techScore / 8).round();
   score += (product.trendScore / 20).round();
 
   return SearchRank(
@@ -165,8 +164,6 @@ List<T> rankProductsForQuery<T extends ProductEntity>(
   if (normalizedQuery.isEmpty) {
     final copy = List<T>.from(products)
       ..sort((a, b) {
-        final techCompare = b.techScore.compareTo(a.techScore);
-        if (techCompare != 0) return techCompare;
         final trendCompare = b.trendScore.compareTo(a.trendScore);
         if (trendCompare != 0) return trendCompare;
         return b.lastUpdated.compareTo(a.lastUpdated);
@@ -202,9 +199,6 @@ List<T> rankProductsForQuery<T extends ProductEntity>(
     if (a.rank.allTokensInName != b.rank.allTokensInName) {
       return b.rank.allTokensInName ? 1 : -1;
     }
-
-    final techCompare = b.product.techScore.compareTo(a.product.techScore);
-    if (techCompare != 0) return techCompare;
 
     final trendCompare = b.product.trendScore.compareTo(a.product.trendScore);
     if (trendCompare != 0) return trendCompare;

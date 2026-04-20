@@ -352,13 +352,6 @@ class _ProductCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final techScore = product.techScore;
-    final scoreColor = techScore >= 80
-        ? const Color(0xFF10B981)
-        : techScore >= 60
-        ? const Color(0xFFF59E0B)
-        : const Color(0xFFEF4444);
-
     return GestureDetector(
       onTap: () => context.push('/product/${product.id}'),
       child: Container(
@@ -420,44 +413,6 @@ class _ProductCard extends ConsumerWidget {
                             ),
                     ),
                   ),
-                  // Tech score badge
-                  if (techScore > 0)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: scoreColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: scoreColor.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.bolt_rounded,
-                              size: 12,
-                              color: scoreColor,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${techScore.round()}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: scoreColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   // Category chip
                   Positioned(
                     top: 8,

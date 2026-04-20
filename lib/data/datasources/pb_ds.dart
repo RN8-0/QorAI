@@ -38,7 +38,7 @@ class PbDataSource {
   static const _productListFields =
       'id,collectionId,collectionName,created,updated,'
       'name,brand,category,subcategory,'
-      'imageUrl,imageURL,techScore,trendScore,techSubscores,'
+      'imageUrl,imageURL,trendScore,'
       'price_segment,priceRange,prices,tags,ratings,'
       'isActive,variantGroup,scrapedAt,lastUpdated';
 
@@ -427,7 +427,7 @@ class PbDataSource {
       if (subcategory != null) filters.add('subcategory = "$subcategory"');
       if (activeOnly) filters.add('isActive = true');
 
-      final sortField = (orderBy == 'trendScore' || orderBy == 'techScore')
+      final sortField = (orderBy == 'trendScore')
           ? orderBy
           : 'name';
       final sortDir = descending ? '-' : '';
@@ -1318,7 +1318,7 @@ class PbDataSource {
         'query_by': 'name,brand,subcategory,keySpecsText,tags',
         'query_by_weights': '8,5,4,2,3',
         'per_page': limit,
-        'sort_by': '_text_match:desc,techScore:desc',
+        'sort_by': '_text_match:desc,trendScore:desc',
         'prioritize_exact_match': true,
         'prioritize_token_position': true,
         'prefix': 'true,true,true,false,false',
@@ -1668,7 +1668,7 @@ class PbDataSource {
   Future<List<ProductModel>> getProductsByCategoryTs({
     required String category,
     int limit = 80,
-    String sortBy = 'techScore:desc',
+    String sortBy = 'trendScore:desc',
   }) async {
     try {
       final sw = Stopwatch()..start();
@@ -1705,7 +1705,7 @@ class PbDataSource {
   Future<Map<String, List<ProductModel>>> getProductsMultiCategoryTs({
     required List<String> categories,
     int perCategory = 80,
-    String sortBy = 'techScore:desc',
+    String sortBy = 'trendScore:desc',
   }) async {
     if (categories.isEmpty) return {};
     try {
@@ -1759,7 +1759,7 @@ class PbDataSource {
     required String category,
     int perPage = 250,
     int maxTotal = 5000,
-    String sortBy = 'techScore:desc',
+    String sortBy = 'trendScore:desc',
   }) async {
     final all = <ProductModel>[];
     final seenIds = <String>{};
@@ -1807,7 +1807,7 @@ class PbDataSource {
     required String category,
     int limit = 200,
     int page = 1,
-    String sortBy = 'techScore:desc',
+    String sortBy = 'trendScore:desc',
   }) async {
     try {
       final sw = Stopwatch()..start();

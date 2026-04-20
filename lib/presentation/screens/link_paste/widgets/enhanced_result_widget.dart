@@ -364,36 +364,6 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            context.l10n?.techScoreLabel ?? 'Tech Score',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9,
-                              color: context.textTertiaryColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '${databaseMatch.techScore.toStringAsFixed(0)}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: AppTheme.primaryBlue,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               )
@@ -1079,28 +1049,20 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        product.techScore.toStringAsFixed(0),
+                                        product.name,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.plusJakartaSans(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 18,
-                                          color: AppTheme.primaryBlue,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: context.textPrimary,
+                                          height: 1.2,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const Spacer(),
-                                Text(
-                                  product.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: context.textPrimary,
-                                    height: 1.2,
-                                  ),
-                                ),
                               ],
                             ),
                           );

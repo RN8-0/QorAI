@@ -110,7 +110,7 @@ final pcBuilderProductsProvider = FutureProvider.family<List<ProductEntity>, Str
       sw.stop();
       if (products.isNotEmpty) {
         final entities = products.cast<ProductEntity>();
-        entities.sort((a, b) => b.techScore.compareTo(a.techScore));
+        entities.sort((a, b) => b.trendScore.compareTo(a.trendScore));
         _pcBuilderCacheMap[normalizedCategory] = entities;
         debugPrint(
           '[PCBuilder] ✅ TS "$alias": ${entities.length} in ${sw.elapsedMilliseconds}ms',
@@ -141,7 +141,7 @@ final pcBuilderProductsProvider = FutureProvider.family<List<ProductEntity>, Str
         page = result.nextPage;
       }
       if (all.isNotEmpty) {
-        all.sort((a, b) => b.techScore.compareTo(a.techScore));
+        all.sort((a, b) => b.trendScore.compareTo(a.trendScore));
         _pcBuilderCacheMap[normalizedCategory] = all;
         return all;
       }
@@ -155,7 +155,7 @@ final pcBuilderProductsProvider = FutureProvider.family<List<ProductEntity>, Str
       final results = await ds.searchProducts(query: keyword, limit: 200);
       if (results.isNotEmpty) {
         final products = results.cast<ProductEntity>();
-        products.sort((a, b) => b.techScore.compareTo(a.techScore));
+        products.sort((a, b) => b.trendScore.compareTo(a.trendScore));
         _pcBuilderCacheMap[normalizedCategory] = products;
         debugPrint(
           '[PCBuilder] ✅ TS search fallback "$normalizedCategory": ${products.length}',
@@ -276,7 +276,7 @@ final productsByCategoryProvider =
         }).toList();
         final sorted = List<ProductEntity>.from(filtered)
           ..sort((a, b) {
-            final tsCmp = b.techScore.compareTo(a.techScore);
+            final tsCmp = b.trendScore.compareTo(a.trendScore);
             if (tsCmp != 0) return tsCmp;
             return b.trendScore.compareTo(a.trendScore);
           });
@@ -708,7 +708,7 @@ HomeFeed _buildHomeFeed(
       final y = int.tryParse(nameYearMatch.group(0)!);
       if (y != null && y > 2000 && y <= currentYear + 1) return y;
     }
-    final ts = p.techScore;
+    final ts = p.trendScore;
     if (ts >= 60) return currentYear - 1;
     if (ts >= 40) return currentYear - 3;
     if (ts >= 20) return currentYear - 5;
@@ -1024,7 +1024,7 @@ HomeFeed _buildHomeFeed(
         recency = (recency + 0.08).clamp(0.0, 1.0);
     }
 
-    final quality = (p.techScore / 100.0).clamp(0.0, 1.0);
+    final quality = (p.trendScore / 100.0).clamp(0.0, 1.0);
     return ((engagement * 0.30) + (recency * 0.30) + (quality * 0.25) + 0.15) *
         brandBoost(p) *
         userBoost(p);
@@ -1158,7 +1158,7 @@ HomeFeed _buildHomeFeed(
     if (p.createdAt != null && now.difference(p.createdAt!).inDays < 180)
       return true;
     // Fallback: estimated recent release with decent quality
-    return estimateYear(p) >= currentYear - 1 && p.techScore >= 20;
+    return estimateYear(p) >= currentYear - 1 && p.trendScore >= 20;
   }).toList();
   if (arrivalCandidates.length < 10) {
     arrivalCandidates = allScored
@@ -1199,7 +1199,7 @@ HomeFeed _buildHomeFeed(
 
   final discoverCandidates = allScored
       .where(
-        (s) => !shownIds.contains(s.product.id) && s.product.techScore >= 10,
+        (s) => !shownIds.contains(s.product.id) && s.product.trendScore >= 10,
       )
       .toList();
   if (discoverCandidates.length < 10) {
@@ -1696,7 +1696,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
             .getProducts(
               category: cat,
               limit: 80,
-              orderBy: 'techScore',
+              orderBy: 'trendScore',
               descending: true,
             )
             .timeout(const Duration(seconds: 45))
@@ -2225,25 +2225,25 @@ final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((
   }
 });
 
-/// "Price Drop" / Value Picks — high techScore at lower price tiers
+/// "Price Drop" / Value Picks — high trendScore at lower price tiers
 final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
   final feed = await ref.watch(homeFeedProvider.future);
   final country = ref.read(selectedCountryProvider);
 
-  // Find products with high techScore but relatively low price
+  // Find products with high trendScore but relatively low price
   final candidates = feed.all.where((p) {
-    final score = p.techScore;
+    final score = p.trendScore;
     final price = p.getPriceForCountry(country) ?? 0;
     // Good value: high score, reasonable price
     return score >= 60 && price > 0 && price < 2000;
   }).toList();
 
-  // Sort by value ratio (techScore / price)
+  // Sort by value ratio (trendScore / price)
   candidates.sort((a, b) {
     final priceA = a.getPriceForCountry(country) ?? 1;
     final priceB = b.getPriceForCountry(country) ?? 1;
-    final ratioA = a.techScore / priceA;
-    final ratioB = b.techScore / priceB;
+    final ratioA = a.trendScore / priceA;
+    final ratioB = b.trendScore / priceB;
     return ratioB.compareTo(ratioA);
   });
 
@@ -2645,7 +2645,7 @@ final similarProductsProvider =
           return false;
         });
 
-        // Deduplicate remaining pool by variantGroup (keep best techScore representative)
+        // Deduplicate remaining pool by variantGroup (keep best trendScore representative)
         final variantBest = <String, ProductEntity>{};
         final nameBest = <String, ProductEntity>{};
         final deduped = <ProductEntity>[];
@@ -2656,8 +2656,8 @@ final similarProductsProvider =
             final existing = variantBest[p.variantGroup];
             if (existing != null) {
               dominated = true;
-              // Keep the one with higher techScore
-              if (p.techScore > existing.techScore) {
+              // Keep the one with higher trendScore
+              if (p.trendScore > existing.trendScore) {
                 dedupeIds.remove(existing.id);
                 deduped.removeWhere((x) => x.id == existing.id);
                 variantBest[p.variantGroup] = p;
@@ -2672,7 +2672,7 @@ final similarProductsProvider =
             final normName = normalizeProductName(p.name);
             if (nameBest.containsKey(normName)) {
               final existing = nameBest[normName]!;
-              if (p.techScore > existing.techScore) {
+              if (p.trendScore > existing.trendScore) {
                 dedupeIds.remove(existing.id);
                 deduped.removeWhere((x) => x.id == existing.id);
                 nameBest[normName] = p;
@@ -2700,29 +2700,29 @@ final similarProductsProvider =
 
         // Graduated expansion to find at least 4 results
         List<ProductEntity> candidates = [];
-        final techScore = product.techScore;
+        final trendScore = product.trendScore;
 
-        // Step 1: same category + techScore ±20
+        // Step 1: same category + trendScore ±20
         if (candidates.length < 4) {
           final step = sameCat
               .where(
-                (p) => (p.techScore - techScore).abs() <= 20 && p.techScore > 0,
+                (p) => (p.trendScore - trendScore).abs() <= 20 && p.trendScore > 0,
               )
               .toList();
           _addUnique(candidates, step);
         }
 
-        // Step 2: same category + techScore ±40
+        // Step 2: same category + trendScore ±40
         if (candidates.length < 4) {
           final step = sameCat
               .where(
-                (p) => (p.techScore - techScore).abs() <= 40 && p.techScore > 0,
+                (p) => (p.trendScore - trendScore).abs() <= 40 && p.trendScore > 0,
               )
               .toList();
           _addUnique(candidates, step);
         }
 
-        // Step 3: same category, no techScore filter
+        // Step 3: same category, no trendScore filter
         if (candidates.length < 4) {
           _addUnique(candidates, sameCat);
         }
@@ -2759,7 +2759,7 @@ final similarProductsProvider =
           if (p.category.toLowerCase().trim() == catKey) score += 15;
 
           // Tech score similarity (important for "similar" products)
-          final techDiff = (p.techScore - techScore).abs();
+          final techDiff = (p.trendScore - trendScore).abs();
           if (techDiff <= 5)
             score += 20;
           else if (techDiff <= 10)

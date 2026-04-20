@@ -354,12 +354,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Color _getTechScoreColor(double score) {
-    if (score >= 85) return const Color(0xFF10B981);
-    if (score >= 70) return const Color(0xFFF59E0B);
-    if (score >= 50) return const Color(0xFFF97316);
-    return const Color(0xFFEF4444);
-  }
+  // _getTechScoreColor removed - techScore system eliminated
 
   // === APP BAR ===============================================================
 
@@ -1015,7 +1010,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     onPageChanged: (i) => setState(() => _currentHeroPage = i),
                     itemBuilder: (context, index) {
                       final p = products[index];
-                      final scoreColor = _getTechScoreColor(p.techScore);
+                      final scoreColor = AppTheme.primaryBlue;
                       // Parallax scale effect
                       double scale = 1.0;
                       if (_heroPageCtrl.position.haveDimensions) {
@@ -1191,52 +1186,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                                       ),
                                                 ),
                                                 const SizedBox(height: 8),
-                                                if (p.techScore > 0)
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 5,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme.accentCyan
-                                                          .withValues(
-                                                            alpha: 0.12,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        Icon(
-                                                          Icons
-                                                              .local_fire_department_rounded,
-                                                          size: 13,
-                                                          color: AppTheme
-                                                              .accentCyan,
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 4,
-                                                        ),
-                                                        Text(
-                                                          '${p.techScore.toInt()}',
-                                                          style:
-                                                              GoogleFonts.plusJakartaSans(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w700,
-                                                                color: AppTheme
-                                                                    .accentCyan,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
                                                 const SizedBox(height: 10),
                                                 Container(
                                                   padding:
@@ -3213,13 +3162,6 @@ class _ForYouCard extends StatelessWidget {
       : s >= 60
       ? const Color(0xFFF59E0B)
       : const Color(0xFF94A3B8);
-  Color _techColor(double s) => s >= 85
-      ? const Color(0xFF10B981)
-      : s >= 70
-      ? const Color(0xFFF59E0B)
-      : s >= 50
-      ? const Color(0xFFF97316)
-      : const Color(0xFFEF4444);
 
   @override
   Widget build(BuildContext context) {
@@ -3296,41 +3238,6 @@ class _ForYouCard extends StatelessWidget {
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                if (product.techScore > 0)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: context.surfaceElevatedColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: context.dividerColor),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.speed_rounded,
-                            size: 10,
-                            color: _techColor(product.techScore),
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${product.techScore.toInt()}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: _techColor(product.techScore),
                             ),
                           ),
                         ],
@@ -3470,40 +3377,6 @@ class _WideProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (product.techScore > 0)
-                  Positioned(
-                    top: 7,
-                    right: 7,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.local_fire_department_rounded,
-                            size: 10,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${product.techScore.toInt()}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
               ],
             ),
             // Details section — tight, no gap
@@ -3619,13 +3492,6 @@ class _CompactProductCard extends StatelessWidget {
     required this.onTap,
   });
 
-  Color _techColor(double s) => s >= 85
-      ? const Color(0xFF10B981)
-      : s >= 70
-      ? const Color(0xFFF59E0B)
-      : s >= 50
-      ? const Color(0xFFF97316)
-      : const Color(0xFFEF4444);
 
   @override
   Widget build(BuildContext context) {
@@ -3692,29 +3558,6 @@ class _CompactProductCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                             letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (product.techScore > 0)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${product.techScore.toInt()}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -3985,40 +3828,6 @@ class _TrendingWideCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (product.techScore > 0)
-                  Positioned(
-                    top: 7,
-                    right: 7,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.local_fire_department_rounded,
-                            size: 10,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${product.techScore.toInt()}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
               ],
             ),
             // Details section — tight layout, no gaps

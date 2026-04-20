@@ -72,13 +72,6 @@
       <label class="filter-label"><input type="checkbox" class="price-filter" value="mid_range"> Orta Segment</label>
       <label class="filter-label"><input type="checkbox" class="price-filter" value="premium"> Premium</label>
     </div>
-
-    <div class="filter-section">
-      <h4 class="filter-title">Skor</h4>
-      <label class="filter-label"><input type="checkbox" class="score-filter" value="80"> 80+ Mükemmel</label>
-      <label class="filter-label"><input type="checkbox" class="score-filter" value="60"> 60–80 İyi</label>
-      <label class="filter-label"><input type="checkbox" class="score-filter" value="0"> 60 Altı</label>
-    </div>
   </aside>
 
   <!-- MAIN AREA -->
@@ -91,10 +84,9 @@
     <div class="sort-bar">
       <span class="product-count" id="product-count">Yükleniyor...</span>
       <div class="sort-options">
-        <button class="sort-btn active" data-sort="score" onclick="sortBy('score')">⚡ Puana Göre</button>
+        <button class="sort-btn active" data-sort="name" onclick="sortBy('name')">A–Z İsme Göre</button>
         <button class="sort-btn" data-sort="price-asc" onclick="sortBy('price-asc')">₺↑ Ucuzdan</button>
         <button class="sort-btn" data-sort="price-desc" onclick="sortBy('price-desc')">₺↓ Pahalıdan</button>
-        <button class="sort-btn" data-sort="name" onclick="sortBy('name')">A–Z İsme Göre</button>
       </div>
     </div>
 

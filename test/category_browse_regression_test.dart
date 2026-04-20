@@ -23,7 +23,6 @@ void main() {
       specs: specs,
       specSections: specSections,
       keySpecs: keySpecs,
-      techScore: 80,
       trendScore: 70,
       lastUpdated: DateTime(2026, 1, 1),
       createdAt: DateTime(2026, 1, 1),

@@ -271,7 +271,6 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       if (pageContext['productName'] != null) pageCtxStr.add('Product: ${pageContext['productName']}');
       if (pageContext['productBrand'] != null) pageCtxStr.add('Brand: ${pageContext['productBrand']}');
       if (pageContext['productCategory'] != null) pageCtxStr.add('Category: ${pageContext['productCategory']}');
-      if (pageContext['techScore'] != null) pageCtxStr.add('Tech Score: ${pageContext['techScore']}');
       if (pageContext['matchScore'] != null) pageCtxStr.add('Match Score: ${pageContext['matchScore']}');
     }
 

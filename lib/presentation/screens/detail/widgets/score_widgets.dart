@@ -87,7 +87,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       productId: widget.product.id,
       languageCode: languageCode,
     );
-    final techScore = widget.product.techScore.toInt();
     final userAsync = ref.watch(userProfileProvider);
     final user = userAsync.valueOrNull;
     final quizDone = user != null && user.quizCompleted;
@@ -129,7 +128,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
         ? matchResult!.reason
         : null;
 
-    if (techScore == 0 && fitScore == null && !quizDone) {
+    if (fitScore == null && !quizDone) {
       return const SizedBox.shrink();
     }
 
@@ -161,23 +160,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
           child: IntrinsicHeight(
             child: Row(
               children: [
-                if (techScore > 0) ...[
-                  Expanded(
-                    child: _ScoreCell(
-                      label: context.l10n?.techScore ?? 'Tech Score',
-                      score: techScore,
-                      color: AppTheme.primaryBlue,
-                      icon: Icons.memory_outlined,
-                    ),
-                  ),
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: context.dividerColor,
-                    indent: 12,
-                    endIndent: 12,
-                  ),
-                ],
                 Expanded(
                   child: fitScore != null
                       ? _AnimatedScoreCell(
@@ -607,8 +589,7 @@ class _ScoreTrio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // If no scores, show nothing or empty state
-    if (product.techScore == 0 &&
-        product.ratings.community == 0 &&
+    if (product.ratings.community == 0 &&
         product.ratings.expert == 0) {
       return const SizedBox.shrink();
     }
@@ -616,12 +597,6 @@ class _ScoreTrio extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _CircularScore(
-          label: context.l10n?.techScore ?? 'Tech Score',
-          score: product.techScore.toInt(),
-          color: AppTheme.primaryBlue,
-          icon: Icons.memory,
-        ),
         _CircularScore(
           label: context.l10n?.userScore ?? 'User Score',
           score: (product.ratings.community * 10).toInt(),

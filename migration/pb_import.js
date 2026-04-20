@@ -31,7 +31,6 @@ const MAPPERS = {
       specs: d.specs || null,
       specSections: d.specSections || null,
       keySpecs: d.keySpecs || null,
-      techScore: typeof d.techScore === 'number' ? d.techScore : null,
       price_raw: d.price_raw || '',
       price_segment: d.price_segment || '',
       specsCount: typeof d.specsCount === 'number' ? d.specsCount : null,

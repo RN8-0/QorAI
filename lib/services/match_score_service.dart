@@ -305,7 +305,6 @@ class MatchScoreService {
     if (price != null) {
       buf.writeln('Price: \$${price.toStringAsFixed(0)}');
     }
-    buf.writeln('Tech Score: ${product.techScore.toStringAsFixed(0)}/100');
 
     // Key specs (top 8)
     final keySpecs = product.keySpecs.entries.take(8);
@@ -457,8 +456,8 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
       adjustedWeights[entry.key] = (current + entry.value).clamp(0.0, 1.0);
     }
 
-    // Tech score contribution (0-1)
-    final techNormalized = (product.techScore / 100).clamp(0.0, 1.0);
+    // Tech score removed — neutralize to mid-range (0.5)
+    const techNormalized = 0.5;
 
     // Weighted average of user priorities vs tech quality
     double sum = 0;

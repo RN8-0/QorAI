@@ -100,8 +100,7 @@
       for (const step of STEPS) {
         try {
           const items = await pbGetByCategory(step.cat, 50);
-          stepProducts[step.cat] = items
-            .sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
+          stepProducts[step.cat] = items;
         } catch(e) {
           stepProducts[step.cat] = [];
         }
@@ -162,7 +161,6 @@
           <div id="products-list" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;">`;
         prods.forEach(p => {
           const price = p.prices?.USD || p.prices?.TRY || 0;
-          const score = (p.techScore||0).toFixed(0);
           const isSelected = selected?.id === p.id;
           html += `
             <div onclick="selectProduct('${step.id}','${p.id}')" class="product-row" style="
@@ -180,7 +178,6 @@
               </div>
               <div style="text-align:right;flex-shrink:0;">
                 ${price>0?`<div style="font-size:14px;font-weight:800;">$${price.toFixed(0)}</div>`:''}
-                <div style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:${score>=70?'#10B98118':'#F59E0B18'};color:${score>=70?'#059669':'#D97706'};">⚡${score}</div>
               </div>
               ${isSelected?'<span style="color:'+step.color+';font-size:18px;">✓</span>':''}
             </div>`;

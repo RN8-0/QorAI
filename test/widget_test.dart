@@ -19,7 +19,6 @@ void main() {
       imageURL: 'https://example.com/img.jpg',
       prices: {'US': 999.0, 'TR': 54999.0},
       trendScore: 85.0,
-      techScore: 92.0,
       lastUpdated: DateTime(2026, 1, 1),
     );
 

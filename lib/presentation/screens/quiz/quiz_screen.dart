@@ -137,7 +137,6 @@ DateTime? _recordBestDate(RecordModel record) {
 
 double _quizCoverScore(RecordModel record) {
   final data = record.data;
-  final techScore = (data['techScore'] as num?)?.toDouble() ?? 0;
   final trendScore = (data['trendScore'] as num?)?.toDouble() ?? 0;
   final referenceDate = _recordBestDate(record);
   final ageDays = referenceDate == null
@@ -153,7 +152,7 @@ double _quizCoverScore(RecordModel record) {
     _ => -14.0,
   };
 
-  return techScore + (trendScore * 0.08) + recencyBonus;
+  return (trendScore * 0.08) + recencyBonus;
 }
 
 final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
@@ -168,9 +167,9 @@ final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
           .getList(
             page: page,
             perPage: 200,
-            sort: '-techScore,-trendScore,-created',
+            sort: '-trendScore,-created',
             fields:
-                'category,imageURL,imageUrl,images,techScore,trendScore,lastUpdated,createdAt,scrapedAt',
+                'category,imageURL,imageUrl,images,trendScore,lastUpdated,createdAt,scrapedAt',
           );
 
       for (final record in result.items) {
@@ -203,10 +202,10 @@ final quizCategoryVisualsProvider = FutureProvider<Map<String, String>>((
                 .getList(
                   page: 1,
                   perPage: 12,
-                  sort: '-techScore,-trendScore,-created',
+                  sort: '-trendScore,-created',
                   filter: 'category = "$category"',
                   fields:
-                      'category,imageURL,imageUrl,images,techScore,trendScore,lastUpdated,createdAt,scrapedAt',
+                      'category,imageURL,imageUrl,images,trendScore,lastUpdated,createdAt,scrapedAt',
                 );
 
             RecordModel? bestRecord;

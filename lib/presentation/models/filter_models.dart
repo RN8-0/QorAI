@@ -121,9 +121,6 @@ class FilterApplier {
       }
     }
 
-    // Add tech score for score range filtering
-    flat['techScore'] = product.techScore.toStringAsFixed(0);
-
     return flat;
   }
 
@@ -151,20 +148,6 @@ class FilterApplier {
           .any(
             (label) => brandLower.contains(label) || label.contains(brandLower),
           );
-    }
-
-    // Score range filter checks product.techScore against range buckets.
-    if (def.id == 'tech_score') {
-      final score = product.techScore;
-      final selectedIds = selected.toList();
-      return selectedIds.any((id) {
-        final parts = id.split('-');
-        if (parts.length != 2) return false;
-        final lo = double.tryParse(parts[0]);
-        final hi = double.tryParse(parts[1]);
-        if (lo == null || hi == null) return false;
-        return score >= lo && score <= hi;
-      });
     }
 
     // For other filters, search spec values.

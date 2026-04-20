@@ -488,13 +488,10 @@ class ProfileAlgorithmService {
       behavior: behavior,
     );
 
-    // Expert/Technical evaluation (25%) — use techScore as proxy when
-    // expert rating is unavailable (scraped data rarely has expert reviews).
+    // Expert/Technical evaluation (25%) — techScore removed; use expert rating only
     final expert =
         expertScore ??
-        (product.ratings.expert > 0
-            ? product.ratings.expert
-            : product.techScore.clamp(0, 100));
+        (product.ratings.expert > 0 ? product.ratings.expert : 50.0);
 
     // Community reviews (20%) — use trendScore as popularity proxy when
     // community rating is unavailable.
@@ -1145,9 +1142,8 @@ class ProfileAlgorithmService {
 
   double _calculatePriorityMatchScore(UserEntity user, ProductEntity product) {
     if (user.priorities.isEmpty) {
-      // No priorities set — use techScore as quality heuristic
-      // High tech score products get better match for everyone
-      return (product.techScore / 100).clamp(0.3, 0.9);
+      // No priorities set — neutral baseline (techScore removed)
+      return 0.6;
     }
 
     double matchCount = 0;
@@ -1203,8 +1199,7 @@ class ProfileAlgorithmService {
               productPros.contains('güçlü') ||
               productPros.contains('powerful') ||
               productSpecs.contains('performans') ||
-              productSpecs.contains('performance') ||
-              product.techScore >= 85) {
+              productSpecs.contains('performance')) {
             matchCount++;
           }
           break;
@@ -1298,13 +1293,7 @@ class ProfileAlgorithmService {
         ? matchCount / user.priorities.length
         : 0.0;
 
-    // If keyword matching found little, use techScore as a quality proxy
-    // High techScore products partially satisfy 'quality' and 'performance' priorities
-    if (keywordScore < 0.3) {
-      final techProxy = (product.techScore / 100).clamp(0.0, 1.0);
-      // Blend: 60% keyword, 40% tech proxy
-      return (keywordScore * 0.6 + techProxy * 0.4).clamp(0.0, 1.0);
-    }
+    // techScore removed — return keyword score as-is
     return keywordScore.clamp(0.0, 1.0);
   }
 
@@ -1509,8 +1498,10 @@ class ProfileAlgorithmService {
     UserEntity user,
     ProductEntity product,
   ) {
-    // Use techScore as quality proxy (always populated from scraper)
-    final qualityScore = product.techScore.clamp(0.0, 100.0);
+    // techScore removed — use expert rating (0-100) as quality proxy, fallback 50
+    final qualityScore = product.ratings.expert > 0
+        ? product.ratings.expert.clamp(0.0, 100.0)
+        : 50.0;
     final price = product.prices[user.country] ?? product.prices['US'] ?? 0;
 
     if (price <= 0) {

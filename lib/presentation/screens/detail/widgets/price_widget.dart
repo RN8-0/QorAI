@@ -142,29 +142,28 @@ class _PriceComparisonSheetState extends State<_PriceComparisonSheet> {
 
   double _estimateBasePrice() {
     final cat = widget.product.category.toLowerCase();
-    final score = widget.product.techScore;
     if (cat.contains('phone') || cat.contains('smartphone')) {
-      return 300 + (score * 12);
+      return 900;
     } else if (cat.contains('laptop') || cat.contains('notebook')) {
-      return 500 + (score * 15);
+      return 1250;
     } else if (cat.contains('monitor') || cat.contains('display')) {
-      return 200 + (score * 6);
+      return 500;
     } else if (cat.contains('tv')) {
-      return 400 + (score * 10);
+      return 900;
     } else if (cat.contains('headphone') || cat.contains('earphone') || cat.contains('audio')) {
-      return 50 + (score * 3);
+      return 200;
     } else if (cat.contains('watch') || cat.contains('wearable')) {
-      return 100 + (score * 4);
+      return 300;
     } else if (cat.contains('tablet')) {
-      return 250 + (score * 8);
+      return 650;
     } else if (cat.contains('camera')) {
-      return 400 + (score * 15);
+      return 1150;
     } else if (cat.contains('cpu') || cat.contains('processor')) {
-      return 100 + (score * 5);
+      return 350;
     } else if (cat.contains('gpu') || cat.contains('graphic')) {
-      return 200 + (score * 8);
+      return 700;
     }
-    return 200 + (score * 5);
+    return 450;
   }
 
   @override
