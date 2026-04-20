@@ -231,30 +231,21 @@ class _QuizView extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        // Question cards
-        ...answeredQuestions.asMap().entries.map((entry) {
-          final idx = entry.key;
-          final q = entry.value;
-          final isActive = idx == currentIndex;
-          final isAnswered = q.selectedOption != null;
-
-          return AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            child: idx <= currentIndex
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _QuestionCard(
-                      question: q,
-                      index: idx,
-                      isActive: isActive,
-                      isAnswered: isAnswered,
-                      onAnswer: (answer) => onAnswer(idx, answer),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          );
-        }),
+        // Question cards — shown instantly (no AnimatedSize) to avoid questions
+        // appearing "missing" when the screen is recreated on tab switch.
+        for (final entry in answeredQuestions.asMap().entries)
+          if (entry.key <= currentIndex)
+            Padding(
+              key: ValueKey(entry.key),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _QuestionCard(
+                question: entry.value,
+                index: entry.key,
+                isActive: entry.key == currentIndex,
+                isAnswered: entry.value.selectedOption != null,
+                onAnswer: (answer) => onAnswer(entry.key, answer),
+              ),
+            ),
 
         const SizedBox(height: 16),
         if (_allAnswered)

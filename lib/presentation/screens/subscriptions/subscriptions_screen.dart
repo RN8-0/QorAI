@@ -1692,7 +1692,7 @@ class _UsageMeter extends StatelessWidget {
 
 // ─── Sub Quiz View ───────────────────────────────────────────────────────────
 
-class _SubQuizView extends StatelessWidget {
+class _SubQuizView extends StatefulWidget {
   final ProductQuiz quiz;
   final List<String> subscriptionNames;
   final List<QuizQuestion> answeredQuestions;
@@ -1711,12 +1711,25 @@ class _SubQuizView extends StatelessWidget {
     required this.onSkip,
   });
 
+  @override
+  State<_SubQuizView> createState() => _SubQuizViewState();
+}
+
+class _SubQuizViewState extends State<_SubQuizView> {
+  bool _isSubmitting = false;
+
   bool get _allAnswered =>
-      answeredQuestions.every((q) => q.selectedOption != null);
+      widget.answeredQuestions.every((q) => q.selectedOption != null);
+
+  void _handleSubmit() {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    widget.onSubmit();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final answeredCount = answeredQuestions
+    final answeredCount = widget.answeredQuestions
         .where((q) => q.selectedOption != null)
         .length;
     return Column(
@@ -1748,7 +1761,7 @@ class _SubQuizView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      subscriptionNames.join(' vs '),
+                      widget.subscriptionNames.join(' vs '),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
@@ -1780,7 +1793,7 @@ class _SubQuizView extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: answeredCount / answeredQuestions.length,
+                  value: answeredCount / widget.answeredQuestions.length,
                   backgroundColor: AppTheme.slate700,
                   color: _kPrimary,
                   minHeight: 6,
@@ -1789,7 +1802,7 @@ class _SubQuizView extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              '$answeredCount/${answeredQuestions.length}',
+              '$answeredCount/${widget.answeredQuestions.length}',
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -1800,30 +1813,21 @@ class _SubQuizView extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        // Question cards
-        ...answeredQuestions.asMap().entries.map((entry) {
-          final idx = entry.key;
-          final q = entry.value;
-          final isActive = idx == currentIndex;
-          final isAnswered = q.selectedOption != null;
-
-          return AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            child: idx <= currentIndex
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _SubQuestionCard(
-                      question: q,
-                      index: idx,
-                      isActive: isActive,
-                      isAnswered: isAnswered,
-                      onAnswer: (answer) => onAnswer(idx, answer),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          );
-        }),
+        // Question cards — shown instantly (no AnimatedSize) to avoid questions
+        // appearing "missing" when the screen is recreated on tab switch.
+        for (final entry in widget.answeredQuestions.asMap().entries)
+          if (entry.key <= widget.currentIndex)
+            Padding(
+              key: ValueKey(entry.key),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _SubQuestionCard(
+                question: entry.value,
+                index: entry.key,
+                isActive: entry.key == widget.currentIndex,
+                isAnswered: entry.value.selectedOption != null,
+                onAnswer: (answer) => widget.onAnswer(entry.key, answer),
+              ),
+            ),
 
         const SizedBox(height: 16),
         if (_allAnswered)
@@ -1832,21 +1836,38 @@ class _SubQuizView extends StatelessWidget {
             child: GradientButton(
               height: 38,
               borderRadius: BorderRadius.circular(10),
-              gradient: const LinearGradient(colors: [_kPrimary, _kDeep]),
-              onPressed: onSubmit,
+              gradient: LinearGradient(
+                colors: _isSubmitting
+                    ? [AppTheme.slate500, AppTheme.slate600]
+                    : [_kPrimary, _kDeep],
+              ),
+              onPressed: _isSubmitting ? () {} : _handleSubmit,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.insights_rounded,
-                      color: context.surfaceVariantColor,
-                      size: 16,
-                    ),
+                    if (_isSubmitting)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.insights_rounded,
+                        color: context.surfaceVariantColor,
+                        size: 16,
+                      ),
                     const SizedBox(width: 6),
                     Text(
-                      context.l10n?.seeMyMatchScore ?? 'See My Match Score',
+                      _isSubmitting
+                          ? 'Analyzing...'
+                          : (context.l10n?.seeMyMatchScore ??
+                              'See My Match Score'),
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
@@ -1861,7 +1882,7 @@ class _SubQuizView extends StatelessWidget {
         else
           Center(
             child: TextButton.icon(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               icon: const Icon(
                 Icons.skip_next_rounded,
                 color: AppTheme.slate500,
