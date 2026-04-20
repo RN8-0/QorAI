@@ -452,6 +452,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         (p.createdAt ?? p.lastUpdated).year;
   }
 
+  int _sortTimestamp(ProductEntity p) {
+    return (p.createdAt ?? p.lastUpdated).millisecondsSinceEpoch;
+  }
+
   int _compareBySelectedSort(ProductEntity a, ProductEntity b) {
     switch (_sortOption) {
       case _SortOption.techScore:
@@ -464,13 +468,16 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         // Sort by actual release year extracted from specs.
         final yearCmp = _releaseYear(b).compareTo(_releaseYear(a));
         if (yearCmp != 0) return yearCmp;
-        // Same year → newest by tech score
+        final dateCmp = _sortTimestamp(b).compareTo(_sortTimestamp(a));
+        if (dateCmp != 0) return dateCmp;
         return b.techScore.compareTo(a.techScore);
       case _SortOption.relevance:
         // Popular: trendScore first, then newest models first among ties.
         final trendCompare = b.trendScore.compareTo(a.trendScore);
         if (trendCompare != 0) return trendCompare;
-        return _releaseYear(b).compareTo(_releaseYear(a));
+        final yearCmp = _releaseYear(b).compareTo(_releaseYear(a));
+        if (yearCmp != 0) return yearCmp;
+        return _sortTimestamp(b).compareTo(_sortTimestamp(a));
     }
   }
 

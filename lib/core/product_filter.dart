@@ -9,20 +9,85 @@ class ProductFilter {
   ProductFilter._();
 
   static const int minYear = 2020;
+  static const _releaseYearKeys = [
+    'release year',
+    'release_year',
+    'release date',
+    'year',
+    'launch year',
+    'launch date',
+    'cikis yili',
+    'cikis tarihi',
+    'piyasaya cikis tarihi',
+    'piyasaya surulme',
+  ];
 
   // ── Defunct / dead brands (always reject) ──────────────────────────────
   static const defunctBrands = {
-    'alcatel', 'micromax', 'karbonn', 'lava', 'intex', 'xolo',
-    'coolpad', 'leeco', 'le eco', 'gionee', 'panasonic mobile',
-    'blackberry', 'htc', 'zte', 'wiko', 'meizu', 'sharp mobile',
-    'vernee', 'doogee', 'oukitel', 'umidigi', 'ulefone', 'cubot',
-    'homtom', 'bluboo', 'elephone', 'leagoo', 'maze', 'nomu',
-    'altus', 'vestel', 'casper', 'reeder', 'general mobile', 'turkcell',
-    'grundig', 'beko', 'arçelik', 'hometech', 'vorcom', 'tcl mobile',
-    'a4tech', '3plus', 'a4 tech', 'genius', 'trust', 'canyon',
-    'defender', 'sven', 'oklick', 'qumo', 'dexp', 'digma',
-    'prestigio', 'texet', 'explay', 'fly', 'irbis', 'ark',
-    '360fly', 'jawbone', 'pebble', 'nexus', 'essential',
+    'alcatel',
+    'micromax',
+    'karbonn',
+    'lava',
+    'intex',
+    'xolo',
+    'coolpad',
+    'leeco',
+    'le eco',
+    'gionee',
+    'panasonic mobile',
+    'blackberry',
+    'htc',
+    'zte',
+    'wiko',
+    'meizu',
+    'sharp mobile',
+    'vernee',
+    'doogee',
+    'oukitel',
+    'umidigi',
+    'ulefone',
+    'cubot',
+    'homtom',
+    'bluboo',
+    'elephone',
+    'leagoo',
+    'maze',
+    'nomu',
+    'altus',
+    'vestel',
+    'casper',
+    'reeder',
+    'general mobile',
+    'turkcell',
+    'grundig',
+    'beko',
+    'arçelik',
+    'hometech',
+    'vorcom',
+    'tcl mobile',
+    'a4tech',
+    '3plus',
+    'a4 tech',
+    'genius',
+    'trust',
+    'canyon',
+    'defender',
+    'sven',
+    'oklick',
+    'qumo',
+    'dexp',
+    'digma',
+    'prestigio',
+    'texet',
+    'explay',
+    'fly',
+    'irbis',
+    'ark',
+    '360fly',
+    'jawbone',
+    'pebble',
+    'nexus',
+    'essential',
   };
 
   // ── Known / allowed brands (tier-1 + tier-2 + recognized) ─────────────
@@ -99,31 +164,63 @@ class ProductFilter {
   /// Extract exact release year from product specs
   static int? getExactReleaseYear(ProductEntity p) {
     final currentYear = DateTime.now().year;
-    for (final key in const [
-      'release year', 'Release Year', 'release_year',
-      'Release Date', 'Piyasaya Çıkış Tarihi', 'Yıl', 'yıl', 'year',
-      'Çıkış Tarihi', 'Piyasaya Sürülme', 'release date',
-    ]) {
-      final val = p.specs[key];
-      if (val != null) {
-        final digits = val.toString().replaceAll(RegExp(r'[^0-9]'), '');
-        if (digits.length >= 4) {
-          final year = int.tryParse(digits.substring(0, 4));
-          if (year != null && year > 2000 && year <= currentYear + 1) return year;
-        }
-      }
-    }
-    for (final key in const ['Çıkış Tarihi', 'Release Date', 'Yıl', 'year']) {
-      final val = p.keySpecs[key];
-      if (val != null) {
-        final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
-        if (digits.length >= 4) {
-          final year = int.tryParse(digits.substring(0, 4));
-          if (year != null && year > 2000 && year <= currentYear + 1) return year;
+    for (final value in _candidateReleaseValues(p)) {
+      final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.length >= 4) {
+        final year = int.tryParse(digits.substring(0, 4));
+        if (year != null && year > 2000 && year <= currentYear + 1) {
+          return year;
         }
       }
     }
     return null;
+  }
+
+  static Iterable<String> _candidateReleaseValues(ProductEntity p) sync* {
+    for (final entry in p.specs.entries) {
+      if (_isReleaseYearKey(entry.key) && entry.value != null) {
+        yield entry.value.toString();
+      }
+    }
+
+    for (final entry in p.keySpecs.entries) {
+      if (_isReleaseYearKey(entry.key) && entry.value.isNotEmpty) {
+        yield entry.value;
+      }
+    }
+
+    for (final section in p.specSections.values) {
+      if (section is! Map) continue;
+      for (final entry in section.entries) {
+        if (_isReleaseYearKey(entry.key.toString()) && entry.value != null) {
+          yield entry.value.toString();
+        }
+      }
+    }
+  }
+
+  static bool _isReleaseYearKey(String key) {
+    final normalized = _normalizeKey(key);
+    return _releaseYearKeys.any(
+      (candidate) =>
+          normalized == candidate ||
+          normalized.contains(candidate) ||
+          candidate.contains(normalized),
+    );
+  }
+
+  static String _normalizeKey(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   /// Check if a single product passes the filter

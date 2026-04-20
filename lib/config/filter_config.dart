@@ -71,6 +71,16 @@ const _dynamicBrandFilter = FilterDefinition(
   specKeys: ['brand'],
 );
 
+const _operatingSystemSpecKeys = [
+  'Operating System',
+  'OPERATING SYSTEM',
+  'OS',
+  'Platform',
+  'Device Operating System',
+  'Cihaz İşletim Sistemi',
+  'İşletim Sistemi',
+];
+
 // ---------------------------------------------------------------------------
 // Per-category filter definitions
 // ---------------------------------------------------------------------------
@@ -137,7 +147,7 @@ const List<FilterDefinition> _smartphoneFilters = [
       FilterOption(id: 'android', label: 'Android'),
       FilterOption(id: 'ios', label: 'iOS'),
     ],
-    specKeys: ['Operating System', 'OPERATING SYSTEM'],
+    specKeys: _operatingSystemSpecKeys,
   ),
   FilterDefinition(
     id: 'screen_tech',
@@ -274,7 +284,7 @@ const List<FilterDefinition> _laptopFilters = [
       FilterOption(id: 'linux', label: 'Linux'),
       FilterOption(id: 'chromeos', label: 'ChromeOS'),
     ],
-    specKeys: ['Operating System', 'OS', 'Platform'],
+    specKeys: _operatingSystemSpecKeys,
   ),
   FilterDefinition(
     id: 'gpu_type',
@@ -366,7 +376,7 @@ const List<FilterDefinition> _tabletFilters = [
       FilterOption(id: 'ipados', label: 'iPadOS'),
       FilterOption(id: 'windows', label: 'Windows'),
     ],
-    specKeys: ['Operating System'],
+    specKeys: _operatingSystemSpecKeys,
   ),
   FilterDefinition(
     id: 'connectivity',

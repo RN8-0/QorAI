@@ -92,6 +92,12 @@ class FilterApplier {
       }
     }
 
+    for (final entry in product.keySpecs.entries) {
+      if (entry.value.isNotEmpty) {
+        flat[entry.key] = entry.value;
+      }
+    }
+
     // Nested specSections: { sectionName: { key: value, ... } }
     for (final section in product.specSections.values) {
       if (section is Map) {

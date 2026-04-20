@@ -1167,12 +1167,14 @@ class PbDataSource {
 
     Future<List<Map<String, dynamic>>> fetch() async {
       try {
-        final result = await _pb.collection('notifications').getList(
-          page: 1,
-          perPage: 50,
-          filter: 'recipientId = "$userId"',
-          sort: '-created',
-        );
+        final result = await _pb
+            .collection('notifications')
+            .getList(
+              page: 1,
+              perPage: 50,
+              filter: 'recipientId = "$userId"',
+              sort: '-created',
+            );
         return result.items.map((r) => {'id': r.id, ...r.data}).toList();
       } catch (_) {
         return [];
@@ -1205,10 +1207,9 @@ class PbDataSource {
 
   Future<void> markNotificationRead(String notificationId) async {
     try {
-      await _pb.collection('notifications').update(
-        notificationId,
-        body: {'read': true},
-      );
+      await _pb
+          .collection('notifications')
+          .update(notificationId, body: {'read': true});
     } catch (e) {
       debugPrint('[PbDs] markNotificationRead error: $e');
     }
@@ -1216,16 +1217,17 @@ class PbDataSource {
 
   Future<void> markAllNotificationsRead(String userId) async {
     try {
-      final result = await _pb.collection('notifications').getList(
-        page: 1,
-        perPage: 200,
-        filter: 'recipientId = "$userId" && read = false',
-      );
+      final result = await _pb
+          .collection('notifications')
+          .getList(
+            page: 1,
+            perPage: 200,
+            filter: 'recipientId = "$userId" && read = false',
+          );
       for (final item in result.items) {
-        await _pb.collection('notifications').update(
-          item.id,
-          body: {'read': true},
-        );
+        await _pb
+            .collection('notifications')
+            .update(item.id, body: {'read': true});
       }
     } catch (e) {
       debugPrint('[PbDs] markAllNotificationsRead error: $e');
@@ -1312,7 +1314,7 @@ class PbDataSource {
         'prioritize_exact_match': true,
         'prioritize_token_position': true,
         'prefix': 'true,true,true,false,false',
-        'exclude_fields': '_raw,keySpecsText',
+        'exclude_fields': 'keySpecsText',
         if (category != null) 'filter_by': 'category:=$category',
       };
 
@@ -1616,7 +1618,9 @@ class PbDataSource {
 
   Future<Map<String, dynamic>> getPublicConfig() async {
     try {
-      final result = await _pb.collection('public_config').getFullList(batch: 50);
+      final result = await _pb
+          .collection('public_config')
+          .getFullList(batch: 50);
       final config = <String, dynamic>{};
       for (final record in result) {
         final key = record.data['key'] as String?;
@@ -1668,7 +1672,7 @@ class PbDataSource {
           'sort_by': sortBy,
           'per_page': limit,
           'page': 1,
-          'exclude_fields': '_raw,keySpecsText',
+          'exclude_fields': 'keySpecsText',
         },
       );
       sw.stop();
@@ -1707,7 +1711,7 @@ class PbDataSource {
               'sort_by': sortBy,
               'per_page': perCategory,
               'page': 1,
-              'exclude_fields': '_raw,keySpecsText',
+              'exclude_fields': 'keySpecsText',
             },
           )
           .toList();
@@ -1804,7 +1808,7 @@ class PbDataSource {
           'sort_by': 'techScore:desc',
           'per_page': limit,
           'page': page,
-          'exclude_fields': '_raw,keySpecsText',
+          'exclude_fields': 'keySpecsText',
         },
       );
       sw.stop();
