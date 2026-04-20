@@ -81,8 +81,10 @@ class PbDataSource {
         unawaited(emitSnapshot());
       },
       onCancel: () async {
-        final unsubscribe = await subscriptionFuture;
-        await unsubscribe();
+        try {
+          final unsubscribe = await subscriptionFuture;
+          await unsubscribe();
+        } catch (_) {}
       },
     );
 

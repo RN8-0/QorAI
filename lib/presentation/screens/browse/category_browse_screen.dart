@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/search_ranking.dart';
+import 'package:compair/core/product_filter.dart';
 import 'package:compair/config/filter_config.dart';
 import 'package:compair/presentation/models/filter_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -445,6 +446,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return copy;
   }
 
+  /// Returns release year for a product: spec > createdAt > lastUpdated.
+  int _releaseYear(ProductEntity p) {
+    return ProductFilter.getExactReleaseYear(p) ??
+        (p.createdAt ?? p.lastUpdated).year;
+  }
+
   int _compareBySelectedSort(ProductEntity a, ProductEntity b) {
     switch (_sortOption) {
       case _SortOption.techScore:
@@ -452,21 +459,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         if (techCompare != 0) return techCompare;
         final trendCompare = b.trendScore.compareTo(a.trendScore);
         if (trendCompare != 0) return trendCompare;
-        return (b.createdAt ?? b.lastUpdated).compareTo(
-          a.createdAt ?? a.lastUpdated,
-        );
+        return _releaseYear(b).compareTo(_releaseYear(a));
       case _SortOption.newest:
-        // Sort by actual release date (createdAt = first added to DB).
-        return (b.createdAt ?? b.lastUpdated).compareTo(
-          a.createdAt ?? a.lastUpdated,
-        );
+        // Sort by actual release year extracted from specs.
+        final yearCmp = _releaseYear(b).compareTo(_releaseYear(a));
+        if (yearCmp != 0) return yearCmp;
+        // Same year → newest by tech score
+        return b.techScore.compareTo(a.techScore);
       case _SortOption.relevance:
-        // Popular: trending products, newest first among ties.
+        // Popular: trendScore first, then newest models first among ties.
         final trendCompare = b.trendScore.compareTo(a.trendScore);
         if (trendCompare != 0) return trendCompare;
-        return (b.createdAt ?? b.lastUpdated).compareTo(
-          a.createdAt ?? a.lastUpdated,
-        );
+        return _releaseYear(b).compareTo(_releaseYear(a));
     }
   }
 

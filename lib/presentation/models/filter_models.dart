@@ -163,14 +163,22 @@ class FilterApplier {
 
     // For other filters, search spec values.
     final specValues = _findSpecValues(def.specKeys, flatSpecs);
-    if (specValues.isEmpty) return false;
+    // If the spec key isn't present in this product's data we can't make a
+    // decision — pass the product through rather than hiding it entirely.
+    if (specValues.isEmpty) return true;
 
     final normalizedLabels = selectedLabels.map(_normalizeText).toList();
     return specValues.any((value) {
       final specLower = _normalizeText(value);
-      return normalizedLabels.any(
-        (label) => specLower.contains(label) || label.contains(specLower),
-      );
+      // Also compare without spaces so "4GB" matches label "4 GB" → "4gb"=="4gb".
+      final specCompact = specLower.replaceAll(' ', '');
+      return normalizedLabels.any((label) {
+        final labelCompact = label.replaceAll(' ', '');
+        return specLower.contains(label) ||
+            label.contains(specLower) ||
+            specCompact.contains(labelCompact) ||
+            labelCompact.contains(specCompact);
+      });
     });
   }
 
@@ -183,8 +191,8 @@ class FilterApplier {
     if (range == null) return true;
 
     final specValues = _findSpecValues(def.specKeys, flatSpecs);
-    final specValue = specValues.isEmpty ? null : specValues.first;
-    if (specValue == null) return false;
+    if (specValues.isEmpty) return true; // spec absent → don't exclude
+    final specValue = specValues.first;
 
     final number = _extractFirstNumber(specValue);
     if (number == null) return false;
