@@ -31,7 +31,6 @@ import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:compair/services/youtube_service.dart';
 import 'package:compair/services/gemini_service.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
-import 'package:compair/services/share_card_service.dart';
 import 'package:compair/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:compair/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
@@ -89,12 +88,16 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounce;
 
+  // Saved notifier refs — safe to use in dispose() after ref is invalidated
+  late final StateController<bool> _hideNavBarNotifier;
+
   String _productSlotLabel(int slotNumber) =>
       context.l10n?.productSlotLabel(slotNumber) ?? 'Product $slotNumber';
 
   @override
   void initState() {
     super.initState();
+    _hideNavBarNotifier = ref.read(hideNavBarProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Load initial comparison if provided (from history screen)
       if (widget.initialComparison != null) {
@@ -167,8 +170,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
   @override
   void dispose() {
-    // Restore nav bar — read provider before super.dispose() clears ref
-    ref.read(hideNavBarProvider.notifier).state = false;
+    _hideNavBarNotifier.state = false;
     _debounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -203,7 +205,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       );
     });
 
-    if (!productAsync.hasValue) {
+    if (!productAsync.hasValue && mounted) {
       final newIds = List<String>.from(_selectedProductIds)..add(productId);
       ref.read(compareSessionProvider.notifier).state = ref
           .read(compareSessionProvider)
@@ -267,6 +269,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       return;
     }
 
+    if (!mounted) return;
     ref.read(compareSessionProvider.notifier).state = ref
         .read(compareSessionProvider)
         .copyWith(comparedProducts: products);
@@ -286,6 +289,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
               category: products.first.category,
               title: title,
             );
+        if (!mounted) return;
         // Invalidate comparisons cache so history updates
         ref.invalidate(userComparisonsProvider);
       } catch (e) {
@@ -293,6 +297,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       }
     }
 
+    if (!mounted) return;
     // Track comparison behavior
     ref.read(behaviorTrackingProvider).trackComparison(selectedIds);
   }
@@ -340,9 +345,10 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
     // Hide/show nav bar based on comparison state
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final shouldHide = _products != null && _products.length >= 2;
-      if (ref.read(hideNavBarProvider) != shouldHide) {
-        ref.read(hideNavBarProvider.notifier).state = shouldHide;
+      if (_hideNavBarNotifier.state != shouldHide) {
+        _hideNavBarNotifier.state = shouldHide;
       }
     });
 
@@ -379,17 +385,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          if (_products != null && _products.length >= 2)
-            IconButton(
-              icon: Icon(Icons.ios_share_rounded, color: context.textPrimary),
-              tooltip: context.l10n?.share ?? 'Share',
-              onPressed: () => ShareCardService.shareComparison(
-                context: context,
-                products: _products,
-              ),
-            ),
-        ],
       ),
       body: Column(
         children: [

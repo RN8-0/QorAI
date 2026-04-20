@@ -1174,8 +1174,7 @@ class PbDataSource {
           sort: '-created',
         );
         return result.items.map((r) => {'id': r.id, ...r.data}).toList();
-      } catch (e) {
-        debugPrint('[PbDs] watchNotifications fetch error: $e');
+      } catch (_) {
         return [];
       }
     }
