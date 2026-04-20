@@ -1185,14 +1185,20 @@ class PbDataSource {
       if (!controller.isClosed) controller.add(data);
     });
 
-    // Subscribe to realtime
-    _pb.collection('notifications').subscribe('*', (e) async {
-      final data = await fetch();
-      if (!controller.isClosed) controller.add(data);
-    });
+    // Subscribe to realtime — collection may not exist yet, so swallow errors
+    _pb
+        .collection('notifications')
+        .subscribe('*', (e) async {
+          final data = await fetch();
+          if (!controller.isClosed) controller.add(data);
+        })
+        .catchError((e) {
+          debugPrint('[PbDs] watchNotifications subscribe error: $e');
+          return () async {};
+        });
 
     controller.onCancel = () {
-      _pb.collection('notifications').unsubscribe('*');
+      _pb.collection('notifications').unsubscribe('*').catchError((_) {});
     };
 
     return controller.stream;

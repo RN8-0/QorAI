@@ -30,6 +30,7 @@ import 'package:compair/domain/entities/comparison_entity.dart';
 import 'package:compair/domain/usecases/calculate_score.dart';
 import 'package:compair/services/ai_service.dart';
 import 'package:compair/services/spec_direction_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:compair/services/gemini_service.dart';
 import 'package:compair/services/deepseek_service.dart';
@@ -192,8 +193,9 @@ final behaviorTrackingProvider = Provider<BehaviorTrackingService>((ref) {
 /// Behavior Signals — built from real user data for personalized scoring.
 /// Combines favorites, viewed products, and quiz preferences.
 final behaviorSignalsProvider = FutureProvider<BehaviorSignals>((ref) async {
-  final userAsync = ref.watch(userProfileProvider);
-  final user = userAsync.valueOrNull;
+  // Only rebuild when user logs in/out — not on every profile stream emit
+  ref.watch(userProfileProvider.select((u) => u.valueOrNull?.uid));
+  final user = ref.read(userProfileProvider).valueOrNull;
   if (user == null) return BehaviorSignals.empty;
 
   // Viewed product IDs (from PB + Hive)

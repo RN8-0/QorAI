@@ -659,6 +659,31 @@ _ViewedBehaviorSnapshot _loadViewedBehaviorSnapshot() {
   return snapshot;
 }
 
+// Arguments record for compute() isolate
+class _HomeFeedArgs {
+  final List<ProductEntity> products;
+  final String country;
+  final UserEntity? user;
+  final List<String> hiddenIds;
+  final List<String> disabledCats;
+  const _HomeFeedArgs({
+    required this.products,
+    required this.country,
+    this.user,
+    this.hiddenIds = const [],
+    this.disabledCats = const [],
+  });
+}
+
+// Top-level wrapper so compute() can spawn it in a background isolate.
+HomeFeed _buildHomeFeedIsolate(_HomeFeedArgs args) => _buildHomeFeed(
+  args.products,
+  args.country,
+  user: args.user,
+  hiddenIds: args.hiddenIds,
+  disabledCats: args.disabledCats,
+);
+
 HomeFeed _buildHomeFeed(
   List<ProductEntity> products,
   String country, {
@@ -1416,12 +1441,15 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       ref
           .read(pbDataSourceProvider)
           .setHomeFeedProducts(products.whereType<ProductModel>().toList());
-      final feed = _buildHomeFeed(
-        products,
-        country,
-        user: user,
-        hiddenIds: config.hiddenIds,
-        disabledCats: config.disabledCats,
+      final feed = await compute(
+        _buildHomeFeedIsolate,
+        _HomeFeedArgs(
+          products: products,
+          country: country,
+          user: user,
+          hiddenIds: config.hiddenIds,
+          disabledCats: config.disabledCats,
+        ),
       );
       _inMemoryFeed = feed;
 
@@ -1540,12 +1568,15 @@ Future<void> _backgroundRefreshFeed(
       ref
           .read(pbDataSourceProvider)
           .setHomeFeedProducts(products.whereType<ProductModel>().toList());
-      _inMemoryFeed = _buildHomeFeed(
-        products,
-        country,
-        user: user,
-        hiddenIds: hiddenIds,
-        disabledCats: disabledCats,
+      _inMemoryFeed = await compute(
+        _buildHomeFeedIsolate,
+        _HomeFeedArgs(
+          products: products,
+          country: country,
+          user: user,
+          hiddenIds: hiddenIds,
+          disabledCats: disabledCats,
+        ),
       );
       debugPrint(
         '=== COMPAIR: Background refresh done: ${products.length} products ===',
@@ -1594,12 +1625,15 @@ Future<HomeFeed> _fetchFeedFromNetwork(
       .read(pbDataSourceProvider)
       .setHomeFeedProducts(products.whereType<ProductModel>().toList());
   debugPrint('=== COMPAIR: setHomeFeedProducts done, building HomeFeed... ===');
-  final feed = _buildHomeFeed(
-    products,
-    country,
-    user: user,
-    hiddenIds: hiddenIds,
-    disabledCats: disabledCats,
+  final feed = await compute(
+    _buildHomeFeedIsolate,
+    _HomeFeedArgs(
+      products: products,
+      country: country,
+      user: user,
+      hiddenIds: hiddenIds,
+      disabledCats: disabledCats,
+    ),
   );
   _inMemoryFeed = feed;
   debugPrint(
@@ -1930,8 +1964,9 @@ Return only the JSON array, no explanation.''';
 final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>((
   ref,
 ) async {
-  final userAsync = ref.watch(userProfileProvider);
-  final user = userAsync.valueOrNull;
+  // Only rebuild when user logs in/out — not on every profile stream emit
+  ref.watch(userProfileProvider.select((u) => u.valueOrNull?.uid));
+  final user = ref.read(userProfileProvider).valueOrNull;
   final feed = await ref.watch(homeFeedProvider.future);
   final behavior = await ref.watch(behaviorSignalsProvider.future);
 

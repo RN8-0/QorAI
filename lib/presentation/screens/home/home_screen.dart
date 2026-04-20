@@ -1936,6 +1936,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: ref
           .watch(personalizedRecommendationsProvider)
           .when(
+            skipLoadingOnReload: true,
             data: (products) {
               if (products.isEmpty)
                 return Center(
