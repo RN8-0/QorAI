@@ -159,7 +159,18 @@ class PbDataSource {
 
   Future<void> addRecentlyViewed(String uid, String productId) async {
     try {
-      // recently_viewed is a separate PB collection
+      // Delete any existing record for this product to avoid duplicates,
+      // then re-create so it sorts to the top (-created order).
+      final existing = await _pb
+          .collection('recently_viewed')
+          .getList(
+            page: 1,
+            perPage: 50,
+            filter: 'userId = "$uid" && productId = "$productId"',
+          );
+      for (final record in existing.items) {
+        await _pb.collection('recently_viewed').delete(record.id);
+      }
       await _pb
           .collection('recently_viewed')
           .create(body: {'userId': uid, 'productId': productId});
@@ -176,7 +187,12 @@ class PbDataSource {
             filter: 'userId = "$uid"',
             sort: '-created',
           );
-      return result.items.map((r) => r.data['productId'] as String).toList();
+      // Deduplicate in case stale duplicates exist in the DB.
+      final seen = <String>{};
+      return result.items
+          .map((r) => r.data['productId'] as String)
+          .where((id) => seen.add(id))
+          .toList();
     } catch (_) {
       return [];
     }

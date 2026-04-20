@@ -2313,7 +2313,12 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((
   final allProducts = feed.whenOrNull(data: (f) => f.all) ?? [];
 
   final productMap = {for (final p in allProducts) p.id: p};
-  final limitedIds = viewedIds.take(20).where((id) => id.isNotEmpty).toList();
+  // Deduplicate while preserving order (same product viewed multiple times).
+  final seen = <String>{};
+  final limitedIds = viewedIds
+      .where((id) => id.isNotEmpty && seen.add(id))
+      .take(20)
+      .toList();
 
   // Separate found vs missing
   final results = <String, ProductEntity>{};
