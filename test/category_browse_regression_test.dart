@@ -95,6 +95,36 @@ void main() {
       expect(result.map((p) => p.id), ['platform-android']);
     });
 
+    test('active filters exclude products with missing relevant specs', () {
+      final androidTablet = buildProduct(
+        id: 'android-only',
+        name: 'Galaxy Tab',
+        category: 'tablets',
+        specSections: const {
+          'software': {'Operating System': 'Android 15'},
+        },
+      );
+      final unknownTablet = buildProduct(
+        id: 'unknown-tablet',
+        name: 'Mystery Tab',
+        category: 'tablets',
+      );
+
+      final state = const FilterState(
+        multiSelect: {
+          'os': {'android'},
+        },
+      );
+
+      final result = FilterApplier.apply(
+        [androidTablet, unknownTablet],
+        state,
+        FilterConfig.getFilters('tablets'),
+      );
+
+      expect(result.map((p) => p.id), ['android-only']);
+    });
+
     test(
       'release year is extracted from translated key specs and sections',
       () {

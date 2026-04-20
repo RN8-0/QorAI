@@ -545,8 +545,7 @@ class _DeepAnalysisNotifier
       super(const AsyncValue.data(null));
 
   Future<void> startAnalysis(
-    String productName,
-    {
+    String productName, {
     String category = '',
     String? brand,
     int? year,
@@ -677,10 +676,7 @@ class _AlternativesCacheNotifier
           : key.normalizedLanguageCode,
       super(const AsyncValue.data(null));
 
-  Future<void> startQuery(
-    String productName,
-    String category,
-  ) async {
+  Future<void> startQuery(String productName, String category) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
     state = const AsyncValue.loading();
@@ -784,8 +780,7 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
   Future<void> startQuery(
     String productName,
     String category,
-    String price,
-    {
+    String price, {
     String productContext = '',
   }) async {
     if (state is AsyncLoading) return;
@@ -890,8 +885,7 @@ class _PredictionCacheNotifier
   Future<void> startQuery(
     String productName,
     String category,
-    String price,
-    {
+    String price, {
     String productContext = '',
   }) async {
     if (state is AsyncLoading) return;
@@ -1205,7 +1199,7 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
-  static const int _detailMatchCacheVersion = 3;
+  static const int _detailMatchCacheVersion = 4;
   final Ref _ref;
   final String _productId;
   final String _languageCode;
@@ -1318,25 +1312,31 @@ class _GeminiMatchScoreNotifier
           'Scoring rules:\n'
           '- Prioritize the user\'s highest-weight needs and explicit priorities first\n'
           '- Focus on the product\'s standout features and real trade-offs only\n'
-          '- For categories like laptops, cameras, TVs and monitors, do NOT over-penalize ecosystem by default\n'
-          '- Mention ecosystem only if it materially changes the decision, and never make it the whole explanation\n'
+          '- NEVER mention ecosystem, device compatibility, user profile, current devices, or platform lock-in in the "reason"\n'
           '- If the product is technically exceptional, acknowledge that when relevant\n\n'
           'IMPORTANT for the "reason" field:\n'
           '- It is NOT a fit explanation and must NOT address the user\n'
           '- Do NOT use "you", "your", "fit", "match", or "for this user"\n'
+          '- In Turkish, never use the word "kullanici"; if direct address is unavoidable, use formal "siz"\n'
           '- Summarize only the product\'s standout 1-3 strengths and, if truly relevant, one concrete limitation\n'
           '- Keep it to max 2 short sentences and make it product-specific\n'
-          '- Mention ecosystem only if it is a decisive product characteristic\n\n'
+          '- The text must read like a short showroom summary focused on the product itself\n\n'
           'Return ONLY this JSON:\n'
           '{"matchScore": <int>, "reason": "<max 2 short product-focused sentences>", '
           '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
           '"missingFactors": ["<missing1>", "<missing2>"]}';
 
-      final result = await deepseek.jsonFreeTextQuery(prompt, language: langCode);
+      final result = await deepseek.jsonFreeTextQuery(
+        prompt,
+        language: langCode,
+      );
       final map = _decodeJsonMap(result);
 
       final score = _safeInt(map['matchScore'], 50).clamp(0, 100);
-      final reason = ((map['reason'] as String?) ?? '').trim();
+      final reason = _sanitizeMatchReason(
+        rawReason: ((map['reason'] as String?) ?? '').trim(),
+        fallbackReason: fallbackReason,
+      );
       final factors =
           (map['topMatchFactors'] as List?)
               ?.map((e) => e.toString())
@@ -1348,7 +1348,7 @@ class _GeminiMatchScoreNotifier
 
       final matchResult = GeminiMatchResult(
         matchScore: score,
-        reason: reason.isNotEmpty ? reason : fallbackReason,
+        reason: reason,
         topMatchFactors: factors,
         missingFactors: missing,
         isFromGemini: true,
@@ -1432,9 +1432,16 @@ class _GeminiMatchScoreNotifier
       final cachedVersion = (cached['detailMatchCacheVersion'] as num?)
           ?.toInt();
       if (cachedVersion != _detailMatchCacheVersion) return null;
+      final fallbackReason = _buildLocalReason(
+        highlights: const [],
+        tradeOffs: const [],
+      );
       return GeminiMatchResult(
         matchScore: _safeInt(cached['matchScore'], 0),
-        reason: (cached['reason'] as String?) ?? '',
+        reason: _sanitizeMatchReason(
+          rawReason: (cached['reason'] as String?) ?? '',
+          fallbackReason: fallbackReason,
+        ),
         topMatchFactors:
             (cached['topMatchFactors'] as List?)
                 ?.map((e) => e.toString())
@@ -1681,6 +1688,54 @@ class _GeminiMatchScoreNotifier
       return '$topTradeOff is the main limitation to keep in mind.';
     }
     return 'It stands out through its overall technical balance and category position.';
+  }
+
+  String _sanitizeMatchReason({
+    required String rawReason,
+    required String fallbackReason,
+  }) {
+    final compact = rawReason.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.isEmpty) return fallbackReason;
+
+    const bannedFragments = [
+      'ecosystem',
+      'ekosistem',
+      'kullanici',
+      'kullanıcı',
+      'user profile',
+      'profile',
+      'current devices',
+      'mevcut cihaz',
+      'cihazlariyla',
+      'cihazlarıyla',
+      'cihazlariniz',
+      'cihazlarınız',
+      'fit',
+      'match',
+      'uygun',
+      'oncelik',
+      'öncelik',
+      'davranis',
+      'davranış',
+    ];
+
+    final sentences = compact
+        .split(RegExp(r'(?<=[.!?])\s+'))
+        .map((sentence) => sentence.trim())
+        .where((sentence) => sentence.isNotEmpty)
+        .where((sentence) {
+          final lower = sentence.toLowerCase();
+          return !bannedFragments.any(lower.contains);
+        })
+        .take(2)
+        .toList();
+
+    if (sentences.isEmpty) return fallbackReason;
+
+    final joined = sentences.join(' ').trim();
+    if (joined.isEmpty) return fallbackReason;
+    if (joined.length <= 220) return joined;
+    return '${joined.substring(0, 217).trimRight()}...';
   }
 
   String? _normalizeFocusKey(String raw) {

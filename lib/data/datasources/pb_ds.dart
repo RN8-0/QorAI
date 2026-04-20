@@ -544,6 +544,10 @@ class PbDataSource {
 
   Future<void> incrementProductViewCount(String productId) async {
     try {
+      final authRecord = _pb.authStore.record;
+      if (authRecord == null || authRecord.collectionName != '_superusers') {
+        return;
+      }
       final record = await _pb
           .collection(AppConstants.productsCollection)
           .getOne(productId);
@@ -1147,16 +1151,20 @@ class PbDataSource {
     String? referenceId,
   }) async {
     try {
-      await _pb.collection('notifications').create(body: {
-        'recipientId': recipientId,
-        'senderId': senderId,
-        'senderName': senderName,
-        'type': type,
-        'title': title,
-        'body': body,
-        'referenceId': referenceId ?? '',
-        'read': false,
-      });
+      await _pb
+          .collection('notifications')
+          .create(
+            body: {
+              'recipientId': recipientId,
+              'senderId': senderId,
+              'senderName': senderName,
+              'type': type,
+              'title': title,
+              'body': body,
+              'referenceId': referenceId ?? '',
+              'read': false,
+            },
+          );
     } catch (e) {
       debugPrint('[PbDs] createNotification error: $e');
     }
@@ -1792,11 +1800,14 @@ class PbDataSource {
   }
 
   /// Paginated Typesense query matching getProductsPage signature for drop-in replacement.
-  Future<({List<ProductModel> products, int nextPage, bool hasMore})>
+  Future<
+    ({List<ProductModel> products, int nextPage, bool hasMore, int totalFound})
+  >
   getProductsPageTs({
     required String category,
     int limit = 200,
     int page = 1,
+    String sortBy = 'techScore:desc',
   }) async {
     try {
       final sw = Stopwatch()..start();
@@ -1805,7 +1816,7 @@ class PbDataSource {
         queryParameters: {
           'q': '*',
           'filter_by': 'category:=$category',
-          'sort_by': 'techScore:desc',
+          'sort_by': sortBy,
           'per_page': limit,
           'page': page,
           'exclude_fields': 'keySpecsText',
@@ -1822,13 +1833,28 @@ class PbDataSource {
       debugPrint(
         '=== COMPAIR: TS getProductsPage cat=$category page=$page → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
       );
-      return (products: products, nextPage: page + 1, hasMore: hasMore);
+      return (
+        products: products,
+        nextPage: page + 1,
+        hasMore: hasMore,
+        totalFound: found,
+      );
     } catch (e) {
       debugPrint(
         '=== COMPAIR: TS getProductsPage FAILED cat=$category: $e ===',
       );
       // Fallback to PocketBase
-      return getProductsPage(category: category, limit: limit, page: page);
+      final fallback = await getProductsPage(
+        category: category,
+        limit: limit,
+        page: page,
+      );
+      return (
+        products: fallback.products,
+        nextPage: fallback.nextPage,
+        hasMore: fallback.hasMore,
+        totalFound: fallback.products.length,
+      );
     }
   }
 

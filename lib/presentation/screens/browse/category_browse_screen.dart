@@ -94,6 +94,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool _remoteSearching = false;
   String? _error;
   Timer? _searchDebounce;
+  int _totalProductCount = 0;
 
   // Page counter for PocketBase pagination
   int _currentPage = 1;
@@ -172,16 +173,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       if (mounted && _searchQuery == query) {
         final catKey = _activeCategoryId.toLowerCase().trim();
         // Accept both exact match and variant (e.g. "microphone" vs "microphones")
-        final categoryResults = results
-            .where((p) {
-              final pCat = p.category.toLowerCase().trim();
-              return pCat == catKey ||
-                  (catKey.endsWith('s') &&
-                      pCat == catKey.substring(0, catKey.length - 1)) ||
-                  (!catKey.endsWith('s') && pCat == '${catKey}s');
-            })
-            .cast<ProductEntity>()
-            .toList();
+        final categoryResults = _sanitizeCategoryProducts(
+          results
+              .where((p) {
+                final pCat = p.category.toLowerCase().trim();
+                return pCat == catKey ||
+                    (catKey.endsWith('s') &&
+                        pCat == catKey.substring(0, catKey.length - 1)) ||
+                    (!catKey.endsWith('s') && pCat == '${catKey}s');
+              })
+              .cast<ProductEntity>()
+              .toList(),
+        );
 
         setState(() {
           // ALL remote results — let _filteredProducts merge with local
@@ -203,7 +206,44 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
   }
 
-  /// Fetch next page via Typesense pagination, called by scroll or background loop.
+  List<ProductEntity> _sanitizeCategoryProducts(
+    Iterable<ProductEntity> products,
+  ) {
+    final filtered = ProductFilter.filter(products.toList());
+    final uniqueIds = <String>{};
+    return filtered.where((product) => uniqueIds.add(product.id)).toList();
+  }
+
+  String _serverSortBy() {
+    switch (_sortOption) {
+      case _SortOption.techScore:
+        return 'techScore:desc,trendScore:desc';
+      case _SortOption.relevance:
+        return 'trendScore:desc,techScore:desc';
+      case _SortOption.newest:
+        return 'trendScore:desc,techScore:desc';
+    }
+  }
+
+  int _displayProductCount(int filteredCount) {
+    if (_searchQuery.isNotEmpty || _filterState.isActive) return filteredCount;
+    return _totalProductCount > 0 ? _totalProductCount : filteredCount;
+  }
+
+  Future<void> _changeSortOption(_SortOption option) async {
+    if (_sortOption == option) return;
+    setState(() {
+      _sortOption = option;
+      _loading = true;
+      _allLoaded = false;
+      _currentPage = 1;
+      _allProducts = [];
+      _remoteSearchResults = null;
+    });
+    await _loadProducts();
+  }
+
+  /// Fetch next page via Typesense pagination only when the user scrolls.
   Future<void> _fetchNextPage() async {
     if (_fetchingAll || _allLoaded || !mounted) return;
     setState(() => _fetchingAll = true);
@@ -213,23 +253,24 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         category: _activeCategoryId,
         limit: 200,
         page: _currentPage,
+        sortBy: _serverSortBy(),
       );
       if (!mounted) return;
       final existingIds = _allProducts.map((p) => p.id).toSet();
-      final newProducts = page.products
-          .where((p) => !existingIds.contains(p.id))
-          .cast<ProductEntity>()
-          .toList();
+      final newProducts = _sanitizeCategoryProducts(
+        page.products,
+      ).where((p) => !existingIds.contains(p.id)).toList();
       setState(() {
         _allProducts = [..._allProducts, ...newProducts];
         _currentPage = page.nextPage;
-        _allLoaded = !page.hasMore || page.products.length < 200;
+        _allLoaded = !page.hasMore;
+        _totalProductCount = page.totalFound;
       });
     } catch (_) {}
     if (mounted) setState(() => _fetchingAll = false);
   }
 
-  /// Load first page fast, then keep fetching all pages in background.
+  /// Load first page quickly and defer the rest until scroll.
   Future<void> _loadProducts() async {
     setState(() {
       _loading = true;
@@ -237,22 +278,25 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       _allLoaded = false;
       _currentPage = 1;
       _allProducts = [];
+      _totalProductCount = 0;
     });
     final catKey = _activeCategoryId.toLowerCase().trim();
     final hiveCacheKey = 'cat_products_${catKey}_v2';
 
-    // 0. Hive stale-while-revalidate — instant from last session (<5ms)
     try {
       final cache = ref.read(cacheServiceProvider);
       final stale = cache.getLocalStale<List<dynamic>>(hiveCacheKey);
       if (stale.data != null && (stale.data as List).isNotEmpty) {
-        final products = (stale.data as List)
-            .map(
-              (item) =>
-                  ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
-            )
-            .cast<ProductEntity>()
-            .toList();
+        final products = _sanitizeCategoryProducts(
+          (stale.data as List)
+              .map(
+                (item) => ProductModel.fromMap(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .cast<ProductEntity>()
+              .toList(),
+        );
         if (products.isNotEmpty && mounted) {
           setState(() {
             _allProducts = products;
@@ -262,21 +306,20 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
     } catch (_) {}
 
-    // 1. HomeFeed cache — instant, no network (may have subset of products)
     try {
       final feedAsync = ref.read(homeFeedProvider);
       final cached = feedAsync.valueOrNull;
       if (cached != null && cached.all.isNotEmpty) {
-        // Accept category variants (e.g. "microphone" matches "microphones")
-        final catProducts = cached.all.where((p) {
-          final pCat = p.category.toLowerCase().trim();
-          return pCat == catKey ||
-              (catKey.endsWith('s') &&
-                  pCat == catKey.substring(0, catKey.length - 1)) ||
-              (!catKey.endsWith('s') && pCat == '${catKey}s');
-        }).toList();
+        final catProducts = _sanitizeCategoryProducts(
+          cached.all.where((p) {
+            final pCat = p.category.toLowerCase().trim();
+            return pCat == catKey ||
+                (catKey.endsWith('s') &&
+                    pCat == catKey.substring(0, catKey.length - 1)) ||
+                (!catKey.endsWith('s') && pCat == '${catKey}s');
+          }).toList(),
+        );
         if (catProducts.isNotEmpty && mounted) {
-          // Merge: keep existing hive products, add any new from homeFeed
           if (_allProducts.isEmpty) {
             setState(() {
               _allProducts = catProducts;
@@ -298,85 +341,41 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
     } catch (_) {}
 
-    // 2. Fetch ALL pages from PocketBase via page-based pagination
-    _currentPage = 1;
-    _allLoaded = false;
-    if (mounted && _loading) setState(() => _loading = false);
-    _fetchAllPages(hiveCacheKey: hiveCacheKey);
-  }
-
-  /// Fetches every page of products for this category using PocketBase pagination.
-  /// Each page is merged into _allProducts immediately so filters stay fresh.
-  Future<void> _fetchAllPages({String? hiveCacheKey}) async {
-    if (_fetchingAll || !mounted) return;
-    setState(() => _fetchingAll = true);
-
-    final ds = ref.read(pbDataSourceProvider);
-    int page = 1;
-    final seenIds = _allProducts.map((p) => p.id).toSet();
-
-    while (mounted) {
-      try {
-        final result = await ds.getProductsPageTs(
-          category: _activeCategoryId,
-          limit: 200,
-          page: page,
-        );
-
-        if (!mounted) break;
-
-        final newProducts = result.products
-            .where((p) => !seenIds.contains(p.id))
-            .cast<ProductEntity>()
-            .toList();
-
-        if (newProducts.isNotEmpty) {
-          for (final p in newProducts) {
-            seenIds.add(p.id);
+    try {
+      final ds = ref.read(pbDataSourceProvider);
+      final result = await ds.getProductsPageTs(
+        category: _activeCategoryId,
+        limit: 200,
+        page: 1,
+        sortBy: _serverSortBy(),
+      );
+      if (!mounted) return;
+      final firstPage = _sanitizeCategoryProducts(result.products);
+      if (_sortOption == _SortOption.techScore && firstPage.isNotEmpty) {
+        try {
+          final cache = ref.read(cacheServiceProvider);
+          final maps = firstPage
+              .whereType<ProductModel>()
+              .map((product) => product.toMap())
+              .toList();
+          if (maps.isNotEmpty) {
+            cache.setLocal(
+              hiveCacheKey,
+              maps,
+              duration: const Duration(hours: 12),
+            );
           }
-          setState(() {
-            _allProducts = [..._allProducts, ...newProducts];
-            _loading = false;
-          });
-        }
-
-        if (!result.hasMore || result.products.isEmpty) {
-          // Last page reached — save all to Hive for instant next-session load
-          if (hiveCacheKey != null && mounted && _allProducts.isNotEmpty) {
-            try {
-              final cache = ref.read(cacheServiceProvider);
-              final maps = _allProducts
-                  .whereType<ProductModel>()
-                  .map((p) => p.toMap())
-                  .toList();
-              if (maps.isNotEmpty) {
-                cache.setLocal(
-                  hiveCacheKey,
-                  maps,
-                  duration: const Duration(hours: 12),
-                );
-              }
-            } catch (_) {}
-          }
-          setState(() {
-            _allLoaded = true;
-            _currentPage = 1;
-          });
-          break;
-        }
-
-        page = result.nextPage;
-        _currentPage = page;
-      } catch (_) {
-        break;
+        } catch (_) {}
       }
-    }
-
-    if (mounted) {
       setState(() {
-        _fetchingAll = false;
+        _allProducts = firstPage;
+        _currentPage = result.nextPage;
+        _allLoaded = !result.hasMore;
+        _totalProductCount = result.totalFound;
         _loading = false;
       });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -579,7 +578,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           if (widget.groupItems != null && widget.groupItems!.length > 1)
             _buildSubcategoryChips(),
           _buildSearchBar(),
-          _buildSortBar(filtered.length),
+          _buildSortBar(_displayProductCount(filtered.length)),
           if (_filterState.isActive) _buildActiveFilterChips(),
           Expanded(child: _buildBody(filtered)),
         ],
@@ -755,10 +754,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             ),
           ] else
             const Spacer(),
-          _SortDropdown(
-            value: _sortOption,
-            onChanged: (opt) => setState(() => _sortOption = opt),
-          ),
+          _SortDropdown(value: _sortOption, onChanged: _changeSortOption),
           const SizedBox(width: 8),
           // Filter button
           GestureDetector(

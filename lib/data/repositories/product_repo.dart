@@ -17,8 +17,8 @@ class ProductRepository {
   ProductRepository({
     required PbDataSource pbDS,
     required HiveDataSource hiveDS,
-  })  : _pbDS = pbDS,
-        _hiveDS = hiveDS;
+  }) : _pbDS = pbDS,
+       _hiveDS = hiveDS;
 
   /// Get single product — cache-first, network-fallback (Section 7.4, 15.2)
   Future<Result<ProductEntity>> getProduct(String id) async {
@@ -89,8 +89,9 @@ class ProductRepository {
         categories: categories,
         perCategory: perCategory,
       );
-      return Success(result.map((k, v) =>
-          MapEntry(k, v.cast<ProductEntity>())));
+      return Success(
+        result.map((k, v) => MapEntry(k, v.cast<ProductEntity>())),
+      );
     } catch (e) {
       return Failure(ServerException(message: e.toString()));
     }
@@ -113,22 +114,25 @@ class ProductRepository {
   }
 
   /// Typesense: paginated products (drop-in getProductsPage replacement)
-  Future<({List<ProductModel> products, int nextPage, bool hasMore})>
-      getProductsPageTs({
+  Future<
+    ({List<ProductModel> products, int nextPage, bool hasMore, int totalFound})
+  >
+  getProductsPageTs({
     required String category,
     int limit = 200,
     int page = 1,
+    String sortBy = 'techScore:desc',
   }) async {
     return _pbDS.getProductsPageTs(
       category: category,
       limit: limit,
       page: page,
+      sortBy: sortBy,
     );
   }
 
   /// Get products by IDs
-  Future<Result<List<ProductEntity>>> getProductsByIds(
-      List<String> ids) async {
+  Future<Result<List<ProductEntity>>> getProductsByIds(List<String> ids) async {
     try {
       final products = await _pbDS.getProductsByIds(ids);
       return Success(products);
@@ -181,10 +185,7 @@ class ProductRepository {
     int limit = 20,
   }) async {
     try {
-      final reviews = await _pbDS.getProductReviews(
-        productId,
-        limit: limit,
-      );
+      final reviews = await _pbDS.getProductReviews(productId, limit: limit);
       return Success(reviews);
     } catch (e) {
       return Failure(ServerException(message: e.toString()));
@@ -222,7 +223,10 @@ class ProductRepository {
   }
 
   /// Toggle review dislike
-  Future<Result<void>> toggleReviewDislike(String reviewId, String userId) async {
+  Future<Result<void>> toggleReviewDislike(
+    String reviewId,
+    String userId,
+  ) async {
     try {
       await _pbDS.toggleReviewDislike(reviewId, userId);
       return const Success(null);
@@ -247,10 +251,7 @@ class ProductRepository {
     int limit = 20,
   }) async {
     try {
-      final products = await _pbDS.searchProducts(
-        query: query,
-        limit: limit,
-      );
+      final products = await _pbDS.searchProducts(query: query, limit: limit);
       return Success(products);
     } catch (e) {
       return Failure(ServerException(message: e.toString()));
@@ -264,13 +265,19 @@ Map<String, dynamic> _serializeForCache(Map<String, dynamic> data) {
     if (value is DateTime) return MapEntry(key, value.toIso8601String());
     // Firestore Timestamp
     if (value != null && value.runtimeType.toString().contains('Timestamp')) {
-      try { return MapEntry(key, (value as dynamic).toDate().toIso8601String()); } catch (_) {}
+      try {
+        return MapEntry(key, (value as dynamic).toDate().toIso8601String());
+      } catch (_) {}
     }
-    if (value is Map<String, dynamic>) return MapEntry(key, _serializeForCache(value));
+    if (value is Map<String, dynamic>)
+      return MapEntry(key, _serializeForCache(value));
     if (value is Map) {
-      return MapEntry(key, _serializeForCache(
-        {for (final e in value.entries) e.key.toString(): e.value}
-      ));
+      return MapEntry(
+        key,
+        _serializeForCache({
+          for (final e in value.entries) e.key.toString(): e.value,
+        }),
+      );
     }
     return MapEntry(key, value);
   });

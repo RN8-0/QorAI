@@ -139,6 +139,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             if (mounted) setState(() => _tabViewReady = true);
           }
         }
+
         anim.addStatusListener(listener);
       }
     });
@@ -167,8 +168,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
 
   void _prefetchMatchScoreOnce() {
     final locale = ref.read(localeProvider);
-    final languageCode =
-        (locale?.languageCode ?? 'en').toLowerCase();
+    final languageCode = (locale?.languageCode ?? 'en').toLowerCase();
     _prefetchMatchScore(languageCode);
   }
 
@@ -319,18 +319,84 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           ],
           body: RepaintBoundary(
             child: _tabViewReady
-                ? TabBarView(
-                    children: [
-                      _SpecsTabContent(product: product, isDark: isDark),
-                      _ReviewsTab(product: product, isDark: isDark),
-                      _SimilarProductsTab(product: product, isDark: isDark),
-                      _AIAnalysisTab(product: product, isDark: isDark),
-                    ],
+                ? Builder(
+                    builder: (context) => _LazyDetailTabView(
+                      controller: DefaultTabController.of(context),
+                      children: [
+                        _SpecsTabContent(product: product, isDark: isDark),
+                        _ReviewsTab(product: product, isDark: isDark),
+                        _SimilarProductsTab(product: product, isDark: isDark),
+                        _AIAnalysisTab(product: product, isDark: isDark),
+                      ],
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LazyDetailTabView extends StatefulWidget {
+  const _LazyDetailTabView({required this.controller, required this.children});
+
+  final TabController controller;
+  final List<Widget> children;
+
+  @override
+  State<_LazyDetailTabView> createState() => _LazyDetailTabViewState();
+}
+
+class _LazyDetailTabViewState extends State<_LazyDetailTabView> {
+  late final Set<int> _builtIndexes = {widget.controller.index};
+  late int _currentIndex = widget.controller.index;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleTabChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _LazyDetailTabView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+    oldWidget.controller.removeListener(_handleTabChange);
+    widget.controller.addListener(_handleTabChange);
+    _builtIndexes.add(widget.controller.index);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleTabChange);
+    super.dispose();
+  }
+
+  void _handleTabChange() {
+    final nextIndex = widget.controller.index;
+    if (nextIndex == _currentIndex) return;
+    _currentIndex = nextIndex;
+    _builtIndexes.add(nextIndex);
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentIndex = widget.controller.index;
+    _currentIndex = currentIndex;
+    _builtIndexes.add(currentIndex);
+    return IndexedStack(
+      index: currentIndex,
+      children: List<Widget>.generate(widget.children.length, (index) {
+        if (!_builtIndexes.contains(index)) {
+          return const SizedBox.shrink();
+        }
+        return KeyedSubtree(
+          key: PageStorageKey<String>('detail-tab-$index'),
+          child: widget.children[index],
+        );
+      }),
     );
   }
 }

@@ -169,9 +169,7 @@ class FilterApplier {
 
     // For other filters, search spec values.
     final specValues = _findSpecValues(def.specKeys, flatSpecs);
-    // If the spec key isn't present in this product's data we can't make a
-    // decision — pass the product through rather than hiding it entirely.
-    if (specValues.isEmpty) return true;
+    if (specValues.isEmpty) return false;
 
     final normalizedLabels = selectedLabels.map(_normalizeText).toList();
     return specValues.any((value) {
@@ -197,7 +195,7 @@ class FilterApplier {
     if (range == null) return true;
 
     final specValues = _findSpecValues(def.specKeys, flatSpecs);
-    if (specValues.isEmpty) return true; // spec absent → don't exclude
+    if (specValues.isEmpty) return false;
     final specValue = specValues.first;
 
     final number = _extractFirstNumber(specValue);
@@ -215,9 +213,9 @@ class FilterApplier {
     if (wantTrue == null) return true;
 
     final specValues = _findSpecValues(def.specKeys, flatSpecs);
-    final specValue = specValues.isEmpty ? null : specValues.first;
-    final isPresent = specValue != null;
-    final valueLower = _normalizeText(specValue ?? '');
+    if (specValues.isEmpty) return false;
+    final specValue = specValues.first;
+    final valueLower = _normalizeText(specValue);
 
     // Explicit "no" markers
     final isNegative =
@@ -231,7 +229,6 @@ class FilterApplier {
 
     // Explicit "yes" markers (or simply present with non-negative value)
     final isPositive =
-        isPresent &&
         !isNegative &&
         (valueLower == 'yes' ||
             valueLower == 'true' ||
