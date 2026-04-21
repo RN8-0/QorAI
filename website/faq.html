@@ -1,108 +1,240 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="tr" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FAQ — Compair</title>
-  <meta name="description" content="Frequently asked questions about Compair. Learn how to use AI-powered product comparisons.">
+  <title>SSS ve Yardım — Compair</title>
+  <meta name="description" content="Compair hakkında sıkça sorulan sorular. Yapay zeka destekli ürün karşılaştırma platformu hakkında her şeyi öğrenin.">
   <link rel="canonical" href="https://compair.digital/faq">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/css/style.css">
+  <script>try{var t=localStorage.getItem('compair-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <style>
+    .page-wrap { max-width: 780px; margin: 0 auto; padding: 40px 20px 80px; }
+    .page-hero { text-align: center; margin-bottom: 48px; }
+    .page-hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 10px; background: linear-gradient(135deg, var(--accent2), var(--text)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .page-hero p { color: var(--text2); font-size: 16px; line-height: 1.6; }
+    .faq-section { margin-bottom: 40px; }
+    .faq-section-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent2); margin-bottom: 16px; padding-left: 4px; }
+    .faq-item { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg2); margin-bottom: 8px; overflow: hidden; }
+    .faq-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; background: none; border: none; color: var(--text); font-size: 15px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s; }
+    .faq-btn:hover { background: var(--bg3); }
+    .faq-btn.open { background: var(--bg3); color: var(--accent2); }
+    .faq-chevron { flex-shrink: 0; width: 18px; height: 18px; color: var(--text3); transition: transform 0.2s; }
+    .faq-btn.open .faq-chevron { transform: rotate(180deg); color: var(--accent2); }
+    .faq-body { display: none; padding: 0 20px 18px; color: var(--text2); font-size: 14px; line-height: 1.75; border-top: 1px solid var(--border); padding-top: 14px; }
+    .faq-body.open { display: block; }
+    .faq-body a { color: var(--accent2); text-decoration: underline; }
+    .contact-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; text-align: center; margin-top: 48px; }
+    .contact-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .contact-box p { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
+    .contact-btn { display: inline-block; padding: 10px 28px; background: var(--accent); color: #fff; border-radius: 99px; font-size: 14px; font-weight: 600; transition: opacity 0.2s; }
+    .contact-btn:hover { opacity: 0.85; }
+    .site-footer { border-top: 1px solid var(--border); padding: 24px 20px; text-align: center; color: var(--text3); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }
+    .site-footer a { color: var(--text2); transition: color 0.15s; }
+    .site-footer a:hover { color: var(--accent2); }
+  </style>
 </head>
 <body>
-  <div class="app-layout">
-    <div class="sidebar-overlay"></div>
-    <aside class="sidebar">
-      <div class="sidebar-logo"><div class="logo-icon">C</div><h1>Compair</h1></div>
-      <nav class="sidebar-nav">
-        <a href="/link-analysis.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link Analysis</a>
-        <a href="/compare.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Compare</a>
-        <a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Home</a>
-        <a href="/services.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Services</a>
-        <a href="/ai-chat.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>AI Chat</a>
-      </nav>
-      <div class="sidebar-footer">
-        <a href="/privacy.html">Privacy Policy</a>
-        <a href="/terms.html">Terms of Service</a>
-        <a href="/faq.html">FAQ</a>
-        <span class="copyright">© 2025 Compair</span>
-      </div>
-    </aside>
 
-    <main class="main-content">
-      <header class="topbar">
-        <button class="mobile-hamburger" id="hamburger"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-        <div class="sidebar-logo" style="border:none;padding:0;margin:0;">
-          <a href="/" style="display:flex;align-items:center;gap:8px;"><div class="logo-icon">C</div><h1 style="font-size:18px;">Compair</h1></a>
-        </div>
-        <div class="topbar-actions" style="margin-left:auto;">
-          <a href="/" class="btn btn-outline" style="font-size:13px;">← Back to Home</a>
-          <div id="auth-btn-container"></div>
-        </div>
-      </header>
-
-      <div class="legal-content fade-in">
-        <h1>Frequently Asked Questions</h1>
-        <p class="subtitle">Everything you need to know about Compair</p>
-
-        <div style="margin-top:24px;">
-          <div class="faq-item">
-            <button class="faq-question">What is Compair? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">Compair is an AI-powered product comparison platform that helps you make informed purchasing decisions. We analyze tech products across multiple categories including smartphones, laptops, GPUs, tablets, and more, providing detailed comparisons, compatibility scores, and personalized recommendations.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">How does AI Link Analysis work? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">Simply paste a product URL from any supported retailer (Amazon, Best Buy, Hepsiburada, etc.) and our AI will automatically extract product details, analyze specifications, compare with similar products, and generate a personalized compatibility score based on your preferences and usage patterns.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">What is the Compatibility Score? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">The Compatibility Score (0-100) measures how well a product matches your specific needs. It's calculated using your browsing history, quiz responses, budget range, preferred categories, and usage patterns. The higher the score, the better the product fits your profile.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">How does the PC Builder work? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">The PC Builder wizard guides you through selecting compatible components step by step — from CPU to cooler. Our AI validates compatibility at each step and suggests the best options based on your budget and previous selections. It tracks total cost and estimated power consumption throughout the build.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">Is my data used to train AI? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">Your interaction data (quiz answers, browsing patterns, comparisons) is used to improve both your personal recommendation profile and our global algorithm. Personal data is anonymized before being used in global model training. You can review our Privacy Policy for full details.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">Which product categories are supported? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">We currently support 40+ categories including: Smartphones, Laptops, Tablets, Desktops, Monitors, TVs, Headphones, Speakers, Cameras, Smartwatches, GPUs, CPUs, RAM, SSDs, Motherboards, Power Supplies, PC Cases, Coolers, Dashcams, Drones, Networking equipment, and many more. New categories are added regularly.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">How can I compare subscriptions? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">Navigate to the Compare section and select "Subscriptions" to see side-by-side comparisons of streaming services, cloud storage, AI tools, gaming subscriptions, and more. Our AI provides analysis of value, features, and which service best fits your needs.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">Is Compair free to use? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">Yes! Compair is free to use. You can browse products, compare items, use AI link analysis, and access the PC Builder at no cost. Some premium features may be introduced in the future, but the core comparison experience will always be free.</div></div>
-          </div>
-
-          <div class="faq-item">
-            <button class="faq-question">How do I get the mobile app? <span class="arrow">▼</span></button>
-            <div class="faq-answer"><div class="faq-answer-inner">The Compair mobile app is available for Android on the Google Play Store. An iOS version is coming soon. Search for "Compair" or visit our website for a direct download link.</div></div>
-          </div>
-        </div>
-      </div>
-    </main>
+<header class="site-header">
+  <a href="/" class="logo-link">
+    <img src="/assets/logo.png" alt="Compair" class="logo-img">
+    <span class="logo-text">Compair</span>
+  </a>
+  <div style="flex:1;"></div>
+  <div class="header-actions">
+    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Tema değiştir" onclick="toggleTheme()">🌙</button>
+    <a href="/" class="icon-btn" title="Ana Sayfa" style="font-size:13px;width:auto;padding:0 12px;gap:4px;">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      Ana Sayfa
+    </a>
   </div>
+</header>
 
-  <nav class="mobile-nav">
-    <a href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Home</a>
-  </nav>
-<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
-<script src="/js/pb_client.js"></script>
-<script src="/js/app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
-<script src="/js/pb_client.js"></script>
-<script src="/js/auth.js"></script>
+<main>
+  <div class="page-wrap">
+    <div class="page-hero">
+      <h1>SSS ve Yardım</h1>
+      <p>Compair hakkında merak ettikleriniz burada.<br>Aradığınızı bulamazsanız bize yazın.</p>
+    </div>
+
+    <div class="faq-section">
+      <div class="faq-section-title">Genel</div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Compair nedir?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Compair, yapay zeka destekli bir ürün karşılaştırma platformudur. Akıllı telefonlar, dizüstü bilgisayarlar, GPU'lar, tabletler ve daha pek çok kategoride teknoloji ürünlerini analiz ederek sizi en iyi satın alma kararına yönlendirir.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Compair ücretsiz mi?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Evet, Compair temel olarak ücretsizdir. Ücretsiz planda günlük 5 karşılaştırma, 15 AI sorusu ve 3 link analizi hakkınız bulunur. Premium abonelikle bu limitler kaldırılır ve gelişmiş özellikler açılır.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Hangi ürün kategorileri destekleniyor?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Akıllı telefonlar, dizüstü bilgisayarlar, tabletler, masaüstü bilgisayarlar, monitörler, TV'ler, kulaklıklar, hoparlörler, kameralar, akıllı saatler, GPU'lar, CPU'lar, RAM, SSD, ana kartlar, güç kaynakları, PC kasaları ve daha 40+ kategori desteklenmektedir. Yeni kategoriler düzenli olarak eklenmektedir.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-section">
+      <div class="faq-section-title">Özellikler</div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          AI Link Analizi nasıl çalışır?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Herhangi bir e-ticaret sitesinden (Amazon, Trendyol, Hepsiburada, MediaMarkt vb.) bir ürün bağlantısını yapıştırın. Yapay zeka otomatik olarak ürün ayrıntılarını çıkarır, benzer ürünlerle karşılaştırır ve size kişiselleştirilmiş bir uyumluluk puanı sunar.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Uyumluluk Puanı ne anlama gelir?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Uyumluluk Puanı (0–100), bir ürünün sizin özel ihtiyaçlarınıza ne kadar uyduğunu ölçer. Tercihleriniz, kullanım düzeniniz, bütçeniz ve mevcut cihaz ekosistemine göre hesaplanır. Puan ne kadar yüksekse ürün size o kadar uygundur.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          AI sohbet özelliği nedir?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Ürün karşılaştırmaları hakkında doğrudan yapay zekayla sohbet edebilirsiniz. "Bu telefon fotoğrafçılık için uygun mu?" veya "1000 TL'ye en iyi kulaklık hangisi?" gibi sorularınızı yanıtlar, gerçek web verilerine dayalı güncel bilgi sunar.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Abonelik analizi nasıl çalışır?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Karşılaştırma ekranından "Abonelikler" sekmesini seçerek Netflix, Spotify, YouTube Premium, iCloud gibi dijital abonelikleri yan yana karşılaştırabilirsiniz. AI size en fazla değer katan aboneliği önerir.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-section">
+      <div class="faq-section-title">Gizlilik ve Güvenlik</div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Verilerim AI eğitimi için kullanılıyor mu?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Etkileşim verileriniz (karşılaştırmalar, arama sorguları) kişisel öneri profilinizi geliştirmek için kullanılır. Küresel model eğitiminde yalnızca anonimleştirilmiş ve toplulaştırılmış veriler kullanılmaktadır. Daha fazla bilgi için <a href="/privacy.html">Gizlilik Politikamızı</a> inceleyebilirsiniz.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Hesabımı ve verilerimi nasıl silebilirim?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Uygulamada <strong>Ayarlar → Hesap Sil</strong> seçeneğiyle hesabınızı ve tüm verilerinizi kalıcı olarak silebilirsiniz. Alternatif olarak <a href="mailto:support@compair.digital">support@compair.digital</a> adresine "Hesap Silme Talebi" konuluyla e-posta gönderebilirsiniz. Talebiniz 30 gün içinde işleme alınır.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Verilerimi dışa aktarabilir miyim?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Evet. Uygulamada <strong>Ayarlar → Verilerimi Dışa Aktar</strong> seçeneğiyle profil bilgilerinizi, tercihlerinizi ve uygulama ayarlarınızı JSON formatında indirebilirsiniz.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-section">
+      <div class="faq-section-title">Mobil Uygulama</div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Uygulamayı nereden indirebilirim?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          Compair uygulaması Android için Google Play Store'dan indirilebilir. "Compair" aratın veya web sitemizden doğrudan indirme bağlantısına ulaşın. iOS sürümü yakında yayınlanacaktır.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)">
+          Önbelleği temizlemek ne işe yarar?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body">
+          <strong>Ayarlar → Önbelleği Temizle</strong> seçeneği, uygulamanın indirdiği geçici resim ve veri dosyalarını temizler. Bu işlem uygulamanın depolama alanını boşaltır; ürün görselleri bir sonraki açılışta yeniden yüklenir.
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-box">
+      <h3>Aradığınızı bulamadınız mı?</h3>
+      <p>Destek ekibimize ulaşın, en kısa sürede yanıt verelim.</p>
+      <a href="mailto:support@compair.digital" class="contact-btn">✉ Bize Yazın</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <span>© 2025 Compair</span>
+  <a href="/privacy.html">Gizlilik Politikası</a>
+  <a href="/terms.html">Kullanım Koşulları</a>
+  <a href="/faq.html">SSS</a>
+  <a href="mailto:support@compair.digital">İletişim</a>
+</footer>
+
+<script>
+function toggleFaq(btn) {
+  const body = btn.nextElementSibling;
+  const isOpen = btn.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.faq-btn').forEach(b => b.classList.remove('open'));
+  document.querySelectorAll('.faq-body').forEach(b => b.classList.remove('open'));
+  if (!isOpen) {
+    btn.classList.add('open');
+    body.classList.add('open');
+  }
+}
+function toggleTheme() {
+  const html = document.documentElement;
+  const cur = html.getAttribute('data-theme') || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  try { localStorage.setItem('compair-theme', next); } catch(e) {}
+  document.getElementById('theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const t = document.documentElement.getAttribute('data-theme') || 'dark';
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
+});
+</script>
 </body>
 </html>

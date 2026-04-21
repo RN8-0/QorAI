@@ -302,7 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           final helpCenterMessage =
                               context.l10n?.helpCenterComingSoon ??
                               'Help center coming soon';
-                          final uri = Uri.parse('https://compair.app/faq');
+                          final uri = Uri.parse('https://compair.digital/faq');
                           try {
                             await launchUrl(
                               uri,
@@ -359,7 +359,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: CupertinoIcons.shield_fill,
                         iconBg: const Color(0xFF64748B),
                         title: context.l10n?.privacyPolicy ?? 'Privacy Policy',
-                        onTap: () => context.push(AppRoutes.privacyPolicy),
+                        onTap: () => _launchWebUrl('https://compair.digital/privacy'),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -367,7 +367,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         iconBg: const Color(0xFF64748B),
                         title:
                             context.l10n?.termsOfService ?? 'Terms of Service',
-                        onTap: () => context.push(AppRoutes.termsOfService),
+                        onTap: () => _launchWebUrl('https://compair.digital/terms'),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -1268,12 +1268,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _launchWebUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (!mounted) return;
+      _showInfoSnackbar('Could not open $url');
+    }
+  }
+
   Future<void> _launchEmail() async {
     final emailErrorMessage =
         context.l10n?.couldNotOpenEmail ?? 'Could not open email app';
     final uri = Uri(
       scheme: 'mailto',
-      path: 'feedback@compair.app',
+      path: 'support@compair.digital',
       queryParameters: {'subject': 'Compair Feedback'},
     );
     try {

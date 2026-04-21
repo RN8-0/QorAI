@@ -1,95 +1,135 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="tr" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terms of Service — Compair</title>
-  <meta name="description" content="Compair Terms of Service. Read our terms and conditions for using Compair.">
+  <title>Kullanım Koşulları — Compair</title>
+  <meta name="description" content="Compair Kullanım Koşulları. Hizmetimizi kullanmak için geçerli koşulları ve şartları okuyun.">
   <link rel="canonical" href="https://compair.digital/terms">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/css/style.css">
+  <script>try{var t=localStorage.getItem('compair-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <style>
+    .page-wrap { max-width: 780px; margin: 0 auto; padding: 40px 20px 80px; }
+    .page-hero { margin-bottom: 40px; }
+    .page-hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+    .page-hero .meta { color: var(--text3); font-size: 13px; }
+    .doc-section { margin-bottom: 32px; }
+    .doc-section h2 { font-size: 16px; font-weight: 700; color: var(--accent2); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .doc-section p, .doc-section li { color: var(--text2); font-size: 14px; line-height: 1.8; }
+    .doc-section ul { padding-left: 20px; }
+    .doc-section ul li { margin-bottom: 4px; }
+    .doc-section a { color: var(--accent2); text-decoration: underline; }
+    .doc-section strong { color: var(--text); }
+    .site-footer { border-top: 1px solid var(--border); padding: 24px 20px; text-align: center; color: var(--text3); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }
+    .site-footer a { color: var(--text2); transition: color 0.15s; }
+    .site-footer a:hover { color: var(--accent2); }
+  </style>
 </head>
 <body>
-  <div class="app-layout">
-    <div class="sidebar-overlay"></div>
-    <aside class="sidebar">
-      <div class="sidebar-logo"><div class="logo-icon">C</div><h1>Compair</h1></div>
-      <nav class="sidebar-nav">
-        <a href="/link-analysis.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link Analysis</a>
-        <a href="/compare.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Compare</a>
-        <a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Home</a>
-        <a href="/services.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Services</a>
-        <a href="/ai-chat.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>AI Chat</a>
-      </nav>
-      <div class="sidebar-footer">
-        <a href="/privacy.html">Privacy Policy</a>
-        <a href="/terms.html">Terms of Service</a>
-        <a href="/faq.html">FAQ</a>
-        <span class="copyright">© 2025 Compair</span>
-      </div>
-    </aside>
 
-    <main class="main-content">
-      <header class="topbar">
-        <button class="mobile-hamburger" id="hamburger"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-        <div class="sidebar-logo" style="border:none;padding:0;margin:0;">
-          <a href="/" style="display:flex;align-items:center;gap:8px;"><div class="logo-icon">C</div><h1 style="font-size:18px;">Compair</h1></a>
-        </div>
-        <div class="topbar-actions" style="margin-left:auto;">
-          <a href="/" class="btn btn-outline" style="font-size:13px;">← Back to Home</a>
-          <div id="auth-btn-container"></div>
-        </div>
-      </header>
-
-      <div class="legal-content fade-in">
-        <h1>Terms of Service</h1>
-        <p class="subtitle">Last updated: March 2025</p>
-
-        <h2>1. Acceptance of Terms</h2>
-        <p>By accessing or using Compair ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, please do not use the Service.</p>
-
-        <h2>2. Description of Service</h2>
-        <p>Compair is an AI-powered product comparison platform that helps users compare tech products, analyze product links, and receive personalized recommendations. The Service includes web and mobile applications.</p>
-
-        <h2>3. User Accounts</h2>
-        <p>To access certain features, you must create an account using Google Sign-In. You are responsible for maintaining the security of your account. You agree to provide accurate information and to update it as necessary.</p>
-
-        <h2>4. Acceptable Use</h2>
-        <p>You agree not to:</p>
-        <ul>
-          <li>Use the Service for any unlawful purpose</li>
-          <li>Attempt to gain unauthorized access to any part of the Service</li>
-          <li>Interfere with or disrupt the Service</li>
-          <li>Scrape or harvest data from the Service without permission</li>
-          <li>Use automated tools to access the Service excessively</li>
-        </ul>
-
-        <h2>5. AI-Generated Content</h2>
-        <p>Compair uses AI models to generate product analyses, comparisons, and recommendations. While we strive for accuracy, AI-generated content may contain errors or inaccuracies. The Service is provided "as is" and should not be the sole basis for purchasing decisions.</p>
-
-        <h2>6. Intellectual Property</h2>
-        <p>All content, features, and functionality of the Service are owned by Compair and are protected by intellectual property laws. Product data and images may be sourced from third-party retailers and remain the property of their respective owners.</p>
-
-        <h2>7. Limitation of Liability</h2>
-        <p>To the maximum extent permitted by law, Compair shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
-
-        <h2>8. Changes to Terms</h2>
-        <p>We reserve the right to modify these terms at any time. Continued use of the Service after changes constitutes acceptance of the new terms.</p>
-
-        <h2>9. Contact</h2>
-        <p>For questions about these terms, contact us at <a href="mailto:support@compair.digital">support@compair.digital</a>.</p>
-      </div>
-    </main>
+<header class="site-header">
+  <a href="/" class="logo-link">
+    <img src="/assets/logo.png" alt="Compair" class="logo-img">
+    <span class="logo-text">Compair</span>
+  </a>
+  <div style="flex:1;"></div>
+  <div class="header-actions">
+    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Tema değiştir" onclick="toggleTheme()">🌙</button>
+    <a href="/" class="icon-btn" title="Ana Sayfa" style="font-size:13px;width:auto;padding:0 12px;gap:4px;">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      Ana Sayfa
+    </a>
   </div>
+</header>
 
-  <nav class="mobile-nav">
-    <a href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Home</a>
-  </nav>
-<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
-<script src="/js/pb_client.js"></script>
-<script src="/js/app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
-<script src="/js/pb_client.js"></script>
-<script src="/js/auth.js"></script>
+<main>
+  <div class="page-wrap">
+    <div class="page-hero">
+      <h1>Kullanım Koşulları</h1>
+      <p class="meta">Son güncelleme: Nisan 2026</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>1. Koşulların Kabulü</h2>
+      <p>Compair uygulamasını indirerek, kurarak veya kullanarak bu Kullanım Koşullarını kabul etmiş sayılırsınız. Koşulları kabul etmiyorsanız lütfen uygulamayı kullanmayınız.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>2. Hizmetin Tanımı</h2>
+      <p>Compair, kullanıcıların teknoloji ürünlerini karşılaştırmasına, ürün bağlantılarını analiz etmesine ve kişiselleştirilmiş öneriler almasına yardımcı olan yapay zeka destekli bir ürün karşılaştırma platformudur. Hizmet; web ve mobil uygulamayı kapsar.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>3. Kullanıcı Hesabı</h2>
+      <p>Bazı özelliklere erişim için Google veya Apple ile hesap oluşturmanız gerekmektedir. Hesabınızın güvenliği sizin sorumluluğunuzdadır. Doğru bilgi vermeyi ve gerektiğinde güncellemeyi kabul etmektesiniz.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>4. Kabul Edilebilir Kullanım</h2>
+      <p>Aşağıdaki eylemleri gerçekleştirmemeyi kabul etmektesiniz:</p>
+      <ul>
+        <li>Hizmeti herhangi bir yasadışı amaç için kullanmak.</li>
+        <li>Hizmetin herhangi bir bölümüne yetkisiz erişim sağlamaya çalışmak.</li>
+        <li>Hizmeti kesintiye uğratmak veya bozmak.</li>
+        <li>İzin almaksızın Hizmet'ten veri toplamak veya kazımak.</li>
+        <li>Hizmete otomatik araçlarla aşırı erişim sağlamak.</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>5. Abonelikler</h2>
+      <p>Compair, ücretsiz ve premium abonelik katmanları sunmaktadır. Premium abonelikler Apple App Store veya Google Play Store üzerinden faturalanır. Abonelikler, mevcut dönem sona ermeden en az 24 saat önce iptal edilmediğinde otomatik olarak yenilenir. Abonelikleri cihazınızın App Store / Play Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>6. Yapay Zeka Üretilen İçerik</h2>
+      <p>Compair, ürün analizleri ve öneriler üretmek için Gemini AI gibi yapay zeka modellerini kullanır. En yüksek doğruluk için çaba göstersek de AI üretilen içerik hatalar veya eksiklikler içerebilir. Hizmet "olduğu gibi" sunulmaktadır ve satın alma kararlarınızın tek dayanağı olmamalıdır. Önemli teknik özellikleri üretici firmadan doğrulamanızı tavsiye ederiz.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>7. Fikri Mülkiyet</h2>
+      <p>Hizmetin tüm içerik, özellik ve işlevi Compair'e veya lisans verenlerine aittir ve fikri mülkiyet mevzuatıyla korunmaktadır. Ürün verileri ve görseller ilgili perakendecilerden sağlanıyor olabilir ve ilgili sahiplerine aittir.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>8. Sorumluluk Sınırlaması</h2>
+      <p>Yürürlükteki yasanın izin verdiği azami ölçüde Compair, Hizmeti kullanmanızdan kaynaklanan dolaylı, arızi, özel, sonuçsal veya cezai zararlardan sorumlu tutulamaz.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>9. Değişiklikler</h2>
+      <p>Bu koşulları her zaman değiştirme hakkını saklı tutarız. Değişikliklerin ardından Hizmeti kullanmaya devam etmek, yeni koşulları kabul ettiğiniz anlamına gelir. Önemli değişiklikler için kullanıcıları bilgilendirmeye çalışacağız.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>10. İletişim</h2>
+      <p>Bu kullanım koşullarıyla ilgili sorularınız için: <a href="mailto:support@compair.digital">support@compair.digital</a></p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <span>© 2025 Compair</span>
+  <a href="/privacy.html">Gizlilik Politikası</a>
+  <a href="/terms.html">Kullanım Koşulları</a>
+  <a href="/faq.html">SSS</a>
+  <a href="mailto:support@compair.digital">İletişim</a>
+</footer>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const cur = html.getAttribute('data-theme') || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  try { localStorage.setItem('compair-theme', next); } catch(e) {}
+  document.getElementById('theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const t = document.documentElement.getAttribute('data-theme') || 'dark';
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
+});
+</script>
 </body>
 </html>
