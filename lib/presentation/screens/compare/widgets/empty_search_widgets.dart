@@ -814,7 +814,6 @@ class _TrendChip extends StatelessWidget {
                 ),
               ),
             ),
-            ],
           ],
         ),
       ),
@@ -822,7 +821,7 @@ class _TrendChip extends StatelessWidget {
   }
 }
 
-// ─── Product Search List ──────────────────────────────────────────────────────
+// ─── Product Search List──────────────────────────────────────────────────────
 
 class _ProductSearchList extends ConsumerWidget {
   final List<String> selectedIds;
@@ -1014,10 +1013,6 @@ class _SearchProductTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                    ),
-                  ],
-                    ),
-                  ),
                 const SizedBox(width: 8),
                 isSelected
                     ? ShaderMask(
