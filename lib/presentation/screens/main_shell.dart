@@ -114,6 +114,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     final connectivity = ref.watch(connectivityProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final useDesktopLayout = context.isDesktop || context.isTablet;
+    // Watch unread count to keep notificationsProvider alive app-wide
+    ref.watch(unreadNotificationCountProvider);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,

@@ -54,6 +54,7 @@ final countryInitProvider = FutureProvider<void>((ref) async {
 
 final notificationsProvider =
     StreamProvider<List<Map<String, dynamic>>>((ref) {
+  ref.keepAlive(); // keep stream alive globally for realtime push notifications
   final authState = ref.watch(authStateProvider);
   return authState.when(
     data: (uid) {
