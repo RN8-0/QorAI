@@ -261,13 +261,17 @@ async function sendBroadcastNotification() {
   let sent = 0;
   let errors = 0;
   const BATCH = 10;
+  let firstError = null;
 
   try {
     const pb = getPb();
 
+    // Debug: verify auth state
+    console.log('[Notif] auth valid:', pb.authStore.isValid, '| token prefix:', pb.authStore.token?.slice(0,20));
+
     for (let i = 0; i < recipients.length; i += BATCH) {
       const batch = recipients.slice(i, i + BATCH);
-      await Promise.all(batch.map(user =>
+      const results = await Promise.allSettled(batch.map(user =>
         pb.collection('notifications').create({
           recipientId: user.id,
           senderId: 'system',
@@ -277,15 +281,29 @@ async function sendBroadcastNotification() {
           body,
           referenceId: '',
           read: false,
-        }, { $autoCancel: false }).catch(() => { errors++; })
+        }, { $autoCancel: false })
       ));
-      sent += batch.length;
 
-      const pct = Math.round((sent / recipients.length) * 100);
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          sent++;
+        } else {
+          errors++;
+          if (!firstError) firstError = r.reason;
+          console.error('[Notif] create error:', r.reason?.message || r.reason);
+        }
+      }
+
+      const pct = Math.round(((sent + errors) / recipients.length) * 100);
       const progressEl = document.getElementById('notifProgressBar');
       const textEl = document.getElementById('notifProgressText');
       if (progressEl) progressEl.style.width = pct + '%';
-      if (textEl) textEl.textContent = `Sending... ${sent} / ${recipients.length} users`;
+      if (textEl) textEl.textContent = `Sending... ${sent + errors} / ${recipients.length} users`;
+    }
+
+    if (sent === 0 && errors > 0) {
+      toast('Send failed: ' + (firstError?.message || firstError || 'PocketBase rejected all records'), 'e');
+      return;
     }
 
     // Log the broadcast
@@ -307,6 +325,7 @@ async function sendBroadcastNotification() {
     _updateStats();
     resetNotifComposer();
   } catch (e) {
+    console.error('[Notif] sendBroadcast fatal error:', e);
     toast('Send failed: ' + (e.message || e), 'e');
   } finally {
     btn.disabled = false;

@@ -14,6 +14,7 @@ import "package:compair/core/app_keys.dart";
 import "package:compair/presentation/providers/providers.dart";
 import "package:compair/presentation/screens/ai_chat/ai_chat_screen.dart";
 import "package:compair/services/connectivity_service.dart";
+import "package:compair/services/notification_service.dart";
 import "package:compair/routing/router.dart";
 import "package:compair/core/theme.dart";
 import "package:compair/core/extensions.dart";
@@ -38,6 +39,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _primeBackgroundState();
+      _registerFcmToken();
     });
   }
 
@@ -45,6 +47,23 @@ class _MainShellState extends ConsumerState<MainShell> {
     try {
       ref.read(countryInitProvider);
     } catch (_) {}
+  }
+
+  /// After login, get FCM token and save to PocketBase user profile.
+  Future<void> _registerFcmToken() async {
+    if (kIsWeb) return;
+    try {
+      final authState = ref.read(authStateProvider);
+      final uid = authState.valueOrNull;
+      if (uid == null) return;
+
+      final token = NotificationService.instance.token;
+      if (token == null) return;
+
+      await ref.read(pbDataSourceProvider).updateFcmToken(uid, token);
+    } catch (e) {
+      debugPrint('[Shell] FCM token register error: $e');
+    }
   }
 
   int _indexFromLocation(String location) {

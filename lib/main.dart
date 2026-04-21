@@ -3,12 +3,14 @@ library;
 
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:compair/app.dart';
+import 'package:compair/firebase_options.dart';
 import 'package:compair/services/cache_service.dart';
 import 'package:compair/services/remote_config_service.dart';
 import 'package:compair/services/spec_translation_service.dart';
@@ -76,6 +78,13 @@ Future<void> _requestTrackingTransparency() async {
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Initialize Firebase (required for FCM push notifications)
+    if (!kIsWeb) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
 
     // System UI settings (mobile only)
     if (!kIsWeb) {

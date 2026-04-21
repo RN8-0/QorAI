@@ -1242,6 +1242,17 @@ class PbDataSource {
     }
   }
 
+  Future<void> updateFcmToken(String userId, String fcmToken) async {
+    try {
+      await _pb
+          .collection('users')
+          .update(userId, body: {'fcmToken': fcmToken});
+      debugPrint('[PbDs] FCM token updated for user $userId');
+    } catch (e) {
+      debugPrint('[PbDs] updateFcmToken error: $e');
+    }
+  }
+
   // ────────────────────────────────────────────────────────────────────────
   // ─── USER LINKS ───
   // ────────────────────────────────────────────────────────────────────────
