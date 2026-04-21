@@ -1221,13 +1221,43 @@ class _GeminiMatchScoreNotifier
     state = const AsyncValue.loading();
 
     try {
-      final profileLangCode = user.language.trim().toLowerCase();
+      await _doFetchMatchScore(product: product, user: user).timeout(
+        const Duration(seconds: 18),
+        onTimeout: () {
+          throw Exception('match score outer timeout (18s)');
+        },
+      );
+    } catch (e, st) {
+      debugPrint('[GeminiMatch] failed: $e\n$st');
+      _fallbackToLocal(product);
+    } finally {
+      // Defensive: never leave UI stuck on the spinner.
+      if (state is AsyncLoading) {
+        state = const AsyncValue.data(null);
+      }
+    }
+  }
+
+  Future<void> _doFetchMatchScore({
+    required ProductEntity product,
+    required dynamic user,
+  }) async {
+    final profileLangCode = (user.language as String).trim().toLowerCase();
       final langCode = _languageCode.isNotEmpty
           ? _languageCode
           : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
 
-      // 1. Check Firestore cache first (24h TTL)
-      final cached = await _checkFirestoreCache(user.uid, langCode);
+      // 1. Check PocketBase cache first (24h TTL) — but cap at 3s; if PB is
+      // slow we treat it as a cache miss and proceed to Gemini.
+      GeminiMatchResult? cached;
+      try {
+        cached = await _checkFirestoreCache(user.uid, langCode).timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null,
+        );
+      } catch (_) {
+        cached = null;
+      }
       if (cached != null) {
         state = AsyncValue.data(cached);
         return;
@@ -1307,47 +1337,32 @@ class _GeminiMatchScoreNotifier
         tradeOffs: tradeOffs,
       );
       final prompt =
-          'You are the personalization engine for a shopping app. For the given USER + PRODUCT, '
-          'you output BOTH a personalized match score AND the short summary text shown under the score. '
-          'The score and text are produced TOGETHER in one pass.\n\n'
-          'OUTPUT LANGUAGE: write the "reason" field strictly in language code "$langCode" '
-          '(${_languageDisplayName(langCode)}). Do not mix languages. JSON keys must stay in English.\n\n'
-          'User profile:\n${jsonEncode(profileJson)}\n\n'
-          'Product:\n${jsonEncode(productJson)}\n\n'
-          'Score this product on a 25-100 scale for this user. Never go below 25.\n'
-          '- 90-100: Exceptional fit — the product\'s standout strengths strongly match the user\'s top priorities & profile\n'
-          '- 75-89: Strong match with minor trade-offs\n'
-          '- 60-74: Good match but with notable compromises\n'
-          '- 45-59: Mediocre match — priorities only partially covered\n'
-          '- 25-44: Poor match — key priorities unmet or major trade-offs\n\n'
-          'Use ALL of these signals to reason:\n'
-          '- Weight vector (heaviest weighted traits matter most)\n'
-          '- Explicit priorities, usage intent, profession, age range, ecosystem\n'
-          '- Recently viewed categories & favorites as live interest signal\n'
-          '- Product techScore, pros/cons, highlights, trade-offs and full specs\n'
-          '- Budget range vs product price\n\n'
-          'IMPORTANT for the "reason" field:\n'
-          '- Write 3 to 5 informative sentences (about 70-150 words total)\n'
-          '- Describe the product itself: 2-3 concrete standout strengths AND one real limitation if notable\n'
-          '- Do NOT address the user ("you", "your", "for you")\n'
-          '- In Turkish, never use the word "kullanici"; if direct address is unavoidable, use formal "siz"\n'
-          '- NEVER mention ecosystem, device compatibility, profile, current devices, or platform lock-in\n'
-          '- Make it product-specific; avoid generic filler\n\n'
-          'Return ONLY this JSON:\n'
-          '{"matchScore": <int 25-100>, "reason": "<3-5 product-focused sentences>", '
-          '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
-          '"missingFactors": ["<missing1>", "<missing2>"]}';
+          'Score this product 25-100 for this user (never <25). Return ONLY JSON.\n'
+          'reason: 3-4 product-focused sentences (60-110 words) in language "$langCode" '
+          '(${_languageDisplayName(langCode)}). Mention 2-3 strengths + 1 real limitation. '
+          'Do NOT use "you/your". In Turkish never use "kullanici"; use formal "siz" if unavoidable. '
+          'Never mention ecosystem/compatibility/profile/devices/platform.\n'
+          'Bands: 90-100 exceptional / 75-89 strong / 60-74 good with compromises / '
+          '45-59 mediocre / 25-44 poor.\n'
+          'Signals: weight vector, priorities, usage intent, profession, ecosystem, '
+          'recent views/favorites, techScore, specs, pros/cons, budget vs price.\n\n'
+          'USER:${jsonEncode(profileJson)}\n'
+          'PRODUCT:${jsonEncode(productJson)}\n\n'
+          'JSON: {"matchScore":<int>,"reason":"<text>",'
+          '"topMatchFactors":["f1","f2","f3"],"missingFactors":["m1","m2"]}';
 
       final result = await gemini
           .jsonFreeTextQuery(
             prompt,
             language: langCode,
-            maxTokens: 700,
+            maxTokens: 500,
+            // tier:lite + _rawRequest forces thinkingBudget=0 → no reasoning
+            // tokens billed; cheap & fast.
           )
           .timeout(
-            const Duration(seconds: 15),
+            const Duration(seconds: 12),
             onTimeout: () =>
-                throw Exception('Gemini match score timeout (15s)'),
+                throw Exception('Gemini match score timeout (12s)'),
           );
       final map = _decodeJsonMap(result);
 
@@ -1386,11 +1401,7 @@ class _GeminiMatchScoreNotifier
       debugPrint(
         '[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason',
       );
-    } catch (e, st) {
-      debugPrint('[GeminiMatch] Gemini failed, using local fallback: $e\n$st');
-      // Fallback to local algorithm
-      _fallbackToLocal(product);
-    }
+    // Note: errors propagate up to fetchMatchScore for unified timeout/fallback handling.
   }
 
   void _fallbackToLocal(ProductEntity product) {
