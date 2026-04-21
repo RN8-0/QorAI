@@ -64,12 +64,12 @@
     ['Ryzen 5 7535HS', 44], ['Core i5-12500H', 41], ['Ryzen 5 5600H', 32],
     ['Core i5-11400H', 28], ['Ryzen 5 5500U', 22], ['Core i5-10300H', 18],
     ['Ryzen 3 5300U', 12], ['Celeron', 6], ['Pentium', 6],
-    // Apple Silicon laptops (MacBook Air/Pro) — ordered Ultra > Max > Pro > base
-    ['Apple M5 Max', 100], ['Apple M5 Pro', 97], ['Apple M5', 94],
-    ['Apple M4 Max', 96], ['Apple M4 Pro', 92], ['Apple M4', 88],
-    ['Apple M3 Max', 90], ['Apple M3 Pro', 84], ['Apple M3', 78],
-    ['Apple M2 Max', 82], ['Apple M2 Pro', 76], ['Apple M2', 68],
-    ['Apple M1 Max', 72], ['Apple M1 Pro', 66], ['Apple M1', 58],
+    // Apple Silicon laptops (MacBook Air/Pro) — generation beats tier-from-2-gens-ago
+    ['Apple M5 Max', 100], ['Apple M5 Pro', 98], ['Apple M5', 96],
+    ['Apple M4 Max', 94], ['Apple M4 Pro', 92], ['Apple M4', 90],
+    ['Apple M3 Max', 86], ['Apple M3 Pro', 84], ['Apple M3', 80],
+    ['Apple M2 Max', 76], ['Apple M2 Pro', 74], ['Apple M2', 70],
+    ['Apple M1 Max', 66], ['Apple M1 Pro', 64], ['Apple M1', 58],
   ];
 
   const CPU_DESKTOP = [
@@ -81,11 +81,13 @@
     ['Core i5-12400', 38], ['Ryzen 5 5600', 35], ['Core i3-13100', 26],
     ['Ryzen 3 4100', 18], ['Celeron', 6], ['Pentium', 6],
     // Apple Silicon desktops (iMac, Mac mini, Mac Studio, Mac Pro)
-    ['Apple M5 Ultra', 100], ['Apple M5 Max', 97], ['Apple M5 Pro', 92], ['Apple M5', 86],
-    ['Apple M4 Ultra', 98], ['Apple M4 Max', 94], ['Apple M4 Pro', 88], ['Apple M4', 80],
-    ['Apple M3 Ultra', 92], ['Apple M3 Max', 86], ['Apple M3 Pro', 78], ['Apple M3', 70],
-    ['Apple M2 Ultra', 84], ['Apple M2 Max', 76], ['Apple M2 Pro', 68], ['Apple M2', 60],
-    ['Apple M1 Ultra', 74], ['Apple M1 Max', 66], ['Apple M1 Pro', 58], ['Apple M1', 50],
+    // Generation > tier within a generation: a newer base chip beats an older
+    // Ultra of two generations ago in single-thread + media engine perf.
+    ['Apple M5 Ultra', 100], ['Apple M5 Max', 99], ['Apple M5 Pro', 97], ['Apple M5', 95],
+    ['Apple M4 Ultra', 96], ['Apple M4 Max', 94], ['Apple M4 Pro', 92], ['Apple M4', 90],
+    ['Apple M3 Ultra', 88], ['Apple M3 Max', 86], ['Apple M3 Pro', 83], ['Apple M3', 80],
+    ['Apple M2 Ultra', 78], ['Apple M2 Max', 75], ['Apple M2 Pro', 72], ['Apple M2', 68],
+    ['Apple M1 Ultra', 66], ['Apple M1 Max', 62], ['Apple M1 Pro', 58], ['Apple M1', 54],
   ];
 
   const CHIPSET_PHONE = [

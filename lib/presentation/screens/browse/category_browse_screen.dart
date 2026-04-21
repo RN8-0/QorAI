@@ -227,7 +227,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   int _displayProductCount(int filteredCount) {
     if (_searchQuery.isNotEmpty || _filterState.isActive) return filteredCount;
-    return _totalProductCount > 0 ? _totalProductCount : filteredCount;
+    // Return real total only — local list snapshot during cache/feed warmup
+    // would otherwise show e.g. 50 then jump to 4186.
+    return _totalProductCount;
   }
 
   Future<void> _changeSortOption(_SortOption option) async {
@@ -720,25 +722,47 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: context.backgroundColor,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: context.dividerColor.withValues(alpha: 0.5),
+          // Show count chip only after the real total has been resolved from
+          // Typesense to avoid the "50 → 4186" jump when cache/feed populate first.
+          if (productCount > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: context.backgroundColor,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: context.dividerColor.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Text(
+                context.l10n?.productCount(productCount) ??
+                    '$productCount product${productCount == 1 ? '' : 's'}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: context.textSecondary,
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: context.backgroundColor,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: context.dividerColor.withValues(alpha: 0.4),
+                ),
+              ),
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.6,
+                  color: context.textSecondary.withValues(alpha: 0.5),
+                ),
               ),
             ),
-            child: Text(
-              context.l10n?.productCount(productCount) ??
-                  '$productCount product${productCount == 1 ? '' : 's'}',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: context.textSecondary,
-              ),
-            ),
-          ),
           if (_searchQuery.isNotEmpty) ...[
             const SizedBox(width: 8),
             Expanded(

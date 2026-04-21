@@ -1241,8 +1241,8 @@ class _GeminiMatchScoreNotifier
         return;
       }
 
-      // 3. Call DeepSeek
-      final deepseek = _ref.read(deepSeekServiceProvider);
+      // 3. Call Gemini Flash (faster + cheaper than DeepSeek for short JSON tasks)
+      final gemini = _ref.read(geminiServiceProvider);
       final behaviorAsync = _ref.read(behaviorSignalsProvider);
       final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
       final weightVector = await _loadWeightVector(user.uid);
@@ -1338,10 +1338,17 @@ class _GeminiMatchScoreNotifier
           '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
           '"missingFactors": ["<missing1>", "<missing2>"]}';
 
-      final result = await deepseek.jsonFreeTextQuery(
-        prompt,
-        language: langCode,
-      );
+      final result = await gemini
+          .jsonFreeTextQuery(
+            prompt,
+            language: langCode,
+            maxTokens: 700,
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw Exception('Gemini match score timeout (15s)'),
+          );
       final map = _decodeJsonMap(result);
 
       final score = _safeInt(map['matchScore'], 50).clamp(25, 100);
