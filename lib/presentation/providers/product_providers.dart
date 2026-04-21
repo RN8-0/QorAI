@@ -2555,7 +2555,18 @@ final productVariantsProvider =
         if (variants.isNotEmpty) return variants;
       }
 
-      // 2) Fallback: small Firestore query (limit 30, not 200!)
+      // 2) Try Typesense (includes new products with techScores)
+      try {
+        final ds = ref.read(pbDataSourceProvider);
+        final tsProducts = await ds
+            .getProductsByCategoryTs(category: product.category, limit: 50)
+            .timeout(const Duration(seconds: 6));
+        if (tsProducts.isNotEmpty) {
+          return _filterVariants(tsProducts.cast<ProductEntity>());
+        }
+      } catch (_) {}
+
+      // 3) Fallback: PocketBase query
       try {
         final result = await ref
             .read(productRepositoryProvider)
@@ -2619,7 +2630,7 @@ final similarProductsProvider =
           }
         } catch (_) {}
 
-        // 2) Parallel: homeFeed cache + Firestore query
+        // 2) Parallel: homeFeed cache + Typesense (primary) + PocketBase fallback
         final futures = <Future>[];
 
         futures.add(
@@ -2638,6 +2649,24 @@ final similarProductsProvider =
 
         futures.add(
           (() async {
+            // Try Typesense first (includes newly added products with techScores)
+            try {
+              final tsProducts = await ds
+                  .getProductsByCategoryTs(
+                    category: product.category,
+                    limit: 100,
+                    sortBy: 'techScore:desc',
+                  )
+                  .timeout(const Duration(seconds: 6));
+              if (tsProducts.isNotEmpty) {
+                final ids = pool.map((p) => p.id).toSet();
+                for (final p in tsProducts) {
+                  if (!ids.contains(p.id)) pool.add(p as ProductEntity);
+                }
+                return;
+              }
+            } catch (_) {}
+            // Fallback to PocketBase if Typesense returned nothing
             try {
               final result = await ref
                   .read(productRepositoryProvider)

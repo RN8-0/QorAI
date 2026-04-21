@@ -1375,7 +1375,7 @@ class _GeminiMatchScoreNotifier
           .jsonFreeTextQuery(
             prompt,
             language: langCode,
-            maxTokens: 900,
+            maxTokens: 1500,
             // tier:lite + _rawRequest forces thinkingBudget=0 → no reasoning
             // tokens billed; cheap & fast.
           )
@@ -1785,26 +1785,20 @@ class _GeminiMatchScoreNotifier
     final compact = rawReason.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (compact.isEmpty) return fallbackReason;
 
+    // Only ban fragments that leak internal profile/personalization data.
+    // Removed 'fit', 'match', 'uygun', 'oncelik' — these are normal product
+    // description words and their exclusion was causing sentences to be dropped,
+    // leaving the reason text empty or cut off.
     const bannedFragments = [
-      'ecosystem',
-      'ekosistem',
-      'kullanici',
-      'kullanıcı',
+      'kullanici profiliniz',
+      'kullanıcı profiliniz',
       'user profile',
-      'profile',
       'current devices',
       'mevcut cihaz',
       'cihazlariyla',
       'cihazlarıyla',
       'cihazlariniz',
       'cihazlarınız',
-      'fit',
-      'match',
-      'uygun',
-      'oncelik',
-      'öncelik',
-      'davranis',
-      'davranış',
     ];
 
     final sentences = compact
@@ -1815,15 +1809,18 @@ class _GeminiMatchScoreNotifier
           final lower = sentence.toLowerCase();
           return !bannedFragments.any(lower.contains);
         })
-        .take(2)
+        .take(4)
         .toList();
 
-    if (sentences.isEmpty) return fallbackReason;
+    if (sentences.isEmpty) return compact.isNotEmpty ? compact : fallbackReason;
 
     final joined = sentences.join(' ').trim();
     if (joined.isEmpty) return fallbackReason;
-    if (joined.length <= 220) return joined;
-    return '${joined.substring(0, 217).trimRight()}...';
+    if (joined.length <= 550) return joined;
+    // Truncate at a sentence boundary when possible
+    final lastDot = joined.lastIndexOf(RegExp(r'[.!?]'), 547);
+    if (lastDot > 200) return joined.substring(0, lastDot + 1);
+    return '${joined.substring(0, 547).trimRight()}...';
   }
 
   String? _normalizeFocusKey(String raw) {

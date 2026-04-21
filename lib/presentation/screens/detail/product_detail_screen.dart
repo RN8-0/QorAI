@@ -303,9 +303,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               child: _TitlePriceSection(product: product, country: country),
             ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-                child: _ScoreDuo(product: product),
+              child: RepaintBoundary(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                  child: _ScoreDuo(product: product),
+                ),
               ),
             ),
             // Overview content — always visible above tabs

@@ -1,4 +1,4 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // SPECS CARD (grouped)
@@ -1105,19 +1105,34 @@ class _SpecRow extends StatelessWidget {
   }
 
   static List<String> _extractValueParts(String value) {
-    final normalized = value
-        .replaceAll('\u2022', '\n')
+    // Step 1: replace bullet chars and pipe with newlines
+    final withNewlines = value
         .replaceAll('•', '\n')
-        .replaceAll('|', '\n')
-        .replaceAllMapped(
-          RegExp(r'(?<=[a-zçğıöşü])(?=[A-ZÇĞİÖŞÜ])'),
-          (_) => '\n',
-        )
+        .replaceAll('•', '\n')
+        .replaceAll('|', '\n');
+
+    // Step 2: if the value already contains natural line breaks (admin panel
+    // format), split on them directly — do NOT apply camelCase regex which
+    // incorrectly breaks feature names like "FreeSync", "AirPlay", "HbbTV".
+    if (withNewlines.contains('\n')) {
+      final rawParts = withNewlines
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .map((p) => p.replaceFirst(RegExp(r'^[-•\s]+'), '').trim())
+          .where((p) => p.isNotEmpty)
+          .toList();
+      if (rawParts.length >= 2) return rawParts;
+    }
+
+    // Step 3: single-line value — apply heuristic splitting
+    final normalized = withNewlines
         .replaceAllMapped(
           RegExp(r'(?<=[+)])\s+(?=[A-ZÇĞİÖŞÜ0-9])'),
           (_) => '\n',
         )
-        .replaceAll(RegExp(r'\s{2,}'), ' ')
+        // Only collapse horizontal whitespace (spaces/tabs), NOT newlines
+        .replaceAll(RegExp(r'[^\S\n]{2,}'), ' ')
         .trim();
 
     List<String>? parts;
