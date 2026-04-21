@@ -72,20 +72,30 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
   @override
   void initState() {
     super.initState();
-    // Defer to post-frame so the first paint of the detail screen is not
-    // blocked by the (CPU-bound) compatibility algorithm.
+    // Kick off the AI match fetch immediately so `aiLoading` is true on the
+    // very first build — prevents the local-algorithm score from briefly
+    // flashing before the AI value settles.
+    _maybeTriggerGeminiFetch();
+    // Defer the (CPU-bound) local fit score computation to post-frame so the
+    // first paint of the detail screen is not blocked.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _maybeRecomputeFitScore();
-      _maybeTriggerGeminiFetch();
     });
   }
 
   String _currentLanguageCode() {
     final locale = ref.read(localeProvider);
-    return (locale?.languageCode ??
-            Localizations.localeOf(context).languageCode)
-        .toLowerCase();
+    if (locale != null && locale.languageCode.isNotEmpty) {
+      return locale.languageCode.toLowerCase();
+    }
+    // Safe context fallback — in initState the inherited widget tree may not
+    // be fully ready, so guard with a try/catch.
+    try {
+      return Localizations.localeOf(context).languageCode.toLowerCase();
+    } catch (_) {
+      return 'en';
+    }
   }
 
   LocalizedProductKey _currentCacheKey() {
@@ -192,15 +202,21 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     // Watch DeepSeek result for reason text / authoritative score.
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
+    final aiLoading = matchAsync.isLoading;
 
     // AI match score is authoritative when quota allows; fall back to local
     // algorithmic fit only when DeepSeek returned null (free quota exhausted).
-    final int? fitScore = matchResult?.matchScore ?? localFitScore;
+    // While AI is still loading we deliberately suppress the local fit score
+    // so the user does not see a flicker between random-looking algorithmic
+    // value and the final AI value — show a loading indicator instead.
+    final int? fitScore = matchResult?.matchScore ??
+        (aiLoading && quizDone ? null : localFitScore);
+    final bool showMatchLoading = quizDone && aiLoading && matchResult == null;
     final String? reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;
 
-    if (techScore == 0 && fitScore == null && !quizDone) {
+    if (techScore == 0 && fitScore == null && !quizDone && !showMatchLoading) {
       return const SizedBox.shrink();
     }
 
@@ -257,7 +273,72 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                           color: matchColor,
                           icon: Icons.person_outline,
                         )
-                      : GestureDetector(
+                      : showMatchLoading
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 44,
+                                    height: 44,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            AppTheme.primaryBlue,
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.auto_awesome,
+                                          size: 16,
+                                          color: AppTheme.primaryBlue,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          context.l10n?.yourMatch ??
+                                              'Your Match',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.slate500,
+                                            letterSpacing: 0.4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _localizedMatchLoadingText(context),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : GestureDetector(
                           onTap: () => context.push(AppRoutes.quiz),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -343,8 +424,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                   Expanded(
                     child: Text(
                       reason,
-                      maxLines: _reasonExpanded ? 20 : 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: _reasonExpanded ? 100 : 1,
+                      overflow:
+                          _reasonExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
                         fontStyle: FontStyle.italic,

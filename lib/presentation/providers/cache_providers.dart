@@ -1199,7 +1199,7 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
-  static const int _detailMatchCacheVersion = 5; // v5: 25-100 + richer reason
+  static const int _detailMatchCacheVersion = 6; // v6: explicit lang in prompt + loading state fix
   final Ref _ref;
   final String _productId;
   final String _languageCode;
@@ -1310,6 +1310,8 @@ class _GeminiMatchScoreNotifier
           'You are the personalization engine for a shopping app. For the given USER + PRODUCT, '
           'you output BOTH a personalized match score AND the short summary text shown under the score. '
           'The score and text are produced TOGETHER in one pass.\n\n'
+          'OUTPUT LANGUAGE: write the "reason" field strictly in language code "$langCode" '
+          '(${_languageDisplayName(langCode)}). Do not mix languages. JSON keys must stay in English.\n\n'
           'User profile:\n${jsonEncode(profileJson)}\n\n'
           'Product:\n${jsonEncode(productJson)}\n\n'
           'Score this product on a 25-100 scale for this user. Never go below 25.\n'
@@ -1703,6 +1705,24 @@ class _GeminiMatchScoreNotifier
       return '$topTradeOff is the main limitation to keep in mind.';
     }
     return 'It stands out through its overall technical balance and category position.';
+  }
+
+  String _languageDisplayName(String code) {
+    const map = <String, String>{
+      'ar': 'Arabic',
+      'de': 'German',
+      'en': 'English',
+      'es': 'Spanish',
+      'fr': 'French',
+      'it': 'Italian',
+      'ja': 'Japanese',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'pt': 'Portuguese',
+      'sv': 'Swedish',
+      'tr': 'Turkish',
+    };
+    return map[code.toLowerCase()] ?? 'English';
   }
 
   String _sanitizeMatchReason({
