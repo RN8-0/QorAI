@@ -1,402 +1,939 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR ADMIN — Tech Score Engine v2
-//  Universal product scoring (0-100) from PB specs.
+//  COMPAIR — Tech Score Engine v3
+//  Rank-based GPU/CPU/Chipset + dynamic per-category normalization
+//  + explicit weight tables for 40 categories.
 //
-//  Pipeline per category:
-//    1. Extract numeric/categorical features from product.specs
-//    2. Normalize against the category's min/max
-//    3. Weighted sum (only weights for present features count)
-//    4. Percentile rank within category
-//    5. Power-curve scaling: round(20 + 80 * (p/100)^0.75)
-//    6. Release-year decay (-3% per year, floor 0.70)
+//  Pipeline:
+//    1. Lookup spec value via multi-name field probe
+//    2. Categorize each spec: rank | lookup | numeric (norm/lower)
+//    3. Per-category: 1st pass collects numeric maxes
+//    4. Per-product: weighted sum with renormalization for missing
+//    5. Year decay (smartphone-style table) applied at the end
+//
+//  Works in browser (window.ScoreEngine) AND Node (module.exports).
 // ═══════════════════════════════════════════════════════════════
 
-(function (global) {
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.ScoreEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  // ── Chipset benchmark table (AnTuTu v10 ref, normalized 0-100) ──
-  // Higher = stronger SoC. Used by smartphones/tablets/laptops.
-  const CHIPSETS = [
-    // Apple — desktop class
-    [/m4 ?ultra/i, 100], [/m4 ?max/i, 98], [/m4 ?pro/i, 95], [/m4(?!\w)/i, 90],
-    [/m3 ?ultra/i, 97], [/m3 ?max/i, 95], [/m3 ?pro/i, 90], [/m3(?!\w)/i, 85],
-    [/m2 ?ultra/i, 92], [/m2 ?max/i, 88], [/m2 ?pro/i, 84], [/m2(?!\w)/i, 78],
-    [/m1 ?ultra/i, 85], [/m1 ?max/i, 80], [/m1 ?pro/i, 75], [/m1(?!\w)/i, 68],
-    // Apple — A series (phones/tablets)
-    [/a19 ?pro/i, 99], [/a19/i, 95], [/a18 ?pro/i, 92], [/a18/i, 88],
-    [/a17 ?pro/i, 85], [/a17/i, 80], [/a16/i, 75], [/a15/i, 65], [/a14/i, 55],
-    // Snapdragon flagships (8 series)
-    [/snapdragon ?8 ?(elite|gen ?5)/i, 96], [/snapdragon ?8 ?gen ?4/i, 92],
-    [/snapdragon ?8 ?gen ?3/i, 86], [/snapdragon ?8 ?gen ?2/i, 78], [/snapdragon ?8 ?gen ?1/i, 68],
-    [/snapdragon ?8\+? ?gen ?1/i, 72], [/snapdragon ?888/i, 60], [/snapdragon ?870/i, 55],
-    // Snapdragon mid-range (7/6/4)
-    [/snapdragon ?7 ?gen ?3/i, 60], [/snapdragon ?7 ?gen ?2/i, 55], [/snapdragon ?7 ?gen ?1/i, 50],
-    [/snapdragon ?6 ?gen ?3/i, 48], [/snapdragon ?6 ?gen ?1/i, 42],
-    [/snapdragon ?695/i, 40], [/snapdragon ?680/i, 35], [/snapdragon ?4 ?gen ?2/i, 30],
-    // MediaTek Dimensity
-    [/dimensity ?9400/i, 90], [/dimensity ?9300/i, 84], [/dimensity ?9200/i, 76], [/dimensity ?9000/i, 70],
-    [/dimensity ?8400/i, 70], [/dimensity ?8300/i, 65], [/dimensity ?8200/i, 60], [/dimensity ?8100/i, 55],
-    [/dimensity ?7300/i, 50], [/dimensity ?7200/i, 45], [/dimensity ?7050/i, 40], [/dimensity ?6300/i, 32],
-    // Exynos
-    [/exynos ?2400/i, 80], [/exynos ?2200/i, 65], [/exynos ?2100/i, 55], [/exynos ?1480/i, 50], [/exynos ?1380/i, 42],
-    // Tensor
-    [/tensor ?g4/i, 75], [/tensor ?g3/i, 68], [/tensor ?g2/i, 60], [/tensor(?!\w)/i, 55],
-    // Intel desktop/laptop
-    [/core ?ultra ?9/i, 92], [/core ?ultra ?7/i, 80], [/core ?ultra ?5/i, 65],
-    [/i9-1[34][\d]/i, 88], [/i9-12/i, 78], [/i9/i, 75],
-    [/i7-1[34][\d]/i, 78], [/i7-12/i, 68], [/i7/i, 62],
-    [/i5-1[34][\d]/i, 65], [/i5-12/i, 55], [/i5/i, 50],
-    [/i3/i, 35], [/celeron|pentium/i, 20],
-    // AMD Ryzen
-    [/ryzen ?9 ?9[0-9]{3}/i, 90], [/ryzen ?9 ?7/i, 85], [/ryzen ?9/i, 78],
-    [/ryzen ?7 ?9/i, 80], [/ryzen ?7 ?7/i, 72], [/ryzen ?7/i, 65],
-    [/ryzen ?5 ?9/i, 65], [/ryzen ?5 ?7/i, 58], [/ryzen ?5/i, 52],
-    [/ryzen ?3/i, 38],
+  // ─────────────────────────────────────────────────────────────
+  //  RANK LISTS (longest-name match wins, fall back to interp)
+  // ─────────────────────────────────────────────────────────────
+
+  const GPU_DESKTOP = [
+    ['RTX 5090 D', 99], ['RTX 5090', 100],
+    ['RX 9900 XTX', 97], ['RTX 5080', 96], ['RX 9800 XT', 93],
+    ['RTX 5070 Ti', 90], ['RTX 4090', 88], ['RTX 5070', 85],
+    ['RX 9070 XT', 83], ['RTX 4080 Super', 81], ['RTX 4080', 79],
+    ['RX 9070', 77], ['RTX 5060 Ti', 75],
+    ['RTX 4070 Ti Super', 73], ['RTX 4070 Ti', 71], ['RX 7900 XTX', 70],
+    ['RTX 4070 Super', 68], ['RX 7900 XT', 66],
+    ['RTX 5060', 63], ['RTX 4070', 61],
+    ['RX 7800 XT', 58], ['RTX 4060 Ti', 55], ['RX 7700 XT', 52],
+    ['RTX 4060', 48], ['RX 7600 XT', 45],
+    ['RTX 3060 Ti', 41], ['RTX 4050', 38], ['RX 6700 XT', 35],
+    ['RTX 3060', 32], ['RTX 3050', 26], ['RX 6600', 22],
+    ['RTX 2060', 19], ['GTX 1660 Ti', 15], ['RX 6500 XT', 12], ['GTX 1650', 9],
+    ['MX570', 6],
+    ['Intel Arc A770', 58], ['Intel Arc A750', 52], ['Intel Arc A380', 20],
   ];
 
-  // ── GPU benchmark (laptop/desktop) ──
-  const GPUS = [
-    [/rtx ?5090/i, 100], [/rtx ?5080/i, 95], [/rtx ?5070 ?ti/i, 88], [/rtx ?5070/i, 84],
-    [/rtx ?4090/i, 95], [/rtx ?4080/i, 88], [/rtx ?4070 ?ti/i, 82], [/rtx ?4070/i, 76],
-    [/rtx ?4060 ?ti/i, 70], [/rtx ?4060/i, 64], [/rtx ?4050/i, 56],
-    [/rtx ?3090/i, 78], [/rtx ?3080/i, 72], [/rtx ?3070/i, 64], [/rtx ?3060/i, 54], [/rtx ?3050/i, 44],
-    [/rx ?7900 ?xtx/i, 90], [/rx ?7900 ?xt/i, 84], [/rx ?7800/i, 76], [/rx ?7700/i, 68], [/rx ?7600/i, 56],
-    [/rx ?6900/i, 72], [/rx ?6800/i, 66], [/rx ?6700/i, 56], [/rx ?6600/i, 46],
-    [/intel arc/i, 50], [/iris xe/i, 35], [/uhd graphics/i, 20], [/integrated/i, 18],
+  const GPU_LAPTOP = [
+    ['RTX 5090 Laptop', 94], ['RTX 5080 Laptop', 88], ['RTX 5070 Ti Laptop', 82],
+    ['RTX 5070 Laptop', 76], ['RTX 5060 Laptop', 65],
+    ['RTX 4090 Laptop', 80], ['RTX 4080 Laptop', 72], ['RTX 4070 Laptop', 62],
+    ['RTX 4060 Laptop', 50], ['RTX 4050 Laptop', 40],
+    ['RTX 3060 Laptop', 30], ['RTX 3050 Laptop', 22],
+    ['RX 7600M XT', 55], ['RX 7600M', 46], ['RX 6700M', 38], ['Arc A770M', 48],
+  ].concat(GPU_DESKTOP); // also accept desktop names in laptop SKUs
+
+  const CPU_LAPTOP = [
+    ['Core Ultra 9 285HX', 100], ['Ryzen 9 9955HX', 99], ['Core i9-14900HX', 95],
+    ['Core Ultra 7 265HX', 91], ['Ryzen 9 7945HX', 90], ['Core i9-13980HX', 88],
+    ['Core Ultra 7 255H', 84], ['Ryzen 9 8945HS', 83], ['Core i7-14700HX', 80],
+    ['Core Ultra 5 245H', 75], ['Ryzen 7 8845HS', 74], ['Core i7-13700H', 71],
+    ['Core Ultra 5 235H', 67], ['Ryzen 7 7745HX', 65], ['Core i5-14500H', 60],
+    ['Ryzen 5 8645HS', 55], ['Core i5-13500H', 52], ['Core Ultra 5 125H', 50],
+    ['Ryzen 5 7535HS', 44], ['Core i5-12500H', 41], ['Ryzen 5 5600H', 32],
+    ['Core i5-11400H', 28], ['Ryzen 5 5500U', 22], ['Core i5-10300H', 18],
+    ['Ryzen 3 5300U', 12], ['Celeron', 6], ['Pentium', 6],
   ];
 
-  // ── Display panel quality ──
-  const PANELS = [
-    [/(amoled|oled|super amoled|dynamic amoled|ltpo|qd-?oled|micro ?led)/i, 100],
-    [/(retina|liquid retina|p3)/i, 90],
-    [/(ips lcd|ips)/i, 70],
-    [/(va|pls|tft)/i, 55],
-    [/(lcd)/i, 50],
-    [/(tn)/i, 25],
-    [/(e-?ink)/i, 60],
+  const CPU_DESKTOP = [
+    ['Ryzen 9 9950X', 100], ['Core i9-14900K', 98], ['Ryzen 9 7950X', 95],
+    ['Core i9-13900K', 92], ['Ryzen 9 9900X', 88], ['Core i7-14700K', 84],
+    ['Ryzen 7 9700X', 80], ['Core i7-13700K', 77], ['Ryzen 7 7700X', 73],
+    ['Core i5-14600K', 68], ['Ryzen 5 9600X', 64], ['Core i5-13600K', 61],
+    ['Ryzen 5 7600X', 57], ['Core i5-12600K', 51], ['Ryzen 5 5600X', 44],
+    ['Core i5-12400', 38], ['Ryzen 5 5600', 35], ['Core i3-13100', 26],
+    ['Ryzen 3 4100', 18], ['Celeron', 6], ['Pentium', 6],
   ];
 
-  // ── Connectivity tiers ──
-  const CONNECTIVITY = {
-    wifi: [[/wi-?fi ?7|802\.11be/i, 100], [/wi-?fi ?6e|802\.11ax.*6e/i, 85], [/wi-?fi ?6|802\.11ax/i, 75], [/wi-?fi ?5|802\.11ac/i, 55], [/wi-?fi ?4|802\.11n/i, 30]],
-    bluetooth: [[/5\.[34]/i, 100], [/5\.2/i, 85], [/5\.[01]/i, 70], [/4\.[12]/i, 50], [/4\.0/i, 35]],
-    network: [[/5g/i, 100], [/lte ?cat ?\d{2}/i, 80], [/4g|lte/i, 70], [/3g/i, 30]],
+  const CHIPSET_PHONE = [
+    ['Snapdragon 8 Elite', 100], ['Apple A18 Pro', 100], ['Dimensity 9400', 98],
+    ['Exynos 2500', 94], ['Snapdragon 8 Gen 3', 90], ['Apple A17 Pro', 90],
+    ['Dimensity 9300', 87], ['Exynos 2400', 84], ['Snapdragon 8 Gen 2', 80],
+    ['Apple A16', 80], ['Dimensity 9200', 77], ['Kirin 9000S', 72],
+    ['Snapdragon 7s Gen 3', 65], ['Dimensity 8300', 63],
+    ['Snapdragon 7 Gen 3', 61], ['Exynos 1480', 58],
+    ['Snapdragon 6 Gen 3', 50], ['Dimensity 7300', 48], ['Helio G99 Ultra', 45],
+    ['Dimensity 6300', 38], ['Helio G99', 36], ['Snapdragon 6s Gen 3', 33],
+    ['Helio G88', 26], ['Snapdragon 4 Gen 2', 24], ['Dimensity 6100+', 22],
+    ['Helio G85', 16], ['Snapdragon 4s Gen 2', 12], ['Helio G36', 6],
+    // Apple A older
+    ['Apple A18', 95], ['Apple A17', 88], ['Apple A15', 70], ['Apple A14', 60], ['Apple A13', 48],
+    // Apple M (tablets)
+    ['Apple M4', 100], ['Apple M3', 95], ['Apple M2', 88], ['Apple M1', 78],
+  ];
+
+  // Family detection for interpolation (longest first)
+  const FAMILIES = [
+    'Core Ultra 9', 'Core Ultra 7', 'Core Ultra 5',
+    'Core i9', 'Core i7', 'Core i5', 'Core i3',
+    'Ryzen 9', 'Ryzen 7', 'Ryzen 5', 'Ryzen 3',
+    'RTX', 'GTX', 'RX',
+    'Snapdragon 8', 'Snapdragon 7', 'Snapdragon 6', 'Snapdragon 4', 'Snapdragon',
+    'Dimensity', 'Exynos', 'Helio', 'Kirin',
+    'Apple A', 'Apple M',
+  ];
+
+  // ─────────────────────────────────────────────────────────────
+  //  CATEGORICAL LOOKUPS (substring match, longest wins)
+  // ─────────────────────────────────────────────────────────────
+
+  const LOOKUPS = {
+    panel: [
+      ['LTPO OLED', 100], ['LTPO AMOLED', 100], ['Dynamic AMOLED', 98],
+      ['Super AMOLED', 95], ['AMOLED', 95], ['Mini-LED', 82], ['MiniLED', 82],
+      ['QD-OLED', 100], ['OLED', 100], ['QLED', 85], ['Retina', 92],
+      ['IPS LCD', 70], ['IPS', 70], ['VA', 65], ['PLS', 65],
+      ['LCD', 55], ['TFT', 40], ['TN', 30], ['E-Ink', 60],
+    ],
+    resolution: [
+      ['8K', 100], ['7680', 100], ['4320', 100],
+      ['4K', 95], ['UHD', 95], ['3840', 95], ['2160', 95],
+      ['QHD+', 88], ['3200', 88], ['3120', 88], ['3088', 88],
+      ['QHD', 82], ['1440', 82], ['2560', 82], ['1600', 82],
+      ['FHD+', 72], ['2400', 72], ['2340', 72], ['2412', 72],
+      ['FHD', 65], ['1080', 65], ['1920', 65],
+      ['HD+', 45], ['1600x720', 45], ['1612', 45],
+      ['HD', 35], ['720', 35], ['1280', 35],
+    ],
+    hdr: [
+      ['Dolby Vision IQ', 100], ['Dolby Vision', 95], ['HDR10+', 90],
+      ['HDR10', 75], ['HLG', 65], ['HDR', 55],
+    ],
+    wifi: [
+      ['Wi-Fi 7', 100], ['WiFi 7', 100], ['802.11be', 100],
+      ['Wi-Fi 6E', 88], ['WiFi 6E', 88],
+      ['Wi-Fi 6', 75], ['WiFi 6', 75], ['802.11ax', 75],
+      ['Wi-Fi 5', 55], ['WiFi 5', 55], ['802.11ac', 55],
+      ['Wi-Fi 4', 35], ['802.11n', 35],
+    ],
+    bluetooth: [
+      ['5.4', 100], ['5.3', 90], ['5.2', 80], ['5.1', 72], ['5.0', 62],
+      ['4.2', 40], ['4.1', 35], ['4.0', 30],
+    ],
+    codec: [
+      ['LDAC', 90], ['aptX Lossless', 100], ['aptX Adaptive', 85],
+      ['aptX HD', 80], ['aptX', 70], ['LHDC', 80],
+      ['AAC', 60], ['SBC', 40],
+    ],
+    psu_efficiency: [
+      ['Titanium', 100], ['Platinum', 90], ['Gold', 80],
+      ['Silver', 65], ['Bronze', 50], ['80+', 40], ['Standard', 20],
+    ],
+    vram: [
+      ['48', 100], ['32', 95], ['24', 88], ['20', 80], ['16', 72],
+      ['12', 62], ['10', 55], ['8', 50], ['6', 35], ['4', 20], ['2', 10],
+    ],
+    lan_speed: [
+      ['10G', 100], ['10 Gbit', 100], ['5G', 88], ['2.5G', 75], ['2.5 Gbit', 75],
+      ['1G', 55], ['Gigabit', 55], ['100M', 20],
+    ],
+    smart_os: [
+      ['Google TV', 100], ['Tizen', 92], ['webOS', 92], ['VIDAA', 75],
+      ['Android TV', 80], ['Android', 70], ['Roku', 70], ['tvOS', 90],
+    ],
+    network_5g: [['5G', 100], ['4G', 55], ['LTE', 55], ['3G', 15]],
+    ip_rating: [
+      ['IP69', 100], ['IPX9', 100], ['IP68', 90], ['IP67', 75],
+      ['IP66', 65], ['IP65', 60], ['IP54', 45], ['IPX4', 45], ['IP53', 35],
+    ],
+    sensor_size_phone: [
+      ['1.0"', 100], ['1 inch', 100], ['1/1.12', 96], ['1/1.28', 92],
+      ['1/1.3', 92], ['1/1.4', 88], ['1/1.5', 84], ['1/1.56', 82],
+      ['1/1.7', 76], ['1/1.74', 76], ['1/2', 65], ['1/2.0', 65],
+      ['1/2.3', 60], ['1/2.5', 54], ['1/2.7', 47], ['1/2.8', 44],
+      ['1/3', 34], ['1/3.4', 28], ['1/4', 22],
+    ],
+    csensor: [ // Camera sensor size (DSLR/mirrorless)
+      ['Medium Format', 100], ['Full Frame', 90], ['APS-H', 78], ['APS-C', 70],
+      ['Micro Four Thirds', 55], ['MFT', 55], ['1 inch', 45], ['1/1.7', 30],
+    ],
+    panel_switch: [ // Keyboard switches
+      ['Hall Effect', 100], ['Magnetic', 100], ['Optical', 90],
+      ['Linear', 85], ['Tactile', 80], ['Clicky', 78],
+      ['Mechanical', 75], ['Membrane', 35], ['Scissor', 50],
+    ],
+    keyboard_type: [
+      ['Magnetic', 100], ['Hall Effect', 100], ['Optical', 92],
+      ['Mechanical', 80], ['Hybrid', 60], ['Membrane', 35], ['Scissor', 45],
+    ],
+    case_form: [
+      ['E-ATX', 100], ['Full Tower', 95], ['ATX', 80], ['Mid Tower', 80],
+      ['Micro-ATX', 60], ['mATX', 60], ['Mini-ITX', 45], ['ITX', 45],
+    ],
+    cooler_type: [
+      ['Liquid', 100], ['AIO', 95], ['Water', 95], ['Tower', 70], ['Air', 60], ['Low Profile', 40],
+    ],
+    headphone_water: [
+      ['IPX8', 100], ['IPX7', 90], ['IPX6', 75], ['IPX5', 60], ['IPX4', 50], ['IPX3', 35], ['IPX2', 20],
+    ],
   };
 
   // ─────────────────────────────────────────────────────────────
-  //  Helpers
+  //  SPEC FIELD NAMES (try in order, first hit wins)
+  //  Match against keys (case + space + hyphen normalized).
   // ─────────────────────────────────────────────────────────────
 
-  function _toNum(v) {
-    if (v == null) return null;
-    if (typeof v === 'number') return isFinite(v) ? v : null;
-    const s = String(v).replace(/\u00a0/g, ' ').trim();
-    if (!s) return null;
-    // Pull the first numeric chunk (handles "8 GB", "12.4 inch", "5,000 mAh")
-    const m = s.match(/-?\d+([.,]\d+)?/);
+  const FIELDS = {
+    gpu:        ['GPU Model', 'External Graphics Processor (GPU)', 'Graphics Processor (GPU)', 'Graphics Processor', 'Graphics', 'Ekran Kartı', 'Ekran Karti', 'GPU'],
+    cpu:        ['Processor Model', 'Main Processor (CPU)', 'CPU Model', 'CPU', 'Processor', 'İşlemci', 'Islemci', 'Ana İşlemci', 'Ana Islemci'],
+    ram:        ['Memory (RAM)', 'RAM Capacity', 'RAM (GB)', 'RAM', 'Memory', 'Bellek', 'Sistem Belleği', 'Sistem Bellegi'],
+    storage:    ['Storage Capacity', 'Internal Storage', 'Storage', 'SSD Capacity', 'Hard Disk', 'Depolama', 'Dahili Hafıza', 'Dahili Hafiza'],
+    battery:    ['Battery Capacity (Typical)', 'Battery Capacity', 'Battery Power', 'Battery (mAh)', 'Battery', 'Batarya Kapasitesi', 'Batarya', 'Pil'],
+    battery_life: ['Battery Life', 'Listening Time', 'Music Time', 'Talk Time', 'Pil Ömrü', 'Calma Suresi', 'Çalma Süresi'],
+    screen_size:['Display Size', 'Screen Size', 'Ekran Boyutu', 'Display Size (Diagonal)', 'Diagonal'],
+    refresh:    ['Screen Refresh Rate', 'Display Refresh Rate', 'Refresh Rate', 'Yenileme Hızı', 'Yenileme Hizi'],
+    chipset:    ['Chipset', 'System Chip', 'SoC', 'Ana İşlemci', 'Ana Islemci', 'CPU', 'Processor', 'İşlemci', 'Islemci'],
+    panel:      ['Screen Technology', 'Panel Type', 'Display Technology', 'Display Type', 'Panel Tipi', 'Ekran Tipi', 'Ekran Teknolojisi'],
+    resolution: ['Display Resolution', 'Screen Resolution', 'Resolution', 'Çözünürlük', 'Cozunurluk', 'Ekran Çözünürlüğü'],
+    main_camera:['Main Camera', 'Main Camera Resolution', 'Rear Camera', 'Primary Camera', 'Ana Kamera', 'Arka Kamera'],
+    front_camera:['Front Camera', 'Selfie Camera', 'Ön Kamera', 'On Kamera', 'Selfie'],
+    network_5g: ['Network', 'Cellular', 'Mobile Network', 'Mobil Ağ', 'Mobil Ag', 'Şebeke', 'Sebeke', 'Generation'],
+    weight:     ['Weight', 'Ağırlık', 'Agirlik'],
+    wifi:       ['Wi-Fi', 'WiFi', 'Wireless', 'Kablosuz Bağlantı', 'Kablosuz Baglanti'],
+    bluetooth:  ['Bluetooth', 'Bluetooth Version', 'Bluetooth Versiyonu'],
+    release_year: ['Release Date', 'Release Year', 'Announcement Date', 'Tanıtım Tarihi', 'Tanitim Tarihi', 'Çıkış Tarihi', 'Cikis Tarihi', 'Çıkış Yılı'],
+    ip_rating:  ['Water Resistance', 'IP Rating', 'Su Geçirmezlik', 'Su Gecirmezlik', 'Sertifika'],
+    // GPU
+    vram:       ['Memory Size', 'Video Memory', 'VRAM', 'Bellek Boyutu', 'Memory'],
+    bandwidth:  ['Memory Bandwidth', 'Bandwidth', 'Bant Genişliği'],
+    boost_clock:['Boost Clock', 'Game Clock', 'Boost Frequency'],
+    base_clock: ['Base Clock', 'Base Frequency', 'Core Clock'],
+    cores:      ['Core Count', 'Number of Cores', 'CUDA Cores', 'Stream Processors', 'Çekirdek Sayısı', 'Cekirdek Sayisi'],
+    threads:    ['Thread Count', 'Number of Threads', 'Threads', 'İş Parçacığı'],
+    cache_l3:   ['L3 Cache', 'Cache (L3)', 'Cache'],
+    tdp:        ['TDP', 'Thermal Design Power', 'Power Consumption'],
+    process_nm: ['Process', 'Manufacturing Process', 'Lithography', 'İşlem'],
+    igpu:       ['Integrated Graphics', 'iGPU', 'Tümleşik Ekran Kartı'],
+    // RAM
+    ram_speed:  ['Memory Speed', 'Speed', 'Frequency', 'Hız'],
+    ram_cas:    ['CAS Latency', 'CL', 'Latency'],
+    // SSD
+    seq_read:   ['Sequential Read', 'Read Speed', 'Max Read', 'Okuma Hızı'],
+    seq_write:  ['Sequential Write', 'Write Speed', 'Max Write', 'Yazma Hızı'],
+    iops:       ['Random Read IOPS', 'Random IOPS', 'IOPS'],
+    interface:  ['Interface', 'Form Factor', 'Bus'],
+    tbw:        ['TBW', 'Endurance', 'Total Bytes Written'],
+    // PSU
+    watt:       ['Wattage', 'Total Power', 'Power', 'Güç'],
+    efficiency: ['Efficiency', '80 Plus', '80+ Rating', 'Verimlilik'],
+    modular:    ['Modular', 'Modülerlik'],
+    fan_size:   ['Fan Size', 'Fan Boyutu'],
+    // Audio
+    driver:     ['Driver Size', 'Driver', 'Sürücü', 'Surucu'],
+    anc:        ['ANC', 'Active Noise Cancellation', 'Aktif Gürültü Engelleme', 'Noise Cancellation'],
+    watt_rms:   ['Output Power (RMS)', 'RMS Power', 'Output Power', 'Çıkış Gücü'],
+    channels:   ['Channels', 'Channel Configuration', 'Kanal'],
+    // Camera
+    sensor:     ['Sensor Size', 'Sensor', 'Sensör Boyutu', 'Sensor Boyutu'],
+    megapixels: ['Megapixels', 'Resolution', 'Çözünürlük (MP)', 'Effective Pixels'],
+    iso:        ['ISO Range', 'Max ISO', 'ISO'],
+    fps_burst:  ['Continuous Shooting', 'Burst Rate', 'FPS', 'Frames Per Second'],
+    video_res:  ['Max Video Resolution', 'Video Resolution', 'Video'],
+    ibis:       ['Image Stabilization', 'IBIS', 'Stabilization', 'Sabitleme'],
+    shutter:    ['Shutter Speed', 'Max Shutter', 'Obtüratör'],
+    evf:        ['EVF', 'Viewfinder', 'Vizör', 'Vizor'],
+    // Lens
+    aperture:   ['Aperture', 'Max Aperture', 'F-Stop', 'Diyafram'],
+    focal:      ['Focal Length', 'Focal Range', 'Odak Uzaklığı'],
+    ois:        ['Optical Stabilization', 'OIS', 'Optik Sabitleme'],
+    min_focus:  ['Minimum Focus Distance', 'Min Focus', 'Min Odak'],
+    mount:      ['Lens Mount', 'Mount', 'Bağlantı'],
+    // Mouse/keyboard
+    dpi:        ['DPI', 'Max DPI', 'Sensitivity'],
+    polling:    ['Polling Rate', 'Report Rate'],
+    buttons:    ['Buttons', 'Number of Buttons', 'Tuş Sayısı'],
+    switch:     ['Switch Type', 'Switch', 'Mekanik Switch', 'Anahtar'],
+    // Routers
+    total_mbps: ['Speed', 'Total Speed', 'Combined Speed', 'Mbps'],
+    bands:      ['Bands', 'Frequency Bands', 'Band'],
+    lan:        ['LAN Ports', 'WAN/LAN', 'Ethernet'],
+    // Drones / vacuums
+    range:      ['Range', 'Max Range', 'Menzil'],
+    flight_time:['Flight Time', 'Max Flight', 'Uçuş Süresi'],
+    suction:    ['Suction', 'Suction Power', 'Pa', 'Emiş Gücü'],
+    runtime:    ['Runtime', 'Battery Runtime', 'Çalışma Süresi'],
+    // VR
+    fov:        ['Field of View', 'FOV', 'Görüş Açısı'],
+    // Others
+    type:       ['Type', 'Tür', 'Tip'],
+    audio_watt: ['Audio Power', 'Speaker Power', 'Audio Output'],
+    contrast:   ['Contrast Ratio', 'Contrast', 'Kontrast'],
+    lumens:     ['Brightness', 'ANSI Lumens', 'Lumens'],
+    response_ms:['Response Time', 'Tepki Süresi'],
+    color_gamut:['Color Gamut', 'sRGB', 'DCI-P3', 'Renk Gamutu'],
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  //  WEIGHTS — 40 categories (sums to 100 per cat)
+  // ─────────────────────────────────────────────────────────────
+
+  const WEIGHTS = {
+    smartphones: { chipset: 22, main_camera: 14, front_camera: 4, ram: 10, storage: 8, battery: 10, panel: 8, refresh: 6, resolution: 8, screen_size: 4, network_5g: 4 },
+    tablets:     { chipset: 22, ram: 12, storage: 10, battery: 12, screen_size: 10, refresh: 6, resolution: 10, panel: 8, main_camera: 5, network_5g: 5 },
+    laptops:     { cpu: 25, gpu: 18, ram: 13, storage: 10, battery: 8, screen_size: 4, refresh: 4, resolution: 6, panel: 5, weight_lo: 4, wifi: 3 },
+    desktops:    { cpu: 28, gpu: 22, ram: 15, storage: 15, watt: 6, cooler_type: 6, lan: 4, case_form: 4 },
+    monitors:    { screen_size: 16, resolution: 22, refresh: 18, panel: 14, response_ms_lo: 10, hdr: 8, color_gamut: 8, curved: 4 },
+    tvs:         { screen_size: 18, resolution: 18, panel: 22, refresh: 14, hdr: 12, smart_os: 6, hdmi21: 10 },
+    headphones:  { anc: 22, driver: 18, battery_life: 18, bluetooth: 12, codec: 18, headphone_water: 6, weight_lo: 6 },
+    earphones:   { anc: 22, driver: 18, battery_life: 18, bluetooth: 12, codec: 18, headphone_water: 6, weight_lo: 6 },
+    speakers:    { watt_rms: 28, drivers: 16, bluetooth: 10, wifi: 12, battery_life: 14, ip_rating: 10, bass: 10 },
+    cameras:     { csensor: 22, megapixels: 16, iso: 16, fps_burst: 14, video_res: 14, ibis: 8, shutter: 6, evf: 4 },
+    gpus:        { gpu_rank: 30, vram: 18, bandwidth: 12, cores: 12, boost_clock: 10, tdp_lo: 8, ray_tracing: 10 },
+    cpus:        { cores: 18, threads: 12, base_clock: 12, boost_clock: 18, cache_l3: 12, tdp_lo: 8, process_nm_lo: 12, igpu: 8 },
+    motherboards:{ chipset_tier: 25, ram_max: 15, m2_slots: 15, pcie_gen: 12, vrm: 10, lan_speed: 8, wifi_gen: 8, usbc: 7 },
+    ram:         { ram: 28, ram_speed: 28, ram_cas_lo: 20, ram_gen: 14, dual_channel: 10 },
+    ssd:         { storage: 22, seq_read: 22, seq_write: 18, iops: 14, interface: 14, tbw: 10 },
+    psu:         { watt: 35, efficiency: 30, modular: 15, warranty: 10, fan_size: 10 },
+    cases:       { case_form: 25, fan_slots: 20, radiator: 20, max_gpu: 15, dust_filter: 10, io_ports: 10 },
+    coolers:     { tdp: 35, cooler_type: 20, fan_cfm: 15, noise_lo: 15, radiator_mm: 15 },
+    smartwatches:{ chipset: 12, battery_life: 22, screen_size: 14, panel: 14, sensors: 18, ip_rating: 10, lte: 10 },
+    'smart-rings':{ sensors: 30, battery_days: 25, water_depth: 15, bluetooth: 10, weight_lo: 10, health: 10 },
+    'e-readers': { screen_size: 18, resolution: 22, storage: 12, battery_life: 18, frontlight: 12, ip_rating: 8, stylus: 10 },
+    soundbars:   { watt_rms: 22, channels: 26, has_sub: 14, hdmi_earc: 14, wifi: 10, atmos: 14 },
+    microphones: { type: 12, connection: 10, sample_rate: 18, bit_depth: 14, polar: 14, noise_lo: 16, shock: 8, gain: 8 },
+    'action-cameras': { video_res: 24, fps_burst: 18, ibis: 18, ip_rating: 14, battery: 12, csensor: 8, has_screen: 6 },
+    lenses:      { aperture_lo: 28, focal: 18, ois: 16, weight_lo: 12, min_focus_lo: 10, mount: 8, weather_seal: 8 },
+    dashcams:    { video_res: 26, night_vision: 16, fov: 12, parking: 12, gps: 10, dual_cam: 14, has_screen: 5, max_storage: 5 },
+    webcams:     { resolution: 32, fps_burst: 18, autofocus: 14, has_mic: 12, fov: 10, privacy: 8, low_light: 6 },
+    gimbals:     { axes: 22, payload: 22, battery_life: 18, ai_track: 14, weight_lo: 10, foldable: 8, bluetooth: 6 },
+    tripods:     { max_load: 26, max_height: 18, min_height_lo: 8, weight_lo: 14, sections: 8, head_type: 12, material: 14 },
+    consoles:    { cpu: 28, ram: 14, storage: 16, supports_4k: 12, supports_120: 10, ray_tracing: 10, controller: 4, online_sub: 6 },
+    gamepads:    { connection: 14, battery_life: 16, haptic: 14, adaptive: 14, hall_effect: 16, platform: 16, weight_lo: 10 },
+    'vr-headsets':{ resolution: 24, refresh: 18, fov: 16, standalone: 12, tracking: 12, weight_lo: 10, audio_watt: 4, battery_life: 4 },
+    'media-players': { supports_8k: 22, hdr: 18, codec: 14, wifi: 12, ram: 14, audio_formats: 12, ethernet: 8 },
+    keyboards:   { keyboard_type: 24, panel_switch: 16, wireless: 12, battery_life: 12, rgb: 6, hot_swap: 12, layout: 10, noise_lo: 8 },
+    mice:        { dpi: 22, polling: 18, weight_lo: 14, buttons: 10, wireless: 14, battery_life: 14, ergonomic: 8 },
+    routers:     { wifi: 28, total_mbps: 22, bands: 14, lan_speed: 14, mesh: 10, usb: 6, vpn: 6 },
+    printers:    { type: 18, color_duplex: 12, ppm: 18, dpi: 14, adf: 10, wifi: 14, paper_capacity: 8, duplex: 6 },
+    'robot-vacuums': { suction: 24, runtime: 18, lidar: 18, mop: 12, self_empty: 12, app: 8, obstacle: 8 },
+    drones:      { range: 18, flight_time: 18, megapixels: 16, max_speed: 10, wind_resist: 10, obstacle: 12, axes: 10, weight_lo: 6 },
+    projectors:  { lumens: 28, resolution: 22, contrast: 14, throw: 8, lamp_life: 10, hdr: 8, audio_watt: 6, smart: 4 },
+  };
+
+  // Year decay table (smartphone-style — applied to all categories)
+  function _yearDecay(year) {
+    if (!year) return 1.0;
+    if (year >= 2025) return 1.0;
+    if (year === 2024) return 0.97;
+    if (year === 2023) return 0.94;
+    if (year === 2022) return 0.91;
+    if (year === 2021) return 0.88;
+    return 0.85;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  PRIMITIVES
+  // ─────────────────────────────────────────────────────────────
+
+  function _normKey(s) { return String(s || '').toLowerCase().replace(/[\s_\-:()]+/g, ''); }
+
+  function _firstNumber(s) {
+    if (s == null) return null;
+    if (typeof s === 'number') return isFinite(s) ? s : null;
+    const m = String(s).replace(/\u00a0/g, ' ').match(/-?\d+([.,]\d+)?/);
     if (!m) return null;
     const n = parseFloat(m[0].replace(',', '.'));
     return isFinite(n) ? n : null;
   }
-
-  function _scoreFromTable(value, table) {
-    if (value == null) return null;
-    const s = String(value);
-    for (const [re, score] of table) {
-      if (re.test(s)) return score;
-    }
-    return null;
+  function _firstNumberAfter(s, marker) {
+    if (s == null) return null;
+    const m = String(s).match(new RegExp(marker + '\\D{0,3}(\\d+([.,]\\d+)?)', 'i'));
+    return m ? parseFloat(m[1].replace(',', '.')) : null;
   }
 
-  // Look through specs (flat + nested specSections) for the first
-  // value whose key matches any of the given regexes.
-  function _findSpec(specs, sections, regexList) {
-    const tries = [];
-    if (specs && typeof specs === 'object') {
-      for (const [k, v] of Object.entries(specs)) tries.push([k, v]);
+  // Fetch by candidate field names from flat specs + nested specSections
+  function _lookupRaw(p, candidates) {
+    const specs = p.specs || {};
+    const sections = p.specSections || {};
+    const wantSet = new Set(candidates.map(_normKey));
+    // Direct flat lookup
+    for (const k of Object.keys(specs)) {
+      if (wantSet.has(_normKey(k))) {
+        const v = specs[k]; if (v != null && String(v).trim() !== '') return { key: k, value: v };
+      }
     }
-    if (sections && typeof sections === 'object') {
-      for (const sec of Object.values(sections)) {
-        if (sec && typeof sec === 'object') {
-          for (const [k, v] of Object.entries(sec)) tries.push([k, v]);
+    // Section lookup
+    for (const [secName, sec] of Object.entries(sections)) {
+      if (sec && typeof sec === 'object') {
+        for (const k of Object.keys(sec)) {
+          if (wantSet.has(_normKey(k))) {
+            const v = sec[k]; if (v != null && String(v).trim() !== '') return { key: `${secName}/${k}`, value: v };
+          }
         }
       }
     }
-    for (const [k, v] of tries) {
-      const key = String(k).toLowerCase();
-      for (const re of regexList) {
-        if (re.test(key)) return { key: k, value: v };
+    // Substring fallback (key contains candidate)
+    const all = [];
+    for (const [k, v] of Object.entries(specs)) all.push([k, v, '']);
+    for (const [secName, sec] of Object.entries(sections)) {
+      if (sec && typeof sec === 'object') for (const [k, v] of Object.entries(sec)) all.push([k, v, secName]);
+    }
+    for (const cand of candidates) {
+      const cn = _normKey(cand);
+      for (const [k, v, sec] of all) {
+        if (_normKey(k).includes(cn) && v != null && String(v).trim() !== '') {
+          return { key: sec ? `${sec}/${k}` : k, value: v };
+        }
       }
     }
     return null;
   }
 
-  function _getNum(specs, sections, regexList) {
-    const hit = _findSpec(specs, sections, regexList);
-    return hit ? _toNum(hit.value) : null;
-  }
-
-  function _getStr(specs, sections, regexList) {
-    const hit = _findSpec(specs, sections, regexList);
+  function _lookupStr(p, fieldKey) {
+    const cands = FIELDS[fieldKey] || [fieldKey];
+    const hit = _lookupRaw(p, cands);
     return hit ? String(hit.value) : null;
   }
 
-  function _hasBool(specs, sections, regexList) {
-    const hit = _findSpec(specs, sections, regexList);
-    if (!hit) return null;
-    const v = String(hit.value).toLowerCase().trim();
-    if (/^(var|yes|true|1|✓|✔|evet|destekler|var\.|✅)/.test(v)) return 1;
-    if (/^(yok|no|false|0|—|-|✗|✘|hayır|hayir|desteklemez|❌)/.test(v)) return 0;
-    return 1; // any non-empty value implies presence
+  // ─────────────────────────────────────────────────────────────
+  //  RANK MATCHING (longest prefix wins, then interpolation)
+  // ─────────────────────────────────────────────────────────────
+
+  function _matchRank(model, list) {
+    if (!model) return null;
+    const lower = String(model).toLowerCase();
+    let best = null;
+    for (const [name, score] of list) {
+      const nm = name.toLowerCase();
+      if (lower.includes(nm)) {
+        if (!best || nm.length > best.len) best = { score, len: nm.length, key: name, exact: true };
+      }
+    }
+    if (best) return { score: best.score, exact: true, key: best.key };
+    // Interpolation
+    return _interpolateRank(model, list);
   }
 
-  function _yearOf(p) {
-    const specs = p.specs || {}; const sections = p.specSections || {};
-    const yearStr = _getStr(specs, sections, [/release|cikis|çıkış|launch|year|yil|yıl|tan[ıi]t[ıi]m/i]);
-    if (yearStr) {
-      const m = String(yearStr).match(/(20\d{2}|19\d{2})/);
-      if (m) return parseInt(m[1], 10);
-    }
-    if (p.scrapedAt) {
-      const d = new Date(p.scrapedAt);
-      if (!isNaN(d.getFullYear())) return d.getFullYear();
-    }
-    if (p.createdAt) {
-      const d = new Date(p.createdAt);
-      if (!isNaN(d.getFullYear())) return d.getFullYear();
+  function _interpolateRank(model, list) {
+    const ml = String(model).toLowerCase();
+    for (const fam of FAMILIES) {
+      const fl = fam.toLowerCase();
+      if (!ml.includes(fl)) continue;
+      const re = new RegExp(fl.replace(/\s+/g, '\\s*') + '\\s*([a-z]?-?\\d{3,5})', 'i');
+      const m = model.match(re);
+      if (!m) continue;
+      const num = parseInt(m[1].replace(/\D/g, ''), 10);
+      if (!num) continue;
+      const sameFam = list.map(([k, s]) => {
+        if (!k.toLowerCase().includes(fl)) return null;
+        const km = k.match(re);
+        if (!km) return null;
+        return [parseInt(km[1].replace(/\D/g, ''), 10), s];
+      }).filter(x => x && x[0]);
+      if (sameFam.length < 2) continue;
+      sameFam.sort((a, b) => a[0] - b[0]);
+      let lo = null, hi = null;
+      for (const [n, s] of sameFam) { if (n <= num) lo = [n, s]; if (n >= num && !hi) hi = [n, s]; }
+      if (lo && hi && lo[0] !== hi[0]) {
+        const t = (num - lo[0]) / (hi[0] - lo[0]);
+        return { score: lo[1] + t * (hi[1] - lo[1]), exact: false, key: `${fam} ${num} (interp ${lo[0]}↔${hi[0]})` };
+      }
+      return { score: (lo || hi)[1], exact: false, key: `${fam} ${num} (nearest)` };
     }
     return null;
   }
 
-  // Percentile rank (0-100): % of values strictly less than v
-  function _percentile(v, sorted) {
-    if (!sorted || !sorted.length) return 50;
-    let lo = 0, hi = sorted.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >>> 1;
-      if (sorted[mid] < v) lo = mid + 1;
-      else hi = mid;
+  function _matchLookup(value, table) {
+    if (!value) return null;
+    const lower = String(value).toLowerCase();
+    let best = null;
+    for (const [name, score] of table) {
+      const nm = name.toLowerCase();
+      if (lower.includes(nm)) {
+        if (!best || nm.length > best.len) best = { score, len: nm.length, key: name };
+      }
     }
-    return (lo / sorted.length) * 100;
+    return best ? { score: best.score, key: best.key } : null;
   }
 
-  // Power curve: percentile -> 0-100 scaled finalScore
-  function _scale(percentile) {
-    const p = Math.max(0, Math.min(100, percentile));
-    return 20 + 80 * Math.pow(p / 100, 0.75);
-  }
-
-  // Year decay: -3%/year from current year, floor 0.70
-  function _yearDecay(year) {
-    if (!year) return 1.0;
-    const now = new Date().getFullYear();
-    const age = Math.max(0, now - year);
-    return Math.max(0.70, 1.0 - age * 0.03);
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  Per-category feature extractors
-  //  Returns { features: { name -> raw 0-100 }, weights: { name -> w } }
-  //  Only present features contribute; weights renormalize automatically.
-  // ─────────────────────────────────────────────────────────────
-
-  function extractFeatures(p) {
-    const cat = String(p.category || '').toLowerCase().trim();
-    const specs = p.specs || {}; const sections = p.specSections || {};
-
-    // Universal extractors used across many cats
-    const ram = _getNum(specs, sections, [/ram(?!\w)|memory|bellek/i]);
-    const storage = _getNum(specs, sections, [/storage|depolama|hard ?disk|ssd|hdd|disk capacity/i]);
-    const battery = _getNum(specs, sections, [/battery|pil|batarya|capacity.*mah/i]);
-    const displaySize = _getNum(specs, sections, [/display ?size|ekran ?boyut|screen size|ekran/i]);
-    const refresh = _getNum(specs, sections, [/refresh ?rate|yenileme|hz/i]);
-    const resolutionStr = _getStr(specs, sections, [/resolution|çözünürlük|cozunurluk/i]);
-    const resolution = (() => {
-      if (!resolutionStr) return null;
-      const m = String(resolutionStr).match(/(\d{3,5})\s*[x×]\s*(\d{3,5})/);
-      if (m) return parseInt(m[1], 10) * parseInt(m[2], 10);
-      return null;
-    })();
-    const panel = _scoreFromTable(_getStr(specs, sections, [/panel ?type|panel|display ?type|ekran ?tipi/i]), PANELS);
-    const camMain = _getNum(specs, sections, [/main ?camera|ana ?kamera|primary ?camera|arka ?kamera|rear ?camera/i]);
-    const camFront = _getNum(specs, sections, [/front ?camera|selfie|ön ?kamera|on ?kamera/i]);
-    const cpu = _scoreFromTable(_getStr(specs, sections, [/processor|işlemci|islemci|chipset|cpu|soc/i]), CHIPSETS);
-    const gpu = _scoreFromTable(_getStr(specs, sections, [/graphics|gpu|ekran ?kart/i]), GPUS);
-    const weight = _getNum(specs, sections, [/weight|ağırlık|agirlik/i]);
-    const wifi = _scoreFromTable(_getStr(specs, sections, [/wi-?fi|wifi|kablosuz/i]), CONNECTIVITY.wifi);
-    const bt = _scoreFromTable(_getStr(specs, sections, [/bluetooth/i]), CONNECTIVITY.bluetooth);
-    const net = _scoreFromTable(_getStr(specs, sections, [/network|ağ ?bağlantısı|ag ?baglantisi|cellular|hücresel|hucresel|generation/i]), CONNECTIVITY.network);
-
-    // Helpers
-    const norm = (v, lo, hi) => v == null ? null : Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
-
-    // Defaults for cats without explicit table fall back here
-    function generic() {
-      const f = {};
-      if (cpu != null) f.cpu = cpu;
-      if (gpu != null) f.gpu = gpu;
-      if (ram != null) f.ram = norm(ram, 2, 64);
-      if (storage != null) f.storage = norm(storage, 16, 4000);
-      if (battery != null) f.battery = norm(battery, 1500, 10000);
-      if (displaySize != null) f.displaySize = norm(displaySize, 4, 17);
-      if (refresh != null) f.refresh = norm(refresh, 60, 240);
-      if (resolution != null) f.resolution = norm(resolution, 800 * 600, 3840 * 2160);
-      if (panel != null) f.panel = panel;
-      if (camMain != null) f.camera = norm(camMain, 8, 200);
-      const w = { cpu: 0.22, gpu: 0.10, ram: 0.12, storage: 0.10, battery: 0.10, displaySize: 0.06, refresh: 0.06, resolution: 0.10, panel: 0.08, camera: 0.06 };
-      return { features: f, weights: w };
+  // Year extraction
+  function _extractYear(p) {
+    const candidates = ['Release Date', 'Release Year', 'Announcement Date', 'Tanıtım Tarihi', 'Çıkış Tarihi', 'Çıkış Yılı'];
+    const hit = _lookupRaw(p, candidates);
+    if (hit) {
+      const m = String(hit.value).match(/(20\d{2}|19\d{2})/);
+      if (m) return parseInt(m[1], 10);
     }
-
-    // Smartphones / phones / tablets
-    if (/phone|smartphone|tablet/i.test(cat)) {
-      const f = {};
-      if (cpu != null) f.cpu = cpu;
-      if (ram != null) f.ram = norm(ram, 2, 24);
-      if (storage != null) f.storage = norm(storage, 32, 2000);
-      if (battery != null) f.battery = norm(battery, 2500, 7500);
-      if (displaySize != null) f.displaySize = norm(displaySize, 4.5, 14);
-      if (refresh != null) f.refresh = norm(refresh, 60, 165);
-      if (resolution != null) f.resolution = norm(resolution, 720 * 1280, 1440 * 3200);
-      if (panel != null) f.panel = panel;
-      if (camMain != null) f.camera = norm(camMain, 8, 200);
-      if (camFront != null) f.camFront = norm(camFront, 5, 60);
-      if (net != null) f.network = net;
-      const w = /tablet/i.test(cat)
-        ? { cpu: 0.22, ram: 0.12, storage: 0.10, battery: 0.12, displaySize: 0.10, refresh: 0.06, resolution: 0.10, panel: 0.08, camera: 0.05, network: 0.05 }
-        : { cpu: 0.22, ram: 0.10, storage: 0.08, battery: 0.10, displaySize: 0.04, refresh: 0.06, resolution: 0.08, panel: 0.08, camera: 0.16, camFront: 0.04, network: 0.04 };
-      return { features: f, weights: w };
-    }
-
-    // Laptops / notebooks
-    if (/laptop|notebook|macbook/i.test(cat)) {
-      const f = {};
-      if (cpu != null) f.cpu = cpu;
-      if (gpu != null) f.gpu = gpu;
-      if (ram != null) f.ram = norm(ram, 4, 128);
-      if (storage != null) f.storage = norm(storage, 128, 4000);
-      if (battery != null) f.battery = norm(battery, 2500, 9000);
-      if (displaySize != null) f.displaySize = norm(displaySize, 11, 18);
-      if (refresh != null) f.refresh = norm(refresh, 60, 240);
-      if (resolution != null) f.resolution = norm(resolution, 1366 * 768, 3840 * 2400);
-      if (panel != null) f.panel = panel;
-      if (weight != null) f.weight = 100 - norm(weight, 0.8, 4.0);
-      if (wifi != null) f.wifi = wifi;
-      const w = { cpu: 0.25, gpu: 0.18, ram: 0.13, storage: 0.10, battery: 0.08, displaySize: 0.04, refresh: 0.04, resolution: 0.06, panel: 0.05, weight: 0.04, wifi: 0.03 };
-      return { features: f, weights: w };
-    }
-
-    // Smartwatches / wearables
-    if (/watch|wearable|smartband|akıllı|akilli/i.test(cat)) {
-      const f = {};
-      if (battery != null) f.battery = norm(battery, 200, 500);
-      if (displaySize != null) f.displaySize = norm(displaySize, 1.0, 2.0);
-      if (panel != null) f.panel = panel;
-      const sensors = _hasBool(specs, sections, [/spo2|ecg|gps|nabız|heart/i]);
-      if (sensors != null) f.sensors = sensors * 100;
-      const w = { battery: 0.30, displaySize: 0.20, panel: 0.20, sensors: 0.30 };
-      return { features: f, weights: w };
-    }
-
-    // Headphones / earbuds
-    if (/headphone|earbud|airpod|kulakl/i.test(cat)) {
-      const f = {};
-      const anc = _hasBool(specs, sections, [/anc|aktif gürültü|gurultu|noise canc/i]);
-      if (anc != null) f.anc = anc * 100;
-      if (battery != null) f.battery = norm(battery, 4, 60); // hours
-      const driver = _getNum(specs, sections, [/driver|sürücü|surucu/i]);
-      if (driver != null) f.driver = norm(driver, 6, 50); // mm
-      if (bt != null) f.bluetooth = bt;
-      const codec = _hasBool(specs, sections, [/ldac|aptx|aac|lhdc/i]);
-      if (codec != null) f.codec = codec * 100;
-      const w = { anc: 0.25, battery: 0.20, driver: 0.20, bluetooth: 0.15, codec: 0.20 };
-      return { features: f, weights: w };
-    }
-
-    // TVs / monitors
-    if (/tv(?!\w)|television|monitor/i.test(cat)) {
-      const f = {};
-      if (displaySize != null) f.size = norm(displaySize, 24, 85);
-      if (refresh != null) f.refresh = norm(refresh, 60, 240);
-      if (resolution != null) f.resolution = norm(resolution, 1920 * 1080, 7680 * 4320);
-      if (panel != null) f.panel = panel;
-      const hdr = _hasBool(specs, sections, [/hdr10|dolby vision|hdr/i]);
-      if (hdr != null) f.hdr = hdr * 100;
-      const w = { size: 0.20, refresh: 0.20, resolution: 0.20, panel: 0.25, hdr: 0.15 };
-      return { features: f, weights: w };
-    }
-
-    // Cameras (DSLR/mirrorless)
-    if (/camera(?!\s*phone)/i.test(cat)) {
-      const f = {};
-      const mp = _getNum(specs, sections, [/megapixel|mp(?!s)|çözünürlük/i]);
-      if (mp != null) f.mp = norm(mp, 12, 100);
-      const iso = _getNum(specs, sections, [/iso/i]);
-      if (iso != null) f.iso = norm(iso, 1600, 102400);
-      const fps = _getNum(specs, sections, [/burst|fps|frame|kare/i]);
-      if (fps != null) f.fps = norm(fps, 5, 60);
-      const w = { mp: 0.30, iso: 0.30, fps: 0.40 };
-      return { features: f, weights: w };
-    }
-
-    // Default: generic numeric blend
-    return generic();
+    if (p.scrapedAt) { const d = new Date(p.scrapedAt); if (!isNaN(d.getFullYear())) return d.getFullYear(); }
+    if (p.created) { const d = new Date(p.created); if (!isNaN(d.getFullYear())) return d.getFullYear(); }
+    return null;
   }
 
   // ─────────────────────────────────────────────────────────────
-  //  Score one product given a category-wide reference
-  //  refScores: precomputed map { categoryKey: sortedRawScoresArray }
-  //  Two-pass: first call collects raw scores, second computes percentile.
+  //  SPEC EXTRACTORS  (return {value: 0-100, raw, parsed} or null)
+  //  - 'rank' specs return absolute 0-100
+  //  - 'lookup' specs return absolute 0-100
+  //  - 'numeric' specs return RAW number (normalized in pass-2)
+  //  - 'numeric_lo' specs return RAW number for lower-better
   // ─────────────────────────────────────────────────────────────
 
-  function rawScore(p) {
-    const { features, weights } = extractFeatures(p);
-    const presentKeys = Object.keys(features);
-    if (presentKeys.length < 2) return { raw: 0.5, presentKeys };
-    let sumW = 0;
-    for (const k of presentKeys) sumW += (weights[k] || 0);
-    if (sumW <= 0) return { raw: 0.5, presentKeys };
-    let acc = 0;
-    for (const k of presentKeys) {
-      const w = (weights[k] || 0) / sumW;
-      acc += w * (features[k] / 100);
+  // Returns: { score: 0-100|raw, type: 'rank|lookup|num|num_lo', raw: string, parsed: any, source: key }
+  function _extract(p, weightKey, productCategory) {
+    const cat = String(productCategory || '').toLowerCase();
+    const isLaptop = /laptop|notebook|macbook/.test(cat);
+
+    switch (weightKey) {
+      // ── RANK SPECS ──
+      case 'cpu': {
+        const s = _lookupStr(p, 'cpu');
+        if (!s) return null;
+        const list = isLaptop ? CPU_LAPTOP : (cat === 'cpus' || cat === 'desktops' ? CPU_DESKTOP : CPU_LAPTOP);
+        const m = _matchRank(s, list);
+        return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+      }
+      case 'gpu': {
+        const s = _lookupStr(p, 'gpu');
+        if (!s) return null;
+        const list = isLaptop ? GPU_LAPTOP : GPU_DESKTOP;
+        const m = _matchRank(s, list);
+        return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+      }
+      case 'gpu_rank': {
+        // For "gpus" category — name is the model itself
+        const s = _lookupStr(p, 'gpu') || p.name || '';
+        const m = _matchRank(s, GPU_DESKTOP);
+        return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+      }
+      case 'chipset': {
+        const s = _lookupStr(p, 'chipset');
+        if (!s) return null;
+        const m = _matchRank(s, CHIPSET_PHONE);
+        return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+      }
+      // ── LOOKUP SPECS ──
+      case 'panel': return _l(p, 'panel', LOOKUPS.panel);
+      case 'resolution': return _l(p, 'resolution', LOOKUPS.resolution);
+      case 'hdr': return _l(p, 'hdr', LOOKUPS.hdr) || _l(p, 'panel', LOOKUPS.hdr);
+      case 'wifi': return _l(p, 'wifi', LOOKUPS.wifi);
+      case 'wifi_gen': return _l(p, 'wifi', LOOKUPS.wifi);
+      case 'bluetooth': return _l(p, 'bluetooth', LOOKUPS.bluetooth);
+      case 'codec': return _l(p, 'codec', LOOKUPS.codec);
+      case 'efficiency': return _l(p, 'efficiency', LOOKUPS.psu_efficiency);
+      case 'lan_speed': return _l(p, 'wifi', LOOKUPS.lan_speed) || _l(p, 'lan', LOOKUPS.lan_speed);
+      case 'smart_os': return _l(p, 'panel', LOOKUPS.smart_os) || _hitOnAny(p, LOOKUPS.smart_os);
+      case 'network_5g': return _l(p, 'network_5g', LOOKUPS.network_5g);
+      case 'ip_rating':
+      case 'water_resistance': return _l(p, 'ip_rating', LOOKUPS.ip_rating);
+      case 'csensor': return _l(p, 'sensor', LOOKUPS.csensor);
+      case 'panel_switch': return _l(p, 'switch', LOOKUPS.panel_switch);
+      case 'keyboard_type': return _l(p, 'type', LOOKUPS.keyboard_type) || _l(p, 'switch', LOOKUPS.keyboard_type);
+      case 'case_form': return _l(p, 'type', LOOKUPS.case_form) || _l(p, 'panel', LOOKUPS.case_form);
+      case 'cooler_type': return _l(p, 'type', LOOKUPS.cooler_type);
+      case 'headphone_water': return _l(p, 'ip_rating', LOOKUPS.headphone_water);
+
+      // ── NUMERIC (higher better) ──
+      case 'ram': return _num(p, 'ram');
+      case 'storage': return _num(p, 'storage');
+      case 'battery': return _num(p, 'battery');
+      case 'battery_life': return _num(p, 'battery_life') || _num(p, 'battery');
+      case 'screen_size': return _num(p, 'screen_size');
+      case 'refresh': return _num(p, 'refresh');
+      case 'main_camera': return _num(p, 'main_camera');
+      case 'front_camera': return _num(p, 'front_camera');
+      case 'vram': {
+        const n = _firstNumber(_lookupStr(p, 'vram'));
+        return n ? { score: n, type: 'num', raw: n + ' GB' } : null;
+      }
+      case 'bandwidth': return _num(p, 'bandwidth');
+      case 'boost_clock': return _num(p, 'boost_clock');
+      case 'base_clock': return _num(p, 'base_clock');
+      case 'cores': return _num(p, 'cores');
+      case 'threads': return _num(p, 'threads');
+      case 'cache_l3': return _num(p, 'cache_l3');
+      case 'igpu': return _hasBool(p, ['Integrated Graphics', 'iGPU', 'Tümleşik']);
+      case 'ram_speed': return _num(p, 'ram_speed');
+      case 'ram_gen': {
+        const s = _lookupStr(p, 'ram') || _lookupStr(p, 'ram_speed') || '';
+        if (/ddr5/i.test(s)) return { score: 100, type: 'lookup', raw: 'DDR5' };
+        if (/ddr4/i.test(s)) return { score: 70, type: 'lookup', raw: 'DDR4' };
+        if (/ddr3/i.test(s)) return { score: 40, type: 'lookup', raw: 'DDR3' };
+        return null;
+      }
+      case 'dual_channel': return _hasBool(p, ['Dual Channel', 'Çift Kanal']);
+      case 'seq_read': return _num(p, 'seq_read');
+      case 'seq_write': return _num(p, 'seq_write');
+      case 'iops': return _num(p, 'iops');
+      case 'interface': {
+        const s = _lookupStr(p, 'interface') || '';
+        if (/pcie 5|gen5/i.test(s)) return { score: 100, type: 'lookup', raw: 'PCIe 5.0' };
+        if (/pcie 4|gen4|nvme/i.test(s)) return { score: 80, type: 'lookup', raw: 'PCIe 4.0/NVMe' };
+        if (/pcie 3|gen3/i.test(s)) return { score: 60, type: 'lookup', raw: 'PCIe 3.0' };
+        if (/sata/i.test(s)) return { score: 35, type: 'lookup', raw: 'SATA' };
+        return null;
+      }
+      case 'tbw': return _num(p, 'tbw');
+      case 'watt': return _num(p, 'watt');
+      case 'modular': return _hasBool(p, ['Modular', 'Modüler']);
+      case 'warranty': return _num(p, 'warranty');
+      case 'fan_size': return _num(p, 'fan_size');
+      case 'driver': return _num(p, 'driver');
+      case 'anc': return _hasBool(p, ['ANC', 'Active Noise', 'Gürültü Engelleme']);
+      case 'watt_rms': return _num(p, 'watt_rms') || _num(p, 'watt');
+      case 'channels': {
+        const s = _lookupStr(p, 'channels') || '';
+        const m = s.match(/(\d)\.(\d)/);
+        if (m) return { score: parseInt(m[1], 10) + parseFloat('0.' + m[2]), type: 'num', raw: s };
+        return _num(p, 'channels');
+      }
+      case 'megapixels': return _num(p, 'megapixels');
+      case 'iso': return _num(p, 'iso');
+      case 'fps_burst': return _num(p, 'fps_burst');
+      case 'video_res': {
+        const s = _lookupStr(p, 'video_res') || _lookupStr(p, 'resolution') || '';
+        if (/8k/i.test(s)) return { score: 100, type: 'lookup', raw: '8K' };
+        if (/4k|2160/i.test(s)) return { score: 85, type: 'lookup', raw: '4K' };
+        if (/1440|2k/i.test(s)) return { score: 70, type: 'lookup', raw: '1440p' };
+        if (/1080/i.test(s)) return { score: 55, type: 'lookup', raw: '1080p' };
+        if (/720/i.test(s)) return { score: 30, type: 'lookup', raw: '720p' };
+        return null;
+      }
+      case 'ibis': return _hasBool(p, ['Image Stabilization', 'IBIS', 'Stabilization']);
+      case 'shutter': return _num(p, 'shutter');
+      case 'evf': return _hasBool(p, ['EVF', 'Viewfinder', 'Vizör']);
+      case 'aperture': return _num(p, 'aperture');
+      case 'focal': return _num(p, 'focal');
+      case 'ois': return _hasBool(p, ['OIS', 'Optical Stabilization', 'Optik Sabitleme']);
+      case 'min_focus': return _num(p, 'min_focus');
+      case 'mount': return _hitOnAny(p, [['E-Mount', 80], ['RF Mount', 80], ['Z Mount', 80], ['L-Mount', 75], ['EF', 60], ['F Mount', 60], ['M43', 70]]);
+      case 'weather_seal': return _hasBool(p, ['Weather Sealed', 'Weatherproof', 'Hava Koşullarına']);
+      case 'dpi': return _num(p, 'dpi');
+      case 'polling': return _num(p, 'polling');
+      case 'buttons': return _num(p, 'buttons');
+      case 'wireless': return _hasBool(p, ['Wireless', 'Kablosuz']);
+      case 'rgb': return _hasBool(p, ['RGB', 'RGB Backlit']);
+      case 'hot_swap': return _hasBool(p, ['Hot Swap', 'Hot-Swappable', 'Hot-Swap']);
+      case 'ergonomic': return _hasBool(p, ['Ergonomic', 'Ergonomik']);
+      case 'layout': return _hasBool(p, ['NKRO', 'N-Key Rollover', 'Anti-Ghosting']);
+      case 'total_mbps': return _num(p, 'total_mbps');
+      case 'bands': {
+        const s = _lookupStr(p, 'bands') || '';
+        if (/quad|4-band/i.test(s)) return { score: 100, type: 'lookup', raw: 'Quad-Band' };
+        if (/tri|3-band/i.test(s)) return { score: 80, type: 'lookup', raw: 'Tri-Band' };
+        if (/dual|2-band/i.test(s)) return { score: 55, type: 'lookup', raw: 'Dual-Band' };
+        return _num(p, 'bands');
+      }
+      case 'lan': return _num(p, 'lan');
+      case 'mesh': return _hasBool(p, ['Mesh', 'Mesh Wi-Fi']);
+      case 'usb': return _hasBool(p, ['USB Port', 'USB']);
+      case 'vpn': return _hasBool(p, ['VPN', 'OpenVPN', 'WireGuard']);
+      case 'range': return _num(p, 'range');
+      case 'flight_time': return _num(p, 'flight_time');
+      case 'suction': return _num(p, 'suction');
+      case 'runtime': return _num(p, 'runtime') || _num(p, 'flight_time');
+      case 'fov': return _num(p, 'fov');
+      case 'lumens': return _num(p, 'lumens');
+      case 'contrast': return _num(p, 'contrast');
+      case 'lamp_life': return _num(p, 'lamp_life');
+      case 'audio_watt': return _num(p, 'audio_watt') || _num(p, 'watt');
+      case 'color_gamut': return _num(p, 'color_gamut');
+      case 'sample_rate': return _num(p, 'sample_rate');
+      case 'bit_depth': return _num(p, 'bit_depth');
+      // ── LOWER-BETTER (raw passed through, will be inverted in pass-2) ──
+      case 'weight_lo': return _numLo(p, 'weight');
+      case 'tdp_lo': return _numLo(p, 'tdp');
+      case 'process_nm_lo': return _numLo(p, 'process_nm');
+      case 'noise_lo': return _numLo(p, 'noise');
+      case 'response_ms_lo': return _numLo(p, 'response_ms');
+      case 'aperture_lo': return _numLo(p, 'aperture');
+      case 'min_focus_lo': return _numLo(p, 'min_focus');
+      case 'min_height_lo': return _numLo(p, 'screen_size'); // no specific field, fallback
+      case 'ram_cas_lo': return _numLo(p, 'ram_cas');
+      // ── BOOLEAN/PRESENCE ──
+      case 'curved': return _hasBool(p, ['Curved', 'Eğik']);
+      case 'has_sub': return _hasBool(p, ['Subwoofer', 'Sub']);
+      case 'hdmi_earc': return _hasBool(p, ['eARC', 'HDMI ARC']);
+      case 'hdmi21': return _hasBool(p, ['HDMI 2.1']);
+      case 'atmos': return _hasBool(p, ['Dolby Atmos', 'DTS:X']);
+      case 'has_screen': return _hasBool(p, ['Screen', 'Display', 'Ekran']);
+      case 'has_mic': return _hasBool(p, ['Microphone', 'Mikrofon']);
+      case 'autofocus': return _hasBool(p, ['Autofocus', 'Auto Focus']);
+      case 'privacy': return _hasBool(p, ['Privacy Shutter', 'Privacy Cover']);
+      case 'low_light': return _hasBool(p, ['Low Light', 'HDR', 'Night Mode']);
+      case 'gps': return _hasBool(p, ['GPS']);
+      case 'parking': return _hasBool(p, ['Parking Mode']);
+      case 'night_vision': return _hasBool(p, ['Night Vision', 'Night Mode']);
+      case 'dual_cam': return _hasBool(p, ['Dual Camera', 'Front & Rear']);
+      case 'max_storage': return _num(p, 'storage');
+      case 'foldable': return _hasBool(p, ['Foldable', 'Katlanabilir']);
+      case 'ai_track': return _hasBool(p, ['AI Tracking', 'Auto Tracking']);
+      case 'axes': {
+        const n = _num(p, 'axes');
+        if (n) return n;
+        const b = _hasBool(p, ['3-Axis']);
+        if (b) return { score: 100, type: 'lookup', raw: '3-Axis' };
+        return null;
+      }
+      case 'payload': return _num(p, 'payload');
+      case 'max_load': return _num(p, 'max_load');
+      case 'max_height': return _num(p, 'max_height');
+      case 'sections': return _num(p, 'sections');
+      case 'head_type': return _hasBool(p, ['Ball Head', 'Pan Tilt']);
+      case 'material': {
+        const s = _lookupStr(p, 'type') || '';
+        if (/carbon/i.test(s)) return { score: 100, type: 'lookup', raw: 'Carbon Fiber' };
+        if (/aluminum/i.test(s)) return { score: 70, type: 'lookup', raw: 'Aluminum' };
+        return null;
+      }
+      case 'supports_4k': return _hasBool(p, ['4K', '2160p']);
+      case 'supports_120': return _hasBool(p, ['120Hz', '120 Hz']);
+      case 'supports_8k': return _hasBool(p, ['8K', '4320p']);
+      case 'ray_tracing': return _hasBool(p, ['Ray Tracing', 'RT Cores']);
+      case 'controller': return _hasBool(p, ['Controller Included', 'Bundled Controller']);
+      case 'online_sub': return _hasBool(p, ['Online', 'Subscription']);
+      case 'haptic': return _hasBool(p, ['Haptic', 'Rumble', 'Titreşim']);
+      case 'adaptive': return _hasBool(p, ['Adaptive Trigger', 'Adaptive Triggers']);
+      case 'hall_effect': return _hasBool(p, ['Hall Effect', 'Magnetic']);
+      case 'platform': {
+        const s = _lookupStr(p, 'type') || '';
+        let count = 0;
+        ['PC', 'PlayStation', 'PS5', 'PS4', 'Xbox', 'Switch', 'Mobile'].forEach(x => { if (new RegExp(x, 'i').test(s)) count++; });
+        return count ? { score: Math.min(100, count * 25), type: 'num', raw: `${count} platforms` } : null;
+      }
+      case 'standalone': return _hasBool(p, ['Standalone']);
+      case 'tracking': {
+        const s = _lookupStr(p, 'type') || '';
+        if (/inside.?out/i.test(s)) return { score: 90, type: 'lookup', raw: 'Inside-Out' };
+        if (/outside.?in/i.test(s)) return { score: 100, type: 'lookup', raw: 'Outside-In' };
+        return null;
+      }
+      case 'audio_formats': return _hasBool(p, ['Dolby Atmos', 'DTS', 'TrueHD']);
+      case 'ethernet': return _hasBool(p, ['Ethernet', 'LAN']);
+      case 'sensors': {
+        const all = JSON.stringify(p.specs || {}) + JSON.stringify(p.specSections || {});
+        let count = 0;
+        ['Heart Rate', 'SpO2', 'ECG', 'GPS', 'Accelerometer', 'Gyroscope', 'Compass', 'Altimeter', 'Skin Temperature', 'Stress'].forEach(x => { if (new RegExp(x, 'i').test(all)) count++; });
+        return count ? { score: Math.min(100, count * 12), type: 'num', raw: `${count} sensors` } : null;
+      }
+      case 'lte': return _hasBool(p, ['LTE', 'eSIM', 'Cellular']);
+      case 'health': return _hasBool(p, ['Heart Rate', 'SpO2', 'ECG']);
+      case 'water_depth': {
+        const s = _lookupStr(p, 'ip_rating') || '';
+        const m = s.match(/(\d+)\s*m/i); if (m) return { score: parseFloat(m[1]), type: 'num', raw: s };
+        return null;
+      }
+      case 'battery_days': return _num(p, 'battery_life');
+      case 'frontlight': return _hasBool(p, ['Frontlight', 'Backlight', 'Warm Light']);
+      case 'stylus': return _hasBool(p, ['Stylus', 'Pen Support']);
+      case 'sensor_count':
+      case 'fan_slots': return _num(p, 'fan_size');
+      case 'radiator': return _hasBool(p, ['Radiator', '360mm', '280mm', '240mm']);
+      case 'radiator_mm': return _num(p, 'radiator');
+      case 'max_gpu': return _num(p, 'max_gpu');
+      case 'dust_filter': return _hasBool(p, ['Dust Filter']);
+      case 'io_ports': return _num(p, 'io_ports');
+      case 'fan_cfm': return _num(p, 'fan_cfm');
+      case 'tdp': return _num(p, 'tdp');
+      case 'tdp_capacity': return _num(p, 'tdp');
+      case 'chipset_tier': {
+        const s = _lookupStr(p, 'chipset') || '';
+        if (/x870e|z890|x870|x670e|z790/i.test(s)) return { score: 100, type: 'lookup', raw: s };
+        if (/x670|z690|b850|b760/i.test(s)) return { score: 75, type: 'lookup', raw: s };
+        if (/b650|b660|h770/i.test(s)) return { score: 60, type: 'lookup', raw: s };
+        if (/h670|a620|h610/i.test(s)) return { score: 35, type: 'lookup', raw: s };
+        return null;
+      }
+      case 'ram_max': return _num(p, 'ram');
+      case 'm2_slots': return _num(p, 'storage');
+      case 'pcie_gen': {
+        const s = _lookupStr(p, 'interface') || '';
+        if (/pcie 5/i.test(s)) return { score: 100, type: 'lookup', raw: 'PCIe 5' };
+        if (/pcie 4/i.test(s)) return { score: 75, type: 'lookup', raw: 'PCIe 4' };
+        if (/pcie 3/i.test(s)) return { score: 50, type: 'lookup', raw: 'PCIe 3' };
+        return null;
+      }
+      case 'vrm': return _num(p, 'vrm');
+      case 'usbc': return _hasBool(p, ['USB-C', 'Thunderbolt', 'Type-C']);
+      case 'connection': {
+        const s = _lookupStr(p, 'wifi') || _lookupStr(p, 'bluetooth') || '';
+        if (/2\.4 ?ghz|wireless/i.test(s) && /usb/i.test(s)) return { score: 100, type: 'lookup', raw: 'Tri-Mode' };
+        if (/wireless|bluetooth/i.test(s)) return { score: 80, type: 'lookup', raw: 'Wireless' };
+        if (/wired|usb/i.test(s)) return { score: 60, type: 'lookup', raw: 'Wired' };
+        return null;
+      }
+      case 'ppm': return _num(p, 'ppm');
+      case 'adf': return _hasBool(p, ['ADF', 'Auto Document Feeder']);
+      case 'duplex': return _hasBool(p, ['Duplex', 'Çift Yönlü']);
+      case 'color_duplex': return _hasBool(p, ['Color', 'Renkli']);
+      case 'paper_capacity': return _num(p, 'paper_capacity');
+      case 'lidar': return _hasBool(p, ['LiDAR', 'Laser Mapping']);
+      case 'mop': return _hasBool(p, ['Mop', 'Wet Mopping']);
+      case 'self_empty': return _hasBool(p, ['Self-Emptying', 'Auto Empty']);
+      case 'app': return _hasBool(p, ['App', 'Alexa', 'Google Home']);
+      case 'obstacle': return _hasBool(p, ['Obstacle Avoidance']);
+      case 'max_speed': return _num(p, 'max_speed');
+      case 'wind_resist': return _num(p, 'wind_resist');
+      case 'noise': return _num(p, 'noise');
+      case 'throw': return _num(p, 'throw');
+      case 'smart': return _hasBool(p, ['Smart', 'Android', 'Google TV']);
+      case 'drivers': return _num(p, 'driver');
+      case 'bass': return _hasBool(p, ['Subwoofer', 'Bass']);
+      case 'polar': return _hasBool(p, ['Cardioid', 'Omnidirectional', 'Bidirectional']);
+      case 'shock': return _hasBool(p, ['Shock Mount']);
+      case 'gain': return _hasBool(p, ['Gain Knob', 'Gain Dial']);
+      default: return null;
     }
-    return { raw: Math.max(0, Math.min(1, acc)), presentKeys };
   }
 
-  // Compute scores for an entire category in a single pass.
-  // products: array of PB records all sharing the same category.
-  // Returns array of { id, score, year, presentKeys, raw }
+  // Helper to produce a numeric (higher=better) extract result
+  function _num(p, fieldKey) {
+    const s = _lookupStr(p, fieldKey);
+    if (s == null) return null;
+    const n = _firstNumber(s);
+    return n == null ? null : { score: n, type: 'num', raw: s };
+  }
+  function _numLo(p, fieldKey) {
+    const s = _lookupStr(p, fieldKey);
+    if (s == null) return null;
+    const n = _firstNumber(s);
+    return n == null ? null : { score: n, type: 'num_lo', raw: s };
+  }
+  function _l(p, fieldKey, table) {
+    const s = _lookupStr(p, fieldKey);
+    if (!s) return null;
+    const m = _matchLookup(s, table);
+    return m && { score: m.score, type: 'lookup', raw: s, source: m.key };
+  }
+  function _hitOnAny(p, table) {
+    const all = JSON.stringify(p.specs || {}) + ' ' + JSON.stringify(p.specSections || {});
+    const m = _matchLookup(all, table);
+    return m && { score: m.score, type: 'lookup', raw: m.key };
+  }
+  function _hasBool(p, candidates) {
+    const hit = _lookupRaw(p, candidates);
+    if (!hit) return null;
+    const v = String(hit.value).toLowerCase().trim();
+    if (/^(yok|no|false|0|—|-|✗|hayır|hayir|desteklemez|❌)$/i.test(v)) return { score: 0, type: 'bool', raw: 'no' };
+    return { score: 100, type: 'bool', raw: hit.value };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  CATEGORY SCORING (two-pass)
+  // ─────────────────────────────────────────────────────────────
+
   function scoreCategory(products, opts) {
     opts = opts || {};
-    const minSpecs = opts.minSpecs || 2;
-    // 1st pass: raw scores
+    if (!products || !products.length) return [];
+
+    // Pick weights by first product's category (assume homogeneous)
+    const cat = String((products[0].category || '')).toLowerCase();
+    const weights = WEIGHTS[cat] || WEIGHTS[cat.replace(/_/g, '-')] || WEIGHTS[cat.replace(/-/g, '_')];
+    if (!weights) {
+      return products.map(p => ({ id: p.id, name: p.name, score: 50, missing: ['unknown_category'], breakdown: {} }));
+    }
+
+    // Pass 1: extract raw values
     const rows = products.map(p => {
-      const { raw, presentKeys } = rawScore(p);
-      return { p, raw, presentKeys, year: _yearOf(p) };
-    });
-    const rawSorted = rows.map(r => r.raw).sort((a, b) => a - b);
-    // 2nd pass: percentile + scale + decay
-    return rows.map(r => {
-      let score;
-      if (r.presentKeys.length < minSpecs) {
-        score = 50; // neutral when too little data
-      } else {
-        const pct = _percentile(r.raw, rawSorted);
-        const decay = _yearDecay(r.year);
-        score = Math.round(_scale(pct) * decay);
+      const breakdown = {};
+      const missing = [];
+      for (const wKey of Object.keys(weights)) {
+        const r = _extract(p, wKey, cat);
+        if (r == null) { missing.push(wKey); continue; }
+        breakdown[wKey] = r;
       }
-      score = Math.max(1, Math.min(100, score));
-      return { id: r.p.id, name: r.p.name, score, year: r.year, presentKeys: r.presentKeys, raw: r.raw };
+      return { p, breakdown, missing, year: _extractYear(p) };
+    });
+
+    // Pass 2: gather max for 'num' / 'num_lo' specs across category
+    const maxByKey = {}, minByKey = {};
+    for (const wKey of Object.keys(weights)) {
+      const vals = rows.map(r => r.breakdown[wKey]).filter(b => b && (b.type === 'num' || b.type === 'num_lo')).map(b => b.score);
+      if (!vals.length) continue;
+      maxByKey[wKey] = Math.max.apply(null, vals);
+      minByKey[wKey] = Math.min.apply(null, vals);
+    }
+
+    // Pass 3: compute final scores
+    return rows.map(r => {
+      let sumW = 0, weightedSum = 0;
+      const finalBreakdown = {};
+      for (const [wKey, w] of Object.entries(weights)) {
+        const b = r.breakdown[wKey];
+        if (!b) continue;
+        let normScore = 0;
+        if (b.type === 'rank' || b.type === 'lookup' || b.type === 'bool') {
+          normScore = b.score;
+        } else if (b.type === 'num') {
+          const max = maxByKey[wKey] || 1;
+          normScore = max > 0 ? (b.score / max) * 100 : 0;
+        } else if (b.type === 'num_lo') {
+          const max = maxByKey[wKey] || 1;
+          normScore = max > 0 ? (1 - b.score / max) * 100 : 0;
+        }
+        normScore = Math.max(0, Math.min(100, normScore));
+        weightedSum += normScore * w;
+        sumW += w;
+        finalBreakdown[wKey] = { norm: +normScore.toFixed(1), weight: w, raw: b.raw, source: b.source, type: b.type, exact: b.exact };
+      }
+      // Renormalize weights for missing specs
+      const baseScore = sumW > 0 ? weightedSum / sumW : 0;
+      const decay = _yearDecay(r.year);
+      const final = Math.max(1, Math.min(100, Math.round(baseScore * decay)));
+      return {
+        id: r.p.id,
+        name: r.p.name,
+        score: final,
+        baseScore: +baseScore.toFixed(2),
+        decay,
+        year: r.year,
+        missing: r.missing,
+        breakdown: finalBreakdown,
+        sumW,
+      };
     });
   }
 
-  global.ScoreEngine = {
-    extractFeatures,
-    rawScore,
+  // Convenience: score a single product against pre-computed category
+  function scoreOne(product, categoryProducts) {
+    const list = categoryProducts || [product];
+    const all = scoreCategory(list);
+    return all.find(x => x.id === product.id);
+  }
+
+  // Recompute scores for all products in a category and return rows
+  function recalculateCategory(categorySlug, allProducts) {
+    const list = allProducts.filter(p => p.category === categorySlug);
+    return scoreCategory(list);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  EXPORTS
+  // ─────────────────────────────────────────────────────────────
+  return {
     scoreCategory,
-    yearOf: _yearOf,
+    scoreOne,
+    recalculateCategory,
+    extractYear: _extractYear,
     yearDecay: _yearDecay,
-    percentile: _percentile,
-    scale: _scale,
+    // Diagnostics / introspection
+    WEIGHTS, FIELDS, LOOKUPS,
+    GPU_DESKTOP, GPU_LAPTOP, CPU_LAPTOP, CPU_DESKTOP, CHIPSET_PHONE,
+    _matchRank, _matchLookup, _lookupRaw,
   };
-})(typeof window !== 'undefined' ? window : globalThis);
+});
