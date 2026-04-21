@@ -1,0 +1,3 @@
+category,product_id,product_name,slug,issue_type,issue,field_section,field_key,field_value
+tablets,wyxvp94bd9rapi2,"Microsoft Surface Pro 10 Tablet (Intel Core Ultra 7 165U)",microsoft-surface-pro-10-zea-00007,RAM_OUTLIER,"RAM=64GB (tablet için imkansız)","","Memory (RAM)","64GB"
+tablets,wyxvp94bd9rapi2,"Microsoft Surface Pro 10 Tablet (Intel Core Ultra 7 165U)",microsoft-surface-pro-10-zea-00007,RAM_OUTLIER,"RAM=64GB (tablet için imkansız)","MEMORY & Storage","Memory (RAM)","64GB"

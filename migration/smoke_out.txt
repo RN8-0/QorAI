@@ -1,0 +1,77 @@
+Ôùç injected env (14) from .env // tip: Ôùê encrypted .env [www.dotenvx.com]
+
+====================================================================================================
+SMARTPHONES
+
+--- TOP 10 ---
+   87  [flagship  ] Nubia Z70S Ultra                                        | chipset=100(22%) ram=68(10%) storage=82(8%) battery=99(10%)
+   87  [flagship  ] Xiaomi 17 Ultra (China)                                 | chipset=100(22%) front_camera=100(4%) ram=68(10%) storage=82(8%)
+   86  [flagship  ] Nubia RedMagic 11 Pro (24 GB / 1 TB)                    | chipset=100(22%) front_camera=27(4%) ram=77(10%) storage=91(8%)
+   86  [flagship  ] Redmi K80 Pro                                           | chipset=100(22%) front_camera=100(4%) ram=61(10%) storage=82(8%)
+   86  [flagship  ] Redmi K90                                               | chipset=100(22%) front_camera=100(4%) ram=61(10%) storage=73(8%)
+   86  [flagship  ] Samsung Galaxy S26 Ultra (16 GB / 1 TB)                 | chipset=100(22%) front_camera=28(4%) ram=68(10%) storage=91(8%)
+   86  [flagship  ] Samsung Galaxy Z TriFold                                | chipset=100(22%) front_camera=84(4%) ram=68(10%) storage=82(8%)
+   86  [flagship  ] Vivo iQOO 15                                            | chipset=100(22%) front_camera=28(4%) ram=68(10%) storage=82(8%)
+   86  [flagship  ] Vivo iQOO 15 Ultra                                      | chipset=100(22%) front_camera=28(4%) ram=68(10%) storage=82(8%)
+   86  [flagship  ] Xiaomi Mix Flip 2                                       | chipset=100(22%) front_camera=100(4%) ram=61(10%) storage=82(8%)
+
+--- BOTTOM 5 ---
+    1  [          ] ZTE Nubia Z80 Ultra (1 TB)                              | 
+    1  [          ] Xiaomi 17 (512 GB)                                      | 
+    1  [          ] Xiaomi 17 Ultra (1 TB)                                  | 
+    1  [          ] Xiaomi 15T Pro (1 TB)                                   | 
+    1  [          ] Xiaomi 15 Ultra                                         | 
+
+TIER DA─ŞILIMI: flagship=153 | none=3292 | upper-mid=114 | mid=191 | entry=370
+
+=== "Xiaomi 17 Ultra" ===
+    1  [          ] Xiaomi 17 Ultra (1 TB)                                  |   anchor=chipset:-
+   85  [flagship  ] Xiaomi 17 Ultra (1 TB)                                  | chipset=100(22%) front_camera=28(4%) ram=68(10%) storage=91(8%)  anchor=chipset:100
+
+=== "iPhone 16 Pro Max" ===
+   80  [flagship  ] Apple iPhone 16 Pro Max (1 TB)                          | chipset=100(22%) front_camera=26(4%) ram=53(10%) storage=91(8%)  anchor=chipset:100
+    1  [          ] Apple iPhone 16 Pro Max (1 TB)                          |   anchor=chipset:-
+
+=== "Galaxy S25 Ultra" ===
+    1  [          ] Samsung Galaxy S25 Ultra (1 TB)                         |   anchor=chipset:-
+   85  [flagship  ] Samsung Galaxy S25 Ultra (1 TB)                         | chipset=100(22%) front_camera=28(4%) ram=61(10%) storage=91(8%)  anchor=chipset:100
+
+=== "Redmi Note 13" ===
+   71  [          ] Redmi Note 13                                           | front_camera=30(4%) ram=53(10%) storage=73(8%) battery=96(10%)  anchor=chipset:-
+   57  [entry     ] Redmi Note 13 5G (China)                                | chipset=22(22%) front_camera=84(4%) ram=47(10%) storage=64(8%)  anchor=chipset:22
+
+=== "Redmi Note 14 Pro" ===
+   76  [          ] Redmi Note 14 Pro (12 GB / 512 GB)                      | front_camera=28(4%) ram=61(10%) storage=82(8%) battery=97(10%)  anchor=chipset:-
+   68  [mid       ] Redmi Note 14 Pro 5G                                    | chipset=48(22%) front_camera=28(4%) ram=61(10%) storage=82(8%)  anchor=chipset:48
+
+====================================================================================================
+LAPTOPS
+
+--- TOP 10 ---
+   86  [          ] Asus ROG Strix G16 G614FRA27-S5110A27 Laptop            | cpu=99(25%) ram=100(13%) storage=100(10%) battery=51(8%)
+   86  [          ] Asus ROG Strix G16 G614FRA30-S5110A30 Laptop            | cpu=99(25%) ram=100(13%) storage=100(10%) battery=51(8%)
+   86  [          ] Asus ROG Strix G16 G614FRA45-S5110A45 Laptop            | cpu=99(25%) ram=100(13%) storage=100(10%) battery=51(8%)
+   86  [          ] Game Garaj Slayer R9T-5070Ti C2 Laptop                  | cpu=99(25%) ram=100(13%) storage=100(10%) battery=52(8%)
+   86  [          ] Game Garaj Slayer R9T3D-5070TI C2 Laptop                | cpu=99(25%) ram=100(13%) storage=100(10%) battery=52(8%)
+   86  [          ] MSI Raider 18 HX AI A2XWIG Laptop                       | cpu=100(25%) ram=100(13%) storage=100(10%) battery=52(8%)
+   86  [          ] MSI Raider A18 HX A9WIG Laptop                          | cpu=99(25%) ram=100(13%) storage=100(10%) battery=52(8%)
+   86  [          ] MSI Raider A18 HX A9WJG Laptop                          | cpu=99(25%) ram=100(13%) storage=100(10%) battery=52(8%)
+   86  [          ] MSI Titan 18 HX AI A2XWJG Laptop                        | cpu=100(25%) ram=100(13%) storage=100(10%) battery=52(8%)
+   86  [          ] MSI Titan 18 HX AI A2XWJG Laptop                        | cpu=100(25%) ram=100(13%) storage=100(10%) battery=52(8%)
+
+--- BOTTOM 5 ---
+    1  [          ] MSI Titan 18 HX AI A2XWJG-620TR Laptop                  | 
+    1  [          ] MSI Titan 18 HX AI A2XWJG-217TR Laptop                  | 
+    1  [          ] MSI Titan 18 HX A14VIG-067TR Laptop                     | 
+    1  [          ] MSI Raider A18 HX A9WJG-091TR Laptop                    | 
+    1  [          ] MSI Raider A18 HX A9WIG-092TR Laptop                    | 
+
+TIER DA─ŞILIMI: none=6841
+
+=== "ROG Strix" ===
+   79  [          ] Asus ROG Strix G16 G614FRA10-S5110A10 Laptop            | cpu=99(25%) ram=68(13%) storage=91(10%) battery=51(8%)  anchor=gpu:-
+   84  [          ] Asus ROG Strix G16 G614FRA12-S5110A12 Laptop            | cpu=99(25%) ram=100(13%) storage=91(10%) battery=51(8%)  anchor=gpu:-
+
+=== "GameRaider" ===
+   79  [          ] GameRaider FLUX GR16 Laptop (H960300S16BW-TR001)        | cpu=95(25%) ram=68(13%) storage=91(10%) battery=50(8%)  anchor=gpu:-
+   73  [          ] GameRaider FLUX GR16 Laptop (H760180S16B-TR001)         | cpu=80(25%) ram=68(13%) storage=91(10%) battery=50(8%)  anchor=gpu:-

@@ -1,7 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR — Tech Score Engine v3
-//  Rank-based GPU/CPU/Chipset + dynamic per-category normalization
-//  + explicit weight tables for 40 categories.
+//  COMPAIR — Tech Score Engine v4 (Anchored)
+//  • Mutlak rank-based GPU/CPU/Chipset (future-proof)
+//  • Log-scale numeric normalization against global references
+//  • 95th-percentile outlier clipping (category-max fallback)
+//  • Tier caps (flagship/upper-mid/mid/entry) — stops mid-segment inflation
+//  • Year decay, nested specs walk, multi-schema field probe
 //
 //  Pipeline:
 //    1. Lookup spec value via multi-name field probe
@@ -336,6 +339,76 @@
     drones:      { range: 18, flight_time: 18, megapixels: 16, max_speed: 10, wind_resist: 10, obstacle: 12, axes: 10, weight_lo: 6 },
     projectors:  { lumens: 28, resolution: 22, contrast: 14, throw: 8, lamp_life: 10, hdr: 8, audio_watt: 6, smart: 4 },
   };
+
+  // ─────────────────────────────────────────────────────────────
+  //  v4 ANCHORED REFERENCES
+  //  Log-scale numeric normalization against global reference values
+  //  instead of category max/min. Keeps top absolute, prevents
+  //  one outlier from inflating / deflating the whole category.
+  //  Formula: score = 100 * log(1 + val) / log(1 + REF), capped at 100.
+  // ─────────────────────────────────────────────────────────────
+  const NUMERIC_REFS = {
+    // memory / storage
+    ram: 64, storage: 2048, vram: 24, ram_max: 256, ram_speed: 8000, ram_cas_lo: 30,
+    // battery
+    battery: 7000, battery_life: 60, battery_days: 14,
+    // display
+    screen_size: 75, refresh: 240, response_ms_lo: 20, color_gamut: 100,
+    contrast: 5000, lumens: 4000,
+    // camera
+    megapixels: 200, iso: 204800, fps_burst: 30, sensor_count: 10, sensors: 10,
+    shutter: 8000, aperture_lo: 5.6, focal: 600, min_focus_lo: 50,
+    // audio
+    driver: 50, drivers: 8, watt_rms: 600, audio_watt: 200, channels: 7.1,
+    // network / ports
+    total_mbps: 20000, bands: 4, lan: 8,
+    // misc
+    weight_lo: 3.5, tdp_lo: 600, process_nm_lo: 10, noise_lo: 50,
+    dpi: 32000, polling: 8000, buttons: 15,
+    seq_read: 14000, seq_write: 12000, iops: 2000000, tbw: 3000,
+    watt: 1600, bandwidth: 2000, boost_clock: 6.5, base_clock: 5.5,
+    cores: 64, threads: 128, cache_l3: 128,
+    // spec grabs
+    suction: 10000, runtime: 300, flight_time: 60, range: 20,
+    max_load: 30, max_height: 200, sections: 6, paper_capacity: 1000,
+    payload: 10, fov: 180, ppm: 60, tdp: 400, tdp_capacity: 400,
+    m2_slots: 8, vrm: 20, fan_size: 200, fan_cfm: 150, fan_slots: 10,
+    radiator_mm: 420, max_gpu: 500, max_speed: 100, wind_resist: 15,
+    warranty: 10, lamp_life: 30000, io_ports: 16, throw: 3,
+    sample_rate: 192000, bit_depth: 32, noise: 50,
+    front_camera: 60, main_camera: 200, water_depth: 100,
+  };
+
+  function _logScale(val, ref) {
+    if (!isFinite(val) || val <= 0 || !isFinite(ref) || ref <= 0) return 0;
+    const s = 100 * Math.log(1 + val) / Math.log(1 + ref);
+    return Math.max(0, Math.min(100, s));
+  }
+
+  function _percentile(sortedAsc, pct) {
+    if (!sortedAsc.length) return 0;
+    const idx = Math.min(sortedAsc.length - 1, Math.floor((pct / 100) * sortedAsc.length));
+    return sortedAsc[idx];
+  }
+
+  // Tier caps based on anchor score (GPU for laptops/desktops/gpus, CPU as fallback,
+  // chipset for phones/tablets). Prevents mid-segment products from reaching flagship scores.
+  const TIER_CAPS = [
+    { min: 85, cap: 100, tier: 'flagship' },
+    { min: 65, cap: 92,  tier: 'upper-mid' },
+    { min: 45, cap: 80,  tier: 'mid' },
+    { min: 0,  cap: 68,  tier: 'entry' },
+  ];
+  const ANCHOR_KEY_BY_CAT = {
+    smartphones: ['chipset'], tablets: ['chipset'],
+    laptops: ['gpu', 'cpu'], desktops: ['gpu', 'cpu'],
+    gpus: ['gpu_rank'], cpus: ['cpu'],
+    consoles: ['cpu'], 'vr-headsets': ['cpu'],
+  };
+  function _tierFor(anchorScore) {
+    if (anchorScore == null) return null;
+    return TIER_CAPS.find(t => anchorScore >= t.min) || TIER_CAPS[TIER_CAPS.length - 1];
+  }
 
   // Year decay table (smartphone-style — applied to all categories)
   function _yearDecay(year) {
@@ -910,16 +983,21 @@
       return { p, breakdown, missing, year: _extractYear(p) };
     });
 
-    // Pass 2: gather max for 'num' / 'num_lo' specs across category
+    // Pass 2: gather 95th-percentile max (outlier-robust) for 'num' / 'num_lo' specs
+    // across category. Used only as fallback when NUMERIC_REFS has no entry for the key.
     const maxByKey = {}, minByKey = {};
     for (const wKey of Object.keys(weights)) {
-      const vals = rows.map(r => r.breakdown[wKey]).filter(b => b && (b.type === 'num' || b.type === 'num_lo')).map(b => b.score);
+      const vals = rows.map(r => r.breakdown[wKey])
+        .filter(b => b && (b.type === 'num' || b.type === 'num_lo'))
+        .map(b => b.score)
+        .filter(v => isFinite(v));
       if (!vals.length) continue;
-      maxByKey[wKey] = Math.max.apply(null, vals);
-      minByKey[wKey] = Math.min.apply(null, vals);
+      vals.sort((a, b) => a - b);
+      maxByKey[wKey] = _percentile(vals, 95) || vals[vals.length - 1];
+      minByKey[wKey] = _percentile(vals, 5)  || vals[0];
     }
 
-    // Pass 3: compute final scores
+    // Pass 3: compute final scores (anchored log-scale when REF known, else 95p cat-max)
     return rows.map(r => {
       let sumW = 0, weightedSum = 0;
       const finalBreakdown = {};
@@ -930,11 +1008,22 @@
         if (b.type === 'rank' || b.type === 'lookup' || b.type === 'bool') {
           normScore = b.score;
         } else if (b.type === 'num') {
-          const max = maxByKey[wKey] || 1;
-          normScore = max > 0 ? (b.score / max) * 100 : 0;
+          const ref = NUMERIC_REFS[wKey];
+          if (isFinite(ref) && ref > 0) {
+            normScore = _logScale(b.score, ref);
+          } else {
+            const max = maxByKey[wKey] || 1;
+            normScore = max > 0 ? (b.score / max) * 100 : 0;
+          }
         } else if (b.type === 'num_lo') {
-          const max = maxByKey[wKey] || 1;
-          normScore = max > 0 ? (1 - b.score / max) * 100 : 0;
+          // lower-is-better: invert log-scale
+          const ref = NUMERIC_REFS[wKey];
+          if (isFinite(ref) && ref > 0) {
+            normScore = 100 - _logScale(b.score, ref);
+          } else {
+            const max = maxByKey[wKey] || 1;
+            normScore = max > 0 ? (1 - b.score / max) * 100 : 0;
+          }
         }
         normScore = Math.max(0, Math.min(100, normScore));
         weightedSum += normScore * w;
@@ -944,14 +1033,31 @@
       // Renormalize weights for missing specs
       const baseScore = sumW > 0 ? weightedSum / sumW : 0;
       const decay = _yearDecay(r.year);
-      const final = Math.max(1, Math.min(100, Math.round(baseScore * decay)));
+
+      // Tier cap: try each anchor key in order (e.g. gpu → cpu for laptops)
+      let cappedBase = baseScore;
+      let tier = null, tierCap = 100, anchorKey = null, anchorScore = null;
+      const anchors = ANCHOR_KEY_BY_CAT[cat] || [];
+      for (const ak of anchors) {
+        if (r.breakdown[ak]) {
+          anchorKey = ak;
+          anchorScore = r.breakdown[ak].score;
+          const t = _tierFor(anchorScore);
+          if (t) { tier = t.tier; tierCap = t.cap; cappedBase = Math.min(baseScore, tierCap); }
+          break;
+        }
+      }
+
+      const final = Math.max(1, Math.min(100, Math.round(cappedBase * decay)));
       return {
         id: r.p.id,
         name: r.p.name,
         score: final,
         baseScore: +baseScore.toFixed(2),
+        cappedBase: +cappedBase.toFixed(2),
         decay,
         year: r.year,
+        tier, tierCap, anchorKey, anchorScore,
         missing: r.missing,
         breakdown: finalBreakdown,
         sumW,
@@ -985,5 +1091,6 @@
     WEIGHTS, FIELDS, LOOKUPS,
     GPU_DESKTOP, GPU_LAPTOP, CPU_LAPTOP, CPU_DESKTOP, CHIPSET_PHONE,
     _matchRank, _matchLookup, _lookupRaw,
+    NUMERIC_REFS, TIER_CAPS, ANCHOR_KEY_BY_CAT,
   };
 });
