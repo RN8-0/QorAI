@@ -1017,6 +1017,10 @@ class _PredictionCacheNotifier
       productContext,
       RegExp(r'release year:\s*(20\d{2})'),
     );
+    final techScore = _extractDouble(
+      productContext,
+      RegExp(r'tech score:\s*([0-9]+(?:\.[0-9]+)?)'),
+    );
     final priceValue = _extractPriceValue(price);
     final currentYear = DateTime.now().year;
     final age = releaseYear == null ? null : currentYear - releaseYear;
@@ -1041,6 +1045,7 @@ class _PredictionCacheNotifier
       'powerbanks',
     }.contains(normalizedCategory);
     final premium =
+        (techScore != null && techScore >= 88) ||
         priceValue >= 1200 ||
         priceValue >= 50000 ||
         [
@@ -1281,6 +1286,7 @@ class _GeminiMatchScoreNotifier
         'name': product.name,
         'brand': product.brand ?? '',
         'category': product.category,
+        'techScore': product.techScore,
         'highlights': productHighlights,
         if (tradeOffs.isNotEmpty) 'tradeOffs': tradeOffs,
         'specs': topSpecs,
@@ -1577,6 +1583,16 @@ class _GeminiMatchScoreNotifier
       final text = '${entry.key}: $value';
       final score = 1.4 + focusScore(text);
       highlights.add((text: text, score: score));
+    }
+
+    if (product.techScore >= 90) {
+      highlights.add((
+        text: 'Tech score ${product.techScore.toStringAsFixed(0)}/100',
+        score:
+            focusAreas.any((area) => area == 'Performance' || area == 'Gaming')
+            ? 3.0
+            : 1.5,
+      ));
     }
 
     highlights.sort((a, b) => b.score.compareTo(a.score));

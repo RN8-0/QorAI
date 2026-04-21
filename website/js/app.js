@@ -25,13 +25,14 @@ let db = null;
 let allProducts = [];
 let filteredProducts = [];
 let displayCount = 24;
-let currentSort = 'name';
+let currentSort = 'score';
 let currentCat = 'all';
 let compareList = [];
 let searchDebounce = null;
 let activeFilters = {
   categories: [],
-  prices: []
+  prices: [],
+  scores: []
 };
 
 /* ── App Init ───────────────────────────────────────────────── */
@@ -51,6 +52,7 @@ async function loadProducts() {
     const items = await pbLoadProducts(500);
     allProducts = items
       .filter(p => p.name && p.imageUrl);
+    allProducts.sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
     filteredProducts = [...allProducts];
     buildCategoryFilters();
     renderProducts();
@@ -110,6 +112,19 @@ function applyFilters() {
     );
   }
 
+  if (activeFilters.scores.length > 0) {
+    results = results.filter(p => {
+      const s = p.techScore || 0;
+      return activeFilters.scores.some(threshold => {
+        const t = parseInt(threshold, 10);
+        if (t === 80) return s >= 80;
+        if (t === 60) return s >= 60 && s < 80;
+        if (t === 0)  return s < 60;
+        return false;
+      });
+    });
+  }
+
   results = sortProducts(results, currentSort);
   filteredProducts = results;
   displayCount = 24;
@@ -120,6 +135,7 @@ function applyFilters() {
 function sortProducts(arr, type) {
   const sorted = [...arr];
   switch (type) {
+    case 'score':      sorted.sort((a, b) => (b.techScore  || 0) - (a.techScore  || 0)); break;
     case 'price-asc':  sorted.sort((a, b) => (a.price_raw  || 0) - (b.price_raw  || 0)); break;
     case 'price-desc': sorted.sort((a, b) => (b.price_raw  || 0) - (a.price_raw  || 0)); break;
     case 'name':       sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr')); break;
@@ -205,6 +221,7 @@ function renderProducts() {
 function createProductCard(p) {
   const cat = (p.category || '').toLowerCase();
   const meta = CAT_META[cat] || { icon: '📦', label: cat || 'Diğer' };
+  const score = p.techScore != null ? p.techScore : null;
   const inCompare = compareList.includes(p.id);
 
   return `<div class="product-card" onclick="openModal('${esc(p.id)}')">
@@ -214,6 +231,7 @@ function createProductCard(p) {
     <div class="card-body">
       <div class="card-cat-tag">${meta.icon} ${meta.label}</div>
       <div class="card-name">${esc(p.name)}</div>
+      <div class="card-meta">${scoreBadgeHtml(score)}</div>
       ${formatPrice(p.price_raw) ? `<div class="card-price">${formatPrice(p.price_raw)}</div>` : ''}
       <button class="card-compare-btn${inCompare ? ' in-compare' : ''}"
         onclick="event.stopPropagation();toggleCompare('${esc(p.id)}','${esc(p.name)}')">
@@ -237,6 +255,7 @@ function openModal(productId) {
 
   const cat = (p.category || '').toLowerCase();
   const meta = CAT_META[cat] || { icon: '📦', label: cat || 'Diğer' };
+  const score = p.techScore != null ? p.techScore : null;
   const inCompare = compareList.includes(p.id);
 
   const topSpecs = buildTopSpecs(p);
@@ -250,6 +269,7 @@ function openModal(productId) {
         <div class="modal-cat-tag">${meta.icon} ${meta.label}</div>
         <h2 class="modal-product-name">${esc(p.name)}</h2>
         <div class="modal-product-meta">
+          ${scoreBadgeHtml(score, '16px', '6px 14px')}
           <span class="modal-price">${formatPrice(p.price_raw)}</span>
         </div>
         <div class="modal-actions">
@@ -316,7 +336,7 @@ function buildSpecAccordion(p) {
     }).join('');
   }
 
-  const skip = new Set(['id', 'name', 'imageUrl', 'category', 'price_raw',
+  const skip = new Set(['id', 'name', 'imageUrl', 'category', 'techScore', 'price_raw',
                         'price_segment', 'specSections', 'trendScore', 'createdAt', 'updatedAt']);
   const rows = Object.entries(p)
     .filter(([k, v]) => !skip.has(k) && v != null && v !== '')
@@ -380,8 +400,8 @@ function toggleCompare(id, name) {
 
 /* ── Clear Filters ───────────────────────────────────────────────── */
 function clearFilters() {
-  activeFilters = { categories: [], prices: [] };
-  document.querySelectorAll('.cat-filter, .price-filter').forEach(cb => {
+  activeFilters = { categories: [], prices: [], scores: [] };
+  document.querySelectorAll('.cat-filter, .price-filter, .score-filter').forEach(cb => {
     cb.checked = false;
   });
   applyFilters();
@@ -418,6 +438,20 @@ function formatPrice(raw) {
   return '₺' + num.toFixed(0);
 }
 
+function getScoreClass(score) {
+  if (score >= 80) return 'score-high';
+  if (score >= 60) return 'score-mid';
+  return 'score-low';
+}
+
+function scoreBadgeHtml(score, fontSize, padding) {
+  if (score == null) return '';
+  const cls = getScoreClass(score);
+  const fs  = fontSize ? `font-size:${fontSize};` : '';
+  const pd  = padding  ? `padding:${padding};`    : '';
+  return `<span class="score-badge ${cls}" style="${fs}${pd}">⚡ ${score}</span>`;
+}
+
 function esc(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
@@ -433,7 +467,7 @@ function labelFor(key) {
     display: 'Ekran', camera: 'Kamera', battery: 'Batarya', os: 'İşletim Sistemi',
     gpu: 'GPU', resolution: 'Çözünürlük', refresh_rate: 'Yenileme Hızı',
     weight: 'Ağırlık', connectivity: 'Bağlantı', price_segment: 'Segment',
-    price_raw: 'Fiyat',
+    techScore: 'Teknik Skor', price_raw: 'Fiyat',
   };
   return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -485,6 +519,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.price-filter').forEach(cb => {
     cb.addEventListener('change', () => {
       activeFilters.prices = [...document.querySelectorAll('.price-filter:checked')].map(c => c.value);
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll('.score-filter').forEach(cb => {
+    cb.addEventListener('change', () => {
+      activeFilters.scores = [...document.querySelectorAll('.score-filter:checked')].map(c => c.value);
       applyFilters();
     });
   });

@@ -723,7 +723,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
   double get _totalScore {
     if (_selected.isEmpty) return 0;
-    return (_selected.length / PcComponent.values.length) * 100;
+    final scores = _selected.values.map((p) => p.techScore).toList();
+    return scores.reduce((a, b) => a + b) / scores.length;
   }
 
   String? get _selectedSocket {
@@ -823,7 +824,10 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     final cpu = _selected[PcComponent.cpu];
     final gpu = _selected[PcComponent.gpu];
     if (cpu != null && gpu != null) {
-      // techScore-based balancing removed
+      final diff = cpu.techScore - gpu.techScore;
+      if (diff.abs() >= 14) {
+        return diff < 0 ? PcComponent.cpu : PcComponent.gpu;
+      }
     }
 
     const upgradeOrder = [
@@ -839,7 +843,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         upgradeOrder
             .where((component) => _selected.containsKey(component))
             .map((component) => MapEntry(component, _selected[component]!))
-            .toList();
+            .toList()
+          ..sort((a, b) => a.value.techScore.compareTo(b.value.techScore));
     return ranked.firstOrNull?.key;
   }
 
@@ -996,16 +1001,17 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     ProductEntity current,
     ProductEntity candidate,
   ) {
+    final gain = (candidate.techScore - current.techScore).round();
     return switch (component) {
       PcComponent.cpu => _pcText(
         context,
-        en: 'Keeps the ${_selectedSocket ?? "current"} platform with a compatible alternative.',
-        tr: '${_selectedSocket ?? "mevcut"} platformunda kalan uyumlu bir alternatif.',
+        en: 'Keeps the ${_selectedSocket ?? "current"} platform while adding about +$gain score.',
+        tr: '${_selectedSocket ?? "mevcut"} platformunda kalip yaklasik +$gain puan kazandiriyor.',
       ),
       PcComponent.gpu => _pcText(
         context,
-        en: 'A compatible graphics option that matches the current case fit rules.',
-        tr: 'Mevcut kasa uyumuna uyan alternatif bir grafik seçeneği.',
+        en: 'Raises graphics headroom by about +$gain score without breaking the current case fit rules.',
+        tr: 'Mevcut kasa uyumunu bozmadan grafik tarafinda yaklasik +$gain puanlik pay aciyor.',
       ),
       PcComponent.psu => _pcText(
         context,
@@ -1019,8 +1025,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       ),
       PcComponent.storage => _pcText(
         context,
-        en: 'Fits the motherboard storage layout with a compatible drive option.',
-        tr: 'Anakart depolama yapisina uyan alternatif bir disk seçeneği.',
+        en: 'Fits the motherboard storage layout and improves overall drive quality by about +$gain score.',
+        tr: 'Anakart depolama yapisina uyuyor ve disk kalitesini yaklasik +$gain puan artiriyor.',
       ),
       PcComponent.ram => _pcText(
         context,
@@ -1029,13 +1035,13 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       ),
       PcComponent.motherboard => _pcText(
         context,
-        en: 'Keeps the platform socket while giving the build a compatible board option.',
-        tr: 'Platform soketini korurken sisteme uyumlu bir anakart seçeneği veriyor.',
+        en: 'Keeps the platform socket while giving the build a stronger board foundation.',
+        tr: 'Platform soketini korurken sisteme daha guclu bir anakart temeli veriyor.',
       ),
       PcComponent.pcCase => _pcText(
         context,
-        en: 'Preserves motherboard and GPU fit with a compatible case option.',
-        tr: 'Anakart ve GPU sigmasini koruyan alternatif bir kasa seçeneği.',
+        en: 'Preserves motherboard and GPU fit while improving overall case quality.',
+        tr: 'Anakart ve GPU sigmasini korurken kasa kalitesini yukseltiyor.',
       ),
       _ => _pcText(
         context,
@@ -1057,12 +1063,15 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     final candidates =
         pool
             .where((p) => p.id != current.id)
+            .where((p) => p.techScore > current.techScore + 3)
             .where((p) => _isCompatibleUpgrade(component, p))
             .toList()
           ..sort((a, b) {
             final priceA = a.prices['US'] ?? a.prices.values.firstOrNull ?? 0.0;
             final priceB = b.prices['US'] ?? b.prices.values.firstOrNull ?? 0.0;
-            return priceA.compareTo(priceB);
+            final valueA = a.techScore - (priceA > 0 ? priceA / 250 : 0);
+            final valueB = b.techScore - (priceB > 0 ? priceB / 250 : 0);
+            return valueB.compareTo(valueA);
           });
 
     return candidates.take(3).map((candidate) {
@@ -1070,7 +1079,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         component: component,
         product: candidate,
         reason: _upgradeReason(component, current, candidate),
-        scoreGain: 0,
+        scoreGain: (candidate.techScore - current.techScore).round(),
       );
     }).toList();
   }
@@ -1459,7 +1468,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       final p = _selected[c];
       if (p != null) {
         buf.writeln(
-          '${c.name.toUpperCase()}: ${p.name}',
+          '${c.name.toUpperCase()}: ${p.name} (${p.techScore.round()}/100)',
         );
       } else {
         buf.writeln('${c.name.toUpperCase()}: Not selected');
@@ -1537,7 +1546,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         final p = _selected[c];
         if (p != null) {
           buf.writeln(
-            '${c.name.toUpperCase()}: ${p.name}',
+            '${c.name.toUpperCase()}: ${p.name} (Score: ${p.techScore.round()}/100)',
           );
           final specs = p.specs.entries
               .take(10)
@@ -1577,7 +1586,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         buf.writeln('=== COMPATIBLE UPGRADE CANDIDATES ===');
         for (final suggestion in suggestions) {
           buf.writeln(
-            '- ${suggestion.component.name.toUpperCase()}: ${suggestion.product.name} — ${suggestion.reason}',
+            '- ${suggestion.component.name.toUpperCase()}: ${suggestion.product.name} (${suggestion.product.techScore.round()}/100) — ${suggestion.reason}',
           );
         }
         buf.writeln();
@@ -3335,7 +3344,19 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                               ),
                             ),
                           ),
-                          // Score text removed
+                          if (p != null)
+                            Text(
+                              '${p.techScore.round()}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: p.techScore >= 80
+                                    ? AppTheme.success
+                                    : p.techScore >= 60
+                                    ? AppTheme.brandBlue
+                                    : AppTheme.amber500,
+                              ),
+                            ),
                         ],
                       ),
                     );
@@ -3812,6 +3833,8 @@ class _ComponentRow extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(child: has ? _sel(context) : _empty(context)),
                 if (has) ...[
+                  _badge(selectedProduct!.techScore),
+                  const SizedBox(width: 8),
                   GestureDetector(
                     onTap: onRemove,
                     child: Container(
@@ -3944,7 +3967,31 @@ class _ComponentRow extends StatelessWidget {
     );
   }
 
-  // _badge function removed - techScore eliminated
+  Widget _badge(double score) {
+    final c = score >= 80
+        ? AppTheme.success
+        : score >= 60
+        ? AppTheme.brandBlue
+        : score >= 40
+        ? AppTheme.amber500
+        : AppTheme.rose500;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: c.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        score.round().toString(),
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: c,
+        ),
+      ),
+    );
+  }
 }
 
 // Component Picker Page
@@ -4328,8 +4375,15 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
       list = list.where((p) => _brands.contains(p.brand)).toList();
     switch (_sort) {
       case 'score':
-        // techScore sort removed - fall through to name
-        list.sort((a, b) => a.name.compareTo(b.name));
+        list.sort((a, b) => b.techScore.compareTo(a.techScore));
+        if (_compatOnly && widget.component == PcComponent.psu) {
+          list.sort((a, b) {
+            final aModern = _Compat.psuSupportsModernGpu(a) ? 1 : 0;
+            final bModern = _Compat.psuSupportsModernGpu(b) ? 1 : 0;
+            if (aModern != bModern) return bModern.compareTo(aModern);
+            return b.techScore.compareTo(a.techScore);
+          });
+        }
       case 'name':
         list.sort((a, b) => a.name.compareTo(b.name));
       case 'brand':
@@ -5037,10 +5091,13 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                                     ),
                                   ),
                                   child: Center(
-                                    child: Icon(
-                                      widget.component.icon,
-                                      size: 18,
-                                      color: widget.component.accentColor,
+                                    child: Text(
+                                      '${detailProduct.techScore.round()}',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: widget.component.accentColor,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -5363,10 +5420,19 @@ class _ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = component.accentColor;
+    final sc = product.techScore >= 80
+        ? AppTheme.success
+        : product.techScore >= 60
+        ? AppTheme.brandBlue
+        : product.techScore >= 40
+        ? AppTheme.amber500
+        : AppTheme.rose500;
     final ks = _keySpec();
+    final isPopular = product.techScore > 85;
     final productPrice =
         product.prices['US'] ?? product.prices.values.firstOrNull ?? 0.0;
     final isBestValue =
+        product.techScore > 75 &&
         productPrice > 0 &&
         medianPrice > 0 &&
         productPrice <= medianPrice;
@@ -5427,13 +5493,16 @@ class _ProductCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Tags row
-                          if (isBestValue)
+                          if (isPopular || isBestValue)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 3),
                               child: Wrap(
                                 spacing: 4,
                                 children: [
-                                  _tag('💎 Best Value', AppTheme.brandBlue),
+                                  if (isPopular)
+                                    _tag('⭐ Popular', AppTheme.success),
+                                  if (isBestValue)
+                                    _tag('💎 Best Value', AppTheme.brandBlue),
                                 ],
                               ),
                             ),
@@ -5475,7 +5544,26 @@ class _ProductCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // Score circle removed
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: sc.withValues(alpha: 0.12),
+                        border: Border.all(color: sc.withValues(alpha: 0.3)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          product.techScore.round().toString(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: sc,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
                     // Info button to view specs before selecting
                     GestureDetector(
                       onTap: onInfo,

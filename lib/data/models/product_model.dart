@@ -25,6 +25,8 @@ class ProductModel extends ProductEntity {
     super.cons,
     super.tags,
     super.trendScore,
+    super.techScore,
+    super.techSubscores,
     super.images,
     required super.lastUpdated,
     super.createdAt,
@@ -126,6 +128,8 @@ class ProductModel extends ProductEntity {
       cons: List<String>.from(data['cons'] ?? []),
       tags: List<String>.from(data['tags'] ?? []),
       trendScore: (data['trendScore'] as num?)?.toDouble() ?? 0.0,
+      techScore: (data['techScore'] as num?)?.toDouble() ?? 0.0,
+      techSubscores: _parseTechSubscores(data['techSubscores']),
       images: List<String>.from(data['images'] ?? []),
       lastUpdated:
           _parseOptionalDate(data['lastUpdated']) ?? DateTime.now(),
@@ -167,6 +171,8 @@ class ProductModel extends ProductEntity {
       'cons': cons,
       'tags': tags,
       'trendScore': trendScore,
+      'techScore': techScore,
+      'techSubscores': techSubscores,
       'images': images,
       'lastUpdated': lastUpdated.toIso8601String(),
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
@@ -199,6 +205,8 @@ class ProductModel extends ProductEntity {
       cons: entity.cons,
       tags: entity.tags,
       trendScore: entity.trendScore,
+      techScore: entity.techScore,
+      techSubscores: entity.techSubscores,
       images: entity.images,
       lastUpdated: entity.lastUpdated,
       createdAt: entity.createdAt,
@@ -245,6 +253,8 @@ class ProductModel extends ProductEntity {
       cons: List<String>.from(data['cons'] ?? []),
       tags: List<String>.from(data['tags'] ?? []),
       trendScore: (data['trendScore'] as num?)?.toDouble() ?? 0.0,
+      techScore: (data['techScore'] as num?)?.toDouble() ?? 0.0,
+      techSubscores: _parseTechSubscores(data['techSubscores']),
       images: List<String>.from(data['images'] ?? []),
       lastUpdated: data['lastUpdated'] is String
           ? DateTime.tryParse(data['lastUpdated']) ?? DateTime.now()
@@ -253,6 +263,17 @@ class ProductModel extends ProductEntity {
           ? DateTime.tryParse(data['createdAt'])
           : null,
       isActive: data['isActive'] ?? true,
+    );
+  }
+
+  static Map<String, double> _parseTechSubscores(dynamic raw) {
+    if (raw == null) return {};
+    if (raw is! Map) return {};
+    return Map<String, double>.fromEntries(
+      raw.entries.map((e) => MapEntry(
+        e.key.toString(),
+        (e.value is num) ? (e.value as num).toDouble() : 0.0,
+      )),
     );
   }
 }

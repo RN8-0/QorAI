@@ -18,6 +18,7 @@ const schema = {
     { name: 'subcategory', type: 'string', facet: true, optional: true },
     { name: 'source', type: 'string', optional: true },
     { name: 'imageUrl', type: 'string', optional: true, index: false },
+    { name: 'techScore', type: 'float' },
     { name: 'trendScore', type: 'float', optional: true },
     { name: 'price_segment', type: 'string', facet: true, optional: true },
     { name: 'specsCount', type: 'int32', optional: true },
@@ -26,7 +27,7 @@ const schema = {
     // Full product data as JSON string — not indexed, just stored for hydration
     { name: '_raw', type: 'string', index: false, optional: true },
   ],
-  default_sorting_field: 'trendScore',
+  default_sorting_field: 'techScore',
   token_separators: ['-', '_', '/', ' '],
 };
 
@@ -60,6 +61,7 @@ function toTsDoc(pb) {
     subcategory: pb.subcategory || '',
     source: pb.source || '',
     imageUrl: pb.imageUrl || pb.imageURL || '',
+    techScore: typeof pb.techScore === 'number' ? pb.techScore : 0,
     trendScore: typeof pb.trendScore === 'number' ? pb.trendScore : 0,
     price_segment: pb.price_segment || '',
     specsCount: pb.specsCount || 0,

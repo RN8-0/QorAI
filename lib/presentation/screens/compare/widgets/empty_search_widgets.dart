@@ -254,9 +254,11 @@ class _EmptyCompareState extends ConsumerWidget {
       // Deduplicate variants before picking pairs
       final catProducts = deduplicateVariants(raw);
       if (catProducts.length < 2) continue;
-      // Sort by trendScore for variety
+      // Sort by combined score (trendScore * 0.4 + techScore * 0.6) for variety
       catProducts.sort((a, b) {
-        return b.trendScore.compareTo(a.trendScore);
+        final sA = a.techScore * 0.6 + a.trendScore * 0.4;
+        final sB = b.techScore * 0.6 + b.trendScore * 0.4;
+        return sB.compareTo(sA);
       });
       // Pick from top-5 candidates with daily rotation to vary picks
       final pool = catProducts.take(5).toList();
@@ -612,6 +614,22 @@ class _RecentProductChip extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
+            if (product.techScore > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${product.techScore.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -814,6 +832,24 @@ class _TrendChip extends StatelessWidget {
                 ),
               ),
             ),
+            if (product.techScore > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${product.techScore.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -821,7 +857,7 @@ class _TrendChip extends StatelessWidget {
   }
 }
 
-// ─── Product Search List──────────────────────────────────────────────────────
+// ─── Product Search List ──────────────────────────────────────────────────────
 
 class _ProductSearchList extends ConsumerWidget {
   final List<String> selectedIds;
@@ -1013,6 +1049,29 @@ class _SearchProductTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (product.techScore > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppTheme.brandDeepBlue.withValues(alpha: 0.15)
+                          : AppTheme.brandBlue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${product.techScore.round()}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isSelected
+                            ? AppTheme.brandDeepBlue
+                            : AppTheme.brandBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 const SizedBox(width: 8),
                 isSelected
                     ? ShaderMask(

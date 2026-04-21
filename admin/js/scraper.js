@@ -316,8 +316,92 @@ function extractBrand(name, specs) {
 }
 
 // ═══════════════════════════════════════
-//  8. (TECH SCORE EXTRACTION REMOVED)
+//  8. TECH SCORE EXTRACTION
 // ═══════════════════════════════════════
+
+function extractTechScore(doc) {
+  if (typeof doc === 'string') doc = parseHTML(doc);
+
+  function parseScore(text) {
+    if (!text) return null;
+    const m = text.match(/(\d{1,3})/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n >= 1 && n <= 100) return n;
+    }
+    return null;
+  }
+
+  // Priority 1: #puan element
+  const puan = doc.querySelector('#puan');
+  if (puan) {
+    const s = parseScore(puan.textContent);
+    if (s) return s;
+  }
+
+  // Priority 2: .circliful
+  const circ = doc.querySelector('.circliful');
+  if (circ) {
+    const s = parseScore(circ.textContent);
+    if (s) return s;
+  }
+
+  // Priority 3: data attributes
+  const attrEl = doc.querySelector('[data-teknikpuan]') || doc.querySelector('[data-tpuan]');
+  if (attrEl) {
+    const val = attrEl.getAttribute('data-teknikpuan') || attrEl.getAttribute('data-tpuan');
+    const s = parseScore(val);
+    if (s) return s;
+  }
+
+  // Priority 4: ID-based elements
+  for (const id of ['teknikpuan', 'tekpuan', 'tpuan']) {
+    const el = doc.getElementById(id);
+    if (el) {
+      const s = parseScore(el.textContent);
+      if (s) return s;
+    }
+  }
+
+  // Priority 5: class-based
+  for (const sel of ['.teknikpuan', '.puan_deger', '.puan', '.teknik-puan']) {
+    const el = doc.querySelector(sel);
+    if (el) {
+      const s = parseScore(el.textContent);
+      if (s) return s;
+    }
+  }
+
+  return null;
+}
+
+// Listing-page tech score from product card element
+function extractListingTechScore(cardEl) {
+  if (!cardEl) return null;
+
+  function parseScore(val) {
+    if (!val) return null;
+    const n = parseInt(val, 10);
+    return (n >= 1 && n <= 100) ? n : null;
+  }
+
+  // data-attributes on the card
+  const tp = cardEl.getAttribute('data-teknikpuan') || cardEl.getAttribute('data-puan');
+  if (tp) {
+    const s = parseScore(tp);
+    if (s) return s;
+  }
+
+  // Inner elements
+  for (const sel of ['.teknikpuan', '.puan', '.teknik-puan', '.score']) {
+    const el = cardEl.querySelector(sel);
+    if (el) {
+      const s = parseScore(el.textContent.trim());
+      if (s) return s;
+    }
+  }
+  return null;
+}
 
 // ═══════════════════════════════════════
 //  9. PRICE EXTRACTION
@@ -752,6 +836,9 @@ async function scrapeProductDetail(html, url, categoryId) {
     category = found ? found.id : catSlug;
   }
 
+  // ── Tech Score ──
+  const techScore = extractTechScore(doc);
+
   // ── Price ──
   const price_raw = extractPrice(doc);
 
@@ -794,6 +881,7 @@ async function scrapeProductDetail(html, url, categoryId) {
     specs: finalSpecs,
     specSections: finalSections,
     keySpecs: translatedKeySpecs,
+    techScore: techScore || null,
     price_raw: price_raw || null,
     specsCount: Object.keys(finalSpecs).length,
     variantGroup,
@@ -842,10 +930,11 @@ function extractProductLinksFromDoc(doc) {
     seen.add(fullUrl);
 
     // Try extracting tech score from parent card
+    let techScore = null;
     const card = a.closest('.urun, .urun-k, .liste-urun, [class*="product"], [class*="urun"], li, div.row, tr');
-    void card;
+    if (card) techScore = extractListingTechScore(card);
 
-    results.push({ url: fullUrl });
+    results.push({ url: fullUrl, techScore });
   });
 
   // Strategy 2: data-href or onclick links (some pages use JS for navigation)
@@ -863,7 +952,7 @@ function extractProductLinksFromDoc(doc) {
       const fullUrl = EPEY_BASE + href;
       if (seen.has(fullUrl)) return;
       seen.add(fullUrl);
-      results.push({ url: fullUrl });
+      results.push({ url: fullUrl, techScore: null });
     });
   }
 
@@ -1022,11 +1111,16 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
           continue;
         }
 
+        // Use listing-page tech score if page didn't have one
+        if (!product.techScore && item.techScore) {
+          product.techScore = item.techScore;
+        }
+
         // Save to PocketBase
         await pbSetDoc('products', product.slug || product.id, product);
         results.added++;
         errorStreak = 0;
-        slog(`  → Added: ${product.name} (${product.specsCount} specs)`, 'success');
+        slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
 
         // Periodically persist untranslated terms for later reuse
         if (results.added > 0 && results.added % 5 === 0) {
@@ -1300,7 +1394,7 @@ async function scrapeByUrl() {
 
     slog(`Name: ${product.name}`);
     slog(`Brand: ${product.brand} | Category: ${product.category}`);
-    slog(`Specs: ${product.specsCount}`);
+    slog(`Specs: ${product.specsCount} | Score: ${product.techScore || '-'}`);
     slog(`Images: ${product.images.length} | Price: ${product.price_raw || '-'}`);
     slog(`ID: ${product.id}`);
 
@@ -1355,6 +1449,7 @@ async function scrapeByUrl() {
       product.specSections = mergedSections;
 
       // Keep existing fields that new scrape might miss
+      if (!product.techScore && existing.techScore) product.techScore = existing.techScore;
       if (!product.price_raw && existing.price_raw) product.price_raw = existing.price_raw;
       if (!product.brand && existing.brand) product.brand = existing.brand;
 
@@ -1386,8 +1481,83 @@ async function scrapeByUrl() {
 }
 
 // ═══════════════════════════════════════
-//  20. (SCORE UPDATE REMOVED)
+//  20. SCORE UPDATE
 // ═══════════════════════════════════════
+
+async function startScoreUpdate() {
+  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
+  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+
+  const cat = document.getElementById('scoreCategory')?.value || '';
+  const limit = parseInt(document.getElementById('scoreLimit')?.value) || 50;
+  const delay = parseInt(document.getElementById('scoreDelay')?.value) || 1500;
+
+  scraperRunning = true;
+  scraperAbort = false;
+  clearScraperLog();
+
+  slog('Loading products for score update...');
+
+  let products;
+  try {
+    if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
+      products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('epey.com'));
+    } else {
+      const items = await pbGetAll('products', { filter: `source="epey" || source="epey.com"` });
+      products = items.map(d => ({ id: d.id, ...d.data() }));
+    }
+  } catch (e) {
+    slog(`Failed to load products: ${e.message}`, 'error');
+    finishScraping();
+    return;
+  }
+
+  if (cat) products = products.filter(p => p.category === cat);
+  products = products.slice(0, limit);
+
+  slog(`Updating scores for ${products.length} products...`);
+  _scrapeStartTime = Date.now();
+
+  let updated = 0, unchanged = 0, failed = 0;
+  for (let i = 0; i < products.length && !scraperAbort; i++) {
+    const p = products[i];
+    try {
+      updateProgress(i + 1, products.length, 'Scores');
+      const html = await proxyFetch(p.sourceUrl);
+      if (!html) {
+        slog(`${p.name || p.id}: page not found`, 'warn');
+        failed++;
+        continue;
+      }
+      const score = extractTechScore(html);
+      if (score !== null && score !== p.techScore) {
+        await pbUpdateDoc('products', p.id, {
+          techScore: score,
+          scoreUpdatedAt: new Date().toISOString()
+        });
+        slog(`${p.name || p.id}: ${p.techScore || 0} → ${score}`, 'success');
+        updated++;
+        // Update in-memory
+        if (typeof allProducts !== 'undefined') {
+          const mem = allProducts.find(x => x.id === p.id);
+          if (mem) mem.techScore = score;
+        }
+      } else {
+        unchanged++;
+        if (i % 10 === 0) slog(`${p.name || p.id}: no change (${p.techScore || 0})`);
+      }
+      await sleep(delay);
+    } catch (e) {
+      slog(`${p.name || p.id}: error — ${e.message}`, 'error');
+      failed++;
+    }
+  }
+
+  slog(`\n═══ Score update complete ═══`, 'success');
+  slog(`Updated: ${updated} | Unchanged: ${unchanged} | Failed: ${failed}${scraperAbort ? ' | STOPPED' : ''}`,
+    updated > 0 ? 'success' : 'info');
+  finishScraping();
+}
 
 // ═══════════════════════════════════════
 //  21. PRODUCT UPDATE (Full Re-scrape)
@@ -1465,7 +1635,7 @@ async function startProductUpdate() {
       // Compare fields and build update object
       const changes = {};
       const compareFields = [
-        'name', 'brand', 'price_raw', 'imageUrl',
+        'name', 'brand', 'techScore', 'price_raw', 'imageUrl',
         'specsCount', 'variantGroup'
       ];
       for (const field of compareFields) {
@@ -1677,6 +1847,7 @@ function _normalizeForDedup(name) {
 function _qualityScore(p) {
   return (p.specsCount || Object.keys(p.specs || {}).length) * 3
     + ((p.images || []).length) * 2
+    + (p.techScore ? 10 : 0)
     + (p.brand ? 5 : 0)
     + (p.imageUrl || p.imageURL ? 5 : 0);
 }
@@ -1808,7 +1979,7 @@ async function startQualityScan() {
   let products = [];
   try {
     const filter = cat ? `category="${cat}"` : '';
-    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-created' });
+    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-techScore' });
     products = r.items.map(d => ({ _docId: d.id, ...d }));
     slog(`✓ ${products.length} ürün yüklendi`, 'success');
   } catch (e) {
@@ -1914,6 +2085,7 @@ async function startQualityScan() {
           update.specsCount = freshSpecCount;
         }
 
+        if (!p.techScore && fresh.techScore) update.techScore = fresh.techScore;
         if (!p.brand && fresh.brand) update.brand = fresh.brand;
 
         await pbUpdateDoc('products', p._docId, update);
@@ -1967,7 +2139,7 @@ async function startDeduplicateOnly() {
   let products = [];
   try {
     const filter = cat ? `category="${cat}"` : '';
-    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-created' });
+    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-techScore' });
     products = r.items.map(d => ({ _docId: d.id, ...d }));
     slog(`✓ ${products.length} ürün yüklendi`, 'success');
   } catch (e) {

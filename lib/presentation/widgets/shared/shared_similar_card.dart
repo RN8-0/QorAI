@@ -56,7 +56,26 @@ class SharedSimilarGridCard extends StatelessWidget {
                     padding: EdgeInsets.zero,
                   ),
                 ),
-
+                if (product.techScore > 0)
+                  Positioned(top: 7, right: 7, child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentCyan.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.accentCyan.withValues(alpha: 0.3),
+                        width: 0.5)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.local_fire_department_rounded,
+                          size: 10, color: AppTheme.accentCyan),
+                      const SizedBox(width: 2),
+                      Text('${product.techScore.toInt()}',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              color: AppTheme.accentCyan)),
+                    ]),
+                  )),
               ]),
             ),
             // Details section — tight layout, button directly under name

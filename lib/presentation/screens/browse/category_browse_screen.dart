@@ -29,12 +29,14 @@ import 'package:compair/data/models/product_model.dart';
 // Sort options
 // ---------------------------------------------------------------------------
 
-enum _SortOption { relevance, newest }
+enum _SortOption { techScore, relevance, newest }
 
 extension _SortOptionLabel on _SortOption {
   String label(BuildContext context) {
     final l10n = context.l10n;
     switch (this) {
+      case _SortOption.techScore:
+        return l10n?.sortTopRated ?? 'Top Rated';
       case _SortOption.relevance:
         return l10n?.sortPopular ?? 'Popular';
       case _SortOption.newest:
@@ -44,6 +46,8 @@ extension _SortOptionLabel on _SortOption {
 
   IconData get icon {
     switch (this) {
+      case _SortOption.techScore:
+        return Icons.star_rounded;
       case _SortOption.relevance:
         return Icons.local_fire_department_rounded;
       case _SortOption.newest:
@@ -75,7 +79,7 @@ class CategoryBrowseScreen extends ConsumerStatefulWidget {
 
 class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   FilterState _filterState = const FilterState();
-  _SortOption _sortOption = _SortOption.relevance;
+  _SortOption _sortOption = _SortOption.techScore;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
@@ -212,10 +216,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   String _serverSortBy() {
     switch (_sortOption) {
+      case _SortOption.techScore:
+        return 'techScore:desc,trendScore:desc';
       case _SortOption.relevance:
-        return 'trendScore:desc';
+        return 'trendScore:desc,techScore:desc';
       case _SortOption.newest:
-        return 'trendScore:desc';
+        return 'trendScore:desc,techScore:desc';
     }
   }
 
@@ -345,6 +351,22 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       );
       if (!mounted) return;
       final firstPage = _sanitizeCategoryProducts(result.products);
+      if (_sortOption == _SortOption.techScore && firstPage.isNotEmpty) {
+        try {
+          final cache = ref.read(cacheServiceProvider);
+          final maps = firstPage
+              .whereType<ProductModel>()
+              .map((product) => product.toMap())
+              .toList();
+          if (maps.isNotEmpty) {
+            cache.setLocal(
+              hiveCacheKey,
+              maps,
+              duration: const Duration(hours: 12),
+            );
+          }
+        } catch (_) {}
+      }
       setState(() {
         _allProducts = firstPage;
         _currentPage = result.nextPage;
@@ -409,7 +431,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       return copy;
     }
 
-    copy.sort(_compareBySelectedSort);
+    switch (_sortOption) {
+      case _SortOption.techScore:
+        copy.sort(_compareBySelectedSort);
+        break;
+      case _SortOption.newest:
+        copy.sort(_compareBySelectedSort);
+        break;
+      case _SortOption.relevance:
+        copy.sort(_compareBySelectedSort);
+        break;
+    }
     return copy;
   }
 
@@ -425,13 +457,19 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   int _compareBySelectedSort(ProductEntity a, ProductEntity b) {
     switch (_sortOption) {
+      case _SortOption.techScore:
+        final techCompare = b.techScore.compareTo(a.techScore);
+        if (techCompare != 0) return techCompare;
+        final trendCompare = b.trendScore.compareTo(a.trendScore);
+        if (trendCompare != 0) return trendCompare;
+        return _releaseYear(b).compareTo(_releaseYear(a));
       case _SortOption.newest:
         // Sort by actual release year extracted from specs.
         final yearCmp = _releaseYear(b).compareTo(_releaseYear(a));
         if (yearCmp != 0) return yearCmp;
         final dateCmp = _sortTimestamp(b).compareTo(_sortTimestamp(a));
         if (dateCmp != 0) return dateCmp;
-        return b.trendScore.compareTo(a.trendScore);
+        return b.techScore.compareTo(a.techScore);
       case _SortOption.relevance:
         // Popular: trendScore first, then newest models first among ties.
         final trendCompare = b.trendScore.compareTo(a.trendScore);
@@ -1246,6 +1284,10 @@ class _ProductCard extends StatelessWidget {
                       ),
                     ),
                   ],
+                  if (product.techScore > 0) ...[
+                    const SizedBox(height: 6),
+                    _TechScoreBadge(score: product.techScore),
+                  ],
                 ],
               ),
             ),
@@ -1256,8 +1298,60 @@ class _ProductCard extends StatelessWidget {
   }
 }
 
-// TechScore badge removed - techScore system eliminated
+// ---------------------------------------------------------------------------
+// TechScore badge
+// ---------------------------------------------------------------------------
 
+class _TechScoreBadge extends StatelessWidget {
+  const _TechScoreBadge({required this.score});
+
+  final double score;
+
+  Color _scoreColor() {
+    if (score >= 80) return AppTheme.scoreExcellent;
+    if (score >= 60) return AppTheme.scoreGood;
+    if (score >= 40) return AppTheme.scoreAverage;
+    return AppTheme.scorePoor;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _scoreColor();
+    final progress = (score / 100).clamp(0.0, 1.0);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                value: progress,
+                strokeWidth: 3,
+                backgroundColor: color.withValues(alpha: 0.15),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+              Text(
+                '${score.round()}',
+                style: GoogleFonts.plusJakartaSans(
+                  color: color,
+                  fontSize: 7,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Product List Tile (horizontal card for list view)
+// ---------------------------------------------------------------------------
 
 class _ProductListTile extends StatelessWidget {
   const _ProductListTile({required this.product, required this.onTap});
@@ -1265,12 +1359,21 @@ class _ProductListTile extends StatelessWidget {
   final ProductEntity product;
   final VoidCallback onTap;
 
+  Color _scoreColor(double s) {
+    if (s >= 80) return AppTheme.scoreExcellent;
+    if (s >= 60) return AppTheme.scoreGood;
+    if (s >= 40) return AppTheme.scoreAverage;
+    return AppTheme.scorePoor;
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageUrl =
         product.imageUrl ??
         (product.allImages.isNotEmpty ? product.allImages.first : null);
     final usPrice = product.prices['US'];
+    final score = product.techScore;
+    final scoreColor = _scoreColor(score);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
@@ -1376,7 +1479,36 @@ class _ProductListTile extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          // Score badge removed - techScore eliminated
+                          if (usPrice != null && score > 0)
+                            const SizedBox(width: 6),
+                          if (score > 0)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 12,
+                                  color: scoreColor,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  score.round().toString(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: scoreColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  '/100',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: scoreColor.withValues(alpha: 0.6),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ],

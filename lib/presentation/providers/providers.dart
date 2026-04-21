@@ -27,7 +27,7 @@ import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/domain/entities/ai_entities.dart';
 import 'package:compair/domain/entities/comparison_entity.dart';
-// calculate_score import removed
+import 'package:compair/domain/usecases/calculate_score.dart';
 import 'package:compair/services/ai_service.dart';
 import 'package:compair/services/spec_direction_service.dart';
 import 'package:flutter/foundation.dart';
@@ -39,7 +39,7 @@ import 'package:compair/services/subscription_service.dart';
 import 'package:compair/services/remote_config_service.dart';
 import 'package:compair/services/metadata_service.dart';
 import 'package:compair/services/profile_algorithm_service.dart';
-// tech_score_service import removed
+import 'package:compair/services/tech_score_service.dart';
 import 'package:compair/services/youtube_service.dart';
 import 'package:compair/services/behavior_tracking_service.dart';
 import 'package:compair/services/ip_location_service.dart';
@@ -235,6 +235,11 @@ final globalAlgorithmSignalsProvider = FutureProvider<GlobalAlgorithmSignals>((
   return GlobalAlgorithmSignals.load();
 });
 
+/// Tech Score Service - Category-based technical score calculation
+final techScoreServiceProvider = Provider<TechScoreService>((ref) {
+  return TechScoreService();
+});
+
 // ════════════════════════════════════════════════════
 // ─── REPOSITORY PROVIDERS ───
 // ════════════════════════════════════════════════════
@@ -320,3 +325,6 @@ final scraperStatusProvider = FutureProvider<ScraperStatus>((ref) {
 // ─── USE CASE PROVIDERS ───
 // ════════════════════════════════════════════════════
 
+final calculateScoreUseCaseProvider = Provider<CalculateScoreUseCase>((ref) {
+  return CalculateScoreUseCase();
+});

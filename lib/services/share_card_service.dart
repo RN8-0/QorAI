@@ -351,6 +351,7 @@ class _ShareProductRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final techScore = product.techScore.round();
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
@@ -451,6 +452,43 @@ class _ShareProductRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.bolt_rounded,
+                              color: Colors.white, size: 22),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$techScore',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.0,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '/100',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

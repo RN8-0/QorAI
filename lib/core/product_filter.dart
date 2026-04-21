@@ -244,8 +244,8 @@ class ProductFilter {
       return !p.createdAt!.isBefore(DateTime(minYear, 1, 1));
     }
 
-    // No date info at all — accept by default
-    return true;
+    // No date info at all — accept if reasonable techScore
+    return p.techScore >= 30;
   }
 
   /// Filter a list of products

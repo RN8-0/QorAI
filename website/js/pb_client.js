@@ -20,7 +20,7 @@ function pbCurrentUser() {
 // Load products (public read)
 async function pbLoadProducts(limit = 500) {
   const result = await getPb().collection('products').getList(1, limit, {
-    sort: '-created',
+    sort: '-techScore',
     $autoCancel: false
   });
   return result.items;
@@ -33,7 +33,7 @@ async function pbSearchProducts(query, limit = 100) {
   const filter = `name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${slug}"`;
   const result = await getPb().collection('products').getList(1, limit, {
     filter,
-    sort: '-created',
+    sort: '-techScore',
     $autoCancel: false
   });
   return result.items;
@@ -43,7 +43,7 @@ async function pbSearchProducts(query, limit = 100) {
 async function pbGetByCategory(category, limit = 50) {
   const result = await getPb().collection('products').getList(1, limit, {
     filter: `category="${category}"`,
-    sort: '-created',
+    sort: '-techScore',
     $autoCancel: false
   });
   return result.items;

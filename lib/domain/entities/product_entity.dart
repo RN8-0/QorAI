@@ -21,6 +21,8 @@ class ProductEntity extends Equatable {
   final List<String> cons; // Cons
   final List<String> tags; // Searchable tags
   final double trendScore;
+  final double techScore; // Technical score (0-100), normalized within category
+  final Map<String, double> techSubscores; // Sub-category scores {processor: 85, camera: 92, ...}
   final List<String> images; // All product images (pulled from admin panel)
   final DateTime lastUpdated;
   final DateTime? createdAt; // When the product was first added to the database
@@ -46,6 +48,8 @@ class ProductEntity extends Equatable {
     this.cons = const [],
     this.tags = const [],
     this.trendScore = 0.0,
+    this.techScore = 0.0,
+    this.techSubscores = const {},
     this.images = const [],
     required this.lastUpdated,
     this.createdAt,
@@ -56,11 +60,6 @@ class ProductEntity extends Equatable {
 
   /// Convenience getter - screens use imageUrl
   String? get imageUrl => imageURL.isEmpty ? null : imageURL;
-
-  /// Tech score system was removed — always returns 0.
-  /// Existing UI references kept for backward-compatible compilation.
-  double get techScore => 0.0;
-  Map<String, double> get techSubscores => const {};
 
   /// All images including primary - for gallery display
   List<String> get allImages {
@@ -103,6 +102,8 @@ class ProductEntity extends Equatable {
     List<String>? cons,
     List<String>? tags,
     double? trendScore,
+    double? techScore,
+    Map<String, double>? techSubscores,
     List<String>? images,
     DateTime? lastUpdated,
     bool? isActive,
@@ -127,6 +128,8 @@ class ProductEntity extends Equatable {
       cons: cons ?? this.cons,
       tags: tags ?? this.tags,
       trendScore: trendScore ?? this.trendScore,
+      techScore: techScore ?? this.techScore,
+      techSubscores: techSubscores ?? this.techSubscores,
       images: images ?? this.images,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       isActive: isActive ?? this.isActive,

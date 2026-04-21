@@ -190,6 +190,12 @@ function cFormatPrice(v) {
   return '₺' + Number(v).toLocaleString('tr-TR');
 }
 
+function cScoreBadge(score) {
+  if (score == null) return '<span style="color:var(--text3)">—</span>';
+  const cls = score >= 70 ? 'score-high' : score >= 40 ? 'score-mid' : 'score-low';
+  return `<span class="score-badge ${cls}">⚡ ${score}</span>`;
+}
+
 /* ── Init ─────────────────────────────────────────────────── */
 (function initCompare() {
   loadCompareProducts();
@@ -198,7 +204,9 @@ function cFormatPrice(v) {
 async function loadCompareProducts() {
   try {
     const items = await pbLoadProducts(200);
-    cAllProducts = items.filter(p => p.name && p.imageUrl);
+    cAllProducts = items
+      .filter(p => p.name && p.imageUrl)
+      .sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
 
     // Load persisted selection from localStorage
     const saved = JSON.parse(localStorage.getItem('compair-compare') || '[]');
@@ -272,6 +280,9 @@ function renderProductList() {
         <div style="flex:1;min-width:0">
           <div class="compare-item-name">${p.name}</div>
           <div class="compare-item-brand">${p.brand || ''} ${p.category ? '· ' + ((CAT_META_C[p.category.toLowerCase()] || {}).label || p.category) : ''}</div>
+        </div>
+        <div class="compare-item-score">
+          ${cScoreBadge(p.techScore)}
         </div>
         <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${selected ? 'var(--accent)' : 'var(--border2)'};
                     background:${selected ? 'var(--accent)' : 'transparent'};
@@ -348,6 +359,7 @@ function renderCompareRight() {
                  onerror="this.style.background='var(--bg4)'">
             <div class="compare-selected-name">${p.name}</div>
             <div class="compare-selected-brand">${p.brand || ''}</div>
+            ${cScoreBadge(p.techScore)}
             <div class="compare-selected-price">${cFormatPrice(p.price_raw)}</div>
           </div>
         `).join('')}
@@ -362,6 +374,11 @@ function renderCompareRight() {
           </tr>
         </thead>
         <tbody>
+          <!-- Score row -->
+          <tr>
+            <td class="spec-label">⚡ Tech Score</td>
+            ${renderBestRow(products, p => p.techScore, p => p.techScore != null ? String(p.techScore) : '—', true)}
+          </tr>
           <!-- Price row -->
           <tr>
             <td class="spec-label">💰 Price</td>

@@ -160,6 +160,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         'productName': widget.product.name,
         'productBrand': widget.product.brand ?? '',
         'productCategory': widget.product.category,
+        'techScore': widget.product.techScore.toString(),
         'productId': widget.product.id,
       };
     });

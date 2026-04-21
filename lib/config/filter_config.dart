@@ -969,6 +969,18 @@ const List<FilterDefinition> _powerBankFilters = [
 
 const List<FilterDefinition> _genericFilters = [
   _dynamicBrandFilter,
+  FilterDefinition(
+    id: 'tech_score',
+    label: 'Score Range',
+    type: FilterType.multiSelect,
+    options: [
+      FilterOption(id: '0-40', label: '0–40 (Poor)'),
+      FilterOption(id: '40-60', label: '40–60 (Average)'),
+      FilterOption(id: '60-80', label: '60–80 (Good)'),
+      FilterOption(id: '80-100', label: '80–100 (Excellent)'),
+    ],
+    specKeys: ['techScore'],
+  ),
 ];
 
 // ---------------------------------------------------------------------------

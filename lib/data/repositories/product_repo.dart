@@ -121,7 +121,7 @@ class ProductRepository {
     required String category,
     int limit = 200,
     int page = 1,
-    String sortBy = 'trendScore:desc',
+    String sortBy = 'techScore:desc',
   }) async {
     return _pbDS.getProductsPageTs(
       category: category,

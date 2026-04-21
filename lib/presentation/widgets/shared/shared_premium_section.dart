@@ -60,6 +60,9 @@ class SharedPremiumFeaturesSectionState
     if (releaseYear != null) {
       details.add('release year: $releaseYear');
     }
+    if (product.techScore > 0) {
+      details.add('tech score: ${product.techScore.toStringAsFixed(1)}/100');
+    }
     final highlightedSpecs = product.keySpecs.entries
         .where(
           (entry) =>
