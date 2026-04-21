@@ -123,8 +123,14 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
 
-    // Use local score instantly, DeepSeek reason as enrichment
-    final int? fitScore = localFitScore ?? matchResult?.matchScore;
+    // Blend local algorithmic score with AI score when AI is available.
+    // Free users without quota get only the local algorithm (no reason shown).
+    int? fitScore;
+    if (matchResult?.matchScore != null && localFitScore != null) {
+      fitScore = ((localFitScore + matchResult!.matchScore) / 2).round();
+    } else {
+      fitScore = localFitScore ?? matchResult?.matchScore;
+    }
     final String? reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;

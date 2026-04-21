@@ -43,6 +43,7 @@ class UsageCounter {
   final int linkCompare;
   final int subscriptionAnalyses;
   final int productScan;
+  final int detailMatchAi;
   final String comparisonPeriodKey;
   final String aiPeriodKey;
   final String compareAiPeriodKey;
@@ -52,6 +53,7 @@ class UsageCounter {
   final String linkComparePeriodKey;
   final String subscriptionPeriodKey;
   final String productScanPeriodKey;
+  final String detailMatchAiPeriodKey;
 
   const UsageCounter({
     this.comparisons = 0,
@@ -63,6 +65,7 @@ class UsageCounter {
     this.linkCompare = 0,
     this.subscriptionAnalyses = 0,
     this.productScan = 0,
+    this.detailMatchAi = 0,
     required this.comparisonPeriodKey,
     required this.aiPeriodKey,
     required this.compareAiPeriodKey,
@@ -72,6 +75,7 @@ class UsageCounter {
     required this.linkComparePeriodKey,
     required this.subscriptionPeriodKey,
     required this.productScanPeriodKey,
+    required this.detailMatchAiPeriodKey,
   });
 
   UsageCounter copyWith({
@@ -84,6 +88,7 @@ class UsageCounter {
     int? linkCompare,
     int? subscriptionAnalyses,
     int? productScan,
+    int? detailMatchAi,
     String? comparisonPeriodKey,
     String? aiPeriodKey,
     String? compareAiPeriodKey,
@@ -93,6 +98,7 @@ class UsageCounter {
     String? linkComparePeriodKey,
     String? subscriptionPeriodKey,
     String? productScanPeriodKey,
+    String? detailMatchAiPeriodKey,
   }) {
     return UsageCounter(
       comparisons: comparisons ?? this.comparisons,
@@ -104,6 +110,7 @@ class UsageCounter {
       linkCompare: linkCompare ?? this.linkCompare,
       subscriptionAnalyses: subscriptionAnalyses ?? this.subscriptionAnalyses,
       productScan: productScan ?? this.productScan,
+      detailMatchAi: detailMatchAi ?? this.detailMatchAi,
       comparisonPeriodKey: comparisonPeriodKey ?? this.comparisonPeriodKey,
       aiPeriodKey: aiPeriodKey ?? this.aiPeriodKey,
       compareAiPeriodKey: compareAiPeriodKey ?? this.compareAiPeriodKey,
@@ -114,6 +121,8 @@ class UsageCounter {
       subscriptionPeriodKey:
           subscriptionPeriodKey ?? this.subscriptionPeriodKey,
       productScanPeriodKey: productScanPeriodKey ?? this.productScanPeriodKey,
+      detailMatchAiPeriodKey:
+          detailMatchAiPeriodKey ?? this.detailMatchAiPeriodKey,
     );
   }
 }
@@ -167,6 +176,7 @@ class SubscriptionService extends ChangeNotifier {
   int get linkCompareUsed => _normalizedUsage().linkCompare;
   int get subscriptionAnalysesUsed => _normalizedUsage().subscriptionAnalyses;
   int get productScanUsed => _normalizedUsage().productScan;
+  int get detailMatchAiUsed => _normalizedUsage().detailMatchAi;
 
   SubscriptionStatus? get _pocketBaseSnapshotStatus {
     try {
@@ -414,6 +424,8 @@ class SubscriptionService extends ChangeNotifier {
         'linkComparePeriodKey': _usage.linkComparePeriodKey,
         'subscriptionPeriodKey': _usage.subscriptionPeriodKey,
         'productScanPeriodKey': _usage.productScanPeriodKey,
+        'detailMatchAi': _usage.detailMatchAi,
+        'detailMatchAiPeriodKey': _usage.detailMatchAiPeriodKey,
       }),
     );
   }
@@ -525,6 +537,7 @@ class SubscriptionService extends ChangeNotifier {
         linkCompare: data['linkCompare'] as int? ?? 0,
         subscriptionAnalyses: data['subscriptionAnalyses'] as int? ?? 0,
         productScan: data['productScan'] as int? ?? 0,
+        detailMatchAi: data['detailMatchAi'] as int? ?? 0,
         comparisonPeriodKey:
             data['comparisonPeriodKey'] as String? ?? _dailyPeriodKey(),
         aiPeriodKey: data['aiPeriodKey'] as String? ?? _dailyPeriodKey(),
@@ -541,6 +554,8 @@ class SubscriptionService extends ChangeNotifier {
             data['subscriptionPeriodKey'] as String? ?? _dailyPeriodKey(),
         productScanPeriodKey:
             data['productScanPeriodKey'] as String? ?? _dailyPeriodKey(),
+        detailMatchAiPeriodKey:
+            data['detailMatchAiPeriodKey'] as String? ?? _dailyPeriodKey(),
       );
       _usage = _normalizedUsage();
     } catch (_) {
@@ -608,6 +623,7 @@ class SubscriptionService extends ChangeNotifier {
       linkComparePeriodKey: dk,
       subscriptionPeriodKey: dk,
       productScanPeriodKey: dk,
+      detailMatchAiPeriodKey: dk,
     );
   }
 
@@ -658,6 +674,13 @@ class SubscriptionService extends ChangeNotifier {
     }
     if (next.productScanPeriodKey != dailyKey) {
       next = next.copyWith(productScan: 0, productScanPeriodKey: dailyKey);
+      changed = true;
+    }
+    if (next.detailMatchAiPeriodKey != dailyKey) {
+      next = next.copyWith(
+        detailMatchAi: 0,
+        detailMatchAiPeriodKey: dailyKey,
+      );
       changed = true;
     }
 
@@ -723,6 +746,13 @@ class SubscriptionService extends ChangeNotifier {
     return _normalizedUsage().productScan < AppConstants.freeProductScanLimit;
   }
 
+  /// Can AI-generated match score + short summary be used on product detail?
+  bool get canUseDetailMatchAi {
+    if (isPremium) return true;
+    return _normalizedUsage().detailMatchAi <
+        AppConstants.freeDetailMatchAiLimit;
+  }
+
   /// Record comparison usage
   Result<void> recordComparison() {
     return const Success(null);
@@ -777,6 +807,26 @@ class SubscriptionService extends ChangeNotifier {
       );
     }
     _usage = currentUsage.copyWith(detailAi: currentUsage.detailAi + 1);
+    unawaited(_saveUsageToLocal());
+    notifyListeners();
+    return const Success(null);
+  }
+
+  /// Record AI match score + summary usage (product detail)
+  Result<void> recordDetailMatchAi() {
+    final currentUsage = _normalizedUsage();
+    if (!canUseDetailMatchAi) {
+      return Failure(
+        UsageLimitException(
+          featureName: 'detail_match_ai',
+          currentUsage: currentUsage.detailMatchAi,
+          limit: AppConstants.freeDetailMatchAiLimit,
+        ),
+      );
+    }
+    _usage = currentUsage.copyWith(
+      detailMatchAi: currentUsage.detailMatchAi + 1,
+    );
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -909,4 +959,8 @@ class SubscriptionService extends ChangeNotifier {
   int get remainingProductScan => isPremium
       ? -1
       : AppConstants.freeProductScanLimit - _normalizedUsage().productScan;
+  int get detailMatchAiRemaining => isPremium
+      ? -1
+      : AppConstants.freeDetailMatchAiLimit -
+            _normalizedUsage().detailMatchAi;
 }

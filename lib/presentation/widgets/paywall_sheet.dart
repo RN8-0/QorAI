@@ -1509,6 +1509,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.auto_awesome_rounded,
       ),
       _TableRow(
+        _txt(tr: 'AI Urun Ozeti & Eslesme', en: 'AI Summary & Match'),
+        _countPerDay(AppConstants.freeDetailMatchAiLimit),
+        unlimited,
+        Icons.psychology_rounded,
+      ),
+      _TableRow(
         'PC Builder AI',
         _countPerDay(AppConstants.freePcBuilderAiLimit),
         unlimited,

@@ -1233,7 +1233,15 @@ class _GeminiMatchScoreNotifier
         return;
       }
 
-      // 2. Call DeepSeek
+      // 2. Quota gate — free users limited to N AI match analyses per day.
+      // On miss, return null so UI falls back to local algorithmic score only.
+      final sub = _ref.read(subscriptionServiceProvider);
+      if (!sub.isPremium && !sub.canUseDetailMatchAi) {
+        state = const AsyncValue.data(null);
+        return;
+      }
+
+      // 3. Call DeepSeek
       final deepseek = _ref.read(deepSeekServiceProvider);
       final behaviorAsync = _ref.read(behaviorSignalsProvider);
       final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
@@ -1356,6 +1364,11 @@ class _GeminiMatchScoreNotifier
 
       // Save to Firestore cache
       _saveToFirestoreCache(user.uid, matchResult, langCode);
+
+      // Record AI match usage (only when a fresh call actually succeeded)
+      if (!sub.isPremium) {
+        sub.recordDetailMatchAi();
+      }
 
       state = AsyncValue.data(matchResult);
 

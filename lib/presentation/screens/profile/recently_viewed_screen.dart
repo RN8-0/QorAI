@@ -126,14 +126,19 @@ class _ViewedProductCard extends ConsumerWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceVariantLight,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppTheme.surfaceVariantLight,
+                    width: 1,
+                  ),
                 ),
                 clipBehavior: Clip.antiAlias,
+                padding: const EdgeInsets.all(6),
                 child: product.imageURL.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: product.imageURL,
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain,
                         memCacheWidth: 192,
                         maxWidthDiskCache: 192,
                         fadeInDuration: const Duration(milliseconds: 100),
