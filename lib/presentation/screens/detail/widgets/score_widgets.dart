@@ -63,63 +63,133 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
 
   // Memoize fit score so we don't re-run the algorithm on every rebuild
   // (provider watches cause frequent rebuilds — esp. during route anim).
+  // Computed asynchronously (off the build path) to keep the first frame
+  // after navigation fast.
   int? _cachedFitScore;
   String? _cachedFitScoreKey;
+  bool _fitScoreScheduled = false;
 
-  void _triggerGeminiFetch(LocalizedProductKey cacheKey) {
-    if (_lastRequestedLanguage == cacheKey.normalizedLanguageCode) return;
-    _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
+  @override
+  void initState() {
+    super.initState();
+    // Defer to post-frame so the first paint of the detail screen is not
+    // blocked by the (CPU-bound) compatibility algorithm.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref
-          .read(geminiMatchScoreProvider(cacheKey).notifier)
-          .fetchMatchScore(product: widget.product);
+      _maybeRecomputeFitScore();
+      _maybeTriggerGeminiFetch();
     });
+  }
+
+  String _currentLanguageCode() {
+    final locale = ref.read(localeProvider);
+    return (locale?.languageCode ??
+            Localizations.localeOf(context).languageCode)
+        .toLowerCase();
+  }
+
+  LocalizedProductKey _currentCacheKey() {
+    return LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: _currentLanguageCode(),
+    );
+  }
+
+  // Stable memo key — independent of BehaviorSignals identity
+  // (which is reference-based and changes whenever the FutureProvider
+  // re-emits). Uses structural signals instead.
+  String _fitScoreMemoKey(UserEntity user, BehaviorSignals behavior) {
+    return '${widget.product.id}|${user.uid}|${user.quizCompleted}|'
+        '${behavior.favorites.length}|${behavior.productViews.length}|'
+        '${behavior.categoryViews.length}';
+  }
+
+  void _maybeRecomputeFitScore() {
+    if (!mounted) return;
+    if (_fitScoreScheduled) return;
+
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user == null || !user.quizCompleted) return;
+
+    final behavior =
+        ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
+    final memoKey = _fitScoreMemoKey(user, behavior);
+    if (_cachedFitScoreKey == memoKey && _cachedFitScore != null) return;
+
+    _fitScoreScheduled = true;
+    // Run in a microtask so we yield to the frame scheduler first —
+    // keeps the push animation jank-free on low-end devices.
+    Future.microtask(() {
+      if (!mounted) {
+        _fitScoreScheduled = false;
+        return;
+      }
+      final algo = ProfileAlgorithmService();
+      final score = algo
+          .calculateTotalFitScore(
+            user: user,
+            product: widget.product,
+            behavior: behavior,
+          )
+          .round()
+          .clamp(0, 100);
+      _fitScoreScheduled = false;
+      if (!mounted) return;
+      if (_cachedFitScoreKey == memoKey && _cachedFitScore == score) return;
+      setState(() {
+        _cachedFitScore = score;
+        _cachedFitScoreKey = memoKey;
+      });
+    });
+  }
+
+  void _maybeTriggerGeminiFetch() {
+    if (!mounted) return;
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user == null || !user.quizCompleted) return;
+    final cacheKey = _currentCacheKey();
+    if (_lastRequestedLanguage == cacheKey.normalizedLanguageCode) return;
+    _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
+    ref
+        .read(geminiMatchScoreProvider(cacheKey).notifier)
+        .fetchMatchScore(product: widget.product);
   }
 
   @override
   Widget build(BuildContext context) {
-    final locale = ref.watch(localeProvider);
-    final languageCode =
-        (locale?.languageCode ?? Localizations.localeOf(context).languageCode)
-            .toLowerCase();
+    // Narrow watches with .select so rebuild storms during route push
+    // animation are avoided.
+    final languageCode = ref.watch(
+      localeProvider.select(
+        (l) => (l?.languageCode ?? 'en').toLowerCase(),
+      ),
+    );
     final cacheKey = LocalizedProductKey(
       productId: widget.product.id,
       languageCode: languageCode,
     );
     final techScore = widget.product.techScore.toInt();
-    final userAsync = ref.watch(userProfileProvider);
-    final user = userAsync.valueOrNull;
-    final quizDone = user != null && user.quizCompleted;
 
-    // Local instant score calculation — memoized by (productId | userUpdatedAt | behavior hash)
-    int? localFitScore;
-    if (quizDone && user != null) {
-      final behaviorAsync = ref.watch(behaviorSignalsProvider);
-      final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
-      final memoKey = '${widget.product.id}|${user.uid}|${user.quizCompleted}|'
-          '${behavior.hashCode}';
-      if (_cachedFitScoreKey == memoKey && _cachedFitScore != null) {
-        localFitScore = _cachedFitScore;
-      } else {
-        final algo = ProfileAlgorithmService();
-        localFitScore = algo
-            .calculateTotalFitScore(
-              user: user,
-              product: widget.product,
-              behavior: behavior,
-            )
-            .round()
-            .clamp(0, 100);
-        _cachedFitScore = localFitScore;
-        _cachedFitScoreKey = memoKey;
-      }
-    }
+    // React to user profile / behavior changes off-build.
+    ref.listen<AsyncValue<UserEntity?>>(userProfileProvider, (_, __) {
+      _maybeRecomputeFitScore();
+      _maybeTriggerGeminiFetch();
+    });
+    ref.listen<AsyncValue<BehaviorSignals>>(behaviorSignalsProvider, (_, __) {
+      _maybeRecomputeFitScore();
+    });
+    ref.listen<Locale?>(localeProvider, (_, __) {
+      _maybeTriggerGeminiFetch();
+    });
 
-    // Trigger DeepSeek fetch for reason text (background enrichment)
-    if (quizDone) _triggerGeminiFetch(cacheKey);
+    final quizDone = ref.watch(
+      userProfileProvider
+          .select((u) => u.valueOrNull?.quizCompleted ?? false),
+    );
 
-    // Watch DeepSeek result for reason text only
+    final int? localFitScore = quizDone ? _cachedFitScore : null;
+
+    // Watch DeepSeek result for reason text / authoritative score.
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
 

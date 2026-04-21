@@ -17,6 +17,7 @@ import 'package:compair/core/constants.dart';
 import 'package:compair/core/utils.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/domain/entities/product_entity.dart';
+import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
