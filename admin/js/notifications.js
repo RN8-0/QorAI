@@ -219,8 +219,8 @@ async function sendBroadcastNotification() {
   const type = document.getElementById('notifType')?.value || 'system';
   const mode = document.getElementById('notifRecipient')?.value || 'all';
 
-  if (!title) { showToast('Please enter a notification title', 'warn'); return; }
-  if (!body) { showToast('Please enter a notification message', 'warn'); return; }
+  if (!title) { toast('Please enter a notification title', 'w'); return; }
+  if (!body) { toast('Please enter a notification message', 'w'); return; }
 
   let recipients = [];
   if (mode === 'all') recipients = _notifAllUsers;
@@ -228,14 +228,14 @@ async function sendBroadcastNotification() {
   else if (mode === 'free') recipients = _notifAllUsers.filter(u => !u.isPremium);
   else if (mode === 'specific') {
     const query = document.getElementById('notifSpecificUser')?.value?.trim();
-    if (!query) { showToast('Please enter a user email or ID', 'warn'); return; }
+    if (!query) { toast('Please enter a user email or ID', 'w'); return; }
     const found = _notifAllUsers.find(u => u.email === query || u.id === query);
-    if (!found) { showToast('User not found', 'error'); return; }
+    if (!found) { toast('User not found', 'e'); return; }
     recipients = [found];
   }
 
   if (recipients.length === 0) {
-    showToast('No users match the selected recipient group', 'warn');
+    toast('No users match the selected recipient group', 'w');
     return;
   }
 
@@ -302,12 +302,12 @@ async function sendBroadcastNotification() {
     });
     await _saveBroadcastLog();
 
-    showToast(`✅ Sent to ${sent} users${errors > 0 ? ` (${errors} errors)` : ''}`, 'success');
+    toast(`✅ Sent to ${sent} users${errors > 0 ? ` (${errors} errors)` : ''}`, 's');
     _renderBroadcastHistory();
     _updateStats();
     resetNotifComposer();
   } catch (e) {
-    showToast('Send failed: ' + (e.message || e), 'error');
+    toast('Send failed: ' + (e.message || e), 'e');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send Notification';
