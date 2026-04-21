@@ -26,9 +26,9 @@ const _kSidebarWidth = 240.0;
 const _kRailWidth = 72.0;
 
 class MainShell extends ConsumerStatefulWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  const MainShell({super.key, required this.child});
+  const MainShell({super.key, required this.navigationShell});
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
@@ -91,12 +91,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   int _indexFromLocation(String location) {
-    if (location.startsWith(AppRoutes.pcBuilder)) return 0;
-    if (location.startsWith(AppRoutes.compare)) return 1;
-    if (location.startsWith(AppRoutes.home)) return 2;
-    if (location.startsWith(AppRoutes.linkPaste)) return 3;
-    if (location.startsWith(AppRoutes.subscriptions)) return 4;
-    return 2;
+    // Branch indices match StatefulShellRoute definition:
+    // 0=pcBuilder 1=compare 2=home(+browse+aiChat) 3=linkPaste 4=subscriptions
+    return widget.navigationShell.currentIndex.clamp(0, 4);
   }
 
   static const _navRoutes = [
@@ -110,9 +107,15 @@ class _MainShellState extends ConsumerState<MainShell> {
   void _onNavTap(int index) {
     if (!kIsWeb) HapticFeedback.lightImpact();
     // Close any open modals/bottom sheets before navigating
-    Navigator.of(context, rootNavigator: true).popUntil((route) => route is! PopupRoute);
+    Navigator.of(context, rootNavigator: true)
+        .popUntil((route) => route is! PopupRoute);
     ref.read(bottomNavIndexProvider.notifier).state = index;
-    context.go(_navRoutes[index]);
+    // initialLocation:true resets a branch to its root route when re-tapped,
+    // so repeated taps on Home pop back to /home from /home/browse.
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
   }
 
   Widget _buildConnectivityBanner(AsyncValue<ConnectivityStatus> connectivity) {
@@ -187,7 +190,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           child: Column(
             children: [
               _buildConnectivityBanner(connectivity),
-              Expanded(child: widget.child),
+              Expanded(child: widget.navigationShell),
             ],
           ),
         ),
@@ -229,7 +232,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1200),
-                    child: widget.child,
+                    child: widget.navigationShell,
                   ),
                 ),
               ),

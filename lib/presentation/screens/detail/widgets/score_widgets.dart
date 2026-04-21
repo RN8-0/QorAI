@@ -123,14 +123,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
 
-    // Blend local algorithmic score with AI score when AI is available.
-    // Free users without quota get only the local algorithm (no reason shown).
-    int? fitScore;
-    if (matchResult?.matchScore != null && localFitScore != null) {
-      fitScore = ((localFitScore + matchResult!.matchScore) / 2).round();
-    } else {
-      fitScore = localFitScore ?? matchResult?.matchScore;
-    }
+    // AI match score is authoritative when quota allows; fall back to local
+    // algorithmic fit only when DeepSeek returned null (free quota exhausted).
+    final int? fitScore = matchResult?.matchScore ?? localFitScore;
     final String? reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;
@@ -278,13 +273,13 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                   Expanded(
                     child: Text(
                       reason,
-                      maxLines: _reasonExpanded ? 12 : 3,
+                      maxLines: _reasonExpanded ? 20 : 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
                         color: context.textSecondary,
-                        height: 1.35,
+                        height: 1.4,
                       ),
                     ),
                   ),

@@ -109,68 +109,131 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // Main application shell (5 tabs: Home, Browse, AI Chat, Compare, Subscriptions)
-      ShellRoute(
-        builder: (context, state, child) => shell.MainShell(child: child),
-        routes: [
-          GoRoute(
-            path: AppRoutes.home,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: HomeScreen()),
+      // Main application shell (5 persistent tabs + browse/aiChat branches)
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            shell.MainShell(navigationShell: navigationShell),
+        branches: [
+          // Branch 0: PC Builder landing
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.pcBuilder,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: PcBuilderLandingScreen()),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.browse,
-            pageBuilder: (context, state) {
-              final categoryId =
-                  state.uri.queryParameters['id'] ?? 'smartphones';
-              final categoryName =
-                  state.uri.queryParameters['name'] ?? 'Smartphones';
-              final extra = state.extra;
-              List<Map<String, dynamic>>? groupItems;
-              if (extra is List) {
-                groupItems = extra.cast<Map<String, dynamic>>();
-              }
-              return NoTransitionPage(
-                child: CategoryBrowseScreen(
-                  categoryId: categoryId,
-                  categoryName: categoryName,
-                  groupItems: groupItems,
-                ),
-              );
-            },
+          // Branch 1: Compare
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.compare,
+                pageBuilder: (context, state) {
+                  final modeParam = state.uri.queryParameters['mode'];
+                  final mode = modeParam != null
+                      ? (int.tryParse(modeParam) ?? -1)
+                      : -1;
+                  return NoTransitionPage(
+                    child: CompareScreen(initialMode: mode),
+                  );
+                },
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.aiChat,
-            pageBuilder: (context, state) {
-              final query = state.uri.queryParameters['q'];
-              return NoTransitionPage(child: AIChatScreen(initialQuery: query));
-            },
+          // Branch 2: Home (+ Browse as sub-route so bottom bar stays)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: HomeScreen()),
+                routes: [
+                  GoRoute(
+                    path: 'browse',
+                    pageBuilder: (context, state) {
+                      final categoryId =
+                          state.uri.queryParameters['id'] ?? 'smartphones';
+                      final categoryName =
+                          state.uri.queryParameters['name'] ?? 'Smartphones';
+                      final extra = state.extra;
+                      List<Map<String, dynamic>>? groupItems;
+                      if (extra is List) {
+                        groupItems = extra.cast<Map<String, dynamic>>();
+                      }
+                      return NoTransitionPage(
+                        child: CategoryBrowseScreen(
+                          categoryId: categoryId,
+                          categoryName: categoryName,
+                          groupItems: groupItems,
+                        ),
+                      );
+                    },
+                  ),
+                  GoRoute(
+                    path: 'ai-chat',
+                    pageBuilder: (context, state) {
+                      final query = state.uri.queryParameters['q'];
+                      return NoTransitionPage(
+                        child: AIChatScreen(initialQuery: query),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // Keep legacy top-level /browse and /ai-chat working by
+              // defining them in the same branch as home.
+              GoRoute(
+                path: AppRoutes.browse,
+                pageBuilder: (context, state) {
+                  final categoryId =
+                      state.uri.queryParameters['id'] ?? 'smartphones';
+                  final categoryName =
+                      state.uri.queryParameters['name'] ?? 'Smartphones';
+                  final extra = state.extra;
+                  List<Map<String, dynamic>>? groupItems;
+                  if (extra is List) {
+                    groupItems = extra.cast<Map<String, dynamic>>();
+                  }
+                  return NoTransitionPage(
+                    child: CategoryBrowseScreen(
+                      categoryId: categoryId,
+                      categoryName: categoryName,
+                      groupItems: groupItems,
+                    ),
+                  );
+                },
+              ),
+              GoRoute(
+                path: AppRoutes.aiChat,
+                pageBuilder: (context, state) {
+                  final query = state.uri.queryParameters['q'];
+                  return NoTransitionPage(
+                    child: AIChatScreen(initialQuery: query),
+                  );
+                },
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.compare,
-            pageBuilder: (context, state) {
-              final modeParam = state.uri.queryParameters['mode'];
-              // -1 = general (show toggle), 0 = products only, 1 = subscriptions only
-              final mode = modeParam != null
-                  ? (int.tryParse(modeParam) ?? -1)
-                  : -1;
-              return NoTransitionPage(child: CompareScreen(initialMode: mode));
-            },
+          // Branch 3: Link AI
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.linkPaste,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: LinkPasteScreen()),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.pcBuilder,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: PcBuilderLandingScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.linkPaste,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: LinkPasteScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.subscriptions,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SubscriptionsScreen()),
+          // Branch 4: Subscriptions
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.subscriptions,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: SubscriptionsScreen()),
+              ),
+            ],
           ),
         ],
       ),

@@ -1199,7 +1199,7 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
-  static const int _detailMatchCacheVersion = 4;
+  static const int _detailMatchCacheVersion = 5; // v5: 25-100 + richer reason
   final Ref _ref;
   final String _productId;
   final String _languageCode;
@@ -1307,30 +1307,32 @@ class _GeminiMatchScoreNotifier
         tradeOffs: tradeOffs,
       );
       final prompt =
-          'You calculate a personalized product-match score for a shopping app and also write the short text shown below that score card. '
-          'The score is user-specific, but the short text is a product spotlight only.\n\n'
+          'You are the personalization engine for a shopping app. For the given USER + PRODUCT, '
+          'you output BOTH a personalized match score AND the short summary text shown under the score. '
+          'The score and text are produced TOGETHER in one pass.\n\n'
           'User profile:\n${jsonEncode(profileJson)}\n\n'
           'Product:\n${jsonEncode(productJson)}\n\n'
-          'Score this product 0-100 for this user. Be realistic and differentiate:\n'
-          '- 90-100: Excellent fit because the product\'s standout strengths strongly match the user\'s top priorities\n'
-          '- 70-89: Good match with minor trade-offs\n'
-          '- 50-69: Decent but notable mismatches\n'
-          '- 30-49: Poor match because key priorities are not addressed or trade-offs are too important\n'
-          '- 0-29: Very poor match\n\n'
-          'Scoring rules:\n'
-          '- Prioritize the user\'s highest-weight needs and explicit priorities first\n'
-          '- Focus on the product\'s standout features and real trade-offs only\n'
-          '- NEVER mention ecosystem, device compatibility, user profile, current devices, or platform lock-in in the "reason"\n'
-          '- If the product is technically exceptional, acknowledge that when relevant\n\n'
+          'Score this product on a 25-100 scale for this user. Never go below 25.\n'
+          '- 90-100: Exceptional fit — the product\'s standout strengths strongly match the user\'s top priorities & profile\n'
+          '- 75-89: Strong match with minor trade-offs\n'
+          '- 60-74: Good match but with notable compromises\n'
+          '- 45-59: Mediocre match — priorities only partially covered\n'
+          '- 25-44: Poor match — key priorities unmet or major trade-offs\n\n'
+          'Use ALL of these signals to reason:\n'
+          '- Weight vector (heaviest weighted traits matter most)\n'
+          '- Explicit priorities, usage intent, profession, age range, ecosystem\n'
+          '- Recently viewed categories & favorites as live interest signal\n'
+          '- Product techScore, pros/cons, highlights, trade-offs and full specs\n'
+          '- Budget range vs product price\n\n'
           'IMPORTANT for the "reason" field:\n'
-          '- It is NOT a fit explanation and must NOT address the user\n'
-          '- Do NOT use "you", "your", "fit", "match", or "for this user"\n'
+          '- Write 3 to 5 informative sentences (about 70-150 words total)\n'
+          '- Describe the product itself: 2-3 concrete standout strengths AND one real limitation if notable\n'
+          '- Do NOT address the user ("you", "your", "for you")\n'
           '- In Turkish, never use the word "kullanici"; if direct address is unavoidable, use formal "siz"\n'
-          '- Summarize only the product\'s standout 1-3 strengths and, if truly relevant, one concrete limitation\n'
-          '- Keep it to max 2 short sentences and make it product-specific\n'
-          '- The text must read like a short showroom summary focused on the product itself\n\n'
+          '- NEVER mention ecosystem, device compatibility, profile, current devices, or platform lock-in\n'
+          '- Make it product-specific; avoid generic filler\n\n'
           'Return ONLY this JSON:\n'
-          '{"matchScore": <int>, "reason": "<max 2 short product-focused sentences>", '
+          '{"matchScore": <int 25-100>, "reason": "<3-5 product-focused sentences>", '
           '"topMatchFactors": ["<factor1>", "<factor2>", "<factor3>"], '
           '"missingFactors": ["<missing1>", "<missing2>"]}';
 
@@ -1340,7 +1342,7 @@ class _GeminiMatchScoreNotifier
       );
       final map = _decodeJsonMap(result);
 
-      final score = _safeInt(map['matchScore'], 50).clamp(0, 100);
+      final score = _safeInt(map['matchScore'], 50).clamp(25, 100);
       final reason = _sanitizeMatchReason(
         rawReason: ((map['reason'] as String?) ?? '').trim(),
         fallbackReason: fallbackReason,
