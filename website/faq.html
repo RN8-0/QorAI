@@ -1,38 +1,290 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SSS ve Yardım — Compair</title>
-  <meta name="description" content="Compair hakkında sıkça sorulan sorular. Yapay zeka destekli ürün karşılaştırma platformu hakkında her şeyi öğrenin.">
+  <title>FAQ — Compair | AI Product Advisor</title>
+  <meta name="description" content="Frequently asked questions about Compair — the AI-powered product comparison and advisor app for iOS and Android.">
   <link rel="canonical" href="https://compair.digital/faq">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <script>try{var t=localStorage.getItem('compair-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
   <style>
-    .page-wrap { max-width: 780px; margin: 0 auto; padding: 40px 20px 80px; }
-    .page-hero { text-align: center; margin-bottom: 48px; }
-    .page-hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 10px; background: linear-gradient(135deg, var(--accent2), var(--text)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .page-hero p { color: var(--text2); font-size: 16px; line-height: 1.6; }
-    .faq-section { margin-bottom: 40px; }
-    .faq-section-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent2); margin-bottom: 16px; padding-left: 4px; }
-    .faq-item { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg2); margin-bottom: 8px; overflow: hidden; }
-    .faq-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; background: none; border: none; color: var(--text); font-size: 15px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .page-hero {
+      text-align: center;
+      padding: 88px 20px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-orb {
+      position: absolute;
+      top: -80px; left: 50%;
+      transform: translateX(-50%);
+      width: 560px; height: 420px;
+      background: radial-gradient(ellipse at center, rgba(99,102,241,0.22) 0%, rgba(167,139,250,0.08) 45%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero-badge {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent3);
+      color: var(--accent2);
+      border: 1px solid rgba(99,102,241,0.35);
+      border-radius: 99px;
+      padding: 5px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    .page-hero h1 {
+      position: relative;
+      font-size: clamp(34px, 5.5vw, 56px);
+      font-weight: 900;
+      line-height: 1.12;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, var(--accent2), #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .page-hero p {
+      position: relative;
+      color: var(--text2);
+      font-size: 17px;
+      line-height: 1.7;
+      max-width: 500px;
+      margin: 0 auto 40px;
+    }
+
+    /* ── Search ───────────────────────────────────────────── */
+    .search-wrap {
+      position: relative;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    .search-icon {
+      position: absolute;
+      left: 16px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text3);
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      padding: 14px 20px 14px 48px;
+      background: var(--bg2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent3);
+    }
+    .search-input::placeholder { color: var(--text3); }
+
+    /* ── Content ──────────────────────────────────────────── */
+    .page-wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    /* ── Category ─────────────────────────────────────────── */
+    .faq-category { margin-bottom: 52px; }
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .category-icon {
+      width: 42px; height: 42px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .ci-purple { background: rgba(139,92,246,0.16); }
+    .ci-blue   { background: rgba(59,130,246,0.16); }
+    .ci-green  { background: rgba(16,185,129,0.16); }
+    .ci-yellow { background: rgba(245,158,11,0.16); }
+    .category-title { font-size: 19px; font-weight: 800; color: var(--text); }
+    .category-count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text3);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 3px 12px;
+      font-weight: 600;
+    }
+
+    /* ── FAQ Items ────────────────────────────────────────── */
+    .faq-item {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg2);
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .faq-item:hover {
+      border-color: rgba(99,102,241,0.45);
+      box-shadow: 0 4px 20px rgba(99,102,241,0.07);
+    }
+    .faq-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 18px 22px;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
     .faq-btn:hover { background: var(--bg3); }
-    .faq-btn.open { background: var(--bg3); color: var(--accent2); }
-    .faq-chevron { flex-shrink: 0; width: 18px; height: 18px; color: var(--text3); transition: transform 0.2s; }
+    .faq-btn.open { background: var(--bg3); }
+    .faq-btn.open .faq-q { color: var(--accent2); }
+    .faq-q { flex: 1; line-height: 1.45; }
+    .faq-chevron {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      color: var(--text3);
+      transition: transform 0.32s ease, color 0.2s;
+    }
     .faq-btn.open .faq-chevron { transform: rotate(180deg); color: var(--accent2); }
-    .faq-body { display: none; padding: 0 20px 18px; color: var(--text2); font-size: 14px; line-height: 1.75; border-top: 1px solid var(--border); padding-top: 14px; }
-    .faq-body.open { display: block; }
-    .faq-body a { color: var(--accent2); text-decoration: underline; }
-    .contact-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; text-align: center; margin-top: 48px; }
-    .contact-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .contact-box p { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
-    .contact-btn { display: inline-block; padding: 10px 28px; background: var(--accent); color: #fff; border-radius: 99px; font-size: 14px; font-weight: 600; transition: opacity 0.2s; }
-    .contact-btn:hover { opacity: 0.85; }
-    .site-footer { border-top: 1px solid var(--border); padding: 24px 20px; text-align: center; color: var(--text3); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }
+    .faq-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.42s ease;
+    }
+    .faq-body-inner {
+      padding: 16px 22px 22px;
+      border-top: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 14.5px;
+      line-height: 1.82;
+    }
+    .faq-body-inner a { color: var(--accent2); text-decoration: underline; }
+    .faq-body-inner strong { color: var(--text); }
+    .faq-body-inner ul {
+      margin-top: 12px;
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    /* ── Contact Card ─────────────────────────────────────── */
+    .contact-card {
+      background: linear-gradient(135deg, rgba(99,102,241,0.14), rgba(139,92,246,0.09), rgba(59,130,246,0.09));
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 18px;
+      padding: 52px 44px;
+      text-align: center;
+      margin-top: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .contact-card::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 240px; height: 240px;
+      background: radial-gradient(circle, rgba(99,102,241,0.18), transparent 70%);
+      pointer-events: none;
+    }
+    .contact-card::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: -40px;
+      width: 180px; height: 180px;
+      background: radial-gradient(circle, rgba(167,139,250,0.14), transparent 70%);
+      pointer-events: none;
+    }
+    .contact-card h3 {
+      font-size: 26px;
+      font-weight: 900;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--accent2), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .contact-card p { color: var(--text2); font-size: 16px; margin-bottom: 28px; line-height: 1.65; }
+    .contact-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 14px 36px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      border-radius: 99px;
+      font-size: 15px;
+      font-weight: 700;
+      transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 6px 24px rgba(99,102,241,0.45);
+    }
+    .contact-btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 10px 32px rgba(99,102,241,0.55); }
+
+    /* ── No Results ───────────────────────────────────────── */
+    .no-results {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text3);
+      font-size: 15px;
+      display: none;
+    }
+    .no-results a { color: var(--accent2); }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    .site-footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--text3);
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
     .site-footer a { color: var(--text2); transition: color 0.15s; }
     .site-footer a:hover { color: var(--accent2); }
+
+    @media (max-width: 600px) {
+      .contact-card { padding: 36px 22px; }
+      .faq-btn { padding: 15px 16px; font-size: 14px; }
+      .faq-body-inner { padding: 14px 16px 18px; }
+    }
   </style>
 </head>
 <body>
@@ -44,193 +296,363 @@
   </a>
   <div style="flex:1;"></div>
   <div class="header-actions">
-    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Tema değiştir" onclick="toggleTheme()">🌙</button>
-    <a href="/" class="icon-btn" title="Ana Sayfa" style="font-size:13px;width:auto;padding:0 12px;gap:4px;">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-      Ana Sayfa
-    </a>
+    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Toggle theme" onclick="toggleTheme()">🌙</button>
+    <a href="/" class="icon-btn" title="Home" style="font-size:13px;width:auto;padding:0 12px;">Home</a>
   </div>
 </header>
 
+<div class="page-hero">
+  <div class="hero-orb"></div>
+  <div class="hero-badge">💬 Help Center</div>
+  <h1>Frequently Asked<br>Questions</h1>
+  <p>Find answers to the most common questions about Compair — your AI-powered product advisor.</p>
+  <div class="search-wrap">
+    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="search" class="search-input" placeholder="Search questions…" oninput="filterFAQ(this.value)" aria-label="Search FAQ">
+  </div>
+</div>
+
 <main>
   <div class="page-wrap">
-    <div class="page-hero">
-      <h1>SSS ve Yardım</h1>
-      <p>Compair hakkında merak ettikleriniz burada.<br>Aradığınızı bulamazsanız bize yazın.</p>
-    </div>
+    <div id="no-results" class="no-results">😕 No results found. Try a different keyword or <a href="mailto:contact@arain.digital">contact us</a>.</div>
 
-    <div class="faq-section">
-      <div class="faq-section-title">Genel</div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Compair nedir?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body">
-          Compair, yapay zeka destekli bir ürün karşılaştırma platformudur. Akıllı telefonlar, dizüstü bilgisayarlar, GPU'lar, tabletler ve daha pek çok kategoride teknoloji ürünlerini analiz ederek sizi en iyi satın alma kararına yönlendirir.
-        </div>
+    <!-- ── General ────────────────────────────────────────── -->
+    <div class="faq-category" id="cat-general">
+      <div class="category-header">
+        <div class="category-icon ci-purple">🔮</div>
+        <span class="category-title">General</span>
+        <span class="category-count">5 questions</span>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Compair ücretsiz mi?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">What is Compair?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          Evet, Compair temel olarak ücretsizdir. Ücretsiz planda günlük 5 karşılaştırma, 15 AI sorusu ve 3 link analizi hakkınız bulunur. Premium abonelikle bu limitler kaldırılır ve gelişmiş özellikler açılır.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          Compair is an AI-powered product advisor and comparison platform available on iOS and Android. It helps you make smarter purchasing decisions by intelligently analyzing and comparing tech products — smartphones, laptops, GPUs, headphones, tablets, and 40+ other categories. Simply tell Compair what you're looking for, and it delivers side-by-side comparisons, personalized compatibility scores, and clear recommendations tailored to your needs and budget. Think of it as having a knowledgeable tech expert in your pocket, available 24/7.
+        </div></div>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Hangi ürün kategorileri destekleniyor?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">How does Compair work?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          Akıllı telefonlar, dizüstü bilgisayarlar, tabletler, masaüstü bilgisayarlar, monitörler, TV'ler, kulaklıklar, hoparlörler, kameralar, akıllı saatler, GPU'lar, CPU'lar, RAM, SSD, ana kartlar, güç kaynakları, PC kasaları ve daha 40+ kategori desteklenmektedir. Yeni kategoriler düzenli olarak eklenmektedir.
-        </div>
-      </div>
-    </div>
-
-    <div class="faq-section">
-      <div class="faq-section-title">Özellikler</div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          AI Link Analizi nasıl çalışır?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body">
-          Herhangi bir e-ticaret sitesinden (Amazon, Trendyol, Hepsiburada, MediaMarkt vb.) bir ürün bağlantısını yapıştırın. Yapay zeka otomatik olarak ürün ayrıntılarını çıkarır, benzer ürünlerle karşılaştırır ve size kişiselleştirilmiş bir uyumluluk puanı sunar.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          Compair uses advanced AI models (Google Gemini and DeepSeek) combined with a curated product database and real-time data to analyze products across hundreds of specifications. The process is simple:
+          <ul>
+            <li><strong>Search &amp; Select</strong> — Search for any product and add it to your comparison list.</li>
+            <li><strong>AI Analysis</strong> — Our AI evaluates specs, benchmark scores, value for money, and compatibility with your profile.</li>
+            <li><strong>Compatibility Score</strong> — Receive a personalized 0–100 score showing how well each product fits your specific needs.</li>
+            <li><strong>Smart Recommendation</strong> — Get a clear winner with transparent reasoning.</li>
+            <li><strong>AI Chat</strong> — Ask follow-up questions and dive deeper through natural conversation.</li>
+          </ul>
+        </div></div>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Uyumluluk Puanı ne anlama gelir?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Is Compair free to use?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          Uyumluluk Puanı (0–100), bir ürünün sizin özel ihtiyaçlarınıza ne kadar uyduğunu ölçer. Tercihleriniz, kullanım düzeniniz, bütçeniz ve mevcut cihaz ekosistemine göre hesaplanır. Puan ne kadar yüksekse ürün size o kadar uygundur.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          Yes! Compair offers a generous free tier with no credit card required. On the free plan you get:
+          <ul>
+            <li>5 product comparisons per day</li>
+            <li>15 AI chat messages per day</li>
+            <li>3 link analyses per day</li>
+            <li>Access to all 40+ product categories</li>
+          </ul>
+          Upgrade to <strong>Premium</strong> to remove all daily limits, unlock priority AI responses, export comparisons as PDF, and get early access to new features. Visit the <a href="/">homepage</a> to view current pricing.
+        </div></div>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          AI sohbet özelliği nedir?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">How do I create an account?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          Ürün karşılaştırmaları hakkında doğrudan yapay zekayla sohbet edebilirsiniz. "Bu telefon fotoğrafçılık için uygun mu?" veya "1000 TL'ye en iyi kulaklık hangisi?" gibi sorularınızı yanıtlar, gerçek web verilerine dayalı güncel bilgi sunar.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          Creating an account takes less than a minute. Download the Compair app from the <strong>App Store</strong> (iOS) or <strong>Google Play Store</strong> (Android), then tap <strong>Sign Up</strong>. You can register with your email address or use <strong>Google Sign-In</strong> for quick access. After verifying your email, you're all set — no lengthy onboarding, no unnecessary personal information required. Your preferences are collected gradually as you use the app to build a personalized experience.
+        </div></div>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Abonelik analizi nasıl çalışır?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Which platforms is Compair available on?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          Karşılaştırma ekranından "Abonelikler" sekmesini seçerek Netflix, Spotify, YouTube Premium, iCloud gibi dijital abonelikleri yan yana karşılaştırabilirsiniz. AI size en fazla değer katan aboneliği önerir.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          Compair is available as a native mobile app for <strong>iOS</strong> (iPhone &amp; iPad, iOS 14+) and <strong>Android</strong> (Android 8.0+). The app is built with Flutter, ensuring a smooth and consistent experience on both platforms. We currently focus exclusively on mobile — all features live within the app. You can also learn about Compair at <a href="https://compair.digital">compair.digital</a>, but the full product advisor experience requires the app.
+        </div></div>
       </div>
     </div>
 
-    <div class="faq-section">
-      <div class="faq-section-title">Gizlilik ve Güvenlik</div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Verilerim AI eğitimi için kullanılıyor mu?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body">
-          Etkileşim verileriniz (karşılaştırmalar, arama sorguları) kişisel öneri profilinizi geliştirmek için kullanılır. Küresel model eğitiminde yalnızca anonimleştirilmiş ve toplulaştırılmış veriler kullanılmaktadır. Daha fazla bilgi için <a href="/privacy.html">Gizlilik Politikamızı</a> inceleyebilirsiniz.
-        </div>
+    <!-- ── AI Features ─────────────────────────────────────── -->
+    <div class="faq-category" id="cat-ai">
+      <div class="category-header">
+        <div class="category-icon ci-blue">🤖</div>
+        <span class="category-title">AI Features</span>
+        <span class="category-count">5 questions</span>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Hesabımı ve verilerimi nasıl silebilirim?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">How accurate are the AI comparisons and recommendations?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          Uygulamada <strong>Ayarlar → Hesap Sil</strong> seçeneğiyle hesabınızı ve tüm verilerinizi kalıcı olarak silebilirsiniz. Alternatif olarak <a href="mailto:support@compair.digital">support@compair.digital</a> adresine "Hesap Silme Talebi" konuluyla e-posta gönderebilirsiniz. Talebiniz 30 gün içinde işleme alınır.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          Compair's AI is powered by Google Gemini and uses a curated database of verified product specifications and benchmark data. Comparisons are highly accurate for factual specifications. Recommendations are personalized based on your stated preferences, use case, and budget — they are thoughtful suggestions, not absolute certainties. We always recommend cross-checking critical purchasing decisions with official product pages and retailer listings. Please see our <a href="/terms">Terms of Service</a> for our full disclaimer on AI-generated content.
+        </div></div>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Verilerimi dışa aktarabilir miyim?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">What is AI Link Analysis?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          Evet. Uygulamada <strong>Ayarlar → Verilerimi Dışa Aktar</strong> seçeneğiyle profil bilgilerinizi, tercihlerinizi ve uygulama ayarlarınızı JSON formatında indirebilirsiniz.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          AI Link Analysis is one of Compair's most powerful features. Paste a product URL from any e-commerce site — Amazon, Best Buy, Newegg, eBay, and many more — and Compair's AI will:
+          <ul>
+            <li>Automatically extract the product's specifications and details</li>
+            <li>Evaluate the listing price versus current market value</li>
+            <li>Compare it against similar products in our database</li>
+            <li>Calculate a personalized compatibility score just for you</li>
+            <li>Highlight potential concerns, advantages, and alternatives</li>
+          </ul>
+          This is especially useful when shopping online — just share the link and get an instant, unbiased analysis before you buy.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">What can I ask the AI chat assistant?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          The AI chat assistant is your personal tech advisor. You can ask virtually anything about products and purchasing decisions:
+          <ul>
+            <li>"Is the iPhone 16 Pro worth upgrading from my iPhone 13?"</li>
+            <li>"What's the best laptop under $800 for video editing?"</li>
+            <li>"Should I buy a GPU now or wait for the next generation?"</li>
+            <li>"What are the key differences between these two headphones?"</li>
+            <li>"Is this Amazon listing a good deal right now?"</li>
+          </ul>
+          The assistant maintains full context throughout your conversation, so follow-up questions are understood naturally without needing to repeat yourself.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">What is the Compatibility Score?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          The Compatibility Score (0–100) is a personalized metric that measures how well a product fits <em>your specific</em> needs — not just how good the product is in general. It factors in:
+          <ul>
+            <li>Your stated use cases (gaming, creative work, photography, etc.)</li>
+            <li>Your budget range and value-for-money expectations</li>
+            <li>Your existing device ecosystem and software preferences</li>
+            <li>Your performance and feature priorities</li>
+          </ul>
+          A score of <strong>85+</strong> indicates an excellent match. Scores below 50 suggest the product may not align well with your requirements. You can update your preferences anytime in <strong>Settings → My Profile</strong>.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Which AI models does Compair use?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          Compair uses a combination of leading AI models to deliver fast, accurate, and insightful results. Our primary AI engine is <strong>Google Gemini</strong>, which powers product comparisons, link analysis, and conversational AI features. We also integrate <strong>DeepSeek</strong> models for specific analytical tasks. Product search is powered by <strong>Algolia</strong> for lightning-fast, typo-tolerant results across our entire product catalog. Our infrastructure is continuously updated to incorporate the latest AI advancements.
+        </div></div>
       </div>
     </div>
 
-    <div class="faq-section">
-      <div class="faq-section-title">Mobil Uygulama</div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Uygulamayı nereden indirebilirim?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body">
-          Compair uygulaması Android için Google Play Store'dan indirilebilir. "Compair" aratın veya web sitemizden doğrudan indirme bağlantısına ulaşın. iOS sürümü yakında yayınlanacaktır.
-        </div>
+    <!-- ── Privacy & Security ──────────────────────────────── -->
+    <div class="faq-category" id="cat-privacy">
+      <div class="category-header">
+        <div class="category-icon ci-green">🔒</div>
+        <span class="category-title">Privacy &amp; Security</span>
+        <span class="category-count">4 questions</span>
       </div>
 
       <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)">
-          Önbelleği temizlemek ne işe yarar?
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">What data does Compair collect and store?</span>
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-body">
-          <strong>Ayarlar → Önbelleği Temizle</strong> seçeneği, uygulamanın indirdiği geçici resim ve veri dosyalarını temizler. Bu işlem uygulamanın depolama alanını boşaltır; ürün görselleri bir sonraki açılışta yeniden yüklenir.
-        </div>
+        <div class="faq-body"><div class="faq-body-inner">
+          We collect only what's necessary to provide a great experience. This includes your account information (email, display name), your product preferences and settings, your comparison history to power personalized recommendations, and basic usage analytics to improve the app. We do <strong>not</strong> sell your personal data to any third parties — ever. Your data is stored securely on our PocketBase-powered servers. For complete details, please read our <a href="/privacy">Privacy Policy</a>.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Is Compair GDPR compliant?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          Yes. Compair is designed with privacy as a core principle and complies with applicable data protection regulations. You have the right to access your personal data, correct inaccuracies, request deletion, and export your data in a portable format. You can exercise these rights directly from the app (<strong>Settings → Privacy</strong>) or by emailing us at <a href="mailto:contact@arain.digital">contact@arain.digital</a>. We respond to all data requests within 30 days. For full details, see our <a href="/privacy">Privacy Policy</a>.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">How do I delete my account and data?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          You can permanently delete your account and all associated data in two ways:
+          <ul>
+            <li><strong>In-app:</strong> Go to <strong>Settings → Account → Delete Account</strong>. This immediately and permanently removes all your data from our servers.</li>
+            <li><strong>Via email:</strong> Send an account deletion request to <a href="mailto:contact@arain.digital">contact@arain.digital</a> with the subject "Account Deletion Request". We'll process it within 30 days.</li>
+          </ul>
+          ⚠️ Deletion is permanent and cannot be undone. We recommend exporting your data first if you want to keep a copy (<strong>Settings → Export My Data</strong>).
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Is my data used to train AI models?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          Your personal data is never used to train external AI models. Anonymized, aggregated usage patterns (such as which product categories are popular) may be used to improve Compair's internal recommendation algorithms. Your conversations with the AI assistant are processed by our AI providers to generate responses, but are not stored for model training purposes beyond what is covered in the respective providers' data policies. You can review all data practices in our <a href="/privacy">Privacy Policy</a>.
+        </div></div>
       </div>
     </div>
 
-    <div class="contact-box">
-      <h3>Aradığınızı bulamadınız mı?</h3>
-      <p>Destek ekibimize ulaşın, en kısa sürede yanıt verelim.</p>
-      <a href="mailto:support@compair.digital" class="contact-btn">✉ Bize Yazın</a>
+    <!-- ── Mobile App ──────────────────────────────────────── -->
+    <div class="faq-category" id="cat-mobile">
+      <div class="category-header">
+        <div class="category-icon ci-yellow">📱</div>
+        <span class="category-title">Mobile App</span>
+        <span class="category-count">4 questions</span>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Where can I download the Compair app?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          Compair is available on both major mobile platforms:
+          <ul>
+            <li><strong>iOS:</strong> Download from the <strong>App Store</strong> — compatible with iPhone and iPad running iOS 14 or later.</li>
+            <li><strong>Android:</strong> Download from <strong>Google Play Store</strong> — compatible with Android 8.0 and above.</li>
+          </ul>
+          Simply search for <strong>"Compair"</strong> in your app store, or visit <a href="https://compair.digital">compair.digital</a> and tap the download button for your platform.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Does Compair work offline?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          Compair requires an internet connection for most core features, since AI comparisons and real-time product data rely on our servers. However, some data is cached locally for quick access:
+          <ul>
+            <li>Recently viewed product comparisons are cached and viewable offline</li>
+            <li>Your profile preferences and settings are stored locally on your device</li>
+            <li>Product images are cached after first load for fast browsing</li>
+          </ul>
+          New AI comparisons, link analyses, and chat always require an active internet connection.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">Can I export my comparison results?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          Yes! Premium users can export comparison results in multiple formats. Open any comparison result and tap the <strong>Share / Export</strong> button to export as a PDF summary or share a direct link. You can also export your full account data — all comparisons, preferences, and history — from <strong>Settings → Export My Data</strong>. This produces a complete JSON file of everything Compair has stored for your account, which you can keep for your own records.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q">How do I manage notifications?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-body"><div class="faq-body-inner">
+          You have full control over notifications. In the app, go to <strong>Settings → Notifications</strong> to customize what alerts you receive. Available notification types include:
+          <ul>
+            <li>Price drop alerts for products you're tracking</li>
+            <li>New product releases in your favorite categories</li>
+            <li>App updates and new feature announcements</li>
+            <li>Subscription renewal reminders</li>
+          </ul>
+          You can also manage all app notifications through your device's system settings at any time.
+        </div></div>
+      </div>
     </div>
+
+    <!-- ── Contact Card ────────────────────────────────────── -->
+    <div class="contact-card">
+      <h3>Still have questions?</h3>
+      <p>Can't find what you're looking for? Our team is happy to help.<br>We typically respond within 24 hours.</p>
+      <a href="mailto:contact@arain.digital" class="contact-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        Contact Us
+      </a>
+    </div>
+
   </div>
 </main>
 
 <footer class="site-footer">
-  <span>© 2025 Compair</span>
-  <a href="/privacy.html">Gizlilik Politikası</a>
-  <a href="/terms.html">Kullanım Koşulları</a>
-  <a href="/faq.html">SSS</a>
-  <a href="mailto:support@compair.digital">İletişim</a>
+  <span>© 2025 Compair · compair.digital</span>
+  <a href="/">Home</a>
+  <a href="/faq">FAQ</a>
+  <a href="/privacy">Privacy Policy</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="mailto:contact@arain.digital">contact@arain.digital</a>
 </footer>
 
 <script>
 function toggleFaq(btn) {
   const body = btn.nextElementSibling;
   const isOpen = btn.classList.contains('open');
-  // Close all
-  document.querySelectorAll('.faq-btn').forEach(b => b.classList.remove('open'));
-  document.querySelectorAll('.faq-body').forEach(b => b.classList.remove('open'));
+  document.querySelectorAll('.faq-btn').forEach(b => {
+    b.classList.remove('open');
+    b.setAttribute('aria-expanded', 'false');
+  });
+  document.querySelectorAll('.faq-body').forEach(b => { b.style.maxHeight = ''; });
   if (!isOpen) {
     btn.classList.add('open');
-    body.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+    body.style.maxHeight = body.scrollHeight + 'px';
   }
 }
-function toggleTheme() {
-  const html = document.documentElement;
-  const cur = html.getAttribute('data-theme') || 'dark';
-  const next = cur === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  try { localStorage.setItem('compair-theme', next); } catch(e) {}
-  document.getElementById('theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+
+function filterFAQ(query) {
+  const q = query.toLowerCase().trim();
+  let anyVisible = false;
+  document.querySelectorAll('.faq-category').forEach(cat => {
+    let catVisible = false;
+    cat.querySelectorAll('.faq-item').forEach(item => {
+      const match = !q || item.textContent.toLowerCase().includes(q);
+      item.style.display = match ? '' : 'none';
+      if (match) catVisible = true;
+    });
+    cat.style.display = catVisible ? '' : 'none';
+    if (catVisible) anyVisible = true;
+  });
+  document.getElementById('no-results').style.display = anyVisible ? 'none' : 'block';
 }
+
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('compair-theme', t);
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const t = document.documentElement.getAttribute('data-theme') || 'dark';
   document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';

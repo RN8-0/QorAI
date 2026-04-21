@@ -1,29 +1,276 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kullanım Koşulları — Compair</title>
-  <meta name="description" content="Compair Kullanım Koşulları. Hizmetimizi kullanmak için geçerli koşulları ve şartları okuyun.">
+  <title>Terms of Service — Compair</title>
+  <meta name="description" content="Compair Terms of Service — the rules and guidelines for using the Compair AI product advisor app.">
   <link rel="canonical" href="https://compair.digital/terms">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <script>try{var t=localStorage.getItem('compair-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
   <style>
-    .page-wrap { max-width: 780px; margin: 0 auto; padding: 40px 20px 80px; }
-    .page-hero { margin-bottom: 40px; }
-    .page-hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
-    .page-hero .meta { color: var(--text3); font-size: 13px; }
-    .doc-section { margin-bottom: 32px; }
-    .doc-section h2 { font-size: 16px; font-weight: 700; color: var(--accent2); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-    .doc-section p, .doc-section li { color: var(--text2); font-size: 14px; line-height: 1.8; }
-    .doc-section ul { padding-left: 20px; }
-    .doc-section ul li { margin-bottom: 4px; }
-    .doc-section a { color: var(--accent2); text-decoration: underline; }
-    .doc-section strong { color: var(--text); }
-    .site-footer { border-top: 1px solid var(--border); padding: 24px 20px; text-align: center; color: var(--text3); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .page-hero {
+      text-align: center;
+      padding: 80px 20px 56px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-orb {
+      position: absolute;
+      top: -80px; left: 50%;
+      transform: translateX(-50%);
+      width: 500px; height: 380px;
+      background: radial-gradient(ellipse at center, rgba(99,102,241,0.2) 0%, rgba(96,165,250,0.07) 45%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent3);
+      color: var(--accent2);
+      border: 1px solid rgba(99,102,241,0.35);
+      border-radius: 99px;
+      padding: 5px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .page-hero h1 {
+      position: relative;
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 900;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, var(--accent2), #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-meta {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      color: var(--text3);
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+    .hero-intro {
+      position: relative;
+      max-width: 600px;
+      margin: 0 auto;
+      color: var(--text2);
+      font-size: 16px;
+      line-height: 1.72;
+    }
+
+    /* ── Doc Layout ───────────────────────────────────────── */
+    .doc-outer {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 40px;
+      align-items: start;
+    }
+
+    /* ── TOC Sidebar (desktop) ────────────────────────────── */
+    .toc-sidebar {
+      position: sticky;
+      top: 76px;
+      background: var(--bg2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .toc-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .toc-nav { display: flex; flex-direction: column; gap: 4px; }
+    .toc-nav a {
+      font-size: 12.5px;
+      color: var(--text2);
+      padding: 6px 10px;
+      border-radius: 8px;
+      line-height: 1.4;
+      transition: background 0.15s, color 0.15s;
+      display: block;
+    }
+    .toc-nav a:hover { background: var(--bg3); color: var(--accent2); }
+    .toc-nav a.active { background: var(--accent3); color: var(--accent2); font-weight: 600; }
+
+    /* ── TOC Mobile (collapsible) ─────────────────────────── */
+    .toc-mobile {
+      display: none;
+      background: var(--bg2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+    .toc-mobile summary {
+      padding: 14px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      list-style: none;
+      user-select: none;
+    }
+    .toc-mobile summary::-webkit-details-marker { display: none; }
+    .toc-mobile[open] summary .toc-arrow { transform: rotate(180deg); }
+    .toc-arrow { transition: transform 0.25s; }
+    .toc-mobile .toc-nav { padding: 4px 12px 12px; border-top: 1px solid var(--border); }
+
+    /* ── Doc Content ──────────────────────────────────────── */
+    .doc-content { min-width: 0; }
+
+    /* ── Doc Section ──────────────────────────────────────── */
+    .doc-section {
+      background: var(--bg2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 18px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .doc-section:hover { border-color: rgba(99,102,241,0.3); }
+    .doc-section::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: var(--section-color, var(--accent));
+      border-radius: var(--radius) 0 0 var(--radius);
+    }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .section-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+    }
+    .doc-section h2 {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.35;
+      padding-top: 2px;
+    }
+    .doc-section h2 span {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text3);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .section-body p { color: var(--text2); font-size: 14.5px; line-height: 1.82; margin-bottom: 12px; }
+    .section-body p:last-child { margin-bottom: 0; }
+    .section-body ul, .section-body ol { color: var(--text2); font-size: 14.5px; line-height: 1.82; padding-left: 20px; margin: 10px 0 12px; display: flex; flex-direction: column; gap: 6px; }
+    .section-body a { color: var(--accent2); text-decoration: underline; }
+    .section-body strong { color: var(--text); }
+    .section-body h3 { font-size: 14px; font-weight: 700; color: var(--text); margin: 16px 0 8px; }
+    .section-body em { font-style: italic; }
+
+    /* ── Warning / Info Box ───────────────────────────────── */
+    .warn-box {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13.5px;
+      color: var(--warning);
+      line-height: 1.65;
+      margin-top: 14px;
+    }
+    .info-box {
+      background: var(--accent3);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13.5px;
+      color: var(--accent2);
+      line-height: 1.65;
+      margin-top: 14px;
+    }
+
+    /* ── Plan Table ───────────────────────────────────────── */
+    .plan-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .plan-card {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .plan-card.premium { border-color: rgba(99,102,241,0.45); background: var(--accent3); }
+    .plan-name { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .plan-card.free .plan-name { color: var(--text2); }
+    .plan-card.premium .plan-name { color: var(--accent2); }
+    .plan-features { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+    .plan-features li { font-size: 13px; color: var(--text2); display: flex; align-items: flex-start; gap: 7px; }
+    .plan-features li::before { content: '✓'; color: var(--success); font-weight: 700; flex-shrink: 0; }
+    @media (max-width: 480px) { .plan-grid { grid-template-columns: 1fr; } }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    .site-footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--text3);
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
     .site-footer a { color: var(--text2); transition: color 0.15s; }
     .site-footer a:hover { color: var(--accent2); }
+
+    @media (max-width: 800px) {
+      .doc-outer { grid-template-columns: 1fr; padding: 0 16px 60px; }
+      .toc-sidebar { display: none; }
+      .toc-mobile { display: block; }
+      .doc-section { padding: 22px 20px; }
+    }
   </style>
 </head>
 <body>
@@ -35,100 +282,353 @@
   </a>
   <div style="flex:1;"></div>
   <div class="header-actions">
-    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Tema değiştir" onclick="toggleTheme()">🌙</button>
-    <a href="/" class="icon-btn" title="Ana Sayfa" style="font-size:13px;width:auto;padding:0 12px;gap:4px;">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-      Ana Sayfa
-    </a>
+    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Toggle theme" onclick="toggleTheme()">🌙</button>
+    <a href="/" class="icon-btn" title="Home" style="font-size:13px;width:auto;padding:0 12px;">Home</a>
   </div>
 </header>
 
-<main>
-  <div class="page-wrap">
-    <div class="page-hero">
-      <h1>Kullanım Koşulları</h1>
-      <p class="meta">Son güncelleme: Nisan 2026</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>1. Koşulların Kabulü</h2>
-      <p>Compair uygulamasını indirerek, kurarak veya kullanarak bu Kullanım Koşullarını kabul etmiş sayılırsınız. Koşulları kabul etmiyorsanız lütfen uygulamayı kullanmayınız.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>2. Hizmetin Tanımı</h2>
-      <p>Compair, kullanıcıların teknoloji ürünlerini karşılaştırmasına, ürün bağlantılarını analiz etmesine ve kişiselleştirilmiş öneriler almasına yardımcı olan yapay zeka destekli bir ürün karşılaştırma platformudur. Hizmet; web ve mobil uygulamayı kapsar.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>3. Kullanıcı Hesabı</h2>
-      <p>Bazı özelliklere erişim için Google veya Apple ile hesap oluşturmanız gerekmektedir. Hesabınızın güvenliği sizin sorumluluğunuzdadır. Doğru bilgi vermeyi ve gerektiğinde güncellemeyi kabul etmektesiniz.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>4. Kabul Edilebilir Kullanım</h2>
-      <p>Aşağıdaki eylemleri gerçekleştirmemeyi kabul etmektesiniz:</p>
-      <ul>
-        <li>Hizmeti herhangi bir yasadışı amaç için kullanmak.</li>
-        <li>Hizmetin herhangi bir bölümüne yetkisiz erişim sağlamaya çalışmak.</li>
-        <li>Hizmeti kesintiye uğratmak veya bozmak.</li>
-        <li>İzin almaksızın Hizmet'ten veri toplamak veya kazımak.</li>
-        <li>Hizmete otomatik araçlarla aşırı erişim sağlamak.</li>
-      </ul>
-    </div>
-
-    <div class="doc-section">
-      <h2>5. Abonelikler</h2>
-      <p>Compair, ücretsiz ve premium abonelik katmanları sunmaktadır. Premium abonelikler Apple App Store veya Google Play Store üzerinden faturalanır. Abonelikler, mevcut dönem sona ermeden en az 24 saat önce iptal edilmediğinde otomatik olarak yenilenir. Abonelikleri cihazınızın App Store / Play Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>6. Yapay Zeka Üretilen İçerik</h2>
-      <p>Compair, ürün analizleri ve öneriler üretmek için Gemini AI gibi yapay zeka modellerini kullanır. En yüksek doğruluk için çaba göstersek de AI üretilen içerik hatalar veya eksiklikler içerebilir. Hizmet "olduğu gibi" sunulmaktadır ve satın alma kararlarınızın tek dayanağı olmamalıdır. Önemli teknik özellikleri üretici firmadan doğrulamanızı tavsiye ederiz.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>7. Fikri Mülkiyet</h2>
-      <p>Hizmetin tüm içerik, özellik ve işlevi Compair'e veya lisans verenlerine aittir ve fikri mülkiyet mevzuatıyla korunmaktadır. Ürün verileri ve görseller ilgili perakendecilerden sağlanıyor olabilir ve ilgili sahiplerine aittir.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>8. Sorumluluk Sınırlaması</h2>
-      <p>Yürürlükteki yasanın izin verdiği azami ölçüde Compair, Hizmeti kullanmanızdan kaynaklanan dolaylı, arızi, özel, sonuçsal veya cezai zararlardan sorumlu tutulamaz.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>9. Değişiklikler</h2>
-      <p>Bu koşulları her zaman değiştirme hakkını saklı tutarız. Değişikliklerin ardından Hizmeti kullanmaya devam etmek, yeni koşulları kabul ettiğiniz anlamına gelir. Önemli değişiklikler için kullanıcıları bilgilendirmeye çalışacağız.</p>
-    </div>
-
-    <div class="doc-section">
-      <h2>10. İletişim</h2>
-      <p>Bu kullanım koşullarıyla ilgili sorularınız için: <a href="mailto:support@compair.digital">support@compair.digital</a></p>
-    </div>
+<div class="page-hero">
+  <div class="hero-orb"></div>
+  <div class="hero-badge">📄 Legal Agreement</div>
+  <h1>Terms of Service</h1>
+  <div class="hero-meta">
+    <span>📅 Last updated: April 21, 2025</span>
+    <span>·</span>
+    <span>🌐 compair.digital</span>
   </div>
-</main>
+  <p class="hero-intro">Please read these Terms carefully before using Compair. By accessing or using our service, you agree to be bound by these Terms. If you disagree with any part, you may not use the service.</p>
+</div>
+
+<div class="doc-outer">
+  <!-- Desktop TOC -->
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+      <a href="#s1">1. Acceptance of Terms</a>
+      <a href="#s2">2. Description of Service</a>
+      <a href="#s3">3. User Accounts</a>
+      <a href="#s4">4. Subscription Plans</a>
+      <a href="#s5">5. AI-Generated Content</a>
+      <a href="#s6">6. Acceptable Use</a>
+      <a href="#s7">7. Intellectual Property</a>
+      <a href="#s8">8. Disclaimers</a>
+      <a href="#s9">9. Governing Law</a>
+      <a href="#s10">10. Termination</a>
+      <a href="#s11">11. Contact Us</a>
+    </nav>
+  </aside>
+
+  <!-- Content -->
+  <main class="doc-content">
+    <!-- Mobile TOC -->
+    <details class="toc-mobile">
+      <summary>
+        📋 Table of Contents
+        <svg class="toc-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <nav class="toc-nav">
+        <a href="#s1">1. Acceptance of Terms</a>
+        <a href="#s2">2. Description of Service</a>
+        <a href="#s3">3. User Accounts</a>
+        <a href="#s4">4. Subscription Plans</a>
+        <a href="#s5">5. AI-Generated Content</a>
+        <a href="#s6">6. Acceptable Use</a>
+        <a href="#s7">7. Intellectual Property</a>
+        <a href="#s8">8. Disclaimers</a>
+        <a href="#s9">9. Governing Law</a>
+        <a href="#s10">10. Termination</a>
+        <a href="#s11">11. Contact Us</a>
+      </nav>
+    </details>
+
+    <!-- Section 1 -->
+    <section class="doc-section" id="s1" style="--section-color: var(--accent)">
+      <div class="section-head">
+        <div class="section-icon" style="background:var(--accent3);color:var(--accent2);">✅</div>
+        <h2><span>Section 01</span>Acceptance of Terms</h2>
+      </div>
+      <div class="section-body">
+        <p>By downloading, installing, or using the Compair mobile application or website (collectively, the "Service"), you confirm that you are at least <strong>13 years of age</strong>, that you have read and understood these Terms of Service ("Terms"), and that you agree to be legally bound by them.</p>
+        <p>If you are using Compair on behalf of an organization or entity, you represent that you have the authority to bind that organization to these Terms, and "you" refers to both you and the organization.</p>
+        <p>These Terms, along with our <a href="/privacy">Privacy Policy</a>, constitute the entire agreement between you and Compair regarding your use of the Service. We reserve the right to update these Terms at any time. Continued use of the Service after changes are posted constitutes acceptance of the revised Terms.</p>
+      </div>
+    </section>
+
+    <!-- Section 2 -->
+    <section class="doc-section" id="s2" style="--section-color: var(--info)">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(59,130,246,0.15);color:var(--info);">🤖</div>
+        <h2><span>Section 02</span>Description of Service</h2>
+      </div>
+      <div class="section-body">
+        <p>Compair is an AI-powered product advisory platform designed to help users make informed purchasing decisions. The Service includes the following core features:</p>
+        <ul>
+          <li><strong>AI Product Comparison</strong> — Side-by-side analysis of tech products across 40+ categories including smartphones, laptops, GPUs, headphones, and more.</li>
+          <li><strong>Compatibility Score</strong> — A personalized 0–100 score that evaluates how well a product matches your stated preferences, use case, and budget.</li>
+          <li><strong>AI Link Analysis</strong> — Paste a product URL from any e-commerce site to receive an instant AI analysis, price evaluation, and comparison.</li>
+          <li><strong>AI Chat Assistant</strong> — A conversational AI advisor powered by Google Gemini for product questions, buying advice, and deeper analysis.</li>
+          <li><strong>Smart Recommendations</strong> — Personalized product suggestions based on your preferences and comparison history.</li>
+        </ul>
+        <p>We reserve the right to modify, suspend, or discontinue any part of the Service at any time. We will provide reasonable notice for significant changes affecting active Premium subscribers.</p>
+      </div>
+    </section>
+
+    <!-- Section 3 -->
+    <section class="doc-section" id="s3" style="--section-color: #8b5cf6">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(139,92,246,0.15);color:#8b5cf6;">👤</div>
+        <h2><span>Section 03</span>User Accounts</h2>
+      </div>
+      <div class="section-body">
+        <h3>Registration</h3>
+        <p>To access most features of Compair, you must create an account by providing a valid email address and choosing a secure password, or by using Google Sign-In. You agree to provide accurate, current, and complete information during registration and to keep your information up to date.</p>
+
+        <h3>Account Security</h3>
+        <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You agree to:</p>
+        <ul>
+          <li>Use a strong, unique password for your Compair account</li>
+          <li>Not share your account credentials with any other person</li>
+          <li>Notify us immediately at <a href="mailto:contact@arain.digital">contact@arain.digital</a> if you suspect any unauthorized access to your account</li>
+          <li>Sign out of your account after use on shared devices</li>
+        </ul>
+
+        <h3>One Account Per User</h3>
+        <p>Each individual may maintain only one Compair account. Creating multiple accounts to circumvent usage limits, access restrictions, or subscription requirements is strictly prohibited and may result in permanent termination of all associated accounts.</p>
+      </div>
+    </section>
+
+    <!-- Section 4 -->
+    <section class="doc-section" id="s4" style="--section-color: var(--warning)">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(245,158,11,0.15);color:var(--warning);">💳</div>
+        <h2><span>Section 04</span>Subscription Plans</h2>
+      </div>
+      <div class="section-body">
+        <p>Compair offers two tiers of access:</p>
+        <div class="plan-grid">
+          <div class="plan-card free">
+            <div class="plan-name">🆓 Free Plan</div>
+            <ul class="plan-features">
+              <li>5 comparisons per day</li>
+              <li>15 AI chat messages per day</li>
+              <li>3 link analyses per day</li>
+              <li>Access to all categories</li>
+              <li>Standard AI response speed</li>
+            </ul>
+          </div>
+          <div class="plan-card premium">
+            <div class="plan-name">⭐ Premium Plan</div>
+            <ul class="plan-features">
+              <li>Unlimited comparisons</li>
+              <li>Unlimited AI chat</li>
+              <li>Unlimited link analyses</li>
+              <li>Priority AI response speed</li>
+              <li>PDF export &amp; sharing</li>
+              <li>Early access to new features</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Billing</h3>
+        <p>Premium subscriptions are billed on a recurring monthly or annual basis. Payment is processed through the Apple App Store or Google Play Store billing systems, depending on your platform. By subscribing, you authorize the applicable platform to charge your payment method on file.</p>
+
+        <h3>Cancellation</h3>
+        <p>You may cancel your Premium subscription at any time through your device's app store subscription management settings. Cancellation takes effect at the end of the current billing period — you will retain Premium access until that date.</p>
+
+        <h3>Refund Policy</h3>
+        <p>All subscription payments are <strong>non-refundable</strong> except where required by applicable law. Partial refunds for unused portions of a billing period are not provided. If you believe a charge was made in error, please contact us at <a href="mailto:contact@arain.digital">contact@arain.digital</a> within 14 days of the charge.</p>
+
+        <div class="warn-box">
+          ⚠️ Compair reserves the right to adjust subscription pricing. We will notify current Premium subscribers at least 30 days before any price changes take effect.
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5 -->
+    <section class="doc-section" id="s5" style="--section-color: var(--accent2)">
+      <div class="section-head">
+        <div class="section-icon" style="background:var(--accent3);color:var(--accent2);">✨</div>
+        <h2><span>Section 05</span>AI-Generated Content</h2>
+      </div>
+      <div class="section-body">
+        <p>Compair uses artificial intelligence to generate product comparisons, compatibility scores, recommendations, and chat responses. You acknowledge and agree that:</p>
+        <ul>
+          <li><strong>AI content is not guaranteed to be accurate, complete, or current.</strong> Product specifications, prices, and availability can change rapidly.</li>
+          <li>AI recommendations are <strong>informational only</strong> and do not constitute professional financial, investment, or purchasing advice.</li>
+          <li>You should independently verify important information before making significant purchasing decisions.</li>
+          <li>Compair is <strong>not liable</strong> for any losses, damages, or disappointments arising from purchasing decisions made based on AI-generated content.</li>
+          <li>AI models may occasionally produce errors, hallucinations, or outdated information, which is an inherent limitation of current AI technology.</li>
+        </ul>
+        <p>We continually work to improve the accuracy and reliability of our AI features, but we cannot guarantee perfection. Use Compair as one tool among many in your purchasing research process.</p>
+        <div class="warn-box">
+          ⚠️ AI-generated content on Compair is not financial, legal, or professional advice of any kind. Always consult official sources and make purchasing decisions based on your own informed judgment.
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6 -->
+    <section class="doc-section" id="s6" style="--section-color: var(--danger)">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(239,68,68,0.15);color:var(--danger);">🚫</div>
+        <h2><span>Section 06</span>Acceptable Use</h2>
+      </div>
+      <div class="section-body">
+        <p>You agree to use Compair only for lawful purposes and in a manner consistent with these Terms. The following activities are strictly prohibited:</p>
+        <ul>
+          <li>Using automated scripts, bots, scrapers, or tools to access or extract data from the Service without written permission</li>
+          <li>Attempting to reverse engineer, decompile, or disassemble any part of the app or backend systems</li>
+          <li>Circumventing usage limits through multiple accounts, VPNs, or any other technical means</li>
+          <li>Uploading, transmitting, or sharing harmful, illegal, offensive, or infringing content through any Compair feature</li>
+          <li>Interfering with or disrupting the integrity or performance of the Service or its servers</li>
+          <li>Using the Service to collect or harvest personal information about other users</li>
+          <li>Reselling, sublicensing, or commercially exploiting the Service or its outputs without written authorization</li>
+          <li>Misrepresenting your identity or affiliation with any person or organization</li>
+          <li>Attempting to gain unauthorized access to any portion of the Service or related systems</li>
+        </ul>
+        <p>Violation of these rules may result in immediate suspension or permanent termination of your account, at our sole discretion, without notice or refund.</p>
+      </div>
+    </section>
+
+    <!-- Section 7 -->
+    <section class="doc-section" id="s7" style="--section-color: var(--success)">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(16,185,129,0.15);color:var(--success);">©️</div>
+        <h2><span>Section 07</span>Intellectual Property</h2>
+      </div>
+      <div class="section-body">
+        <h3>Compair's Property</h3>
+        <p>The Compair platform, including its name, logo, design, codebase, AI models, product database, algorithms, and all content produced by Compair (excluding user-provided inputs), is owned by or licensed to Compair and protected by intellectual property laws. You may not copy, modify, distribute, sell, or lease any part of the Service without prior written consent.</p>
+
+        <h3>Your Data</h3>
+        <p>You retain full ownership of any data you provide to Compair, including your preferences, comparison history, and content you enter into the AI chat. By using the Service, you grant Compair a limited, non-exclusive license to process and use your data solely to provide and improve the Service as described in our <a href="/privacy">Privacy Policy</a>. We do not claim ownership over your personal data.</p>
+
+        <h3>Third-Party Content</h3>
+        <p>Product names, logos, and trademarks mentioned within Compair belong to their respective owners. References to third-party products are for informational purposes only and do not imply endorsement or affiliation.</p>
+      </div>
+    </section>
+
+    <!-- Section 8 -->
+    <section class="doc-section" id="s8" style="--section-color: var(--danger)">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(239,68,68,0.15);color:var(--danger);">⚠️</div>
+        <h2><span>Section 08</span>Disclaimers &amp; Limitation of Liability</h2>
+      </div>
+      <div class="section-body">
+        <h3>Disclaimer of Warranties</h3>
+        <p>The Service is provided <strong>"as is"</strong> and <strong>"as available"</strong> without warranties of any kind, either express or implied. Compair does not warrant that the Service will be uninterrupted, error-free, or free from harmful components. We do not warrant the accuracy, completeness, or reliability of any AI-generated content, product information, or recommendations.</p>
+
+        <h3>Limitation of Liability</h3>
+        <p>To the maximum extent permitted by applicable law, Compair and its founders, employees, and partners shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to:</p>
+        <ul>
+          <li>Loss of profits or revenue resulting from purchasing decisions</li>
+          <li>Loss of data or unauthorized access to your account</li>
+          <li>Costs of substitute products or services</li>
+          <li>Any reliance on AI-generated recommendations or comparisons</li>
+          <li>Service interruptions or technical failures</li>
+        </ul>
+        <p>In no event shall Compair's total liability to you for all claims exceed the greater of (a) the amount you paid for the Service in the 12 months preceding the claim, or (b) USD $10.</p>
+
+        <h3>Indemnification</h3>
+        <p>You agree to indemnify and hold harmless Compair and its team from any claims, damages, losses, or expenses (including reasonable legal fees) arising from your use of the Service, your violation of these Terms, or your infringement of any third-party rights.</p>
+      </div>
+    </section>
+
+    <!-- Section 9 -->
+    <section class="doc-section" id="s9" style="--section-color: #60a5fa">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(96,165,250,0.15);color:#60a5fa;">⚖️</div>
+        <h2><span>Section 09</span>Governing Law</h2>
+      </div>
+      <div class="section-body">
+        <p>These Terms of Service shall be governed by and construed in accordance with the laws of the <strong>Republic of Turkey</strong>, without regard to its conflict of law provisions.</p>
+        <p>Any disputes arising from or relating to these Terms or the use of the Service shall be subject to the exclusive jurisdiction of the courts located in Turkey. If you are a consumer in a jurisdiction with mandatory consumer protection laws, you may also have rights under those local laws that cannot be waived by agreement.</p>
+        <p>If any provision of these Terms is found to be unenforceable or invalid under applicable law, that provision shall be modified to the minimum extent necessary to make it enforceable, and the remaining provisions shall continue in full force and effect.</p>
+        <div class="info-box">
+          💡 If you are an EU resident, you may also have access to out-of-court dispute resolution mechanisms under applicable EU consumer protection directives.
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 10 -->
+    <section class="doc-section" id="s10" style="--section-color: var(--warning)">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(245,158,11,0.15);color:var(--warning);">🚪</div>
+        <h2><span>Section 10</span>Termination</h2>
+      </div>
+      <div class="section-body">
+        <h3>Termination by You</h3>
+        <p>You may terminate your account and stop using the Service at any time by deleting your account through <strong>Settings → Account → Delete Account</strong> in the app, or by emailing <a href="mailto:contact@arain.digital">contact@arain.digital</a>. Upon termination, your account data will be deleted in accordance with our <a href="/privacy">Privacy Policy</a>.</p>
+
+        <h3>Termination by Compair</h3>
+        <p>We reserve the right to suspend or permanently terminate your account at our sole discretion, with or without notice, if we determine that you have violated these Terms, engaged in fraudulent activity, or posed a risk to other users or the Service. In such cases:</p>
+        <ul>
+          <li>Your access to the Service will be immediately revoked</li>
+          <li>Any Premium subscription will be cancelled without refund for violations of these Terms</li>
+          <li>We may retain certain records as required by law or for legitimate business purposes</li>
+        </ul>
+
+        <h3>Effect of Termination</h3>
+        <p>Upon termination of your account for any reason, all licenses granted to you under these Terms immediately terminate. Provisions that by their nature should survive termination (including intellectual property rights, limitation of liability, and governing law) shall continue to apply.</p>
+      </div>
+    </section>
+
+    <!-- Section 11 -->
+    <section class="doc-section" id="s11" style="--section-color: var(--success)">
+      <div class="section-head">
+        <div class="section-icon" style="background:rgba(16,185,129,0.15);color:var(--success);">✉️</div>
+        <h2><span>Section 11</span>Contact Us</h2>
+      </div>
+      <div class="section-body">
+        <p>If you have any questions about these Terms of Service, need to report a violation, or want to discuss your account, please contact us:</p>
+        <ul>
+          <li><strong>Email:</strong> <a href="mailto:contact@arain.digital">contact@arain.digital</a></li>
+          <li><strong>Website:</strong> <a href="https://compair.digital">compair.digital</a></li>
+          <li><strong>Response Time:</strong> We aim to respond to all inquiries within 3–5 business days.</li>
+        </ul>
+        <p>For urgent account security concerns, please include <strong>"URGENT"</strong> in your email subject line so we can prioritize your request. We are committed to resolving all legitimate concerns promptly and fairly.</p>
+        <div class="info-box">
+          📬 For legal notices, please email <a href="mailto:contact@arain.digital">contact@arain.digital</a> with "Legal Notice" in the subject line. We will acknowledge receipt within 5 business days.
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
 
 <footer class="site-footer">
-  <span>© 2025 Compair</span>
-  <a href="/privacy.html">Gizlilik Politikası</a>
-  <a href="/terms.html">Kullanım Koşulları</a>
-  <a href="/faq.html">SSS</a>
-  <a href="mailto:support@compair.digital">İletişim</a>
+  <span>© 2025 Compair · compair.digital</span>
+  <a href="/">Home</a>
+  <a href="/faq">FAQ</a>
+  <a href="/privacy">Privacy Policy</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="mailto:contact@arain.digital">contact@arain.digital</a>
 </footer>
 
 <script>
 function toggleTheme() {
-  const html = document.documentElement;
-  const cur = html.getAttribute('data-theme') || 'dark';
-  const next = cur === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  try { localStorage.setItem('compair-theme', next); } catch(e) {}
-  document.getElementById('theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+  const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('compair-theme', t);
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
 }
+
 document.addEventListener('DOMContentLoaded', () => {
   const t = document.documentElement.getAttribute('data-theme') || 'dark';
   document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
+
+  // Active TOC highlight on scroll
+  const sections = document.querySelectorAll('.doc-section[id]');
+  const tocLinks = document.querySelectorAll('.toc-nav a');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        tocLinks.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector('.toc-nav a[href="#' + entry.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
 });
 </script>
 </body>
