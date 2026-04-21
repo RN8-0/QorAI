@@ -1075,25 +1075,35 @@ class _ProductListItem extends ConsumerWidget {
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceVariantLight,
-                    borderRadius: BorderRadius.circular(10),
-                    image: product.imageURL.isNotEmpty
-                        ? DecorationImage(
-                            image: CachedNetworkImageProvider(product.imageURL),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.08),
+                    ),
                   ),
-                  child: product.imageURL.isEmpty
-                      ? Icon(
+                  clipBehavior: Clip.antiAlias,
+                  child: product.imageURL.isNotEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: CachedNetworkImage(
+                            imageUrl: product.imageURL,
+                            fit: BoxFit.contain,
+                            memCacheWidth: 168,
+                            errorWidget: (_, __, ___) => Icon(
+                              Icons.devices,
+                              color: AppTheme.primaryBlue.withValues(alpha: 0.5),
+                              size: 24,
+                            ),
+                          ),
+                        )
+                      : Icon(
                           Icons.devices,
                           color: AppTheme.primaryBlue.withValues(alpha: 0.5),
                           size: 24,
-                        )
-                      : null,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

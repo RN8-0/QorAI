@@ -3062,7 +3062,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
       child: Row(
         children: [
           if (icon != null) ...[

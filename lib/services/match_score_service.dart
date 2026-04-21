@@ -22,7 +22,7 @@ class MatchScoreResult {
 class MatchScoreService {
   const MatchScoreService();
 
-  static const _cacheVersion = 4; // v4: admin-controlled algorithm weights
+  static const _cacheVersion = 5; // v5: 25-100 floor + multi-sentence reason
 
   static Map<String, dynamic>? _algoConfig;
   static DateTime? _algoConfigFetchedAt;
@@ -193,7 +193,8 @@ class MatchScoreService {
         finalScore += 8;
       }
 
-      finalScore = finalScore.clamp(0.0, 100.0);
+      // Floor at 25 — never show below 25 to avoid demotivating UX
+      finalScore = finalScore.clamp(25.0, 100.0);
 
       final result = MatchScoreResult(
         score: finalScore,
@@ -343,17 +344,20 @@ $userProfileText
 And this product:
 $productText
 
-Rate the match on a scale of 0-100 considering:
+Rate the match on a scale of 25-100 considering:
 1. How well product specs align with the stated priorities
 2. Price vs apparent budget
 3. Category relevance to browsing history
 4. Brand/ecosystem compatibility
 5. Technical quality relative to performance needs
 
-IMPORTANT for the "reason" field: Address the user directly in second person. Use "you/your" NOT "the user/user's/their".
-Example: "Your budget and ecosystem preference make this an excellent fit."
+IMPORTANT for the "reason" field:
+- Write 3-4 short sentences (NOT one) explaining why this is or isn't a match for the user.
+- Address the user directly in second person ("you/your") — never use "the user/user's/their".
+- Reference at least one concrete spec or behavior signal (e.g. budget, viewed brand, priority).
+- Be honest: if the score is mid/low, briefly explain the trade-off.
 
-Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max 15 words, second person>"}''';
+Respond ONLY with a JSON object: {"score": <25-100>, "reason": "<3-4 sentences, second person>"}''';
 
       final dio = Dio();
       final response = await dio.post(
@@ -373,8 +377,8 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
             },
           ],
           'generationConfig': {
-            'temperature': 0.2,
-            'maxOutputTokens': 128,
+            'temperature': 0.3,
+            'maxOutputTokens': 320,
             'responseMimeType': 'application/json',
           },
         },
@@ -666,16 +670,22 @@ Respond ONLY with a JSON object: {"score": <0-100>, "reason": "<one sentence max
   // ─────────────────────────────────────────────────────────────────────────
 
   String _heuristicExplanation(int score) {
-    if (score >= 90)
-      return 'Perfect match — this product is tailor-made for your needs.';
-    if (score >= 80)
-      return 'Excellent match for your preferences and ecosystem.';
-    if (score >= 70) return 'Great fit across most of your stated priorities.';
-    if (score >= 55) return 'Good match with a few trade-offs to consider.';
-    if (score >= 40)
-      return 'Partially matches your preferences — some compromises.';
-    if (score >= 25) return 'Not the best fit for your stated priorities.';
-    return 'Significant mismatch with your preferences and budget.';
+    if (score >= 90) {
+      return 'This is an excellent match for you. The specs line up almost perfectly with your stated priorities and viewing patterns. You should feel confident shortlisting this one.';
+    }
+    if (score >= 80) {
+      return 'Strong match with your preferences and ecosystem. Most of the things you care about are covered well here. A few minor trade-offs may exist but nothing that should hold you back.';
+    }
+    if (score >= 70) {
+      return 'Solid fit across the majority of your priorities. A couple of secondary specs are not perfect but the core experience matches what you usually look at. Worth a closer look.';
+    }
+    if (score >= 55) {
+      return 'Decent option with some clear trade-offs. Parts of it align with your interests, but you may need to compromise on price, ecosystem or one or two key specs. Compare it directly with your top picks before deciding.';
+    }
+    if (score >= 40) {
+      return 'Only a partial match with your preferences. Some highlights here, but several priorities are not addressed and the budget fit is not ideal. Consider it only if a specific feature stands out to you.';
+    }
+    return 'Not a strong fit for your stated priorities or browsing pattern. Specs, brand or pricing differ from what you usually pick. Look only if you are exploring something new.';
   }
 }
 

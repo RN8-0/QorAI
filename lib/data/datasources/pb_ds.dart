@@ -1172,6 +1172,9 @@ class PbDataSource {
 
   Stream<List<Map<String, dynamic>>> watchNotifications(String userId) {
     final controller = StreamController<List<Map<String, dynamic>>>();
+    bool cancelled = false;
+    int backoffAttempts = 0;
+    Timer? retryTimer;
 
     Future<List<Map<String, dynamic>>> fetch() async {
       try {
@@ -1189,24 +1192,43 @@ class PbDataSource {
       }
     }
 
+    void scheduleRetry(void Function() attempt) {
+      if (cancelled) return;
+      backoffAttempts++;
+      final delaySec = [2, 5, 15, 30, 60][backoffAttempts.clamp(1, 5) - 1];
+      retryTimer?.cancel();
+      retryTimer = Timer(Duration(seconds: delaySec), () {
+        if (!cancelled) attempt();
+      });
+    }
+
+    Future<void> trySubscribe() async {
+      if (cancelled) return;
+      try {
+        await _pb.collection('notifications').subscribe('*', (e) async {
+          final data = await fetch();
+          if (!controller.isClosed) controller.add(data);
+        });
+        backoffAttempts = 0; // reset on success
+      } catch (e) {
+        if (backoffAttempts == 0) {
+          debugPrint('[PbDs] watchNotifications subscribe error: $e');
+        }
+        scheduleRetry(trySubscribe);
+      }
+    }
+
     // Initial fetch
     fetch().then((data) {
       if (!controller.isClosed) controller.add(data);
     });
 
-    // Subscribe to realtime — collection may not exist yet, so swallow errors
-    _pb
-        .collection('notifications')
-        .subscribe('*', (e) async {
-          final data = await fetch();
-          if (!controller.isClosed) controller.add(data);
-        })
-        .catchError((e) {
-          debugPrint('[PbDs] watchNotifications subscribe error: $e');
-          return () async {};
-        });
+    // First subscribe attempt
+    trySubscribe();
 
     controller.onCancel = () {
+      cancelled = true;
+      retryTimer?.cancel();
       _pb.collection('notifications').unsubscribe('*').catchError((_) {});
     };
 

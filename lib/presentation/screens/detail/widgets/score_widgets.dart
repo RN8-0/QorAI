@@ -272,13 +272,13 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                   Expanded(
                     child: Text(
                       reason,
-                      maxLines: _reasonExpanded ? 10 : 1,
+                      maxLines: _reasonExpanded ? 12 : 3,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontStyle: FontStyle.italic,
                         color: context.textSecondary,
-                        height: 1.3,
+                        height: 1.35,
                       ),
                     ),
                   ),

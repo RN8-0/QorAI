@@ -421,7 +421,7 @@ class _ProductThumb extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _accent.withValues(alpha: 0.15)),
-        color: context.surfaceColor,
+        color: Colors.white,
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -432,7 +432,7 @@ class _ProductThumb extends StatelessWidget {
           memCacheWidth: 168,
           maxWidthDiskCache: 168,
           fadeInDuration: const Duration(milliseconds: 100),
-          placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
+          placeholder: (_, __) => const ColoredBox(color: Colors.white),
           errorWidget: (context, url, error) => Icon(
             Icons.image_outlined,
             size: 20,
@@ -452,7 +452,7 @@ class _ProductThumbPlaceholder extends StatelessWidget {
       height: 56,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: _accent.withValues(alpha: 0.06),
+        color: Colors.white,
         border: Border.all(color: _accent.withValues(alpha: 0.1)),
       ),
       child: Icon(
