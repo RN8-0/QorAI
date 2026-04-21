@@ -164,12 +164,13 @@
       if (groupKeys.length > 1) await _sleep(0);
     }
 
-    // Filter: only what actually changes
+    // Filter: only what actually changes (unless overwrite=true → force write all)
     const byId = new Map(products.map(p => [p.id, p]));
     const toUpdate = allComputed.filter(s => {
       const existing = byId.get(s.id);
       if (!existing) return false;
-      if (!overwrite && (existing.techScore != null && existing.techScore !== 0)) return false;
+      if (overwrite) return true; // force re-persist every score
+      if (existing.techScore != null && existing.techScore !== 0) return false;
       return existing.techScore !== s.score;
     });
     const unchanged = allComputed.length - toUpdate.length;
