@@ -306,7 +306,6 @@
         <div class="scraper-tabs">
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
-          <button class="scraper-tab" data-tab="scoreUpdate" onclick="switchScraperTab(this)">🏆 Update Scores</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Puan Motoru v4</button>
           <button class="scraper-tab" data-tab="productUpdate" onclick="switchScraperTab(this)">🔄 Update Products</button>
           <button class="scraper-tab" data-tab="inventoryScan" onclick="switchScraperTab(this)">🔍 Inventory Scan</button>
@@ -375,26 +374,7 @@
           </div>
         </div>
 
-        <!-- Score Update -->
-        <div class="scraper-panel" id="scoreUpdatePanel">
-          <div class="card">
-            <div class="card-title">Update Tech Scores</div>
-            <p class="text-muted" style="margin-bottom:12px">Re-fetch tech scores from epey.com for existing products.</p>
-            <div class="form-grid">
-              <div class="form-field">
-                <label>Category (empty = all)</label>
-                <select class="input" id="scoreCategory">
-                  <option value="">All Categories</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Limit (boş = tümü)</label>
-                <input class="input" type="number" id="scoreLimit" placeholder="Tüm ürünler" min="1">
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="startScoreUpdate()" style="margin-top:8px">Update Scores</button>
-          </div>
-        </div>
+        <!-- Score Update panel removed (replaced by Puan Motoru v4) -->
 
         <!-- Tech Score Engine v2 (spec-based, percentile + power curve) -->
         <div class="scraper-panel" id="scoreEnginePanel">
@@ -758,14 +738,14 @@
   <!-- PocketBase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="js/pb_client.js?v=20260422b"></script>
-  <script src="js/ts_client.js?v=20260422b"></script>
-  <script src="js/scoring/score_engine.js?v=20260422b"></script>
-  <script src="js/scoring/score_runner.js?v=20260422b"></script>
-  <script src="js/dictionary.js?v=20260422b"></script>
-  <script src="js/categories.js?v=20260422b"></script>
-  <script src="js/scraper.js?v=20260422b"></script>
-  <script src="js/notifications.js?v=20260422b"></script>
-  <script src="js/app.js?v=20260422b"></script>
+  <script src="js/pb_client.js?v=20260422c"></script>
+  <script src="js/ts_client.js?v=20260422c"></script>
+  <script src="js/scoring/score_engine.js?v=20260422c"></script>
+  <script src="js/scoring/score_runner.js?v=20260422c"></script>
+  <script src="js/dictionary.js?v=20260422c"></script>
+  <script src="js/categories.js?v=20260422c"></script>
+  <script src="js/scraper.js?v=20260422c"></script>
+  <script src="js/notifications.js?v=20260422c"></script>
+  <script src="js/app.js?v=20260422c"></script>
 </body>
 </html>

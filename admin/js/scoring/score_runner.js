@@ -63,7 +63,7 @@
     _running = true; _abort = false; _startTime = Date.now();
     _hideSummary();
     if (typeof clearScraperLog === 'function') clearScraperLog();
-    _slog(`Score Engine v4 starting${category ? ' for ' + category : ' (all categories)'}…`);
+    _slog(`Score Engine v5 starting${category ? ' for ' + category : ' (all categories)'}…`);
 
     let products;
     try {

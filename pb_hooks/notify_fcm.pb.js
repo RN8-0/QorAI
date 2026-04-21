@@ -38,14 +38,14 @@ onRecordAfterCreateSuccess(function (e) {
     let projectId = "compair-99b6e";
     try {
       const tokenCfg = $app.findFirstRecordByData("app_config", "key", "fcm_access_token");
-      accessToken = tokenCfg.getString("value");
+      accessToken = (tokenCfg.getString("value") || "").replace(/^"|"$/g, "");
     } catch (err) {
       console.log("[notify_fcm] No fcm_access_token in app_config:", err);
       return;
     }
     try {
       const projCfg = $app.findFirstRecordByData("app_config", "key", "fcm_project_id");
-      projectId = projCfg.getString("value") || projectId;
+      projectId = (projCfg.getString("value") || "").replace(/^"|"$/g, "") || projectId;
     } catch (_) {}
 
     if (!accessToken) {
@@ -70,7 +70,7 @@ onRecordAfterCreateSuccess(function (e) {
           priority: "HIGH",
           notification: {
             channelId: "compair_default",
-            priority: "HIGH",
+            notificationPriority: "PRIORITY_HIGH",
             defaultSound: true,
             defaultVibrateTimings: true,
           },

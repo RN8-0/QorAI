@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR — Tech Score Engine v4 (Anchored)
+//  COMPAIR — Tech Score Engine v5 (Anchored + Stretched)
 //  • Mutlak rank-based GPU/CPU/Chipset (future-proof)
 //  • Log-scale numeric normalization against global references
 //  • 95th-percentile outlier clipping (category-max fallback)
@@ -393,11 +393,14 @@
 
   // Tier caps based on anchor score (GPU for laptops/desktops/gpus, CPU as fallback,
   // chipset for phones/tablets). Prevents mid-segment products from reaching flagship scores.
+  // Flagship anchors can reach 100; mid-range capped harder so Redmi/budget devices stay
+  // clearly below flagships (epey/versus parity).
   const TIER_CAPS = [
-    { min: 85, cap: 100, tier: 'flagship' },
-    { min: 65, cap: 92,  tier: 'upper-mid' },
-    { min: 45, cap: 80,  tier: 'mid' },
-    { min: 0,  cap: 68,  tier: 'entry' },
+    { min: 82, cap: 100, tier: 'flagship'  },
+    { min: 62, cap: 84,  tier: 'upper-mid' },
+    { min: 42, cap: 68,  tier: 'mid'       },
+    { min: 22, cap: 52,  tier: 'entry'     },
+    { min: 0,  cap: 38,  tier: 'budget'    },
   ];
   const ANCHOR_KEY_BY_CAT = {
     smartphones: ['chipset'], tablets: ['chipset'],
@@ -998,7 +1001,7 @@
     }
 
     // Pass 3: compute final scores (anchored log-scale when REF known, else 95p cat-max)
-    return rows.map(r => {
+    const computed = rows.map(r => {
       let sumW = 0, weightedSum = 0;
       const finalBreakdown = {};
       for (const [wKey, w] of Object.entries(weights)) {
@@ -1048,19 +1051,44 @@
         }
       }
 
-      const final = Math.max(1, Math.min(100, Math.round(cappedBase * decay)));
       return {
-        id: r.p.id,
-        name: r.p.name,
-        score: final,
+        row: r,
         baseScore: +baseScore.toFixed(2),
         cappedBase: +cappedBase.toFixed(2),
         decay,
-        year: r.year,
         tier, tierCap, anchorKey, anchorScore,
-        missing: r.missing,
-        breakdown: finalBreakdown,
+        finalBreakdown,
         sumW,
+      };
+    });
+
+    // Pass 4: category-wide stretch — pull the top flagship up to 100 so the
+    // distribution actually uses the full 1-100 range. Only stretches *within*
+    // the flagship tier; lower-tier caps are still respected.
+    const flagshipScores = computed.filter(c => c.tier === 'flagship').map(c => c.cappedBase);
+    const topFlagship = flagshipScores.length ? Math.max(...flagshipScores) : 0;
+    const stretchFactor = topFlagship > 0 && topFlagship < 100 ? Math.min(1.18, 100 / topFlagship) : 1.0;
+
+    return computed.map(c => {
+      let stretched = c.cappedBase;
+      if (c.tier === 'flagship' && stretchFactor > 1) {
+        stretched = Math.min(c.tierCap, c.cappedBase * stretchFactor);
+      }
+      const final = Math.max(1, Math.min(100, Math.round(stretched * c.decay)));
+      return {
+        id: c.row.p.id,
+        name: c.row.p.name,
+        score: final,
+        baseScore: c.baseScore,
+        cappedBase: c.cappedBase,
+        stretched: +stretched.toFixed(2),
+        stretchFactor: +stretchFactor.toFixed(3),
+        decay: c.decay,
+        year: c.row.year,
+        tier: c.tier, tierCap: c.tierCap, anchorKey: c.anchorKey, anchorScore: c.anchorScore,
+        missing: c.row.missing,
+        breakdown: c.finalBreakdown,
+        sumW: c.sumW,
       };
     });
   }

@@ -6,6 +6,17 @@
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 const CONFIG_COLLECTIONS = new Set(['app_config', 'public_config']);
 
+// Legacy collection aliases (older code paths reference removed collection names).
+// Map them to existing collections to avoid 404 noise in console / dashboard.
+const COLLECTION_ALIASES = {
+  public_config: 'app_config',
+  admin_logs: 'scraper_logs',
+};
+
+function _resolveCollection(name) {
+  return COLLECTION_ALIASES[name] || name;
+}
+
 let _pb = null;
 
 function getPb() {
@@ -34,6 +45,7 @@ async function pbEnsureAuth() {
 }
 
 async function _findRecord(collection, identifier, data = {}) {
+  collection = _resolveCollection(collection);
   const id = String(identifier || '').trim();
   const filters = [];
 
@@ -65,6 +77,7 @@ async function _findRecord(collection, identifier, data = {}) {
 }
 
 function _prepareCreateData(collection, identifier, data) {
+  collection = _resolveCollection(collection);
   const clean = { ...data };
   const id = String(identifier || '').trim();
 
@@ -83,13 +96,13 @@ function _prepareCreateData(collection, identifier, data) {
 
 // Read single doc by ID
 async function pbGetDoc(collection, id) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
   try {
     const item = await _findRecord(collection, id);
     if (item) return { exists: true, id: item.id, data: () => _strip(item) };
     return { exists: false, id, data: () => null };
   } catch (e) {
-    // Treat missing collection as "not found" so callers using try/exists work without spam
     if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) {
       return { exists: false, id, data: () => null };
     }
@@ -99,6 +112,7 @@ async function pbGetDoc(collection, id) {
 
 // Upsert doc by ID (set with merge)
 async function pbSetDoc(collection, id, data) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
   const clean = _clean(data);
   const existing = await _findRecord(collection, id, clean);
@@ -114,6 +128,7 @@ async function pbSetDoc(collection, id, data) {
 
 // Update existing doc
 async function pbUpdateDoc(collection, id, data) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
   const record = await getPb().collection(collection).update(id, _clean(data), { $autoCancel: false });
   _syncToTypesense(collection, record);
@@ -122,6 +137,7 @@ async function pbUpdateDoc(collection, id, data) {
 
 // Create new doc (auto-ID)
 async function pbAddDoc(collection, data) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
   const record = await getPb().collection(collection).create(_clean(data), { $autoCancel: false });
   _syncToTypesense(collection, record);
@@ -130,6 +146,7 @@ async function pbAddDoc(collection, data) {
 
 // Delete doc
 async function pbDeleteDoc(collection, id) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
   const result = await getPb().collection(collection).delete(id, { $autoCancel: false });
   _syncDeleteFromTypesense(collection, id);
@@ -164,42 +181,62 @@ function _syncDeleteFromTypesense(collection, id) {
 
 // Get all docs matching filter
 async function pbGetAll(collection, options = {}) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
-  const items = await getPb().collection(collection).getFullList({
-    sort: options.sort || 'id',
-    filter: options.filter || '',
-    $autoCancel: false
-  });
-  return items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }));
+  try {
+    const items = await getPb().collection(collection).getFullList({
+      sort: options.sort || 'id',
+      filter: options.filter || '',
+      $autoCancel: false
+    });
+    return items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }));
+  } catch (e) {
+    if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) return [];
+    throw e;
+  }
 }
 
 // Paginated list
 async function pbGetList(collection, page, perPage, options = {}) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
-  const result = await getPb().collection(collection).getList(page, perPage, {
-    sort: options.sort || 'id',
-    filter: options.filter || '',
-    $autoCancel: false
-  });
-  return {
-    items: result.items,
-    totalItems: result.totalItems,
-    totalPages: result.totalPages,
-    page: result.page,
-    size: result.items.length,
-    empty: result.items.length === 0,
-    docs: result.items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }))
-  };
+  try {
+    const result = await getPb().collection(collection).getList(page, perPage, {
+      sort: options.sort || 'id',
+      filter: options.filter || '',
+      $autoCancel: false
+    });
+    return {
+      items: result.items,
+      totalItems: result.totalItems,
+      totalPages: result.totalPages,
+      page: result.page,
+      size: result.items.length,
+      empty: result.items.length === 0,
+      docs: result.items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }))
+    };
+  } catch (e) {
+    if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) {
+      return { items: [], totalItems: 0, totalPages: 0, page: 1, size: 0, empty: true, docs: [] };
+    }
+    throw e;
+  }
 }
 
 // Get total count for a collection + filter (efficient — only fetches 1 record)
 async function pbCountWhere(collection, filter) {
+  collection = _resolveCollection(collection);
   await pbEnsureAuth();
-  const result = await getPb().collection(collection).getList(1, 1, {
-    filter: filter || '',
-    $autoCancel: false
-  });
-  return result.totalItems;
+  try {
+    const result = await getPb().collection(collection).getList(1, 1, {
+      filter: filter || '',
+      $autoCancel: false
+    });
+    return result.totalItems;
+  } catch (e) {
+    if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) return 0;
+    throw e;
+  }
 }
 
 // Server timestamp replacement
