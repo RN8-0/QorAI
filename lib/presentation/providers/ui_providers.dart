@@ -202,10 +202,18 @@ final productDetailProvider =
       productId,
     ) async {
       try {
-        return await ref
+        final result = await ref
             .read(productRepositoryProvider)
             .getProduct(productId)
             .timeout(const Duration(seconds: 25));
+        // Sync fresh tech/trend scores back into in-memory home feed so
+        // the list cards and detail view show identical numbers.
+        if (result is Success<ProductEntity>) {
+          try {
+            updateInMemoryProduct(result.data);
+          } catch (_) {}
+        }
+        return result;
       } catch (e) {
         return Failure(
           ServerException(

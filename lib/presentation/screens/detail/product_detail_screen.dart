@@ -127,7 +127,12 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       if (!mounted) return;
       // Overview renders on next frame — keeps navigation smooth.
       setState(() => _contentReady = true);
-      _prefetchMatchScoreOnce();
+      // Defer heavy AI prefetch until the page-transition animation is done
+      // so the user doesn't see frame skips during the push.
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (!mounted) return;
+        _prefetchMatchScoreOnce();
+      });
       // Listen to route push animation; enable tabs after animation completes
       final route = ModalRoute.of(context);
       final anim = route?.animation;

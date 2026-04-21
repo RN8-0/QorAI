@@ -434,6 +434,18 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                       ),
                     ),
                   ),
+                  InkWell(
+                    onTap: () => _showMatchScoreInfo(context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: context.textTertiaryColor,
+                      ),
+                    ),
+                  ),
                   Icon(
                     _reasonExpanded ? Icons.expand_less : Icons.expand_more,
                     size: 14,
@@ -444,6 +456,162 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
             ),
           ),
       ],
+    );
+  }
+
+  void _showMatchScoreInfo(BuildContext context) {
+    final l10n = context.l10n;
+    final isTr = (l10n?.localeName ?? 'en').startsWith('tr');
+    final title = isTr ? 'Eşleşme Skoru Nasıl Hesaplanır?' : 'How Is Your Match Score Calculated?';
+    final intro = isTr
+        ? 'Eşleşme skoru, bu ürünün senin profil ve tercihlerinle ne kadar uyumlu olduğunu 0–100 arasında gösterir. AI (Gemini) aşağıdaki sinyalleri bir arada değerlendirir:'
+        : 'Your match score shows how well this product fits your profile and preferences on a 0–100 scale. Our AI (Gemini) blends the following signals:';
+    final signals = isTr
+        ? const [
+            'Quiz öncelikleri ve ağırlık vektörü (performans, pil, fiyat, tasarım…)',
+            'Kullanım amacı, meslek ve ekosistem tercihi (Apple / Android / Windows)',
+            'Son baktığın ve favorilediğin ürünlerden çıkarılan davranış sinyalleri',
+            'Ürünün teknik skoru, spesifikasyonları, artı/eksi yönleri',
+            'Bütçe uyumu ve kategoriye özel öncelikler',
+          ]
+        : const [
+            'Quiz priorities & weight vector (performance, battery, price, design…)',
+            'Usage intent, profession, and ecosystem preference (Apple / Android / Windows)',
+            'Behavior signals from products you viewed or favorited recently',
+            'Product tech score, specs, pros & cons',
+            'Budget fit and category-specific priorities',
+          ];
+    final bands = isTr
+        ? const [
+            ['88–100', 'Olağanüstü uyum', AppTheme.scoreExcellent],
+            ['75–87', 'Güçlü uyum', AppTheme.brandCyan],
+            ['62–74', 'Makul uyum', AppTheme.warning],
+            ['50–61', 'Orta düzey', AppTheme.warning],
+            ['< 50', 'Zayıf uyum', AppTheme.error],
+          ]
+        : const [
+            ['88–100', 'Exceptional fit', AppTheme.scoreExcellent],
+            ['75–87', 'Strong fit', AppTheme.brandCyan],
+            ['62–74', 'Solid fit', AppTheme.warning],
+            ['50–61', 'Mediocre fit', AppTheme.warning],
+            ['< 50', 'Poor fit', AppTheme.error],
+          ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: ctx.dividerColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: AppTheme.primaryBlue, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                intro,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.45,
+                  color: ctx.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ...signals.map(
+                (s) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_circle_rounded,
+                          size: 16, color: AppTheme.scoreExcellent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s,
+                          style: const TextStyle(fontSize: 13, height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                isTr ? 'Skor aralıkları' : 'Score bands',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: ctx.textTertiaryColor,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...bands.map((b) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 58,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: (b[2] as Color).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            b[0] as String,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: b[2] as Color,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            b[1] as String,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

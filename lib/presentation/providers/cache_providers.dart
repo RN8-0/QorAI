@@ -1256,7 +1256,7 @@ class _GeminiMatchScoreNotifier
           ? _languageCode
           : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
 
-      // 1. Check PocketBase cache first (24h TTL) — but cap at 3s; if PB is
+      // 1. Check PocketBase cache first (24h TTL) — but cap at 2s; if PB is
       // slow we treat it as a cache miss and proceed to Gemini.
       GeminiMatchResult? cached;
       try {
@@ -1285,6 +1285,12 @@ class _GeminiMatchScoreNotifier
       final behaviorAsync = _ref.read(behaviorSignalsProvider);
       final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
       final weightVector = await _loadWeightVector(user.uid);
+
+      // Yield before building prompt — keeps first UI frame smooth while
+      // widgets are mounting (postFrameCallback fires before route anim done).
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted) return;
+
       final focusAreas = _buildFocusAreas(
         user: user,
         weightVector: weightVector,
@@ -1317,11 +1323,11 @@ class _GeminiMatchScoreNotifier
           'favoritedProductCount': behavior.favorites.length,
       };
 
-      // Build concise product JSON
+      // Build concise product JSON (cap to 10 specs — less context = faster LLM)
       final topSpecs = <String, dynamic>{};
       var specCount = 0;
       for (final e in product.specs.entries) {
-        if (specCount >= 15) break;
+        if (specCount >= 10) break;
         final v = e.value?.toString() ?? '';
         if (v.isNotEmpty && v != 'null' && v != '?' && v != '{}') {
           topSpecs[e.key] = v;
@@ -1337,22 +1343,27 @@ class _GeminiMatchScoreNotifier
         'highlights': productHighlights,
         if (tradeOffs.isNotEmpty) 'tradeOffs': tradeOffs,
         'specs': topSpecs,
-        if (product.pros.isNotEmpty) 'pros': product.pros.take(5).toList(),
-        if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
+        if (product.pros.isNotEmpty) 'pros': product.pros.take(4).toList(),
+        if (product.cons.isNotEmpty) 'cons': product.cons.take(4).toList(),
       };
 
       final fallbackReason = _buildLocalReason(
         highlights: productHighlights,
         tradeOffs: tradeOffs,
       );
+      // Calibrated bands: higher floor (40), more generous mid-tier.
+      // User feedback: prior 25-100 with 90+ exceptional felt consistently
+      // underwhelming (most scores landed 55-70). New mapping rewards genuine
+      // quality while preserving separation for poor fits.
       final prompt =
-          'Score this product 25-100 for this user (never <25). Return ONLY JSON.\n'
+          'Score this product 40-100 for this user (never <40). Return ONLY JSON.\n'
           'reason: 3-4 product-focused sentences (60-110 words) in language "$langCode" '
           '(${_languageDisplayName(langCode)}). Mention 2-3 strengths + 1 real limitation. '
           'Do NOT use "you/your". In Turkish never use "kullanici"; use formal "siz" if unavoidable. '
           'Never mention ecosystem/compatibility/profile/devices/platform.\n'
-          'Bands: 90-100 exceptional / 75-89 strong / 60-74 good with compromises / '
-          '45-59 mediocre / 25-44 poor.\n'
+          'Bands: 88-100 exceptional fit / 75-87 strong fit / 62-74 solid with minor compromises / '
+          '50-61 mediocre / 40-49 poor fit.\n'
+          'If techScore >= 85 and no major mismatch, score >= 75.\n'
           'Signals: weight vector, priorities, usage intent, profession, ecosystem, '
           'recent views/favorites, techScore, specs, pros/cons, budget vs price.\n\n'
           'USER:${jsonEncode(profileJson)}\n'
@@ -1364,18 +1375,24 @@ class _GeminiMatchScoreNotifier
           .jsonFreeTextQuery(
             prompt,
             language: langCode,
-            maxTokens: 500,
+            maxTokens: 900,
             // tier:lite + _rawRequest forces thinkingBudget=0 → no reasoning
             // tokens billed; cheap & fast.
           )
           .timeout(
-            const Duration(seconds: 9),
+            const Duration(seconds: 12),
             onTimeout: () =>
-                throw Exception('Gemini match score timeout (9s)'),
+                throw Exception('Gemini match score timeout (12s)'),
           );
       final map = _decodeJsonMap(result);
 
-      final score = _safeInt(map['matchScore'], 50).clamp(25, 100);
+      // Calibrated clamp: minimum 40 matches prompt bands.
+      var score = _safeInt(map['matchScore'], 60).clamp(40, 100);
+      // Safety net: if techScore is strong (>=85) and Gemini returned a low
+      // score without a compelling mismatch, nudge up by up to 8 points.
+      if (product.techScore >= 85 && score < 70) {
+        score = (score + 8).clamp(40, 100);
+      }
       final reason = _sanitizeMatchReason(
         rawReason: ((map['reason'] as String?) ?? '').trim(),
         fallbackReason: fallbackReason,
@@ -1397,15 +1414,22 @@ class _GeminiMatchScoreNotifier
         isFromGemini: true,
       );
 
-      // Save to Firestore cache
-      _saveToFirestoreCache(user.uid, matchResult, langCode);
+      // Emit result FIRST so the UI updates immediately. Cache write +
+      // quota recording happen fire-and-forget afterwards — they should
+      // never delay the visible state transition.
+      state = AsyncValue.data(matchResult);
 
-      // Record AI match usage (only when a fresh call actually succeeded)
+      unawaited(
+        Future<void>(() async {
+          try {
+            await _saveToFirestoreCache(user.uid, matchResult, langCode);
+          } catch (_) {}
+        }),
+      );
+
       if (!sub.isPremium) {
         sub.recordDetailMatchAi();
       }
-
-      state = AsyncValue.data(matchResult);
 
       debugPrint(
         '[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason',

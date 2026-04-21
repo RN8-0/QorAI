@@ -161,7 +161,7 @@ class ProductFilter {
     return _brandNormalization[lower] ?? lower;
   }
 
-  /// Extract exact release year from product specs
+  /// Extract exact release year from product specs, name, or tags.
   static int? getExactReleaseYear(ProductEntity p) {
     final currentYear = DateTime.now().year;
     for (final value in _candidateReleaseValues(p)) {
@@ -171,6 +171,14 @@ class ProductFilter {
         if (year != null && year > 2000 && year <= currentYear + 1) {
           return year;
         }
+      }
+    }
+    // Fallback: scan product name for (2024), "2023 Edition", etc.
+    final nameMatch = RegExp(r'\b(20\d{2})\b').firstMatch(p.name);
+    if (nameMatch != null) {
+      final year = int.tryParse(nameMatch.group(1)!);
+      if (year != null && year > 2000 && year <= currentYear + 1) {
+        return year;
       }
     }
     return null;

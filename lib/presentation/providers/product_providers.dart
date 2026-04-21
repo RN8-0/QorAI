@@ -1361,6 +1361,41 @@ void clearInMemoryFeedCache() {
   _cachedViewedBehaviorAt = null;
 }
 
+/// Update an already-cached product in the in-memory feed with fresh data
+/// fetched from detail screen. Keeps tech/trend scores in sync between
+/// home cards and detail view without forcing a full re-index.
+void updateInMemoryProduct(ProductEntity fresh) {
+  final feed = _inMemoryFeed;
+  if (feed == null) return;
+
+  ProductEntity mergeFromFresh(ProductEntity existing) {
+    if (existing.id != fresh.id) return existing;
+    return existing.copyWith(
+      techScore: fresh.techScore,
+      trendScore: fresh.trendScore,
+      techSubscores: fresh.techSubscores,
+      prices: fresh.prices,
+      ratings: fresh.ratings,
+    );
+  }
+
+  List<ProductEntity> mapList(List<ProductEntity> list) =>
+      list.map(mergeFromFresh).toList(growable: false);
+
+  final updated = HomeFeed(
+    trending: mapList(feed.trending),
+    featured: mapList(feed.featured),
+    byCategory: {
+      for (final e in feed.byCategory.entries) e.key: mapList(e.value),
+    },
+    newArrivals: mapList(feed.newArrivals),
+    discover: mapList(feed.discover),
+    all: mapList(feed.all),
+    priorityCategories: feed.priorityCategories,
+  );
+  _inMemoryFeed = updated;
+}
+
 void _scheduleLegacyFeedCacheCleanup(CacheService cache, UserEntity? user) {
   final cacheOwner = user?.uid ?? 'anon';
   if (!_legacyFeedCacheCleanupUsers.add(cacheOwner)) return;

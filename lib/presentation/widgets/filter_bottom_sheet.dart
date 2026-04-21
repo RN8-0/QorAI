@@ -20,7 +20,7 @@ Future<FilterState?> showFilterBottomSheet({
   return showModalBottomSheet<FilterState>(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true,
+    useSafeArea: false,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.55),
     builder: (_) => _FilterBottomSheet(
@@ -381,12 +381,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           // ── apply footer ──
           Container(
             padding: EdgeInsets.fromLTRB(
-              20,
-              12,
-              20,
-              16 +
-                  MediaQuery.of(context).padding.bottom +
-                  AppTheme.navBarTotalClearance,
+              16,
+              10,
+              16,
+              12 + MediaQuery.of(context).padding.bottom,
             ),
             decoration: BoxDecoration(
               color: bg,
@@ -398,25 +396,25 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             ),
             child: SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 50,
               child: FilledButton(
                 onPressed: _apply,
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: Ink(
                   decoration: BoxDecoration(
                     gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.brandCyan.withValues(alpha: 0.35),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
+                        color: AppTheme.brandCyan.withValues(alpha: 0.22),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
