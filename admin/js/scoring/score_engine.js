@@ -64,6 +64,12 @@
     ['Ryzen 5 7535HS', 44], ['Core i5-12500H', 41], ['Ryzen 5 5600H', 32],
     ['Core i5-11400H', 28], ['Ryzen 5 5500U', 22], ['Core i5-10300H', 18],
     ['Ryzen 3 5300U', 12], ['Celeron', 6], ['Pentium', 6],
+    // Apple Silicon laptops (MacBook Air/Pro) — ordered Ultra > Max > Pro > base
+    ['Apple M5 Max', 100], ['Apple M5 Pro', 97], ['Apple M5', 94],
+    ['Apple M4 Max', 96], ['Apple M4 Pro', 92], ['Apple M4', 88],
+    ['Apple M3 Max', 90], ['Apple M3 Pro', 84], ['Apple M3', 78],
+    ['Apple M2 Max', 82], ['Apple M2 Pro', 76], ['Apple M2', 68],
+    ['Apple M1 Max', 72], ['Apple M1 Pro', 66], ['Apple M1', 58],
   ];
 
   const CPU_DESKTOP = [
@@ -74,6 +80,12 @@
     ['Ryzen 5 7600X', 57], ['Core i5-12600K', 51], ['Ryzen 5 5600X', 44],
     ['Core i5-12400', 38], ['Ryzen 5 5600', 35], ['Core i3-13100', 26],
     ['Ryzen 3 4100', 18], ['Celeron', 6], ['Pentium', 6],
+    // Apple Silicon desktops (iMac, Mac mini, Mac Studio, Mac Pro)
+    ['Apple M5 Ultra', 100], ['Apple M5 Max', 97], ['Apple M5 Pro', 92], ['Apple M5', 86],
+    ['Apple M4 Ultra', 98], ['Apple M4 Max', 94], ['Apple M4 Pro', 88], ['Apple M4', 80],
+    ['Apple M3 Ultra', 92], ['Apple M3 Max', 86], ['Apple M3 Pro', 78], ['Apple M3', 70],
+    ['Apple M2 Ultra', 84], ['Apple M2 Max', 76], ['Apple M2 Pro', 68], ['Apple M2', 60],
+    ['Apple M1 Ultra', 74], ['Apple M1 Max', 66], ['Apple M1 Pro', 58], ['Apple M1', 50],
   ];
 
   const CHIPSET_PHONE = [
@@ -89,8 +101,8 @@
     ['Helio G85', 16], ['Snapdragon 4s Gen 2', 12], ['Helio G36', 6],
     // Apple A older
     ['Apple A18', 95], ['Apple A17', 88], ['Apple A15', 70], ['Apple A14', 60], ['Apple A13', 48],
-    // Apple M (tablets)
-    ['Apple M4', 100], ['Apple M3', 95], ['Apple M2', 88], ['Apple M1', 78],
+    // Apple M (tablets/phones)
+    ['Apple M5', 100], ['Apple M4', 96], ['Apple M3', 90], ['Apple M2', 82], ['Apple M1', 72],
   ];
 
   // Family detection for interpolation (longest first)
