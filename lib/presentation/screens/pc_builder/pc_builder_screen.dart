@@ -1675,6 +1675,25 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           _upgradeSuggestions = suggestions;
         });
         _saveToSession();
+
+        // Mirror AI analysis to users.analyzedProducts so admin panel sees it
+        try {
+          final uid = ref.read(authStateProvider).valueOrNull;
+          if (uid != null) {
+            final buildTitle = _selected.values
+                .whereType<ProductEntity>()
+                .map((p) => p.name)
+                .take(3)
+                .join(' + ');
+            ref.read(pbDataSourceProvider).saveAnalyzedProduct(uid, {
+              'timestamp': DateTime.now().toIso8601String(),
+              'title': buildTitle.isEmpty ? 'PC Build' : buildTitle,
+              'category': 'pc_build',
+              'mode': 'pc_builder',
+              'verdict': response.substring(0, response.length.clamp(0, 200)),
+            });
+          }
+        } catch (_) {}
       }
     } catch (e) {
       if (mounted) {

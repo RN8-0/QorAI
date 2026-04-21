@@ -490,6 +490,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         'productUrl': base.url,
         'productTitle': base.metadata.title,
         'category': base.category,
+        'mode': 'single',
         'answers': quizData,
         'score': enhanced.enhancedScore,
       });
@@ -501,6 +502,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       'url': base.url,
       'title': base.metadata.title,
       'category': base.category,
+      'mode': 'single',
       'score': enhanced.enhancedScore,
       'verdict': enhanced.detailedVerdict.substring(
         0,
@@ -1551,6 +1553,8 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         _ref.read(pbDataSourceProvider).saveQuizHistory(authState, {
           'timestamp': DateTime.now().toIso8601String(),
           'type': 'subscription',
+          'mode': 'subscription',
+          'category': 'subscription',
           'services': state.subscriptionNames,
           'answers': qaPairs,
         });
@@ -1641,6 +1645,25 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
               .saveSubscriptionHistory(authState, entry)
               .then((_) => _ref.invalidate(subscriptionHistoryProvider))
               .catchError((_) {});
+
+          // Mirror to analyzedProducts so admin panel sees it alongside link analyses
+          final scoresMap = Map<String, double>.from(
+            result['scores'] as Map? ?? {},
+          );
+          for (final service in names) {
+            final sScore = scoresMap[service];
+            _ref.read(pbDataSourceProvider).saveAnalyzedProduct(authState, {
+              'timestamp': DateTime.now().toIso8601String(),
+              'title': service,
+              'category': 'subscription',
+              'mode': 'subscription',
+              'score': sScore,
+              'verdict': (result['analysis'] as String? ?? '').substring(
+                0,
+                (result['analysis'] as String? ?? '').length.clamp(0, 200),
+              ),
+            });
+          }
         }
       } catch (_) {}
     } catch (e) {

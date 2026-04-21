@@ -35,6 +35,9 @@ const REQUIRED_USER_FIELDS = [
   J('interestCategories'),
   J('profileVector'),
   J('userSubscriptionDetails'),
+  J('quizHistory'),
+  J('analyzedProducts'),
+  J('searchHistory'),
   // Already in extendUsers but ensure they exist:
   T('fcmToken', { max: 500 }),
   T('platform', { max: 50 }),
