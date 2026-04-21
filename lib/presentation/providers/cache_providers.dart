@@ -1218,6 +1218,15 @@ class _GeminiMatchScoreNotifier
     final user = userAsync.valueOrNull;
     if (user == null || !user.quizCompleted) return;
 
+    // Defer the state mutation to the next microtask so this is safe even
+    // when invoked from a widget life-cycle (initState/build) — otherwise
+    // Riverpod throws "Tried to modify a provider while the widget tree
+    // was building" and the UI is left with a broken spinner.
+    await Future<void>.microtask(() {});
+    if (!mounted) return;
+    if (state is AsyncLoading) return;
+    if (state.valueOrNull != null) return;
+
     state = const AsyncValue.loading();
 
     try {

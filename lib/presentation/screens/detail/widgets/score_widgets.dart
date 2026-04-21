@@ -72,14 +72,13 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
   @override
   void initState() {
     super.initState();
-    // Kick off the AI match fetch immediately so `aiLoading` is true on the
-    // very first build — prevents the local-algorithm score from briefly
-    // flashing before the AI value settles.
-    _maybeTriggerGeminiFetch();
-    // Defer the (CPU-bound) local fit score computation to post-frame so the
-    // first paint of the detail screen is not blocked.
+    // Both the Gemini fetch and the local fit-score must run AFTER the first
+    // frame — otherwise `state = AsyncValue.loading()` inside the notifier
+    // throws "Tried to modify a provider while the widget tree was building",
+    // which silently leaves the match card stuck on a spinner forever.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _maybeTriggerGeminiFetch();
       _maybeRecomputeFitScore();
     });
   }
