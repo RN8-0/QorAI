@@ -98,28 +98,64 @@ async function pbSetDoc(collection, id, data) {
   await pbEnsureAuth();
   const clean = _clean(data);
   const existing = await _findRecord(collection, id, clean);
+  let record;
   if (existing) {
-    return await getPb().collection(collection).update(existing.id, clean, { $autoCancel: false });
+    record = await getPb().collection(collection).update(existing.id, clean, { $autoCancel: false });
+  } else {
+    record = await getPb().collection(collection).create(_prepareCreateData(collection, id, clean), { $autoCancel: false });
   }
-  return await getPb().collection(collection).create(_prepareCreateData(collection, id, clean), { $autoCancel: false });
+  _syncToTypesense(collection, record);
+  return record;
 }
 
 // Update existing doc
 async function pbUpdateDoc(collection, id, data) {
   await pbEnsureAuth();
-  return await getPb().collection(collection).update(id, _clean(data), { $autoCancel: false });
+  const record = await getPb().collection(collection).update(id, _clean(data), { $autoCancel: false });
+  _syncToTypesense(collection, record);
+  return record;
 }
 
 // Create new doc (auto-ID)
 async function pbAddDoc(collection, data) {
   await pbEnsureAuth();
-  return await getPb().collection(collection).create(_clean(data), { $autoCancel: false });
+  const record = await getPb().collection(collection).create(_clean(data), { $autoCancel: false });
+  _syncToTypesense(collection, record);
+  return record;
 }
 
 // Delete doc
 async function pbDeleteDoc(collection, id) {
   await pbEnsureAuth();
-  return await getPb().collection(collection).delete(id, { $autoCancel: false });
+  const result = await getPb().collection(collection).delete(id, { $autoCancel: false });
+  _syncDeleteFromTypesense(collection, id);
+  return result;
+}
+
+// ── Typesense mirror ─────────────────────────────────────────
+// Every successful mutation on `products` is mirrored to the
+// Typesense `products` collection so that search/list endpoints
+// reflect the new value immediately. Failures are non-fatal and
+// surface only as console warnings.
+function _syncToTypesense(collection, record) {
+  if (collection !== 'products' || !record || !record.id) return;
+  if (typeof window === 'undefined' || !window.TsClient) return;
+  try {
+    // fire-and-forget — don't block the PB call site
+    window.TsClient.upsertDoc(record).catch(() => {});
+  } catch (e) {
+    console.warn('[pb→ts] sync failed', e.message);
+  }
+}
+
+function _syncDeleteFromTypesense(collection, id) {
+  if (collection !== 'products' || !id) return;
+  if (typeof window === 'undefined' || !window.TsClient) return;
+  try {
+    window.TsClient.request('DELETE', `/collections/${window.TsClient.COLLECTION}/documents/${encodeURIComponent(id)}`).catch(() => {});
+  } catch (e) {
+    console.warn('[pb→ts] delete sync failed', e.message);
+  }
 }
 
 // Get all docs matching filter
