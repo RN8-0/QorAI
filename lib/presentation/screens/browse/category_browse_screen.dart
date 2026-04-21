@@ -135,6 +135,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     _loadProducts();
     _searchController.addListener(_onSearchChanged);
     _scrollController.addListener(_onScroll);
+    // Hide the global floating bottom nav while browsing a category —
+    // gives the list more breathing room and matches modern catalog UX.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(hideNavBarProvider.notifier).state = true;
+    });
   }
 
   @override
@@ -142,6 +148,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
+    // Restore nav bar. Reading through ProviderScope is still safe during
+    // dispose because we access the notifier, not the state stream.
+    try {
+      ref.read(hideNavBarProvider.notifier).state = false;
+    } catch (_) {}
     super.dispose();
   }
 

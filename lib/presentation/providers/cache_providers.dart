@@ -1222,9 +1222,9 @@ class _GeminiMatchScoreNotifier
 
     try {
       await _doFetchMatchScore(product: product, user: user).timeout(
-        const Duration(seconds: 18),
+        const Duration(seconds: 12),
         onTimeout: () {
-          throw Exception('match score outer timeout (18s)');
+          throw Exception('match score outer timeout (12s)');
         },
       );
     } catch (e, st) {
@@ -1252,7 +1252,7 @@ class _GeminiMatchScoreNotifier
       GeminiMatchResult? cached;
       try {
         cached = await _checkFirestoreCache(user.uid, langCode).timeout(
-          const Duration(seconds: 3),
+          const Duration(seconds: 2),
           onTimeout: () => null,
         );
       } catch (_) {
@@ -1360,9 +1360,9 @@ class _GeminiMatchScoreNotifier
             // tokens billed; cheap & fast.
           )
           .timeout(
-            const Duration(seconds: 12),
+            const Duration(seconds: 9),
             onTimeout: () =>
-                throw Exception('Gemini match score timeout (12s)'),
+                throw Exception('Gemini match score timeout (9s)'),
           );
       final map = _decodeJsonMap(result);
 
@@ -1419,31 +1419,33 @@ class _GeminiMatchScoreNotifier
       product: product,
       behavior: behavior,
     );
-    if (fs > 0) {
-      final focusAreas = _buildFocusAreas(user: user, weightVector: const {});
-      final highlights = _buildProductHighlights(
-        product: product,
-        focusAreas: focusAreas,
-      );
-      final tradeOffs = _buildTradeOffs(
-        product: product,
-        focusAreas: focusAreas,
-      );
-      state = AsyncValue.data(
-        GeminiMatchResult(
-          matchScore: fs.toInt(),
-          reason: _buildLocalReason(
-            highlights: highlights,
-            tradeOffs: tradeOffs,
-          ),
-          topMatchFactors: highlights.take(3).toList(),
-          missingFactors: tradeOffs.take(2).toList(),
-          isFromGemini: false,
+    final focusAreas = _buildFocusAreas(user: user, weightVector: const {});
+    final highlights = _buildProductHighlights(
+      product: product,
+      focusAreas: focusAreas,
+    );
+    final tradeOffs = _buildTradeOffs(
+      product: product,
+      focusAreas: focusAreas,
+    );
+    // If the weight-based algorithm returns 0 (rare, happens when the user has
+    // no weight signals yet), derive a sensible baseline from techScore so the
+    // UI never shows an empty match card — the spinner problem the user saw.
+    final resolvedScore = fs > 0
+        ? fs.toInt()
+        : (product.techScore * 0.72).round().clamp(35, 80);
+    state = AsyncValue.data(
+      GeminiMatchResult(
+        matchScore: resolvedScore,
+        reason: _buildLocalReason(
+          highlights: highlights,
+          tradeOffs: tradeOffs,
         ),
-      );
-    } else {
-      state = const AsyncValue.data(null);
-    }
+        topMatchFactors: highlights.take(3).toList(),
+        missingFactors: tradeOffs.take(2).toList(),
+        isFromGemini: false,
+      ),
+    );
   }
 
   Future<GeminiMatchResult?> _checkFirestoreCache(

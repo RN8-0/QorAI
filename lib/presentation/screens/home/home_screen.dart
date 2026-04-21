@@ -244,7 +244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             SliverToBoxAdapter(
               child: _SectionHeader(
                 title: context.l10n?.trendingToday ?? 'Trending Today',
-                icon: Icons.local_fire_department_rounded,
+                icon: Icons.memory_rounded,
                 iconColor: const Color(0xFFEF4444),
                 onSeeAll: () => context.push(AppRoutes.search),
               ),
@@ -2184,7 +2184,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.local_fire_department_rounded,
+                    Icons.memory_rounded,
                     size: 32,
                     color: context.textTertiaryColor.withValues(alpha: 0.4),
                   ),
@@ -3178,7 +3178,7 @@ class _TechBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.speed_rounded, size: 12, color: color),
+          Icon(Icons.memory_rounded, size: 12, color: color),
           const SizedBox(width: 4),
           Text(
             '$label $value',
@@ -3320,7 +3320,7 @@ class _ForYouCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.speed_rounded,
+                            Icons.memory_rounded,
                             size: 10,
                             color: _techColor(product.techScore),
                           ),
@@ -3487,7 +3487,7 @@ class _WideProductCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.local_fire_department_rounded,
+                            Icons.memory_rounded,
                             size: 10,
                             color: Colors.white,
                           ),
@@ -3589,7 +3589,7 @@ class _MiniScore extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.speed_rounded, size: 11, color: color),
+          Icon(Icons.memory_rounded, size: 11, color: color),
           const SizedBox(width: 3),
           Text(
             '${value.toInt()}',
@@ -4002,7 +4002,7 @@ class _TrendingWideCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.local_fire_department_rounded,
+                            Icons.memory_rounded,
                             size: 10,
                             color: Colors.white,
                           ),
