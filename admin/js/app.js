@@ -157,7 +157,6 @@ function showView(name){
   if(name==='algorithm')loadAlgorithmConfig();
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
-  if(name==='subscriptions')loadSubscriptionServices();
   if(name==='notifications')loadNotificationsView();
   if(name==='settings')loadRemoteConfig();
 }
@@ -234,7 +233,24 @@ async function refreshDashboard(){
     document.getElementById('dashLastUpdated').textContent='Güncellendi '+new Date().toLocaleTimeString();
 
     const sampleCats={};sampleProducts.forEach(p=>{if(p.category)sampleCats[p.category]=(sampleCats[p.category]||0)+1});
-    updateCategoryChart(statsCategoryCounts&&Object.keys(statsCategoryCounts).length?statsCategoryCounts:sampleCats);
+    // Flicker fix: only render if we have full stats; otherwise show loading state until background count completes
+    if(statsCategoryCounts&&Object.keys(statsCategoryCounts).length>=2){
+      updateCategoryChart(statsCategoryCounts);
+    } else {
+      const cCtx=document.getElementById('categoryChart');
+      if(cCtx){
+        if(catChart){catChart.destroy();catChart=null;}
+        const p=cCtx.parentElement;
+        if(p&&!p.querySelector('.chart-loading')){
+          const ld=document.createElement('div');
+          ld.className='chart-loading';
+          ld.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;';
+          ld.innerHTML='⏳ Kategori dağılımı hesaplanıyor...';
+          p.style.position='relative';
+          p.appendChild(ld);
+        }
+      }
+    }
 
     // Daily trend (from sample)
     const daily=[];for(let i=29;i>=0;i--){const d=new Date(Date.now()-i*864e5);const k=d.toISOString().split('T')[0];const c2=sampleProducts.filter(p=>p.scrapedAt&&new Date(p.scrapedAt).toISOString().split('T')[0]===k).length;daily.push({d:k.slice(5),c:c2})}
@@ -314,6 +330,9 @@ function updateInsights(totalCount,totalCats){
 function updateCategoryChart(catCounts){
   const cCtx=document.getElementById('categoryChart');
   if(!cCtx)return;
+  // Remove loading indicator if any
+  const parent=cCtx.parentElement;
+  if(parent){const ld=parent.querySelector('.chart-loading');if(ld)ld.remove();}
   if(catChart)catChart.destroy();
 
   // Map category IDs to display names

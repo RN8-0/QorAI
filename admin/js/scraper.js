@@ -491,11 +491,12 @@ function extractImages(doc, productSlug) {
     let u = url.trim();
     if (u.startsWith('//')) u = 'https:' + u;
     if (!u.startsWith('http')) return;
-    u = upgradeSize(u);
+    u = upgradeSize(u).split(/[?#]/)[0];
     if (!isValid(u)) return;
-    if (seen.has(u)) return;
+    const key = u.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+    if (seen.has(key)) return;
     if (images.length >= 8) return;
-    seen.add(u);
+    seen.add(key);
     images.push(u);
   }
 
@@ -558,10 +559,11 @@ function extractImages(doc, productSlug) {
     const content = ogImg.getAttribute('content');
     if (content && content.includes('resim.epey.com')) {
       // Insert at front if not already present
-      const upgraded = upgradeSize(content.trim());
-      if (!seen.has(upgraded) && images.length < 8) {
+      const upgraded = upgradeSize(content.trim().split(/[?#]/)[0]);
+      const key = upgraded.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+      if (!seen.has(key) && images.length < 8) {
         images.unshift(upgraded);
-        seen.add(upgraded);
+        seen.add(key);
       }
     }
   }
@@ -854,9 +856,15 @@ async function scrapeProductDetail(html, url, categoryId) {
   if (images.length < 4 && productSlug) {
     try {
       const galleryImgs = await fetchGalleryImages(productSlug);
-      for (const gi of galleryImgs) {
+      const seenKeys = new Set(images.map(u => (u || '').toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '').split(/[?#]/)[0]));
+      for (const giRaw of galleryImgs) {
         if (images.length >= 8) break;
-        if (!images.includes(gi)) images.push(gi);
+        const gi = (giRaw || '').split(/[?#]/)[0];
+        const key = gi.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          images.push(gi);
+        }
       }
     } catch {}
   }
@@ -1495,7 +1503,8 @@ async function startScoreUpdate() {
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   const cat = document.getElementById('scoreCategory')?.value || '';
-  const limit = parseInt(document.getElementById('scoreLimit')?.value) || 50;
+  const limitRaw = document.getElementById('scoreLimit')?.value;
+  const limit = limitRaw && limitRaw.trim() ? parseInt(limitRaw) : 0; // 0 = no limit
   const delay = parseInt(document.getElementById('scoreDelay')?.value) || 1500;
 
   scraperRunning = true;
@@ -1519,7 +1528,7 @@ async function startScoreUpdate() {
   }
 
   if (cat) products = products.filter(p => p.category === cat);
-  products = products.slice(0, limit);
+  if (limit > 0) products = products.slice(0, limit);
 
   slog(`Updating scores for ${products.length} products...`);
   _scrapeStartTime = Date.now();
@@ -1574,7 +1583,8 @@ async function startProductUpdate() {
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   const cat = document.getElementById('updateCategory')?.value || '';
-  const limit = parseInt(document.getElementById('updateLimit')?.value) || 50;
+  const limitRaw = document.getElementById('updateLimit')?.value;
+  const limit = limitRaw && limitRaw.trim() ? parseInt(limitRaw) : 0; // 0 = no limit
   const delay = parseInt(document.getElementById('updateDelay')?.value) || 2000;
 
   scraperRunning = true;
@@ -1599,7 +1609,7 @@ async function startProductUpdate() {
   }
 
   if (cat) products = products.filter(p => p.category === cat);
-  products = products.slice(0, limit);
+  if (limit > 0) products = products.slice(0, limit);
 
   slog(`Updating ${products.length} products...`);
   _scrapeStartTime = Date.now();
@@ -1882,8 +1892,17 @@ function _qualityIssues(p, minSpecs, minImages) {
   return issues;
 }
 
-// Normalize a single image URL (upgrade size prefix)
-function _normImgUrl(u) { return u ? u.replace(/\/[ksmtc]_/g, '/b_').trim() : u; }
+// Normalize a single image URL (upgrade size prefix + strip querystring + lowercase + drop extension for dedup key).
+// We keep the actual URL but use a canonical key for de-duplication.
+function _normImgUrl(u) {
+  if (!u) return u;
+  return u.replace(/\/[ksmtc]_/g, '/b_').split(/[?#]/)[0].trim();
+}
+function _imgDedupKey(u) {
+  if (!u) return '';
+  // Lowercase + strip extension so .jpg/.webp/.jpeg of the same file collapse
+  return _normImgUrl(u).toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+}
 
 // Deduplicate + normalize + cap at 8 for a product's image list
 function _cleanImgList(imgs) {
@@ -1891,7 +1910,8 @@ function _cleanImgList(imgs) {
   const out = [];
   for (const raw of (imgs || [])) {
     const u = _normImgUrl(raw);
-    if (u && !seen.has(u)) { seen.add(u); out.push(u); }
+    const key = _imgDedupKey(u);
+    if (u && key && !seen.has(key)) { seen.add(key); out.push(u); }
     if (out.length >= 8) break;
   }
   return out;
@@ -1980,13 +2000,23 @@ async function startQualityScan() {
   slog('══ Kalite Taraması Başladı ══', 'info');
   slog(`Kategori: ${cat || 'Tümü'} | Min spec: ${minSpecs} | Min görsel: ${minImages}`, 'info');
 
-  // ── Load all products ──
+  // ── Load all products via pagination (PB perPage capped at 500) ──
   slog('\n[1/4] PocketBase\'den ürünler yükleniyor...', 'info');
   let products = [];
   try {
     const filter = cat ? `category="${cat}"` : '';
-    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-techScore' });
-    products = r.items.map(d => ({ _docId: d.id, ...d }));
+    const PER_PAGE = 500;
+    const first = await getPb().collection('products').getList(1, PER_PAGE, { filter, sort: '-techScore' });
+    const total = first.totalItems;
+    const pages = Math.ceil(total / PER_PAGE);
+    products.push(...first.items.map(d => ({ _docId: d.id, ...d })));
+    slog(`Toplam ${total} ürün, ${pages} sayfa`, 'info');
+    updateProgress(1, pages, 'Yükleniyor');
+    for (let page = 2; page <= pages && !scraperAbort; page++) {
+      const r = await getPb().collection('products').getList(page, PER_PAGE, { filter, sort: '-techScore' });
+      products.push(...r.items.map(d => ({ _docId: d.id, ...d })));
+      updateProgress(page, pages, 'Yükleniyor');
+    }
     slog(`✓ ${products.length} ürün yüklendi`, 'success');
   } catch (e) {
     slog(`Ürünler yüklenemedi: ${e.message}`, 'error');
@@ -2015,19 +2045,24 @@ async function startQualityScan() {
     if (badProducts.length > 30) slog(`  ... ve ${badProducts.length - 30} ürün daha`, 'warn');
   }
 
-  // ── Phase 1b: Broken image URL check (optional) ──
+  // ── Phase 1b: Broken image URL check (optional, parallel batched) ──
   if (doCheckImages && !scraperAbort) {
     slog(`\n[2b/4] Görsel URL erişilebilirlik testi yapılıyor (${goodProducts.length + badProducts.length} ürün)...`, 'info');
-    slog('Her görsel 6 saniyeye kadar test edilecek, lütfen bekleyin...', 'warn');
+    slog('Paralel 20\'şer batch ile test ediliyor...', 'info');
     let brokenCount = 0;
     const allToCheck = [...goodProducts];
-    for (let i = 0; i < allToCheck.length && !scraperAbort; i++) {
-      const p = allToCheck[i];
-      updateProgress(i + 1, allToCheck.length, 'Görsel Test');
-      const primaryUrl = p.imageUrl || p.imageURL || (p.images && p.images[0]) || '';
-      if (!primaryUrl) continue;
-      const ok = await testImageUrl(primaryUrl);
-      if (!ok && p.sourceUrl) {
+    const BATCH = 20;
+    let processed = 0;
+    for (let i = 0; i < allToCheck.length && !scraperAbort; i += BATCH) {
+      const slice = allToCheck.slice(i, i + BATCH);
+      const results = await Promise.all(slice.map(p => {
+        const url = p.imageUrl || p.imageURL || (p.images && p.images[0]) || '';
+        if (!url) return Promise.resolve({ p, ok: true, skip: true });
+        return testImageUrl(url).then(ok => ({ p, ok }));
+      }));
+      for (const { p, ok, skip } of results) {
+        if (skip || ok) continue;
+        if (!p.sourceUrl) continue;
         slog(`  🔴 Kırık görsel: ${p.name || p._docId}`, 'warn');
         const alreadyBad = badProducts.some(b => b._docId === p._docId);
         if (!alreadyBad) {
@@ -2042,6 +2077,8 @@ async function startQualityScan() {
         }
         brokenCount++;
       }
+      processed += slice.length;
+      updateProgress(processed, allToCheck.length, 'Görsel Test');
     }
     slog(`✓ Kırık görsel URL testi tamamlandı: ${brokenCount} kırık görsel bulundu`, brokenCount > 0 ? 'warn' : 'success');
   }
@@ -2097,7 +2134,7 @@ async function startQualityScan() {
         await pbUpdateDoc('products', p._docId, update);
 
         const improvements = [];
-        if (update.images) improvements.push(`${mergedImages.length} görsel`);
+        if (update.images) improvements.push(`${mergedSliced.length} görsel`);
         if (update.specs) improvements.push(`${freshSpecCount} spec`);
         slog(`  → Düzeltildi: ${improvements.join(', ')}`, 'success');
         fixed++;
@@ -2145,8 +2182,16 @@ async function startDeduplicateOnly() {
   let products = [];
   try {
     const filter = cat ? `category="${cat}"` : '';
-    const r = await getPb().collection('products').getList(1, 10000, { filter, sort: '-techScore' });
-    products = r.items.map(d => ({ _docId: d.id, ...d }));
+    const PER_PAGE = 500;
+    const first = await getPb().collection('products').getList(1, PER_PAGE, { filter, sort: '-techScore' });
+    const total = first.totalItems;
+    const pages = Math.ceil(total / PER_PAGE);
+    products.push(...first.items.map(d => ({ _docId: d.id, ...d })));
+    for (let page = 2; page <= pages && !scraperAbort; page++) {
+      const r = await getPb().collection('products').getList(page, PER_PAGE, { filter, sort: '-techScore' });
+      products.push(...r.items.map(d => ({ _docId: d.id, ...d })));
+      updateProgress(page, pages, 'Yükleniyor');
+    }
     slog(`✓ ${products.length} ürün yüklendi`, 'success');
   } catch (e) {
     slog(`Yüklenemedi: ${e.message}`, 'error');
