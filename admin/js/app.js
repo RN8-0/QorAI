@@ -158,6 +158,7 @@ function showView(name){
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
   if(name==='subscriptions')loadSubscriptionServices();
+  if(name==='notifications')loadNotificationsView();
   if(name==='settings')loadRemoteConfig();
 }
 
