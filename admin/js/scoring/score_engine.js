@@ -201,10 +201,10 @@
   // ─────────────────────────────────────────────────────────────
 
   const FIELDS = {
-    gpu:        ['GPU Model', 'External Graphics Processor (GPU)', 'Graphics Processor (GPU)', 'Graphics Processor', 'Graphics', 'Ekran Kartı', 'Ekran Karti', 'GPU'],
+    gpu:        ['GPU Model', 'External Graphics Processor (GPU)', 'Graphics Processor (GPU)', 'Graphics Processor', 'Graphics Card', 'Graphics', 'Dedicated GPU', 'Discrete GPU', 'Ekran Kartı', 'Ekran Karti', 'Harici Ekran Kartı', 'GPU'],
     cpu:        ['Processor Model', 'Main Processor (CPU)', 'CPU Model', 'CPU', 'Processor', 'İşlemci', 'Islemci', 'Ana İşlemci', 'Ana Islemci'],
-    ram:        ['Memory (RAM)', 'RAM Capacity', 'RAM (GB)', 'RAM', 'Memory', 'Bellek', 'Sistem Belleği', 'Sistem Bellegi'],
-    storage:    ['Storage Capacity', 'Internal Storage', 'Storage', 'SSD Capacity', 'Hard Disk', 'Depolama', 'Dahili Hafıza', 'Dahili Hafiza'],
+    ram:        ['Memory (RAM)', 'RAM Capacity', 'RAM (GB)', 'System Memory', 'Installed RAM', 'RAM', 'Memory', 'Bellek', 'Sistem Belleği', 'Sistem Bellegi'],
+    storage:    ['Hard Disk (SSD) Size', 'SSD Size', 'SSD Capacity', 'Storage Capacity', 'Internal Storage', 'Hard Disk Size', 'Hard Disk', 'Storage', 'Depolama', 'Dahili Hafıza', 'Dahili Hafiza'],
     battery:    ['Battery Capacity (Typical)', 'Battery Capacity', 'Battery Power', 'Battery (mAh)', 'Battery', 'Batarya Kapasitesi', 'Batarya', 'Pil'],
     battery_life: ['Battery Life', 'Listening Time', 'Music Time', 'Talk Time', 'Pil Ömrü', 'Calma Suresi', 'Çalma Süresi'],
     screen_size:['Display Size', 'Screen Size', 'Ekran Boyutu', 'Display Size (Diagonal)', 'Diagonal'],
@@ -362,6 +362,42 @@
     const n = parseFloat(m[0].replace(',', '.'));
     return isFinite(n) ? n : null;
   }
+
+  // Parse a memory/storage spec value into GB (handles TB / GB / MB / KB).
+  // "2TB" → 2048 | "512GB" → 512 | "16384MB" → 16 | "16 GB" → 16 | "16" → 16
+  function _parseGb(s) {
+    if (s == null) return null;
+    if (typeof s === 'number') return isFinite(s) ? s : null;
+    const str = String(s).replace(/\u00a0/g, ' ').trim();
+    const m = str.match(/(\d+(?:[.,]\d+)?)\s*(tb|gb|mb|kb|t|g|m|k)?/i);
+    if (!m) return null;
+    const n = parseFloat(m[1].replace(',', '.'));
+    if (!isFinite(n)) return null;
+    const unit = (m[2] || 'gb').toLowerCase();
+    if (unit === 'tb' || unit === 't') return n * 1024;
+    if (unit === 'gb' || unit === 'g') return n;
+    if (unit === 'mb' || unit === 'm') return n / 1024;
+    if (unit === 'kb' || unit === 'k') return n / (1024 * 1024);
+    return n;
+  }
+
+  // Clean a GPU model string to its canonical short name.
+  // "NVIDIA GeForce RTX 5060 115W" → "RTX 5060"
+  // "AMD Radeon RX 7600M XT"        → "RX 7600M XT"
+  // "Intel Arc A770M"               → "Arc A770M"
+  function _cleanGpuModel(s) {
+    if (!s) return s;
+    let str = String(s).trim();
+    // Strip vendor / brand prefixes
+    str = str.replace(/\b(nvidia|amd|intel|geforce|radeon|asus|msi|gigabyte|zotac|sapphire|powercolor|xfx|evga|palit|inno3d|colorful)\b/gi, ' ');
+    // Strip TDP / power suffixes like "115W"
+    str = str.replace(/\b\d+\s*w\b/gi, ' ');
+    // Strip extra noise like "Laptop GPU", "Mobile" markers (we keep "Laptop" actually since rank list has it)
+    str = str.replace(/\bgpu\b/gi, ' ');
+    // Collapse whitespace
+    str = str.replace(/\s+/g, ' ').trim();
+    return str;
+  }
   function _firstNumberAfter(s, marker) {
     if (s == null) return null;
     const m = String(s).match(new RegExp(marker + '\\D{0,3}(\\d+([.,]\\d+)?)', 'i'));
@@ -373,31 +409,33 @@
     const specs = p.specs || {};
     const sections = p.specSections || {};
     const wantSet = new Set(candidates.map(_normKey));
-    // Direct flat lookup
-    for (const k of Object.keys(specs)) {
-      if (wantSet.has(_normKey(k))) {
-        const v = specs[k]; if (v != null && String(v).trim() !== '') return { key: k, value: v };
+
+    // Build a unified [key, value, sectionName] list (also walks nested objects in specs[*])
+    const flatPairs = [];
+    for (const [k, v] of Object.entries(specs)) {
+      if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+        for (const [k2, v2] of Object.entries(v)) flatPairs.push([k2, v2, k]);
+      } else {
+        flatPairs.push([k, v, '']);
       }
     }
-    // Section lookup
     for (const [secName, sec] of Object.entries(sections)) {
       if (sec && typeof sec === 'object') {
-        for (const k of Object.keys(sec)) {
-          if (wantSet.has(_normKey(k))) {
-            const v = sec[k]; if (v != null && String(v).trim() !== '') return { key: `${secName}/${k}`, value: v };
-          }
-        }
+        for (const [k, v] of Object.entries(sec)) flatPairs.push([k, v, secName]);
       }
     }
-    // Substring fallback (key contains candidate)
-    const all = [];
-    for (const [k, v] of Object.entries(specs)) all.push([k, v, '']);
-    for (const [secName, sec] of Object.entries(sections)) {
-      if (sec && typeof sec === 'object') for (const [k, v] of Object.entries(sec)) all.push([k, v, secName]);
+
+    // Direct match (normalized key equals candidate)
+    for (const [k, v, sec] of flatPairs) {
+      if (wantSet.has(_normKey(k)) && v != null && String(v).trim() !== '') {
+        return { key: sec ? `${sec}/${k}` : k, value: v };
+      }
     }
-    for (const cand of candidates) {
+    // Substring fallback (key contains candidate, longest candidate first)
+    const sortedCands = candidates.slice().sort((a, b) => b.length - a.length);
+    for (const cand of sortedCands) {
       const cn = _normKey(cand);
-      for (const [k, v, sec] of all) {
+      for (const [k, v, sec] of flatPairs) {
         if (_normKey(k).includes(cn) && v != null && String(v).trim() !== '') {
           return { key: sec ? `${sec}/${k}` : k, value: v };
         }
@@ -511,15 +549,17 @@
       case 'gpu': {
         const s = _lookupStr(p, 'gpu');
         if (!s) return null;
+        const cleaned = _cleanGpuModel(s);
         const list = isLaptop ? GPU_LAPTOP : GPU_DESKTOP;
-        const m = _matchRank(s, list);
+        const m = _matchRank(cleaned, list) || _matchRank(s, list);
         return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
       }
       case 'gpu_rank': {
         // For "gpus" category — name is the model itself
-        const s = _lookupStr(p, 'gpu') || p.name || '';
-        const m = _matchRank(s, GPU_DESKTOP);
-        return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+        const raw = _lookupStr(p, 'gpu') || p.name || '';
+        const cleaned = _cleanGpuModel(raw);
+        const m = _matchRank(cleaned, GPU_DESKTOP) || _matchRank(raw, GPU_DESKTOP);
+        return m && { score: m.score, type: 'rank', raw: raw, source: m.key, exact: m.exact };
       }
       case 'chipset': {
         const s = _lookupStr(p, 'chipset');
@@ -549,8 +589,18 @@
       case 'headphone_water': return _l(p, 'ip_rating', LOOKUPS.headphone_water);
 
       // ── NUMERIC (higher better) ──
-      case 'ram': return _num(p, 'ram');
-      case 'storage': return _num(p, 'storage');
+      case 'ram': {
+        const s = _lookupStr(p, 'ram');
+        if (s == null) return null;
+        const n = _parseGb(s);
+        return n == null ? null : { score: n, type: 'num', raw: s };
+      }
+      case 'storage': {
+        const s = _lookupStr(p, 'storage');
+        if (s == null) return null;
+        const n = _parseGb(s);
+        return n == null ? null : { score: n, type: 'num', raw: s };
+      }
       case 'battery': return _num(p, 'battery');
       case 'battery_life': return _num(p, 'battery_life') || _num(p, 'battery');
       case 'screen_size': return _num(p, 'screen_size');

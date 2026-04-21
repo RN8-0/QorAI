@@ -1,0 +1,568 @@
+Ôùç injected env (14) from .env // tip: Ôùê encrypted .env [www.dotenvx.com]
+
+======================================================================
+SMARTPHONES
+
+--- TOP 5 ---
+
+ÔåÆ Oppo Find X9 Ultra (id=l6uuzbefwk8huv5)
+  score=70 (base=70.31, decay=1, year=2026)
+  missing=[network_5g]
+  chipset            w= 22% norm=100 src=Snapdragon 8 Elite type=rank raw="Qualcomm Snapdragon 8 Elite Gen 5"
+  main_camera        w= 14% norm=100 src=- type=num raw="F3.5"
+  front_camera       w=  4% norm=  8 src=- type=num raw="60 fps"
+  ram                w= 10% norm=  3 src=- type=num raw="16 GB"
+  storage            w=  8% norm= 25 src=- type=num raw="512 GB"
+  battery            w= 10% norm= 58 src=- type=num raw="7050 mAh"
+  panel              w=  8% norm= 95 src=AMOLED type=lookup raw="AMOLED"
+  refresh            w=  6% norm= 60 src=- type=num raw="144 Hz"
+  resolution         w=  8% norm= 88 src=QHD+ type=lookup raw="1440x3168 (QHD+) Pixel"
+  screen_size        w=  4% norm= 86 src=- type=num raw="6.78 Inch"
+
+ÔåÆ Honor Win (id=yt2o6ti0qj4ic25)
+  score=68 (base=67.85, decay=1, year=2025)
+  missing=[main_camera, network_5g]
+  chipset            w= 22% norm=100 src=Snapdragon 8 Elite type=rank raw="Qualcomm Snapdragon 8 Elite Gen 5"
+  front_camera       w=  4% norm=  0 src=- type=num raw="F2.0"
+  ram                w= 10% norm=  2 src=- type=num raw="12GB"
+  storage            w=  8% norm= 25 src=- type=num raw="512GB"
+  battery            w= 10% norm= 82 src=- type=num raw="10000mAh"
+  panel              w=  8% norm=100 src=OLED type=lookup raw="OLED"
+  refresh            w=  6% norm= 77 src=- type=num raw="185Hz"
+  resolution         w=  8% norm= 72 src=FHD+ type=lookup raw="1272x2800 (FHD+) Pixel"
+  screen_size        w=  4% norm= 86 src=- type=num raw="6.83 Inches"
+
+ÔåÆ Honor Win RT (id=yuzwnl1zfalltyk)
+  score=68 (base=67.85, decay=1, year=2025)
+  missing=[main_camera, network_5g]
+  chipset            w= 22% norm=100 src=Snapdragon 8 Elite type=rank raw="Qualcomm Snapdragon 8 Elite"
+  front_camera       w=  4% norm=  0 src=- type=num raw="F2.0"
+  ram                w= 10% norm=  2 src=- type=num raw="12GB"
+  storage            w=  8% norm= 25 src=- type=num raw="512GB"
+  battery            w= 10% norm= 82 src=- type=num raw="10000mAh"
+  panel              w=  8% norm=100 src=OLED type=lookup raw="OLED"
+  refresh            w=  6% norm= 77 src=- type=num raw="185Hz"
+  resolution         w=  8% norm= 72 src=FHD+ type=lookup raw="1272x2800 (FHD+) Pixel"
+  screen_size        w=  4% norm= 86 src=- type=num raw="6.83 Inches"
+
+ÔåÆ Nubia RedMagic 11 Pro (24 GB / 1 TB) (id=8ca0y3ywb0zr6mw)
+  score=66 (base=66.31, decay=1, year=2025)
+  missing=[main_camera, network_5g]
+  chipset            w= 22% norm=100 src=Snapdragon 8 Elite type=rank raw="Qualcomm Snapdragon 8 Elite Gen 5"
+  front_camera       w=  4% norm=  0 src=- type=num raw="F2.0"
+  ram                w= 10% norm=  5 src=- type=num raw="24GB"
+  storage            w=  8% norm= 50 src=- type=num raw="1TB"
+  battery            w= 10% norm= 62 src=- type=num raw="7500mAh"
+  panel              w=  8% norm= 95 src=AMOLED type=lookup raw="AMOLED"
+  refresh            w=  6% norm= 60 src=- type=num raw="144Hz"
+  resolution         w=  8% norm= 72 src=FHD+ type=lookup raw="1216x2688 (FHD+) Pixel"
+  screen_size        w=  4% norm= 87 src=- type=num raw="6.85 Inches"
+
+ÔåÆ Nubia Z70S Ultra (id=1fd95dx4aplio4l)
+  score=66 (base=65.98, decay=1, year=2025)
+  missing=[main_camera, front_camera, network_5g]
+  chipset            w= 22% norm=100 src=Snapdragon 8 Elite type=rank raw="Qualcomm Snapdragon 8 Elite"
+  ram                w= 10% norm=  3 src=- type=num raw="16 GB"
+  storage            w=  8% norm= 25 src=- type=num raw="512GB"
+  battery            w= 10% norm= 54 src=- type=num raw="6600mAh"
+  panel              w=  8% norm= 95 src=AMOLED type=lookup raw="AMOLED"
+  refresh            w=  6% norm= 60 src=- type=num raw="144Hz"
+  resolution         w=  8% norm= 72 src=FHD+ type=lookup raw="1216x2688 (FHD+) Pixel"
+  screen_size        w=  4% norm= 87 src=- type=num raw="6.85 Inches"
+
+--- BOTTOM 5 ---
+
+ÔåÆ ZTE Nubia Z80 Ultra (1 TB) (id=jd200wxl2gmwg6f)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[chipset, main_camera, front_camera, ram, storage, battery, panel, refresh, resolution, screen_size, network_5g]
+
+
+ÔåÆ Xiaomi 17 (512 GB) (id=91iesc9895ulxg9)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[chipset, main_camera, front_camera, ram, storage, battery, panel, refresh, resolution, screen_size, network_5g]
+
+
+ÔåÆ Xiaomi 17 Ultra (1 TB) (id=xzrvonjhj7jpf4i)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[chipset, main_camera, front_camera, ram, storage, battery, panel, refresh, resolution, screen_size, network_5g]
+
+
+ÔåÆ Xiaomi 15T Pro (1 TB) (id=sd0xd2lkib7hl9k)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[chipset, main_camera, front_camera, ram, storage, battery, panel, refresh, resolution, screen_size, network_5g]
+
+
+ÔåÆ Xiaomi 15 Ultra (id=cplg6qjhavmjwj3)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[chipset, main_camera, front_camera, ram, storage, battery, panel, refresh, resolution, screen_size, network_5g]
+
+
+--- TARGET: "Xiaomi 17 Ultra" (3 match) ---
+
+ÔåÆ Xiaomi 17 Ultra (1 TB) (id=xzrvonjhj7jpf4i)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[chipset, main_camera, front_camera, ram, storage, battery, panel, refresh, resolution, screen_size, network_5g]
+
+  ÔÜá´©Å RAW SPECS DUMP:
+  flat keys: [battery | camera | display | memory | performance]
+  sections: {}
+
+ÔåÆ Xiaomi 17 Ultra (1 TB) (id=wub8utw1g3ny73x)
+  score=64 (base=64.36, decay=1, year=2026)
+  missing=[main_camera, network_5g]
+  chipset            w= 22% norm=100 src=Snapdragon 8 Elite type=rank raw="Qualcomm Snapdragon 8 Elite Gen 5"
+  front_camera       w=  4% norm=  0 src=- type=num raw="F2.2"
+  ram                w= 10% norm=  3 src=- type=num raw="16 GB"
+  storage            w=  8% norm= 50 src=- type=num raw="1TB"
+  battery            w= 10% norm= 49 src=- type=num raw="6000mAh"
+  panel              w=  8% norm=100 src=OLED type=lookup raw="OLED"
+  refresh            w=  6% norm= 50 src=- type=num raw="120Hz"
+  resolution         w=  8% norm= 72 src=FHD+ type=lookup raw="1200x2608 (FHD+) Pixel"
+  screen_size        w=  4% norm= 87 src=- type=num raw="6.9 Inches"
+
+--- TOP REDMI ---
+
+ÔåÆ Redmi K80 Pro (id=pforvjm2ul1uyem)
+  score=62 (base=63.62, decay=0.97, year=2024)
+  missing=[main_camera, network_5g]
+  chipset            w= 22% norm=100 src=Snapdragon 8 Elite type=rank raw="Qualcomm Snapdragon 8 Elite"
+  front_camera       w=  4% norm=  8 src=- type=num raw="60fps"
+  ram                w= 10% norm=  2 src=- type=num raw="12GB"
+  storage            w=  8% norm= 25 src=- type=num raw="512GB"
+  battery            w= 10% norm= 49 src=- type=num raw="6000mAh"
+  panel              w=  8% norm=100 src=OLED type=lookup raw="OLED"
+  refresh            w=  6% norm= 50 src=- type=num raw="120Hz"
+  resolution         w=  8% norm= 88 src=QHD+ type=lookup raw="1440x3200 (QHD+) Pixel"
+  screen_size        w=  4% norm= 84 src=- type=num raw="6.67 Inches"
+
+--- HEAVY-MISSING SAMPLES (33 total) ---
+
+ÔåÆ Vivo Apex 2019 (missing: 6)
+  flat keys: [1. Secondary Processor | 2. Secondary Processor | 2G | 3G | 4.5G Support | 4G | 5G | CPU Core | CPU Frequency | CPU Manufacturing Technology | Camera Features | Camera Resolution | Chipset | Color Count | Color Options | Display Features | Display Size | Fast Charging | Fingerprint Reader | Fingerprint Reader Features | Flash | GPU Frequency | Graphics Processor (GPU) | Internal Storage | Main Processor (CPU) | Memory (RAM) | Navigation Features | Number of Lines | Operating System | Operating System Version | Processor Architecture | Release Year | Removable Battery | SIM | Screen Refresh Rate | Screen Technology | Second Rear Camera | Second Rear Camera Resolution | Status | USB Connectivity Type | USB Version | Wireless Charging]
+  sections: {
+    "BASIC Hardware": [
+      "1. Secondary Processor",
+      "2. Secondary Processor",
+      "CPU Core",
+      "CPU Frequency",
+      "CPU Manufacturing Technology",
+      "Chipset",
+      "GPU Frequency",
+      "Graphics Processor (GPU)",
+      "Internal Storage",
+      "Main Processor (CPU)",
+      "Memory (RAM)",
+      "Processor Architecture"
+    ],
+    "Basic Information": [
+      "Release Year",
+      "Status"
+    ],
+    "Battery": [
+      "Fast Charging",
+      "Removable Battery",
+      "Wireless Charging"
+    ],
+    "Camera": [
+      "Camera Features",
+      "Camera Resolution",
+      "Flash",
+      "Second Rear Camera",
+      "Second Rear Camera Resolution"
+    ],
+    "Design": [
+      "Color Options"
+    ],
+    "Display": [
+      "Color Count",
+      "Display Features",
+      "Display Size",
+      "Screen Refresh Rate",
+      "Screen Technology"
+    ],
+    "Features": [
+      "Fingerprint Reader",
+      "Fingerprint Reader Features"
+    ],
+    "Network Connections": [
+      "2G",
+      "3G",
+      "4.5G Support",
+      "4G",
+      "5G"
+    ],
+    "Operating System": [
+      "Operating System",
+      "Operating System Version"
+    ],
+    "Other Connections": [
+      "Number of Lines",
+      "SIM",
+      "USB Connectivity Type",
+      "USB Version"
+    ],
+    "Wireless Connections": [
+      "Navigation Features"
+    ]
+  }
+
+ÔåÆ Apple iPhone 16 Pro (1 TB) (missing: 11)
+  flat keys: [battery | camera | display | memory | performance]
+  sections: {}
+
+ÔåÆ Apple iPhone 16 Pro Max (1 TB) (missing: 11)
+  flat keys: [battery | camera | display | memory | performance]
+  sections: {}
+
+======================================================================
+LAPTOPS
+
+--- TOP 5 ---
+
+ÔåÆ MSI Titan 18 HX AI A2XWJG Laptop (id=7zph60z7pwbhkkd)
+  score=88 (base=87.84, decay=1, year=2025)
+  missing=[gpu]
+  cpu                w= 25% norm=100 src=Core Ultra 9 285HX type=rank raw="Intel Core Ultra 9 285HX"
+  ram                w= 13% norm= 75 src=- type=num raw="96GB"
+  storage            w= 10% norm= 75 src=- type=num raw="6TB"
+  battery            w=  8% norm=100 src=- type=num raw="99.9 Wh"
+  screen_size        w=  4% norm=100 src=- type=num raw="18.0 Inch"
+  refresh            w=  4% norm= 40 src=- type=num raw="120Hz"
+  resolution         w=  6% norm= 95 src=3840 type=lookup raw="3840 X 2400 Pixels"
+  panel              w=  5% norm= 70 src=IPS type=lookup raw="IPS (LED)"
+  weight_lo          w=  4% norm=100 src=- type=num_lo raw="3.6kg"
+  wifi               w=  3% norm=100 src=802.11be type=lookup raw="Wi-Fi 7 (802.11be)"
+
+ÔåÆ MSI Titan 18 HX AI A2XWJG Laptop (id=96ioy6jbkftzk9p)
+  score=84 (base=83.79, decay=1, year=2025)
+  missing=[gpu]
+  cpu                w= 25% norm=100 src=Core Ultra 9 285HX type=rank raw="Intel Core Ultra 9 285HX"
+  ram                w= 13% norm= 50 src=- type=num raw="64GB"
+  storage            w= 10% norm= 75 src=- type=num raw="6TB"
+  battery            w=  8% norm= 99 src=- type=num raw="99.0 Wh"
+  screen_size        w=  4% norm=100 src=- type=num raw="18.0 Inch"
+  refresh            w=  4% norm= 40 src=- type=num raw="120Hz"
+  resolution         w=  6% norm= 95 src=3840 type=lookup raw="3840 X 2400 Pixels"
+  panel              w=  5% norm= 70 src=IPS type=lookup raw="IPS (LED)"
+  weight_lo          w=  4% norm=100 src=- type=num_lo raw="3.6kg"
+  wifi               w=  3% norm=100 src=802.11be type=lookup raw="Wi-Fi 7 (802.11be)"
+
+ÔåÆ MSI CreatorPro X18 HX A14VMG Laptop (id=u8xf60l4amoaszx)
+  score=82 (base=87.23, decay=0.94, year=2023)
+  missing=[gpu]
+  cpu                w= 25% norm= 95 src=Core i9-14900HX type=rank raw="Intel Core I9-14900HX"
+  ram                w= 13% norm=100 src=- type=num raw="128GB"
+  storage            w= 10% norm= 50 src=- type=num raw="4TB"
+  battery            w=  8% norm=100 src=- type=num raw="99.9 Wh"
+  screen_size        w=  4% norm=100 src=- type=num raw="18.0 Inch"
+  refresh            w=  4% norm= 40 src=- type=num raw="120Hz"
+  resolution         w=  6% norm= 95 src=3840 type=lookup raw="3840 X 2400 Pixels"
+  panel              w=  5% norm= 70 src=IPS type=lookup raw="IPS (Mini LED)"
+  weight_lo          w=  4% norm=100 src=- type=num_lo raw="3.6kg"
+  wifi               w=  3% norm=100 src=802.11be type=lookup raw="Killer Wi-Fi 7 (802.11be 6GHz)"
+
+ÔåÆ MSI Titan 18 HX A14VIG Laptop (id=e1ti1g4sota827d)
+  score=82 (base=87.23, decay=0.94, year=2023)
+  missing=[gpu]
+  cpu                w= 25% norm= 95 src=Core i9-14900HX type=rank raw="Intel Core I9-14900HX"
+  ram                w= 13% norm=100 src=- type=num raw="128GB"
+  storage            w= 10% norm= 50 src=- type=num raw="4TB"
+  battery            w=  8% norm=100 src=- type=num raw="99.9 Wh"
+  screen_size        w=  4% norm=100 src=- type=num raw="18.0 Inch"
+  refresh            w=  4% norm= 40 src=- type=num raw="120Hz"
+  resolution         w=  6% norm= 95 src=3840 type=lookup raw="3840 X 2400 Pixels"
+  panel              w=  5% norm= 70 src=IPS type=lookup raw="IPS (LED)"
+  weight_lo          w=  4% norm=100 src=- type=num_lo raw="3.6kg"
+  wifi               w=  3% norm=100 src=802.11be type=lookup raw="Killer Wi-Fi 7 (802.11be 6GHz)"
+
+ÔåÆ Asus ROG Strix G16 G614JVR-N3096-38 Laptop (id=yb3249ik1twdajo)
+  score=81 (base=85.96, decay=0.94, year=2023)
+  missing=[gpu]
+  cpu                w= 25% norm= 95 src=Core i9-14900HX type=rank raw="Intel Core I9-14900HX"
+  ram                w= 13% norm= 75 src=- type=num raw="96GB"
+  storage            w= 10% norm=100 src=- type=num raw="8TB"
+  battery            w=  8% norm= 90 src=- type=num raw="90.0 Wh"
+  screen_size        w=  4% norm= 89 src=- type=num raw="16.0 inch"
+  refresh            w=  4% norm= 55 src=- type=num raw="165Hz"
+  resolution         w=  6% norm= 65 src=1920 type=lookup raw="1920 X 1200 Pixels"
+  panel              w=  5% norm= 70 src=IPS type=lookup raw="IPS (LED)"
+  weight_lo          w=  4% norm=100 src=- type=num_lo raw="2.50kg"
+  wifi               w=  3% norm= 88 src=Wi-Fi 6E type=lookup raw="Wi-Fi 6E (802.11ax)"
+
+--- BOTTOM 5 ---
+
+ÔåÆ MSI Titan 18 HX AI A2XWJG-620TR Laptop (id=2ht7zfxpao92qmi)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[cpu, gpu, ram, storage, battery, screen_size, refresh, resolution, panel, weight_lo, wifi]
+
+
+ÔåÆ MSI Titan 18 HX AI A2XWJG-217TR Laptop (id=uukmv4p2ahuzbp5)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[cpu, gpu, ram, storage, battery, screen_size, refresh, resolution, panel, weight_lo, wifi]
+
+
+ÔåÆ MSI Titan 18 HX A14VIG-067TR Laptop (id=uft1qsufffs5mwg)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[cpu, gpu, ram, storage, battery, screen_size, refresh, resolution, panel, weight_lo, wifi]
+
+
+ÔåÆ MSI Raider A18 HX A9WJG-091TR Laptop (id=lek3gjfg68gjbut)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[cpu, gpu, ram, storage, battery, screen_size, refresh, resolution, panel, weight_lo, wifi]
+
+
+ÔåÆ MSI Raider A18 HX A9WIG-092TR Laptop (id=dc2cy6q3pax2keu)
+  score=1 (base=0, decay=1, year=2026)
+  missing=[cpu, gpu, ram, storage, battery, screen_size, refresh, resolution, panel, weight_lo, wifi]
+
+
+--- TARGET: "GameRaider FLUX GR16" (41 match) ---
+
+ÔåÆ GameRaider FLUX GR16 Laptop (H960300S16BW-TR001) (id=z52hq3dg7h9f4l0)
+  score=68 (base=67.7, decay=1, year=2025)
+  missing=[gpu, panel]
+  cpu                w= 25% norm= 95 src=Core i9-14900HX type=rank raw="Intel Core I9-14900HX"
+  ram                w= 13% norm= 13 src=- type=num raw="16 GB"
+  storage            w= 10% norm= 13 src=- type=num raw="1TB"
+  battery            w=  8% norm= 80 src=- type=num raw="80.0 Wh"
+  screen_size        w=  4% norm= 89 src=- type=num raw="16.0 inch"
+  refresh            w=  4% norm=100 src=- type=num raw="300Hz"
+  resolution         w=  6% norm= 82 src=2560 type=lookup raw="2560 X 1600 Pixels"
+  weight_lo          w=  4% norm=100 src=- type=num_lo raw="2.20kg"
+  wifi               w=  3% norm= 88 src=Wi-Fi 6E type=lookup raw="Wi-Fi 6E (802.11ax)"
+
+ÔåÆ GameRaider FLUX GR16 Laptop (H760180S16B-TR001) (id=5xwe1hfetcmwq0j)
+  score=61 (base=61.18, decay=1, year=2025)
+  missing=[gpu]
+  cpu                w= 25% norm= 80 src=Core i7 14650 (interp 13700Ôåö14700) type=rank raw="Intel Core I7-14650HX"
+  ram                w= 13% norm= 13 src=- type=num raw="16 GB"
+  storage            w= 10% norm= 13 src=- type=num raw="1TB"
+  battery            w=  8% norm= 80 src=- type=num raw="80.0 Wh"
+  screen_size        w=  4% norm= 89 src=- type=num raw="16.0 inch"
+  refresh            w=  4% norm= 60 src=- type=num raw="180Hz"
+  resolution         w=  6% norm= 82 src=2560 type=lookup raw="2560 X 1600 Pixels"
+  panel              w=  5% norm= 70 src=IPS type=lookup raw="IPS (LED)"
+  weight_lo          w=  4% norm=100 src=- type=num_lo raw="2.20kg"
+  wifi               w=  3% norm= 88 src=Wi-Fi 6E type=lookup raw="Wi-Fi 6E (802.11ax)"
+
+--- HEAVY-MISSING SAMPLES (32 total) ---
+
+ÔåÆ HP 14s-fq0011nt (2L1C0EA) Laptop (missing: 6)
+  flat keys: [Battery Cell Count | Battery Features | Battery Power | Bluetooth | Bluetooth Features | CPU Core | Camera Features | Card Reader | Card Reader Features | Color | Depth | Display Size | Ethernet (LAN/RJ45) | External Graphics Processor (GPU) | Fast Charging Feature | HDMI | HDMI Version | Hard Disk (HDD) | Hard Disk (SSD) | Hard Disk (SSD) Size | Hard Disk (SSD) Type | Integrated Graphics Base Frequency | Integrated Graphics Model | Memory (RAM) | Memory Frequency | Memory Type | Operating System | Optical Reader | Processor Base Frequency | Processor Boost Frequency | Processor Brand | Processor Cache | Processor Model | Processor Series | Product Family | Product Purpose | Product Series | Product Type | Reflection Matte Display | Screen Aspect Ratio | Screen Brightness | Screen Other Features | Screen Resolution | Screen Resolution Format | Thermal Design Power (TDP) | Thickness | Transistor Distance | USB 3.x | USB 3.x Quantity | USB Type-C | USB Type-C Quantity | Virtual Core | Weight | Wi-Fi Other Features | Wi-Fi Technology | Width]
+  sections: {
+    "Battery & Other": [
+      "Battery Cell Count",
+      "Battery Features",
+      "Battery Power",
+      "Camera Features",
+      "Card Reader",
+      "Card Reader Features",
+      "Fast Charging Feature"
+    ],
+    "Connections & Interfaces": [
+      "Bluetooth",
+      "Bluetooth Features",
+      "Ethernet (LAN/RJ45)",
+      "HDMI",
+      "HDMI Version",
+      "USB 3.x",
+      "USB 3.x Quantity",
+      "USB Type-C",
+      "USB Type-C Quantity",
+      "Wi-Fi Other Features",
+      "Wi-Fi Technology"
+    ],
+    "Design": [
+      "Color",
+      "Depth",
+      "Thickness",
+      "Weight",
+      "Width"
+    ],
+    "Display": [
+      "Display Size",
+      "Reflection Matte Display",
+      "Screen Aspect Ratio",
+      "Screen Brightness",
+      "Screen Other Features",
+      "Screen Resolution",
+      "Screen Resolution Format"
+    ],
+    "External Graphics": [
+      "External Graphics Processor (GPU)"
+    ],
+    "General Information": [
+      "Operating System",
+      "Product Family",
+      "Product Purpose",
+      "Product Series",
+      "Product Type"
+    ],
+    "Integrated Graphics": [
+      "Integrated Graphics Base Frequency",
+      "Integrated Graphics Model"
+    ],
+    "Memory": [
+      "Memory (RAM)",
+      "Memory Frequency",
+      "Memory Type"
+    ],
+    "Processor": [
+      "CPU Core",
+      "Processor Base Frequency",
+      "Processor Boost Frequency",
+      "Processor Brand",
+      "Processor Cache",
+      "Processor Model",
+      "Processor Series",
+      "Thermal Design Power (TDP)",
+      "Transistor Distance",
+      "Virtual Core"
+    ],
+    "Storage & Optical Drive": [
+      "Hard Disk (HDD)",
+      "Hard Disk (SSD)",
+      "Hard Disk (SSD) Size",
+      "Hard Disk (SSD) Type",
+      "Optical Reader"
+    ]
+  }
+
+ÔåÆ Technopc Aura TI15S3 Laptop (missing: 6)
+  flat keys: [Bluetooth | CPU Core | Card Reader | Card Reader Features | Color | Depth | Display Size | External Graphics Processor (GPU) | Hard Disk (HDD) | Hard Disk (SSD) | Hard Disk (SSD) Size | Integrated Graphics Base Frequency | Integrated Graphics Maximum Frequency | Integrated Graphics Model | Integrated Graphics Other Features | Memory (RAM) | Memory Frequency | Memory Type | Operating System | Optical Reader | Panel Type | Processor Base Frequency | Processor Brand | Processor Cache | Processor Model | Processor Release Year | Processor Series | Processor Technologies | Product Family | Product Purpose | Product Type | Screen Aspect Ratio | Screen Resolution | Screen Resolution Format | Thermal Design Power (TDP) | Thickness | Transistor Distance | Virtual Core | Width]
+  sections: {
+    "Battery & Other": [
+      "Card Reader",
+      "Card Reader Features"
+    ],
+    "Connections & Interfaces": [
+      "Bluetooth"
+    ],
+    "Design": [
+      "Color",
+      "Depth",
+      "Thickness",
+      "Width"
+    ],
+    "Display": [
+      "Display Size",
+      "Panel Type",
+      "Screen Aspect Ratio",
+      "Screen Resolution",
+      "Screen Resolution Format"
+    ],
+    "External Graphics": [
+      "External Graphics Processor (GPU)"
+    ],
+    "General Information": [
+      "Operating System",
+      "Product Family",
+      "Product Purpose",
+      "Product Type"
+    ],
+    "Integrated Graphics": [
+      "Integrated Graphics Base Frequency",
+      "Integrated Graphics Maximum Frequency",
+      "Integrated Graphics Model",
+      "Integrated Graphics Other Features"
+    ],
+    "Memory": [
+      "Memory (RAM)",
+      "Memory Frequency",
+      "Memory Type"
+    ],
+    "Processor": [
+      "CPU Core",
+      "Processor Base Frequency",
+      "Processor Brand",
+      "Processor Cache",
+      "Processor Model",
+      "Processor Release Year",
+      "Processor Series",
+      "Processor Technologies",
+      "Thermal Design Power (TDP)",
+      "Transistor Distance",
+      "Virtual Core"
+    ],
+    "Storage & Optical Drive": [
+      "Hard Disk (HDD)",
+      "Hard Disk (SSD)",
+      "Hard Disk (SSD) Size",
+      "Optical Reader"
+    ]
+  }
+
+ÔåÆ Asus D515DA-BR1319W Laptop (missing: 6)
+  flat keys: [Bluetooth | Bluetooth Features | CPU Core | Card Reader | Card Reader Features | Color | Depth | Display Size | Ethernet (LAN/RJ45) | External Graphics Processor (GPU) | HDMI | HDMI Version | Hard Disk (HDD) | Hard Disk (SSD) | Hard Disk (SSD) Size | Integrated Graphics Base Frequency | Integrated Graphics Model | Memory (RAM) | Memory Type | Operating System | Processor Base Frequency | Processor Boost Frequency | Processor Brand | Processor Cache | Processor Model | Processor Release Year | Processor Series | Product Family | Product Purpose | Product Series | Product Type | Reflection Matte Display | Screen Aspect Ratio | Screen Brightness | Screen Other Features | Screen Resolution | Screen Resolution Format | Thermal Design Power (TDP) | Thickness | Transistor Distance | USB 2.x Quantity | USB 3.x | USB 3.x Quantity | USB Type-C | USB Type-C Quantity | USB2.x | Virtual Core | Weight | Wi-Fi Technology | Width]
+  sections: {
+    "Battery & Other": [
+      "Card Reader",
+      "Card Reader Features"
+    ],
+    "Connections & Interfaces": [
+      "Bluetooth",
+      "Bluetooth Features",
+      "Ethernet (LAN/RJ45)",
+      "HDMI",
+      "HDMI Version",
+      "USB 2.x Quantity",
+      "USB 3.x",
+      "USB 3.x Quantity",
+      "USB Type-C",
+      "USB Type-C Quantity",
+      "USB2.x",
+      "Wi-Fi Technology"
+    ],
+    "Design": [
+      "Color",
+      "Depth",
+      "Thickness",
+      "Weight",
+      "Width"
+    ],
+    "Display": [
+      "Display Size",
+      "Reflection Matte Display",
+      "Screen Aspect Ratio",
+      "Screen Brightness",
+      "Screen Other Features",
+      "Screen Resolution",
+      "Screen Resolution Format"
+    ],
+    "External Graphics": [
+      "External Graphics Processor (GPU)"
+    ],
+    "General Information": [
+      "Operating System",
+      "Product Family",
+      "Product Purpose",
+      "Product Series",
+      "Product Type"
+    ],
+    "Integrated Graphics": [
+      "Integrated Graphics Base Frequency",
+      "Integrated Graphics Model"
+    ],
+    "Memory": [
+      "Memory (RAM)",
+      "Memory Type"
+    ],
+    "Processor": [
+      "CPU Core",
+      "Processor Base Frequency",
+      "Processor Boost Frequency",
+      "Processor Brand",
+      "Processor Cache",
+      "Processor Model",
+      "Processor Release Year",
+      "Processor Series",
+      "Thermal Design Power (TDP)",
+      "Transistor Distance",
+      "Virtual Core"
+    ],
+    "Storage & Optical Drive": [
+      "Hard Disk (HDD)",
+      "Hard Disk (SSD)",
+      "Hard Disk (SSD) Size"
+    ]
+  }
