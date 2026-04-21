@@ -617,7 +617,7 @@ function openProduct(id){
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof CompairCategories!=='undefined'&&CompairCategories.getAll)?CompairCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
-  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>1?`<div class="pm-thumbs">${imgs.map((u,i)=>`<img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')">`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Düzenle</button><button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Sil</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Kaynak</a>`:''}</div></div></div>
+  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Görseli sil" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Düzenle</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Yeniden Scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Sil</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Kaynak</a>`:''}</div></div></div>
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
       <div class="card-title">✏️ Ürün Düzenle</div>
@@ -664,6 +664,55 @@ async function saveProductEdit(id){
     toast('Ürün güncellendi','s');closeModal();renderProductsPage();
   }catch(e){toast('Hata: '+e.message,'e')}
 }
+// Delete a single image URL from a product (modal thumbnail × button)
+async function deleteProductImage(id, url) {
+  if (!confirm('Bu görseli silmek istediğinize emin misiniz?')) return;
+  try {
+    const p = allProducts.find(x => x.id === id);
+    if (!p) { toast('Ürün bulunamadı', 'e'); return; }
+    const imgs = (p.images || []).filter(u => u !== url);
+    const updates = { images: imgs, updatedAt: serverTimestamp(), updatedBy: _currentAdminEmail || 'admin' };
+    if (p.imageUrl === url) updates.imageUrl = imgs[0] || '';
+    await pbUpdateDoc('products', id, updates);
+    p.images = imgs;
+    if (updates.imageUrl !== undefined) p.imageUrl = updates.imageUrl;
+    logActivity('product_image_delete', `Görsel silindi: ${p.name || id}`, { productId: id, url });
+    toast('Görsel silindi', 's');
+    openProduct(id); // re-render modal
+    renderProductsPage();
+  } catch (e) { toast('Hata: ' + e.message, 'e'); }
+}
+
+// Re-scrape a single product on demand (modal "🔄 Yeniden Scrape" button)
+async function rescrapeProduct(id) {
+  const p = allProducts.find(x => x.id === id);
+  if (!p || !p.sourceUrl) { toast('Kaynak URL yok', 'e'); return; }
+  if (typeof checkProxy === 'function' && !(await checkProxy())) { toast('Önce proxy\'yi başlatın (Scraper sekmesi)', 'e'); return; }
+  toast('🔄 Yeniden scrape ediliyor…', 'i');
+  try {
+    const html = await proxyFetch(p.sourceUrl);
+    if (!html) { toast('Sayfa yüklenemedi (404?)', 'e'); return; }
+    const fresh = await scrapeProductDetail(html, p.sourceUrl, p.category);
+    if (!fresh || !fresh.name || (fresh.specsCount || 0) === 0) {
+      toast('Geçersiz scrape sonucu', 'e'); return;
+    }
+    const changes = {};
+    const fields = ['name','brand','price_raw','imageUrl','specsCount','variantGroup','specs','specSections','keySpecs','images','_originalSpecs','_originalSections','_originalKeySpecs','_originalName'];
+    for (const f of fields) {
+      if (fresh[f] !== undefined && JSON.stringify(fresh[f]) !== JSON.stringify(p[f])) changes[f] = fresh[f];
+    }
+    if (!Object.keys(changes).length) { toast('Hiçbir alan değişmedi', 'i'); return; }
+    changes.updatedAt = serverTimestamp();
+    changes.updatedBy = _currentAdminEmail || 'admin';
+    await pbUpdateDoc('products', id, changes);
+    Object.assign(p, changes);
+    logActivity('product_rescrape', `Yeniden scrape: ${p.name}`, { productId: id, changedFields: Object.keys(changes) });
+    toast(`✅ Güncellendi (${Object.keys(changes).length - 2} alan)`, 's');
+    openProduct(id);
+    renderProductsPage();
+  } catch (e) { toast('Scrape hatası: ' + e.message, 'e'); }
+}
+
 async function deleteProduct(id){if(!confirm('Bu ürünü silmek istediğinize emin misiniz?'))return;try{await pbDeleteDoc('products',id);logActivity('product_delete',`Ürün silindi: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;loadPage();toast('Silindi','s')}catch(e){toast('Hata: '+e.message,'e')}}
 
 // ═══════════════════════════════════════

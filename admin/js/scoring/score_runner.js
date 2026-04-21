@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR ADMIN — Tech Score Runner v5
+//  COMPAIR ADMIN — Tech Score Runner v6
 //  3-phase progress (Load → Compute → Persist) + parallel writes
 // ═══════════════════════════════════════════════════════════════
 
@@ -123,7 +123,7 @@
     _running = true; _abort = false; _startTime = Date.now();
     _hideSummary();
     if (typeof clearScraperLog === 'function') clearScraperLog();
-    _slog(`🚀 Score Engine v5 başlatıldı${category ? ' — kategori: ' + category : ' — tüm kategoriler'}`);
+    _slog(`🚀 Score Engine v6 başlatıldı${category ? ' — kategori: ' + category : ' — tüm kategoriler'}`);
 
     // ── PHASE 1: LOAD ───────────────────────────────────────
     _setProgress('Yükleniyor', 0, 1);

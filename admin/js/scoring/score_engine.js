@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR — Tech Score Engine v5 (Anchored + Stretched)
+//  COMPAIR — Tech Score Engine v6 (Anchored + Stretched + Brand)
 //  • Mutlak rank-based GPU/CPU/Chipset (future-proof)
 //  • Log-scale numeric normalization against global references
-//  • 95th-percentile outlier clipping (category-max fallback)
 //  • Tier caps (flagship/upper-mid/mid/entry) — stops mid-segment inflation
+//  • Brand modifier: Apple/Galaxy Ultra/Pixel Pro bonus, Redmi/Poco/Realme penalty
+//  • iOS/macOS/iPadOS OS bonus
 //  • Year decay, nested specs walk, multi-schema field probe
 //
 //  Pipeline:
@@ -411,6 +412,103 @@
   function _tierFor(anchorScore) {
     if (anchorScore == null) return null;
     return TIER_CAPS.find(t => anchorScore >= t.min) || TIER_CAPS[TIER_CAPS.length - 1];
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  BRAND MODIFIER (epey/versus parity)
+  //  Applies a multiplicative bonus/penalty to the final score
+  //  based on brand reputation per category. Apple flagships (iPhone Pro,
+  //  iPad Pro, MacBook Pro) get bonus, Redmi/Poco/Realme/Honor X /
+  //  Infinix / Tecno / Itel sub-brands get penalty so that flagship
+  //  Galaxy/iPhone/Pixel devices stay above mid-tier specs sheets.
+  //  iOS/iPadOS/macOS adds an extra +3% (ecosystem premium).
+  // ─────────────────────────────────────────────────────────────
+  const BRAND_MOD_TABLE = {
+    // category-aware multipliers; 1.0 = neutral
+    smartphones: {
+      // Premium tier
+      apple: 1.06,
+      'samsung galaxy z': 1.05, 'samsung galaxy s ultra': 1.05,
+      'samsung galaxy s': 1.03, 'samsung galaxy note': 1.03,
+      samsung: 1.02,
+      'google pixel pro': 1.04, 'google pixel': 1.02, google: 1.02,
+      sony: 1.03, asus: 1.02, oneplus: 1.01, nothing: 1.01,
+      huawei: 1.01,
+      // Mid penalty
+      xiaomi: 1.0, 'xiaomi mix': 1.02,
+      redmi: 0.93, poco: 0.92,
+      realme: 0.91, 'honor x': 0.90, honor: 0.97,
+      vivo: 0.97, oppo: 0.97, motorola: 0.96,
+      // Budget penalty
+      infinix: 0.85, tecno: 0.85, itel: 0.80, ulefone: 0.85,
+    },
+    tablets: {
+      apple: 1.07, samsung: 1.03, microsoft: 1.03, lenovo: 1.0,
+      huawei: 1.01, xiaomi: 0.98, redmi: 0.92, honor: 0.96,
+      'amazon fire': 0.85, alldocube: 0.85, teclast: 0.85,
+    },
+    laptops: {
+      apple: 1.06, 'razer blade': 1.04, asus: 1.02, 'asus rog': 1.04,
+      msi: 1.02, lenovo: 1.0, 'lenovo thinkpad': 1.03,
+      'lenovo legion': 1.03, dell: 1.0, 'dell xps': 1.04,
+      'dell alienware': 1.04, hp: 1.0, 'hp omen': 1.03,
+      gigabyte: 1.0, acer: 0.99, 'acer predator': 1.02,
+      casper: 0.94, monster: 0.96, 'game garaj': 0.93,
+      gameraider: 0.92, exper: 0.93, huawei: 1.0,
+    },
+    desktops: {
+      apple: 1.05, 'razer tomahawk': 1.03, 'asus rog': 1.03,
+      'msi mpg': 1.02, alienware: 1.04, lenovo: 1.0,
+    },
+    'smart-watches': {
+      apple: 1.07, samsung: 1.03, garmin: 1.05, huawei: 1.0,
+      xiaomi: 0.97, redmi: 0.92, amazfit: 0.95, honor: 0.96,
+    },
+    headphones: {
+      sony: 1.05, bose: 1.05, sennheiser: 1.05, apple: 1.04,
+      audeze: 1.06, 'beyerdynamic': 1.04, 'audio-technica': 1.03,
+      jbl: 1.0, samsung: 1.0,
+      xiaomi: 0.96, redmi: 0.92, honor: 0.95, jlab: 0.92,
+    },
+    earbuds: {
+      apple: 1.06, sony: 1.05, bose: 1.05, samsung: 1.03,
+      sennheiser: 1.05, jbl: 1.0,
+      xiaomi: 0.96, redmi: 0.93, honor: 0.95, oppo: 0.97,
+      jlab: 0.90, anker: 0.95, soundcore: 0.95,
+    },
+    televisions: {
+      sony: 1.05, lg: 1.04, samsung: 1.04, 'sony bravia': 1.05,
+      panasonic: 1.03, philips: 1.0, hisense: 0.96, tcl: 0.95,
+      xiaomi: 0.94, vestel: 0.92, arçelik: 0.94, beko: 0.92,
+    },
+  };
+  function _brandKey(s) { return String(s || '').toLowerCase().trim(); }
+  function _brandModifier(p, cat) {
+    const table = BRAND_MOD_TABLE[cat];
+    if (!table) return { mod: 1.0, reason: null };
+    const brand = _brandKey(p.brand);
+    const name  = _brandKey(p.name);
+    let best = 1.0, bestKey = null, bestLen = 0;
+    for (const key of Object.keys(table)) {
+      const hay = (brand + ' ' + name).trim();
+      if (hay.includes(key) && key.length > bestLen) {
+        best = table[key]; bestKey = key; bestLen = key.length;
+      }
+    }
+    // OS bonus (iOS/iPadOS/macOS) — additive +3%
+    let osBonus = 0;
+    const specs = p.specs || {};
+    const osStr = _brandKey(
+      specs['Operating System'] || specs['OS'] ||
+      specs['İşletim Sistemi'] || specs['Software'] || ''
+    );
+    if (/\b(ios|ipados|macos|mac os|watchos)\b/.test(osStr) ||
+        (cat === 'smartphones' && brand === 'apple') ||
+        (cat === 'tablets' && brand === 'apple') ||
+        (cat === 'laptops' && /macbook/.test(name))) {
+      osBonus = 0.03;
+    }
+    return { mod: best + osBonus, reason: bestKey, osBonus };
   }
 
   // Year decay table (smartphone-style — applied to all categories)
@@ -1074,7 +1172,8 @@
       if (c.tier === 'flagship' && stretchFactor > 1) {
         stretched = Math.min(c.tierCap, c.cappedBase * stretchFactor);
       }
-      const final = Math.max(1, Math.min(100, Math.round(stretched * c.decay)));
+      const bm = _brandModifier(c.row.p, cat);
+      const final = Math.max(1, Math.min(100, Math.round(stretched * c.decay * bm.mod)));
       return {
         id: c.row.p.id,
         name: c.row.p.name,
@@ -1084,6 +1183,8 @@
         stretched: +stretched.toFixed(2),
         stretchFactor: +stretchFactor.toFixed(3),
         decay: c.decay,
+        brandMod: +bm.mod.toFixed(3),
+        brandReason: bm.reason,
         year: c.row.year,
         tier: c.tier, tierCap: c.tierCap, anchorKey: c.anchorKey, anchorScore: c.anchorScore,
         missing: c.row.missing,
