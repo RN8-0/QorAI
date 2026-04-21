@@ -32,10 +32,7 @@
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   async function _loadProducts(category) {
-    if (typeof allProducts !== 'undefined' && Array.isArray(allProducts) && allProducts.length > 0) {
-      const src = category ? allProducts.filter(p => p.category === category) : allProducts;
-      return src.slice();
-    }
+    // Always fetch fresh from PB to avoid stale/partial allProducts cache.
     const filter = category ? `category="${category}"` : '';
     const items = await pbGetAll('products', filter ? { filter } : {});
     return items.map(d => ({ id: d.id, ...(typeof d.data === 'function' ? d.data() : d) }));
@@ -66,7 +63,7 @@
     _running = true; _abort = false; _startTime = Date.now();
     _hideSummary();
     if (typeof clearScraperLog === 'function') clearScraperLog();
-    _slog(`Score Engine v2 starting${category ? ' for ' + category : ' (all categories)'}…`);
+    _slog(`Score Engine v4 starting${category ? ' for ' + category : ' (all categories)'}…`);
 
     let products;
     try {

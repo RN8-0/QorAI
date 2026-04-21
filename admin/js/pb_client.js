@@ -89,6 +89,10 @@ async function pbGetDoc(collection, id) {
     if (item) return { exists: true, id: item.id, data: () => _strip(item) };
     return { exists: false, id, data: () => null };
   } catch (e) {
+    // Treat missing collection as "not found" so callers using try/exists work without spam
+    if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) {
+      return { exists: false, id, data: () => null };
+    }
     throw e;
   }
 }

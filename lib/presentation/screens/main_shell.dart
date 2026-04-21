@@ -15,6 +15,7 @@ import "package:compair/presentation/providers/providers.dart";
 import "package:compair/presentation/screens/ai_chat/ai_chat_screen.dart";
 import "package:compair/services/connectivity_service.dart";
 import "package:compair/services/notification_service.dart";
+import "package:firebase_messaging/firebase_messaging.dart";
 import "package:compair/routing/router.dart";
 import "package:compair/core/theme.dart";
 import "package:compair/core/extensions.dart";
@@ -50,6 +51,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   /// After login, get FCM token and save to PocketBase user profile.
+  /// Retries until token is available (FCM init may complete after this widget mounts),
+  /// and listens for token refresh to keep PB up-to-date.
   Future<void> _registerFcmToken() async {
     if (kIsWeb) return;
     try {
@@ -57,10 +60,31 @@ class _MainShellState extends ConsumerState<MainShell> {
       final uid = authState.valueOrNull;
       if (uid == null) return;
 
-      final token = NotificationService.instance.token;
-      if (token == null) return;
+      final pbDs = ref.read(pbDataSourceProvider);
 
-      await ref.read(pbDataSourceProvider).updateFcmToken(uid, token);
+      // Wait for token (up to ~30s) since NotificationService.init() may run async.
+      String? token = NotificationService.instance.token;
+      for (int i = 0; token == null && i < 30; i++) {
+        await Future.delayed(const Duration(seconds: 1));
+        token = NotificationService.instance.token;
+      }
+      if (token == null) {
+        debugPrint('[Shell] FCM token still null after 30s, giving up');
+        return;
+      }
+
+      await pbDs.updateFcmToken(uid, token);
+      debugPrint('[Shell] FCM token registered to PB for $uid');
+
+      // Re-register on token refresh.
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        try {
+          await pbDs.updateFcmToken(uid, newToken);
+          debugPrint('[Shell] FCM token refreshed in PB for $uid');
+        } catch (e) {
+          debugPrint('[Shell] FCM token refresh PB write failed: $e');
+        }
+      });
     } catch (e) {
       debugPrint('[Shell] FCM token register error: $e');
     }
