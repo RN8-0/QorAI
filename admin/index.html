@@ -311,6 +311,7 @@
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
           <button class="scraper-tab" data-tab="scoreUpdate" onclick="switchScraperTab(this)">🏆 Update Scores</button>
+          <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Puan Motoru v2</button>
           <button class="scraper-tab" data-tab="productUpdate" onclick="switchScraperTab(this)">🔄 Update Products</button>
           <button class="scraper-tab" data-tab="inventoryScan" onclick="switchScraperTab(this)">🔍 Inventory Scan</button>
           <button class="scraper-tab" data-tab="qualityScan" onclick="switchScraperTab(this)">🔬 Quality Scan</button>
@@ -396,6 +397,43 @@
               </div>
             </div>
             <button class="btn btn-primary" onclick="startScoreUpdate()" style="margin-top:8px">Update Scores</button>
+          </div>
+        </div>
+
+        <!-- Tech Score Engine v2 (spec-based, percentile + power curve) -->
+        <div class="scraper-panel" id="scoreEnginePanel">
+          <div class="card">
+            <div class="card-title">⚡ Teknik Puan Motoru v2</div>
+            <p class="text-muted" style="margin-bottom:12px">
+              Specs'ten (işlemci, RAM, depolama, batarya, ekran, çıkış yılı …) puan üretir.
+              PocketBase'e yazar, Typesense'e otomatik mirror eder. Tek source of truth.
+            </p>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Kategori (boş = tümü)</label>
+                <select class="input" id="scoreEngineCategory">
+                  <option value="">Tüm Kategoriler</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:24px">
+                  <input type="checkbox" id="scoreEngineOverwrite" checked>
+                  <span>Mevcut puanların üzerine yaz</span>
+                </label>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="runScoreEngineAll()">Tüm Ürünleri Hesapla</button>
+              <button class="btn" onclick="runScoreEngineCategory()">Seçili Kategoriyi Hesapla</button>
+              <button class="btn btn-secondary" onclick="stopScoreEngine()">Durdur</button>
+            </div>
+            <div style="margin-top:14px">
+              <div style="background:var(--surface-2,#1a1a1a);border-radius:6px;height:8px;overflow:hidden">
+                <div id="scoreEngineProgressBar" style="background:linear-gradient(90deg,#7C3AED,#4F46E5);height:100%;width:0;transition:width .2s"></div>
+              </div>
+              <div id="scoreEngineCounter" class="text-muted" style="margin-top:6px;font-size:12px">0 / 0</div>
+              <div id="scoreEngineSummary" style="display:none;margin-top:10px;padding:10px;background:var(--surface-2,#1a1a1a);border-radius:6px;font-size:13px"></div>
+            </div>
           </div>
         </div>
 
@@ -734,6 +772,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="js/pb_client.js"></script>
   <script src="js/ts_client.js?v=20260421c"></script>
+  <script src="js/scoring/score_engine.js?v=20260421a"></script>
+  <script src="js/scoring/score_runner.js?v=20260421a"></script>
   <script src="js/dictionary.js"></script>
   <script src="js/categories.js"></script>
   <script src="js/scraper.js"></script>

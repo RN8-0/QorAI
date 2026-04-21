@@ -207,6 +207,12 @@ function populateScraperCategories() {
   const scoreSel = document.getElementById('scoreCategory');
   if (scoreSel) scoreSel.innerHTML = flatOpts;
 
+  // Score Engine v2 category (keep "All Categories" first option)
+  const scoreEngSel = document.getElementById('scoreEngineCategory');
+  if (scoreEngSel) {
+    scoreEngSel.innerHTML = '<option value="">Tüm Kategoriler</option>' + flatOpts;
+  }
+
   // Product update category
   const updateSel = document.getElementById('updateCategory');
   if (updateSel) updateSel.innerHTML = flatOpts;
