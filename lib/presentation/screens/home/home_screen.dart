@@ -20,7 +20,6 @@ import 'package:compair/presentation/widgets/product_image_box.dart';
 import 'package:compair/presentation/widgets/shimmer_skeleton.dart';
 import 'package:compair/presentation/widgets/subscription_logo_widget.dart';
 import 'package:compair/routing/router.dart';
-import 'package:compair/services/profile_algorithm_service.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/core/pb_client.dart';
 
@@ -31,6 +30,7 @@ import 'package:compair/core/pb_client.dart';
 const double _kHorizontalCardRowHeight = 246;
 const double _kHomeFeedCardHeight = 214;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
+const int _kHorizontalInitialItemLimit = 12;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -47,6 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   int _currentHeroPage = 0;
   final Stopwatch _initSw = Stopwatch();
   bool _firstDataLogged = false;
+  bool _secondarySectionsReady = false;
 
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
@@ -69,6 +70,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       viewportFraction: 0.92,
       initialPage: _currentHeroPage,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted) return;
+        setState(() => _secondarySectionsReady = true);
+      });
+    });
   }
 
   void _startHeroAutoScroll() {
@@ -232,14 +239,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildPersonalizedSection()),
 
-            // ── TOP IN CATEGORY (dynamic) ───────────────────────────────────
-            ..._buildTopInCategorySection(),
-
-            // ── RECENTLY VIEWED SECTION ─────────────────────────────────────
-            ..._buildRecentlyViewedSection(),
-
-            // ── RECENTLY ANALYZED ───────────────────────────────────────────
-            ..._buildRecentlyAnalyzedSection(),
+            if (_secondarySectionsReady) ...[
+              // ── TOP IN CATEGORY (dynamic) ─────────────────────────────────
+              ..._buildTopInCategorySection(),
+              // ── RECENTLY VIEWED SECTION ───────────────────────────────────
+              ..._buildRecentlyViewedSection(),
+              // ── RECENTLY ANALYZED ─────────────────────────────────────────
+              ..._buildRecentlyAnalyzedSection(),
+            ],
 
             // ── TRENDING ────────────────────────────────────────────────────
             SliverToBoxAdapter(
@@ -266,26 +273,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildNewArrivalsSection()),
 
-            // ── DYNAMIC PRIORITY CATEGORIES ─────────────────────────────────
-            // Categories are ordered by user behavior & profile (no more hardcoded!)
-            ..._buildPriorityCategorySections(homeFeed),
-
-            // ── VALUE PICKS ──────────────────────────────────────────────
-            ..._buildValuePicksSection(),
-
-            // ── DISCOVER ────────────────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: _SectionHeader(
-                title: context.l10n?.exploreProducts ?? 'Discover',
-                icon: Icons.explore_rounded,
-                iconColor: const Color(0xFFF59E0B),
-                subtitle:
-                    context.l10n?.discoverPopular ??
-                    'Popular products from every category',
-                onSeeAll: () => context.push(AppRoutes.search),
+            if (_secondarySectionsReady) ...[
+              // ── DYNAMIC PRIORITY CATEGORIES ───────────────────────────────
+              ..._buildPriorityCategorySections(homeFeed),
+              // ── VALUE PICKS ───────────────────────────────────────────────
+              ..._buildValuePicksSection(),
+              // ── DISCOVER ──────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: context.l10n?.exploreProducts ?? 'Discover',
+                  icon: Icons.explore_rounded,
+                  iconColor: const Color(0xFFF59E0B),
+                  subtitle:
+                      context.l10n?.discoverPopular ??
+                      'Popular products from every category',
+                  onSeeAll: () => context.push(AppRoutes.search),
+                ),
               ),
-            ),
-            SliverToBoxAdapter(child: _buildDiscoverSection()),
+              SliverToBoxAdapter(child: _buildDiscoverSection()),
+            ],
 
             const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
@@ -633,8 +639,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             child: CachedNetworkImage(
                               imageUrl: heroImage,
                               fit: BoxFit.cover,
-                              memCacheWidth: 1200,
-                              maxWidthDiskCache: 1200,
+                              memCacheWidth: 720,
+                              maxWidthDiskCache: 720,
                               fadeInDuration: const Duration(milliseconds: 150),
                               errorWidget: (_, __, ___) =>
                                   const SizedBox.shrink(),
@@ -1971,7 +1977,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ],
                   ),
                 );
-              final display = products.take(30).toList();
+              final display = products.take(_kHorizontalInitialItemLimit).toList();
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
@@ -2059,25 +2065,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           var products = feed.byCategory[categoryId] ?? [];
           if (products.isEmpty) return const SizedBox.shrink();
 
-          // Sort products within category by user relevance
-          final user = ref.read(userProfileProvider).valueOrNull;
-          if (user != null) {
-            final algo = ref.read(profileAlgorithmServiceProvider);
-            final behavior =
-                ref.read(behaviorSignalsProvider).valueOrNull ??
-                BehaviorSignals.empty;
-            products = algo.sortByRelevance(
-              user: user,
-              products: products,
-              behavior: behavior,
-            );
-          }
-
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
-            itemCount: min(30, products.length),
+            itemCount: min(_kHorizontalInitialItemLimit, products.length),
             itemBuilder: (context, index) {
               final p = products[index];
               final price =
@@ -2122,20 +2114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           var products = feed.byCategory[categoryId] ?? [];
           if (products.isEmpty) return const SizedBox.shrink();
 
-          final user = ref.read(userProfileProvider).valueOrNull;
-          if (user != null) {
-            final algo = ref.read(profileAlgorithmServiceProvider);
-            final behavior =
-                ref.read(behaviorSignalsProvider).valueOrNull ??
-                BehaviorSignals.empty;
-            products = algo.sortByRelevance(
-              user: user,
-              products: products,
-              behavior: behavior,
-            );
-          }
-
-          final display = products.take(30).toList();
+          final display = products.take(_kHorizontalInitialItemLimit).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
@@ -2200,7 +2179,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ],
               ),
             );
-          final display = trending.take(30).toList();
+          final display = trending.take(_kHorizontalInitialItemLimit).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
@@ -2268,7 +2247,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
-                itemCount: products.length,
+                itemCount: min(_kHorizontalInitialItemLimit, products.length),
                 itemBuilder: (context, index) {
                   final p = products[index];
                   final price =
@@ -2331,7 +2310,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
-                itemCount: products.length,
+                itemCount: min(_kHorizontalInitialItemLimit, products.length),
                 itemBuilder: (context, index) {
                   final p = products[index];
                   final price =
@@ -2389,7 +2368,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     scrollDirection: Axis.horizontal,
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
-                    itemCount: data.products.length,
+                    itemCount: min(_kHorizontalInitialItemLimit, data.products.length),
                     itemBuilder: (context, index) {
                       final p = data.products[index];
                       final price =
@@ -2443,7 +2422,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     scrollDirection: Axis.horizontal,
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
-                    itemCount: products.length,
+                    itemCount: min(_kHorizontalInitialItemLimit, products.length),
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
@@ -2498,7 +2477,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     scrollDirection: Axis.horizontal,
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
-                    itemCount: products.length,
+                    itemCount: min(_kHorizontalInitialItemLimit, products.length),
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
@@ -2687,7 +2666,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (!isLoading && productCount < 4) continue;
 
       final info = _categoryMeta(category);
-      final isWide = shown < 6; // First 6 categories are wide cards
+      final isWide = shown < 4; // Keep initial render lighter on weak devices
       sections.addAll(
         _buildCategoryBlock(
           homeFeed: homeFeed,

@@ -91,6 +91,10 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     if (!mounted) return;
     final user = ref.read(userProfileProvider).valueOrNull;
     if (user == null || !user.quizCompleted) return;
+    final isPremium = ref.read(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
+    if (!isPremium) return;
     final cacheKey = _currentCacheKey();
     final existing = ref.read(geminiMatchScoreProvider(cacheKey));
     if (existing.valueOrNull != null) return; // Already have result — no loading needed
@@ -140,8 +144,8 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     if (_cachedFitScoreKey == memoKey && _cachedFitScore != null) return;
 
     _fitScoreScheduled = true;
-    // 200ms: let navigation animation fully complete before starting CPU work.
-    Future.delayed(const Duration(milliseconds: 200), () async {
+    // Keep the very first seconds focused on scroll/input responsiveness.
+    Future.delayed(const Duration(milliseconds: 1400), () async {
       if (!mounted) {
         _fitScoreScheduled = false;
         return;
@@ -170,6 +174,10 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     if (!mounted) return;
     final user = ref.read(userProfileProvider).valueOrNull;
     if (user == null || !user.quizCompleted) return;
+    final isPremium = ref.read(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
+    if (!isPremium) return;
     final cacheKey = _currentCacheKey();
     if (_lastRequestedLanguage == cacheKey.normalizedLanguageCode) return;
     _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
@@ -215,6 +223,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       userProfileProvider
           .select((u) => u.valueOrNull?.quizCompleted ?? false),
     );
+    final isPremium = ref.watch(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
 
     final int? localFitScore = quizDone ? _cachedFitScore : null;
 
@@ -243,7 +254,10 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     // This prevents the local algorithmic score from flashing before the
     // loading indicator, which caused the "goes up then goes down" oscillation.
     final bool waitingForAI =
-        quizDone && (_geminiFetchTriggered || aiLoading) && matchResult == null;
+        quizDone &&
+        isPremium &&
+        (_geminiFetchTriggered || aiLoading) &&
+        matchResult == null;
 
     // AI score is authoritative; local score is a fallback only when AI
     // has definitively returned null (quota exhausted / timeout).
@@ -369,7 +383,15 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                               ),
                             )
                           : GestureDetector(
-                          onTap: () => context.push(AppRoutes.quiz),
+                          onTap: () {
+                            final isLoggedIn =
+                                ref.read(authStateProvider).valueOrNull != null;
+                            if (!isLoggedIn) {
+                              context.go(AppRoutes.login);
+                              return;
+                            }
+                            context.push(AppRoutes.quiz);
+                          },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               vertical: 14,

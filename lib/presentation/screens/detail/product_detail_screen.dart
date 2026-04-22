@@ -137,7 +137,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             _contentReady = true;
             _tabViewReady = true;
           });
-          Future.delayed(const Duration(milliseconds: 80), () {
+          Future.delayed(const Duration(milliseconds: 800), () {
             if (mounted) _prefetchMatchScoreOnce();
           });
         }
@@ -148,12 +148,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             if (!mounted) return;
             // Show overview content first (one frame for layout settle).
             setState(() => _contentReady = true);
-            // Show tabs one frame later so overview layout doesn't race tabs.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
+            // Delay tabs a bit so first interactive scroll frame stays smooth
+            // on low-end devices before heavy tab trees are built.
+            Future.delayed(const Duration(milliseconds: 950), () {
               if (!mounted) return;
               setState(() => _tabViewReady = true);
               // Start AI fetch after tabs are ready.
-              Future.delayed(const Duration(milliseconds: 80), () {
+              Future.delayed(const Duration(milliseconds: 1100), () {
                 if (mounted) _prefetchMatchScoreOnce();
               });
             });
@@ -206,6 +207,10 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
 
     final user = ref.read(userProfileProvider).valueOrNull;
     if (user == null || !user.quizCompleted) return;
+    final isPremium = ref.read(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
+    if (!isPremium) return;
 
     _lastPrefetchedMatchKey = cacheKey;
     final localizedKey = LocalizedProductKey(

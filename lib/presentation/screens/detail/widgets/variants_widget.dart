@@ -1,5 +1,34 @@
 part of '../product_detail_screen.dart';
 
+class _DeferredVariantsSection extends StatefulWidget {
+  final ProductEntity product;
+  const _DeferredVariantsSection({required this.product});
+
+  @override
+  State<_DeferredVariantsSection> createState() => _DeferredVariantsSectionState();
+}
+
+class _DeferredVariantsSectionState extends State<_DeferredVariantsSection> {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (!mounted) return;
+        setState(() => _ready = true);
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) return const SizedBox.shrink();
+    return _VariantsSection(product: widget.product);
+  }
+}
+
 class _VariantsSection extends ConsumerWidget {
   final ProductEntity product;
   const _VariantsSection({required this.product});

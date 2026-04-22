@@ -35,12 +35,18 @@ Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
 }
 
 void _scheduleDeferredStartupTasks() {
-  unawaited(_initializeSpecTranslations());
+  Future.delayed(const Duration(milliseconds: 900), () {
+    unawaited(_initializeSpecTranslations());
+  });
   if (!kIsWeb) {
-    unawaited(_initializeNotifications());
+    Future.delayed(const Duration(seconds: 4), () {
+      unawaited(_initializeNotifications());
+    });
   }
   if (!kIsWeb && Platform.isIOS) {
-    unawaited(_requestTrackingTransparency());
+    Future.delayed(const Duration(seconds: 5), () {
+      unawaited(_requestTrackingTransparency());
+    });
   }
 }
 

@@ -1905,14 +1905,30 @@ class _GoogleShoppingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEn = Localizations.localeOf(context).languageCode != 'tr';
+    final accent = AppTheme.brandCyan;
+    final accentSoft = AppTheme.primaryBlue;
     return GestureDetector(
       onTap: () => _openShopping(context),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: cardBg,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              context.surfaceVariantColor,
+              context.surfaceColor,
+            ],
+          ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.dividerColor),
+          border: Border.all(color: accent.withValues(alpha: 0.20)),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -1920,8 +1936,8 @@ class _GoogleShoppingCard extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4285F4), Color(0xFF34A853)],
+                gradient: LinearGradient(
+                  colors: [accent, accentSoft],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -1953,7 +1969,7 @@ class _GoogleShoppingCard extends StatelessWidget {
                         : 'Farklı mağazaların fiyatlarını karşılaştır',
                     style: TextStyle(
                       fontSize: 12,
-                      color: context.textSecondary,
+                      color: context.textSecondary.withValues(alpha: 0.9),
                     ),
                   ),
                 ],
@@ -1962,7 +1978,7 @@ class _GoogleShoppingCard extends StatelessWidget {
             Icon(
               Icons.open_in_new_rounded,
               size: 16,
-              color: context.textSecondary,
+              color: accent.withValues(alpha: 0.9),
             ),
           ],
         ),

@@ -2,6 +2,10 @@ part of 'providers.dart';
 
 // ── In-memory cache for PC builder ──
 final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
+const bool _verboseHomeFeedDiagnostics = false;
+const bool _verboseHomeFeedFetchLogs = false;
+const int _homeFeedInitialCategoryCount = 14;
+const int _homeFeedInitialPerCategory = 50;
 
 /// Clear PC Builder cache for a specific category (or all if null)
 void clearPcBuilderCache([String? category]) {
@@ -675,6 +679,22 @@ class _HomeFeedArgs {
   });
 }
 
+class _HomeFeedRawArgs {
+  final List<dynamic> rawList;
+  final String country;
+  final UserEntity? user;
+  final List<String> hiddenIds;
+  final List<String> disabledCats;
+
+  const _HomeFeedRawArgs({
+    required this.rawList,
+    required this.country,
+    this.user,
+    this.hiddenIds = const [],
+    this.disabledCats = const [],
+  });
+}
+
 // Top-level wrapper so compute() can spawn it in a background isolate.
 HomeFeed _buildHomeFeedIsolate(_HomeFeedArgs args) => _buildHomeFeed(
   args.products,
@@ -684,12 +704,19 @@ HomeFeed _buildHomeFeedIsolate(_HomeFeedArgs args) => _buildHomeFeed(
   disabledCats: args.disabledCats,
 );
 
-// Deserializes raw Hive map list → ProductEntity list in a background isolate.
-List<ProductEntity> _deserializeProductsIsolate(List<dynamic> rawList) {
-  return rawList
+// Single-pass isolate path for cache hits: deserialize + build feed once.
+HomeFeed _buildHomeFeedFromRawIsolate(_HomeFeedRawArgs args) {
+  final products = args.rawList
       .map((item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)))
       .cast<ProductEntity>()
       .toList();
+  return _buildHomeFeed(
+    products,
+    args.country,
+    user: args.user,
+    hiddenIds: args.hiddenIds,
+    disabledCats: args.disabledCats,
+  );
 }
 
 HomeFeed _buildHomeFeed(
@@ -766,16 +793,18 @@ HomeFeed _buildHomeFeed(
     return true;
   }).toList();
 
-  debugPrint(
-    '=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===',
-  );
-  debugPrint(
-    '=== COMPAIR: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===',
-  );
-  if (rejectedBrands.isNotEmpty) {
+  if (_verboseHomeFeedDiagnostics) {
     debugPrint(
-      '=== COMPAIR: rejected unknown brands: ${rejectedBrands.take(30).join(", ")} ===',
+      '=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===',
     );
+    debugPrint(
+      '=== COMPAIR: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===',
+    );
+    if (rejectedBrands.isNotEmpty) {
+      debugPrint(
+        '=== COMPAIR: rejected unknown brands: ${rejectedBrands.take(30).join(", ")} ===',
+      );
+    }
   }
 
   // ── Brand tier boost multiplier ────────────────────────────────────────────
@@ -1045,9 +1074,11 @@ HomeFeed _buildHomeFeed(
     if (cat.isNotEmpty) byCategory.putIfAbsent(cat, () => []).add(p);
   }
 
-  debugPrint('=== COMPAIR: byCategory keys: ${byCategory.keys.join(",")} ===');
-  for (final e in byCategory.entries) {
-    debugPrint('=== COMPAIR:   ${e.key}: ${e.value.length} products ===');
+  if (_verboseHomeFeedDiagnostics) {
+    debugPrint('=== COMPAIR: byCategory keys: ${byCategory.keys.join(",")} ===');
+    for (final e in byCategory.entries) {
+      debugPrint('=== COMPAIR:   ${e.key}: ${e.value.length} products ===');
+    }
   }
 
   // Remove admin-disabled categories
@@ -1072,9 +1103,11 @@ HomeFeed _buildHomeFeed(
       }
       if (diverse.length >= 80) break;
     }
-    debugPrint(
-      '=== COMPAIR:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===',
-    );
+    if (_verboseHomeFeedDiagnostics) {
+      debugPrint(
+        '=== COMPAIR:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===',
+      );
+    }
     byCategory[cat] = diverse;
   }
 
@@ -1300,10 +1333,12 @@ HomeFeed _buildHomeFeed(
       priorityCats.add(cat);
   }
 
-  debugPrint(
-    '=== COMPAIR: homeFeed built — cats:${byCategory.keys.join(",")} '
-    'newArrivals:${newArrivals.length} trending:${trending.length} discover:${discover.length} ===',
-  );
+  if (_verboseHomeFeedDiagnostics) {
+    debugPrint(
+      '=== COMPAIR: homeFeed built — cats:${byCategory.keys.join(",")} '
+      'newArrivals:${newArrivals.length} trending:${trending.length} discover:${discover.length} ===',
+    );
+  }
 
   return HomeFeed(
     trending: trending,
@@ -1469,29 +1504,25 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     if (staleResult.data != null && (staleResult.data as List).isNotEmpty) {
       final sw = Stopwatch()..start();
       final rawList = staleResult.data as List;
-      // Deserialize off the main thread to avoid frame skips.
-      final products = await compute(_deserializeProductsIsolate, rawList);
-      sw.stop();
-      debugPrint(
-        '=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${products.length} products in ${sw.elapsedMilliseconds}ms ===',
-      );
-
       // Await admin config only after cache hit (fast path)
       final config = await configFuture;
-
-      ref
-          .read(pbDataSourceProvider)
-          .setHomeFeedProducts(products.whereType<ProductModel>().toList());
       final feed = await compute(
-        _buildHomeFeedIsolate,
-        _HomeFeedArgs(
-          products: products,
+        _buildHomeFeedFromRawIsolate,
+        _HomeFeedRawArgs(
+          rawList: rawList,
           country: country,
           user: user,
           hiddenIds: config.hiddenIds,
           disabledCats: config.disabledCats,
         ),
       );
+      sw.stop();
+      debugPrint(
+        '=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${feed.all.length} products in ${sw.elapsedMilliseconds}ms ===',
+      );
+      ref
+          .read(pbDataSourceProvider)
+          .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
       _inMemoryFeed = feed;
 
       debugPrint(
@@ -1701,42 +1732,55 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   final sw = Stopwatch()..start();
 
-  // ── Typesense multi_search: 20 categories in ONE HTTP request (~50-100ms) ────
-  final categories = _feedCategories.take(20).toList();
-  debugPrint(
-    '=== COMPAIR: TS MULTI-CAT fetch — ${categories.length} categories, 80 each ===',
-  );
+  // Keep first-load payload lighter to reduce startup jank on low/mid devices.
+  final categories = _feedCategories.take(_homeFeedInitialCategoryCount).toList();
+  if (_verboseHomeFeedFetchLogs) {
+    debugPrint(
+      '=== COMPAIR: TS MULTI-CAT fetch — ${categories.length} categories, $_homeFeedInitialPerCategory each ===',
+    );
+  }
 
   try {
     final tsResult = await repo
-        .getProductsMultiCategoryTs(categories: categories, perCategory: 80)
+        .getProductsMultiCategoryTs(
+          categories: categories,
+          perCategory: _homeFeedInitialPerCategory,
+        )
         .timeout(const Duration(seconds: 15));
 
     switch (tsResult) {
       case Success(data: final catMap):
         for (final cat in categories) {
           final products = catMap[cat] ?? [];
-          debugPrint('=== COMPAIR: CAT $cat: ${products.length} products ===');
+          if (_verboseHomeFeedFetchLogs) {
+            debugPrint('=== COMPAIR: CAT $cat: ${products.length} products ===');
+          }
           addProducts(products);
         }
       default:
-        debugPrint(
-          '=== COMPAIR: TS MULTI-CAT failed, falling back to PocketBase ===',
-        );
+        if (_verboseHomeFeedFetchLogs) {
+          debugPrint(
+            '=== COMPAIR: TS MULTI-CAT failed, falling back to PocketBase ===',
+          );
+        }
     }
   } catch (e) {
-    debugPrint('=== COMPAIR: TS MULTI-CAT error: $e ===');
+    if (_verboseHomeFeedFetchLogs) {
+      debugPrint('=== COMPAIR: TS MULTI-CAT error: $e ===');
+    }
   }
 
   // Fallback to PocketBase if Typesense returned nothing
   if (allProducts.isEmpty) {
-    debugPrint('=== COMPAIR: TS empty, falling back to PB parallel fetch ===');
+    if (_verboseHomeFeedFetchLogs) {
+      debugPrint('=== COMPAIR: TS empty, falling back to PB parallel fetch ===');
+    }
     try {
       final futures = categories.map(
         (cat) => repo
             .getProducts(
               category: cat,
-              limit: 80,
+              limit: _homeFeedInitialPerCategory,
               orderBy: 'techScore',
               descending: true,
             )
@@ -1755,9 +1799,11 @@ Future<List<ProductEntity>> _fetchAllProducts(
     } catch (_) {}
   }
 
-  debugPrint(
-    '=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
-  );
+  if (_verboseHomeFeedFetchLogs) {
+    debugPrint(
+      '=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
+    );
+  }
 
   // Fetch pinned products
   if (pinnedIds.isNotEmpty) {
@@ -1780,9 +1826,11 @@ Future<List<ProductEntity>> _fetchAllProducts(
   }
 
   sw.stop();
-  debugPrint(
-    '=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
-  );
+  if (_verboseHomeFeedFetchLogs) {
+    debugPrint(
+      '=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
+    );
+  }
   return allProducts;
 }
 
@@ -2437,11 +2485,11 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((
 /// Record a product view (non-blocking, uses cached data)
 Future<void> recordProductView(WidgetRef ref, String productId) async {
   try {
-    await ref.read(hiveDataSourceProvider).addViewedProduct(productId);
+    unawaited(ref.read(hiveDataSourceProvider).addViewedProduct(productId));
     // Save to Firestore for persistence
     final user = ref.read(authStateProvider).valueOrNull;
     if (user != null) {
-      ref.read(pbDataSourceProvider).addRecentlyViewed(user, productId);
+      unawaited(ref.read(pbDataSourceProvider).addRecentlyViewed(user, productId));
     }
     // Get product info from cache (no network call)
     String category = '';
@@ -2456,7 +2504,7 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
     ref.read(behaviorTrackingProvider).trackProductView(productId, category);
     ref.read(behaviorTrackingProvider).trackActiveHour();
     // Increment Firestore viewCount (fire-and-forget, non-blocking)
-    ref.read(pbDataSourceProvider).incrementProductViewCount(productId);
+    unawaited(ref.read(pbDataSourceProvider).incrementProductViewCount(productId));
     // Firebase Analytics
     AnalyticsService.instance.logProductView(productId, category, brand);
   } catch (_) {}

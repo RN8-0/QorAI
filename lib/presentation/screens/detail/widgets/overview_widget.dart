@@ -14,7 +14,7 @@ class _OverviewContent extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _VariantsSection(product: product),
+          _DeferredVariantsSection(product: product),
           if (product.description.isNotEmpty) ...[
             _DescCard(text: product.description, cardBg: cardBg, isDark: isDark),
             const SizedBox(height: 12),
@@ -47,7 +47,7 @@ class _OverviewTab extends ConsumerWidget {
       children: [
         _KeySpecsHighlight(product: product),
         const SizedBox(height: 12),
-        _VariantsSection(product: product),
+        _DeferredVariantsSection(product: product),
         if (product.description.isNotEmpty) ...[
           _DescCard(text: product.description, cardBg: cardBg, isDark: isDark),
           const SizedBox(height: 12),

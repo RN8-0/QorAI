@@ -1333,7 +1333,7 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
-  static const int _detailMatchCacheVersion = 6; // v6: explicit lang in prompt + loading state fix
+  static const int _detailMatchCacheVersion = 7; // v7: premium-only AI match flow
   final Ref _ref;
   final String _productId;
   final String _languageCode;
@@ -1351,6 +1351,11 @@ class _GeminiMatchScoreNotifier
     final userAsync = _ref.read(userProfileProvider);
     final user = userAsync.valueOrNull;
     if (user == null || !user.quizCompleted) return;
+    final sub = _ref.read(subscriptionServiceProvider);
+    if (!sub.isPremium) {
+      _fallbackToLocal(product);
+      return;
+    }
 
     // Defer the state mutation to the next microtask so this is safe even
     // when invoked from a widget life-cycle (initState/build) — otherwise
@@ -1439,15 +1444,6 @@ class _GeminiMatchScoreNotifier
       if (cached != null) {
         _clearStep(product.id);
         state = AsyncValue.data(cached);
-        return;
-      }
-
-      // 2. Quota gate — free users limited to N AI match analyses per day.
-      // On miss, return null so UI falls back to local algorithmic score only.
-      final sub = _ref.read(subscriptionServiceProvider);
-      if (!sub.isPremium && !sub.canUseDetailMatchAi) {
-        _clearStep(product.id);
-        state = const AsyncValue.data(null);
         return;
       }
 
@@ -1622,10 +1618,6 @@ class _GeminiMatchScoreNotifier
           } catch (_) {}
         }),
       );
-
-      if (!sub.isPremium) {
-        sub.recordDetailMatchAi();
-      }
 
       debugPrint(
         '[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason',

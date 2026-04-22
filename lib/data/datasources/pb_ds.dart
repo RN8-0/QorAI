@@ -20,8 +20,11 @@ import 'package:compair/data/models/other_models.dart';
 import 'package:compair/data/models/chat_conversation.dart';
 
 class PbDataSource {
+  static const bool _verboseTypesenseLogs = false;
   final PocketBase _pb;
   late final Dio _dio;
+  bool _realtimeUnsupported = false;
+  bool _notificationsRealtimeUnsupported = false;
   static const _savedAnalysesCollection = 'saved_analyses';
   static const _linkHistoryCategory = 'link_history';
   static const _subscriptionHistoryCategory = 'subscription_history';
@@ -60,8 +63,8 @@ class PbDataSource {
     bool Function(RecordSubscriptionEvent event)? shouldReload,
   }) {
     late final StreamController<T> controller;
-    // subscribe() returns Future<UnsubscribeFunc>, not the func itself.
-    late final Future<UnsubscribeFunc> subscriptionFuture;
+    UnsubscribeFunc? unsubscribe;
+    Timer? pollingTimer;
 
     Future<void> emitSnapshot() async {
       try {
@@ -69,30 +72,61 @@ class PbDataSource {
         if (!controller.isClosed) {
           controller.add(data);
         }
-      } catch (error, stackTrace) {
-        if (!controller.isClosed) {
-          controller.addError(error, stackTrace);
-        }
+      } catch (_) {
+        // Snapshot read failures are ignored to keep stream stable.
       }
+    }
+
+    void startPolling() {
+      pollingTimer?.cancel();
+      pollingTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+        unawaited(emitSnapshot());
+      });
+    }
+
+    bool isRealtimeUnsupportedError(Object error) {
+      final text = error.toString().toLowerCase();
+      return text.contains('missing or invalid client id') ||
+          text.contains('missing collection context') ||
+          (text.contains('statuscode: 404') && text.contains('/api/realtime'));
     }
 
     controller = StreamController<T>(
       onListen: () {
-        unawaited(emitSnapshot());
+        unawaited(() async {
+          await emitSnapshot();
+
+          if (_realtimeUnsupported) {
+            startPolling();
+            return;
+          }
+
+          try {
+            unsubscribe = await _pb.collection(collection).subscribe(topic, (
+              event,
+            ) {
+              if (shouldReload == null || shouldReload(event)) {
+                unawaited(emitSnapshot());
+              }
+            });
+          } catch (error) {
+            if (isRealtimeUnsupportedError(error)) {
+              _realtimeUnsupported = true;
+              debugPrint(
+                '[PbDs] realtime unavailable for "$collection", polling fallback enabled',
+              );
+            }
+            startPolling();
+          }
+        }());
       },
       onCancel: () async {
         try {
-          final unsubscribe = await subscriptionFuture;
-          await unsubscribe();
+          pollingTimer?.cancel();
+          await unsubscribe?.call();
         } catch (_) {}
       },
     );
-
-    subscriptionFuture = _pb.collection(collection).subscribe(topic, (event) {
-      if (shouldReload == null || shouldReload(event)) {
-        unawaited(emitSnapshot());
-      }
-    });
 
     return controller.stream;
   }
@@ -1175,6 +1209,7 @@ class PbDataSource {
     bool cancelled = false;
     int backoffAttempts = 0;
     Timer? retryTimer;
+    Timer? pollTimer;
 
     Future<List<Map<String, dynamic>>> fetch() async {
       try {
@@ -1202,6 +1237,15 @@ class PbDataSource {
       });
     }
 
+    void startPollingFallback() {
+      pollTimer?.cancel();
+      pollTimer = Timer.periodic(const Duration(seconds: 45), (_) async {
+        if (cancelled) return;
+        final data = await fetch();
+        if (!controller.isClosed) controller.add(data);
+      });
+    }
+
     Future<void> trySubscribe() async {
       if (cancelled) return;
       try {
@@ -1211,6 +1255,22 @@ class PbDataSource {
         });
         backoffAttempts = 0; // reset on success
       } catch (e) {
+        final errorText = e.toString().toLowerCase();
+        final realtimeUnsupported =
+            errorText.contains('missing or invalid client id') ||
+            errorText.contains('missing collection context') ||
+            (errorText.contains('statuscode: 404') &&
+                errorText.contains('/api/realtime'));
+        if (realtimeUnsupported) {
+          _notificationsRealtimeUnsupported = true;
+          if (backoffAttempts == 0) {
+            debugPrint(
+              '[PbDs] realtime notifications unavailable, switching to polling fallback',
+            );
+          }
+          startPollingFallback();
+          return;
+        }
         if (backoffAttempts == 0) {
           debugPrint('[PbDs] watchNotifications subscribe error: $e');
         }
@@ -1223,12 +1283,17 @@ class PbDataSource {
       if (!controller.isClosed) controller.add(data);
     });
 
-    // First subscribe attempt
-    trySubscribe();
+    if (_notificationsRealtimeUnsupported || _realtimeUnsupported) {
+      startPollingFallback();
+    } else {
+      // First subscribe attempt
+      trySubscribe();
+    }
 
     controller.onCancel = () {
       cancelled = true;
       retryTimer?.cancel();
+      pollTimer?.cancel();
       _pb.collection('notifications').unsubscribe('*').catchError((_) {});
     };
 
@@ -1722,12 +1787,16 @@ class PbDataSource {
           .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
           .whereType<ProductModel>()
           .toList();
-      debugPrint(
-        '=== COMPAIR: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
-      );
+      if (_verboseTypesenseLogs) {
+        debugPrint(
+          '=== COMPAIR: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
+        );
+      }
       return products;
     } catch (e) {
-      debugPrint('=== COMPAIR: TS cat=$category FAILED: $e ===');
+      if (_verboseTypesenseLogs) {
+        debugPrint('=== COMPAIR: TS cat=$category FAILED: $e ===');
+      }
       return [];
     }
   }

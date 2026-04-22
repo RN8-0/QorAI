@@ -2077,13 +2077,32 @@ class _SpecChip extends StatelessWidget {
 // SPECS TAB CONTENT
 // ═══════════════════════════════════════════════════════════
 
-class _SpecsTabContent extends StatelessWidget {
+class _SpecsTabContent extends StatefulWidget {
   final ProductEntity product;
   final bool isDark;
   const _SpecsTabContent({required this.product, required this.isDark});
 
   @override
+  State<_SpecsTabContent> createState() => _SpecsTabContentState();
+}
+
+class _SpecsTabContentState extends State<_SpecsTabContent> {
+  bool _showFullSpecs = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted) return;
+        setState(() => _showFullSpecs = true);
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final product = widget.product;
     final cardBg = context.surfaceVariantColor;
     if (product.specs.isEmpty && product.specSections.isEmpty) {
       return Center(
@@ -2111,15 +2130,26 @@ class _SpecsTabContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
         _KeySpecsGrid(product: product),
-        RepaintBoundary(
-          child: _SpecsCard(
-            specs: product.specSections.isNotEmpty
-                ? product.specSections
-                : product.specs,
-            cardBg: cardBg,
-            isDark: isDark,
+        if (_showFullSpecs)
+          RepaintBoundary(
+            child: _SpecsCard(
+              specs: product.specSections.isNotEmpty
+                  ? product.specSections
+                  : product.specs,
+              cardBg: cardBg,
+              isDark: widget.isDark,
+            ),
+          )
+        else
+          Container(
+            height: 260,
+            margin: const EdgeInsets.only(top: 8),
+            decoration: BoxDecoration(
+              color: context.surfaceVariantColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.dividerColor),
+            ),
           ),
-        ),
       ],
     );
   }

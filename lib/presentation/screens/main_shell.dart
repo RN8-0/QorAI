@@ -39,8 +39,14 @@ class _MainShellState extends ConsumerState<MainShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _primeBackgroundState();
-      _registerFcmToken();
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted) return;
+        _primeBackgroundState();
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        _registerFcmToken();
+      });
     });
   }
 
@@ -183,6 +189,15 @@ class _MainShellState extends ConsumerState<MainShell> {
         ref.watch(linkQuizProvider).phase == LinkFlowPhase.analyzing ||
         ref.watch(linkQuizProvider).phase == LinkFlowPhase.computing;
     final hideNavBar = ref.watch(hideNavBarProvider);
+    final isBrowseRoute =
+        location == AppRoutes.browse || location.startsWith('/home/browse');
+    final effectiveHideNavBar = isBrowseRoute || hideNavBar;
+    if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(hideNavBarProvider.notifier).state = false;
+      });
+    }
 
     return Stack(
       children: [
@@ -194,7 +209,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             ],
           ),
         ),
-        if (!hideNavBar)
+        if (!effectiveHideNavBar)
           Positioned(
             left: AppTheme.navBarHMargin,
             right: AppTheme.navBarHMargin,
