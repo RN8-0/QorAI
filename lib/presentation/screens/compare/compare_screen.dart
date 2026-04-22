@@ -18,6 +18,7 @@ import 'package:chewie/chewie.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/product_filter.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
@@ -76,6 +77,7 @@ class CompareScreen extends ConsumerStatefulWidget {
 
 class _CompareScreenState extends ConsumerState<CompareScreen> {
   bool _skipNextHistorySave = false;
+  bool get _openedFromHistory => widget.initialComparison != null;
   List<String> get _selectedProductIds =>
       ref.read(compareSessionProvider).selectedProductIds;
   List<ProductEntity>? get _comparedProducts =>
@@ -308,6 +310,16 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     ref.read(hideNavBarProvider.notifier).state = false;
   }
 
+  void _handleCompareBack() {
+    // If user came from Past Comparisons, go back there instead of resetting
+    // into the generic compare selection view.
+    if (_openedFromHistory && context.canPop()) {
+      context.pop();
+      return;
+    }
+    _resetComparison();
+  }
+
   void _removeProductFromComparison(String productId) {
     final session = ref.read(compareSessionProvider);
     final newIds = List<String>.from(session.selectedProductIds)
@@ -366,7 +378,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                   color: context.textPrimary,
                 ),
                 tooltip: context.l10n?.back ?? 'Back',
-                onPressed: _resetComparison,
+                onPressed: _handleCompareBack,
               )
             : null,
         title: ShaderMask(
