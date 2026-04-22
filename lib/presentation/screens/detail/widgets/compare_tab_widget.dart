@@ -116,7 +116,7 @@ class _CompareTabContent extends ConsumerWidget {
                     width: double.infinity,
                     height: 44,
                     child: ElevatedButton.icon(
-                      onPressed: () => context.push(AppRoutes.compare),
+                      onPressed: () => context.go(AppRoutes.compare),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryBlue,
                         foregroundColor: context.surfaceVariantColor,
