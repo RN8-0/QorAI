@@ -184,13 +184,17 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   Widget _buildMobileLayout(int currentIndex,
       AsyncValue<ConnectivityStatus> connectivity, double bottomPadding) {
-    final location = GoRouterState.of(context).matchedLocation;
+    final goState = GoRouterState.of(context);
+    final path = goState.uri.path;
+    final location = goState.matchedLocation;
+    // Kategori tarama: hem /browse hem /home/browse (sorgu yolu uri.path’te yok)
+    final isBrowseRoute = path == AppRoutes.browse ||
+        path == '/home/browse' ||
+        path.startsWith('/home/browse/');
     final isLinkAiAnalyzing = ref.watch(compareAnalysisProvider).isWorking ||
         ref.watch(linkQuizProvider).phase == LinkFlowPhase.analyzing ||
         ref.watch(linkQuizProvider).phase == LinkFlowPhase.computing;
     final hideNavBar = ref.watch(hideNavBarProvider);
-    final isBrowseRoute =
-        location == AppRoutes.browse || location.startsWith('/home/browse');
     final effectiveHideNavBar = isBrowseRoute || hideNavBar;
     if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

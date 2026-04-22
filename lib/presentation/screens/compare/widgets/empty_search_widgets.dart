@@ -100,7 +100,10 @@ class _EmptyCompareState extends ConsumerWidget {
                                   HapticFeedback.selectionClick();
                                   ref
                                       .read(comparisonStateProvider.notifier)
-                                      .toggleProduct(top[i].id);
+                                      .toggleProduct(
+                                        top[i].id,
+                                        productCategory: top[i].category,
+                                      );
                                 },
                               )
                               .animate()
@@ -158,7 +161,10 @@ class _EmptyCompareState extends ConsumerWidget {
                       HapticFeedback.selectionClick();
                       ref
                           .read(comparisonStateProvider.notifier)
-                          .toggleProduct(p.id);
+                          .toggleProduct(
+                            p.id,
+                            productCategory: p.category,
+                          );
                     },
                   ).animate().fadeIn(delay: (50 * e.key).ms, duration: 280.ms);
                 }).toList(),

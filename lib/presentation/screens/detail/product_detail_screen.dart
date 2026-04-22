@@ -126,6 +126,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     _syncAiPageContext();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _resetComparePoolIfCategoryChanged();
+      if (!mounted) return;
       // Defer ALL heavy content until the route push animation fully completes.
       // Setting _contentReady early (before animation end) causes expensive
       // widget builds to compete with route animation frames → visible jank.
@@ -171,6 +173,19 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.product.id != widget.product.id) {
       _syncAiPageContext();
+      _resetComparePoolIfCategoryChanged();
+    }
+  }
+
+  /// Havuz farklı bir kategoride başlatıldıysa, başka kategorideki ürüne
+  /// geçince seçimi sıfırla ([ComparisonNotifier.toggleProduct] ile hizalı).
+  void _resetComparePoolIfCategoryChanged() {
+    final comp = ref.read(comparisonStateProvider);
+    if (comp.selectedProductIds.isEmpty) return;
+    final pool = comp.poolCategory;
+    if (pool == null) return;
+    if (pool != widget.product.category) {
+      ref.read(comparisonStateProvider.notifier).clearSelection();
     }
   }
 

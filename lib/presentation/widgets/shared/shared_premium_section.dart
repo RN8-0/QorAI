@@ -658,7 +658,7 @@ class SharedPremiumFeaturesSectionState
     if (r.alternatives.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 195,
+      height: 248,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: r.alternatives.length,
@@ -753,8 +753,8 @@ class SharedPremiumFeaturesSectionState
                     alt.tradeoff,
                     AppTheme.amber500,
                   ),
-                const Spacer(),
-                if (alt.whyBetter.isNotEmpty)
+                if (alt.whyBetter.isNotEmpty) ...[
+                  const SizedBox(height: 6),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -772,7 +772,7 @@ class SharedPremiumFeaturesSectionState
                     ),
                     child: Text(
                       '⭐ ${alt.whyBetter}',
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
@@ -782,11 +782,12 @@ class SharedPremiumFeaturesSectionState
                       ),
                     ),
                   ),
+                ],
                 if (alt.bestFor.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     '🎯 ${alt.bestFor}',
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,

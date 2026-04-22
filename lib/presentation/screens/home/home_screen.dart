@@ -2580,10 +2580,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         .clearSelection();
                     ref
                         .read(comparisonNotifierProvider.notifier)
-                        .toggleProduct(pair[0].id);
+                        .toggleProduct(
+                          pair[0].id,
+                          productCategory: pair[0].category,
+                        );
                     ref
                         .read(comparisonNotifierProvider.notifier)
-                        .toggleProduct(pair[1].id);
+                        .toggleProduct(
+                          pair[1].id,
+                          productCategory: pair[1].category,
+                        );
                     context.push(AppRoutes.compare);
                   },
                 );

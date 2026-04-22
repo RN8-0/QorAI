@@ -99,119 +99,140 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final isInCompare = ref.watch(comparisonStateProvider).selectedProductIds.contains(product.id);
+    final compare = ref.watch(comparisonStateProvider);
+    final isInCompare = compare.selectedProductIds.contains(product.id);
+    final poolSize = compare.selectedProductIds.length;
+    final canOpenCompare = poolSize >= 2;
 
-    return GestureDetector(
-      key: _buttonKey,
-      onTap: () {
-        // Require login
-        final authState = ref.read(authStateProvider);
-        final isLoggedIn = authState.valueOrNull != null;
-        if (!isLoggedIn) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Row(children: [
-              const Icon(Icons.lock_outline, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text(context.l10n?.signInToCompare ?? 'Sign in to compare products',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-            ]),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            action: SnackBarAction(
-              label: context.l10n?.signIn ?? 'Sign In',
-              textColor: Colors.white,
-              onPressed: () => context.push(AppRoutes.login),
-            ),
-          ));
-          return;
-        }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          key: _buttonKey,
+          onTap: () {
+            // Require login
+            final authState = ref.read(authStateProvider);
+            final isLoggedIn = authState.valueOrNull != null;
+            if (!isLoggedIn) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Row(children: [
+                  const Icon(Icons.lock_outline, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Text(context.l10n?.signInToCompare ?? 'Sign in to compare products',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                ]),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                action: SnackBarAction(
+                  label: context.l10n?.signIn ?? 'Sign In',
+                  textColor: Colors.white,
+                  onPressed: () => context.push(AppRoutes.login),
+                ),
+              ));
+              return;
+            }
 
-        final currentIds = ref.read(comparisonStateProvider).selectedProductIds;
-        final isAlreadyIn = currentIds.contains(product.id);
+            final isAlreadyIn = ref
+                .read(comparisonStateProvider)
+                .selectedProductIds
+                .contains(product.id);
 
-        // Category check when adding
-        if (!isAlreadyIn && currentIds.isNotEmpty) {
-          final firstProductAsync = ref.read(productDetailProvider(currentIds.first));
-          String? firstCategory;
-          firstProductAsync.whenData((r) => r.when(
-            success: (p) => firstCategory = p.category,
-            failure: (_) {},
-          ));
-          if (firstCategory != null && firstCategory != product.category) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(context.l10n?.onlySameCategoryCompare(firstCategory!.replaceAll('_', ' ')) ??
-                  'Only ${firstCategory!.replaceAll('_', ' ')} products can be compared',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white)),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ));
-            HapticFeedback.heavyImpact();
-            return;
-          }
-        }
+            ref
+                .read(comparisonStateProvider.notifier)
+                .toggleProduct(product.id, productCategory: product.category);
+            HapticFeedback.lightImpact();
 
-        ref.read(comparisonStateProvider.notifier).toggleProduct(product.id);
-        HapticFeedback.lightImpact();
-
-        if (!isAlreadyIn) {
-          final newIds = ref.read(comparisonStateProvider).selectedProductIds;
-          if (newIds.length >= 2) {
-            context.go(AppRoutes.compare);
-          } else {
-            _showTooltip('${newIds.length}/2');
-          }
-        }
-      },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 128),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: isInCompare
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                : context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isInCompare
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-                  : context.dividerColor,
-              width: 1,
+            if (!isAlreadyIn) {
+              final newIds = ref.read(comparisonStateProvider).selectedProductIds;
+              _showTooltip('${newIds.length}/4');
+            }
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 128),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: isInCompare
+                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                    : context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isInCompare
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                      : context.dividerColor,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isInCompare ? Icons.check_circle : Icons.compare_arrows_rounded,
+                    color: isInCompare
+                        ? Theme.of(context).colorScheme.primary
+                        : context.textPrimary,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      isInCompare
+                          ? (context.l10n?.added ?? 'Added')
+                          : (context.l10n?.compareAction ?? 'Compare'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isInCompare
+                            ? Theme.of(context).colorScheme.primary
+                            : context.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isInCompare ? Icons.check_circle : Icons.compare_arrows_rounded,
-                color: isInCompare ? Theme.of(context).colorScheme.primary : context.textPrimary,
-                size: 16,
+        ),
+        if (canOpenCompare) ...[
+          const SizedBox(width: 6),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                width: 1,
               ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  isInCompare
-                      ? (context.l10n?.added ?? 'Added')
-                      : (context.l10n?.compareAction ?? 'Compare'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isInCompare ? Theme.of(context).colorScheme.primary : context.textPrimary,
+              boxShadow: AppTheme.cardShadow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  context.push(AppRoutes.compare);
+                },
+                customBorder: const CircleBorder(),
+                child: Center(
+                  child: Icon(
+                    Icons.view_column_rounded,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 }

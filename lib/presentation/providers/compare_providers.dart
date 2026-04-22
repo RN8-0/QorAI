@@ -16,6 +16,8 @@ final comparisonStateProvider =
 /// Comparison state
 class ComparisonState {
   final List<String> selectedProductIds;
+  /// Product category of the first item in the pool; all picks must match.
+  final String? poolCategory;
   final ComparisonResult? result;
   final bool isLoading;
   final String? loadingMessage; // Detailed message to display to the user
@@ -23,6 +25,7 @@ class ComparisonState {
 
   const ComparisonState({
     this.selectedProductIds = const [],
+    this.poolCategory,
     this.result,
     this.isLoading = false,
     this.loadingMessage,
@@ -31,6 +34,8 @@ class ComparisonState {
 
   ComparisonState copyWith({
     List<String>? selectedProductIds,
+    String? poolCategory,
+    bool setPoolCategory = false,
     ComparisonResult? result,
     bool? isLoading,
     String? loadingMessage,
@@ -38,6 +43,7 @@ class ComparisonState {
   }) {
     return ComparisonState(
       selectedProductIds: selectedProductIds ?? this.selectedProductIds,
+      poolCategory: setPoolCategory ? poolCategory : this.poolCategory,
       result: result ?? this.result,
       isLoading: isLoading ?? this.isLoading,
       loadingMessage: loadingMessage ?? this.loadingMessage,
@@ -58,15 +64,41 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
        _ref = ref,
        super(const ComparisonState());
 
-  /// Select/remove product
-  void toggleProduct(String productId) {
-    final current = List<String>.from(state.selectedProductIds);
+  /// Add/remove a product in the global compare pool (max 4, same [productCategory]).
+  void toggleProduct(
+    String productId, {
+    String? productCategory,
+  }) {
+    var current = List<String>.from(state.selectedProductIds);
+    var pool = state.poolCategory;
+
     if (current.contains(productId)) {
       current.remove(productId);
-    } else if (current.length < 4) {
+      if (current.isEmpty) {
+        pool = null;
+      }
+    } else {
+      if (current.length >= 4) {
+        return;
+      }
+      if (current.isNotEmpty &&
+          productCategory != null &&
+          pool != null &&
+          productCategory != pool) {
+        // Different category: new pool with only this product
+        current = <String>[];
+        pool = null;
+      }
       current.add(productId);
+      if (current.length == 1) {
+        pool = productCategory;
+      }
     }
-    state = state.copyWith(selectedProductIds: current);
+    state = state.copyWith(
+      selectedProductIds: current,
+      setPoolCategory: true,
+      poolCategory: current.isEmpty ? null : pool,
+    );
   }
 
   /// Clear selection
