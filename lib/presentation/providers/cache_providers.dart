@@ -1086,9 +1086,9 @@ class _PredictionCacheNotifier
     final bestTimeToBuy = isTr
         ? switch (buyOrWait) {
             'wait' =>
-              'Bir sonraki kampanya ya da yeni nesil duyurusu oncesi 1-3 ay izlemek daha mantikli gorunuyor.',
+              'Bir sonraki kampanya ya da yeni nesil duyurusu öncesi 1-3 ay izlemek daha mantıklı görünüyor.',
             _ =>
-              'Fiyat hareketi sinirli oldugu icin uygun bir teklif yakalandiginda hemen alinabilir.',
+              'Fiyat hareketi sınırlı olduğu için uygun bir teklif yakalandığında hemen alınabilir.',
           }
         : switch (buyOrWait) {
             'wait' =>
@@ -1107,15 +1107,15 @@ class _PredictionCacheNotifier
 
     final lifecycleText = age == null
         ? (isTr
-              ? 'kategori dongusu ve teknik seviye'
+              ? 'kategori döngüsü ve teknik seviye'
               : 'category cycle and technical tier')
         : age <= 1
-        ? (isTr ? 'yeni urun zamani' : 'its recent release timing')
+        ? (isTr ? 'yeni ürün zamanı' : 'its recent release timing')
         : (isTr
-              ? 'olgunlasmis urun donemi'
+              ? 'olgunlaşmış ürün dönemi'
               : 'its more mature lifecycle stage');
     final reasoning = isTr
-        ? '${productName.trim()} icin tahmin $lifecycleText, fiyat seviyesi ve ${normalizedContext.contains('brand:') ? 'marka konumu' : 'kategori hizi'} uzerinden kuruldu. ${buyOrWait == 'wait' ? 'Yeni ve premium yapida oldugu icin indirim marji daha yuksek.' : 'Fiyat hareketi sinirli oldugu icin buyuk bir dusus beklentisi zayif.'}'
+        ? '${productName.trim()} için tahmin $lifecycleText, fiyat seviyesi ve ${normalizedContext.contains('brand:') ? 'marka konumu' : 'kategori hızı'} üzerinden kuruldu. ${buyOrWait == 'wait' ? 'Yeni ve premium yapıda olduğu için indirim marjı daha yüksek.' : 'Fiyat hareketi sınırlı olduğu için büyük bir düşüş beklentisi zayıf.'}'
         : 'The forecast for ${productName.trim()} is driven by $lifecycleText, its current price tier, and category pace. ${buyOrWait == 'wait' ? 'Because it looks newer or more premium, the discount window is more likely to improve soon.' : 'Because the pricing already looks settled, a major drop is less likely.'}';
 
     return PredictionResult(
@@ -1723,22 +1723,22 @@ class _GeminiMatchScoreNotifier
 
     if (isTr) {
       if (firstHighlight.isNotEmpty && secondHighlight.isNotEmpty) {
-        final base = '$firstHighlight ve $secondHighlight ile one cikiyor.';
+        final base = '$firstHighlight ve $secondHighlight ile öne çıkıyor.';
         if (topTradeOff.isNotEmpty) {
-          return '$base $topTradeOff ana taviz noktasi olarak dikkat cekiyor.';
+          return '$base $topTradeOff ana taviz noktası olarak dikkat çekiyor.';
         }
         return base;
       }
       if (firstHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
-        return '$firstHighlight ile one cikiyor. $topTradeOff ana siniri olarak gorulmeli.';
+        return '$firstHighlight ile öne çıkıyor. $topTradeOff ana sınırı olarak görülmeli.';
       }
       if (firstHighlight.isNotEmpty) {
-        return '$firstHighlight ile one cikiyor.';
+        return '$firstHighlight ile öne çıkıyor.';
       }
       if (topTradeOff.isNotEmpty) {
-        return '$topTradeOff bu urunde dikkat edilmesi gereken ana nokta.';
+        return '$topTradeOff bu üründe dikkat edilmesi gereken ana nokta.';
       }
-      return 'Teknik seviye, genel denge ve kategori icindeki konumuyla dikkat ceken bir profil sunuyor.';
+      return 'Teknik seviye, genel denge ve kategori içindeki konumuyla dikkat çeken bir profil sunuyor.';
     }
 
     if (firstHighlight.isNotEmpty && secondHighlight.isNotEmpty) {

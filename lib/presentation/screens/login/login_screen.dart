@@ -98,10 +98,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       try {
         final covers = await ref.read(quizCategoryVisualsProvider.future);
         await _prefetchQuizCovers(covers.values);
+      } catch (_) {
+        // Preload failed — navigate to quiz anyway
       } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
+        if (mounted) setState(() => _isLoading = false);
       }
       if (!mounted) return;
       context.go(AppRoutes.quiz);

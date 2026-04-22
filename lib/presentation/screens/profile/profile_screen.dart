@@ -1401,7 +1401,8 @@ class _FreemiumUsageCard extends ConsumerWidget {
     final productScan = ref.watch(freemiumUsageProvider('product_scan'));
 
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    final todayLabel = isTr ? 'bugun' : 'today';
+    final todayLabel = isTr ? 'bugün' : 'today';
+    final l10n = context.l10n;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1423,7 +1424,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                isTr ? 'Gunluk Kullanim' : 'Daily Usage',
+                l10n?.dailyUsage ?? 'Daily Usage',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1451,7 +1452,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           _UsageRow(
-            label: context.l10n?.aiChat ?? 'AI Chat',
+            label: l10n?.aiChat ?? 'AI Chat',
             icon: Icons.smart_toy_rounded,
             color: AppTheme.brandCyan,
             used: aiChats,
@@ -1460,7 +1461,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: 'Detail AI',
+            label: isTr ? 'Detay AI' : 'Detail AI',
             icon: Icons.auto_awesome_rounded,
             color: AppTheme.brandBlue,
             used: detailAi,
@@ -1469,7 +1470,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: 'PC Builder AI',
+            label: isTr ? 'PC Toplama AI' : 'PC Builder AI',
             icon: Icons.memory_rounded,
             color: AppTheme.brandSkyBlue,
             used: pcBuilderAi,
@@ -1478,7 +1479,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: isTr ? 'Link Analizi' : 'Link Analysis',
+            label: l10n?.linkAnalysis ?? 'Link Analysis',
             icon: Icons.link_rounded,
             color: AppTheme.warning,
             used: linkAnalyses,
@@ -1487,7 +1488,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: isTr ? 'Link Karsilastirma' : 'Link Compare',
+            label: l10n?.linkCompare ?? 'Link Compare',
             icon: Icons.compare_rounded,
             color: AppTheme.premiumLight,
             used: linkCompare,
@@ -1496,7 +1497,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: isTr ? 'Abonelik Analizi' : 'Sub Analysis',
+            label: l10n?.subAnalysis ?? 'Sub Analysis',
             icon: Icons.subscriptions_rounded,
             color: AppTheme.brandDeepBlue,
             used: subAnalyses,
@@ -1505,7 +1506,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _UsageRow(
-            label: isTr ? 'Urun Tarama' : 'Product Scan',
+            label: l10n?.productScan ?? 'Product Scan',
             icon: Icons.qr_code_scanner_rounded,
             color: const Color(0xFF10B981),
             used: productScan,
@@ -1577,8 +1578,8 @@ class _UsageRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  minHeight: 4,
-                  backgroundColor: color.withValues(alpha: 0.12),
+                  minHeight: 6,
+                  backgroundColor: color.withValues(alpha: 0.20),
                   valueColor: AlwaysStoppedAnimation(
                     isExhausted ? const Color(0xFFEF4444) : color,
                   ),

@@ -537,19 +537,22 @@ class _DesktopSidebar extends StatelessWidget {
               ),
             ),
             Divider(height: 1, color: context.dividerColor),
-            const SizedBox(height: 12),
-            ...List.generate(_buildNavItems(context).length, (index) {
-              final item = _buildNavItems(context)[index];
-              final isSelected = index == currentIndex;
-              return _SidebarItem(
-                icon: isSelected ? item.activeIcon : item.icon,
-                label: item.label,
-                isSelected: isSelected,
-                isExpanded: isExpanded,
-                onTap: () => onTap(index),
-              );
-            }),
-            const Spacer(),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_buildNavItems(context).length, (index) {
+                  final item = _buildNavItems(context)[index];
+                  final isSelected = index == currentIndex;
+                  return _SidebarItem(
+                    icon: isSelected ? item.activeIcon : item.icon,
+                    label: item.label,
+                    isSelected: isSelected,
+                    isExpanded: isExpanded,
+                    onTap: () => onTap(index),
+                  );
+                }),
+              ),
+            ),
             if (isExpanded) ...[
               Divider(height: 1, color: context.dividerColor),
               _SidebarFooterLink(
