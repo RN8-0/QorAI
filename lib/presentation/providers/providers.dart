@@ -261,7 +261,10 @@ final techScoreServiceProvider = Provider<TechScoreService>((ref) {
 
 /// Auth Repository
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(pbDS: ref.read(pbDataSourceProvider));
+  return AuthRepository(
+    pbDS: ref.read(pbDataSourceProvider),
+    cache: ref.read(cacheServiceProvider),
+  );
 });
 
 /// Product Repository

@@ -53,6 +53,14 @@ class CountryNotifier extends StateNotifier<String> {
       _cacheService.saveCurrency(info.currency);
     }
   }
+
+  /// Called after account deletion — clears the saved country so IP detection
+  /// runs fresh on the next login session.
+  void resetToAutoDetect() {
+    _cacheService.setCountryManuallySet(false);
+    _cacheService.saveCountry('');
+    state = 'US'; // temporary default until IP detection completes
+  }
 }
 
 /// Currency derived from selected country

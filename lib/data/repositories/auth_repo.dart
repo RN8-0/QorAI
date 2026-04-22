@@ -13,6 +13,7 @@ import 'package:compair/core/pb_client.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/models/user_model.dart';
 import 'package:compair/domain/entities/user_entity.dart';
+import 'package:compair/services/cache_service.dart';
 
 const String _kGoogleWebClientId =
     '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
@@ -20,10 +21,15 @@ const String _kGoogleWebClientId =
 class AuthRepository {
   final PocketBase _pb;
   final PbDataSource _pbDS;
+  final CacheService _cache;
 
-  AuthRepository({PocketBase? pbClient, required PbDataSource pbDS})
-    : _pb = pbClient ?? pb,
-      _pbDS = pbDS;
+  AuthRepository({
+    PocketBase? pbClient,
+    required PbDataSource pbDS,
+    CacheService? cache,
+  }) : _pb = pbClient ?? pb,
+       _pbDS = pbDS,
+       _cache = cache ?? CacheService();
 
   Stream<String?> get authStateChanges async* {
     yield _currentUid;
@@ -397,21 +403,25 @@ class AuthRepository {
     }
 
     try {
-      try {
-        final recentlyViewed = await _pb
-            .collection('recently_viewed')
-            .getFullList(filter: 'userId = "$uid"');
-        for (final record in recentlyViewed) {
-          await _pb.collection('recently_viewed').delete(record.id);
-        }
-      } catch (e) {
-        debugPrint(
-          '[auth] failed to delete related recently_viewed records: $e',
-        );
-      }
+      // Delete related PocketBase data before deleting the user record.
+      await Future.wait([
+        _deleteCollection('recently_viewed', 'userId = "$uid"'),
+        _deleteCollection('comparisons', 'userId = "$uid"'),
+        _deleteCollection('favorites', 'userId = "$uid"'),
+        _deleteCollection('reviews', 'userId = "$uid"'),
+        _deleteCollection('saved_analyses', 'userId = "$uid"'),
+      ]);
 
       await _pb.collection('users').delete(uid);
       _pb.authStore.clear();
+
+      // Clear all local user-specific caches so there is no stale data
+      // when the user registers again or a different user logs in.
+      try {
+        await _cache.clearUserData();
+        await _cache.clearAll();
+      } catch (_) {}
+
       return const Success(null);
     } on ClientException catch (e) {
       return Failure(
@@ -424,6 +434,21 @@ class AuthRepository {
           originalError: e,
         ),
       );
+    }
+  }
+
+  /// Helper: delete all records in a collection matching filter.
+  /// Swallows errors — missing collection or permission issues are non-fatal.
+  Future<void> _deleteCollection(String collection, String filter) async {
+    try {
+      final records = await _pb
+          .collection(collection)
+          .getFullList(filter: filter);
+      for (final record in records) {
+        await _pb.collection(collection).delete(record.id);
+      }
+    } catch (e) {
+      debugPrint('[auth] $collection deletion non-fatal: $e');
     }
   }
 

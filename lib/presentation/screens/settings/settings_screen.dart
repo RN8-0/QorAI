@@ -1116,39 +1116,214 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    // Step 1: Warn about what will be deleted
     showCupertinoDialog(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
-        title: Text(context.l10n?.deleteAccount ?? 'Delete Account'),
-        content: Text(
-          context.l10n?.deleteAccountWarning ??
-              'This action is permanent and cannot be undone. All your data will be lost.',
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n?.deleteAccount ?? 'Delete Account'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n?.deleteAccountWarning ??
+                  'This action is permanent and cannot be undone.',
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _deletedDataText(context),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
         ),
         actions: [
           CupertinoDialogAction(
             isDefaultAction: true,
-            child: Text(context.l10n?.cancel ?? 'Cancel'),
-            onPressed: () => Navigator.pop(context),
+            child: Text(l10n?.cancel ?? 'Cancel'),
+            onPressed: () => Navigator.pop(ctx),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            child: Text(context.l10n?.delete ?? 'Delete'),
-            onPressed: () async {
-              final navigator = GoRouter.of(context);
-              Navigator.pop(context);
-              final result = await ref
-                  .read(authRepositoryProvider)
-                  .deleteCurrentUser();
-              if (!mounted) return;
-              switch (result) {
-                case Success():
-                  navigator.go(AppRoutes.login);
-                case Failure(error: final error):
-                  _showInfoSnackbar(error.message);
-              }
+            child: const Text('Continue →'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showDeleteConfirmationInput(context, ref);
             },
           ),
         ],
+      ),
+    );
+  }
+
+  String _deletedDataText(BuildContext context) {
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    if (isTr) {
+      return 'Silinecek veriler (geri getirilemez):\n'
+          '• Profil ve hesap bilgileri\n'
+          '• Karşılaştırma geçmişi\n'
+          '• Favoriler ve koleksiyonlar\n'
+          '• Yorumlar ve analizler\n'
+          '• Son görüntüleme geçmişi';
+    }
+    return 'Data that will be permanently deleted:\n'
+        '• Profile and account info\n'
+        '• Comparison history\n'
+        '• Favorites and collections\n'
+        '• Reviews and analyses\n'
+        '• Recently viewed history';
+  }
+
+  void _showDeleteConfirmationInput(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    final confirmPhrase = isTr
+        ? 'hesabımı silmek istiyorum'
+        : 'I want to delete my account';
+    final controller = TextEditingController();
+    var deleting = false;
+    // Capture navigator before any async gap.
+    final navigator = GoRouter.of(context);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: context.surfaceVariantColor,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            l10n?.deleteAccount ?? 'Delete Account',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFEF4444),
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isTr
+                    ? 'Onaylamak için aşağıya şunu yazın:'
+                    : 'To confirm, type the following below:',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  confirmPhrase,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: context.textPrimary,
+                ),
+                onChanged: (_) => setDialogState(() {}),
+                decoration: InputDecoration(
+                  hintText: confirmPhrase,
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: context.textTertiaryColor,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: context.dividerColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: context.dividerColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: deleting ? null : () => Navigator.pop(ctx),
+              child: Text(
+                l10n?.cancel ?? 'Cancel',
+                style: GoogleFonts.plusJakartaSans(
+                  color: context.textSecondary,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: (controller.text.trim().toLowerCase() ==
+                          confirmPhrase.toLowerCase() &&
+                      !deleting)
+                  ? () async {
+                      setDialogState(() => deleting = true);
+                      final result = await ref
+                          .read(authRepositoryProvider)
+                          .deleteCurrentUser();
+                      if (!mounted) return;
+                      Navigator.pop(ctx);
+                      switch (result) {
+                        case Success():
+                          ref
+                              .read(selectedCountryProvider.notifier)
+                              .resetToAutoDetect();
+                          navigator.go(AppRoutes.login);
+                        case Failure(error: final error):
+                          _showInfoSnackbar(error.message);
+                      }
+                    }
+                  : null,
+              child: deleting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      l10n?.delete ?? 'Delete',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: controller.text.trim().toLowerCase() ==
+                                confirmPhrase.toLowerCase()
+                            ? const Color(0xFFEF4444)
+                            : context.textTertiaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -260,6 +260,13 @@ class SubscriptionService extends ChangeNotifier {
       await _loadProducts();
       await _restoreFromLocal();
 
+      // Silently restore any active Play Store subscriptions.
+      // This handles the case where the user deleted their account and re-logged in —
+      // the Play Store subscription is still active even though the PB record is new.
+      try {
+        await _iap.restorePurchases();
+      } catch (_) {}
+
       _initialized = true;
       _initCompleter!.complete();
     } catch (e) {

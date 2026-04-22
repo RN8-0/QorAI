@@ -1256,17 +1256,27 @@ class _GeminiMatchScoreNotifier
           ? _languageCode
           : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
 
-      // 1. Check PocketBase cache first (24h TTL) — but cap at 2s; if PB is
-      // slow we treat it as a cache miss and proceed to Gemini.
-      GeminiMatchResult? cached;
+      // 1. Fetch user record ONCE — extracts match_cache AND weightVector together.
+      //    Using fields projection to reduce data transfer. Cap at 2s so a slow
+      //    PB connection never blocks the UI longer than that.
+      Map<String, dynamic>? userRecordData;
       try {
-        cached = await _checkFirestoreCache(user.uid, langCode).timeout(
-          const Duration(seconds: 2),
-          onTimeout: () => null,
-        );
+        final rec = await pb
+            .collection('users')
+            .getOne(user.uid, fields: 'match_cache,weightVector')
+            .timeout(
+              const Duration(seconds: 2),
+              onTimeout: () => throw Exception('PB timeout'),
+            );
+        userRecordData = rec.data;
       } catch (_) {
-        cached = null;
+        userRecordData = null;
       }
+
+      // Check match cache from the single fetched record.
+      final cached = userRecordData != null
+          ? _parseMatchCacheFromData(userRecordData, langCode)
+          : null;
       if (cached != null) {
         state = AsyncValue.data(cached);
         return;
@@ -1284,7 +1294,8 @@ class _GeminiMatchScoreNotifier
       final gemini = _ref.read(geminiServiceProvider);
       final behaviorAsync = _ref.read(behaviorSignalsProvider);
       final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
-      final weightVector = await _loadWeightVector(user.uid);
+      // weightVector already fetched — parse from in-memory data (no extra PB call).
+      final weightVector = _parseWeightVectorFromData(userRecordData?['weightVector']);
 
       // Yield before building prompt — keeps first UI frame smooth while
       // widgets are mounting (postFrameCallback fires before route anim done).
@@ -1481,26 +1492,26 @@ class _GeminiMatchScoreNotifier
     );
   }
 
-  Future<GeminiMatchResult?> _checkFirestoreCache(
-    String uid,
+  /// Parse match cache entry from already-fetched user record data.
+  /// Avoids an extra PB network round-trip by reusing the single getOne result.
+  GeminiMatchResult? _parseMatchCacheFromData(
+    Map<String, dynamic> userRecordData,
     String langCode,
-  ) async {
+  ) {
     try {
-      final userRecord = await pb.collection('users').getOne(uid);
       final matchCache =
-          userRecord.data['match_cache'] as Map<String, dynamic>? ?? {};
+          userRecordData['match_cache'] as Map<String, dynamic>? ?? {};
       final cached = matchCache[_productId] as Map<String, dynamic>?;
       if (cached == null) return null;
       final ts = DateTime.tryParse(cached['timestamp']?.toString() ?? '');
       if (ts == null) return null;
       final age = DateTime.now().difference(ts);
-      if (age.inHours >= 24) return null; // expired
-      final cachedLanguage = (cached['language'] as String?)
-          ?.trim()
-          .toLowerCase();
+      if (age.inHours >= 24) return null;
+      final cachedLanguage =
+          (cached['language'] as String?)?.trim().toLowerCase();
       if (cachedLanguage == null || cachedLanguage != langCode) return null;
-      final cachedVersion = (cached['detailMatchCacheVersion'] as num?)
-          ?.toInt();
+      final cachedVersion =
+          (cached['detailMatchCacheVersion'] as num?)?.toInt();
       if (cachedVersion != _detailMatchCacheVersion) return null;
       final fallbackReason = _buildLocalReason(
         highlights: const [],
@@ -1529,13 +1540,29 @@ class _GeminiMatchScoreNotifier
     }
   }
 
+  /// Parse weightVector from already-fetched user record data (no extra PB call).
+  Map<String, double> _parseWeightVectorFromData(dynamic raw) {
+    if (raw is! Map) return const {};
+    try {
+      return (raw as Map<String, dynamic>).map((key, value) {
+        final numeric = value is num ? value.toDouble() : 0.0;
+        return MapEntry(key, numeric.clamp(0.0, 1.0));
+      });
+    } catch (_) {
+      return const {};
+    }
+  }
+
   Future<void> _saveToFirestoreCache(
     String uid,
     GeminiMatchResult result,
     String langCode,
   ) async {
     try {
-      final userRecord = await pb.collection('users').getOne(uid);
+      // Fetch current match_cache to merge without overwriting other products.
+      final userRecord = await pb
+          .collection('users')
+          .getOne(uid, fields: 'match_cache');
       final matchCache = Map<String, dynamic>.from(
         userRecord.data['match_cache'] as Map? ?? {},
       );
@@ -1556,20 +1583,6 @@ class _GeminiMatchScoreNotifier
           .collection('users')
           .update(uid, body: {'match_cache': matchCache});
     } catch (_) {}
-  }
-
-  Future<Map<String, double>> _loadWeightVector(String uid) async {
-    try {
-      final userRecord = await pb.collection('users').getOne(uid);
-      final raw = userRecord.data['weightVector'] as Map<String, dynamic>?;
-      if (raw == null) return const {};
-      return raw.map((key, value) {
-        final numeric = value is num ? value.toDouble() : 0.0;
-        return MapEntry(key, numeric.clamp(0.0, 1.0));
-      });
-    } catch (_) {
-      return const {};
-    }
   }
 
   List<Map<String, Object>> _topWeightedTraits(

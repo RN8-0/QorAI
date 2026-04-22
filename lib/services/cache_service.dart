@@ -210,4 +210,32 @@ class CacheService {
   Future<void> clearAll() async {
     await _localBox.clear();
   }
+
+  /// Clear all user-specific data on account deletion / sign-out.
+  /// Resets country selection so IP-based detection runs again on next launch.
+  Future<void> clearUserData() async {
+    try {
+      // Clear IP location cache so auto-detection runs fresh on next login.
+      final ipBox = await Hive.openBox('compair_local_cache');
+      await ipBox.delete('ip_location_data');
+    } catch (_) {}
+    // Reset country to unset so IP detection will re-run.
+    _settingsBox.delete('country_code');
+    _settingsBox.delete('country_manually_set');
+    // Clear local product/recently-viewed cache keys.
+    try {
+      final keysToDelete = _localBox.keys
+          .whereType<String>()
+          .where(
+            (k) =>
+                k.startsWith('recently_viewed') ||
+                k.startsWith('viewed_products') ||
+                k.startsWith('user_'),
+          )
+          .toList();
+      for (final key in keysToDelete) {
+        await _localBox.delete(key);
+      }
+    } catch (_) {}
+  }
 }

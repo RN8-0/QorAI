@@ -273,11 +273,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final newProducts = _sanitizeCategoryProducts(
         page.products,
       ).where((p) => !existingIds.contains(p.id)).toList();
+      final merged = [..._allProducts, ...newProducts];
       setState(() {
-        _allProducts = [..._allProducts, ...newProducts];
+        _allProducts = merged;
         _currentPage = page.nextPage;
         _allLoaded = !page.hasMore;
-        _totalProductCount = page.totalFound;
+        // Once all pages loaded, show true deduped count; otherwise Typesense total.
+        _totalProductCount = !page.hasMore ? merged.length : page.totalFound;
       });
     } catch (_) {}
     if (mounted) setState(() => _fetchingAll = false);
@@ -384,7 +386,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _allProducts = firstPage;
         _currentPage = result.nextPage;
         _allLoaded = !result.hasMore;
-        _totalProductCount = result.totalFound;
+        // Use actual deduped count when all pages are loaded; otherwise
+        // show Typesense total as an upper bound (paginating categories).
+        _totalProductCount = (!result.hasMore)
+            ? firstPage.length
+            : result.totalFound;
         _loading = false;
       });
     } catch (_) {
