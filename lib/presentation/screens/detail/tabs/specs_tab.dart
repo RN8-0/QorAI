@@ -873,52 +873,55 @@ class _SpecsCardState extends State<_SpecsCard> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Group header — solid colored bar matching admin panel style
+                  // Group header — original style (icon + colored title)
                   Material(
-                    color: color,
+                    color: context.surfaceVariantColor,
                     child: InkWell(
                       onTap: () =>
                           setState(() => _expanded[groupKey] = !isExpanded),
-                      splashColor: Colors.white.withValues(alpha: 0.15),
-                      highlightColor: Colors.white.withValues(alpha: 0.08),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 11,
+                          vertical: 12,
                         ),
                         child: Row(
                           children: [
-                            Icon(icon, size: 15, color: Colors.white),
-                            const SizedBox(width: 10),
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(icon, size: 16, color: color),
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _localizedGroupName(
-                                  context,
-                                  groupKey,
-                                ).toUpperCase(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                  letterSpacing: 0.6,
+                                _localizedGroupName(context, groupKey),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                             Text(
                               '${value.length} ${context.l10n?.specsCount ?? 'specs'}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.75),
+                                color: AppTheme.slate400,
                               ),
                             ),
                             const SizedBox(width: 6),
                             AnimatedRotation(
                               turns: isExpanded ? 0.5 : 0,
                               duration: const Duration(milliseconds: 200),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.expand_more,
                                 size: 18,
-                                color: Colors.white.withValues(alpha: 0.85),
+                                color: AppTheme.slate400,
                               ),
                             ),
                           ],
@@ -1328,7 +1331,6 @@ class _SpecRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Skip empty, null-like, or serialized object values
     final trimmed = value.trim();
     if (trimmed.isEmpty ||
         trimmed == '?' ||
@@ -1338,9 +1340,29 @@ class _SpecRow extends StatelessWidget {
         (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
       return const SizedBox.shrink();
     }
-    final localizedVal = _localizedValue(context, value);
-    // Split long multi-value strings into per-line display
-    final valueWidget = _buildValueWidget(context, localizedVal);
+
+    // Split FIRST (before any localization — normalize() collapses \n to spaces
+    // which would destroy multi-value separators if we localized the whole string).
+    final rawParts = _extractValueParts(trimmed);
+
+    Widget valueWidget;
+    if (rawParts.length >= 2) {
+      // Multiple items → each on its own line, localized individually.
+      valueWidget = Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: rawParts.map((part) {
+          final localized = _localizedValue(context, part);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: _buildValueText(context, localized),
+          );
+        }).toList(),
+      );
+    } else {
+      // Single value — localize and display, shrink font if text is long.
+      final localized = _localizedValue(context, trimmed);
+      valueWidget = _buildValueText(context, localized);
+    }
 
     return Column(
       children: [
@@ -1373,115 +1395,13 @@ class _SpecRow extends StatelessWidget {
     );
   }
 
-  /// Translate common English spec values to the active locale language.
-  String _localizedSpecValue(BuildContext context, String val) {
-    final locale = Localizations.localeOf(context).languageCode;
-    final svc = SpecTranslationService.instance;
-    final canonicalValue = svc.isLoaded ? svc.canonicalizeToEnglish(val) : val;
-    if (locale == 'en') return canonicalValue;
-    final v = canonicalValue.trim().toLowerCase();
-    switch (locale) {
-      case 'tr':
-        const trMap = {
-          'yes': 'Var',
-          'no': 'Yok',
-          'true': 'Evet',
-          'false': 'Hayır',
-          'available': 'Mevcut',
-          'not available': 'Mevcut Değil',
-          'supported': 'Destekleniyor',
-          'not supported': 'Desteklenmiyor',
-          'included': 'Dahil',
-          'not included': 'Dahil Değil',
-          'active': 'Aktif',
-          'passive': 'Pasif',
-          'wired': 'Kablolu',
-          'wireless': 'Kablosuz',
-          'touch': 'Dokunmatik',
-          'mechanical': 'Mekanik',
-          'mono': 'Mono',
-          'stereo': 'Stereo',
-          'front': 'Ön',
-          'rear': 'Arka',
-          'back': 'Arka',
-          'left': 'Sol',
-          'right': 'Sağ',
-          'black': 'Siyah',
-          'white': 'Beyaz',
-          'silver': 'Gümüş',
-          'gold': 'Altın',
-          'blue': 'Mavi',
-          'red': 'Kırmızı',
-          'green': 'Yeşil',
-          'gray': 'Gri',
-          'grey': 'Gri',
-        };
-        return trMap[v] ?? val;
-      case 'de':
-        const deMap = {
-          'yes': 'Ja',
-          'no': 'Nein',
-          'available': 'Verfügbar',
-          'not available': 'Nicht verfügbar',
-        };
-        return deMap[v] ?? canonicalValue;
-      case 'fr':
-        const frMap = {
-          'yes': 'Oui',
-          'no': 'Non',
-          'available': 'Disponible',
-          'not available': 'Non disponible',
-        };
-        return frMap[v] ?? canonicalValue;
-      case 'es':
-        const esMap = {
-          'yes': 'Sí',
-          'no': 'No',
-          'available': 'Disponible',
-          'not available': 'No disponible',
-        };
-        return esMap[v] ?? canonicalValue;
-      default:
-        final translated = svc.isLoaded
-            ? svc.translateValueForLocale(val, locale)
-            : canonicalValue;
-        return translated == val ? canonicalValue : translated;
-    }
-  }
-
-  Widget _buildValueWidget(BuildContext context, String rawVal) {
-    // Translate common value words to locale language
-    final val = _localizedSpecValue(context, rawVal);
-    final parts = _extractValueParts(val);
-
-    if (parts.length >= 2) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: parts
-            .map(
-              (p) => Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text(
-                  p,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.end,
-                  softWrap: true,
-                ),
-              ),
-            )
-            .toList(),
-      );
-    }
-
+  /// Displays a single value string. Font shrinks automatically for long text.
+  Widget _buildValueText(BuildContext context, String text) {
+    final fontSize = text.length > 45 ? 11.5 : (text.length > 30 ? 12.0 : 13.0);
     return Text(
-      val,
+      text,
       style: TextStyle(
-        fontSize: 13,
+        fontSize: fontSize,
         fontWeight: FontWeight.w500,
         color: Theme.of(context).colorScheme.onSurface,
       ),
@@ -1490,6 +1410,7 @@ class _SpecRow extends StatelessWidget {
       overflow: TextOverflow.visible,
     );
   }
+
 }
 
 // ═══════════════════════════════════════════════════════════
