@@ -136,8 +136,20 @@ class _SpecsCardState extends State<_SpecsCard> {
   @override
   void initState() {
     super.initState();
-    // Use Firestore data directly — all groups collapsed
     _expanded = {for (final key in widget.specs.keys) key: false};
+  }
+
+  /// Converts a spec value to displayable string.
+  /// Handles Lists (newline-joined) and scalars safely.
+  static String _specValToString(dynamic val) {
+    if (val is List) {
+      return val
+          .whereType<Object>()
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .join('\n');
+    }
+    return val?.toString() ?? '';
   }
 
   static String _formatKey(String key) {
@@ -861,55 +873,52 @@ class _SpecsCardState extends State<_SpecsCard> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Group header — clean white with colored icon
+                  // Group header — solid colored bar matching admin panel style
                   Material(
-                    color: context.surfaceVariantColor,
+                    color: color,
                     child: InkWell(
                       onTap: () =>
                           setState(() => _expanded[groupKey] = !isExpanded),
+                      splashColor: Colors.white.withValues(alpha: 0.15),
+                      highlightColor: Colors.white.withValues(alpha: 0.08),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 12,
+                          vertical: 11,
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(icon, size: 16, color: color),
-                            ),
-                            const SizedBox(width: 12),
+                            Icon(icon, size: 15, color: Colors.white),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                _localizedGroupName(context, groupKey),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: Theme.of(context).colorScheme.primary,
+                                _localizedGroupName(
+                                  context,
+                                  groupKey,
+                                ).toUpperCase(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  letterSpacing: 0.6,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ),
                             Text(
                               '${value.length} ${context.l10n?.specsCount ?? 'specs'}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppTheme.slate400,
+                                color: Colors.white.withValues(alpha: 0.75),
                               ),
                             ),
                             const SizedBox(width: 6),
                             AnimatedRotation(
                               turns: isExpanded ? 0.5 : 0,
                               duration: const Duration(milliseconds: 200),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.expand_more,
                                 size: 18,
-                                color: AppTheme.slate400,
+                                color: Colors.white.withValues(alpha: 0.85),
                               ),
                             ),
                           ],
@@ -931,7 +940,7 @@ class _SpecsCardState extends State<_SpecsCard> {
                             // Handle nested maps within a group
                             if (subVal is Map && subVal.isNotEmpty) {
                               return subVal.entries.map((inner) {
-                                final innerVal = inner.value?.toString() ?? '';
+                                final innerVal = _specValToString(inner.value);
                                 if (innerVal.isEmpty ||
                                     innerVal == '?' ||
                                     innerVal == 'null' ||
@@ -952,7 +961,7 @@ class _SpecsCardState extends State<_SpecsCard> {
                                 );
                               });
                             }
-                            final subValue = subVal?.toString() ?? '';
+                            final subValue = _specValToString(subVal);
                             if (subValue.isEmpty ||
                                 subValue == '?' ||
                                 subValue == 'null' ||
@@ -979,7 +988,7 @@ class _SpecsCardState extends State<_SpecsCard> {
             }
 
             // ── Flat key-value (fallback) ──
-            final flatValue = value?.toString() ?? '';
+            final flatValue = _specValToString(value);
             if (flatValue.isEmpty ||
                 flatValue == '?' ||
                 flatValue == 'null' ||
@@ -1446,27 +1455,26 @@ class _SpecRow extends StatelessWidget {
     final parts = _extractValueParts(val);
 
     if (parts.length >= 2) {
-      final widgets = parts
-          .map(
-            (p) => Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                '• $p',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.end,
-                softWrap: true,
-              ),
-            ),
-          )
-          .toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: widgets,
+        children: parts
+            .map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  p,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.end,
+                  softWrap: true,
+                ),
+              ),
+            )
+            .toList(),
       );
     }
 
@@ -1474,7 +1482,7 @@ class _SpecRow extends StatelessWidget {
       val,
       style: TextStyle(
         fontSize: 13,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: Theme.of(context).colorScheme.onSurface,
       ),
       textAlign: TextAlign.end,
@@ -2182,12 +2190,14 @@ class _SpecsTabContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
         _KeySpecsGrid(product: product),
-        _SpecsCard(
-          specs: product.specSections.isNotEmpty
-              ? product.specSections
-              : product.specs,
-          cardBg: cardBg,
-          isDark: isDark,
+        RepaintBoundary(
+          child: _SpecsCard(
+            specs: product.specSections.isNotEmpty
+                ? product.specSections
+                : product.specs,
+            cardBg: cardBg,
+            isDark: isDark,
+          ),
         ),
       ],
     );

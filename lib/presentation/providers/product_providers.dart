@@ -1458,13 +1458,27 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     final staleResult = cache.getLocalStale<List<dynamic>>(cacheKey);
     if (staleResult.data != null && (staleResult.data as List).isNotEmpty) {
       final sw = Stopwatch()..start();
-      final products = (staleResult.data as List)
-          .map(
-            (item) =>
-                ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
-          )
-          .cast<ProductEntity>()
-          .toList();
+      // Yield to the event queue before the heavy deserialization so the
+      // Flutter engine can process pending frames (avoids >300 frame skips).
+      await Future<void>(() {});
+      final rawList = staleResult.data as List;
+      // Deserialize in batches to keep the main thread free for frames.
+      const _batchSize = 300;
+      final products = <ProductEntity>[];
+      for (var i = 0; i < rawList.length; i += _batchSize) {
+        if (i > 0) await Future<void>(() {});
+        products.addAll(
+          rawList
+              .skip(i)
+              .take(_batchSize)
+              .map(
+                (item) => ProductModel.fromMap(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .cast<ProductEntity>(),
+        );
+      }
       sw.stop();
       debugPrint(
         '=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${products.length} products in ${sw.elapsedMilliseconds}ms ===',
