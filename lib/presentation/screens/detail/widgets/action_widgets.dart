@@ -102,7 +102,12 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
     final compare = ref.watch(comparisonStateProvider);
     final isInCompare = compare.selectedProductIds.contains(product.id);
     final poolSize = compare.selectedProductIds.length;
-    final canOpenCompare = poolSize >= 2;
+    final poolCategoryMatch = compare.poolCategory == null ||
+        compare.poolCategory == product.category;
+    final canOpenCompare = poolSize >= 2 &&
+        poolSize <= 4 &&
+        poolCategoryMatch;
+    final poolReady = canOpenCompare;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -161,11 +166,22 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
                     : context.surfaceVariantColor,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isInCompare
-                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-                      : context.dividerColor,
-                  width: 1,
+                  color: poolReady
+                      ? Theme.of(context).colorScheme.primary
+                      : (isInCompare
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                          : context.dividerColor),
+                  width: poolReady ? 2 : 1,
                 ),
+                boxShadow: poolReady
+                    ? [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -199,17 +215,21 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
             ),
           ),
         ),
+        if (poolSize > 0 && poolCategoryMatch) ...[
+          const SizedBox(width: 6),
+          _ComparePoolStrip(product: product),
+        ],
         if (canOpenCompare) ...[
           const SizedBox(width: 6),
           Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               shape: BoxShape.circle,
               border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
-                width: 1,
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
               ),
               boxShadow: AppTheme.cardShadow,
             ),
@@ -235,6 +255,150 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
       ],
     );
   }
+}
+
+/// Karşılaştırma havuzundaki (aynı kategori) ürünler: küçük önizleme kutuları
+class _ComparePoolStrip extends ConsumerWidget {
+  final ProductEntity product;
+  const _ComparePoolStrip({required this.product});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final comp = ref.watch(comparisonStateProvider);
+    final ids = comp.selectedProductIds;
+    if (ids.isEmpty) return const SizedBox.shrink();
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 128, minHeight: 32),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < ids.length; i++) ...[
+              if (i > 0) const SizedBox(width: 4),
+              _ComparePoolSlotTile(
+                key: ValueKey('compare_pool_${ids[i]}'),
+                productId: ids[i],
+                isCurrent: ids[i] == product.id,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComparePoolSlotTile extends ConsumerWidget {
+  final String productId;
+  final bool isCurrent;
+  const _ComparePoolSlotTile({
+    super.key,
+    required this.productId,
+    required this.isCurrent,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(productDetailProvider(productId));
+    return async.when(
+      data: (r) {
+        return r.when(
+          success: (p) {
+            final url = p.imageUrl;
+            if (url == null || url.isEmpty) {
+              return _poolSlotPlaceholder(context, isCurrent);
+            }
+            return Semantics(
+              button: true,
+              label: 'Karşılaştırmadan kaldır',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    ref
+                        .read(comparisonStateProvider.notifier)
+                        .toggleProduct(productId);
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: 30,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isCurrent
+                            ? Theme.of(context).colorScheme.primary
+                            : context.dividerColor,
+                        width: isCurrent ? 2 : 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 90,
+                        placeholder: (c, _) => ColoredBox(
+                          color: context.surfaceVariantColor,
+                        ),
+                        errorWidget: (c, errUrl, err) => _poolSlotPlaceholder(
+                          context,
+                          isCurrent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+          failure: (_) => _poolSlotPlaceholder(context, isCurrent),
+        );
+      },
+      loading: () => Container(
+        width: 30,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: context.dividerColor, width: 1),
+        ),
+        child: const SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (err, st) => _poolSlotPlaceholder(context, isCurrent),
+    );
+  }
+}
+
+Widget _poolSlotPlaceholder(BuildContext context, bool isCurrent) {
+  return Container(
+    width: 30,
+    height: 32,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: context.surfaceVariantColor,
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(
+        color: isCurrent
+            ? Theme.of(context).colorScheme.primary
+            : context.dividerColor,
+        width: isCurrent ? 2 : 1,
+      ),
+    ),
+    child: Icon(
+      Icons.shopping_bag_outlined,
+      size: 12,
+      color: context.textTertiaryColor,
+    ),
+  );
 }
 
 /// Triangle painter for tooltip arrow

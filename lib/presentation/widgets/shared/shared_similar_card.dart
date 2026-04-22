@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:compair/core/theme.dart';
@@ -16,26 +17,35 @@ class SharedSimilarGridCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
 
-    return GestureDetector(
-      onTap: () => context.push('/product/${product.id}'),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          ...AppTheme.cardShadow,
+          BoxShadow(
+            color: AppTheme.brandCyan.withValues(alpha: 0.06),
+            blurRadius: 10,
+            spreadRadius: -2,
+          ),
+        ],
+      ),
+      child: Material(
+        color: context.surfaceVariantColor,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
+          side: BorderSide(
             color: AppTheme.brandCyan.withValues(alpha: 0.12),
             width: 0.8,
           ),
-          boxShadow: [
-            ...AppTheme.cardShadow,
-            BoxShadow(
-              color: AppTheme.brandCyan.withValues(alpha: 0.06),
-              blurRadius: 10,
-              spreadRadius: -2,
-            ),
-          ],
         ),
-        child: Column(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            context.push('/product/${product.id}');
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image section — fills remaining vertical space so button
@@ -120,6 +130,7 @@ class SharedSimilarGridCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

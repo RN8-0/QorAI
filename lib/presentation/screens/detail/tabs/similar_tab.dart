@@ -12,6 +12,7 @@ class _SimilarProductsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
+      primary: false,
       physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 40),
       children: [
@@ -94,6 +95,7 @@ class _SimilarProductsSection extends ConsumerWidget {
             ),
             // 2-column grid
             GridView.builder(
+              primary: false,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
