@@ -1553,7 +1553,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       ),
       _TableRow(
         l?.pcBuilder ?? 'PC Builder',
-        _countItems(AppConstants.freePcBuilderSlots),
+        true, // unlimited component slots on free tier
         unlimited,
         Icons.build_rounded,
       ),

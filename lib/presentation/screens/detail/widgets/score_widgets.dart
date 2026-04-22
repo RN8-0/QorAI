@@ -61,26 +61,40 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
   String? _lastRequestedLanguage;
   bool _reasonExpanded = false;
 
-  // Memoize fit score so we don't re-run the algorithm on every rebuild
-  // (provider watches cause frequent rebuilds — esp. during route anim).
-  // Computed asynchronously (off the build path) to keep the first frame
-  // after navigation fast.
+  // Memoize fit score so we don't re-run the algorithm on every rebuild.
   int? _cachedFitScore;
   String? _cachedFitScoreKey;
   bool _fitScoreScheduled = false;
 
+  // True from the moment we know the Gemini fetch will happen until it
+  // completes. Prevents the local fit score from flashing briefly before
+  // the loading indicator appears (which caused the "goes up then down"
+  // oscillation the user reported).
+  bool _geminiFetchTriggered = false;
+
   @override
   void initState() {
     super.initState();
-    // Both the Gemini fetch and the local fit-score must run AFTER the first
-    // frame — otherwise `state = AsyncValue.loading()` inside the notifier
-    // throws "Tried to modify a provider while the widget tree was building",
-    // which silently leaves the match card stuck on a spinner forever.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _maybeTriggerGeminiFetch();
       _maybeRecomputeFitScore();
+      // Pre-set the "triggered" flag if quiz is done and no cached result
+      // exists yet. This makes the loading indicator show from frame-1,
+      // before _prefetchMatchScoreOnce() fires ~80ms later.
+      _prearmGeminiFetchFlag();
     });
+  }
+
+  /// Sets _geminiFetchTriggered = true if an AI fetch will happen,
+  /// so the local score never flashes before the loading indicator.
+  void _prearmGeminiFetchFlag() {
+    if (!mounted) return;
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user == null || !user.quizCompleted) return;
+    final cacheKey = _currentCacheKey();
+    final existing = ref.read(geminiMatchScoreProvider(cacheKey));
+    if (existing.valueOrNull != null) return; // Already have result — no loading needed
+    if (mounted) setState(() => _geminiFetchTriggered = true);
   }
 
   String _currentLanguageCode() {
@@ -126,22 +140,22 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     if (_cachedFitScoreKey == memoKey && _cachedFitScore != null) return;
 
     _fitScoreScheduled = true;
-    // Defer to next frame then run after a short delay so the page-push
-    // animation completes before we do any CPU work on the main thread.
-    Future.delayed(const Duration(milliseconds: 400), () {
+    // 200ms: let navigation animation fully complete before starting CPU work.
+    Future.delayed(const Duration(milliseconds: 200), () async {
       if (!mounted) {
         _fitScoreScheduled = false;
         return;
       }
-      final algo = ProfileAlgorithmService();
-      final score = algo
-          .calculateTotalFitScore(
-            user: user,
-            product: widget.product,
-            behavior: behavior,
-          )
-          .round()
-          .clamp(0, 100);
+      // Run fit score computation in a background isolate so the main thread
+      // stays fully free for touch/scroll events.
+      final score = await compute(
+        _computeFitScoreIsolate,
+        _FitScoreParams(
+          user: user,
+          product: widget.product,
+          behavior: behavior,
+        ),
+      );
       _fitScoreScheduled = false;
       if (!mounted) return;
       if (_cachedFitScoreKey == memoKey && _cachedFitScore == score) return;
@@ -159,6 +173,12 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final cacheKey = _currentCacheKey();
     if (_lastRequestedLanguage == cacheKey.normalizedLanguageCode) return;
     _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
+    // Arm the flag before calling fetchMatchScore so there's no window
+    // where localFitScore shows through before aiLoading becomes true.
+    final existing = ref.read(geminiMatchScoreProvider(cacheKey));
+    if (existing.valueOrNull == null && mounted) {
+      setState(() => _geminiFetchTriggered = true);
+    }
     ref
         .read(geminiMatchScoreProvider(cacheKey).notifier)
         .fetchMatchScore(product: widget.product);
@@ -198,19 +218,38 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
 
     final int? localFitScore = quizDone ? _cachedFitScore : null;
 
-    // Watch DeepSeek result for reason text / authoritative score.
+    // Watch AI result.
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
     final aiLoading = matchAsync.isLoading;
+    // aiStepMessage is intentionally NOT watched here — it is consumed by the
+    // _AiStepText widget below so only that leaf rebuilds on step changes,
+    // not the entire _ScoreDuo tree.
 
-    // AI match score is authoritative when quota allows; fall back to local
-    // algorithmic fit only when DeepSeek returned null (free quota exhausted).
-    // While AI is still loading we deliberately suppress the local fit score
-    // so the user does not see a flicker between random-looking algorithmic
-    // value and the final AI value — show a loading indicator instead.
-    final int? fitScore = matchResult?.matchScore ??
-        (aiLoading && quizDone ? null : localFitScore);
-    final bool showMatchLoading = quizDone && aiLoading && matchResult == null;
+    // Clear _geminiFetchTriggered once the AI fetch completes so that
+    // the local-score fallback can show if AI returned null.
+    ref.listen<AsyncValue<GeminiMatchResult?>>(
+      geminiMatchScoreProvider(cacheKey),
+      (prev, next) {
+        if (next is AsyncData && _geminiFetchTriggered) {
+          if (mounted) setState(() => _geminiFetchTriggered = false);
+        }
+      },
+    );
+
+    // "Waiting for AI" is true if:
+    //   • we pre-armed the flag (fetch not started yet), OR
+    //   • the provider is actively loading.
+    // This prevents the local algorithmic score from flashing before the
+    // loading indicator, which caused the "goes up then goes down" oscillation.
+    final bool waitingForAI =
+        quizDone && (_geminiFetchTriggered || aiLoading) && matchResult == null;
+
+    // AI score is authoritative; local score is a fallback only when AI
+    // has definitively returned null (quota exhausted / timeout).
+    final int? fitScore =
+        matchResult?.matchScore ?? (waitingForAI ? null : localFitScore);
+    final bool showMatchLoading = waitingForAI;
     final String? reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;
@@ -244,8 +283,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
               ),
             ],
           ),
-          child: IntrinsicHeight(
-            child: Row(
+          child: Row(
               children: [
                 if (techScore > 0) ...[
                   Expanded(
@@ -256,21 +294,23 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                       icon: Icons.memory_outlined,
                     ),
                   ),
-                  VerticalDivider(
+                  // Thin divider drawn as a box — avoids IntrinsicHeight double layout pass.
+                  Container(
                     width: 1,
-                    thickness: 1,
+                    height: 52,
+                    margin: const EdgeInsets.symmetric(vertical: 12),
                     color: context.dividerColor,
-                    indent: 12,
-                    endIndent: 12,
                   ),
                 ],
                 Expanded(
                   child: fitScore != null
-                      ? _AnimatedScoreCell(
-                          label: context.l10n?.yourMatch ?? 'Your Match',
-                          score: fitScore,
-                          color: matchColor,
-                          icon: Icons.person_outline,
+                      ? RepaintBoundary(
+                          child: _AnimatedScoreCell(
+                            label: context.l10n?.yourMatch ?? 'Your Match',
+                            score: fitScore,
+                            color: matchColor,
+                            icon: Icons.person_outline,
+                          ),
                         )
                       : showMatchLoading
                           ? Padding(
@@ -321,16 +361,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                                           ),
                                         ),
                                         const SizedBox(height: 2),
-                                        Text(
-                                          _localizedMatchLoadingText(context),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.primaryBlue,
-                                          ),
-                                        ),
+                                        _AiStepText(productId: widget.product.id),
                                       ],
                                     ),
                                   ),
@@ -404,7 +435,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                 ),
               ],
             ),
-          ),
         ),
         // Gemini reason text (tap to expand)
         if (reason != null && fitScore != null)
@@ -658,6 +688,33 @@ class _AnimatedScoreCellState extends State<_AnimatedScoreCell>
   }
 }
 
+/// Tiny Consumer that watches ONLY the AI step message so that step changes
+/// don't cause the entire _ScoreDuo tree to rebuild.
+class _AiStepText extends ConsumerWidget {
+  final String productId;
+  const _AiStepText({required this.productId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final msg = ref.watch(aiMatchStepProvider(productId));
+    final text = msg.isNotEmpty ? msg : _localizedMatchLoadingText(context);
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      child: Text(
+        key: ValueKey(text),
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.primaryBlue,
+        ),
+      ),
+    );
+  }
+}
+
 class _ScoreCell extends StatelessWidget {
   final String label;
   final int score;
@@ -869,4 +926,29 @@ class _CircularScore extends StatelessWidget {
       ],
     );
   }
+}
+
+// ─── ISOLATE HELPERS for background fit-score computation ────────────────────
+
+class _FitScoreParams {
+  final UserEntity user;
+  final ProductEntity product;
+  final BehaviorSignals behavior;
+  const _FitScoreParams({
+    required this.user,
+    required this.product,
+    required this.behavior,
+  });
+}
+
+int _computeFitScoreIsolate(_FitScoreParams params) {
+  final algo = ProfileAlgorithmService();
+  return algo
+      .calculateTotalFitScore(
+        user: params.user,
+        product: params.product,
+        behavior: params.behavior,
+      )
+      .round()
+      .clamp(0, 100);
 }

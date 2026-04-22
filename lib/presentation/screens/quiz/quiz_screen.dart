@@ -415,7 +415,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'These selections influence AI explanations and score weighting.',
       ),
       type: _StepType.multi,
-      isRequired: false,
+      isRequired: true,
       options: const [
         _QuizOption(
           value: 'price',
@@ -518,7 +518,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'Current devices reinforce ecosystem affinity and compatibility scoring.',
       ),
       type: _StepType.multi,
-      isRequired: false,
+      isRequired: true,
       options: _buildCurrentDeviceOptions(),
     ),
     _QuizStep(
@@ -536,7 +536,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'Choosing gaming lifts gaming-oriented gear, while productivity lifts work/school products.',
       ),
       type: _StepType.single,
-      isRequired: false,
+      isRequired: true,
       options: const [
         _QuizOption(
           value: 'gaming_setup',
@@ -658,7 +658,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'The profile algorithm fine-tunes category priority with this signal.',
       ),
       type: _StepType.single,
-      isRequired: false,
+      isRequired: true,
       options: _buildProfessionOptions(),
     ),
     _QuizStep(
@@ -676,7 +676,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'Service choices influence ecosystem affinity and subscription density.',
       ),
       type: _StepType.multi,
-      isRequired: false,
+      isRequired: true,
       options: _buildSubscriptionOptions(),
     ),
   ];
@@ -2464,8 +2464,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }
 
   bool _canContinue(_QuizStep step) {
-    if (!step.isRequired) return true;
-
+    // All steps are now required — no step can be skipped.
     switch (step.field) {
       case 'interestCategories':
         return _interestCategories.length >= 3;
@@ -2475,6 +2474,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         return _budgetRange != null;
       case 'ageRange':
         return _ageRange != null;
+      // Multi-select steps: at least 1 item must be chosen.
+      case 'priorities':
+        return _priorities.isNotEmpty;
+      case 'currentDevices':
+        return _currentDevices.isNotEmpty;
+      case 'subscriptions':
+        return _subscriptions.isNotEmpty;
+      case 'usageIntent':
+        return _usageIntent != null;
+      case 'profession':
+        return _profession != null;
       default:
         return true;
     }
@@ -2772,7 +2782,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                           borderRadius: BorderRadius.circular(22),
                         ),
                       ),
-                      onPressed: () => context.go(AppRoutes.home),
+                      onPressed: () => _navigateToHomeWithAnimation(),
                       child: Text(
                         _t('Keşfe başla', 'Start exploring'),
                         style: const TextStyle(
@@ -2787,6 +2797,23 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _navigateToHomeWithAnimation() {
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: true,
+        transitionDuration: const Duration(milliseconds: 400),
+        pageBuilder: (_, __, ___) => _HomePreparationScreen(
+          isTurkish: _isTurkish,
+          onDone: () {
+            if (mounted) context.go(AppRoutes.home);
+          },
+        ),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
       ),
     );
   }
@@ -2851,11 +2878,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     const SizedBox(height: 8),
                     Text(
                       _buildProfileHeadline(heroCategory),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 28,
-                        height: 1.08,
+                        fontSize: 26,
+                        height: 1.1,
                         fontWeight: FontWeight.w900,
                         color: _primaryTextColor,
                       ),
@@ -2863,8 +2888,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     const SizedBox(height: 10),
                     Text(
                       _buildProfileSubheadline(),
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
                         height: 1.5,
@@ -3191,7 +3214,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         subtitle: '',
         algorithmHint: '',
         type: _StepType.single,
-        isRequired: false,
+        isRequired: true,
         options: const [],
       ),
     );
@@ -3385,4 +3408,231 @@ class _HeaderButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── HOME PREPARATION ANIMATION SCREEN ───────────────────────────────────────
+
+class _HomePreparationScreen extends StatefulWidget {
+  final bool isTurkish;
+  final VoidCallback onDone;
+
+  const _HomePreparationScreen({
+    required this.isTurkish,
+    required this.onDone,
+  });
+
+  @override
+  State<_HomePreparationScreen> createState() =>
+      _HomePreparationScreenState();
+}
+
+class _HomePreparationScreenState extends State<_HomePreparationScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _progress;
+  int _stepIndex = 0;
+
+  static const _stepsEn = [
+    'Analyzing your profile…',
+    'Personalizing category rankings…',
+    'Calibrating AI match scores…',
+    'Preparing your discovery feed…',
+    'Homepage is ready for you!',
+  ];
+
+  static const _stepsTr = [
+    'Profilin analiz ediliyor…',
+    'Kategori sıralamaları kişiselleştiriliyor…',
+    'AI eşleşme skorları kalibre ediliyor…',
+    'Keşif akışın hazırlanıyor…',
+    'Ana sayfa kişisel kullanım için hazır!',
+  ];
+
+  List<String> get _steps => widget.isTurkish ? _stepsTr : _stepsEn;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2800),
+    );
+    _progress = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+    _ctrl.addListener(() {
+      final idx = (_ctrl.value * (_steps.length - 1)).floor()
+          .clamp(0, _steps.length - 1);
+      if (idx != _stepIndex && mounted) {
+        setState(() => _stepIndex = idx);
+      }
+    });
+    _ctrl.forward().whenComplete(() {
+      if (mounted) {
+        setState(() => _stepIndex = _steps.length - 1);
+        Future.delayed(const Duration(milliseconds: 600), widget.onDone);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF0A0F1E) : const Color(0xFFF0F4FF);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary =
+        isDark ? Colors.white60 : const Color(0xFF475569);
+
+    return Scaffold(
+      backgroundColor: bg,
+      body: Stack(
+        children: [
+          // Soft background glow
+          Positioned.fill(
+            child: CustomPaint(painter: _GlowPainter()),
+          ),
+          SafeArea(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 2),
+                // Circular progress indicator with percentage
+                AnimatedBuilder(
+                  animation: _progress,
+                  builder: (_, __) {
+                    final percent = (_progress.value * 100).round();
+                    return SizedBox(
+                      width: 160,
+                      height: 160,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox.expand(
+                            child: CircularProgressIndicator(
+                              value: _progress.value,
+                              strokeWidth: 8,
+                              backgroundColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.08),
+                              valueColor: const AlwaysStoppedAnimation(
+                                AppTheme.brandCyan,
+                              ),
+                              strokeCap: StrokeCap.round,
+                            ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$percent%',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.brandCyan,
+                                  height: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 40),
+                // Animated step text
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.15),
+                        end: Offset.zero,
+                      ).animate(anim),
+                      child: child,
+                    ),
+                  ),
+                  child: Padding(
+                    key: ValueKey(_stepIndex),
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+                      _steps[_stepIndex],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  widget.isTurkish
+                      ? 'Ana sayfa kişisel kullanım için hazırlanıyor'
+                      : 'Preparing homepage for personal use',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textSecondary,
+                  ),
+                ),
+                const Spacer(flex: 3),
+                // Compair brand mark
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.compare_arrows_rounded,
+                          size: 16, color: AppTheme.brandCyan),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Compair',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.brandCyan,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlowPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0, -0.3),
+        radius: 0.8,
+        colors: [
+          AppTheme.brandCyan.withValues(alpha: 0.10),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }

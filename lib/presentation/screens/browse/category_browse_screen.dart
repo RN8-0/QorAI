@@ -220,7 +220,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   List<ProductEntity> _sanitizeCategoryProducts(
     Iterable<ProductEntity> products,
   ) {
-    final filtered = ProductFilter.filter(products.toList());
+    // Category browse is intentional navigation — show all non-defunct brands.
+    // Strict whitelist is only for discovery feeds where quality matters more.
+    final filtered = ProductFilter.filterRelaxed(products.toList());
     final uniqueIds = <String>{};
     return filtered.where((product) => uniqueIds.add(product.id)).toList();
   }

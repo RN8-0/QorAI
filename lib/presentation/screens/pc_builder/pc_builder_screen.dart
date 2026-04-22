@@ -1,6 +1,7 @@
 /// Compair - PC Builder (PCPartPicker-style with compatibility)
 library;
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -130,12 +131,16 @@ String _pcText(BuildContext context, {required String en, required String tr}) {
 
 class _Compat {
   static String _normalizeSocket(String raw) {
-    return raw
-        .trim()
-        .toUpperCase()
-        .replaceAll('SOCKET', '')
-        .replaceAll('FCLGA', 'LGA')
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    var s = raw.trim().toUpperCase().replaceAll('SOCKET', '').replaceAll('FCLGA', 'LGA');
+    // Strip non-alphanumeric (spaces, hyphens, etc.) first.
+    s = s.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    // Normalize Threadripper socket names so "STR5" and "TR5" compare equal.
+    // sTR4 → uppercase STR4 → strip 'S' prefix → TR4
+    // This handles both sTR4/sTR5 (official) and TR4/TR5 (shorthand) forms.
+    if (s.startsWith('STR') && s.length > 3 && RegExp(r'^STR\d+$').hasMatch(s)) {
+      s = s.substring(1); // STR5 → TR5
+    }
+    return s;
   }
 
   static String? _specValue(ProductEntity p, List<String> keys) {
@@ -183,8 +188,11 @@ class _Compat {
       RegExp(r'\bLGA\s*(\d{3,4})\b'), // LGA1200, LGA1700, LGA1851
       RegExp(r'\bFCLGA\s*(\d{3,4})\b'), // FCLGA1200
       RegExp(r'\bAM[345]\b'), // AM3, AM4, AM5
-      RegExp(r'\bTRX\d+\b'), // TRX40, TRX50
-      RegExp(r'\bSTRP\d+\b'), // STRP9
+      RegExp(r'\bTRX\d+\b'), // TRX40, TRX50 (legacy platform)
+      RegExp(r'\bSTR\d+\b'), // sTR4, sTR5 (official Threadripper socket)
+      RegExp(r'\bTR\d+\b'), // TR4, TR5 (shorthand in many product names)
+      RegExp(r'\bWRX\d+\b'), // WRX80, WRX90 (AMD Threadripper Pro platform)
+      RegExp(r'\bSTRP\d+\b'), // STRP9 (Intel Xeon Scalable)
     ];
     for (final pattern in socketPatterns) {
       final m = pattern.firstMatch(name);
@@ -204,7 +212,20 @@ class _Compat {
     for (final value in _allTexts(p)) {
       final text = value.toUpperCase();
       for (final match in RegExp(
-        r'\b(?:FC)?LGA\s*\d{3,4}\b|\bAM[345]\b|\bTRX\d+\b|\bSTRP\d+\b',
+        // LGA (Intel): LGA1200, LGA1700, LGA1851, FCLGA variants
+        r'\b(?:FC)?LGA\s*\d{3,4}\b'
+        // AMD desktop: AM3, AM4, AM5
+        r'|\bAM[345]\b'
+        // AMD Threadripper legacy: TRX40, TRX50 (platform designation)
+        r'|\bTRX\d+\b'
+        // AMD Threadripper modern: sTR4, sTR5 (official socket name)
+        r'|\bSTR\d+\b'
+        // AMD Threadripper shorthand used in many product names: TR4, TR5, TR6
+        r'|\bTR\d+\b'
+        // AMD EPYC/WRX platform: WRX80, WRX90
+        r'|\bWRX\d+\b'
+        // Intel Xeon Scalable Processor socket
+        r'|\bSTRP\d+\b',
       ).allMatches(text)) {
         addToken(match.group(0)!);
       }
@@ -223,7 +244,7 @@ class _Compat {
         final trimmed = part.trim();
         if (trimmed.isEmpty) continue;
         for (final match in RegExp(
-          r'(?:FC)?LGA\s*\d{3,4}|AM[345]|TRX\d+|STRP\d+',
+          r'(?:FC)?LGA\s*\d{3,4}|AM[345]|TRX\d+|STR\d+|TR\d+|WRX\d+|STRP\d+',
         ).allMatches(trimmed.toUpperCase())) {
           addToken(match.group(0)!);
         }
@@ -291,6 +312,11 @@ class _Compat {
     // Check for DDR without word boundary (e.g. "DDR4-3200" in name)
     final ddrLoose = RegExp(r'DDR(\d)').firstMatch(nameUp);
     if (ddrLoose != null) return 'DDR${ddrLoose.group(1)}';
+    // Detect DDR generation from model numbers where D3/D4/D5 is used (e.g. "OWC1333D3W8M64K")
+    final dModel = RegExp(r'D(3|4|5)(?=[A-Z0-9])').firstMatch(nameUp);
+    if (dModel != null) return 'DDR${dModel.group(1)}';
+    // Detect by speed suffix that uniquely identifies gen: speeds ≤2133 → DDR3, 2133-6400 → DDR4/DDR5
+    // (too ambiguous to infer reliably, so return null)
     return null;
   }
 
@@ -694,6 +720,24 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     );
     // Restore state from session provider
     _restoreFromSession();
+    // Preload all PC component categories in the background so picker opens
+    // instantly — no spinner when the user taps "Seç" for any component.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _preloadAllCategories();
+    });
+  }
+
+  Future<void> _preloadAllCategories() async {
+    for (final component in PcComponent.values) {
+      try {
+        // Fire-and-forget: read the future to warm up the provider & in-memory cache.
+        unawaited(
+          ref.read(pcBuilderProductsProvider(component.categoryId).future),
+        );
+        // Small stagger so all fetches don't hit Typesense simultaneously.
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+      } catch (_) {}
+    }
   }
 
   void _restoreFromSession() {
@@ -752,8 +796,16 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       if (sock != null) {
         if (sock.contains('AM5')) return 'DDR5';
         if (sock.contains('AM4')) return 'DDR4';
+        // Threadripper / Threadripper Pro
+        if (sock.contains('TR5') || sock.contains('STR5')) return 'DDR5';
+        if (sock.contains('TR4') || sock.contains('STR4')) return 'DDR4';
+        if (sock.contains('SWRX8') || sock.contains('WRX8')) return 'DDR4';
+        if (sock.contains('TRX50') || sock.contains('WRX90')) return 'DDR5';
+        // Intel sockets
         if (sock.contains('1851'))
           return 'DDR5'; // LGA1851 = Arrow Lake, DDR5 only
+        if (sock.contains('1700'))
+          return null; // LGA1700 supports DDR4 or DDR5 — let motherboard decide
         if (sock.contains('1200'))
           return 'DDR4'; // LGA1200 = Comet Lake, DDR4 only
         if (sock.contains('1151'))
@@ -1347,18 +1399,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
   }
 
   void _openPicker(PcComponent component) async {
-    // PC Builder slot limit: block new component if free tier limit reached
-    final isNewSlot = !_selected.containsKey(component);
-    if (isNewSlot) {
-      final sub = ref.read(subscriptionServiceProvider);
-      if (!sub.isPremium &&
-          _selected.length >= AppConstants.freePcBuilderSlots) {
-        _showUpgradeSnackbar(
-          'PC Builder\'de ücretsiz sınır: ${AppConstants.freePcBuilderSlots} bileşen',
-        );
-        return;
-      }
-    }
+    // Free tier: unlimited component slots — only the AI analysis is gated.
+    // (The old 5-slot cap has been removed so users can build any configuration
+    //  freely; the paywall only applies when they request the AI analysis.)
 
     final result = await showModalBottomSheet<ProductEntity>(
       context: context,
@@ -1397,6 +1440,14 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       ),
     );
     if (result != null && mounted) {
+      // Before applying the new selection, figure out which previously-selected
+      // components become incompatible so we can auto-clear them and warn.
+      final oldSocket = _selectedSocket;
+      final oldMemType = _selectedMemType;
+      final oldFormFactor = _selected[PcComponent.motherboard] != null
+          ? _Compat.formFactor(_selected[PcComponent.motherboard]!)
+          : null;
+
       setState(() {
         _selected[component] = result;
         _aiAnalysis = null;
@@ -1404,6 +1455,82 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         _upgradeFocus = null;
         _upgradeSuggestions = const [];
       });
+
+      // Detect compatibility breakage caused by the change.
+      final newSocket = _selectedSocket;
+      final newMemType = _selectedMemType;
+      final newFormFactor = _selected[PcComponent.motherboard] != null
+          ? _Compat.formFactor(_selected[PcComponent.motherboard]!)
+          : null;
+
+      final removed = <String>[];
+      setState(() {
+        // CPU socket changed → clear incompatible motherboard / cooler.
+        if (oldSocket != null && newSocket != null && oldSocket != newSocket) {
+          final mb = _selected[PcComponent.motherboard];
+          if (mb != null) {
+            final mbSocket = _Compat.socket(mb);
+            if (mbSocket != null && mbSocket != newSocket) {
+              _selected.remove(PcComponent.motherboard);
+              removed.add(
+                _pcText(context, tr: 'Anakart', en: 'Motherboard'),
+              );
+            }
+          }
+          final cooler = _selected[PcComponent.cooler];
+          if (cooler != null) {
+            final coolerSocket = _Compat.socket(cooler);
+            if (coolerSocket != null && coolerSocket != newSocket) {
+              _selected.remove(PcComponent.cooler);
+              removed.add(_pcText(context, tr: 'Soğutucu', en: 'Cooler'));
+            }
+          }
+        }
+        // Memory type changed → clear incompatible RAM.
+        if (oldMemType != null &&
+            newMemType != null &&
+            oldMemType != newMemType) {
+          final ram = _selected[PcComponent.ram];
+          if (ram != null) {
+            final ramType = _Compat.memoryType(ram);
+            if (ramType != null && ramType != newMemType) {
+              _selected.remove(PcComponent.ram);
+              removed.add(_pcText(context, tr: 'RAM', en: 'RAM'));
+            }
+          }
+        }
+        // Form factor changed → clear incompatible case.
+        if (oldFormFactor != null &&
+            newFormFactor != null &&
+            oldFormFactor != newFormFactor) {
+          final pcCase = _selected[PcComponent.pcCase];
+          if (pcCase != null) {
+            final caseFF = _Compat.formFactor(pcCase);
+            if (caseFF != null && caseFF != newFormFactor) {
+              _selected.remove(PcComponent.pcCase);
+              removed.add(_pcText(context, tr: 'Kasa', en: 'Case'));
+            }
+          }
+        }
+      });
+
+      if (removed.isNotEmpty && mounted) {
+        final removedStr = removed.join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _pcText(
+                context,
+                tr: '⚠️ Uyumsuz parçalar kaldırıldı: $removedStr',
+                en: '⚠️ Incompatible parts removed: $removedStr',
+              ),
+            ),
+            duration: const Duration(seconds: 4),
+            backgroundColor: AppTheme.warning,
+          ),
+        );
+      }
+
       _saveToSession();
       if (_selected.length == PcComponent.values.length && !_showCelebration) {
         _showCelebration = true;
@@ -1501,8 +1628,14 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       if (!sub.canUsePcBuilderAi) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'PC Builder AI daily limit reached. Upgrade to Premium for unlimited access!',
+            content: Text(
+              _pcText(
+                context,
+                tr: 'PC Builder AI günlük limitine ulaştınız (${AppConstants.freePcBuilderAiLimit}/gün). '
+                    'Sınırsız analiz için Premium\'a geçin!',
+                en: 'PC Builder AI daily limit reached (${AppConstants.freePcBuilderAiLimit}/day). '
+                    'Upgrade to Premium for unlimited access!',
+              ),
             ),
             action: SnackBarAction(
               label: 'Premium',
@@ -2660,7 +2793,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         sections.add(
           _bulletSection(
             context,
-            _pcText(context, en: '💪 Strengths', tr: '💪 Guclu yonler'),
+            _pcText(context, en: '💪 Strengths', tr: '💪 Güçlü Yönler'),
             items,
             AppTheme.success,
           ),
@@ -2679,7 +2812,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         sections.add(
           _bulletSection(
             context,
-            _pcText(context, en: '⚠️ Weaknesses', tr: '⚠️ Zayif yonler'),
+            _pcText(context, en: '⚠️ Weaknesses', tr: '⚠️ Zayıf Yönler'),
             items,
             AppTheme.amber500,
           ),
@@ -2716,8 +2849,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     Text(
                       _pcText(
                         context,
-                        en: 'Upgrade priority',
-                        tr: 'Oncelikli upgrade',
+                        en: 'Upgrade Priority',
+                        tr: 'Öncelikli Yükseltme',
                       ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
@@ -2778,7 +2911,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                       _pcText(
                         context,
                         en: 'AI recommendations',
-                        tr: 'AI onerileri',
+                        tr: 'AI Önerileri',
                       ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
@@ -2858,7 +2991,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Power Analysis',
+                      _pcText(context, en: 'Power Analysis', tr: 'Güç Analizi'),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -4288,30 +4421,40 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
 
   List<ProductEntity> _applyFilters(List<ProductEntity> all) {
     var list = List<ProductEntity>.from(all);
-    // Compat — socket filter for MB and cooler (lenient: unknown socket = included with lower priority)
+    // Compat — socket filter for MB and cooler (lenient: unknown socket = included)
     if (_compatOnly &&
         widget.socketFilter != null &&
         (widget.component == PcComponent.motherboard ||
             widget.component == PcComponent.cooler)) {
-      final t = widget.socketFilter!.toUpperCase();
+      final t = _Compat._normalizeSocket(widget.socketFilter!);
       list = list.where((p) {
-        if (widget.component == PcComponent.cooler) {
-          return _Compat.supportsSocket(p, t) ||
-              _Compat.socketTokens(p).isEmpty;
-        }
-        final s = _Compat.socket(p);
-        if (s == null) return false;
-        return s.contains(t) || t.contains(s);
+        final tokens = _Compat.socketTokens(p);
+        // No socket info in the product data → be lenient, include it.
+        if (tokens.isEmpty) return true;
+        // Check normalized token set for any overlap with the target socket.
+        return tokens.any(
+          (tok) => tok == t || tok.contains(t) || t.contains(tok),
+        );
       }).toList();
     }
-    // Compat — memory type filter for RAM (lenient: unknown mem type = included)
+    // Compat — memory type filter for RAM (strict: exclude wrong DDR gen)
     if (_compatOnly &&
         widget.memTypeFilter != null &&
         widget.component == PcComponent.ram) {
       final t = widget.memTypeFilter!.toUpperCase();
       list = list.where((p) {
         final m = _Compat.memoryType(p);
-        if (m == null) return false;
+        // Unknown memory type: be lenient ONLY if the product name doesn't
+        // contain a clear DDR marker that contradicts the filter.
+        if (m == null) {
+          final name = p.name.toUpperCase();
+          // If name contains a DDR marker that contradicts target → exclude.
+          final contradicts = RegExp(r'DDR(\d)').firstMatch(name);
+          if (contradicts != null && 'DDR${contradicts.group(1)}' != t) {
+            return false;
+          }
+          return true; // genuinely unknown → include
+        }
         return m.contains(t) || t.contains(m);
       }).toList();
     }
@@ -4322,7 +4465,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             widget.component == PcComponent.motherboard)) {
       list = list.where((p) {
         final ff = _Compat.formFactor(p);
-        if (ff == null) return false;
+        // No form factor info → be lenient, include it.
+        if (ff == null) return true;
         if (widget.component == PcComponent.pcCase) {
           // Case must fit the MB: case must be >= MB form factor
           return _Compat.formFactorCompatible(widget.formFactorFilter, ff);

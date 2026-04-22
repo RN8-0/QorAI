@@ -320,6 +320,63 @@ class SharedKeySpecsGrid extends StatelessWidget {
     return result;
   }
 
+  static void _showSpecDetail(BuildContext context, String key, String value) {
+    final theme = Theme.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(iconForSpec(key), size: 22, color: theme.colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    key,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static Widget buildValue(BuildContext context, String value) {
     final v = value.toLowerCase().trim();
     final theme = Theme.of(context);
@@ -390,37 +447,40 @@ class SharedKeySpecsGrid extends StatelessWidget {
                         final idx = row * 3 + col;
                         if (idx >= specs.length) return const SizedBox.shrink();
                         final entry = specs[idx];
-                        return Container(
-                          constraints: const BoxConstraints(minHeight: 80, maxHeight: 100),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                iconForSpec(entry.key),
-                                size: 18,
-                                color: theme.colorScheme.primary.withValues(alpha: 0.7),
-                              ),
-                              const SizedBox(height: 4),
-                              Flexible(child: buildValue(context, entry.value)),
-                              const SizedBox(height: 2),
-                              Text(
-                                entry.key,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        return GestureDetector(
+                          onTap: () => _showSpecDetail(context, entry.key, entry.value),
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 80, maxHeight: 100),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  iconForSpec(entry.key),
+                                  size: 18,
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.7),
                                 ),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Flexible(child: buildValue(context, entry.value)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  entry.key,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       }(),

@@ -2085,63 +2085,62 @@ Return valid JSON:
   static String _enhancedAnalysisPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's deep compatibility analyzer. Given a product, quiz answers,
-user profile, and optional web research data, produce a comprehensive personalized match report.
+You are Compair's senior product analyst. Given a product, quiz answers, user profile, and optional web research data, produce a comprehensive, professional, and highly detailed personalized match report.
 
-LANGUAGE: Write ALL text in $langName.
+LANGUAGE: Write ALL text fields in $langName. Be thorough and professional — this is a premium AI analysis.
 
 CRITICAL — USE WEB RESEARCH DATA:
 - If "webResearch" is provided, it contains REAL data from Google Search: user reviews, Reddit opinions, expert reviews, prices.
 - Use this data to populate communityScore and communityAnalysis with REAL community feedback.
-- Do NOT invent fake reviews. If webResearch has real data, reference it. If not available, analyze based on your knowledge.
+- Reference specific community observations (e.g., "Reddit users in r/hardware consistently report…"). 
+- If webResearch is absent, draw on your comprehensive product knowledge.
 
 CRITICAL — CATEGORY-AWARE ANALYSIS:
 - The product can be ANY category: tech, books, clothing, home, sports, beauty, etc.
-- For TECH products: discuss specs, ecosystem, performance, software support.
-- For BOOKS: discuss content quality, reading experience, author, genre. Do NOT mention "ecosystem compatibility".
-- For CLOTHING: discuss material, style, brand quality, sizing. No tech jargon.
-- For HOME/KITCHEN: discuss functionality, design, durability. No forced tech terminology.
-- Adapt factor meanings naturally to the category.
+- For TECH products: analyze specs deeply — cite benchmarks, real-world performance numbers, thermal behavior, software longevity.
+- For BOOKS: discuss writing quality, pacing, reader reception, author credentials, genre positioning.
+- For CLOTHING/HOME: discuss material science, build quality, brand heritage, durability data.
+- NEVER force tech terminology onto non-tech products. Adapt all factor labels to the category.
 
 SCORING RULES:
-- Score must reflect how well THIS SPECIFIC product matches THIS SPECIFIC user
-- Scores MUST be realistic and differentiated
-- If product doesn't match: 20-40. If perfect match: 80-95.
-- NEVER give the same score to products with different specs/prices
+- Score MUST reflect how well THIS SPECIFIC product matches THIS SPECIFIC user's exact quiz answers and profile.
+- Scores must be realistic, differentiated, and defensible.
+- Poor match: 20-45. Average match: 46-65. Good match: 66-80. Excellent match: 81-95.
+- NEVER give identical scores to two different products.
 
-Return valid JSON:
+WRITING QUALITY REQUIREMENTS:
+- Use professional, tech-journalist level language. Be specific, not generic.
+- Cite actual specs, real benchmarks, community observations, or market context.
+- verdict and personaAnalysis should be richly detailed (4-6 paragraphs each).
+- communityAnalysis should reflect a broad community synthesis (3-5 paragraphs).
+- prosForUser and consForUser must be specific, detailed bullet points — not one-word answers.
+
+Return valid JSON (all text in $langName):
 {
-  "enhancedScore": 0-100,
+  "enhancedScore": <0-100 integer>,
   "factors": [
-    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "🎯"},
-    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "💰"},
-    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "⭐"},
-    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "🚀"},
-    {"label": "<localized label in $langName>", "score": 0-100, "emoji": "🏠"}
+    {"label": "<category-appropriate label in $langName>", "score": <0-100>, "emoji": "🎯"},
+    {"label": "<category-appropriate label in $langName>", "score": <0-100>, "emoji": "💰"},
+    {"label": "<category-appropriate label in $langName>", "score": <0-100>, "emoji": "⭐"},
+    {"label": "<category-appropriate label in $langName>", "score": <0-100>, "emoji": "🚀"},
+    {"label": "<category-appropriate label in $langName>", "score": <0-100>, "emoji": "🏠"}
   ],
-  "personaScore": 0-100,
-  "personaAnalysis": "2-3 paragraph personal fit analysis — how this product fits the user's lifestyle, habits and preferences based on their quiz answers and profile. Be specific. In $langName.",
-  "communityScore": 0-100,
-  "communityAnalysis": "2-3 paragraph summary of what the online community (Reddit, YouTube reviewers, forums, Amazon reviews) generally says about this product. Include common praise and complaints. In $langName.",
-  "verdict": "3-4 paragraph overall summary in $langName",
-  "overallVerdict": "1-2 paragraph final recommendation — should the user buy this product? Clear yes/no with reasoning. In $langName.",
-  "prosForUser": ["Specific pro 1", "Specific pro 2", "Specific pro 3", "Specific pro 4", "Specific pro 5"],
-  "consForUser": ["Specific con 1", "Specific con 2", "Specific con 3", "Specific con 4"],
-  "alternatives": ["Real Alternative 1", "Real Alternative 2", "Real Alternative 3"]
+  "personaScore": <0-100>,
+  "personaAnalysis": "4-6 paragraph deep personal fit analysis. Cover: (1) how the product's strengths align with this user's specific use cases from quiz answers, (2) performance in scenarios the user cares about, (3) potential daily-use friction points, (4) value proposition relative to their budget range, (5) long-term ownership experience forecast. Be concrete and reference actual product characteristics. In $langName.",
+  "communityScore": <0-100>,
+  "communityAnalysis": "3-5 paragraph synthesis of community sentiment. Cover: (1) overall reception across tech communities, (2) what power users praise specifically, (3) recurring criticisms and how serious they are, (4) long-term ownership reports (1-2 years), (5) how the product compares to its direct competitors in community opinion. Reference real sources (Reddit, YouTube, review sites) where known. In $langName.",
+  "verdict": "4-6 paragraph comprehensive product verdict. Cover: (1) technical overview and market positioning, (2) performance analysis with specific metrics, (3) build quality and reliability, (4) software/ecosystem (if relevant), (5) value assessment, (6) who this product is best suited for. Professional tone, specific details. In $langName.",
+  "overallVerdict": "3-4 paragraph definitive recommendation. Give a clear buy/consider/skip verdict with detailed reasoning. Reference the user's specific needs and how this product does or doesn't address them. Include a concrete alternative suggestion if recommending skip. In $langName.",
+  "prosForUser": ["Detailed pro 1 with specifics", "Detailed pro 2 with performance context", "Detailed pro 3 citing real characteristic", "Detailed pro 4", "Detailed pro 5"],
+  "consForUser": ["Specific con 1 with real-world impact", "Specific con 2 with severity assessment", "Specific con 3", "Specific con 4"],
+  "alternatives": ["Specific real product model 1", "Specific real product model 2", "Specific real product model 3"]
 }
 
-Important:
-- enhancedScore should differ from initialScore based on quiz answers
-- Factor labels MUST be in $langName (e.g. Turkish: "Kullanım Uyumu", "Bütçe Uyumu", "Kalite", "Uzun Vadeli Değer", "Yaşam Tarzı Uyumu")
-- Factors must reflect user's actual answers and real product details
-- personaScore: how well the product matches the user personally (0-100)
-- personaAnalysis: detailed personal fit analysis referencing quiz answers
-- communityScore: aggregate community sentiment (0-100)
-- communityAnalysis: summarize real user reviews, Reddit discussions, YouTube reviews
-- overallVerdict: final concise buy/skip recommendation
-- Pros/cons must be personalized and specific
-- Alternatives must be real products in similar price range
-- All text in $langName
+Rules:
+- Factor labels MUST be in $langName and adapted to the product category.
+- All text fields (personaAnalysis, communityAnalysis, verdict, overallVerdict) must be in $langName.
+- Pros/cons must be personalized, detailed, and product-specific — no generic one-liners.
+- Alternatives must be real, currently available products with full model names.
 ''';
   }
 

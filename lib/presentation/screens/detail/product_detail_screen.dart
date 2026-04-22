@@ -38,6 +38,7 @@ import 'package:compair/presentation/widgets/shared/shared_premium_section.dart'
 import 'package:compair/presentation/widgets/login_required_dialog.dart';
 import 'package:compair/services/spec_translation_service.dart';
 import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:compair/core/product_name_localizer.dart';
 import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:video_player/video_player.dart';
@@ -125,24 +126,37 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     _syncAiPageContext();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Overview renders on next frame — keeps navigation smooth.
-      setState(() => _contentReady = true);
-      // Defer heavy AI prefetch until the page-transition animation is done
-      // so the user doesn't see frame skips during the push.
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (!mounted) return;
-        _prefetchMatchScoreOnce();
-      });
-      // Listen to route push animation; enable tabs after animation completes
+      // Defer ALL heavy content until the route push animation fully completes.
+      // Setting _contentReady early (before animation end) causes expensive
+      // widget builds to compete with route animation frames → visible jank.
       final route = ModalRoute.of(context);
       final anim = route?.animation;
       if (anim == null || anim.status == AnimationStatus.completed) {
-        if (mounted) setState(() => _tabViewReady = true);
+        if (mounted) {
+          setState(() {
+            _contentReady = true;
+            _tabViewReady = true;
+          });
+          Future.delayed(const Duration(milliseconds: 80), () {
+            if (mounted) _prefetchMatchScoreOnce();
+          });
+        }
       } else {
         void listener(AnimationStatus s) {
           if (s == AnimationStatus.completed) {
             anim.removeStatusListener(listener);
-            if (mounted) setState(() => _tabViewReady = true);
+            if (!mounted) return;
+            // Show overview content first (one frame for layout settle).
+            setState(() => _contentReady = true);
+            // Show tabs one frame later so overview layout doesn't race tabs.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              setState(() => _tabViewReady = true);
+              // Start AI fetch after tabs are ready.
+              Future.delayed(const Duration(milliseconds: 80), () {
+                if (mounted) _prefetchMatchScoreOnce();
+              });
+            });
           }
         }
 
@@ -173,8 +187,15 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   }
 
   void _prefetchMatchScoreOnce() {
-    final locale = ref.read(localeProvider);
-    final languageCode = (locale?.languageCode ?? 'en').toLowerCase();
+    // Context locale is always up-to-date; prefer it over localeProvider which
+    // may still be null during the first frame after login.
+    String languageCode;
+    try {
+      languageCode = Localizations.localeOf(context).languageCode.toLowerCase();
+    } catch (_) {
+      final locale = ref.read(localeProvider);
+      languageCode = (locale?.languageCode ?? 'en').toLowerCase();
+    }
     _prefetchMatchScore(languageCode);
   }
 
@@ -211,6 +232,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       child: Scaffold(
         backgroundColor: context.backgroundColor,
         body: NestedScrollView(
+          physics: const ClampingScrollPhysics(),
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             SliverToBoxAdapter(child: _ViewTracker(productId: product.id)),
             // Pinned action bar with back / share / favorite buttons
@@ -300,7 +322,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             // Product image hero
             _HeroHeader(product: product),
             SliverToBoxAdapter(
-              child: _TitlePriceSection(product: product, country: country),
+              child: RepaintBoundary(
+                child: _TitlePriceSection(product: product, country: country),
+              ),
             ),
             SliverToBoxAdapter(
               child: RepaintBoundary(
@@ -312,34 +336,42 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             ),
             // Overview content — always visible above tabs
             SliverToBoxAdapter(
-              child: _contentReady
-                  ? _OverviewContent(
-                      product: product,
-                      country: country,
-                      isDark: isDark,
-                    )
-                  : const SizedBox(height: 80),
+              child: RepaintBoundary(
+                child: _contentReady
+                    ? _OverviewContent(
+                        product: product,
+                        country: country,
+                        isDark: isDark,
+                      )
+                    : const SizedBox(height: 80),
+              ),
             ),
             SliverPersistentHeader(
               pinned: true,
               delegate: _StickyTabBarDelegate(),
             ),
           ],
-          body: RepaintBoundary(
-            child: _tabViewReady
-                ? Builder(
-                    builder: (context) => _LazyDetailTabView(
-                      controller: DefaultTabController.of(context),
-                      children: [
-                        _SpecsTabContent(product: product, isDark: isDark),
-                        _ReviewsTab(product: product, isDark: isDark),
-                        _SimilarProductsTab(product: product, isDark: isDark),
-                        _AIAnalysisTab(product: product, isDark: isDark),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+          body: _tabViewReady
+              ? Builder(
+                  builder: (context) => _LazyDetailTabView(
+                    controller: DefaultTabController.of(context),
+                    children: [
+                      RepaintBoundary(
+                        child: _SpecsTabContent(product: product, isDark: isDark),
+                      ),
+                      RepaintBoundary(
+                        child: _ReviewsTab(product: product, isDark: isDark),
+                      ),
+                      RepaintBoundary(
+                        child: _SimilarProductsTab(product: product, isDark: isDark),
+                      ),
+                      RepaintBoundary(
+                        child: _AIAnalysisTab(product: product, isDark: isDark),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ),
     );

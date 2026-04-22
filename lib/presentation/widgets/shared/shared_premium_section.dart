@@ -105,38 +105,48 @@ class SharedPremiumFeaturesSectionState
     final predictionResult = predictionAsync.valueOrNull;
     final isLoadingPrediction = predictionAsync is AsyncLoading;
 
-    if (deepAnalysis != null &&
-        !_deepAnalysisExpanded &&
-        !_deepAnalysisUserCollapsed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _deepAnalysisExpanded = true);
-      });
-    }
-    if (alternatives != null &&
-        !_alternativesExpanded &&
-        !_alternativesUserCollapsed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _alternativesExpanded = true);
-      });
-    }
-    if (advisorResult != null && !_advisorExpanded && !_advisorUserCollapsed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _advisorExpanded = true);
-      });
-    }
-    if (predictionResult != null &&
-        !_predictionExpanded &&
-        !_predictionUserCollapsed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _predictionExpanded = true);
-      });
-    }
+    // Step messages for each AI operation
+    final deepStep = ref.watch(aiOperationStepProvider('${pid}_deep'));
+    final altsStep = ref.watch(aiOperationStepProvider('${pid}_alts'));
+    final advisorStep = ref.watch(aiOperationStepProvider('${pid}_advisor'));
+    final predStep = ref.watch(aiOperationStepProvider('${pid}_prediction'));
+
+    // Use ref.listen instead of addPostFrameCallback — prevents rebuild cascade.
+    ref.listen(deepAnalysisCacheProvider(localizedKey), (_, next) {
+      if (next.valueOrNull != null &&
+          !_deepAnalysisExpanded &&
+          !_deepAnalysisUserCollapsed) {
+        setState(() => _deepAnalysisExpanded = true);
+      }
+    });
+    ref.listen(alternativesCacheProvider(localizedKey), (_, next) {
+      if (next.valueOrNull != null &&
+          !_alternativesExpanded &&
+          !_alternativesUserCollapsed) {
+        setState(() => _alternativesExpanded = true);
+      }
+    });
+    ref.listen(advisorCacheProvider(localizedKey), (_, next) {
+      if (next.valueOrNull != null &&
+          !_advisorExpanded &&
+          !_advisorUserCollapsed) {
+        setState(() => _advisorExpanded = true);
+      }
+    });
+    ref.listen(predictionCacheProvider(localizedKey), (_, next) {
+      if (next.valueOrNull != null &&
+          !_predictionExpanded &&
+          !_predictionUserCollapsed) {
+        setState(() => _predictionExpanded = true);
+      }
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // AI Deep Analysis
-        _buildCollapsibleHeader(
+        RepaintBoundary(
+          child: _buildCollapsibleHeader(
           icon: Icons.psychology_rounded,
           title: context.l10n?.aiDeepAnalysis ?? 'AI Derin Analizi',
           subtitle:
@@ -145,16 +155,19 @@ class SharedPremiumFeaturesSectionState
           gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
           isExpanded: _deepAnalysisExpanded,
           isLoading: isLoadingAnalysis,
+          stepMessage: deepStep,
           hasContent: deepAnalysis != null,
           onTap: _toggleDeepAnalysis,
           expandedChild: deepAnalysis != null
               ? _buildDeepAnalysisVisual(deepAnalysis)
               : null,
+          ),
         ),
         const SizedBox(height: 10),
 
         // Smart Alternatives
-        _buildCollapsibleHeader(
+        RepaintBoundary(
+          child: _buildCollapsibleHeader(
           icon: Icons.swap_horizontal_circle_rounded,
           title: context.l10n?.smartAlternatives ?? 'Akıllı Alternatifler',
           subtitle:
@@ -163,16 +176,19 @@ class SharedPremiumFeaturesSectionState
           gradient: const [AppTheme.warning, Color(0xFFF97316)],
           isExpanded: _alternativesExpanded,
           isLoading: isLoadingAlternatives,
+          stepMessage: altsStep,
           hasContent: alternatives != null,
           onTap: _toggleAlternatives,
           expandedChild: alternatives != null
               ? _buildAlternativesVisual(alternatives)
               : null,
+          ),
         ),
         const SizedBox(height: 10),
 
         // AI Product Advisor
-        _buildCollapsibleHeader(
+        RepaintBoundary(
+          child: _buildCollapsibleHeader(
           icon: Icons.support_agent_rounded,
           title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
           subtitle: _txt(
@@ -182,16 +198,19 @@ class SharedPremiumFeaturesSectionState
           gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
           isExpanded: _advisorExpanded,
           isLoading: isLoadingAdvisor,
+          stepMessage: advisorStep,
           hasContent: advisorResult != null,
           onTap: _toggleAdvisor,
           expandedChild: advisorResult != null
               ? _buildAdvisorVisual(advisorResult)
               : null,
+          ),
         ),
         const SizedBox(height: 10),
 
         // Price Prediction
-        _buildCollapsibleHeader(
+        RepaintBoundary(
+          child: _buildCollapsibleHeader(
           icon: Icons.trending_down_rounded,
           title: context.l10n?.pricePrediction ?? 'Price Prediction',
           subtitle: _txt(
@@ -201,11 +220,13 @@ class SharedPremiumFeaturesSectionState
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
           isExpanded: _predictionExpanded,
           isLoading: isLoadingPrediction,
+          stepMessage: predStep,
           hasContent: predictionResult != null,
           onTap: _togglePrediction,
           expandedChild: predictionResult != null
               ? _buildPredictionVisual(predictionResult)
               : null,
+          ),
         ),
       ],
     );
@@ -220,6 +241,7 @@ class SharedPremiumFeaturesSectionState
     required bool isLoading,
     required bool hasContent,
     required VoidCallback onTap,
+    String stepMessage = '',
     Widget? expandedChild,
   }) {
     return GestureDetector(
@@ -271,11 +293,28 @@ class SharedPremiumFeaturesSectionState
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: context.textSecondary,
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: Text(
+                          key: ValueKey(
+                            isLoading && stepMessage.isNotEmpty
+                                ? stepMessage
+                                : subtitle,
+                          ),
+                          isLoading && stepMessage.isNotEmpty
+                              ? stepMessage
+                              : subtitle,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: isLoading && stepMessage.isNotEmpty
+                                ? gradient[0].withValues(alpha: 0.85)
+                                : context.textSecondary,
+                            fontStyle: isLoading && stepMessage.isNotEmpty
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

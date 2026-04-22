@@ -68,7 +68,7 @@ class AppConstants {
   static const int freeLinkCompareLimit = 2; // per day (link compare tab)
   static const int freeSubscriptionAnalysisLimit = 3; // per day
   static const int freeProductScanLimit = 2; // per day (product scan)
-  static const int freePcBuilderSlots = 5; // max components in free tier
+  static const int freePcBuilderSlots = 9999; // unlimited — free tier has no component cap
   static const int freeCollectionLimit = 10; // max saved products
   static const int freePriceHistoryDays = 7;
   static const int proPriceHistoryDays = 90;

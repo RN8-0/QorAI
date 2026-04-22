@@ -22,6 +22,10 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
         MediaQuery.of(context).padding.bottom + 40,
       ),
       children: [
+        // ── Google Shopping Prices ──
+        _GoogleShoppingCard(product: widget.product, isDark: widget.isDark, cardBg: cardBg),
+        const SizedBox(height: 12),
+
         // ── YouTube Reviews ──
         _YouTubeReviewsCard(
           product: widget.product,
@@ -227,12 +231,17 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
     final isLoading = reviewAsync is AsyncLoading;
     final loaded = result != null;
 
-    // Auto-expand when result arrives
-    if (loaded && !_expanded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _expanded = true);
-      });
-    }
+    // AI step message (replaces subtitle when loading)
+    final stepMessage = ref.watch(
+      aiOperationStepProvider('${widget.product.id}_review'),
+    );
+
+    // Auto-expand via ref.listen — avoids addPostFrameCallback rebuild cascade.
+    ref.listen(aiReviewCacheProvider(reviewKey), (_, next) {
+      if (next.valueOrNull != null && !_expanded) {
+        setState(() => _expanded = true);
+      }
+    });
 
     return GestureDetector(
       onTap: _handleTap,
@@ -285,11 +294,29 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        context.l10n?.poweredByAi ?? 'Powered by Compair AI',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: context.textSecondary,
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: Text(
+                          key: ValueKey(
+                            isLoading && stepMessage.isNotEmpty
+                                ? stepMessage
+                                : 'subtitle',
+                          ),
+                          isLoading && stepMessage.isNotEmpty
+                              ? stepMessage
+                              : (context.l10n?.poweredByAi ??
+                                  'Powered by Compair AI'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: isLoading && stepMessage.isNotEmpty
+                                ? AppTheme.accentTeal.withValues(alpha: 0.9)
+                                : context.textSecondary,
+                            fontStyle: isLoading && stepMessage.isNotEmpty
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -1834,6 +1861,112 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
           ],
         );
       },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// GOOGLE SHOPPING CARD
+// ═══════════════════════════════════════════════════════════
+
+class _GoogleShoppingCard extends StatelessWidget {
+  final ProductEntity product;
+  final bool isDark;
+  final Color cardBg;
+  const _GoogleShoppingCard({
+    required this.product,
+    required this.isDark,
+    required this.cardBg,
+  });
+
+  String _buildShoppingUrl() {
+    final q = Uri.encodeQueryComponent(product.name);
+    return 'https://www.google.com/search?tbm=shop&q=$q';
+  }
+
+  Future<void> _openShopping(BuildContext context) async {
+    final url = Uri.parse(_buildShoppingUrl());
+    try {
+      final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tarayıcı açılamadı.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tarayıcı açılamadı.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEn = Localizations.localeOf(context).languageCode != 'tr';
+    return GestureDetector(
+      onTap: () => _openShopping(context),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.dividerColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4285F4), Color(0xFF34A853)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.shopping_cart_outlined,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isEn ? 'Google Shopping Prices' : 'Google Shopping Fiyatları',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isEn
+                        ? 'Compare prices from multiple stores'
+                        : 'Farklı mağazaların fiyatlarını karşılaştır',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 16,
+              color: context.textSecondary,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

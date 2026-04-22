@@ -7,6 +7,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -437,6 +438,30 @@ class SubscriptionService extends ChangeNotifier {
     );
   }
 
+  /// Clear locally cached premium flags AND freemium usage on account deletion.
+  /// This prevents:
+  ///   (a) premium status bleeding into a different user's session,
+  ///   (b) freemium quota bypass by delete-then-re-register on the same device.
+  /// Play Store will re-deliver the entitlement via restorePurchases() when
+  /// initialize() is called for the next session.
+  Future<void> clearLocalPremium() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('is_premium');
+    await prefs.remove('active_product_id');
+    await prefs.remove('premium_purchase_date');
+    await prefs.remove('premium_expiration_date');
+    // Also wipe freemium usage so the next account starts with a fresh quota.
+    await prefs.remove('freemium_usage_v2');
+    _status = SubscriptionStatus.free;
+    _profileStatus = SubscriptionStatus.free;
+    _usage = _emptyUsage();
+    // Reset init flag so initialize() will re-run (and call restorePurchases)
+    // the next time the subscription service is needed for the new account.
+    _initialized = false;
+    _initCompleter = null;
+    notifyListeners();
+  }
+
   /// Restore from local storage
   Future<void> _restoreFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
@@ -598,16 +623,57 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
-  /// Restore purchases from Play Store
+  /// Restore purchases from Play Store.
+  ///
+  /// Uses a Completer so we resolve as soon as the purchase stream delivers a
+  /// restored item, rather than always waiting a fixed 3 s. Falls back to the
+  /// locally cached status after a 10 s timeout so the UI never hangs forever.
   Future<Result<bool>> restorePurchases() async {
+    // Make sure the purchase stream is active before requesting restore.
+    if (!_initialized) {
+      await initialize();
+    }
+
+    final completer = Completer<bool>();
+
+    // Watch the purchase stream for a `restored` status update.
+    // We use a one-shot listener that resolves the completer on first hit.
+    StreamSubscription<List<PurchaseDetails>>? restoreListener;
+    restoreListener = _iap.purchaseStream.listen((purchases) {
+      for (final p in purchases) {
+        if (p.status == PurchaseStatus.restored ||
+            p.status == PurchaseStatus.purchased) {
+          if (!completer.isCompleted) completer.complete(true);
+          restoreListener?.cancel();
+          return;
+        }
+        if (p.status == PurchaseStatus.error) {
+          if (!completer.isCompleted) completer.complete(false);
+          restoreListener?.cancel();
+          return;
+        }
+      }
+    });
+
     try {
       await _iap.restorePurchases();
-      // The purchase stream will handle restored purchases
-      await Future.delayed(const Duration(seconds: 3));
-      return Success(isPremium);
     } catch (e) {
+      restoreListener.cancel();
       return Failure(ServerException(message: 'Restore error: $e'));
     }
+
+    // Wait up to 10 s for the stream to deliver; fall back to cached status.
+    try {
+      await completer.future.timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      // No restored item arrived — check local/PB snapshot before giving up.
+    } finally {
+      restoreListener.cancel();
+    }
+
+    // Give the _verifyAndDeliver async path a moment to finish writing state.
+    await Future.delayed(const Duration(milliseconds: 300));
+    return Success(isPremium);
   }
 
   @override

@@ -60,6 +60,21 @@ class CountryNotifier extends StateNotifier<String> {
     _cacheService.setCountryManuallySet(false);
     _cacheService.saveCountry('');
     state = 'US'; // temporary default until IP detection completes
+    // Force a fresh IP lookup by invalidating the cached provider result.
+    // Without this the FutureProvider keeps its previous resolved value and
+    // the listener in _load() never fires again for the new session.
+    _ref.invalidate(detectedLocationProvider);
+    // Re-attach the listener so it picks up the fresh detection result.
+    _ref.listen(detectedLocationProvider, (_, next) {
+      next.whenData((location) {
+        if (!_cacheService.isCountryManuallySet() &&
+            location.countryCode.isNotEmpty) {
+          state = location.countryCode;
+          _cacheService.saveCountry(location.countryCode);
+          _cacheService.saveCurrency(location.currency);
+        }
+      });
+    });
   }
 }
 

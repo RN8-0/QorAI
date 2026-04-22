@@ -255,10 +255,15 @@ class _NavItem {
 
 List<_NavItem> _buildNavItems(BuildContext context) {
   final l10n = AppLocalizations.of(context);
+  final isTr = Localizations.localeOf(context).languageCode == 'tr';
+  // Use short labels in the nav bar to prevent overflow on small screens.
   return [
-    _NavItem(Icons.memory_outlined, Icons.memory_rounded, l10n?.pcBuilder ?? 'PC Build'),
-    _NavItem(Icons.compare_arrows_outlined, Icons.compare_arrows_rounded, l10n?.compare ?? 'Compare'),
-    _NavItem(Icons.home_outlined, Icons.home_rounded, l10n?.home ?? 'Home'), // center — featured
+    _NavItem(Icons.memory_outlined, Icons.memory_rounded,
+        isTr ? 'PC Topla' : 'PC Build'),
+    _NavItem(Icons.compare_arrows_outlined, Icons.compare_arrows_rounded,
+        l10n?.compare ?? 'Compare'),
+    _NavItem(Icons.home_outlined, Icons.home_rounded,
+        l10n?.home ?? 'Home'), // center — featured
     _NavItem(Icons.link_rounded, Icons.link_rounded, 'Link AI'),
     _NavItem(Icons.subscriptions_outlined, Icons.subscriptions_rounded, 'Subs'),
   ];
@@ -477,7 +482,12 @@ class _FloatingNavBar extends StatelessWidget {
                                       ? AppTheme.brandCyan
                                       : AppTheme.slate500,
                                 ),
-                                child: Text(item.label),
+                                child: Text(
+                                  item.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                ),
                               ),
                             ],
                           ),

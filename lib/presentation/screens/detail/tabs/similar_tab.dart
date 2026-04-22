@@ -12,9 +12,12 @@ class _SimilarProductsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
+      physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 40),
       children: [
-        _SimilarProductsSection(product: product, isDark: isDark),
+        RepaintBoundary(
+          child: _SimilarProductsSection(product: product, isDark: isDark),
+        ),
       ],
     );
   }

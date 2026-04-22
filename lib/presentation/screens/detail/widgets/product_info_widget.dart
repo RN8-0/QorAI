@@ -121,6 +121,8 @@ class _TitlePriceSection extends StatelessWidget {
     final usPrice = product.getPriceForCountry('US');
     final price = localPrice ?? usPrice;
     final currency = localPrice != null ? (countryInfo?.currency ?? 'USD') : 'USD';
+    final locale = Localizations.localeOf(context).languageCode;
+    final displayName = localizeProductName(product.name, locale);
 
     return Container(
       width: double.infinity,
@@ -141,7 +143,7 @@ class _TitlePriceSection extends StatelessWidget {
             ),
           const SizedBox(height: 4),
           Text(
-            product.name,
+            displayName,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,

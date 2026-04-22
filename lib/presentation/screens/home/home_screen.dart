@@ -13,6 +13,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
+import 'package:compair/core/product_name_localizer.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/widgets/product_image_box.dart';
@@ -3208,6 +3209,11 @@ class _ForYouCard extends StatelessWidget {
     required this.onTap,
   });
 
+  String _displayName(BuildContext context) => localizeProductName(
+    product.name,
+    Localizations.localeOf(context).languageCode,
+  );
+
   Color _fitColor(int s) => s >= 80
       ? const Color(0xFF10B981)
       : s >= 60
@@ -3357,7 +3363,7 @@ class _ForYouCard extends StatelessWidget {
                     ),
                   const SizedBox(height: 2),
                   Text(
-                    product.name,
+                    _displayName(context),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
@@ -3400,6 +3406,11 @@ class _WideProductCard extends StatelessWidget {
     this.showNewBadge = false,
     required this.onTap,
   });
+
+  String _displayName(BuildContext context) => localizeProductName(
+    product.name,
+    Localizations.localeOf(context).languageCode,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -3527,7 +3538,7 @@ class _WideProductCard extends StatelessWidget {
                     ),
                   const SizedBox(height: 3),
                   Text(
-                    product.name,
+                    _displayName(context),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
@@ -3618,6 +3629,11 @@ class _CompactProductCard extends StatelessWidget {
     this.showNewBadge = false,
     required this.onTap,
   });
+
+  String _displayName(BuildContext context) => localizeProductName(
+    product.name,
+    Localizations.localeOf(context).languageCode,
+  );
 
   Color _techColor(double s) => s >= 85
       ? const Color(0xFF10B981)
@@ -3740,7 +3756,7 @@ class _CompactProductCard extends StatelessWidget {
                       ),
                     const SizedBox(height: 2),
                     Text(
-                      product.name,
+                      _displayName(context),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
@@ -3903,6 +3919,11 @@ class _TrendingWideCard extends StatelessWidget {
       ? Colors.orange
       : const Color(0xFF6366F1);
 
+  String _displayName(BuildContext context) => localizeProductName(
+    product.name,
+    Localizations.localeOf(context).languageCode,
+  );
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -4042,7 +4063,7 @@ class _TrendingWideCard extends StatelessWidget {
                     ),
                   const SizedBox(height: 3),
                   Text(
-                    product.name,
+                    _displayName(context),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(

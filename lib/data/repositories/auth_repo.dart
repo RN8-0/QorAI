@@ -10,6 +10,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:compair/core/errors.dart';
 import 'package:compair/core/pb_client.dart';
+import 'package:compair/data/datasources/hive_ds.dart';
 import 'package:compair/data/datasources/pb_ds.dart';
 import 'package:compair/data/models/user_model.dart';
 import 'package:compair/domain/entities/user_entity.dart';
@@ -22,14 +23,17 @@ class AuthRepository {
   final PocketBase _pb;
   final PbDataSource _pbDS;
   final CacheService _cache;
+  final HiveDataSource? _hive;
 
   AuthRepository({
     PocketBase? pbClient,
     required PbDataSource pbDS,
     CacheService? cache,
+    HiveDataSource? hive,
   }) : _pb = pbClient ?? pb,
        _pbDS = pbDS,
-       _cache = cache ?? CacheService();
+       _cache = cache ?? CacheService(),
+       _hive = hive;
 
   Stream<String?> get authStateChanges async* {
     yield _currentUid;
@@ -420,6 +424,9 @@ class AuthRepository {
       try {
         await _cache.clearUserData();
         await _cache.clearAll();
+        // Also wipe Hive settings box (recently viewed, usage counts, etc.)
+        // so that the 32-count badge doesn't persist for the next session.
+        await _hive?.clearAll();
       } catch (_) {}
 
       return const Success(null);

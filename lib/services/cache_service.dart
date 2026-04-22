@@ -6,6 +6,7 @@
 /// Cache duration: 24 hours (products), 1 hour (trend analyses)
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:convert';
@@ -150,6 +151,28 @@ class CacheService {
     try {
       final cached = jsonDecode(localData) as Map<String, dynamic>;
       final expiresAt = DateTime.parse(cached['expiresAt']);
+      final data = cached['data'] as T?;
+      final isStale = DateTime.now().isAfter(expiresAt);
+      return (data: data, isStale: isStale);
+    } catch (_) {}
+    return (data: null, isStale: true);
+  }
+
+  /// Async variant: reads the raw JSON string from Hive then decodes it in a
+  /// background isolate to avoid blocking the main thread for large payloads
+  /// (e.g. the 1500-product home-feed cache).
+  Future<({T? data, bool isStale})> getLocalStaleAsync<T>(String key) async {
+    if (!_localBox.isOpen) return (data: null, isStale: true);
+    final localData = _localBox.get(key);
+    if (localData == null || localData is! String) return (data: null, isStale: true);
+    try {
+      // Parse JSON off the main thread — prevents 200–400 ms jank on low-end
+      // devices when the stored string is large (> 500 KB).
+      final cached = await compute<String, Map<String, dynamic>>(
+        (raw) => jsonDecode(raw) as Map<String, dynamic>,
+        localData,
+      );
+      final expiresAt = DateTime.parse(cached['expiresAt'] as String);
       final data = cached['data'] as T?;
       final isStale = DateTime.now().isAfter(expiresAt);
       return (data: data, isStale: isStale);

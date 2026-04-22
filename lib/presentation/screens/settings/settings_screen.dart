@@ -400,7 +400,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 16),
                   Center(
                     child: CupertinoButton(
-                      onPressed: () => _showDeleteAccountDialog(context, ref),
+                      onPressed: () => _showDeleteAccountSheet(context, ref),
                       child: Text(
                         context.l10n?.deleteAccount ?? 'Delete Account',
                         style: GoogleFonts.plusJakartaSans(
@@ -1115,215 +1115,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    // Step 1: Warn about what will be deleted
-    showCupertinoDialog(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(l10n?.deleteAccount ?? 'Delete Account'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n?.deleteAccountWarning ??
-                  'This action is permanent and cannot be undone.',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _deletedDataText(context),
-              style: const TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: Text(l10n?.cancel ?? 'Cancel'),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            child: const Text('Continue →'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _showDeleteConfirmationInput(context, ref);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _deletedDataText(BuildContext context) {
-    final isTr =
-        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
-    if (isTr) {
-      return 'Silinecek veriler (geri getirilemez):\n'
-          '• Profil ve hesap bilgileri\n'
-          '• Karşılaştırma geçmişi\n'
-          '• Favoriler ve koleksiyonlar\n'
-          '• Yorumlar ve analizler\n'
-          '• Son görüntüleme geçmişi';
-    }
-    return 'Data that will be permanently deleted:\n'
-        '• Profile and account info\n'
-        '• Comparison history\n'
-        '• Favorites and collections\n'
-        '• Reviews and analyses\n'
-        '• Recently viewed history';
-  }
-
-  void _showDeleteConfirmationInput(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final isTr =
-        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
-    final confirmPhrase = isTr
-        ? 'hesabımı silmek istiyorum'
-        : 'I want to delete my account';
-    final controller = TextEditingController();
-    var deleting = false;
-    // Capture navigator before any async gap.
+  void _showDeleteAccountSheet(BuildContext context, WidgetRef ref) {
     final navigator = GoRouter.of(context);
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: context.surfaceVariantColor,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            l10n?.deleteAccount ?? 'Delete Account',
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFFEF4444),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isTr
-                    ? 'Onaylamak için aşağıya şunu yazın:'
-                    : 'To confirm, type the following below:',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: context.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Text(
-                  confirmPhrase,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFFEF4444),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: context.textPrimary,
-                ),
-                onChanged: (_) => setDialogState(() {}),
-                decoration: InputDecoration(
-                  hintText: confirmPhrase,
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    color: context.textTertiaryColor,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: context.dividerColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: context.dividerColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: Color(0xFFEF4444), width: 1.5),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: deleting ? null : () => Navigator.pop(ctx),
-              child: Text(
-                l10n?.cancel ?? 'Cancel',
-                style: GoogleFonts.plusJakartaSans(
-                  color: context.textSecondary,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: (controller.text.trim().toLowerCase() ==
-                          confirmPhrase.toLowerCase() &&
-                      !deleting)
-                  ? () async {
-                      setDialogState(() => deleting = true);
-                      final result = await ref
-                          .read(authRepositoryProvider)
-                          .deleteCurrentUser();
-                      if (!mounted) return;
-                      Navigator.pop(ctx);
-                      switch (result) {
-                        case Success():
-                          ref
-                              .read(selectedCountryProvider.notifier)
-                              .resetToAutoDetect();
-                          navigator.go(AppRoutes.login);
-                        case Failure(error: final error):
-                          _showInfoSnackbar(error.message);
-                      }
-                    }
-                  : null,
-              child: deleting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      l10n?.delete ?? 'Delete',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: controller.text.trim().toLowerCase() ==
-                                confirmPhrase.toLowerCase()
-                            ? const Color(0xFFEF4444)
-                            : context.textTertiaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (ctx) => _DeleteAccountSheet(
+        widgetRef: ref,
+        navigator: navigator,
+        onSuccess: () {
+          // Clear locally cached premium flags so they don't bleed into
+          // the next account. Play Store will re-deliver via restorePurchases.
+          ref.read(subscriptionServiceProvider).clearLocalPremium();
+          ref.read(selectedCountryProvider.notifier).resetToAutoDetect();
+          navigator.go(AppRoutes.login);
+        },
+        onError: (msg) => _showInfoSnackbar(msg),
       ),
     );
   }
@@ -1508,5 +1317,451 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   bool _isGeneratedAvatarUrl(String photoUrl) {
     return photoUrl.trim().toLowerCase().contains('ui-avatars.com');
+  }
+}
+
+// ─── Delete Account Bottom Sheet ─────────────────────────────────────────────
+
+class _DeleteAccountSheet extends StatefulWidget {
+  const _DeleteAccountSheet({
+    required this.widgetRef,
+    required this.navigator,
+    required this.onSuccess,
+    required this.onError,
+  });
+
+  final WidgetRef widgetRef;
+  final GoRouter navigator;
+  final VoidCallback onSuccess;
+  final void Function(String) onError;
+
+  @override
+  State<_DeleteAccountSheet> createState() => _DeleteAccountSheetState();
+}
+
+class _DeleteAccountSheetState extends State<_DeleteAccountSheet>
+    with SingleTickerProviderStateMixin {
+  int _step = 0; // 0 = warning, 1 = confirm
+  final _controller = TextEditingController();
+  bool _deleting = false;
+  late final AnimationController _slideCtrl;
+  late final Animation<Offset> _slideAnim;
+
+  bool get _isTr =>
+      Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+
+  String get _confirmPhrase =>
+      _isTr ? 'hesabımı silmek istiyorum' : 'I want to delete my account';
+
+  bool get _confirmed =>
+      _controller.text.trim().toLowerCase() == _confirmPhrase.toLowerCase();
+
+  static const _red = Color(0xFFEF4444);
+
+  @override
+  void initState() {
+    super.initState();
+    _slideCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _slideCtrl.dispose();
+    super.dispose();
+  }
+
+  void _goToStep2() {
+    setState(() => _step = 1);
+    _slideCtrl.forward(from: 0);
+  }
+
+  Future<void> _deleteAccount() async {
+    setState(() => _deleting = true);
+    final result = await widget.widgetRef
+        .read(authRepositoryProvider)
+        .deleteCurrentUser();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    switch (result) {
+      case Success():
+        widget.onSuccess();
+      case Failure(error: final error):
+        widget.onError(error.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 200),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: context.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Red gradient header
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _red.withValues(alpha: 0.18),
+                    _red.withValues(alpha: 0.06),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _red.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _red.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.exclamationmark_triangle_fill,
+                      color: _red,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isTr ? 'Hesabı Sil' : 'Delete Account',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: _red,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _isTr
+                              ? 'Bu işlem geri alınamaz'
+                              : 'This action cannot be undone',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: _red.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Step indicator
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  _stepDot(0),
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      color: _step >= 1
+                          ? _red
+                          : context.dividerColor,
+                    ),
+                  ),
+                  _stepDot(1),
+                ],
+              ),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: _step == 0 ? _buildStep1() : _buildStep2(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _stepDot(int stepIndex) {
+    final active = _step >= stepIndex;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: active ? _red : context.dividerColor,
+      ),
+      child: Center(
+        child: Text(
+          '${stepIndex + 1}',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : context.textTertiaryColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStep1() {
+    final items = _isTr
+        ? [
+            (CupertinoIcons.person_fill, 'Profil ve hesap bilgileri'),
+            (CupertinoIcons.chart_bar_fill, 'Karşılaştırma geçmişi'),
+            (CupertinoIcons.heart_fill, 'Favoriler ve koleksiyonlar'),
+            (CupertinoIcons.pencil, 'Yorumlar ve analizler'),
+            (CupertinoIcons.clock_fill, 'Son görüntüleme geçmişi'),
+          ]
+        : [
+            (CupertinoIcons.person_fill, 'Profile and account info'),
+            (CupertinoIcons.chart_bar_fill, 'Comparison history'),
+            (CupertinoIcons.heart_fill, 'Favorites and collections'),
+            (CupertinoIcons.pencil, 'Reviews and analyses'),
+            (CupertinoIcons.clock_fill, 'Recently viewed history'),
+          ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _isTr
+              ? 'Kalıcı olarak silinecek veriler:'
+              : 'Data that will be permanently deleted:',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: _red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(item.$1, color: _red, size: 16),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  item.$2,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                color: context.dividerColor.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(12),
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  _isTr ? 'Vazgeç' : 'Cancel',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                color: _red,
+                borderRadius: BorderRadius.circular(12),
+                onPressed: _goToStep2,
+                child: Text(
+                  _isTr ? 'Devam Et →' : 'Continue →',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStep2() {
+    return SlideTransition(
+      position: _slideAnim,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _isTr
+                ? 'Onaylamak için aşağıya tam olarak şunu yazın:'
+                : 'To confirm, type exactly the following:',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: context.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: _red.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _red.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              _confirmPhrase,
+              style: GoogleFonts.robotoMono(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _red,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: context.textPrimary,
+            ),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: _confirmPhrase,
+              hintStyle: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: context.textTertiaryColor,
+              ),
+              filled: true,
+              fillColor: context.backgroundColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: context.dividerColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: context.dividerColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: _confirmed ? _red : AppTheme.neonCyan,
+                  width: 1.5,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              prefixIcon: Icon(
+                _confirmed
+                    ? CupertinoIcons.checkmark_circle_fill
+                    : CupertinoIcons.pencil,
+                color: _confirmed ? _red : context.textTertiaryColor,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          AnimatedOpacity(
+            opacity: _confirmed ? 1.0 : 0.4,
+            duration: const Duration(milliseconds: 200),
+            child: SizedBox(
+              width: double.infinity,
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                color: _confirmed ? _red : context.dividerColor,
+                borderRadius: BorderRadius.circular(12),
+                onPressed: (_confirmed && !_deleting) ? _deleteAccount : null,
+                child: _deleting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        _isTr ? 'Hesabı Kalıcı Sil' : 'Permanently Delete',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: _deleting ? null : () => Navigator.of(context).pop(),
+              child: Text(
+                _isTr ? 'İptal' : 'Cancel',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: context.textTertiaryColor,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

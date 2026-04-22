@@ -1797,6 +1797,13 @@ class PbDataSource {
     final all = <ProductModel>[];
     final seenIds = <String>{};
     int page = 1;
+    // Use the same multi-variant filter logic as getProductsPageTs so that
+    // inconsistent category slugs (hyphen vs underscore vs spaces) are all
+    // covered in a single Typesense query.
+    final variants = _categoryVariants(category);
+    final filterBy = variants.length == 1
+        ? 'category:=${variants.first}'
+        : 'category:[${variants.join(',')}]';
     try {
       final sw = Stopwatch()..start();
       while (all.length < maxTotal) {
@@ -1804,7 +1811,7 @@ class PbDataSource {
           '/collections/products/documents/search',
           queryParameters: {
             'q': '*',
-            'filter_by': 'category:=$category',
+            'filter_by': filterBy,
             'sort_by': sortBy,
             'per_page': perPage,
             'page': page,
@@ -1844,11 +1851,21 @@ class PbDataSource {
   }) async {
     try {
       final sw = Stopwatch()..start();
+
+      // Build alternative category slugs to handle inconsistent naming in
+      // Typesense (e.g. "vr-headsets" vs "vr_headsets" vs "VR Headsets").
+      // Typesense exact-match filter only finds records that match the stored
+      // field value exactly, so we probe all plausible variants in one query.
+      final variants = _categoryVariants(category);
+      final filterBy = variants.length == 1
+          ? 'category:=${variants.first}'
+          : 'category:[${variants.join(',')}]';
+
       final response = await _dio.get(
         '/collections/products/documents/search',
         queryParameters: {
           'q': '*',
-          'filter_by': 'category:=$category',
+          'filter_by': filterBy,
           'sort_by': sortBy,
           'per_page': limit,
           'page': page,
@@ -1864,7 +1881,7 @@ class PbDataSource {
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
-        '=== COMPAIR: TS getProductsPage cat=$category page=$page → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
+        '=== COMPAIR: TS getProductsPage cat=$category filter=$filterBy page=$page → ${products.length}/${found} in ${sw.elapsedMilliseconds}ms ===',
       );
       return (
         products: products,
@@ -1889,6 +1906,26 @@ class PbDataSource {
         totalFound: fallback.products.length,
       );
     }
+  }
+
+  /// Returns all plausible Typesense slug variants for a category name.
+  /// Covers the most common inconsistencies: hyphen vs underscore, mixed case,
+  /// and trimmed whitespace.
+  static List<String> _categoryVariants(String category) {
+    final trimmed = category.trim();
+    // Produce hyphenated and underscored lower-case slugs.
+    final lower = trimmed.toLowerCase();
+    final hyphenated = lower.replaceAll('_', '-').replaceAll(' ', '-');
+    final underscored = lower.replaceAll('-', '_').replaceAll(' ', '_');
+    final spaced = lower.replaceAll('-', ' ').replaceAll('_', ' ');
+
+    // Collect unique variants preserving the original as first candidate.
+    final seen = <String>{};
+    final result = <String>[];
+    for (final v in [trimmed, hyphenated, underscored, spaced]) {
+      if (seen.add(v)) result.add(v);
+    }
+    return result;
   }
 
   // ────────────────────────────────────────────────────────────────────────

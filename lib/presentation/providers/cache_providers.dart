@@ -112,6 +112,23 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 
   CacheService get _cache => _ref.read(cacheServiceProvider);
 
+  String get _stepKey => '${_productId}_review';
+
+  void _emitStep(String tr, String en) {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state =
+          _languageCode == 'tr' ? tr : en;
+    } catch (_) {}
+  }
+
+  void _clearStep() {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state = '';
+    } catch (_) {}
+  }
+
   Future<void> startAnalysis(String productName) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
@@ -119,31 +136,40 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 
     // Check disk cache first (24h TTL)
     final cacheKey = 'ai_review_${_languageCode}_$_productId';
+    _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
       final cached = await _cache.get<String>(cacheKey);
       if (cached != null && cached.isNotEmpty) {
         final parsed = _parseReviewResponse(cached);
         if (parsed != null && !parsed.failed) {
+          _clearStep();
           state = AsyncValue.data(parsed);
           return;
         }
       }
     } catch (_) {}
 
+    _emitStep('Kullanıcı yorumları analiz ediliyor…', 'Analyzing user reviews…');
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final langName = _getLanguageName(_languageCode);
       final response = await deepseek.jsonFreeTextQuery(
-        'You are a product sentiment analyst. Based on your knowledge of publicly available '
-        'user reviews, Reddit threads, forum discussions, YouTube comments, and tech community '
-        'feedback for "$productName", provide a consumer sentiment analysis.\n\n'
-        'Focus on real user opinions from Reddit, tech forums, review sites, and general consumer feedback.\n\n'
-        'IMPORTANT: ALL text must be written in $langName language.\n\n'
-        'Return a JSON object with these fields:\n'
-        '"summary": A 2-3 sentence overview of what users think. Write in $langName.\n'
-        '"satisfaction": Integer 0-100 representing overall user satisfaction percentage\n'
-        '"praised": Array of 3-4 specific features/aspects users consistently praise. Write in $langName.\n'
-        '"criticized": Array of 2-3 specific issues users consistently criticize. Write in $langName.',
+        'You are a senior technology product analyst with expertise in consumer electronics. '
+        'Based on your comprehensive knowledge of publicly available user reviews, Reddit threads, '
+        'professional review sites (GSMArena, RTINGS, NotebookCheck, Tom\'s Hardware, etc.), '
+        'YouTube teardowns and long-term reviews, and tech community feedback for "$productName", '
+        'provide a thorough and professional consumer sentiment analysis.\n\n'
+        'Be specific, cite real-world performance observations, and use professional tech-review language. '
+        'Avoid generic statements — reference actual experiences, benchmarks, or community-noted issues.\n\n'
+        'IMPORTANT: ALL text must be written in $langName language. Return ONLY valid JSON.\n\n'
+        'JSON fields (all text in $langName):\n'
+        '"summary": A comprehensive 4-5 sentence professional overview of community sentiment. '
+        'Cover overall reception, standout strengths, notable weaknesses, and long-term ownership insights.\n'
+        '"satisfaction": Integer 0-100 representing aggregated user satisfaction across all sources.\n'
+        '"praised": Array of 4-5 specific, concrete features/aspects users consistently praise. '
+        'Be precise (e.g., "Exceptional battery life — 6+ days reported by users" not just "battery").\n'
+        '"criticized": Array of 3-4 specific, real-world issues users consistently report. '
+        'Be honest and precise (e.g., "Thermal throttling under sustained CPU load" not just "heating").',
         language: _languageCode,
       );
 
@@ -154,9 +180,12 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
             .catchError((_) {});
       }
 
+      _emitStep('Sonuçlar hazırlanıyor…', 'Finalizing results…');
       final parsed = _parseReviewResponse(response);
+      _clearStep();
       state = AsyncValue.data(parsed ?? const AIReviewResult(failed: true));
     } catch (e) {
+      _clearStep();
       state = const AsyncValue.data(AIReviewResult(failed: true));
     }
   }
@@ -544,6 +573,23 @@ class _DeepAnalysisNotifier
           : key.normalizedLanguageCode,
       super(const AsyncValue.data(null));
 
+  String get _stepKey => '${_productId}_deep';
+
+  void _emitStep(String tr, String en) {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state =
+          _languageCode == 'tr' ? tr : en;
+    } catch (_) {}
+  }
+
+  void _clearStep() {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state = '';
+    } catch (_) {}
+  }
+
   Future<void> startAnalysis(
     String productName, {
     String category = '',
@@ -557,17 +603,20 @@ class _DeepAnalysisNotifier
     // Disk cache check
     final cacheKey = 'deep_analysis_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
+    _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
       final cached = await cache.get<String>(cacheKey);
       if (cached != null && cached.isNotEmpty) {
         final parsed = _parseDeepAnalysis(cached);
         if (parsed.hasUsableContent) {
+          _clearStep();
           state = AsyncValue.data(parsed);
           return;
         }
       }
     } catch (_) {}
 
+    _emitStep('Teknik özellikler değerlendiriliyor…', 'Evaluating technical specs…');
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
@@ -600,8 +649,12 @@ class _DeepAnalysisNotifier
             .set(cacheKey, result, duration: const Duration(hours: 24))
             .catchError((_) {});
       }
+      _emitStep('Analiz tamamlandı!', 'Analysis complete!');
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      _clearStep();
       state = AsyncValue.data(_parseDeepAnalysis(result));
     } catch (e) {
+      _clearStep();
       state = AsyncValue.data(
         DeepAnalysisResult(
           rawFallback: 'Unable to generate analysis at this time.',
@@ -676,6 +729,23 @@ class _AlternativesCacheNotifier
           : key.normalizedLanguageCode,
       super(const AsyncValue.data(null));
 
+  String get _stepKey => '${_productId}_alts';
+
+  void _emitStep(String tr, String en) {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state =
+          _languageCode == 'tr' ? tr : en;
+    } catch (_) {}
+  }
+
+  void _clearStep() {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state = '';
+    } catch (_) {}
+  }
+
   Future<void> startQuery(String productName, String category) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull?.hasUsableContent == true) return;
@@ -684,17 +754,20 @@ class _AlternativesCacheNotifier
     // Disk cache check
     final cacheKey = 'alternatives_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
+    _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
       final cached = await cache.get<String>(cacheKey);
       if (cached != null && cached.isNotEmpty) {
         final parsed = _parseAlternatives(cached);
         if (parsed.hasUsableContent) {
+          _clearStep();
           state = AsyncValue.data(parsed);
           return;
         }
       }
     } catch (_) {}
 
+    _emitStep('Alternatif ürünler aranıyor…', 'Searching for alternatives…');
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final result = await deepseek.jsonFreeTextQuery(
@@ -719,8 +792,10 @@ class _AlternativesCacheNotifier
             .set(cacheKey, result, duration: const Duration(hours: 24))
             .catchError((_) {});
       }
+      _clearStep();
       state = AsyncValue.data(_parseAlternatives(result));
     } catch (e) {
+      _clearStep();
       state = AsyncValue.data(
         AlternativesResult(
           rawFallback: 'Unable to find alternatives at this time.',
@@ -777,6 +852,23 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
           : key.normalizedLanguageCode,
       super(const AsyncValue.data(null));
 
+  String get _stepKey => '${_productId}_advisor';
+
+  void _emitStep(String tr, String en) {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state =
+          _languageCode == 'tr' ? tr : en;
+    } catch (_) {}
+  }
+
+  void _clearStep() {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state = '';
+    } catch (_) {}
+  }
+
   Future<void> startQuery(
     String productName,
     String category,
@@ -790,17 +882,20 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     // Disk cache check
     final cacheKey = 'advisor_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
+    _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
       final cached = await cache.get<String>(cacheKey);
       if (cached != null && cached.isNotEmpty) {
         final parsed = _parseAdvisor(cached);
         if (parsed.hasUsableContent) {
+          _clearStep();
           state = AsyncValue.data(parsed);
           return;
         }
       }
     } catch (_) {}
 
+    _emitStep('Satın alma tavsiyeleri hazırlanıyor…', 'Preparing buying advice…');
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final result = await deepseek.jsonFreeTextQuery(
@@ -822,8 +917,10 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
             .set(cacheKey, result, duration: const Duration(hours: 24))
             .catchError((_) {});
       }
+      _clearStep();
       state = AsyncValue.data(_parseAdvisor(result));
     } catch (e) {
+      _clearStep();
       state = AsyncValue.data(
         AdvisorResult(rawFallback: 'Unable to generate advice.'),
       );
@@ -882,6 +979,23 @@ class _PredictionCacheNotifier
           : key.normalizedLanguageCode,
       super(const AsyncValue.data(null));
 
+  String get _stepKey => '${_productId}_prediction';
+
+  void _emitStep(String tr, String en) {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state =
+          _languageCode == 'tr' ? tr : en;
+    } catch (_) {}
+  }
+
+  void _clearStep() {
+    if (!mounted) return;
+    try {
+      _ref.read(aiOperationStepProvider(_stepKey).notifier).state = '';
+    } catch (_) {}
+  }
+
   Future<void> startQuery(
     String productName,
     String category,
@@ -904,17 +1018,20 @@ class _PredictionCacheNotifier
     final cacheKey =
         'prediction_v${_predictionCacheVersion}_${normalizedLanguage}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
+    _emitStep('Fiyat verileri toplanıyor…', 'Collecting price data…');
     try {
       final cached = await cache.get<String>(cacheKey);
       if (cached != null && cached.isNotEmpty) {
         final parsed = _mergeWithHeuristic(_parsePrediction(cached), heuristic);
         if (parsed.hasUsableContent) {
+          _clearStep();
           state = AsyncValue.data(parsed);
           return;
         }
       }
     } catch (_) {}
 
+    _emitStep('Fiyat trendi analiz ediliyor…', 'Analyzing price trends…');
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
@@ -947,10 +1064,12 @@ class _PredictionCacheNotifier
             .set(cacheKey, result, duration: const Duration(hours: 24))
             .catchError((_) {});
       }
+      _clearStep();
       state = AsyncValue.data(
         _mergeWithHeuristic(_parsePrediction(result), heuristic),
       );
     } catch (e) {
+      _clearStep();
       state = AsyncValue.data(heuristic);
     }
   }
@@ -1188,6 +1307,21 @@ class GeminiMatchResult {
   });
 }
 
+/// Per-product AI step message provider.
+/// Holds a short localized description of the current AI processing step
+/// (e.g. "Profil verisi yükleniyor…"). Empty string = no active step.
+/// Keyed by product ID so multiple detail pages don't interfere.
+final aiMatchStepProvider = StateProvider.family<String, String>(
+  (_, __) => '',
+);
+
+/// Generic AI operation step message provider.
+/// Key format: "${productId}_${operation}" (e.g. "abc123_review", "abc123_deep")
+/// Empty string = no active step.
+final aiOperationStepProvider = StateProvider.family<String, String>(
+  (_, __) => '',
+);
+
 final geminiMatchScoreProvider =
     StateNotifierProvider.family<
       _GeminiMatchScoreNotifier,
@@ -1238,13 +1372,34 @@ class _GeminiMatchScoreNotifier
       );
     } catch (e, st) {
       debugPrint('[GeminiMatch] failed: $e\n$st');
+      _clearStep(product.id);
       _fallbackToLocal(product);
     } finally {
       // Defensive: never leave UI stuck on the spinner.
+      _clearStep(product.id);
       if (state is AsyncLoading) {
         state = const AsyncValue.data(null);
       }
     }
+  }
+
+  String _stepMsg(String langCode, String tr, String en) =>
+      langCode == 'tr' ? tr : en;
+
+  void _emitStep(String productId, String langCode, String tr, String en) {
+    if (!mounted) return;
+    try {
+      _ref
+          .read(aiMatchStepProvider(productId).notifier)
+          .state = _stepMsg(langCode, tr, en);
+    } catch (_) {}
+  }
+
+  void _clearStep(String productId) {
+    if (!mounted) return;
+    try {
+      _ref.read(aiMatchStepProvider(productId).notifier).state = '';
+    } catch (_) {}
   }
 
   Future<void> _doFetchMatchScore({
@@ -1255,6 +1410,10 @@ class _GeminiMatchScoreNotifier
       final langCode = _languageCode.isNotEmpty
           ? _languageCode
           : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
+
+      // ── Step 1: Load user record & check cache ─────────────────────────────
+      _emitStep(product.id, langCode,
+          'Kullanıcı profili yükleniyor…', 'Loading user profile…');
 
       // 1. Fetch user record ONCE — extracts match_cache AND weightVector together.
       //    Using fields projection to reduce data transfer. Cap at 2s so a slow
@@ -1278,6 +1437,7 @@ class _GeminiMatchScoreNotifier
           ? _parseMatchCacheFromData(userRecordData, langCode)
           : null;
       if (cached != null) {
+        _clearStep(product.id);
         state = AsyncValue.data(cached);
         return;
       }
@@ -1286,9 +1446,14 @@ class _GeminiMatchScoreNotifier
       // On miss, return null so UI falls back to local algorithmic score only.
       final sub = _ref.read(subscriptionServiceProvider);
       if (!sub.isPremium && !sub.canUseDetailMatchAi) {
+        _clearStep(product.id);
         state = const AsyncValue.data(null);
         return;
       }
+
+      // ── Step 2: Build profile & product context ────────────────────────────
+      _emitStep(product.id, langCode,
+          'Ürün analizi hazırlanıyor…', 'Preparing product analysis…');
 
       // 3. Call Gemini Flash (faster + cheaper than DeepSeek for short JSON tasks)
       final gemini = _ref.read(geminiServiceProvider);
@@ -1362,38 +1527,51 @@ class _GeminiMatchScoreNotifier
         highlights: productHighlights,
         tradeOffs: tradeOffs,
       );
+
+      // ── Step 3: Call AI ────────────────────────────────────────────────────
+      _emitStep(product.id, langCode,
+          'AI eşleşme skoru hesaplanıyor…', 'Calculating AI match score…');
+
       // Calibrated bands: higher floor (40), more generous mid-tier.
       // User feedback: prior 25-100 with 90+ exceptional felt consistently
       // underwhelming (most scores landed 55-70). New mapping rewards genuine
       // quality while preserving separation for poor fits.
+      final langDisplay = _languageDisplayName(langCode);
       final prompt =
-          'Score this product 40-100 for this user (never <40). Return ONLY JSON.\n'
-          'reason: 3-4 product-focused sentences (60-110 words) in language "$langCode" '
-          '(${_languageDisplayName(langCode)}). Mention 2-3 strengths + 1 real limitation. '
-          'Do NOT use "you/your". In Turkish never use "kullanici"; use formal "siz" if unavoidable. '
-          'Never mention ecosystem/compatibility/profile/devices/platform.\n'
-          'Bands: 88-100 exceptional fit / 75-87 strong fit / 62-74 solid with minor compromises / '
-          '50-61 mediocre / 40-49 poor fit.\n'
-          'If techScore >= 85 and no major mismatch, score >= 75.\n'
-          'Signals: weight vector, priorities, usage intent, profession, ecosystem, '
-          'recent views/favorites, techScore, specs, pros/cons, budget vs price.\n\n'
+          'You are a senior tech analyst. Score this product 40-100 for this user (never below 40).\n'
+          'Return ONLY valid JSON — no markdown, no extra text.\n'
+          '⚠️ CRITICAL: ALL text fields in the JSON MUST be written in $langDisplay ($langCode). '
+          'Using any other language is a critical error.\n\n'
+          'reason: Write 4-6 professional, product-focused sentences (90-150 words) in $langDisplay. '
+          'Structure it as: (1) Start with the product\'s strongest technical merit relevant to this user\'s needs. '
+          '(2) Elaborate on 2-3 specific performance advantages backed by specs. '
+          '(3) Mention 1-2 real trade-offs or limitations honestly. '
+          '(4) End with a clear verdict on suitability for this user\'s profile. '
+          'Use professional tech-review language. Be specific — cite specs, numbers, real use cases. '
+          'Do NOT use "you/your" or first-person references. '
+          'In Turkish: never use "kullanıcı" — use impersonal phrasing (e.g., "bu ürün ... sunar"). '
+          'Never mention ecosystem/profile/devices/platform compatibility.\n\n'
+          'Score bands: 88-100 exceptional match / 75-87 strong fit / 62-74 solid with minor trade-offs / '
+          '50-61 adequate but compromised / 40-49 poor fit.\n'
+          'Rule: if techScore >= 85 and no major spec mismatch → score >= 75.\n'
+          'Signals to weigh: weightVector priorities, usageIntent, profession, budget vs price, '
+          'techScore, top specs, pros/cons, behavioral signals (recent views/favorites).\n\n'
           'USER:${jsonEncode(profileJson)}\n'
           'PRODUCT:${jsonEncode(productJson)}\n\n'
-          'JSON: {"matchScore":<int>,"reason":"<text>",'
-          '"topMatchFactors":["f1","f2","f3"],"missingFactors":["m1","m2"]}';
+          'JSON: {"matchScore":<int>,"reason":"<4-6 sentences in $langDisplay>",'
+          '"topMatchFactors":["specific_strength_1","specific_strength_2","specific_strength_3"],'
+          '"missingFactors":["specific_gap_1","specific_gap_2"]}';
 
       final result = await gemini
           .jsonFreeTextQuery(
             prompt,
             language: langCode,
-            maxTokens: 1500,
-            // tier:lite + _rawRequest forces thinkingBudget=0 → no reasoning
-            // tokens billed; cheap & fast.
+            maxTokens: 2500, // increased for longer, more detailed responses
           )
           .timeout(
-            const Duration(seconds: 12),
+            const Duration(seconds: 20),
             onTimeout: () =>
-                throw Exception('Gemini match score timeout (12s)'),
+                throw Exception('Gemini match score timeout (20s)'),
           );
       final map = _decodeJsonMap(result);
 
@@ -1425,9 +1603,16 @@ class _GeminiMatchScoreNotifier
         isFromGemini: true,
       );
 
+      // ── Step 4: Done — emit result ─────────────────────────────────────────
+      _emitStep(product.id, langCode,
+          'Sonuçlar hazır!', 'Results ready!');
+
       // Emit result FIRST so the UI updates immediately. Cache write +
       // quota recording happen fire-and-forget afterwards — they should
       // never delay the visible state transition.
+      // Small delay so the "Results ready" step message is briefly visible.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      _clearStep(product.id);
       state = AsyncValue.data(matchResult);
 
       unawaited(

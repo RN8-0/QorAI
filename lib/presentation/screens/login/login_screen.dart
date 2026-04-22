@@ -216,7 +216,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     switch (result) {
       case Success(data: final user):
-        _navigateAfterLogin(user.quizCompleted);
+        // Always clear local premium cache on new account creation so stale
+        // SharedPreferences from a previous account don't bleed through.
+        // Play Store will re-deliver any active entitlement via restorePurchases.
+        await ref.read(subscriptionServiceProvider).clearLocalPremium();
+        if (mounted) _navigateAfterLogin(user.quizCompleted);
       case Failure(error: final error):
         _showError(error.message);
     }

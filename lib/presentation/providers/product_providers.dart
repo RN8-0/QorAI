@@ -1463,7 +1463,9 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   // 1. STALE-WHILE-REVALIDATE: Show cached data instantly, even if expired
   try {
-    final staleResult = cache.getLocalStale<List<dynamic>>(cacheKey);
+    // Use async variant to decode JSON in a background isolate — prevents the
+    // main thread from blocking for hundreds of milliseconds on low-end devices.
+    final staleResult = await cache.getLocalStaleAsync<List<dynamic>>(cacheKey);
     if (staleResult.data != null && (staleResult.data as List).isNotEmpty) {
       final sw = Stopwatch()..start();
       final rawList = staleResult.data as List;
