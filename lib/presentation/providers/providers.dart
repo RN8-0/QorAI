@@ -123,15 +123,30 @@ final deepSeekServiceProvider = Provider<DeepSeekService>((ref) {
 final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
   (ref) {
     final service = SubscriptionService();
-    // Initialize when user auth state is available
-    final authState = ref.watch(authStateProvider);
-    authState.whenData((user) {
-      if (user != null && !service.isInitialized) {
-        service.initialize();
-      } else if (user == null) {
-        unawaited(service.syncProfileEntitlement(isPremium: false));
+
+    // CRITICAL: use ref.listen (NOT ref.watch) for authStateProvider.
+    // ref.watch would cause this ChangeNotifierProvider to be disposed and
+    // recreated on every PocketBase token refresh (authStore.onChange fires
+    // on every token renewal), which re-creates SubscriptionService and calls
+    // _loadProducts() repeatedly — causing 12+ IAP reloads per session.
+    ref.listen<AsyncValue<String?>>(authStateProvider, (_, next) {
+      next.whenData((uid) {
+        if (uid != null && !service.isInitialized) {
+          unawaited(service.initialize());
+        } else if (uid == null) {
+          unawaited(service.syncProfileEntitlement(isPremium: false));
+        }
+      });
+    });
+
+    // Also trigger initialization with the current auth state on first build.
+    final currentAuth = ref.read(authStateProvider);
+    currentAuth.whenData((uid) {
+      if (uid != null && !service.isInitialized) {
+        unawaited(service.initialize());
       }
     });
+
     ref.listen<AsyncValue<UserEntity?>>(userProfileProvider, (_, next) {
       next.whenData((user) {
         final premiumDetails = user?.userSubscriptionDetails['premium'];

@@ -684,6 +684,14 @@ HomeFeed _buildHomeFeedIsolate(_HomeFeedArgs args) => _buildHomeFeed(
   disabledCats: args.disabledCats,
 );
 
+// Deserializes raw Hive map list → ProductEntity list in a background isolate.
+List<ProductEntity> _deserializeProductsIsolate(List<dynamic> rawList) {
+  return rawList
+      .map((item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)))
+      .cast<ProductEntity>()
+      .toList();
+}
+
 HomeFeed _buildHomeFeed(
   List<ProductEntity> products,
   String country, {
@@ -1458,27 +1466,9 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     final staleResult = cache.getLocalStale<List<dynamic>>(cacheKey);
     if (staleResult.data != null && (staleResult.data as List).isNotEmpty) {
       final sw = Stopwatch()..start();
-      // Yield to the event queue before the heavy deserialization so the
-      // Flutter engine can process pending frames (avoids >300 frame skips).
-      await Future<void>(() {});
       final rawList = staleResult.data as List;
-      // Deserialize in batches to keep the main thread free for frames.
-      const _batchSize = 300;
-      final products = <ProductEntity>[];
-      for (var i = 0; i < rawList.length; i += _batchSize) {
-        if (i > 0) await Future<void>(() {});
-        products.addAll(
-          rawList
-              .skip(i)
-              .take(_batchSize)
-              .map(
-                (item) => ProductModel.fromMap(
-                  Map<String, dynamic>.from(item as Map),
-                ),
-              )
-              .cast<ProductEntity>(),
-        );
-      }
+      // Deserialize off the main thread to avoid frame skips.
+      final products = await compute(_deserializeProductsIsolate, rawList);
       sw.stop();
       debugPrint(
         '=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${products.length} products in ${sw.elapsedMilliseconds}ms ===',
