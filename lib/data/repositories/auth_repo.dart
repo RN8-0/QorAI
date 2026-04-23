@@ -125,15 +125,10 @@ class AuthRepository {
   /// which validates it with Google's tokeninfo endpoint and upserts the
   /// user in `users`. No Firebase, no client secret on device.
   Future<Result<UserEntity>> signInWithGoogle() async {
-    Future<Result<UserEntity>> fallbackToOAuth() {
-      debugPrint('[auth] Falling back to PocketBase OAuth2 Google flow');
-      return _signInWithOAuth2('google', scopes: ['email', 'profile']);
-    }
-
     try {
       final google = GoogleSignIn(
         scopes: const ['email', 'profile'],
-        serverClientId: _kGoogleWebClientId,
+        clientId: _kGoogleWebClientId,
       );
       await google.signOut();
       final account = await google.signIn();
@@ -156,7 +151,10 @@ class AuthRepository {
               'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io/api/auth/google',
             ),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'idToken': idToken}),
+            body: jsonEncode({
+              'idToken': idToken,
+              'audience': _kGoogleWebClientId,
+            }),
           )
           .timeout(
             const Duration(seconds: 20),
@@ -247,7 +245,12 @@ class AuthRepository {
       debugPrint('[auth] signInWithGoogle error: $e');
       final err = e.toString();
       if (err.contains('sign_in_failed') || err.contains('ApiException: 10')) {
-        return fallbackToOAuth();
+        return const Failure(
+          AuthException(
+            message:
+                'Google Sign-In Android OAuth ayariyla eslesmedi. Browser fallback kapatildi; native client yapisi duzeltildi, uygulamayi guncelleyip tekrar deneyin.',
+          ),
+        );
       }
       return Failure(
         AuthException(

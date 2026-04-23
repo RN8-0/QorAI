@@ -464,57 +464,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Subtle radial glow behind logo
-            Positioned(
-              top: height * 0.05,
-              child: Container(
-                width: height * 0.9,
-                height: height * 0.9,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppTheme.neonCyan.withValues(alpha: 0.12),
-                      AppTheme.neonPurple.withValues(alpha: 0.08),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                  ),
-                ),
-              ),
-            ),
             // Centered branding
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo — no container/circle, just transparent PNG
-                Container(
-                  width: 132,
-                  height: 132,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white.withValues(alpha: 0.015)
-                        : Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : AppTheme.brandBlue.withValues(alpha: 0.10),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.brandCyan.withValues(alpha: 0.20),
-                        blurRadius: 28,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
+                SizedBox(
+                  width: 122,
+                  height: 122,
                   child: Image.asset(
                     'assets/logo/qor_ai_logo.png',
-                    width: 100,
-                    height: 100,
+                    fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
                   ),
                 ),
