@@ -1,10 +1,10 @@
-# Compair — AI-Powered Price Comparison & Personal Product Recommender
+# Qor AI — AI-Powered Price Comparison & Personal Product Recommender
 
 <p align="center">
-  <img src="assets/images/logo.png" alt="Compair Logo" width="120"/>
+  <img src="assets/images/logo.png" alt="Qor AI Logo" width="120"/>
 </p>
 
-> **Compair** is a cross-platform Flutter application that helps users discover, compare, and make smarter purchase decisions using AI-powered personalized recommendations, real-time price tracking, and deep product analysis.
+> **Qor AI** is a cross-platform Flutter application that helps users discover, compare, and make smarter purchase decisions using AI-powered personalized recommendations, real-time price tracking, and deep product analysis.
 
 ---
 
@@ -129,8 +129,8 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 
 | Site | URL | Content |
 |------|-----|---------|
-| `compair-website` | https://compair.digital | Public website |
-| `compair-admin` | https://z1221ae58okr865xdquykps8.46.225.95.201.sslip.io | Admin panel |
+| `qorai-website` | https://qorai.app | Public website |
+| `qorai-admin` | https://z1221ae58okr865xdquykps8.46.225.95.201.sslip.io | Admin panel |
 
 Note: `https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io` is the PocketBase backend endpoint, not the public website.
 
@@ -154,8 +154,8 @@ npm run deploy:admin     # Admin only
 
 1. **Clone the repo**
    ```bash
-   git clone https://github.com/arain-0/Compair.git
-   cd Compair
+   git clone https://github.com/arain-0/Qor AI.git
+   cd Qor AI
    flutter pub get
    ```
 

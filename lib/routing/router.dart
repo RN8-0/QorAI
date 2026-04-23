@@ -1,4 +1,4 @@
-/// Compair - GoRouter Configuration
+/// Qor AI - GoRouter Configuration
 /// Blueprint Section 3.1 (routing/)
 ///
 /// All page routes, auth guard, lazy loading
@@ -7,34 +7,34 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:compair/presentation/screens/login/login_screen.dart';
-import 'package:compair/presentation/screens/onboarding/onboarding_screen.dart';
-import 'package:compair/presentation/screens/quiz/quiz_screen.dart';
-import 'package:compair/presentation/screens/home/home_screen.dart';
-import 'package:compair/presentation/screens/compare/compare_screen.dart';
-import 'package:compair/presentation/screens/detail/product_detail_screen.dart';
-import 'package:compair/presentation/screens/profile/profile_screen.dart';
-import 'package:compair/presentation/screens/settings/settings_screen.dart';
-import 'package:compair/presentation/screens/settings/edit_profile_screen.dart';
-import 'package:compair/presentation/screens/link_paste/link_paste_screen.dart';
-import 'package:compair/presentation/screens/search/search_screen.dart';
-import 'package:compair/presentation/screens/ai_chat/ai_chat_screen.dart';
-import 'package:compair/presentation/screens/main_shell.dart' as shell;
-import 'package:compair/presentation/screens/subscriptions/subscriptions_screen.dart';
-import 'package:compair/presentation/screens/comparisons/comparisons_screen.dart';
-import 'package:compair/presentation/screens/collection/collection_screen.dart';
-import 'package:compair/presentation/screens/legal/legal_screen.dart';
-import 'package:compair/presentation/screens/browse/category_browse_screen.dart';
-import 'package:compair/presentation/screens/profile/behavior_report_screen.dart';
-import 'package:compair/presentation/screens/profile/recently_viewed_screen.dart';
-import 'package:compair/presentation/screens/notifications/notifications_screen.dart';
-import 'package:compair/presentation/screens/pc_builder/pc_builder_screen.dart';
-import 'package:compair/presentation/screens/pc_builder/pc_builder_history_screen.dart';
-import 'package:compair/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
-import 'package:compair/presentation/screens/visual_scanner/visual_scanner_screen.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/presentation/screens/login/login_screen.dart';
+import 'package:qor_ai/presentation/screens/onboarding/onboarding_screen.dart';
+import 'package:qor_ai/presentation/screens/quiz/quiz_screen.dart';
+import 'package:qor_ai/presentation/screens/home/home_screen.dart';
+import 'package:qor_ai/presentation/screens/compare/compare_screen.dart';
+import 'package:qor_ai/presentation/screens/detail/product_detail_screen.dart';
+import 'package:qor_ai/presentation/screens/profile/profile_screen.dart';
+import 'package:qor_ai/presentation/screens/settings/settings_screen.dart';
+import 'package:qor_ai/presentation/screens/settings/edit_profile_screen.dart';
+import 'package:qor_ai/presentation/screens/link_paste/link_paste_screen.dart';
+import 'package:qor_ai/presentation/screens/search/search_screen.dart';
+import 'package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart';
+import 'package:qor_ai/presentation/screens/main_shell.dart' as shell;
+import 'package:qor_ai/presentation/screens/subscriptions/subscriptions_screen.dart';
+import 'package:qor_ai/presentation/screens/comparisons/comparisons_screen.dart';
+import 'package:qor_ai/presentation/screens/collection/collection_screen.dart';
+import 'package:qor_ai/presentation/screens/legal/legal_screen.dart';
+import 'package:qor_ai/presentation/screens/browse/category_browse_screen.dart';
+import 'package:qor_ai/presentation/screens/profile/behavior_report_screen.dart';
+import 'package:qor_ai/presentation/screens/profile/recently_viewed_screen.dart';
+import 'package:qor_ai/presentation/screens/notifications/notifications_screen.dart';
+import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_screen.dart';
+import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_history_screen.dart';
+import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
+import 'package:qor_ai/presentation/screens/visual_scanner/visual_scanner_screen.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/pb_client.dart';
 
 // Route names
 class AppRoutes {
@@ -455,10 +455,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Force onboarding quiz for real (non-anonymous) users who haven't completed it.
-      // Anonymous guests use guest_*@compair.local emails and are exempt.
+      // Anonymous guests use guest_*@qorai.local emails and are exempt.
       if (isLoggedIn && record != null) {
         final email = record.data['email']?.toString() ?? '';
-        final isAnonymous = email.endsWith('@compair.local');
+        final isAnonymous = email.endsWith('@qorai.local');
         if (!isAnonymous) {
           final quizCompleted = record.data['quizCompleted'] == true;
           if (!quizCompleted && location != AppRoutes.quiz) {

@@ -1,4 +1,4 @@
-/// Compair — PocketBase Client Singleton
+/// Qor AI — PocketBase Client Singleton
 library;
 
 import 'package:pocketbase/pocketbase.dart';

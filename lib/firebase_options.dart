@@ -25,26 +25,26 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyCJMUBkwXRRKqayyh1dlA0qovtVt1Gsl4I',
     appId: '1:510980756238:android:28418410181e915269fd5f',
     messagingSenderId: '510980756238',
-    projectId: 'compair-99b6e',
-    storageBucket: 'compair-99b6e.firebasestorage.app',
+    projectId: 'qorai-99b6e',
+    storageBucket: 'qorai-99b6e.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCJMUBkwXRRKqayyh1dlA0qovtVt1Gsl4I',
     appId: '1:510980756238:ios:9cc74b8f1e751da169fd5f',
     messagingSenderId: '510980756238',
-    projectId: 'compair-99b6e',
-    storageBucket: 'compair-99b6e.firebasestorage.app',
+    projectId: 'qorai-99b6e',
+    storageBucket: 'qorai-99b6e.firebasestorage.app',
     iosClientId:
         '510980756238-369d7b3tst5k4aue0niai0g5tm7090c1.apps.googleusercontent.com',
-    iosBundleId: 'com.compair.app',
+    iosBundleId: 'com.qorai.app',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCJMUBkwXRRKqayyh1dlA0qovtVt1Gsl4I',
     appId: '1:510980756238:web:b21d1e3613561d7c69fd5f',
     messagingSenderId: '510980756238',
-    projectId: 'compair-99b6e',
-    storageBucket: 'compair-99b6e.firebasestorage.app',
+    projectId: 'qorai-99b6e',
+    storageBucket: 'qorai-99b6e.firebasestorage.app',
   );
 }

@@ -1,4 +1,4 @@
-/// Compair - Cache Service (Local-only Cache)
+/// Qor AI - Cache Service (Local-only Cache)
 /// Blueprint Section 7.4
 ///
 /// Hive local cache (single layer — server cache removed in PB migration)
@@ -12,8 +12,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:convert';
 
 class CacheService {
-  static const String _cacheBoxName = 'compair_cache';
-  static const String _settingsBoxName = 'compair_settings';
+  static const String _cacheBoxName = 'qor_ai_cache';
+  static const String _settingsBoxName = 'qor_ai_settings';
 
   late Box<String> _localBox;
   late Box _settingsBox;
@@ -239,7 +239,7 @@ class CacheService {
   Future<void> clearUserData() async {
     try {
       // Clear IP location cache so auto-detection runs fresh on next login.
-      final ipBox = await Hive.openBox('compair_local_cache');
+      final ipBox = await Hive.openBox('qor_ai_local_cache');
       await ipBox.delete('ip_location_data');
     } catch (_) {}
     // Reset country to unset so IP detection will re-run.

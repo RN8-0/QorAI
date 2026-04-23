@@ -242,10 +242,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (ts == null) return null;
       // 24h TTL
       if (DateTime.now().difference(ts).inHours > 24) return null;
-      debugPrint('[Compair] ✅ Cache HIT for $feature');
+      debugPrint('[Qor AI] ✅ Cache HIT for $feature');
       return data;
     } catch (e) {
-      debugPrint('[Compair] Cache read error ($feature): $e');
+      debugPrint('[Qor AI] Cache read error ($feature): $e');
       return null;
     }
   }
@@ -270,7 +270,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         await pb.collection('ai_compare_cache').create(body: body);
       }
     } catch (e) {
-      debugPrint('[Compair] Cache write error ($feature): $e');
+      debugPrint('[Qor AI] Cache write error ($feature): $e');
     }
   }
 
@@ -333,7 +333,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       } else if (jsonStart >= 0) {
         // No closing brace — truncated JSON, try repair
         clean = _repairTruncatedJson(clean.substring(jsonStart));
-        debugPrint('[Compair] _tryParseJson: attempted JSON repair');
+        debugPrint('[Qor AI] _tryParseJson: attempted JSON repair');
       }
       final decoded = jsonDecode(clean);
       if (decoded is Map<String, dynamic>) return decoded;
@@ -344,12 +344,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         final repaired = _repairTruncatedJson(raw.trim());
         final decoded = jsonDecode(repaired);
         if (decoded is Map<String, dynamic>) {
-          debugPrint('[Compair] _tryParseJson: repair succeeded');
+          debugPrint('[Qor AI] _tryParseJson: repair succeeded');
           return decoded;
         }
       } catch (_) {}
       debugPrint(
-        '[Compair] _tryParseJson failed: $e | raw snippet: ${raw.length > 200 ? raw.substring(0, 200) : raw}',
+        '[Qor AI] _tryParseJson failed: $e | raw snippet: ${raw.length > 200 ? raw.substring(0, 200) : raw}',
       );
       return null;
     }
@@ -420,7 +420,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (decoded is List) return decoded;
       return null;
     } catch (e) {
-      debugPrint('[Compair] _tryParseJsonArray failed: $e');
+      debugPrint('[Qor AI] _tryParseJsonArray failed: $e');
       return null;
     }
   }
@@ -449,18 +449,18 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
           maxTokens: maxTokens,
         );
         debugPrint(
-          '[Compair] 🔍 $label RAW attempt $attempt (${result.length} chars):\n${result.length > 600 ? result.substring(0, 600) : result}',
+          '[Qor AI] 🔍 $label RAW attempt $attempt (${result.length} chars):\n${result.length > 600 ? result.substring(0, 600) : result}',
         );
         final parsed = _tryParseJson(result);
         if (parsed != null) return (data: parsed, error: null);
         lastError = 'JSON parse failed';
         debugPrint(
-          '[Compair] $label parse FAILED attempt $attempt${attempt < 3 ? " — retrying" : " — giving up"}',
+          '[Qor AI] $label parse FAILED attempt $attempt${attempt < 3 ? " — retrying" : " — giving up"}',
         );
         if (attempt < 3) await Future.delayed(Duration(seconds: attempt));
       } catch (e) {
         lastError = e.toString();
-        debugPrint('[Compair] $label attempt $attempt error: $e');
+        debugPrint('[Qor AI] $label attempt $attempt error: $e');
         if (attempt < 3) await Future.delayed(Duration(seconds: attempt));
       }
     }
@@ -813,7 +813,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
           _applyAiPanelCache(panel, cacheResult, parsed);
           _saveToSession();
           debugPrint(
-            '[Compair] ⏱ $debugLabel from cache: ${sw.elapsedMilliseconds}ms',
+            '[Qor AI] ⏱ $debugLabel from cache: ${sw.elapsedMilliseconds}ms',
           );
           return;
         }
@@ -847,7 +847,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
 
       if (result.data == null) {
         debugPrint(
-          '[Compair] $debugLabel parse FAILED — showing error: ${result.error}',
+          '[Qor AI] $debugLabel parse FAILED — showing error: ${result.error}',
         );
         _applyAiPanelFailure(panel, result.error);
       } else {
@@ -861,10 +861,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       }
 
       debugPrint(
-        '[Compair] ⏱ $debugLabel from Gemini: ${sw.elapsedMilliseconds}ms',
+        '[Qor AI] ⏱ $debugLabel from Gemini: ${sw.elapsedMilliseconds}ms',
       );
     } catch (e, st) {
-      debugPrint('[Compair] $debugLabel FAILED: $e\n$st');
+      debugPrint('[Qor AI] $debugLabel FAILED: $e\n$st');
       if (mounted) {
         _applyAiPanelFailure(panel, e.toString());
       }
@@ -928,7 +928,7 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
       cacheFeature: _localizedFeature('deep_analysis_v3'),
       debugLabel: 'Deep Analysis',
       staleCacheMessage:
-          '[Compair] Deep Analysis cache unparseable — re-fetching',
+          '[Qor AI] Deep Analysis cache unparseable — re-fetching',
       prompt:
           '$prompt\n'
           'Quality constraints:\n'
@@ -937,7 +937,7 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
           '- verdict and recommendation should each be 4-6 sentences and should differ in focus.',
       lang: lang,
       maxTokens: 8192,
-      startMessage: '[Compair] Deep Analysis starting for: $productNames',
+      startMessage: '[Qor AI] Deep Analysis starting for: $productNames',
     );
   }
 
@@ -975,7 +975,7 @@ Return ONLY valid JSON:
       cacheFeature: _localizedFeature('alternatives_v2'),
       debugLabel: 'Alternatives',
       staleCacheMessage:
-          '[Compair] Alternatives cache unparseable — re-fetching',
+          '[Qor AI] Alternatives cache unparseable — re-fetching',
       prompt:
           '$prompt\n'
           'Quality constraints:\n'
@@ -984,7 +984,7 @@ Return ONLY valid JSON:
           '- Include realistic and differentiated price band commentary.',
       lang: lang,
       maxTokens: 2048,
-      startMessage: '[Compair] Alternatives starting for: $productNames',
+      startMessage: '[Qor AI] Alternatives starting for: $productNames',
     );
   }
 
@@ -1032,7 +1032,7 @@ Return ONLY valid JSON, no markdown, no explanation:
       panel: _AiPanelType.advisor,
       cacheFeature: _localizedFeature('advisor_v2'),
       debugLabel: 'Advisor',
-      staleCacheMessage: '[Compair] Advisor cache unparseable — re-fetching',
+      staleCacheMessage: '[Qor AI] Advisor cache unparseable — re-fetching',
       prompt:
           '$prompt\n'
           'Quality constraints:\n'
@@ -1041,7 +1041,7 @@ Return ONLY valid JSON, no markdown, no explanation:
           '- Use varied wording across products and points.',
       lang: lang,
       maxTokens: 2048,
-      startMessage: '[Compair] Advisor starting',
+      startMessage: '[Qor AI] Advisor starting',
     );
   }
 
@@ -1099,7 +1099,7 @@ Rules:
       panel: _AiPanelType.prediction,
       cacheFeature: _localizedFeature('prediction_v5'),
       debugLabel: 'Prediction',
-      staleCacheMessage: '[Compair] Prediction cache unparseable — re-fetching',
+      staleCacheMessage: '[Qor AI] Prediction cache unparseable — re-fetching',
       prompt:
           '$prompt\n'
           'Quality constraints:\n'
@@ -1108,7 +1108,7 @@ Rules:
           '- Do not repeat near-identical reasoning across products.',
       lang: lang,
       maxTokens: 4096,
-      startMessage: '[Compair] Prediction starting',
+      startMessage: '[Qor AI] Prediction starting',
     );
   }
 
@@ -5864,14 +5864,14 @@ Rules:
                     ],
                   ),
                 ),
-                CompAmountBadge(
+                QorAmountBadge(
                   amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
                   unlimited: ref.watch(subscriptionServiceProvider).isPremium,
                   color: AppTheme.brandBlue,
                   fontSize: 10,
                 ),
                 const SizedBox(width: 6),
-                CompBalanceBadge(
+                QorBalanceBadge(
                   remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
                   total: AppConstants.freeDailyAiCreditLimit,
                   unlimited: ref.watch(subscriptionServiceProvider).isPremium,

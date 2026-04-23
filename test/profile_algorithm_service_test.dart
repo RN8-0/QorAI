@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/services/profile_algorithm_service.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/services/profile_algorithm_service.dart';
 
 void main() {
   final service = ProfileAlgorithmService();

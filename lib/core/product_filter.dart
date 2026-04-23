@@ -1,8 +1,8 @@
-/// Compair — Shared product filtering logic
+/// Qor AI — Shared product filtering logic
 /// Applied to home feed, search results, and category browse
 library;
 
-import 'package:compair/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
 
 /// Centralized product filter: year >= 2020, known brands only
 class ProductFilter {

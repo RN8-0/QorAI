@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/services/behavior_analysis_service.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/services/behavior_analysis_service.dart';
 
 class MatchScoreResult {
   final double score; // 0-100

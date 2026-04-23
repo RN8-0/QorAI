@@ -7,7 +7,7 @@ const HOST = '46.225.95.201';
 const USER = 'root';
 const OLD_PASSWORD = process.env.SSH_PASSWORD;
 const NEW_PASSWORD = crypto.randomBytes(24).toString('base64').replace(/[+/=]/g, '').slice(0, 28);
-const PUBKEY = fs.readFileSync(path.join(__dirname, 'compair_hetzner.pub'), 'utf8').trim();
+const PUBKEY = fs.readFileSync(path.join(__dirname, 'qorai_hetzner.pub'), 'utf8').trim();
 
 if (!OLD_PASSWORD) { console.error('Set SSH_PASSWORD env var'); process.exit(1); }
 

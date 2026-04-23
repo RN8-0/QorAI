@@ -1,4 +1,4 @@
-/// Compair - Push Notification Service
+/// Qor AI - Push Notification Service
 /// Integrates Firebase Cloud Messaging for Android & iOS push notifications.
 library;
 
@@ -14,8 +14,8 @@ Future<void> notificationBackgroundHandler(RemoteMessage message) async {
 }
 
 // ─── Local notification channel (Android) ────────────────────────────────────
-const _kChannelId = 'compair_default';
-const _kChannelName = 'Compair Notifications';
+const _kChannelId = 'qor_ai_default';
+const _kChannelName = 'Qor AI Notifications';
 const _kChannelDesc = 'AI product advisor alerts and updates';
 
 // Keep existing stub types for backwards compat at call sites

@@ -1,4 +1,4 @@
-/// Compair - User Entity (Domain Layer - Pure Dart)
+/// Qor AI - User Entity (Domain Layer - Pure Dart)
 /// Blueprint Section 4.1
 ///
 /// Extended user model for Profile Algorithm

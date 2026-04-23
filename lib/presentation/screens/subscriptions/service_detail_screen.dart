@@ -1,4 +1,4 @@
-/// Compair - Service Detail Screen (iOS-style redesign)
+/// Qor AI - Service Detail Screen (iOS-style redesign)
 /// Improved AI analysis, fixed Visit Website, better compare tab
 library;
 
@@ -12,11 +12,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/presentation/providers/providers.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 
 class ServiceDetailScreen extends ConsumerStatefulWidget {
   final SubscriptionServiceModel service;
@@ -1625,7 +1625,8 @@ Pros: ${s.pros.join(', ')}
 Cons: ${s.cons.join(', ')}
 Plans: ${s.plans.map((p) => '${p.name}: ${p.price}').join(', ')}
 
-Respond in JSON: {"rating": "X/10", "bestFor": "short description of ideal user", "analysis": "2-3 sentence analysis"}''';
+Respond in JSON: {"rating": "<number> Qor", "bestFor": "short description of ideal user", "analysis": "2-3 sentence analysis"}
+Keep the rating concise, like "5 Qor" or "8.5 Qor".''';
 
       final dio = Dio();
       final resp = await dio
@@ -1688,7 +1689,7 @@ Respond in JSON: {"rating": "X/10", "bestFor": "short description of ideal user"
           Row(
             children: [
               Image.asset(
-                'assets/logo/compair_logo.png',
+                'assets/logo/qor_ai_logo.png',
                 width: 24,
                 height: 24,
               ),
@@ -1703,7 +1704,7 @@ Respond in JSON: {"rating": "X/10", "bestFor": "short description of ideal user"
               ),
               const Spacer(),
               Text(
-                'Powered by Compair AI',
+                'Powered by Qor AI',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 10,
                   color: AppTheme.slate400,

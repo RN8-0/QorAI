@@ -1,4 +1,4 @@
-/// Compair — Reusable shimmer skeleton widgets.
+/// Qor AI — Reusable shimmer skeleton widgets.
 ///
 /// Uses `shimmer` package (already in pubspec) for a premium App Store-grade
 /// loading state. All skeletons pick up the current theme (light/dark) so they

@@ -121,7 +121,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Compair'**
+  /// **'Qor AI'**
   String get appTitle;
 
   /// No description provided for @home.
@@ -223,7 +223,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to Compair'**
+  /// **'Welcome to Qor AI'**
   String get welcomeTitle;
 
   /// No description provided for @welcomeSubtitle.
@@ -2401,7 +2401,7 @@ abstract class AppLocalizations {
   /// No description provided for @mustBe13OrOlder.
   ///
   /// In en, this message translates to:
-  /// **'You must be at least 13 years old to use Compair.'**
+  /// **'You must be at least 13 years old to use Qor AI.'**
   String get mustBe13OrOlder;
 
   /// No description provided for @pleaseEnterEmailToReset.
@@ -2416,11 +2416,11 @@ abstract class AppLocalizations {
   /// **'Password reset email sent!'**
   String get passwordResetEmailSent;
 
-  /// No description provided for @compairTitle.
+  /// No description provided for @brandTitle.
   ///
   /// In en, this message translates to:
-  /// **'Compair'**
-  String get compairTitle;
+  /// **'Qor AI'**
+  String get brandTitle;
 
   /// No description provided for @smarterDecisions.
   ///
@@ -2710,11 +2710,11 @@ abstract class AppLocalizations {
   /// **'Products, comparisons, recommendations'**
   String get productsComparisonsRecs;
 
-  /// No description provided for @compairAi.
+  /// No description provided for @brandAi.
   ///
   /// In en, this message translates to:
-  /// **'Compair AI'**
-  String get compairAi;
+  /// **'Qor AI'**
+  String get brandAi;
 
   /// No description provided for @onlineKnowsPrefs.
   ///
@@ -3361,7 +3361,7 @@ abstract class AppLocalizations {
   /// No description provided for @quizUsage.
   ///
   /// In en, this message translates to:
-  /// **'Why are you using Compair?'**
+  /// **'Why are you using Qor AI?'**
   String get quizUsage;
 
   /// No description provided for @quizProfession.
@@ -5545,7 +5545,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallPurchaseSuccess.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to Compair Pro! 🎉'**
+  /// **'Welcome to Qor AI Pro! 🎉'**
   String get paywallPurchaseSuccess;
 
   /// No description provided for @paywallRestoreSuccess.
@@ -6331,7 +6331,7 @@ abstract class AppLocalizations {
   /// No description provided for @foundInDatabase.
   ///
   /// In en, this message translates to:
-  /// **'Found in Compair Database'**
+  /// **'Found in Qor AI Database'**
   String get foundInDatabase;
 
   /// No description provided for @techScoreLabel.
@@ -6361,7 +6361,7 @@ abstract class AppLocalizations {
   /// No description provided for @poweredByAi.
   ///
   /// In en, this message translates to:
-  /// **'Powered by Compair AI'**
+  /// **'Powered by Qor AI'**
   String get poweredByAi;
 
   /// No description provided for @retryAvailable.

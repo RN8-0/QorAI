@@ -1,12 +1,12 @@
-/// Compair — Login Required Dialog
+/// Qor AI — Login Required Dialog
 /// Shows when a guest user tries to use AI features.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/pb_client.dart' as pb_client;
-import 'package:compair/routing/router.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/pb_client.dart' as pb_client;
+import 'package:qor_ai/routing/router.dart';
 
 /// Returns `true` if user is logged in, `false` otherwise.
 /// When not logged in, shows a dialog prompting sign-in.

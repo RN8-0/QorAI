@@ -345,7 +345,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                         children: [
                           Text(
                             context.l10n?.foundInDatabase ??
-                                'Found in Compair Database',
+                                'Found in Qor AI Database',
                             style: GoogleFonts.plusJakartaSans(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
@@ -952,7 +952,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
           const SizedBox(height: 16),
         ],
 
-        // Similar products from Compair database
+        // Similar products from Qor AI database
         if (similarProducts.isNotEmpty) ...[
           GlassContainer(
                 padding: const EdgeInsets.all(20),

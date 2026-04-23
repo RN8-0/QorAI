@@ -310,7 +310,7 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                           isLoading && stepMessage.isNotEmpty
                               ? stepMessage
                               : (context.l10n?.poweredByAi ??
-                                  'Powered by Compair AI'),
+                                  'Powered by Qor AI'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             color: isLoading && stepMessage.isNotEmpty
@@ -327,14 +327,14 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                     ],
                   ),
                 ),
-                CompAmountBadge(
+                QorAmountBadge(
                   amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('detail_ai'),
                   unlimited: ref.watch(subscriptionServiceProvider).isPremium,
                   color: AppTheme.accentTeal,
                   fontSize: 10,
                 ),
                 const SizedBox(width: 6),
-                CompBalanceBadge(
+                QorBalanceBadge(
                   remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
                   total: AppConstants.freeDailyAiCreditLimit,
                   unlimited: ref.watch(subscriptionServiceProvider).isPremium,

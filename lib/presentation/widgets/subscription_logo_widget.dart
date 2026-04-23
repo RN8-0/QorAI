@@ -4,7 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:compair/data/models/other_models.dart';
+import 'package:qor_ai/data/models/other_models.dart';
 
 // ─── Known service domains ────────────────────────────────────────────────────
 

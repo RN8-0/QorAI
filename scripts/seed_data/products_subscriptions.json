@@ -30,7 +30,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.3,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["netflix", "streaming", "dizi", "film", "abonelik"],
       "affiliateLinks": {
@@ -69,7 +69,7 @@
       "ratings": {
         "expert": 8.7,
         "community": 4.4,
-        "compair": 87
+        "qorai": 87
       },
       "tags": ["netflix", "streaming", "4k", "premium", "abonelik"],
       "affiliateLinks": {
@@ -107,7 +107,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["spotify", "müzik", "podcast", "streaming", "abonelik"],
       "affiliateLinks": {
@@ -144,7 +144,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.4,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["spotify", "müzik", "duo", "çift", "abonelik"],
       "affiliateLinks": {
@@ -181,7 +181,7 @@
       "ratings": {
         "expert": 8.3,
         "community": 4.2,
-        "compair": 83
+        "qorai": 83
       },
       "tags": ["youtube", "google", "streaming", "müzik", "reklamsız"],
       "affiliateLinks": {
@@ -218,7 +218,7 @@
       "ratings": {
         "expert": 8.7,
         "community": 4.4,
-        "compair": 87
+        "qorai": 87
       },
       "tags": ["apple music", "apple", "müzik", "lossless", "spatial audio"],
       "affiliateLinks": {
@@ -253,7 +253,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.3,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["apple one", "apple", "bundle", "abonelik", "paket"],
       "affiliateLinks": {
@@ -290,7 +290,7 @@
       "ratings": {
         "expert": 8.2,
         "community": 4.2,
-        "compair": 82
+        "qorai": 82
       },
       "tags": ["disney", "marvel", "star wars", "streaming", "aile"],
       "affiliateLinks": {
@@ -328,7 +328,7 @@
       "ratings": {
         "expert": 7.8,
         "community": 4.0,
-        "compair": 78
+        "qorai": 78
       },
       "tags": ["amazon", "prime video", "streaming", "ucuz"],
       "affiliateLinks": {
@@ -365,7 +365,7 @@
       "ratings": {
         "expert": 8.0,
         "community": 4.3,
-        "compair": 80
+        "qorai": 80
       },
       "tags": ["icloud", "apple", "bulut", "depolama", "yedekleme"],
       "affiliateLinks": {
@@ -402,7 +402,7 @@
       "ratings": {
         "expert": 8.2,
         "community": 4.2,
-        "compair": 82
+        "qorai": 82
       },
       "tags": ["google one", "google", "bulut", "depolama", "vpn"],
       "affiliateLinks": {
@@ -441,7 +441,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.5,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["chatgpt", "openai", "ai", "yapay zeka", "gpt-4"],
       "affiliateLinks": {
@@ -478,7 +478,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.5,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["notion", "not", "proje yönetimi", "verimlilik", "workspace"],
       "affiliateLinks": {
@@ -516,7 +516,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.6,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["canva", "tasarım", "grafik", "sosyal medya", "şablon"],
       "affiliateLinks": {
@@ -553,7 +553,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.3,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["microsoft", "office", "365", "word", "excel", "onedrive"],
       "affiliateLinks": {

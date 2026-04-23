@@ -1,13 +1,13 @@
-/// Compair — Behavior Analysis Service
+/// Qor AI — Behavior Analysis Service
 library;
 
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/data/models/user_model.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/data/models/user_model.dart';
 
 class BehaviorProfile {
   final Map<String, double> categoryInterestScores;

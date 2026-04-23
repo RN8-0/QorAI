@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 
 /// Shared product card used in similar product grids.
 /// Used by both detail screen and compare screen.

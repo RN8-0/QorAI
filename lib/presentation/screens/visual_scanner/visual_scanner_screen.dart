@@ -5,13 +5,13 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/constants.dart';
 import 'package:camera/camera.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -358,6 +358,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
   }
 
   Widget _buildScanButton() {
+    final sub = ref.watch(subscriptionServiceProvider);
     return Positioned(
       bottom: 0,
       left: 0,
@@ -422,6 +423,14 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                         ),
                 ),
               ),
+              if (!_isScanning) ...[
+                const SizedBox(height: 12),
+                QorAmountBadge(
+                  amount: AppConstants.creditCostForFeature('product_scan'),
+                  unlimited: sub.isPremium,
+                  color: Colors.white,
+                ),
+              ],
             ],
           ),
         ),
@@ -590,6 +599,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   Widget _buildFollowUpInput() {
     final sub = ref.watch(subscriptionServiceProvider);
+    final followUpCost = AppConstants.creditCostForFeature('ai_chat');
     return SafeArea(
       top: false,
       child: Container(
@@ -604,9 +614,18 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
           children: [
             Align(
               alignment: Alignment.centerRight,
-              child: CompBalanceBadge(
+              child: QorBalanceBadge(
                 remaining: sub.remainingDailyCredits,
                 total: AppConstants.freeDailyAiCreditLimit,
+                unlimited: sub.isPremium,
+                color: AppTheme.neonCyan,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: QorAmountBadge(
+                amount: followUpCost,
                 unlimited: sub.isPremium,
                 color: AppTheme.neonCyan,
               ),

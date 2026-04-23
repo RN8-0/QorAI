@@ -1,15 +1,15 @@
-import 'package:compair/core/constants.dart';
+import 'package:qor_ai/core/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class CompAmountBadge extends StatelessWidget {
+class QorAmountBadge extends StatelessWidget {
   final int? amount;
   final bool unlimited;
   final Color color;
   final double fontSize;
   final EdgeInsetsGeometry padding;
 
-  const CompAmountBadge({
+  const QorAmountBadge({
     super.key,
     this.amount,
     this.unlimited = false,
@@ -21,8 +21,8 @@ class CompAmountBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = unlimited
-        ? '∞ ${AppConstants.compCurrencyName}'
-        : '${amount ?? 0} ${AppConstants.compCurrencyName}';
+        ? '∞ ${AppConstants.qorCurrencyName}'
+        : '${amount ?? 0} ${AppConstants.qorCurrencyName}';
 
     return Container(
       padding: padding,
@@ -34,7 +34,7 @@ class CompAmountBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.monetization_on_rounded, size: fontSize + 3, color: color),
+          _QCoinIcon(size: fontSize + 5, color: color),
           const SizedBox(width: 5),
           Text(
             label,
@@ -50,7 +50,7 @@ class CompAmountBadge extends StatelessWidget {
   }
 }
 
-class CompBalanceBadge extends StatelessWidget {
+class QorBalanceBadge extends StatelessWidget {
   final int remaining;
   final int total;
   final bool unlimited;
@@ -58,7 +58,7 @@ class CompBalanceBadge extends StatelessWidget {
   final double fontSize;
   final EdgeInsetsGeometry padding;
 
-  const CompBalanceBadge({
+  const QorBalanceBadge({
     super.key,
     required this.remaining,
     required this.total,
@@ -71,8 +71,8 @@ class CompBalanceBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = unlimited
-        ? '∞ ${AppConstants.compCurrencyName}'
-        : '$remaining/$total ${AppConstants.compCurrencyName}';
+        ? '∞ ${AppConstants.qorCurrencyName}'
+        : '$remaining/$total ${AppConstants.qorCurrencyName}';
 
     return Container(
       padding: padding,
@@ -84,7 +84,7 @@ class CompBalanceBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.monetization_on_rounded, size: fontSize + 3, color: color),
+          _QCoinIcon(size: fontSize + 5, color: color),
           const SizedBox(width: 5),
           Text(
             label,
@@ -95,6 +95,50 @@ class CompBalanceBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QCoinIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _QCoinIcon({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            color.withValues(alpha: 0.95),
+            color.withValues(alpha: 0.65),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.18),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          'Q',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: size * 0.54,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            height: 1,
+          ),
+        ),
       ),
     );
   }

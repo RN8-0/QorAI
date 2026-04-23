@@ -1,4 +1,4 @@
-// Compair — Dual Theme System (OLED Dark + Clean Light)
+// Qor AI — Dual Theme System (OLED Dark + Clean Light)
 // Pure black OLED dark + Slate-50 light, both built on the same brand palette
 // Brand Cyan    : #00E5FF (accent highlight — the logo's center dot)
 // Brand Cyan    : #00E5FF (accent highlight — the logo's center dot)
@@ -13,7 +13,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/l10n/app_localizations.dart';
+import 'package:qor_ai/l10n/app_localizations.dart';
 
 class AppTheme {
   AppTheme._();

@@ -1,11 +1,11 @@
-/// Compair - Onboarding Screen
+/// Qor AI - Onboarding Screen
 /// Blueprint Section 5.1 - 3 immersive onboarding pages (light theme)
 /// Custom animated page indicator with gradient fills
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/routing/router.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/routing/router.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});

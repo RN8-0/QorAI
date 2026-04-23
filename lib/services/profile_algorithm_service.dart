@@ -1,4 +1,4 @@
-/// Compair - Profile Algorithm Service
+/// Qor AI - Profile Algorithm Service
 /// Blueprint Section 8, 10
 ///
 /// User profile vector calculation and product compatibility score algorithm.
@@ -6,9 +6,9 @@
 /// Foundation for dynamic home page and personalized recommendations.
 library;
 
-import 'package:compair/core/constants.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/domain/entities/product_entity.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
 
 /// Lightweight snapshot of a user's behavioral signals.
 /// Fetched once per session and cached in the provider layer.

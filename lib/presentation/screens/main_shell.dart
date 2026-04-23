@@ -1,4 +1,4 @@
-/// Compair - Main Shell (Modern Navigation)
+/// Qor AI - Main Shell (Modern Navigation)
 /// Mobile: 3-tab floating pill nav + hamburger drawer
 /// Desktop/Tablet: Side rail navigation
 library;
@@ -10,16 +10,16 @@ import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:google_fonts/google_fonts.dart";
-import "package:compair/core/app_keys.dart";
-import "package:compair/presentation/providers/providers.dart";
-import "package:compair/presentation/screens/ai_chat/ai_chat_screen.dart";
-import "package:compair/services/connectivity_service.dart";
-import "package:compair/services/notification_service.dart";
+import "package:qor_ai/core/app_keys.dart";
+import "package:qor_ai/presentation/providers/providers.dart";
+import "package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart";
+import "package:qor_ai/services/connectivity_service.dart";
+import "package:qor_ai/services/notification_service.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
-import "package:compair/routing/router.dart";
-import "package:compair/core/theme.dart";
-import "package:compair/core/extensions.dart";
-import "package:compair/l10n/app_localizations.dart";
+import "package:qor_ai/routing/router.dart";
+import "package:qor_ai/core/theme.dart";
+import "package:qor_ai/core/extensions.dart";
+import "package:qor_ai/l10n/app_localizations.dart";
 
 const _kNavBarHeight = AppTheme.navBarHeight;
 const _kSidebarWidth = 240.0;
@@ -552,12 +552,12 @@ class _DesktopSidebar extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.asset('assets/logo/compair_logo_512.png',
+                    child: Image.asset('assets/logo/qor_ai_logo_512.png',
                         width: 36, height: 36, fit: BoxFit.cover),
                   ),
                   if (isExpanded) ...[
                     const SizedBox(width: 12),
-                    Text("Compair",
+                    Text("Qor AI",
                         style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w800, fontSize: 20,
                             color: context.textPrimary)),
@@ -595,7 +595,7 @@ class _DesktopSidebar extends StatelessWidget {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text("© 2025 Compair",
+                child: Text("© 2025 Qor AI",
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 11, color: AppTheme.slate400)),
               ),
@@ -954,7 +954,7 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
                               size: 20)
                           : Image.asset(
                               key: const ValueKey('logo'),
-                              'assets/logo/compair_logo.png',
+                              'assets/logo/qor_ai_logo.png',
                               width: 30, height: 30,
                               fit: BoxFit.contain,
                             ),

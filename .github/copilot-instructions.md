@@ -1,4 +1,4 @@
-# Copilot Instructions — Compair Project
+# Copilot Instructions — Qor AI Project
 
 ## Dil & İletişim
 - Benimle daima **Türkçe** konuş, Türkçe düşün.
@@ -20,7 +20,7 @@
 - Commit mesajları Türkçe veya İngilizce olabilir, açıklayıcı olsun.
 
 ## Proje Bilgisi
-- **Proje:** Compair — Flutter AI Product Advisor uygulaması
+- **Proje:** Qor AI — Flutter AI Product Advisor uygulaması
 - **State Management:** Riverpod
 - **Routing:** GoRouter
 - **Backend:** PocketBase

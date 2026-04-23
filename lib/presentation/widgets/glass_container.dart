@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:compair/core/theme.dart';
+import 'package:qor_ai/core/theme.dart';
 
 /// Glassmorphism card — adapts to light and dark themes.
 class GlassContainer extends StatelessWidget {

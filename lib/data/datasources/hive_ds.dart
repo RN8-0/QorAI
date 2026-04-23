@@ -1,4 +1,4 @@
-/// Compair - Hive Local Data Source
+/// Qor AI - Hive Local Data Source
 /// Blueprint Section 2 (Hive - NoSQL, fast, Flutter-native)
 
 import 'dart:convert';

@@ -1,5 +1,5 @@
-name: compair
-description: "Compair - AI Product Advisor. Your personal decision engine."
+name: qor_ai
+description: "Qor AI - AI Product Advisor. Your personal decision engine."
 publish_to: 'none'
 version: 2.0.2+8
 
@@ -107,12 +107,12 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo/compair_logo.png"
+  image_path: "assets/logo/qor_ai_logo.png"
   adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "assets/logo/compair_logo.png"
+  adaptive_icon_foreground: "assets/logo/qor_ai_logo.png"
   min_sdk_android: 21
   web:
     generate: true
-    image_path: "assets/logo/compair_logo.png"
+    image_path: "assets/logo/qor_ai_logo.png"
     background_color: "#000000"
     theme_color: "#000000"

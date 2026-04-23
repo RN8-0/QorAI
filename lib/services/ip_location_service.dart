@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-const _boxName = 'compair_local_cache';
+const _boxName = 'qor_ai_local_cache';
 const _cacheKey = 'ip_location_data';
 const _cacheTtlMs = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -64,7 +64,7 @@ class IpLocationService {
         return result;
       }
     } catch (e) {
-      debugPrint('=== COMPAIR: ipapi.co failed: $e ===');
+      debugPrint('=== QOR AI: ipapi.co failed: $e ===');
     }
 
     // 3) Fallback: ipwho.is/json (free, no auth)
@@ -90,7 +90,7 @@ class IpLocationService {
         return result;
       }
     } catch (e) {
-      debugPrint('=== COMPAIR: ipwho.is failed: $e ===');
+      debugPrint('=== QOR AI: ipwho.is failed: $e ===');
     }
 
     return const IpLocationResult();

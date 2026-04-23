@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR ADMIN — Tech Score Runner v6
+//  QOR AI ADMIN — Tech Score Runner v6
 //  3-phase progress (Load → Compute → Persist) + parallel writes
 // ═══════════════════════════════════════════════════════════════
 

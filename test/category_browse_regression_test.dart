@@ -1,7 +1,7 @@
-import 'package:compair/config/filter_config.dart';
-import 'package:compair/core/product_filter.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/models/filter_models.dart';
+import 'package:qor_ai/config/filter_config.dart';
+import 'package:qor_ai/core/product_filter.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/models/filter_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

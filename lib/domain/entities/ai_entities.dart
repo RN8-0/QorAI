@@ -1,4 +1,4 @@
-/// Compair - AI Request/Response Entities
+/// Qor AI - AI Request/Response Entities
 /// Blueprint Section 7.2, 7.3, 9.1
 
 import 'package:equatable/equatable.dart';

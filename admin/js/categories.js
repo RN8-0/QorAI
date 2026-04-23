@@ -1,9 +1,9 @@
 /**
- * Compair Category & Brand Definitions
+ * Qor AI Category & Brand Definitions
  * 40 categories across 13 groups, 68 brands
  */
 
-window.CompairCategories = {
+window.QorAiCategories = {
   groups: [
     {
       name: 'Mobile',
@@ -133,7 +133,7 @@ window.CompairCategories = {
   }
 };
 
-window.CompairBrands = [
+window.QorAiBrands = [
   'Apple', 'Samsung', 'Xiaomi', 'Huawei', 'Oppo', 'Vivo', 'OnePlus', 'Realme', 'Honor',
   'Google', 'Sony', 'LG', 'Nokia', 'Motorola', 'Asus', 'Lenovo', 'HP', 'Dell', 'Acer',
   'MSI', 'Razer', 'Corsair', 'Logitech', 'HyperX', 'SteelSeries', 'JBL', 'Bose',

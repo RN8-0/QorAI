@@ -1,11 +1,11 @@
-/// Compair - Unit Tests
+/// Qor AI - Unit Tests
 ///
 /// Tests for core entities, services and business logic.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/config/env_config.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/config/env_config.dart';
 
 void main() {
   // ─── ProductEntity Tests ───

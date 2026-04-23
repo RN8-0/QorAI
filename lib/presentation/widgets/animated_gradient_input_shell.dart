@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:compair/core/theme.dart';
+import 'package:qor_ai/core/theme.dart';
 
 class AnimatedGradientInputShell extends StatefulWidget {
   final Widget child;

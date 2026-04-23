@@ -1,11 +1,11 @@
-/// Compair - User Model (Data Layer - Firestore)
+/// Qor AI - User Model (Data Layer - Firestore)
 /// Blueprint Section 4.1
 ///
 /// Extended model for Profile Algorithm
 /// Age, interests, and profile vector support
 
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/domain/entities/user_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
 
 class UserModel extends UserEntity {
   const UserModel({

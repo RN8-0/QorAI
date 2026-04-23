@@ -1,4 +1,4 @@
-/// Compair - Settings Screen (iOS-Style Redesign)
+/// Qor AI - Settings Screen (iOS-Style Redesign)
 /// Full iOS Settings UI with CupertinoListSection, country flags, functional buttons
 library;
 
@@ -15,14 +15,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/services/notification_service.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -302,7 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           final helpCenterMessage =
                               context.l10n?.helpCenterComingSoon ??
                               'Help center coming soon';
-                          final uri = Uri.parse('https://compair.digital/faq');
+                          final uri = Uri.parse('https://qorai.app/faq');
                           try {
                             await launchUrl(
                               uri,
@@ -324,7 +324,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               context.l10n?.storePageComingSoon ??
                               'Store page will be available after launch';
                           final uri = Uri.parse(
-                            'https://play.google.com/store/apps/details?id=com.compair.app',
+                            'https://play.google.com/store/apps/details?id=${AppConstants.playStorePackageId}',
                           );
                           try {
                             await launchUrl(
@@ -344,8 +344,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: context.l10n?.share ?? 'Share',
                         onTap: () {
                           Share.share(
-                            'Check out Compair - Smart Product Comparison!\nhttps://compair.app',
-                            subject: 'Compair App',
+                            'Check out Qor AI - Smart Product Comparison!\nhttps://qorai.app',
+                            subject: 'Qor AI App',
                           );
                         },
                       ),
@@ -359,7 +359,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: CupertinoIcons.shield_fill,
                         iconBg: const Color(0xFF64748B),
                         title: context.l10n?.privacyPolicy ?? 'Privacy Policy',
-                        onTap: () => _launchWebUrl('https://compair.digital/privacy'),
+                        onTap: () => _launchWebUrl('https://qorai.app/privacy'),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -367,7 +367,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         iconBg: const Color(0xFF64748B),
                         title:
                             context.l10n?.termsOfService ?? 'Terms of Service',
-                        onTap: () => _launchWebUrl('https://compair.digital/terms'),
+                        onTap: () => _launchWebUrl('https://qorai.app/terms'),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -378,7 +378,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             'Open Source Licenses',
                         onTap: () => showLicensePage(
                           context: context,
-                          applicationName: 'Compair',
+                          applicationName: 'Qor AI',
                           applicationVersion: _appVersionLabel,
                         ),
                       ),
@@ -1235,7 +1235,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   'emailDigest': _emailDigest,
                 },
               });
-              await Share.share(payload, subject: 'Compair Data Export');
+              await Share.share(payload, subject: 'Qor AI Data Export');
               if (!mounted) return;
               _showInfoSnackbar(exportMessage);
             },
@@ -1260,8 +1260,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         context.l10n?.couldNotOpenEmail ?? 'Could not open email app';
     final uri = Uri(
       scheme: 'mailto',
-      path: 'support@compair.digital',
-      queryParameters: {'subject': 'Compair Feedback'},
+      path: 'support@qorai.app',
+      queryParameters: {'subject': 'Qor AI Feedback'},
     );
     try {
       await launchUrl(uri);

@@ -10,13 +10,13 @@
  *
  * Defaults:
  *   team_id   = 8653CV8K7J
- *   client_id = com.compair.app
+ *   client_id = com.qorai.app
  */
 
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
-const [,, p8Path, keyId, teamId = '8653CV8K7J', clientId = 'com.compair.app'] = process.argv;
+const [,, p8Path, keyId, teamId = '8653CV8K7J', clientId = 'com.qorai.app'] = process.argv;
 
 if (!p8Path || !keyId) {
   console.error('\n❌  Kullanım: node scripts/generate_apple_secret.js <p8_dosya_yolu> <key_id>\n');

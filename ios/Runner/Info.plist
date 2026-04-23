@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Compair</string>
+	<string>Qor AI</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Compair</string>
+	<string>Qor AI</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -44,15 +44,15 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>Compair uses analytics to understand how the app is used and improve your experience. Your data is never sold to third parties.</string>
+	<string>Qor AI uses analytics to understand how the app is used and improve your experience. Your data is never sold to third parties.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Compair needs access to your photo library to let you upload a profile picture.</string>
+	<string>Qor AI needs access to your photo library to let you upload a profile picture.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Compair uses the camera to let you scan barcodes or take a profile photo.</string>
+	<string>Qor AI uses the camera to let you scan barcodes or take a profile photo.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Compair uses the microphone for voice search so you can find products by speaking.</string>
+	<string>Qor AI uses the microphone for voice search so you can find products by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Compair uses speech recognition to convert your voice into search queries for finding products.</string>
+	<string>Qor AI uses speech recognition to convert your voice into search queries for finding products.</string>
 	<key>GIDClientID</key>
 	<string>510980756238-369d7b3tst5k4aue0niai0g5tm7090c1.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>

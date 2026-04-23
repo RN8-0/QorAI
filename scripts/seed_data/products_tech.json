@@ -31,7 +31,7 @@
       "ratings": {
         "expert": 9.2,
         "community": 4.7,
-        "compair": 92
+        "qorai": 92
       },
       "tags": ["iphone", "apple", "flagship", "telefon", "akıllı telefon", "premium"],
       "affiliateLinks": {
@@ -74,7 +74,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.6,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["iphone", "apple", "telefon", "akıllı telefon"],
       "affiliateLinks": {
@@ -117,7 +117,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["samsung", "galaxy", "android", "flagship", "telefon", "s pen"],
       "affiliateLinks": {
@@ -160,7 +160,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.4,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["samsung", "galaxy", "android", "telefon", "kompakt"],
       "affiliateLinks": {
@@ -202,7 +202,7 @@
       "ratings": {
         "expert": 8.9,
         "community": 4.5,
-        "compair": 89
+        "qorai": 89
       },
       "tags": ["google", "pixel", "android", "ai", "telefon", "kamera"],
       "affiliateLinks": {
@@ -243,7 +243,7 @@
       "ratings": {
         "expert": 8.7,
         "community": 4.4,
-        "compair": 87
+        "qorai": 87
       },
       "tags": ["xiaomi", "android", "leica", "kamera", "telefon"],
       "affiliateLinks": {
@@ -283,7 +283,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.7,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["macbook", "apple", "laptop", "m3", "ultrabook"],
       "affiliateLinks": {
@@ -323,7 +323,7 @@
       "ratings": {
         "expert": 9.3,
         "community": 4.8,
-        "compair": 93
+        "qorai": 93
       },
       "tags": ["macbook", "apple", "laptop", "m3 pro", "profesyonel"],
       "affiliateLinks": {
@@ -363,7 +363,7 @@
       "ratings": {
         "expert": 8.6,
         "community": 4.4,
-        "compair": 86
+        "qorai": 86
       },
       "tags": ["dell", "xps", "windows", "laptop", "oled", "ultrabook"],
       "affiliateLinks": {
@@ -403,7 +403,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.5,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["lenovo", "thinkpad", "windows", "laptop", "iş", "ultrabook"],
       "affiliateLinks": {
@@ -442,7 +442,7 @@
       "ratings": {
         "expert": 9.1,
         "community": 4.7,
-        "compair": 91
+        "qorai": 91
       },
       "tags": ["airpods", "apple", "kulaklık", "tws", "anc", "kablosuz"],
       "affiliateLinks": {
@@ -482,7 +482,7 @@
       "ratings": {
         "expert": 9.2,
         "community": 4.6,
-        "compair": 92
+        "qorai": 92
       },
       "tags": ["sony", "kulaklık", "anc", "bluetooth", "over-ear", "premium"],
       "affiliateLinks": {
@@ -522,7 +522,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.3,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["samsung", "galaxy buds", "kulaklık", "tws", "anc"],
       "affiliateLinks": {
@@ -562,7 +562,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["apple watch", "apple", "akıllı saat", "sağlık", "fitness"],
       "affiliateLinks": {
@@ -601,7 +601,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.4,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["samsung", "galaxy watch", "akıllı saat", "wear os", "android"],
       "affiliateLinks": {
@@ -642,7 +642,7 @@
       "ratings": {
         "expert": 9.4,
         "community": 4.7,
-        "compair": 94
+        "qorai": 94
       },
       "tags": ["ipad", "apple", "tablet", "m4", "oled", "profesyonel"],
       "affiliateLinks": {
@@ -682,7 +682,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.5,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["samsung", "galaxy tab", "tablet", "android", "s pen", "büyük ekran"],
       "affiliateLinks": {

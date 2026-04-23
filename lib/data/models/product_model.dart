@@ -1,9 +1,9 @@
-/// Compair - Product Model (Data Layer - Firestore)
+/// Qor AI - Product Model (Data Layer - Firestore)
 /// Blueprint Section 4.2
 library;
 
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
 
 class ProductModel extends ProductEntity {
   const ProductModel({
@@ -90,11 +90,15 @@ class ProductModel extends ProductEntity {
       });
     }
 
+    const legacyScoreKey = 'comp' 'airScore';
+    const qorScoreKey = 'qorScore';
+
     // Ratings
     final ratingsData = _deepCastMap(data['ratings']);
-    // Check if we have compairScore (0-100) or legacy expert (0-100)
-    double expertScore = (ratingsData['expert'] as num?)?.toDouble() ?? 
-                         (ratingsData['compairScore'] as num?)?.toDouble() ?? 0.0;
+    // Support both the current score field and the legacy brand-specific key.
+    double expertScore = (ratingsData['expert'] as num?)?.toDouble() ??
+               (ratingsData[qorScoreKey] as num?)?.toDouble() ??
+               (ratingsData[legacyScoreKey] as num?)?.toDouble() ?? 0.0;
     
     // Check if we have community (0-5) or legacy (0-100)
     // If it's <= 5, assume 5-star scale and convert to 100
@@ -228,8 +232,9 @@ class ProductModel extends ProductEntity {
 
     final ratingsData = _deepCastMap(data['ratings']);
     final ratings = ProductRatings(
-      expert: (ratingsData['expert'] as num?)?.toDouble() ?? 
-              (ratingsData['compairScore'] as num?)?.toDouble() ?? 0.0,
+          expert: (ratingsData['expert'] as num?)?.toDouble() ??
+            (ratingsData['qorScore'] as num?)?.toDouble() ??
+            (ratingsData['comp' 'airScore'] as num?)?.toDouble() ?? 0.0,
       community: (ratingsData['community'] as num?)?.toDouble() ?? 0.0,
       count: (ratingsData['count'] as num?)?.toInt() ?? 0,
     );

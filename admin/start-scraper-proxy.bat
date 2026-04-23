@@ -1,16 +1,16 @@
 @echo off
 setlocal
-title Compair Scraper Proxy
+title Qor AI Scraper Proxy
 
-set "DEFAULT_ROOT=%USERPROFILE%\Desktop\Compair-master"
+set "DEFAULT_ROOT=%USERPROFILE%\Desktop\Qor AI-master"
 set "ROOT=%DEFAULT_ROOT%"
-echo Compair Scraper Proxy launcher
+echo Qor AI Scraper Proxy launcher
 echo.
 
 if not exist "%ROOT%\scripts\scraper-proxy.js" (
   echo.
   echo Varsayilan klasor bulunamadi: "%ROOT%"
-  set /p ROOT=Compair klasor yolu:
+  set /p ROOT=Qor AI klasor yolu:
   if "%ROOT%"=="" (
     echo.
     echo HATA: Klasor yolu girilmedi.

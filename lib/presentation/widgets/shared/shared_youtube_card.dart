@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/services/youtube_service.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/services/youtube_service.dart';
 
 /// Shared YouTube reviews card used by both detail and compare screens.
 /// Lazy-loads YouTube review videos for a product.

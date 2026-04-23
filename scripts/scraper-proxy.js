@@ -1,5 +1,5 @@
 /**
- * Compair Scraper Proxy — Stealth Edition v3.0
+ * Qor AI Scraper Proxy — Stealth Edition v3.0
  *
  * Uses puppeteer-extra + StealthPlugin to bypass Cloudflare/bot protection.
  * Runs on the admin's machine — requests use YOUR own IP address.
@@ -300,7 +300,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Compair Scraper Proxy v3.0 (Stealth) — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v3.0 (Stealth) — http://localhost:${PORT}`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth aktif`);
   console.log(`  📡 İstekler KENDİ IP adresinizi kullanır`);
   console.log(`  🔒 Sadece epey.com\'a izin verilir\n`);

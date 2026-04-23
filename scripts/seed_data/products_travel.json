@@ -27,7 +27,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.2,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["thy", "türk hava yolları", "star alliance", "miles smiles", "havayolu"],
       "affiliateLinks": {
@@ -63,7 +63,7 @@
       "ratings": {
         "expert": 7.5,
         "community": 3.8,
-        "compair": 75
+        "qorai": 75
       },
       "tags": ["pegasus", "ucuz uçuş", "low cost", "bolbol", "havayolu"],
       "affiliateLinks": {
@@ -99,7 +99,7 @@
       "ratings": {
         "expert": 7.8,
         "community": 4.0,
-        "compair": 78
+        "qorai": 78
       },
       "tags": ["sunexpress", "thy", "lufthansa", "avrupa", "havayolu"],
       "affiliateLinks": {
@@ -133,7 +133,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.4,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["booking", "otel", "rezervasyon", "genius", "seyahat"],
       "affiliateLinks": {
@@ -167,7 +167,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.3,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["airbnb", "kiralık ev", "konaklama", "deneyim", "seyahat"],
       "affiliateLinks": {
@@ -200,7 +200,7 @@
       "ratings": {
         "expert": 8.0,
         "community": 4.1,
-        "compair": 80
+        "qorai": 80
       },
       "tags": ["hotels", "otel", "expedia", "rezervasyon", "seyahat"],
       "affiliateLinks": {
@@ -233,7 +233,7 @@
       "ratings": {
         "expert": 7.5,
         "community": 4.0,
-        "compair": 75
+        "qorai": 75
       },
       "tags": ["trivago", "karşılaştırma", "otel", "fiyat", "seyahat"],
       "affiliateLinks": {
@@ -266,7 +266,7 @@
       "ratings": {
         "expert": 8.0,
         "community": 4.0,
-        "compair": 80
+        "qorai": 80
       },
       "tags": ["jolly", "tur", "paket tur", "tatil", "seyahat"],
       "affiliateLinks": {
@@ -299,7 +299,7 @@
       "ratings": {
         "expert": 7.8,
         "community": 4.1,
-        "compair": 78
+        "qorai": 78
       },
       "tags": ["etstur", "otel", "erken rezervasyon", "tatil", "seyahat"],
       "affiliateLinks": {
@@ -332,7 +332,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.4,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["skyscanner", "uçak bileti", "karşılaştırma", "ucuz uçuş", "seyahat"],
       "affiliateLinks": {
@@ -367,7 +367,7 @@
       "ratings": {
         "expert": 8.2,
         "community": 4.2,
-        "compair": 82
+        "qorai": 82
       },
       "tags": ["miles smiles", "kredi kartı", "thy", "mil", "seyahat kartı"],
       "affiliateLinks": {
@@ -401,7 +401,7 @@
       "ratings": {
         "expert": 7.5,
         "community": 4.0,
-        "compair": 75
+        "qorai": 75
       },
       "tags": ["maximum", "kredi kartı", "iş bankası", "seyahat", "maxipuan"],
       "affiliateLinks": {
@@ -435,7 +435,7 @@
       "ratings": {
         "expert": 8.0,
         "community": 4.2,
-        "compair": 80
+        "qorai": 80
       },
       "tags": ["hilton", "honors", "otel", "sadakat", "puan"],
       "affiliateLinks": {
@@ -468,7 +468,7 @@
       "ratings": {
         "expert": 8.3,
         "community": 4.1,
-        "compair": 83
+        "qorai": 83
       },
       "tags": ["marriott", "bonvoy", "otel", "sadakat", "puan"],
       "affiliateLinks": {
@@ -501,7 +501,7 @@
       "ratings": {
         "expert": 8.7,
         "community": 4.5,
-        "compair": 87
+        "qorai": 87
       },
       "tags": ["google", "flights", "uçak", "arama", "karşılaştırma"],
       "affiliateLinks": {

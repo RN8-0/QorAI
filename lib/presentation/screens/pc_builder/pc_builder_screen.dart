@@ -1,4 +1,4 @@
-/// Compair - PC Builder (PCPartPicker-style with compatibility)
+/// Qor AI - PC Builder (PCPartPicker-style with compatibility)
 library;
 
 import 'dart:async';
@@ -12,18 +12,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/screens/pc_builder/pc_builder_localization.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/presentation/widgets/login_required_dialog.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/core/spec_word_dictionary.dart' as pc_spec_dict;
-import 'package:compair/services/spec_translation_service.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_localization.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/core/spec_word_dictionary.dart' as pc_spec_dict;
+import 'package:qor_ai/services/spec_translation_service.dart';
 
 /// App-theme gradient (brandDeepBlue → brandBlue → brandCyan).
 const _accentGradient = LinearGradient(
@@ -1587,7 +1587,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
   }
 
   void _shareBuild() {
-    final buf = StringBuffer('🖥️ My PC Build (Compair)\n');
+    final buf = StringBuffer('🖥️ My PC Build (Qor AI)\n');
     buf.writeln('═' * 30);
     buf.writeln('Build Score: ${_totalScore.round()}/100');
     buf.writeln('Components: ${_selected.length}/${PcComponent.values.length}');
@@ -1611,7 +1611,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       }
     }
     buf.writeln('═' * 30);
-    buf.writeln('Built with Compair');
+    buf.writeln('Built with Qor AI');
     Clipboard.setData(ClipboardData(text: buf.toString()));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1669,8 +1669,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         child: Text(
                           _pcText(
                             context,
-                            tr: 'Günlük Comp Yetmiyor',
-                            en: 'Not Enough Daily Comp',
+                            tr: 'Günlük Qor Yetmiyor',
+                            en: 'Not Enough Daily Qor',
                           ),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 20,
@@ -1685,8 +1685,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   Text(
                     _pcText(
                       context,
-                      tr: 'Günlük Comp bakiyeniz bu analiz için yetmiyor. PC Builder AI 2 Comp tüketir. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin. Comp bakiyeniz yarın yenilenecektir.',
-                      en: 'You do not have enough daily Comp balance for this analysis. PC Builder AI costs 2 Comp. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks. Your Comp balance will refresh tomorrow.',
+                      tr: 'Günlük Q bakiyeniz bu analiz için yetmiyor. PC Builder AI 2 Q tüketir. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin. Q bakiyeniz yarın yenilenecektir.',
+                      en: 'You do not have enough daily Q balance for this analysis. PC Builder AI costs 2 Q. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks. Your Q balance will refresh tomorrow.',
                     ),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
@@ -2469,7 +2469,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          CompAmountBadge(
+                          QorAmountBadge(
                             amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai'),
                             unlimited: ref.watch(subscriptionServiceProvider).isPremium,
                             color: Colors.white,
@@ -2477,7 +2477,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           ),
                           const SizedBox(width: 6),
-                          CompBalanceBadge(
+                          QorBalanceBadge(
                             remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
                             total: AppConstants.freeDailyAiCreditLimit,
                             unlimited: ref.watch(subscriptionServiceProvider).isPremium,

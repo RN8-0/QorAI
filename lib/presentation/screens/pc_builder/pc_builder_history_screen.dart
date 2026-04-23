@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/providers/providers.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 
 class PcBuilderHistoryScreen extends ConsumerStatefulWidget {
   const PcBuilderHistoryScreen({super.key});

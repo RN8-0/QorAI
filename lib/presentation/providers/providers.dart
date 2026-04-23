@@ -1,4 +1,4 @@
-/// Compair - Riverpod Providers
+/// Qor AI - Riverpod Providers
 /// Blueprint Section 3.3 (Provider Tipleri tablosu)
 ///
 /// Provider: Constants, services -> themeProvider, routerProvider
@@ -14,43 +14,43 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
-import 'package:compair/data/datasources/pb_ds.dart';
-import 'package:compair/data/datasources/hive_ds.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/data/repositories/auth_repo.dart';
-import 'package:compair/data/repositories/product_repo.dart';
-import 'package:compair/data/repositories/comparison_repo.dart';
-import 'package:compair/data/repositories/ai_repo.dart';
-import 'package:compair/data/repositories/scraper_repo.dart';
-import 'package:compair/data/models/scraper_models.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
-import 'package:compair/domain/usecases/calculate_score.dart';
-import 'package:compair/services/ai_service.dart';
-import 'package:compair/services/spec_direction_service.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
+import 'package:qor_ai/data/datasources/hive_ds.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/data/repositories/auth_repo.dart';
+import 'package:qor_ai/data/repositories/product_repo.dart';
+import 'package:qor_ai/data/repositories/comparison_repo.dart';
+import 'package:qor_ai/data/repositories/ai_repo.dart';
+import 'package:qor_ai/data/repositories/scraper_repo.dart';
+import 'package:qor_ai/data/models/scraper_models.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/domain/usecases/calculate_score.dart';
+import 'package:qor_ai/services/ai_service.dart';
+import 'package:qor_ai/services/spec_direction_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:compair/services/gemini_service.dart';
-import 'package:compair/services/deepseek_service.dart';
-import 'package:compair/services/cache_service.dart';
-import 'package:compair/services/subscription_service.dart';
-import 'package:compair/services/remote_config_service.dart';
-import 'package:compair/services/metadata_service.dart';
-import 'package:compair/services/profile_algorithm_service.dart';
-import 'package:compair/services/tech_score_service.dart';
-import 'package:compair/services/youtube_service.dart';
-import 'package:compair/services/behavior_tracking_service.dart';
-import 'package:compair/services/ip_location_service.dart';
-import 'package:compair/services/analytics_service.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/product_filter.dart';
-import 'package:compair/core/constants.dart';
+import 'package:qor_ai/services/gemini_service.dart';
+import 'package:qor_ai/services/deepseek_service.dart';
+import 'package:qor_ai/services/cache_service.dart';
+import 'package:qor_ai/services/subscription_service.dart';
+import 'package:qor_ai/services/remote_config_service.dart';
+import 'package:qor_ai/services/metadata_service.dart';
+import 'package:qor_ai/services/profile_algorithm_service.dart';
+import 'package:qor_ai/services/tech_score_service.dart';
+import 'package:qor_ai/services/youtube_service.dart';
+import 'package:qor_ai/services/behavior_tracking_service.dart';
+import 'package:qor_ai/services/ip_location_service.dart';
+import 'package:qor_ai/services/analytics_service.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/product_filter.dart';
+import 'package:qor_ai/core/constants.dart';
 
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/data/models/product_model.dart';
-import 'package:compair/data/models/chat_conversation.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/data/models/product_model.dart';
+import 'package:qor_ai/data/models/chat_conversation.dart';
 
 // ── Part files ──
 part 'auth_providers.dart';

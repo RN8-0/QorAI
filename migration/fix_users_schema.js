@@ -1,4 +1,4 @@
-// Compair — PocketBase users collection schema fix
+// Qor AI — PocketBase users collection schema fix
 // Adds all missing custom fields required by the Flutter app.
 const { req } = require('./pb');
 
@@ -46,7 +46,7 @@ const REQUIRED_USER_FIELDS = [
 ];
 
 (async () => {
-  console.log('=== Compair — users schema fix ===\n');
+  console.log('=== Qor AI — users schema fix ===\n');
 
   const r = await req('GET', '/api/collections/users');
   if (r.status !== 200) {

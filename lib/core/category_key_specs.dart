@@ -1,4 +1,4 @@
-/// Compair - Category Key Specs Map
+/// Qor AI - Category Key Specs Map
 /// Centralized category-aware key spec definitions for all 42+ categories.
 /// Used by Compare screen (side-by-side) and SharedKeySpecsGrid (detail page).
 library;

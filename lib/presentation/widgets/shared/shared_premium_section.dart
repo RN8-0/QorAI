@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/product_filter.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/utils.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
-import 'package:compair/presentation/widgets/login_required_dialog.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/product_filter.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/utils.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
+import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 
 /// Shared premium features section used by both detail and compare screens.
 /// Shows expandable AI analysis sections: Deep Analysis, Alternatives, Advisor, Prediction.
@@ -337,7 +337,7 @@ class SharedPremiumFeaturesSectionState
                   if (cost != null)
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
-                      child: CompAmountBadge(
+                      child: QorAmountBadge(
                         amount: cost,
                         color: gradient[0],
                         fontSize: 11,
@@ -862,44 +862,33 @@ class SharedPremiumFeaturesSectionState
             child: Column(
               children: [
                 TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: r.valueRating / 10),
+                  tween: Tween(begin: 0, end: r.valueRating),
                   duration: const Duration(milliseconds: 1000),
                   curve: Curves.easeOutCubic,
                   builder: (_, v, __) {
-                    final stars = (v * 10).clamp(0, 10);
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ...List.generate(5, (i) {
-                          final starVal = stars - (i * 2);
-                          if (starVal >= 2)
-                            return Icon(
-                              Icons.star_rounded,
-                              size: 24,
-                              color: ratingColor,
-                            );
-                          if (starVal >= 1)
-                            return Icon(
-                              Icons.star_half_rounded,
-                              size: 24,
-                              color: ratingColor,
-                            );
-                          return Icon(
-                            Icons.star_outline_rounded,
-                            size: 24,
-                            color: ratingColor.withValues(alpha: 0.3),
-                          );
-                        }),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${r.valueRating.toStringAsFixed(1)}/10',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: ratingColor,
-                          ),
+                    final roundedValue = v == v.roundToDouble()
+                        ? v.toStringAsFixed(0)
+                        : v.toStringAsFixed(1);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ratingColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: ratingColor.withValues(alpha: 0.24),
                         ),
-                      ],
+                      ),
+                      child: Text(
+                        '$roundedValue ${AppConstants.qorCurrencyName}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: ratingColor,
+                        ),
+                      ),
                     );
                   },
                 ),

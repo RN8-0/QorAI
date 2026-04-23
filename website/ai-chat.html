@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chat — Compair</title>
-  <meta name="description" content="Chat with Compair AI assistant. Get product recommendations, comparisons, and tech advice.">
-  <link rel="canonical" href="https://compair.digital/ai-chat">
+  <title>AI Chat — Qor AI</title>
+  <meta name="description" content="Chat with Qor AI AI assistant. Get product recommendations, comparisons, and tech advice.">
+  <link rel="canonical" href="https://qorai.app/ai-chat">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -13,7 +13,7 @@
   <div class="app-layout">
     <div class="sidebar-overlay"></div>
     <aside class="sidebar">
-      <div class="sidebar-logo"><div class="logo-icon">C</div><h1>Compair</h1></div>
+      <div class="sidebar-logo"><div class="logo-icon">C</div><h1>Qor AI</h1></div>
       <nav class="sidebar-nav">
         <a href="/link-analysis.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link Analysis</a>
         <a href="/compare.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Compare</a>
@@ -23,7 +23,7 @@
       </nav>
       <div class="sidebar-footer">
         <a href="/privacy.html">Privacy Policy</a><a href="/terms.html">Terms of Service</a><a href="/faq.html">FAQ</a>
-        <span class="copyright">© 2025 Compair</span>
+        <span class="copyright">© 2025 Qor AI</span>
       </div>
     </aside>
 
@@ -48,7 +48,7 @@
             <div style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#7C3AED15,#3B82F615);margin-bottom:20px;">
               <span style="font-size:36px;">✨</span>
             </div>
-            <h2 style="font-size:24px;font-weight:900;margin-bottom:8px;">Compair AI</h2>
+            <h2 style="font-size:24px;font-weight:900;margin-bottom:8px;">Qor AI AI</h2>
             <p style="color:var(--text-secondary);font-size:14px;max-width:400px;margin:0 auto 32px;">Your personal tech advisor. Ask about products, comparisons, recommendations, or anything tech-related.</p>
             
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:400px;margin:0 auto;">
@@ -71,7 +71,7 @@
         <!-- Input -->
         <div style="padding:12px 0 24px;border-top:1px solid var(--border-light);">
           <div style="display:flex;gap:8px;">
-            <input type="text" id="chat-input" placeholder="Ask Compair AI anything..." 
+            <input type="text" id="chat-input" placeholder="Ask Qor AI AI anything..." 
                    style="flex:1;padding:14px 18px;border-radius:var(--radius-lg);font-size:15px;"
                    onkeydown="if(event.key==='Enter')sendMessage()">
             <button class="btn btn-gradient" onclick="sendMessage()" style="padding:14px 20px;border-radius:var(--radius-lg);">
@@ -136,13 +136,13 @@
       document.getElementById('chat-empty').style.display = 'none';
       const messages = document.getElementById('chat-messages');
       messages.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`;
-      messages.innerHTML += `<div class="chat-bubble chat-ai" id="typing"><em style="color:var(--text-muted);">Compair AI is thinking...</em></div>`;
+      messages.innerHTML += `<div class="chat-bubble chat-ai" id="typing"><em style="color:var(--text-muted);">Qor AI AI is thinking...</em></div>`;
       messages.scrollTop = messages.scrollHeight;
       setTimeout(() => {
         const typing = document.getElementById('typing');
         if (typing) {
           typing.id = '';
-          typing.innerHTML = `This feature requires sign-in and works best in the <strong>Compair mobile app</strong>. Download from the Play Store to chat with our AI assistant!<br><br><a href="/" class="btn btn-primary" style="margin-top:8px;font-size:13px;">← Back to Home</a>`;
+          typing.innerHTML = `This feature requires sign-in and works best in the <strong>Qor AI mobile app</strong>. Download from the Play Store to chat with our AI assistant!<br><br><a href="/" class="btn btn-primary" style="margin-top:8px;font-size:13px;">← Back to Home</a>`;
         }
       }, 1500);
     }

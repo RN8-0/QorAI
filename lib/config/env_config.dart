@@ -1,4 +1,4 @@
-/// Compair - Environment Configuration
+/// Qor AI - Environment Configuration
 /// API keys loaded from --dart-define or PocketBase RemoteConfig.
 library;
 

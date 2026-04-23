@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/screens/quiz/quiz_screen.dart';
-import 'package:compair/routing/router.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/screens/quiz/quiz_screen.dart';
+import 'package:qor_ai/routing/router.dart';
 
 enum LoginMode { welcome, email, register }
 
@@ -196,7 +196,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (age < 13) {
       _showError(
         context.l10n?.mustBe13OrOlder ??
-            'You must be at least 13 years old to use Compair.',
+            'You must be at least 13 years old to use Qor AI.',
       );
       return;
     }
@@ -402,7 +402,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             const SizedBox(width: 4),
             Image.asset(
-              'assets/logo/compair_logo.png',
+              'assets/logo/qor_ai_logo.png',
               width: 32,
               height: 32,
               filterQuality: FilterQuality.high,
@@ -421,7 +421,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: const Padding(
                 padding: EdgeInsets.only(bottom: 2),
                 child: Text(
-                  'Compair',
+                  'Qor AI',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -468,7 +468,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 // Logo — no container/circle, just transparent PNG
                 Image.asset(
-                  'assets/logo/compair_logo.png',
+                  'assets/logo/qor_ai_logo.png',
                   width: 80,
                   height: 80,
                   filterQuality: FilterQuality.high,
@@ -491,7 +491,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      context.l10n?.compairTitle ?? 'Compair',
+                      context.l10n?.brandTitle ?? 'Qor AI',
                       style: const TextStyle(
                         fontSize: 34,
                         fontWeight: FontWeight.w800,
@@ -760,7 +760,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         children: [
           WidgetSpan(
             child: GestureDetector(
-              onTap: () => _launchUrl('https://compair.digital/terms'),
+              onTap: () => _launchUrl('https://qorai.app/terms'),
               child: Text(
                 context.l10n?.termsLabel ?? 'Terms',
                 style: TextStyle(
@@ -774,7 +774,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           const TextSpan(text: ' and '),
           WidgetSpan(
             child: GestureDetector(
-              onTap: () => _launchUrl('https://compair.digital/privacy'),
+              onTap: () => _launchUrl('https://qorai.app/privacy'),
               child: Text(
                 context.l10n?.privacyPolicy ?? 'Privacy Policy',
                 style: TextStyle(

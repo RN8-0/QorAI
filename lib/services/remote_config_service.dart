@@ -1,5 +1,5 @@
-import 'package:compair/core/constants.dart';
-import 'package:compair/data/datasources/pb_ds.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
 
 /// Remote Config servisi — public PocketBase config koleksiyonunu kullanır.
 class RemoteConfigService {

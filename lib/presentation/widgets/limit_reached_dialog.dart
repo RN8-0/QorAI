@@ -1,17 +1,17 @@
-/// Compair — Limit Reached Dialog
+/// Qor AI — Limit Reached Dialog
 /// Shown when a free user does not have enough daily credits for a feature.
 /// Offers "Go Premium" and "Continue Free" options, fully localized.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 
 const Map<String, Map<String, String>> _limitDialogTranslations = {
   'dailyLimitReached': {
-    'en': 'Not Enough Daily Comp',
-    'tr': 'Günlük Comp Yetmiyor',
+    'en': 'Not Enough Daily Q',
+    'tr': 'Günlük Q Yetmiyor',
     'de': 'Tageslimit erreicht',
     'es': 'Limite diario alcanzado',
     'fr': 'Limite quotidienne atteinte',
@@ -25,9 +25,9 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
   },
   'limitMessage': {
     'en':
-      'You do not have enough free Comp for this action today. Upgrade to Premium for unlimited access to all AI features.',
+      'You do not have enough free Q for this action today. Upgrade to Premium for unlimited access to all AI features.',
     'tr':
-      'Bu işlem için bugün yeterli ücretsiz Comp bakiyeniz yok. Tüm AI özelliklerine sınırsız erişim için Premium\'a yükselin.',
+      'Bu işlem için bugün yeterli ücretsiz Q bakiyeniz yok. Tüm AI özelliklerine sınırsız erişim için Premium\'a yükselin.',
     'de':
         'Sie haben heute alle kostenlosen Credits verbraucht. Upgraden Sie auf Premium fur unbegrenzten Zugang.',
     'es':
@@ -49,8 +49,8 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
         'لقد استخدمت جميع رصيدك المجاني لليوم. قم بالترقية إلى بريميوم للوصول غير المحدود.',
   },
   'resetTomorrow': {
-    'en': 'Your free Comp balance will refresh tomorrow.',
-    'tr': 'Ücretsiz Comp bakiyeniz yarın yenilenecektir.',
+    'en': 'Your free Q balance will refresh tomorrow.',
+    'tr': 'Ücretsiz Q bakiyeniz yarın yenilenecektir.',
   },
   'goPremium': {
     'en': 'Go Premium',

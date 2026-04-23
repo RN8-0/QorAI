@@ -1,8 +1,8 @@
-﻿// ═══════════════════════════════════════════════════════════════════
-//  COMPAIR SCRAPER MODULE — Full-Featured Browser Scraper
+// ═══════════════════════════════════════════════════════════════════
+//  QOR AI SCRAPER MODULE — Full-Featured Browser Scraper
 //  Scrapes products from epey.com via local CORS proxy.
-//  Translates Turkish → English using CompairDict (dictionary.js).
-//  Uses CompairCategories / CompairBrands (categories.js).
+//  Translates Turkish → English using QorAiDict (dictionary.js).
+//  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -179,14 +179,14 @@ function switchScraperTab(btn) {
 }
 
 function populateScraperCategories() {
-  if (typeof CompairCategories === 'undefined' || !CompairCategories.groups) return;
+  if (typeof QorAiCategories === 'undefined' || !QorAiCategories.groups) return;
 
   // Build grouped options HTML for bulk scrape (value = epeyPath)
   let bulkOpts = '<option value="">— Kategori Seçin —</option>';
   // Build flat options for other dropdowns (value = category id)
   let flatOpts = '<option value="">Tüm Kategoriler</option>';
 
-  CompairCategories.groups.forEach(group => {
+  QorAiCategories.groups.forEach(group => {
     bulkOpts += `<optgroup label="${escHtml(group.name)}">`;
     group.categories.forEach(cat => {
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}</option>`;
@@ -293,9 +293,9 @@ function extractBrand(name, specs) {
     }
   }
 
-  // Use CompairBrands if available
-  const brandList = (typeof window !== 'undefined' && window.CompairBrands)
-    ? window.CompairBrands
+  // Use QorAiBrands if available
+  const brandList = (typeof window !== 'undefined' && window.QorAiBrands)
+    ? window.QorAiBrands
     : ['Samsung', 'Apple', 'Xiaomi', 'Huawei', 'OnePlus', 'Google', 'Sony', 'LG',
       'Oppo', 'Vivo', 'Realme', 'Motorola', 'Nokia', 'Asus', 'Lenovo', 'HP', 'Dell',
       'Acer', 'MSI', 'Razer', 'Logitech', 'JBL', 'Bose', 'Marshall', 'Sennheiser',
@@ -739,7 +739,7 @@ function parseSpecs(doc) {
 // ═══════════════════════════════════════
 
 function getDict() {
-  return (typeof window !== 'undefined' && window.CompairDict) ? window.CompairDict : null;
+  return (typeof window !== 'undefined' && window.QorAiDict) ? window.QorAiDict : null;
 }
 
 function translateSpecsObject(rawSpecs) {
@@ -838,8 +838,8 @@ async function scrapeProductDetail(html, url, categoryId) {
   let category = categoryId || '';
   if (!category) {
     const catSlug = categorySlugFromUrl(url);
-    const cats = (typeof window !== 'undefined' && window.CompairCategories)
-      ? window.CompairCategories.getAll() : [];
+    const cats = (typeof window !== 'undefined' && window.QorAiCategories)
+      ? window.QorAiCategories.getAll() : [];
     const found = cats.find(c => c.epeyPath === catSlug || c.epeyPath.split('/')[0] === catSlug);
     category = found ? found.id : catSlug;
   }
@@ -1287,7 +1287,7 @@ async function startBulkScrape() {
   if (!catValue) { toast('Select a category', 'w'); return; }
 
   // Parse category: catValue can be a category ID or an epeyPath
-  const cats = (window.CompairCategories) ? window.CompairCategories.getAll() : [];
+  const cats = (window.QorAiCategories) ? window.QorAiCategories.getAll() : [];
   const catDef = cats.find(c => c.id === catValue || c.epeyPath === catValue);
   const epeyPath = catDef ? catDef.epeyPath : catValue;
   const categoryId = catDef ? catDef.id : catValue;
@@ -1715,7 +1715,7 @@ async function startInventoryScan() {
   const catValue = catSelect ? catSelect.value : '';
   if (!catValue) { toast('Select a category', 'w'); return; }
 
-  const cats = (window.CompairCategories) ? window.CompairCategories.getAll() : [];
+  const cats = (window.QorAiCategories) ? window.QorAiCategories.getAll() : [];
   const catDef = cats.find(c => c.id === catValue || c.epeyPath === catValue);
   const epeyPath = catDef ? catDef.epeyPath : catValue;
   const categoryId = catDef ? catDef.id : catValue;

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR ADMIN — Typesense Client (browser)
+//  QOR AI ADMIN — Typesense Client (browser)
 //  Mirrors techScore + other indexed fields from PocketBase to
 //  the Typesense `products` collection so the Flutter app shows
 //  the same value everywhere.

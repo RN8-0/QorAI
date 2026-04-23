@@ -1,15 +1,15 @@
-/// Compair - Comparison Repository Implementation
+/// Qor AI - Comparison Repository Implementation
 /// Blueprint Section 3.1, 7.2
 library;
 
-import 'package:compair/core/errors.dart';
-import 'package:compair/data/datasources/pb_ds.dart';
-import 'package:compair/data/models/comparison_model.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
-import 'package:compair/domain/entities/user_entity.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
+import 'package:qor_ai/data/models/comparison_model.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:flutter/foundation.dart';
-import 'package:compair/services/ai_service.dart';
+import 'package:qor_ai/services/ai_service.dart';
 import 'package:uuid/uuid.dart';
 
 class ComparisonRepositoryImpl {

@@ -9,7 +9,7 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get appTitle => 'Compair';
+  String get appTitle => 'Qor AI';
 
   @override
   String get home => 'Startseite';
@@ -60,7 +60,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get createProfile => 'Profil Erstellen';
 
   @override
-  String get welcomeTitle => 'Willkommen bei Compair';
+  String get welcomeTitle => 'Willkommen bei Qor AI';
 
   @override
   String get welcomeSubtitle =>
@@ -1202,7 +1202,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get mustBe13OrOlder =>
-      'You must be at least 13 years old to use Compair.';
+      'You must be at least 13 years old to use Qor AI.';
 
   @override
   String get pleaseEnterEmailToReset =>
@@ -1213,7 +1213,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'E-Mail zum Zurücksetzen des Passworts gesendet!';
 
   @override
-  String get compairTitle => 'Compair';
+  String get brandTitle => 'Qor AI';
 
   @override
   String get smarterDecisions => 'Klügere Entscheidungen, unterstützt von KI';
@@ -1366,7 +1366,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get productsComparisonsRecs => 'Produkte, Vergleiche, Empfehlungen';
 
   @override
-  String get compairAi => 'Compair KI';
+  String get brandAi => 'Qor AI';
 
   @override
   String get onlineKnowsPrefs => 'Online • Kennt Ihre Vorlieben';
@@ -1713,7 +1713,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get quizProducts => 'Welche Produkte interessieren Sie?';
 
   @override
-  String get quizUsage => 'Warum nutzen Sie Compair?';
+  String get quizUsage => 'Warum nutzen Sie Qor AI?';
 
   @override
   String get quizProfession => 'Was ist Ihr Beruf?';
@@ -2855,7 +2855,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get specValUnderDisplay => 'Unter dem Display';
 
   @override
-  String get paywallPurchaseSuccess => 'Willkommen bei Compair Pro! 🎉';
+  String get paywallPurchaseSuccess => 'Willkommen bei Qor AI Pro! 🎉';
 
   @override
   String get paywallRestoreSuccess => 'Abonnement wiederhergestellt! ✅';
@@ -3256,7 +3256,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get personalMatch => 'Persönliches\nMatch';
 
   @override
-  String get foundInDatabase => 'In Compair-Datenbank gefunden';
+  String get foundInDatabase => 'In Qor AI-Datenbank gefunden';
 
   @override
   String get techScoreLabel => 'Tech-Score';
@@ -3271,7 +3271,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get signInToCompare => 'Anmelden zum Vergleichen';
 
   @override
-  String get poweredByAi => 'Bereitgestellt von Compair AI';
+  String get poweredByAi => 'Bereitgestellt von Qor AI';
 
   @override
   String get retryAvailable => 'Erneut versuchen';

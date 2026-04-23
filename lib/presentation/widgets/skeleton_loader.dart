@@ -1,4 +1,4 @@
-/// Compair - Skeleton Loader / Shimmer Widgets
+/// Qor AI - Skeleton Loader / Shimmer Widgets
 /// Blueprint Section 14.4 (Loading states)
 ///
 /// Shimmer effect placeholder cards
@@ -7,7 +7,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:compair/core/theme.dart';
+import 'package:qor_ai/core/theme.dart';
 
 /// General shimmer container
 class ShimmerBox extends StatelessWidget {

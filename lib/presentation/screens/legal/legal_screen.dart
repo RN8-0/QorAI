@@ -1,9 +1,9 @@
-/// Compair - Privacy Policy & Terms of Service Screen
+/// Qor AI - Privacy Policy & Terms of Service Screen
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
+import 'package:qor_ai/core/theme.dart';
 
 enum LegalDocType { privacyPolicy, termsOfService, faq }
 
@@ -154,7 +154,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
         const _Section(
           title: '1. Introduction',
           body:
-              'Welcome to Compair ("we", "our", or "us"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application. Please read this policy carefully. If you disagree with its terms, please discontinue use of the application.',
+              'Welcome to Qor AI ("we", "our", or "us"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application. Please read this policy carefully. If you disagree with its terms, please discontinue use of the application.',
         ),
         const _Section(
           title: '2. Information We Collect',
@@ -169,7 +169,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
           title: '3. How We Use Your Information',
           body:
               'We use the information we collect to:\n\n'
-              '• Provide, maintain, and improve the Compair service.\n'
+              '• Provide, maintain, and improve the Qor AI service.\n'
               '• Personalize your product recommendations and comparisons.\n'
               '• Process subscription payments via Google Play Billing.\n'
               '• Send you service-related communications.\n'
@@ -179,7 +179,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
         const _Section(
           title: '4. AI-Generated Content',
           body:
-              'Compair uses artificial intelligence (powered by DeepSeek) to generate product review summaries and analysis. '
+              'Qor AI uses artificial intelligence (powered by DeepSeek) to generate product review summaries and analysis. '
               'These summaries are automatically generated and may not reflect the views of any specific individual. '
               'AI-generated content is clearly labeled within the app. We recommend verifying important information from additional sources.',
         ),
@@ -190,7 +190,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
               '• Google Sign-In: Optional account authentication.\n'
               '• PocketBase: Authentication and application database.\n'
               '• Google Play Billing: Subscription management and payment processing.\n'
-              '• Compair AI / DeepSeek AI: AI-powered product analysis.\n'
+              '• Qor AI / DeepSeek AI: AI-powered product analysis.\n'
               '• YouTube: Product review videos (subject to YouTube\'s Terms of Service).\n\n'
               'We do not sell your personal data to third parties.',
         ),
@@ -203,7 +203,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
         const _Section(
           title: '7. Children\'s Privacy',
           body:
-              'Compair is not directed to children under the age of 13. We do not knowingly collect personal information from children under 13. '
+              'Qor AI is not directed to children under the age of 13. We do not knowingly collect personal information from children under 13. '
               'If we discover we have collected information from a child under 13, we will delete it immediately.',
         ),
         const _Section(
@@ -215,7 +215,7 @@ class _PrivacyPolicyContent extends StatelessWidget {
               '• Request deletion of your data ("right to be forgotten").\n'
               '• Object to or restrict processing of your data.\n'
               '• Data portability.\n\n'
-              'To exercise any of these rights, contact us at privacy@compairapp.com.',
+              'To exercise any of these rights, contact us at privacy@qorai.app.',
         ),
         const _Section(
           title: '9. Security',
@@ -234,8 +234,8 @@ class _PrivacyPolicyContent extends StatelessWidget {
           title: '11. Contact Us',
           body:
               'If you have questions about this Privacy Policy, please contact us:\n\n'
-              'Email: privacy@compairapp.com\n'
-              'Compair App — Product Comparison Platform',
+              'Email: privacy@qorai.app\n'
+              'Qor AI App — Product Comparison Platform',
         ),
         const SizedBox(height: 40),
       ],
@@ -266,13 +266,13 @@ class _TermsContent extends StatelessWidget {
         const _Section(
           title: '1. Acceptance of Terms',
           body:
-              'By downloading, installing, or using Compair, you agree to be bound by these Terms of Service. '
+              'By downloading, installing, or using Qor AI, you agree to be bound by these Terms of Service. '
               'If you do not agree, do not use the application.',
         ),
         const _Section(
           title: '2. Use of the Service',
           body:
-              'Compair provides a product comparison platform for personal, non-commercial use. You agree not to:\n\n'
+              'Qor AI provides a product comparison platform for personal, non-commercial use. You agree not to:\n\n'
               '• Use the service for any unlawful purpose.\n'
               '• Attempt to gain unauthorized access to any part of the service.\n'
               '• Reproduce, duplicate, or resell any part of the service without written permission.\n'
@@ -281,7 +281,7 @@ class _TermsContent extends StatelessWidget {
         const _Section(
           title: '3. Subscriptions',
           body:
-              'Compair offers free and premium subscription tiers. Premium subscriptions are billed through Apple App Store or Google Play Store. '
+              'Qor AI offers free and premium subscription tiers. Premium subscriptions are billed through Apple App Store or Google Play Store. '
               'Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. '
               'You can manage or cancel subscriptions in your device\'s App Store / Play Store account settings.',
         ),
@@ -295,7 +295,7 @@ class _TermsContent extends StatelessWidget {
         const _Section(
           title: '5. Intellectual Property',
           body:
-              'All content within Compair (design, code, text, graphics) is the property of Compair or its licensors. '
+              'All content within Qor AI (design, code, text, graphics) is the property of Qor AI or its licensors. '
               'Product images and specifications are the property of their respective owners.',
         ),
         const _Section(
@@ -307,7 +307,7 @@ class _TermsContent extends StatelessWidget {
         const _Section(
           title: '7. Limitation of Liability',
           body:
-              'TO THE MAXIMUM EXTENT PERMITTED BY LAW, COMPAIR SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, '
+              'TO THE MAXIMUM EXTENT PERMITTED BY LAW, QOR AI SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, '
               'SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING FROM YOUR USE OF THE SERVICE.',
         ),
         const _Section(
@@ -318,7 +318,7 @@ class _TermsContent extends StatelessWidget {
         const _Section(
           title: '9. Contact',
           body:
-              'Questions about these Terms? Contact us at:\n\nEmail: legal@compairapp.com',
+              'Questions about these Terms? Contact us at:\n\nEmail: legal@qorai.app',
         ),
         const SizedBox(height: 40),
       ],
@@ -347,7 +347,7 @@ class _FaqContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Everything you need to know about Compair',
+          'Everything you need to know about Qor AI',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 15,
             color: context.textSecondary,
@@ -355,9 +355,9 @@ class _FaqContent extends StatelessWidget {
         ),
         const SizedBox(height: 32),
         const _FaqItem(
-          question: 'What is Compair?',
+          question: 'What is Qor AI?',
           answer:
-              'Compair is an AI-powered product comparison platform that helps you find the perfect tech product. '
+              'Qor AI is an AI-powered product comparison platform that helps you find the perfect tech product. '
               'We use advanced algorithms to analyze products, compare specifications, and provide personalized '
               'recommendations based on your unique preferences and needs.',
         ),
@@ -366,7 +366,7 @@ class _FaqContent extends StatelessWidget {
           answer:
               'Our compatibility score is calculated using a multi-dimensional algorithm that considers your personal '
               'preferences (40%), community ratings (25%), expert reviews (20%), and price-value ratio (15%). '
-              'The more you use Compair, the more accurate your scores become as the system learns your preferences.',
+              'The more you use Qor AI, the more accurate your scores become as the system learns your preferences.',
         ),
         const _FaqItem(
           question: 'What is the Link Analysis feature?',
@@ -394,9 +394,9 @@ class _FaqContent extends StatelessWidget {
               'We collect usage data only to improve your recommendations. You can request data deletion at any time.',
         ),
         const _FaqItem(
-          question: 'Can I use Compair for free?',
+          question: 'Can I use Qor AI for free?',
           answer:
-              'Yes! Compair offers a generous free tier with access to product comparisons, basic AI analysis, and personalized '
+              'Yes! Qor AI offers a generous free tier with access to product comparisons, basic AI analysis, and personalized '
               'recommendations. Premium features include unlimited link analyses, advanced AI insights, and priority support.',
         ),
         const _FaqItem(
@@ -406,15 +406,15 @@ class _FaqContent extends StatelessWidget {
               'all your data including preferences, comparisons, and saved products. This action cannot be undone.',
         ),
         const _FaqItem(
-          question: 'What AI technology does Compair use?',
+          question: 'What AI technology does Qor AI use?',
           answer:
-              'Compair uses a multi-model AI stack for real-time product analysis, link parsing, and conversational AI features. '
+              'Qor AI uses a multi-model AI stack for real-time product analysis, link parsing, and conversational AI features. '
               'Our proprietary algorithm combines AI insights with collaborative filtering to deliver accurate recommendations.',
         ),
         const _FaqItem(
           question: 'How do I contact support?',
           answer:
-              'You can reach us at support@compairapp.com or use the AI Chat feature within the app for instant help. '
+              'You can reach us at support@qorai.app or use the AI Chat feature within the app for instant help. '
               'We typically respond to emails within 24 hours.',
         ),
         const SizedBox(height: 40),

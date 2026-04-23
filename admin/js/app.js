@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  COMPAIR ADMIN WEB
+//  QOR AI ADMIN WEB
 // ═══════════════════════════════════════
 
 // PocketBase client initialized in pb_client.js
@@ -318,7 +318,7 @@ function updateInsights(totalCount,totalCats){
   if(!iEl)return;
   const ins=[];
   const pc=totalCount||totalProductCount||0;
-  const catCount=totalCats||(typeof CompairCategories!=='undefined'?CompairCategories.getAll().length:0);
+  const catCount=totalCats||(typeof QorAiCategories!=='undefined'?QorAiCategories.getAll().length:0);
   if(pc)ins.push(`<div class="insight-item"><div class="insight-label">VERİTABANI</div>📊 ${pc.toLocaleString()} ürün, ${catCount} kategori</div>`);
   const scores=(dashSampleProducts||[]).map(p=>p.techScore||0).filter(s=>s>0);
   if(scores.length)ins.push(`<div class="insight-item"><div class="insight-label">KALİTE</div>⭐ Ort. puan: ${(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1)}/100</div>`);
@@ -337,8 +337,8 @@ function updateCategoryChart(catCounts){
 
   // Map category IDs to display names
   const catIdToName={};
-  if(typeof CompairCategories!=='undefined'&&CompairCategories.groups){
-    CompairCategories.groups.forEach(g=>{g.categories.forEach(c=>{catIdToName[c.id]=c.name})});
+  if(typeof QorAiCategories!=='undefined'&&QorAiCategories.groups){
+    QorAiCategories.groups.forEach(g=>{g.categories.forEach(c=>{catIdToName[c.id]=c.name})});
   }
 
   // Show ALL individual categories sorted by count
@@ -419,13 +419,13 @@ async function loadProducts(){
 }
 
 function populateFiltersFromData(){
-  // Use CompairCategories if available (from categories.js)
+  // Use QorAiCategories if available (from categories.js)
   let cats=[],brands=[];
-  if(typeof CompairCategories!=='undefined'&&CompairCategories.getAll){
-    cats=CompairCategories.getAll().map(c=>({id:c.id,name:c.name}));
+  if(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll){
+    cats=QorAiCategories.getAll().map(c=>({id:c.id,name:c.name}));
   }
-  if(typeof CompairBrands!=='undefined'&&Array.isArray(CompairBrands)){
-    brands=CompairBrands.map(b=>typeof b==='string'?b:b.name||b).sort();
+  if(typeof QorAiBrands!=='undefined'&&Array.isArray(QorAiBrands)){
+    brands=QorAiBrands.map(b=>typeof b==='string'?b:b.name||b).sort();
   }
   // Supplement from sample data if available
   if(dashSampleProducts&&dashSampleProducts.length){
@@ -616,7 +616,7 @@ function openProduct(id){
   if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}).join('')}else{const flat=p.specs||{};const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>Specifications</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
-  const catOpts=(typeof CompairCategories!=='undefined'&&CompairCategories.getAll)?CompairCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
+  const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
   body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Görseli sil" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Düzenle</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Yeniden Scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Sil</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Kaynak</a>`:''}</div></div></div>
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
@@ -1314,7 +1314,7 @@ async function exportProductsJSON(){
     }
     const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download=`compair-products-${new Date().toISOString().split('T')[0]}.json`;
+    const a=document.createElement('a');a.href=url;a.download=`qorai-products-${new Date().toISOString().split('T')[0]}.json`;
     a.click();URL.revokeObjectURL(url);
     logActivity('export',`JSON export: ${all.length} ürün`);
     toast(`${all.length} ürün JSON olarak dışa aktarıldı`,'s');
@@ -1337,7 +1337,7 @@ async function exportProductsCSV(){
     const csv=header+'\n'+rows.join('\n');
     const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download=`compair-products-${new Date().toISOString().split('T')[0]}.csv`;
+    const a=document.createElement('a');a.href=url;a.download=`qorai-products-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();URL.revokeObjectURL(url);
     logActivity('export',`CSV export: ${all.length} ürün`);
     toast(`${all.length} ürün CSV olarak dışa aktarıldı`,'s');
@@ -1380,7 +1380,7 @@ async function importProducts(){
 // ═══════════════════════════════════════
 async function bulkChangeCategory(){
   if(!selectedIds.size){toast('Önce ürün seçin','w');return}
-  const cats=(typeof CompairCategories!=='undefined'&&CompairCategories.getAll)?CompairCategories.getAll():[];
+  const cats=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll():[];
   const catHtml=cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
   const modal=document.createElement('div');
   modal.className='modal-backdrop';modal.style.display='flex';
@@ -1401,7 +1401,7 @@ async function bulkChangeCategory(){
 
 async function bulkChangeBrand(){
   if(!selectedIds.size){toast('Önce ürün seçin','w');return}
-  const brands=(typeof CompairBrands!=='undefined')?CompairBrands:[];
+  const brands=(typeof QorAiBrands!=='undefined')?QorAiBrands:[];
   const brandHtml=brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
   const modal=document.createElement('div');
   modal.className='modal-backdrop';modal.style.display='flex';

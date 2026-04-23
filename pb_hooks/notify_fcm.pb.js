@@ -35,7 +35,7 @@ onRecordAfterCreateSuccess(function (e) {
 
     // Get stored FCM access token from app_config
     let accessToken = "";
-    let projectId = "compair-99b6e";
+    let projectId = "qorai-99b6e";
     try {
       const tokenCfg = $app.findFirstRecordByData("app_config", "key", "fcm_access_token");
       accessToken = (tokenCfg.getString("value") || "").replace(/^"|"$/g, "");
@@ -69,7 +69,7 @@ onRecordAfterCreateSuccess(function (e) {
         android: {
           priority: "HIGH",
           notification: {
-            channelId: "compair_default",
+            channelId: "qor_ai_default",
             notificationPriority: "PRIORITY_HIGH",
             defaultSound: true,
             defaultVibrateTimings: true,

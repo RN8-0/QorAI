@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   Compair — PocketBase Authentication
+   Qor AI — PocketBase Authentication
    ═══════════════════════════════════════════════════════════════ */
 
 let authMode = 'signin';
@@ -81,7 +81,7 @@ function createAuthModal() {
       <button class="auth-modal-close" onclick="closeAuthModal()" aria-label="Close">✕</button>
       <div class="auth-modal-header">
         <div class="auth-modal-logo">C</div>
-        <h2>Welcome to Compair</h2>
+        <h2>Welcome to Qor AI</h2>
         <p>Sign in to personalize your experience</p>
       </div>
 

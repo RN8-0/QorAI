@@ -1,4 +1,4 @@
-/// Compair - AI Service Interface
+/// Qor AI - AI Service Interface
 ///
 /// Abstract contract for the AI backend. The primary implementation
 /// is [DeepSeekService] (DeepSeek V3 — much cheaper).
@@ -6,8 +6,8 @@
 /// web-grounded queries (groundedQuery, enhancedSubscriptionAnalysis).
 library;
 
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/user_entity.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
 
 /// AI Service interface — every method receives user context for
 /// personalized responses.

@@ -2,8 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/config/filter_config.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/config/filter_config.dart';
 
 // ---------------------------------------------------------------------------
 // FilterState

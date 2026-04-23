@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/utils.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/glass_container.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/utils.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/glass_container.dart';
 
 class CollectionScreen extends ConsumerWidget {
   const CollectionScreen({super.key});

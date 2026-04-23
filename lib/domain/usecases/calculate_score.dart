@@ -1,12 +1,12 @@
-/// Compair - Calculate Score Use Case
+/// Qor AI - Calculate Score Use Case
 /// Blueprint Section 8.1, 8.2
 ///
 /// Score Formula:
 /// Total = Personal Fit × 0.40 + Community × 0.25 + Expert × 0.20 + P/P × 0.15
 
-import 'package:compair/domain/entities/comparison_entity.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/domain/entities/user_entity.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
 
 class CalculateScoreUseCase {
   /// Calculate fitness score for a single product - Section 8.1
@@ -151,7 +151,7 @@ class CalculateScoreUseCase {
     // Reddit sentiment analysis (0-30 points) - will come from AI
     score += 15; // Default middle value
 
-    // In-app Compair user reviews (0-30 points)
+    // In-app Qor AI user reviews (0-30 points)
     final reviewScore = product.ratings.count > 0
         ? (product.ratings.community / 5.0) * 30
         : 15;

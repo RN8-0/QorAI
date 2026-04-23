@@ -1,14 +1,14 @@
-/// Compair - Product Repository
+/// Qor AI - Product Repository
 /// Blueprint Section 3.1
 library;
 
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/data/datasources/pb_ds.dart';
-import 'package:compair/data/datasources/hive_ds.dart';
-import 'package:compair/data/models/product_model.dart';
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/domain/entities/product_entity.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
+import 'package:qor_ai/data/datasources/hive_ds.dart';
+import 'package:qor_ai/data/models/product_model.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
 
 class ProductRepository {
   final PbDataSource _pbDS;

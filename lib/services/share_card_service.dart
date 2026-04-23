@@ -1,4 +1,4 @@
-/// Compair — Share Card Service
+/// Qor AI — Share Card Service
 ///
 /// Exports a side-by-side product comparison as a premium, branded PNG image
 /// sized for social media (Instagram Story 1080×1920) and shares it via the
@@ -26,8 +26,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/product_entity.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
 
 class ShareCardService {
   ShareCardService._();
@@ -79,15 +79,15 @@ class ShareCardService {
 
       final dir = await getTemporaryDirectory();
       final file = File(
-        '${dir.path}/compair_comparison_${DateTime.now().millisecondsSinceEpoch}.png',
+        '${dir.path}/qor_ai_comparison_${DateTime.now().millisecondsSinceEpoch}.png',
       );
       await file.writeAsBytes(bytes);
 
       final subject = take.map((p) => p.name).join(' vs ');
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png')],
-        text: '$subject\n\nCompared with Compair — AI Product Advisor',
-        subject: 'My Compair comparison',
+        text: '$subject\n\nCompared with Qor AI — AI Product Advisor',
+        subject: 'My Qor AI comparison',
       );
     } catch (e, st) {
       messenger?.hideCurrentSnackBar();
@@ -237,7 +237,7 @@ class _ShareCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'compair',
+                    'Qor AI',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 48,
                       fontWeight: FontWeight.w800,
@@ -275,7 +275,7 @@ class _ShareCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            '${products.length} products · ranked by Compair',
+            '${products.length} products · ranked by Qor AI',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 24,
               fontWeight: FontWeight.w500,
@@ -323,7 +323,7 @@ class _ShareCard extends StatelessWidget {
                     color: AppTheme.brandCyan, size: 28),
                 const SizedBox(width: 14),
                 Text(
-                  'Get your own picks · compair.app',
+                  'Get your own picks · qorai.app',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,

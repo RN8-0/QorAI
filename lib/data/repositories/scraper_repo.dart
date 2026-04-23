@@ -1,12 +1,12 @@
-/// Compair - Scraper Repository
+/// Qor AI - Scraper Repository
 /// Manages scraper operations via PocketBase
 library;
 
 import 'dart:async';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/data/models/scraper_models.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/data/models/scraper_models.dart';
 
 class ScraperRepository {
   final PocketBase _pb;

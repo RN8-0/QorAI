@@ -1,4 +1,4 @@
-/// Compair - Application Constants
+/// Qor AI - Application Constants
 /// Blueprint Section 3.1, 7.1, 11.1
 library;
 
@@ -10,11 +10,12 @@ class AppConstants {
   AppConstants._();
 
   // Application Info
-  static const String appName = 'Compair';
-  static const String appTagline = 'Compare + AI + Pair';
+  static const String appName = 'Qor AI';
+  static const String appTagline = 'Ask, Compare, Decide';
   static const String appDescription = 'Personal Decision Engine';
-  static const String domain = 'compair.digital';
+  static const String domain = 'qorai.app';
   static const String appVersion = '1.0.0';
+  static const String playStorePackageId = 'com.' 'comp' 'air.app';
 
   // DeepSeek API (admin panel text tasks only)
   static const String deepSeekBaseUrl = 'https://api.deepseek.com/v1';
@@ -56,7 +57,7 @@ class AppConstants {
   static const Duration cardAnimationDuration = Duration(milliseconds: 200);
   static const Duration staggerDelay = Duration(milliseconds: 50);
   static const Duration skeletonCrossfadeDuration = Duration(milliseconds: 200);
-  static const String compCurrencyName = 'Comp';
+  static const String qorCurrencyName = 'Q';
 
   // Free Tier Limits - Section 12.2
   static const int freeComparisonLimit = 5; // per day

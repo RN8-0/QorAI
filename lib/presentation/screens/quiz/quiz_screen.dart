@@ -2,13 +2,13 @@ library;
 
 import 'dart:ui';
 
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/routing/router.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/routing/router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1790,7 +1790,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Compair',
+                      'Qor AI',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -3081,8 +3081,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ? _t('dengeli bir profil', 'a balanced profile')
         : fragments.join(' · ');
     return _t(
-      'Compair artık $descriptor sinyallerini ana sayfada, AI açıklamalarında ve kategori sıralamalarında kullanacak.',
-      'Compair will now use your $descriptor signals across home ranking, AI explanations, and category priorities.',
+      'Qor AI artık $descriptor sinyallerini ana sayfada, AI açıklamalarında ve kategori sıralamalarında kullanacak.',
+      'Qor AI will now use your $descriptor signals across home ranking, AI explanations, and category priorities.',
     );
   }
 
@@ -3168,8 +3168,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final filtered = _subscriptions.where((item) => item != 'none').toList();
     if (filtered.isEmpty) {
       return _t(
-        'Daha sade bir servis profili algılandı. Compair, yeni servis ve ekosistem önerilerine daha açık kalacak.',
-        'A lighter service profile was detected. Compair will stay more open to new service and ecosystem suggestions.',
+        'Daha sade bir servis profili algılandı. Qor AI, yeni servis ve ekosistem önerilerine daha açık kalacak.',
+        'A lighter service profile was detected. Qor AI will stay more open to new service and ecosystem suggestions.',
       );
     }
 
@@ -3567,7 +3567,7 @@ class _HomePreparationScreenState extends State<_HomePreparationScreen>
                   ),
                 ),
                 const Spacer(flex: 3),
-                // Compair brand mark
+                // Qor AI brand mark
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24),
                   child: Row(
@@ -3577,7 +3577,7 @@ class _HomePreparationScreenState extends State<_HomePreparationScreen>
                           size: 16, color: AppTheme.brandCyan),
                       const SizedBox(width: 6),
                       Text(
-                        'Compair',
+                        'Qor AI',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,

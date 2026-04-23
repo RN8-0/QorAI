@@ -1,4 +1,4 @@
-/// Compair - Dynamic Home Screen (iOS-style redesign)
+/// Qor AI - Dynamic Home Screen (iOS-style redesign)
 /// Rich, diverse layout with hero banners, category spotlights,
 /// parallax cards and spring animations.
 library;
@@ -12,18 +12,18 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/product_name_localizer.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/presentation/widgets/product_image_box.dart';
-import 'package:compair/presentation/widgets/shimmer_skeleton.dart';
-import 'package:compair/presentation/widgets/subscription_logo_widget.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/product_name_localizer.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/presentation/widgets/shimmer_skeleton.dart';
+import 'package:qor_ai/presentation/widgets/subscription_logo_widget.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/core/pb_client.dart';
 
 // ============================================================================
 // HOME SCREEN
@@ -59,7 +59,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void initState() {
     super.initState();
     _initSw.start();
-    debugPrint('=== COMPAIR: HomeScreen initState ===');
+    debugPrint('=== QOR AI: HomeScreen initState ===');
     // Hero carousel is not currently mounted (dead code path);
     // controllers kept idle to avoid wasted frames / timer callbacks.
     _heroCtrl = AnimationController(
@@ -441,7 +441,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   ),
                                 ),
                             child: Text(
-                              'Compair',
+                              'Qor AI',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
@@ -464,7 +464,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ],
                       ),
                     ),
-                    CompAmountBadge(
+                    QorAmountBadge(
                       amount: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
                       unlimited: ref.watch(subscriptionServiceProvider).isPremium,
                       color: AppTheme.brandBlue,
@@ -2176,7 +2176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           if (!_firstDataLogged) {
             _firstDataLogged = true;
             debugPrint(
-              '=== COMPAIR: HomeScreen first data render in ${_initSw.elapsedMilliseconds}ms (${feed.all.length} products) ===',
+              '=== QOR AI: HomeScreen first data render in ${_initSw.elapsedMilliseconds}ms (${feed.all.length} products) ===',
             );
           }
           final trending = feed.trending;

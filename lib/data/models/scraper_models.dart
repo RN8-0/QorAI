@@ -1,4 +1,4 @@
-/// Compair - Scraper Data Models
+/// Qor AI - Scraper Data Models
 /// Models for scraper management system
 library;
 

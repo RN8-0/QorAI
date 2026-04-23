@@ -1,15 +1,15 @@
 {
   "project_info": {
     "project_number": "510980756238",
-    "project_id": "compair-99b6e",
-    "storage_bucket": "compair-99b6e.firebasestorage.app"
+    "project_id": "qorai-99b6e",
+    "storage_bucket": "qorai-99b6e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
         "mobilesdk_app_id": "1:510980756238:android:28418410181e915269fd5f",
         "android_client_info": {
-          "package_name": "com.compair.app"
+          "package_name": "com.qorai.app"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "510980756238-bg8sqrcjm8sggfsmui02l1gp5qa425vm.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.compair.app",
+            "package_name": "com.qorai.app",
             "certificate_hash": "fee93b8fede3a2171329f665b049e6c44ac40621"
           }
         },
@@ -25,7 +25,7 @@
           "client_id": "510980756238-dprg4j3nnut5jccsfet6k8kgau3jftld.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.compair.app",
+            "package_name": "com.qorai.app",
             "certificate_hash": "6235105ab4e17769379052518d117f39d8188c5b"
           }
         },
@@ -33,7 +33,7 @@
           "client_id": "510980756238-kpa0b0213uti2m9mgudlr9maqqm1o7ev.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.compair.app",
+            "package_name": "com.qorai.app",
             "certificate_hash": "92a04afe9f0ea6ad84104061938fd2d11dc3a911"
           }
         },
@@ -41,7 +41,7 @@
           "client_id": "510980756238-om1svceb2su6cllsb87ffedtjnjjefij.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.compair.app",
+            "package_name": "com.qorai.app",
             "certificate_hash": "74d68022c28e37aa69ab09d51eb6f57195b51135"
           }
         },
@@ -49,7 +49,7 @@
           "client_id": "510980756238-usvkel233cgsc0b1tfbve7bgiugu34j2.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.compair.app",
+            "package_name": "com.qorai.app",
             "certificate_hash": "24eec3a3ec1d77f28fdd609fa68700579245a25b"
           }
         },
@@ -74,7 +74,7 @@
               "client_id": "510980756238-369d7b3tst5k4aue0niai0g5tm7090c1.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.compair.app"
+                "bundle_id": "com.qorai.app"
               }
             }
           ]

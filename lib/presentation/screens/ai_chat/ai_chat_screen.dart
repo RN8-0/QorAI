@@ -1,11 +1,11 @@
-import 'package:compair/core/app_keys.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/data/models/chat_conversation.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/screens/ai_chat/chat_history_screen.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/routing/router.dart';
+import 'package:qor_ai/core/app_keys.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/data/models/chat_conversation.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/routing/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -210,21 +210,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
           ),
           const SizedBox(width: 10),
         ],
-        // "Compair" title — no logo, no subtitle
+        // "Qor AI" title — no logo, no subtitle
         Expanded(
-          child: RichText(
-            text: TextSpan(
+          child: Text.rich(
+            TextSpan(
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 17, fontWeight: FontWeight.w800,
-                color: context.textPrimary),
-              children: [
-                const TextSpan(text: 'Comp'),
-                TextSpan(
-                  text: 'ai',
-                  style: TextStyle(
-                    color: AppTheme.accentCyan,
-                    fontWeight: FontWeight.w900)),
-                const TextSpan(text: 'r'),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary,
+              ),
+              children: const [
+                TextSpan(text: 'Qor '),
+                TextSpan(text: 'AI'),
               ],
             ),
           ),
@@ -357,6 +354,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   Widget _buildInputArea(double bottomPadding) {
     final hasText = _ctrl.text.trim().isNotEmpty;
     final sub = ref.watch(subscriptionServiceProvider);
+    final aiChatCost = sub.creditCostForFeature('ai_chat');
     // When keyboard is open, don't add navBar clearance (avoids overflow)
     final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final extraBottom = (widget.isOverlay || keyboardOpen) ? 0.0 : AppTheme.navBarHeight;
@@ -375,9 +373,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Align(
           alignment: Alignment.centerRight,
-          child: CompBalanceBadge(
+          child: QorBalanceBadge(
             remaining: sub.remainingDailyCredits,
             total: AppConstants.freeDailyAiCreditLimit,
+            unlimited: sub.isPremium,
+            color: AppTheme.accentCyan,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: QorAmountBadge(
+            amount: aiChatCost,
             unlimited: sub.isPremium,
             color: AppTheme.accentCyan,
           ),
@@ -522,7 +529,7 @@ class _BubbleWidget extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.asset('assets/logo/compair_logo.png',
+                      child: Image.asset('assets/logo/qor_ai_logo.png',
                           width: 16, height: 16, fit: BoxFit.contain),
                     )),
                   Expanded(child: _buildBubbleContent(context, isUser, isError)),

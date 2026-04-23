@@ -1,11 +1,11 @@
-﻿/**
- * COMPAIR — Turkish→English Dictionary & Translation Engine
+/**
+ * QOR AI — Turkish→English Dictionary & Translation Engine
  *
  * Extracted from the Electron scraper for use in the web admin panel.
  * Contains 2,192 TR→EN entries, phrase regexes, post-fix corrections,
  * morphological suffix stripping, and translation functions.
  *
- * Exports: window.CompairDict
+ * Exports: window.QorAiDict
  */
 
 (function () {
@@ -8399,7 +8399,7 @@ function _logUnknown(word, context) {
   if (!_TR_CHAR_RE.test(key)) return;
   if (_unknownTurkishWords.has(key)) return;
   _unknownTurkishWords.add(key);
-  console.warn('[CompairDict] Unknown Turkish term:', key, '| context:', context);
+  console.warn('[QorAiDict] Unknown Turkish term:', key, '| context:', context);
 }
 
 function hasTurkishChars(str) {
@@ -8448,7 +8448,7 @@ function collectUntranslatedTerms(product) {
 // ═══════════════════════════════════════
 //  GLOBAL EXPORT
 // ═══════════════════════════════════════
-window.CompairDict = {
+window.QorAiDict = {
   TR_EN,
   TR_PHRASE_RE,
   EN_POST_FIX,

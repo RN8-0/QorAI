@@ -1,4 +1,4 @@
-/// Compair — PC Builder Landing Screen
+/// Qor AI — PC Builder Landing Screen
 library;
 
 import 'dart:math' as math;
@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/screens/pc_builder/pc_builder_localization.dart';
-import 'package:compair/routing/router.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_localization.dart';
+import 'package:qor_ai/routing/router.dart';
 
 const _grad = LinearGradient(
   colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue, AppTheme.brandCyan],
@@ -439,8 +439,8 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       ),
       localizePcBuilderText(
         context,
-        en: 'Bottleneck detection, gaming FPS estimates and performance tier powered by Compair AI.',
-        tr: 'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Compair AI ile sunulur.',
+        en: 'Bottleneck detection, gaming FPS estimates and performance tier powered by Qor AI.',
+        tr: 'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Qor AI ile sunulur.',
       ),
     ),
     _Feature(

@@ -795,14 +795,14 @@ HomeFeed _buildHomeFeed(
 
   if (_verboseHomeFeedDiagnostics) {
     debugPrint(
-      '=== COMPAIR: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===',
+      '=== QOR AI: _buildHomeFeed pool: ${pool.length} products (from ${deduped.length} deduped, ${products.length} raw) ===',
     );
     debugPrint(
-      '=== COMPAIR: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===',
+      '=== QOR AI: filtered out — hidden:$filteredByHidden oldProduct:$filteredByOldProduct brand:$filteredByBrand year:$filteredByYear total:${filteredByHidden + filteredByOldProduct + filteredByBrand + filteredByYear} ===',
     );
     if (rejectedBrands.isNotEmpty) {
       debugPrint(
-        '=== COMPAIR: rejected unknown brands: ${rejectedBrands.take(30).join(", ")} ===',
+        '=== QOR AI: rejected unknown brands: ${rejectedBrands.take(30).join(", ")} ===',
       );
     }
   }
@@ -1075,9 +1075,9 @@ HomeFeed _buildHomeFeed(
   }
 
   if (_verboseHomeFeedDiagnostics) {
-    debugPrint('=== COMPAIR: byCategory keys: ${byCategory.keys.join(",")} ===');
+    debugPrint('=== QOR AI: byCategory keys: ${byCategory.keys.join(",")} ===');
     for (final e in byCategory.entries) {
-      debugPrint('=== COMPAIR:   ${e.key}: ${e.value.length} products ===');
+      debugPrint('=== QOR AI:   ${e.key}: ${e.value.length} products ===');
     }
   }
 
@@ -1105,7 +1105,7 @@ HomeFeed _buildHomeFeed(
     }
     if (_verboseHomeFeedDiagnostics) {
       debugPrint(
-        '=== COMPAIR:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===',
+        '=== QOR AI:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===',
       );
     }
     byCategory[cat] = diverse;
@@ -1335,7 +1335,7 @@ HomeFeed _buildHomeFeed(
 
   if (_verboseHomeFeedDiagnostics) {
     debugPrint(
-      '=== COMPAIR: homeFeed built — cats:${byCategory.keys.join(",")} '
+      '=== QOR AI: homeFeed built — cats:${byCategory.keys.join(",")} '
       'newArrivals:${newArrivals.length} trending:${trending.length} discover:${discover.length} ===',
     );
   }
@@ -1478,13 +1478,13 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final user = ref.read(userProfileProvider).valueOrNull;
   final feedSw = Stopwatch()..start();
   debugPrint(
-    '=== COMPAIR: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===',
+    '=== QOR AI: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===',
   );
 
   // 0. In-memory cache (instant, < 1ms) — survives tab switches
   if (_inMemoryFeed != null && _inMemoryFeed!.all.isNotEmpty) {
     debugPrint(
-      '=== COMPAIR: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products in ${feedSw.elapsedMilliseconds}ms ===',
+      '=== QOR AI: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products in ${feedSw.elapsedMilliseconds}ms ===',
     );
     return _inMemoryFeed!;
   }
@@ -1518,7 +1518,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       );
       sw.stop();
       debugPrint(
-        '=== COMPAIR: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${feed.all.length} products in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${feed.all.length} products in ${sw.elapsedMilliseconds}ms ===',
       );
       ref
           .read(pbDataSourceProvider)
@@ -1526,7 +1526,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       _inMemoryFeed = feed;
 
       debugPrint(
-        '=== COMPAIR: homeFeed READY (cache path) in ${feedSw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: homeFeed READY (cache path) in ${feedSw.elapsedMilliseconds}ms ===',
       );
 
       // If stale, trigger background refresh (fire-and-forget)
@@ -1550,13 +1550,13 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       return feed;
     }
   } catch (e) {
-    debugPrint('=== COMPAIR: Hive cache read error: $e ===');
+    debugPrint('=== QOR AI: Hive cache read error: $e ===');
   }
 
   // 2. No cache at all — fetch from network (first-time load)
   // Use Completer to prevent duplicate concurrent network fetches
   if (_pendingFeedFetch != null) {
-    debugPrint('=== COMPAIR: homeFeed — joining existing network fetch ===');
+    debugPrint('=== QOR AI: homeFeed — joining existing network fetch ===');
     return _pendingFeedFetch!.future;
   }
   _pendingFeedFetch = Completer<HomeFeed>();
@@ -1574,7 +1574,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       config.disabledCats,
     );
     debugPrint(
-      '=== COMPAIR: homeFeed READY (network path) in ${feedSw.elapsedMilliseconds}ms ===',
+      '=== QOR AI: homeFeed READY (network path) in ${feedSw.elapsedMilliseconds}ms ===',
     );
     _pendingFeedFetch!.complete(feed);
     _pendingFeedFetch = null;
@@ -1626,7 +1626,7 @@ Future<void> _backgroundRefreshFeed(
   List<String> hiddenIds,
   List<String> disabledCats,
 ) async {
-  debugPrint('=== COMPAIR: Background feed refresh started ===');
+  debugPrint('=== QOR AI: Background feed refresh started ===');
   try {
     final products = await _fetchAllProducts(
       repo,
@@ -1651,11 +1651,11 @@ Future<void> _backgroundRefreshFeed(
         ),
       );
       debugPrint(
-        '=== COMPAIR: Background refresh done: ${products.length} products ===',
+        '=== QOR AI: Background refresh done: ${products.length} products ===',
       );
     }
   } catch (e) {
-    debugPrint('=== COMPAIR: Background refresh error: $e ===');
+    debugPrint('=== QOR AI: Background refresh error: $e ===');
   }
 }
 
@@ -1671,12 +1671,12 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   List<String> hiddenIds,
   List<String> disabledCats,
 ) async {
-  debugPrint('=== COMPAIR: homeFeed — first-time network fetch ===');
+  debugPrint('=== QOR AI: homeFeed — first-time network fetch ===');
 
   final products = await _fetchAllProducts(repo, user, disabledCats, pinnedIds);
 
   if (products.isEmpty) {
-    debugPrint('=== COMPAIR: homeFeed EMPTY — all queries returned 0 docs ===');
+    debugPrint('=== QOR AI: homeFeed EMPTY — all queries returned 0 docs ===');
     return const HomeFeed(
       trending: [],
       featured: [],
@@ -1687,7 +1687,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   }
 
   debugPrint(
-    '=== COMPAIR: Building feed from ${products.length} products... ===',
+    '=== QOR AI: Building feed from ${products.length} products... ===',
   );
 
   // Save to cache asynchronously — don't block feed building
@@ -1696,7 +1696,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   ref
       .read(pbDataSourceProvider)
       .setHomeFeedProducts(products.whereType<ProductModel>().toList());
-  debugPrint('=== COMPAIR: setHomeFeedProducts done, building HomeFeed... ===');
+  debugPrint('=== QOR AI: setHomeFeedProducts done, building HomeFeed... ===');
   final feed = await compute(
     _buildHomeFeedIsolate,
     _HomeFeedArgs(
@@ -1709,7 +1709,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   );
   _inMemoryFeed = feed;
   debugPrint(
-    '=== COMPAIR: HomeFeed built — trending:${feed.trending.length} cats:${feed.byCategory.length} all:${feed.all.length} ===',
+    '=== QOR AI: HomeFeed built — trending:${feed.trending.length} cats:${feed.byCategory.length} all:${feed.all.length} ===',
   );
   return feed;
 }
@@ -1736,7 +1736,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
   final categories = _feedCategories.take(_homeFeedInitialCategoryCount).toList();
   if (_verboseHomeFeedFetchLogs) {
     debugPrint(
-      '=== COMPAIR: TS MULTI-CAT fetch — ${categories.length} categories, $_homeFeedInitialPerCategory each ===',
+      '=== QOR AI: TS MULTI-CAT fetch — ${categories.length} categories, $_homeFeedInitialPerCategory each ===',
     );
   }
 
@@ -1753,27 +1753,27 @@ Future<List<ProductEntity>> _fetchAllProducts(
         for (final cat in categories) {
           final products = catMap[cat] ?? [];
           if (_verboseHomeFeedFetchLogs) {
-            debugPrint('=== COMPAIR: CAT $cat: ${products.length} products ===');
+            debugPrint('=== QOR AI: CAT $cat: ${products.length} products ===');
           }
           addProducts(products);
         }
       default:
         if (_verboseHomeFeedFetchLogs) {
           debugPrint(
-            '=== COMPAIR: TS MULTI-CAT failed, falling back to PocketBase ===',
+            '=== QOR AI: TS MULTI-CAT failed, falling back to PocketBase ===',
           );
         }
     }
   } catch (e) {
     if (_verboseHomeFeedFetchLogs) {
-      debugPrint('=== COMPAIR: TS MULTI-CAT error: $e ===');
+      debugPrint('=== QOR AI: TS MULTI-CAT error: $e ===');
     }
   }
 
   // Fallback to PocketBase if Typesense returned nothing
   if (allProducts.isEmpty) {
     if (_verboseHomeFeedFetchLogs) {
-      debugPrint('=== COMPAIR: TS empty, falling back to PB parallel fetch ===');
+      debugPrint('=== QOR AI: TS empty, falling back to PB parallel fetch ===');
     }
     try {
       final futures = categories.map(
@@ -1801,7 +1801,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   if (_verboseHomeFeedFetchLogs) {
     debugPrint(
-      '=== COMPAIR: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
+      '=== QOR AI: MULTI-CAT got ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
     );
   }
 
@@ -1828,7 +1828,7 @@ Future<List<ProductEntity>> _fetchAllProducts(
   sw.stop();
   if (_verboseHomeFeedFetchLogs) {
     debugPrint(
-      '=== COMPAIR: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
+      '=== QOR AI: Total: ${allProducts.length} products in ${sw.elapsedMilliseconds}ms ===',
     );
   }
   return allProducts;

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR — Tech Score Engine v6 (Anchored + Stretched + Brand)
+//  QOR AI — Tech Score Engine v6 (Anchored + Stretched + Brand)
 //  • Mutlak rank-based GPU/CPU/Chipset (future-proof)
 //  • Log-scale numeric normalization against global references
 //  • Tier caps (flagship/upper-mid/mid/entry) — stops mid-segment inflation

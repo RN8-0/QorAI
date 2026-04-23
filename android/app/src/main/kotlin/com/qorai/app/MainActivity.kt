@@ -1,4 +1,4 @@
-package com.compair.app
+package com.qorai.app
 
 import io.flutter.embedding.android.FlutterActivity
 

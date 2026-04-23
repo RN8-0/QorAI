@@ -1,7 +1,7 @@
 .env
 .server-password
-compair_hetzner
-compair_hetzner.pub
+qorai_hetzner
+qorai_hetzner.pub
 node_modules/
 package-lock.json
 *.log

@@ -1,4 +1,4 @@
-// Compair - Gemini Flash 2.5 AI Service (Core Intelligence)
+// Qor AI - Gemini Flash 2.5 AI Service (Core Intelligence)
 //
 // Unified AI backbone for the entire application.
 // Model : gemini-2.5-flash (multimodal: text + image + vision)
@@ -9,15 +9,15 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/services/ai_service.dart';
-import 'package:compair/services/cache_service.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/services/ai_service.dart';
+import 'package:qor_ai/services/cache_service.dart';
 
-/// Central Gemini Flash 2.5 service — the brain of Compair.
+/// Central Gemini Flash 2.5 service — the brain of Qor AI.
 class GeminiService implements AIService {
   final Dio _dio;
   final CacheService _cacheService;
@@ -80,7 +80,7 @@ class GeminiService implements AIService {
     final langName = _languageName(lang);
     final response = await _jsonRequest(
       system:
-          'You are Compair AI recommendation engine. '
+          'You are Qor AI recommendation engine. '
           'Suggest the best products based on the user profile. '
           'Write the "reason" field in $langName. '
           'Return JSON: {"recommendations":[{"productId":"…","score":0-100,"reason":"…"}]}',
@@ -838,7 +838,7 @@ class GeminiService implements AIService {
     final response = await _jsonRequest(
       system:
           '''
-You are Compair's subscription quiz engine. Generate a SHORT personalized quiz
+You are Qor AI's subscription quiz engine. Generate a SHORT personalized quiz
 (4-5 questions) to understand the user's needs for: $names.
 
 LANGUAGE: Generate ALL questions and options in $langName.
@@ -946,7 +946,7 @@ Return valid JSON:
                 {
                   'text':
                       '''
-You are Compair's subscription validation engine.
+You are Qor AI's subscription validation engine.
 Classify whether each input below is a real subscription service.
 
 Rules:
@@ -1115,7 +1115,7 @@ Output a clear per-service research summary, labeled with each service name.
       );
     } catch (e) {
       debugPrint(
-        '=== COMPAIR: Research phase failed, continuing without: $e ===',
+        '=== QOR AI: Research phase failed, continuing without: $e ===',
       );
     }
 
@@ -1181,7 +1181,7 @@ Output a clear per-service research summary, labeled with each service name.
 
     String buildAnalysisPrompt({required bool includeResearchData}) =>
         '''
-You are Compair's subscription intelligence analyst.
+You are Qor AI's subscription intelligence analyst.
 Analyze: $names
 
 User Profile:
@@ -1263,7 +1263,7 @@ $jsonSchema
               e.message.toLowerCase().contains('unavailable'));
       if (!shouldRetryCompact) rethrow;
       debugPrint(
-        '=== COMPAIR: Retrying subscription analysis with compact prompt ===',
+        '=== QOR AI: Retrying subscription analysis with compact prompt ===',
       );
       text = await runStructuredAnalysis(
         includeResearchData: false,
@@ -1285,9 +1285,9 @@ $jsonSchema
       parsed = _normalizeSubscriptionAnalysisPayload(
         jsonDecode(clean) as Map<String, dynamic>?,
       );
-      debugPrint('=== COMPAIR: Sub analysis JSON parsed successfully ===');
+      debugPrint('=== QOR AI: Sub analysis JSON parsed successfully ===');
     } catch (e) {
-      debugPrint('=== COMPAIR: Sub analysis JSON parse failed: $e ===');
+      debugPrint('=== QOR AI: Sub analysis JSON parse failed: $e ===');
       // Try to extract JSON from mixed text response
       try {
         final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
@@ -1295,10 +1295,10 @@ $jsonSchema
           parsed = _normalizeSubscriptionAnalysisPayload(
             jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>?,
           );
-          debugPrint('=== COMPAIR: Sub analysis JSON extracted from text ===');
+          debugPrint('=== QOR AI: Sub analysis JSON extracted from text ===');
         }
       } catch (_) {
-        debugPrint('=== COMPAIR: JSON extraction also failed ===');
+        debugPrint('=== QOR AI: JSON extraction also failed ===');
       }
     }
 
@@ -1882,7 +1882,7 @@ $jsonSchema
   static String _comparisonSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are the Compair AI comparison engine. You receive a list of product IDs,
+You are the Qor AI comparison engine. You receive a list of product IDs,
 user profile data and their country. Your job is to produce a deep, fair,
 spec-by-spec comparison and pick a winner based on the user's priorities.
 
@@ -1910,7 +1910,7 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. You receive a product URL, optional metadata, optional web research data, and a user profile. Your job is to identify the EXACT product and analyze it.
+You are Qor AI's link analysis engine. You receive a product URL, optional metadata, optional web research data, and a user profile. Your job is to identify the EXACT product and analyze it.
 
 CRITICAL — PRODUCT IDENTIFICATION (PRIORITY ORDER):
 1. "webResearch" — If provided, this contains VERIFIED data from Google Search about the URL. This is your MOST RELIABLE source for product identification. USE IT.
@@ -1961,7 +1961,7 @@ Return ONLY valid JSON:
 
   static String _chatSystemPrompt(UserEntity profile, int currentYear) =>
       '''
-You are Compair AI — a knowledgeable, friendly shopping and product advisor for ALL categories.
+You are Qor AI — a knowledgeable, friendly shopping and product advisor for ALL categories.
 
 ## YOUR PERSONALITY
 - Warm, conversational, occasionally humorous — a smart friend who knows products
@@ -2009,7 +2009,7 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
   static String _quizGenerationPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's product quiz engine. Generate a SHORT personalized quiz
+You are Qor AI's product quiz engine. Generate a SHORT personalized quiz
 (4-6 questions) to understand the user's needs for the SPECIFIC product being analyzed.
 
 LANGUAGE: Generate ALL questions and options in $langName.
@@ -2046,7 +2046,7 @@ Return valid JSON:
   static String _compareQuizGenerationPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's product COMPARISON quiz engine. The user is comparing multiple products.
+You are Qor AI's product COMPARISON quiz engine. The user is comparing multiple products.
 Generate a SHORT personalized quiz (4-6 questions) to understand the user's needs
 so we can determine which product is the BEST FIT for them.
 
@@ -2085,7 +2085,7 @@ Return valid JSON:
   static String _enhancedAnalysisPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's senior product analyst. Given a product, quiz answers, user profile, and optional web research data, produce a comprehensive, professional, and highly detailed personalized match report.
+You are Qor AI's senior product analyst. Given a product, quiz answers, user profile, and optional web research data, produce a comprehensive, professional, and highly detailed personalized match report.
 
 LANGUAGE: Write ALL text fields in $langName. Be thorough and professional — this is a premium AI analysis.
 

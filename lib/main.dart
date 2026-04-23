@@ -1,4 +1,4 @@
-/// Compair - Main Entry Point
+/// Qor AI - Main Entry Point
 library;
 
 import 'dart:async';
@@ -9,17 +9,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
-import 'package:compair/app.dart';
-import 'package:compair/firebase_options.dart';
-import 'package:compair/services/cache_service.dart';
-import 'package:compair/services/remote_config_service.dart';
-import 'package:compair/services/spec_translation_service.dart';
-import 'package:compair/services/notification_service.dart';
+import 'package:qor_ai/app.dart';
+import 'package:qor_ai/firebase_options.dart';
+import 'package:qor_ai/services/cache_service.dart';
+import 'package:qor_ai/services/remote_config_service.dart';
+import 'package:qor_ai/services/spec_translation_service.dart';
+import 'package:qor_ai/services/notification_service.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/core/pb_client.dart' as pb_client;
-import 'package:compair/data/datasources/hive_ds.dart';
-import 'package:compair/data/datasources/pb_ds.dart';
-import 'package:compair/presentation/providers/providers.dart';
+import 'package:qor_ai/core/pb_client.dart' as pb_client;
+import 'package:qor_ai/data/datasources/hive_ds.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 
 Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
   await Future.wait([
@@ -53,18 +53,18 @@ void _scheduleDeferredStartupTasks() {
 Future<void> _initializeSpecTranslations() async {
   try {
     await SpecTranslationService.instance.init();
-    debugPrint('=== COMPAIR: Spec translations initialized ===');
+    debugPrint('=== QOR AI: Spec translations initialized ===');
   } catch (e) {
-    debugPrint('=== COMPAIR: Spec translations failed: $e ===');
+    debugPrint('=== QOR AI: Spec translations failed: $e ===');
   }
 }
 
 Future<void> _initializeNotifications() async {
   try {
     await NotificationService.instance.initialize();
-    debugPrint('=== COMPAIR: Notifications initialized ===');
+    debugPrint('=== QOR AI: Notifications initialized ===');
   } catch (e) {
-    debugPrint('=== COMPAIR: Notification init failed: $e ===');
+    debugPrint('=== QOR AI: Notification init failed: $e ===');
   }
 }
 
@@ -75,9 +75,9 @@ Future<void> _requestTrackingTransparency() async {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       await AppTrackingTransparency.requestTrackingAuthorization();
     }
-    debugPrint('=== COMPAIR: ATT status: $status ===');
+    debugPrint('=== QOR AI: ATT status: $status ===');
   } catch (e) {
-    debugPrint('=== COMPAIR: ATT failed: $e ===');
+    debugPrint('=== QOR AI: ATT failed: $e ===');
   }
 }
 
@@ -116,26 +116,26 @@ void main() {
         hiveDS.initialize(),
       ]);
       unawaited(_clearLegacyFeedCache(cacheService));
-      debugPrint('=== COMPAIR: CacheService + HiveDS initialized ===');
+      debugPrint('=== QOR AI: CacheService + HiveDS initialized ===');
     } catch (e) {
-      debugPrint('=== COMPAIR: CacheService FAILED: $e ===');
+      debugPrint('=== QOR AI: CacheService FAILED: $e ===');
     }
 
     // Initialize PocketBase with persistent auth store (SharedPreferences).
     // This must happen before any provider reads `pb` global singleton.
     try {
       pb_client.pb = await pb_client.createPbClientWithPersistence();
-      debugPrint('=== COMPAIR: PocketBase client initialized with persistent auth ===');
+      debugPrint('=== QOR AI: PocketBase client initialized with persistent auth ===');
     } catch (e) {
       // Fallback: in-memory auth (no persistence but app still works)
-      debugPrint('=== COMPAIR: PocketBase persistence init failed, using in-memory: $e ===');
+      debugPrint('=== QOR AI: PocketBase persistence init failed, using in-memory: $e ===');
       pb_client.pb = PocketBase(pb_client.kPbBaseUrl);
     }
 
     // Initialize Remote Config via PocketBase
     final remoteConfigService = RemoteConfigService.fromPb(PbDataSource());
 
-    debugPrint('=== COMPAIR: Calling runApp ===');
+    debugPrint('=== QOR AI: Calling runApp ===');
 
     runApp(
       ProviderScope(
@@ -144,12 +144,12 @@ void main() {
           hiveDataSourceProvider.overrideWithValue(hiveDS),
           remoteConfigServiceProvider.overrideWithValue(remoteConfigService),
         ],
-        child: const CompairApp(),
+        child: const QorAiApp(),
       ),
     );
     _scheduleDeferredStartupTasks();
   }, (error, stack) {
-    debugPrint('=== COMPAIR: ZONE ERROR: $error ===');
+    debugPrint('=== QOR AI: ZONE ERROR: $error ===');
     debugPrint('$stack');
   });
 }

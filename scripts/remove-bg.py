@@ -31,7 +31,7 @@ from firebase_admin import credentials, firestore, storage
 
 SCRIPT_DIR = Path(__file__).parent
 SERVICE_ACCOUNT = Path(os.environ.get('SA_PATH', str(SCRIPT_DIR / 'service-account.json')))
-STORAGE_BUCKET = 'compair_images_99b6e'
+STORAGE_BUCKET = 'qorai_images_99b6e'
 STORAGE_PREFIX = 'product_images'
 OUTPUT_SIZE = 600   # final canvas size in pixels
 PADDING = 50        # padding around product in pixels
@@ -169,7 +169,7 @@ def process_product(task):
     log(f'    → PNG: {len(png_bytes) // 1024} KB')
 
     if args.dry_run:
-        out = Path('/tmp') / f'compair_{product_id}.png'
+        out = Path('/tmp') / f'qorai_{product_id}.png'
         out.write_bytes(png_bytes)
         log(f'    → Dry run saved: {out}')
         return 'ok'
@@ -222,7 +222,7 @@ def main():
     log(f'\n{"=" * 50}')
     log(f'Done: {ok} updated, {skip} skipped, {fail} failed')
     if args.dry_run:
-        log('DRY RUN — previews in /tmp/compair_*.png')
+        log('DRY RUN — previews in /tmp/qorai_*.png')
 
 
 if __name__ == '__main__':

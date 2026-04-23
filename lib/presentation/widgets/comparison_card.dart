@@ -1,4 +1,4 @@
-/// Compair - Comparison Card Widget
+/// Qor AI - Comparison Card Widget
 /// Blueprint Section 8
 ///
 /// Comparison summary card
@@ -6,8 +6,8 @@
 /// Quick score display
 
 import 'package:flutter/material.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
 
 class ComparisonCard extends StatelessWidget {
   final ComparisonEntity comparison;

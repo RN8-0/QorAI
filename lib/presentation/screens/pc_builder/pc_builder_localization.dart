@@ -1,7 +1,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 
 String localizePcBuilderText(
   BuildContext context, {
@@ -109,28 +109,28 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
     'sv': 'AI-prestandaanalys',
     'ar': 'تحليل الأداء بالذكاء الاصطناعي',
   },
-  'Bottleneck detection, gaming FPS estimates and performance tier powered by Compair AI.': {
+  'Bottleneck detection, gaming FPS estimates and performance tier powered by Qor AI.': {
     'tr':
-        'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Compair AI ile sunulur.',
+        'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Qor AI ile sunulur.',
     'de':
-        'Engpasserkennung, Gaming-FPS-Schatzungen und Leistungsklasse mit Compair AI.',
+        'Engpasserkennung, Gaming-FPS-Schatzungen und Leistungsklasse mit Qor AI.',
     'es':
-        'Deteccion de cuello de botella, estimaciones de FPS en juegos y nivel de rendimiento con Compair AI.',
+        'Deteccion de cuello de botella, estimaciones de FPS en juegos y nivel de rendimiento con Qor AI.',
     'fr':
-        'Detection des goulots d etranglement, estimation FPS gaming et niveau de performance par Compair AI.',
+        'Detection des goulots d etranglement, estimation FPS gaming et niveau de performance par Qor AI.',
     'it':
-        'Rilevamento colli di bottiglia, stime FPS gaming e fascia prestazionale con Compair AI.',
-    'ja': 'ボトルネック検出、ゲームFPS推定、性能ランクを Compair AI が提供します。',
+        'Rilevamento colli di bottiglia, stime FPS gaming e fascia prestazionale con Qor AI.',
+    'ja': 'ボトルネック検出、ゲームFPS推定、性能ランクを Qor AI が提供します。',
     'nl':
-        'Bottleneck-detectie, gaming-FPS-schattingen en prestatieniveau aangedreven door Compair AI.',
+        'Bottleneck-detectie, gaming-FPS-schattingen en prestatieniveau aangedreven door Qor AI.',
     'pl':
-        'Wykrywanie waskich gardel, szacowanie FPS w grach i poziom wydajnosci przez Compair AI.',
+        'Wykrywanie waskich gardel, szacowanie FPS w grach i poziom wydajnosci przez Qor AI.',
     'pt':
-        'Deteccao de gargalo, estimativas de FPS em jogos e nivel de desempenho com Compair AI.',
+        'Deteccao de gargalo, estimativas de FPS em jogos e nivel de desempenho com Qor AI.',
     'sv':
-        'Flaskhalsdetektering, spel-FPS-prognoser och prestandaniva med Compair AI.',
+        'Flaskhalsdetektering, spel-FPS-prognoser och prestandaniva med Qor AI.',
     'ar':
-        'اكتشاف عنق الزجاجة وتقدير FPS للألعاب ومستوى الأداء بواسطة Compair AI.',
+        'اكتشاف عنق الزجاجة وتقدير FPS للألعاب ومستوى الأداء بواسطة Qor AI.',
   },
   'Power Calculation': {
     'tr': 'Guc Hesaplama',

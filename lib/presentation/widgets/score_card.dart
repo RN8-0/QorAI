@@ -1,4 +1,4 @@
-/// Compair - Score Card Widget
+/// Qor AI - Score Card Widget
 /// Blueprint Section 8.1
 ///
 /// Score display: Total + 4 component breakdown
@@ -6,8 +6,8 @@
 /// Animated progress bar
 
 import 'package:flutter/material.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
 
 class ScoreCard extends StatelessWidget {
   final String productName;

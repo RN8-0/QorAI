@@ -26,7 +26,7 @@
       "ratings": {
         "expert": 9.2,
         "community": 4.7,
-        "compair": 92
+        "qorai": 92
       },
       "tags": ["iphone", "apple", "flagship", "smartphone", "premium", "5g"],
       "affiliateLinks": {
@@ -64,7 +64,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.6,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["iphone", "apple", "smartphone", "5g"],
       "affiliateLinks": {
@@ -101,7 +101,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["samsung", "galaxy", "android", "flagship", "s pen"],
       "affiliateLinks": {
@@ -139,7 +139,7 @@
       "ratings": {
         "expert": 8.9,
         "community": 4.5,
-        "compair": 89
+        "qorai": 89
       },
       "tags": ["google", "pixel", "android", "ai", "camera"],
       "affiliateLinks": {
@@ -177,7 +177,7 @@
       "ratings": {
         "expert": 9.1,
         "community": 4.7,
-        "compair": 91
+        "qorai": 91
       },
       "tags": ["macbook", "apple", "laptop", "m3", "ultrabook"],
       "affiliateLinks": {
@@ -215,7 +215,7 @@
       "ratings": {
         "expert": 9.3,
         "community": 4.8,
-        "compair": 93
+        "qorai": 93
       },
       "tags": ["macbook", "apple", "laptop", "m3 pro", "professional"],
       "affiliateLinks": {
@@ -254,7 +254,7 @@
       "ratings": {
         "expert": 8.6,
         "community": 4.4,
-        "compair": 86
+        "qorai": 86
       },
       "tags": ["dell", "xps", "windows", "laptop", "oled", "ultrabook"],
       "affiliateLinks": {
@@ -291,7 +291,7 @@
       "ratings": {
         "expert": 9.1,
         "community": 4.7,
-        "compair": 91
+        "qorai": 91
       },
       "tags": ["airpods", "apple", "earbuds", "tws", "anc", "wireless"],
       "affiliateLinks": {
@@ -328,7 +328,7 @@
       "ratings": {
         "expert": 9.2,
         "community": 4.6,
-        "compair": 92
+        "qorai": 92
       },
       "tags": ["sony", "headphones", "anc", "bluetooth", "over-ear", "premium"],
       "affiliateLinks": {
@@ -364,7 +364,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.5,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["bose", "headphones", "anc", "bluetooth", "over-ear", "premium"],
       "affiliateLinks": {
@@ -402,7 +402,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["apple watch", "apple", "smartwatch", "health", "fitness"],
       "affiliateLinks": {
@@ -440,7 +440,7 @@
       "ratings": {
         "expert": 9.4,
         "community": 4.7,
-        "compair": 94
+        "qorai": 94
       },
       "tags": ["ipad", "apple", "tablet", "m4", "oled", "professional"],
       "affiliateLinks": {
@@ -477,7 +477,7 @@
       "ratings": {
         "expert": 9.1,
         "community": 4.7,
-        "compair": 91
+        "qorai": 91
       },
       "tags": ["lg", "oled", "tv", "4k", "gaming", "dolby vision"],
       "affiliateLinks": {
@@ -512,7 +512,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["playstation", "sony", "gaming", "console", "ps5"],
       "affiliateLinks": {
@@ -549,7 +549,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.5,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["meta", "quest", "vr", "mixed reality", "gaming"],
       "affiliateLinks": {

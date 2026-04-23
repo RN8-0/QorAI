@@ -39,20 +39,20 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final locale = _ref.read(localeProvider);
     final langCode = locale?.languageCode ?? 'en';
     const greetings = <String, String>{
-      'tr': 'Merhaba! Ben Compair AI asistanınım. Ürünler, markalar ve alışveriş hakkında her şeyi sorabilirsiniz! 🚀',
-      'de': 'Hallo! Ich bin dein Compair AI-Assistent. Frag mich alles über Produkte und Einkäufe! 🚀',
-      'fr': 'Salut! Je suis votre assistant Compair AI. Posez-moi des questions sur les produits et achats! 🚀',
-      'es': '¡Hola! Soy tu asistente Compair AI. ¡Pregúntame sobre productos y compras! 🚀',
-      'ar': 'مرحباً! أنا مساعدك Compair AI. اسألني عن المنتجات والتسوق! 🚀',
-      'ru': 'Привет! Я ваш ассистент Compair AI. Спрашивайте меня о продуктах и покупках! 🚀',
-      'zh': '你好！我是您的Compair AI助手。询问关于产品和购物的任何问题！🚀',
-      'ja': 'こんにちは！Compair AIアシスタントです。製品やお買い物について何でも聞いてください！🚀',
-      'ko': '안녕하세요! Compair AI 어시스턴트입니다. 제품과 쇼핑에 대해 무엇이든 물어보세요! 🚀',
-      'pt': 'Olá! Sou seu assistente Compair AI. Pergunte-me sobre produtos e compras! 🚀',
-      'it': 'Ciao! Sono il tuo assistente Compair AI. Chiedimi di prodotti e acquisti! 🚀',
+      'tr': 'Merhaba! Ben Qor AI asistanınım. Ürünler, markalar ve alışveriş hakkında her şeyi sorabilirsiniz! 🚀',
+      'de': 'Hallo! Ich bin dein Qor AI-Assistent. Frag mich alles über Produkte und Einkäufe! 🚀',
+      'fr': 'Salut! Je suis votre assistant Qor AI. Posez-moi des questions sur les produits et achats! 🚀',
+      'es': '¡Hola! Soy tu asistente Qor AI. ¡Pregúntame sobre productos y compras! 🚀',
+      'ar': 'مرحباً! أنا مساعدك Qor AI. اسألني عن المنتجات والتسوق! 🚀',
+      'ru': 'Привет! Я ваш ассистент Qor AI. Спрашивайте меня о продуктах и покупках! 🚀',
+      'zh': '你好！我是您的Qor AI助手。询问关于产品和购物的任何问题！🚀',
+      'ja': 'こんにちは！Qor AIアシスタントです。製品やお買い物について何でも聞いてください！🚀',
+      'ko': '안녕하세요! Qor AI 어시스턴트입니다. 제품과 쇼핑에 대해 무엇이든 물어보세요! 🚀',
+      'pt': 'Olá! Sou seu assistente Qor AI. Pergunte-me sobre produtos e compras! 🚀',
+      'it': 'Ciao! Sono il tuo assistente Qor AI. Chiedimi di prodotti e acquisti! 🚀',
     };
     final text = greetings[langCode] ??
-        'Hey! I\'m your Compair AI assistant. Ask me anything about products and shopping! 🚀';
+        'Hey! I\'m your Qor AI assistant. Ask me anything about products and shopping! 🚀';
     final welcome = PersistedChatMsg(
       id: 'welcome',
       role: PersistedMsgRole.ai,
@@ -94,8 +94,8 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         role: PersistedMsgRole.system,
         text: isTr
-          ? 'Yeterli günlük Comp bakiyeniz yok. AI Chat $aiChatCost Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
-          : 'Not enough daily Comp balance. AI Chat costs $aiChatCost Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
+          ? 'Yeterli günlük Q bakiyeniz yok. AI Chat $aiChatCost Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
+          : 'Not enough daily Q balance. AI Chat costs $aiChatCost Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
         status: PersistedMsgStatus.error,
       ));
       return;

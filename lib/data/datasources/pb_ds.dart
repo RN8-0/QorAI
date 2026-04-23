@@ -1,4 +1,4 @@
-/// Compair — PocketBase Data Source
+/// Qor AI — PocketBase Data Source
 /// firebase_ds.dart'ın birebir PocketBase karşılığı.
 /// Tüm metod imzaları korundu; Firestore-spesifik tipler kaldırıldı.
 library;
@@ -8,16 +8,16 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:dio/dio.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/search_ranking.dart';
-import 'package:compair/core/product_filter.dart';
-import 'package:compair/data/models/user_model.dart';
-import 'package:compair/data/models/product_model.dart';
-import 'package:compair/data/models/comparison_model.dart';
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/data/models/chat_conversation.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/search_ranking.dart';
+import 'package:qor_ai/core/product_filter.dart';
+import 'package:qor_ai/data/models/user_model.dart';
+import 'package:qor_ai/data/models/product_model.dart';
+import 'package:qor_ai/data/models/comparison_model.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/data/models/chat_conversation.dart';
 
 class PbDataSource {
   static const bool _verboseTypesenseLogs = false;
@@ -483,14 +483,14 @@ class PbDataSource {
             try {
               return ProductModel.fromPb(r);
             } catch (e) {
-              debugPrint('=== COMPAIR: fromPb FAILED for ${r.id}: $e ===');
+              debugPrint('=== QOR AI: fromPb FAILED for ${r.id}: $e ===');
               return null;
             }
           })
           .whereType<ProductModel>()
           .toList();
     } catch (e, st) {
-      debugPrint('=== COMPAIR: getProducts ERROR: $e\n$st ===');
+      debugPrint('=== QOR AI: getProducts ERROR: $e\n$st ===');
       throw ServerException(message: 'Products could not be retrieved: $e');
     }
   }
@@ -552,7 +552,7 @@ class PbDataSource {
           .timeout(const Duration(seconds: 30));
       sw.stop();
       debugPrint(
-        '=== COMPAIR: getProductsPage cat=$category limit=$limit page=$page → ${result.items.length} docs in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: getProductsPage cat=$category limit=$limit page=$page → ${result.items.length} docs in ${sw.elapsedMilliseconds}ms ===',
       );
 
       final products = result.items
@@ -570,7 +570,7 @@ class PbDataSource {
       return (products: products, nextPage: page + 1, hasMore: hasMore);
     } catch (e, st) {
       debugPrint(
-        '=== COMPAIR: getProductsPage ERROR cat=$category: $e\n$st ===',
+        '=== QOR AI: getProductsPage ERROR cat=$category: $e\n$st ===',
       );
       return (products: <ProductModel>[], nextPage: page + 1, hasMore: false);
     }
@@ -590,7 +590,7 @@ class PbDataSource {
           .collection(AppConstants.productsCollection)
           .update(productId, body: {'viewCount': viewCount + 1});
     } catch (e) {
-      debugPrint('=== COMPAIR: incrementViewCount failed: $e ===');
+      debugPrint('=== QOR AI: incrementViewCount failed: $e ===');
     }
   }
 
@@ -1789,13 +1789,13 @@ class PbDataSource {
           .toList();
       if (_verboseTypesenseLogs) {
         debugPrint(
-          '=== COMPAIR: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
+          '=== QOR AI: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
         );
       }
       return products;
     } catch (e) {
       if (_verboseTypesenseLogs) {
-        debugPrint('=== COMPAIR: TS cat=$category FAILED: $e ===');
+        debugPrint('=== QOR AI: TS cat=$category FAILED: $e ===');
       }
       return [];
     }
@@ -1846,11 +1846,11 @@ class PbDataSource {
 
       final total = results.values.fold<int>(0, (s, l) => s + l.length);
       debugPrint(
-        '=== COMPAIR: TS multi_search ${categories.length} cats → $total products in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS multi_search ${categories.length} cats → $total products in ${sw.elapsedMilliseconds}ms ===',
       );
       return results;
     } catch (e) {
-      debugPrint('=== COMPAIR: TS multi_search FAILED: $e ===');
+      debugPrint('=== QOR AI: TS multi_search FAILED: $e ===');
       return {};
     }
   }
@@ -1899,11 +1899,11 @@ class PbDataSource {
       }
       sw.stop();
       debugPrint(
-        '=== COMPAIR: TS allInCat cat=$category → ${all.length} in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS allInCat cat=$category → ${all.length} in ${sw.elapsedMilliseconds}ms ===',
       );
       return all;
     } catch (e) {
-      debugPrint('=== COMPAIR: TS allInCat cat=$category FAILED: $e ===');
+      debugPrint('=== QOR AI: TS allInCat cat=$category FAILED: $e ===');
       return [];
     }
   }
@@ -1950,7 +1950,7 @@ class PbDataSource {
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
-        '=== COMPAIR: TS getProductsPage cat=$category filter=$filterBy page=$page → ${products.length}/${found} in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS getProductsPage cat=$category filter=$filterBy page=$page → ${products.length}/${found} in ${sw.elapsedMilliseconds}ms ===',
       );
       return (
         products: products,
@@ -1960,7 +1960,7 @@ class PbDataSource {
       );
     } catch (e) {
       debugPrint(
-        '=== COMPAIR: TS getProductsPage FAILED cat=$category: $e ===',
+        '=== QOR AI: TS getProductsPage FAILED cat=$category: $e ===',
       );
       // Fallback to PocketBase
       final fallback = await getProductsPage(

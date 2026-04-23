@@ -1,4 +1,4 @@
-/// Compair - Link Paste Screen (AI Quiz-Enhanced Analysis)
+/// Qor AI - Link Paste Screen (AI Quiz-Enhanced Analysis)
 ///
 /// Flow: Paste URL -> AI validates product -> Generates quiz -> User answers ->
 /// Enhanced compatibility score with detailed breakdown.
@@ -13,19 +13,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/glass_container.dart';
-import 'package:compair/presentation/widgets/gradient_button.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/glass_container.dart';
+import 'package:qor_ai/presentation/widgets/gradient_button.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:compair/presentation/screens/link_paste/link_analysis_history_screen.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
+import 'package:qor_ai/presentation/screens/link_paste/link_analysis_history_screen.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 
 // ── Part files ──
 part 'widgets/quiz_widgets.dart';
@@ -635,7 +635,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         padding: const EdgeInsets.only(left: 12),
                         child: Center(
                           child: Image.asset(
-                            'assets/logo/compair_logo.png',
+                            'assets/logo/qor_ai_logo.png',
                             width: 32,
                             height: 32,
                           ),
@@ -1059,6 +1059,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             letterSpacing: -0.3,
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        QorAmountBadge(
+                          amount: AppConstants.creditCostForFeature('link_analysis'),
+                          unlimited: ref.watch(subscriptionServiceProvider).isPremium,
+                          color: Colors.white,
+                        ),
                       ],
                     ),
                   ),
@@ -1102,8 +1108,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
     final periodLabel = _linkText(
       context,
-      tr: '$remaining/$total ${AppConstants.compCurrencyName}',
-      en: '$remaining/$total ${AppConstants.compCurrencyName}',
+      tr: '$remaining/$total ${AppConstants.qorCurrencyName}',
+      en: '$remaining/$total ${AppConstants.qorCurrencyName}',
     );
     final ctaLabel = _linkText(context, tr: 'Premium', en: 'Premium');
 
@@ -3007,7 +3013,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                CompAmountBadge(
+                                QorAmountBadge(
                                   amount: actionCost,
                                   unlimited: sub.isPremium,
                                   color: Colors.white,

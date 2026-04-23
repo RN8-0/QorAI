@@ -1,4 +1,4 @@
-/// Compair - Custom Error Classes
+/// Qor AI - Custom Error Classes
 library;
 /// Base app error
 abstract class AppException implements Exception {

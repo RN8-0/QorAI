@@ -1,4 +1,4 @@
-// Compair — Create all missing PocketBase collections
+// Qor AI — Create all missing PocketBase collections
 const { req } = require('./pb');
 
 const T = (name, o = {}) => ({ name, type: 'text', max: o.max || 2000, min: o.min || 0, required: !!o.required });
@@ -218,7 +218,7 @@ const MISSING_COLLECTIONS = [
 ];
 
 (async () => {
-  console.log('=== Compair — create missing collections ===\n');
+  console.log('=== Qor AI — create missing collections ===\n');
 
   const existing = await req('GET', '/api/collections?perPage=200');
   const have = new Set(existing.body.items.map(c => c.name));

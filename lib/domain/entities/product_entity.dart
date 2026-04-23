@@ -1,4 +1,4 @@
-/// Compair - Product Entity (Domain Layer - Pure Dart)
+/// Qor AI - Product Entity (Domain Layer - Pure Dart)
 /// Blueprint Section 4.2
 
 import 'package:equatable/equatable.dart';

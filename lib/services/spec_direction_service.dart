@@ -1,4 +1,4 @@
-/// Compair — Spec Direction & Component Ranking Service
+/// Qor AI — Spec Direction & Component Ranking Service
 ///
 /// Determines which value is "better" for each spec key:
 ///   - Numeric specs: "higher" or "lower" (e.g. RAM higher, weight lower)
@@ -13,8 +13,8 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/pb_client.dart';
 
 enum SpecDirection { higher, lower, neutral }
 

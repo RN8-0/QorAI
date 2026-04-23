@@ -1,4 +1,4 @@
-import 'package:compair/services/gemini_service.dart';
+import 'package:qor_ai/services/gemini_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

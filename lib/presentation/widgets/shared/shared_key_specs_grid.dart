@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/core/category_key_specs.dart' as keySpecs;
-import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
-import 'package:compair/l10n/app_localizations.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/core/category_key_specs.dart' as keySpecs;
+import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:qor_ai/l10n/app_localizations.dart';
 
 /// Shared key specs grid widget used by both detail and compare screens.
 /// Shows category-aware key specifications in a 3-column grid (6 or 9 cells).

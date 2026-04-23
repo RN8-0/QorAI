@@ -1,12 +1,12 @@
-/// Compair - Gemini Weight Vector Service (Task 3)
+/// Qor AI - Gemini Weight Vector Service (Task 3)
 /// Calls gemini-2.5-flash-lite to generate personalized 12-dimension weight vectors
 /// based on user quiz answers.
 library;
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/pb_client.dart';
 
 /// Fallback weight vector used when Gemini returns invalid JSON
 const Map<String, double> _kFallbackWeights = {

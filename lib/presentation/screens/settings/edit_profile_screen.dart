@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});

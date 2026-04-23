@@ -25,7 +25,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.4,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["netflix", "streaming", "movies", "tv shows", "4k"],
       "affiliateLinks": {
@@ -59,7 +59,7 @@
       "ratings": {
         "expert": 7.5,
         "community": 4.0,
-        "compair": 78
+        "qorai": 78
       },
       "tags": ["netflix", "streaming", "budget", "ads"],
       "affiliateLinks": {
@@ -93,7 +93,7 @@
       "ratings": {
         "expert": 8.3,
         "community": 4.5,
-        "compair": 83
+        "qorai": 83
       },
       "tags": ["disney", "streaming", "marvel", "star wars", "pixar", "family"],
       "affiliateLinks": {
@@ -127,7 +127,7 @@
       "ratings": {
         "expert": 8.0,
         "community": 4.2,
-        "compair": 80
+        "qorai": 80
       },
       "tags": ["hulu", "streaming", "tv shows", "originals"],
       "affiliateLinks": {
@@ -161,7 +161,7 @@
       "ratings": {
         "expert": 8.4,
         "community": 4.3,
-        "compair": 84
+        "qorai": 84
       },
       "tags": ["max", "hbo", "streaming", "movies", "originals"],
       "affiliateLinks": {
@@ -195,7 +195,7 @@
       "ratings": {
         "expert": 8.7,
         "community": 4.4,
-        "compair": 87
+        "qorai": 87
       },
       "tags": ["max", "hbo", "streaming", "4k", "premium"],
       "affiliateLinks": {
@@ -229,7 +229,7 @@
       "ratings": {
         "expert": 8.2,
         "community": 4.1,
-        "compair": 82
+        "qorai": 82
       },
       "tags": ["apple", "streaming", "originals", "4k", "dolby"],
       "affiliateLinks": {
@@ -263,7 +263,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.6,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["spotify", "music", "streaming", "podcasts"],
       "affiliateLinks": {
@@ -297,7 +297,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.4,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["apple", "music", "streaming", "lossless", "spatial audio"],
       "affiliateLinks": {
@@ -331,7 +331,7 @@
       "ratings": {
         "expert": 8.0,
         "community": 4.2,
-        "compair": 80
+        "qorai": 80
       },
       "tags": ["youtube", "streaming", "music", "videos", "google"],
       "affiliateLinks": {
@@ -365,7 +365,7 @@
       "ratings": {
         "expert": 8.1,
         "community": 4.2,
-        "compair": 81
+        "qorai": 81
       },
       "tags": ["amazon", "prime video", "streaming", "movies", "originals"],
       "affiliateLinks": {
@@ -398,7 +398,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.5,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["disney", "hulu", "espn", "bundle", "streaming", "sports"],
       "affiliateLinks": {
@@ -432,7 +432,7 @@
       "ratings": {
         "expert": 7.8,
         "community": 4.0,
-        "compair": 78
+        "qorai": 78
       },
       "tags": ["paramount", "showtime", "streaming", "cbs", "movies"],
       "affiliateLinks": {

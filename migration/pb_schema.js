@@ -1,4 +1,4 @@
-// Compair PocketBase schema — creates all collections via PB admin API.
+// Qor AI PocketBase schema — creates all collections via PB admin API.
 // Idempotent: if a collection exists, it's skipped (delete manually to recreate).
 const { req } = require('./pb');
 
@@ -259,7 +259,7 @@ const USER_EXTRA_FIELDS = [
   D('fcmTokenUpdatedAt'),
 ];
 
-// Extend the default "users" auth collection with Compair-specific fields
+// Extend the default "users" auth collection with Qor AI-specific fields
 async function extendUsers() {
   const r = await req('GET', '/api/collections/users');
   if (r.status !== 200) { console.log('[users] not found, skipping extension'); return; }

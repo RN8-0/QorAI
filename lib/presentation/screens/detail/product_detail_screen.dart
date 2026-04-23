@@ -1,4 +1,4 @@
-/// Compair - Product Detail Screen (v2 — redesigned)
+/// Qor AI - Product Detail Screen (v2 — redesigned)
 library;
 
 import 'dart:ui';
@@ -12,34 +12,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/utils.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
-import 'package:compair/services/profile_algorithm_service.dart';
-import 'package:compair/services/youtube_service.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/utils.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
+import 'package:qor_ai/services/profile_algorithm_service.dart';
+import 'package:qor_ai/services/youtube_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/presentation/widgets/product_image_box.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/presentation/widgets/shared/shared_key_specs_grid.dart';
-import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
-import 'package:compair/presentation/widgets/shared/shared_youtube_card.dart';
-import 'package:compair/presentation/widgets/shared/shared_premium_section.dart';
-import 'package:compair/presentation/widgets/login_required_dialog.dart';
-import 'package:compair/services/spec_translation_service.dart';
-import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
-import 'package:compair/core/product_name_localizer.dart';
+import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_youtube_card.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
+import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
+import 'package:qor_ai/services/spec_translation_service.dart';
+import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:qor_ai/core/product_name_localizer.dart';
 import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:video_player/video_player.dart';
@@ -312,9 +312,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                           ),
                           onPressed: () {
                             final productUrl =
-                                'https://compair.digital/product/${product.id}';
+                                'https://qorai.app/product/${product.id}';
                             Share.share(
-                              '${product.name} — ${product.description.isNotEmpty ? product.description : 'Check it out on Compair!'}\n$productUrl',
+                              '${product.name} — ${product.description.isNotEmpty ? product.description : 'Check it out on Qor AI!'}\n$productUrl',
                               subject: product.name,
                             );
                           },

@@ -17,7 +17,7 @@ fun localProp(key: String, default: String = ""): String {
 }
 
 android {
-    namespace = "com.compair.app"
+    namespace = "com.qorai.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -33,15 +33,15 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = localProp("RELEASE_KEY_ALIAS", "compair")
+            keyAlias = localProp("RELEASE_KEY_ALIAS", "qorai")
             keyPassword = localProp("RELEASE_KEY_PASSWORD")
-            storeFile = file(localProp("RELEASE_STORE_FILE", "compair-release.jks"))
+            storeFile = file(localProp("RELEASE_STORE_FILE", "qorai-release.jks"))
             storePassword = localProp("RELEASE_STORE_PASSWORD")
         }
     }
 
     defaultConfig {
-        applicationId = "com.compair.app"
+        applicationId = "com.qorai.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

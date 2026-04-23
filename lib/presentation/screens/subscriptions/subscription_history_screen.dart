@@ -1,4 +1,4 @@
-/// Compair — Subscription Analysis History Screen
+/// Qor AI — Subscription Analysis History Screen
 library;
 
 import 'package:flutter/material.dart';
@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/services/gemini_service.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/services/gemini_service.dart';
 
 const _kBlue = AppTheme.brandBlue;
 const _kCyan = AppTheme.brandCyan;

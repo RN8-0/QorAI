@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compare Products — Compair</title>
+  <title>Compare Products — Qor AI</title>
   <meta name="description" content="Compare up to 3 tech products side by side. Specs, scores, and pricing at a glance.">
-  <link rel="canonical" href="https://compair.digital/compare.html">
+  <link rel="canonical" href="https://qorai.app/compare.html">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/css/style.css">
-  <script>try{var t=localStorage.getItem('compair-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <script>try{var t=localStorage.getItem('qorai-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 </head>
 <body>
 
@@ -20,7 +20,7 @@
   <div class="logo">
     <div class="logo-icon">C</div>
     <div class="logo-text">
-      <h1>Compair</h1>
+      <h1>Qor AI</h1>
       <span>AI Product Comparison</span>
     </div>
   </div>
@@ -61,7 +61,7 @@
       <a href="/privacy.html">Privacy</a>
       <a href="/terms.html">Terms</a>
       <a href="/faq.html">FAQ</a>
-      <span class="copyright">© 2025 Compair</span>
+      <span class="copyright">© 2025 Qor AI</span>
     </div>
   </div>
 </aside>
@@ -209,7 +209,7 @@ async function loadCompareProducts() {
       .sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
 
     // Load persisted selection from localStorage
-    const saved = JSON.parse(localStorage.getItem('compair-compare') || '[]');
+    const saved = JSON.parse(localStorage.getItem('qorai-compare') || '[]');
     cSelected = saved.filter(id => cAllProducts.some(p => p.id === id));
 
     cFiltered = [...cAllProducts];
@@ -306,7 +306,7 @@ function toggleCompareSelect(productId) {
     }
     cSelected.push(productId);
   }
-  localStorage.setItem('compair-compare', JSON.stringify(cSelected));
+  localStorage.setItem('qorai-compare', JSON.stringify(cSelected));
   renderProductList();
   renderCompareRight();
 }
@@ -458,7 +458,7 @@ function toggleTheme() {
   const isDark = html.getAttribute('data-theme') === 'dark';
   const next = isDark ? 'light' : 'dark';
   html.setAttribute('data-theme', next);
-  localStorage.setItem('compair-theme', next);
+  localStorage.setItem('qorai-theme', next);
   const label = document.getElementById('theme-label');
   if (label) label.textContent = next === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
 }

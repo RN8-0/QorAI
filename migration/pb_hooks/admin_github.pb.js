@@ -22,7 +22,7 @@ routerAdd("POST", "/api/admin/auth/github/exchange", (e) => {
     }
 
     const allowedUsername = normalizeValue(
-      $os.getenv("COMPAIR_ADMIN_GITHUB_ALLOWED_USERNAME") || "RN8-0",
+      $os.getenv("QORAI_ADMIN_GITHUB_ALLOWED_USERNAME") || "RN8-0",
     );
     const githubUsername = normalizeValue(authRecord.get("githubUsername"));
 
@@ -38,7 +38,7 @@ routerAdd("POST", "/api/admin/auth/github/exchange", (e) => {
     }
 
     const superuserEmail = normalizeValue(
-      $os.getenv("POCKETBASE_ADMIN_EMAIL") || "admin@compair.local"
+      $os.getenv("POCKETBASE_ADMIN_EMAIL") || "admin@qorai.local"
     );
     if (!superuserEmail) {
       return e.json(500, { error: "missing_superuser_env" });

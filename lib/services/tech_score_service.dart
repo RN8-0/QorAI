@@ -1,4 +1,4 @@
-/// Compair - Tech Score Service
+/// Qor AI - Tech Score Service
 ///
 /// Category-based weighted technical score calculation system.
 /// Defines independent score matrices for each product category.

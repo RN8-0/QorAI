@@ -96,11 +96,11 @@ function convertCsvToJson() {
       // Generate Amazon Affiliate Links (Search Queries)
       const amazonQuery = encodeURIComponent(`${brand} ${name}`);
       const affiliateLinks = {
-        'amazon_us': `https://www.amazon.com/s?k=${amazonQuery}&tag=compair-20`,
-        'amazon_uk': `https://www.amazon.co.uk/s?k=${amazonQuery}&tag=compair-21`,
-        'amazon_de': `https://www.amazon.de/s?k=${amazonQuery}&tag=compair-21`,
-        'amazon_tr': `https://www.amazon.com.tr/s?k=${amazonQuery}&tag=compair-21`,
-        'amazon_in': `https://www.amazon.in/s?k=${amazonQuery}&tag=compair-21`
+        'amazon_us': `https://www.amazon.com/s?k=${amazonQuery}&tag=qorai-20`,
+        'amazon_uk': `https://www.amazon.co.uk/s?k=${amazonQuery}&tag=qorai-21`,
+        'amazon_de': `https://www.amazon.de/s?k=${amazonQuery}&tag=qorai-21`,
+        'amazon_tr': `https://www.amazon.com.tr/s?k=${amazonQuery}&tag=qorai-21`,
+        'amazon_in': `https://www.amazon.in/s?k=${amazonQuery}&tag=qorai-21`
       };
 
       const product = {

@@ -1,8 +1,8 @@
-/// Compair - Category Chip Widget
+/// Qor AI - Category Chip Widget
 /// Blueprint Section 6.2
 
 import 'package:flutter/material.dart';
-import 'package:compair/core/theme.dart';
+import 'package:qor_ai/core/theme.dart';
 
 class CategoryChip extends StatelessWidget {
   final String name;

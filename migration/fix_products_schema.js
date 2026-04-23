@@ -1,4 +1,4 @@
-// Compair — Fix products collection missing fields
+// Qor AI — Fix products collection missing fields
 const { req } = require('./pb');
 
 const T = (name, o = {}) => ({ name, type: 'text', max: o.max || 2000, min: o.min || 0, required: !!o.required, ...o });
@@ -25,7 +25,7 @@ const REQUIRED_PRODUCT_FIELDS = [
 ];
 
 (async () => {
-  console.log('=== Compair — products schema fix ===\n');
+  console.log('=== Qor AI — products schema fix ===\n');
 
   const r = await req('GET', '/api/collections/products');
   if (r.status !== 200) {

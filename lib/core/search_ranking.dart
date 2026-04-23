@@ -1,4 +1,4 @@
-import 'package:compair/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
 
 class SearchRank {
   const SearchRank({

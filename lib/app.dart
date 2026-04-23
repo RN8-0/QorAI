@@ -1,4 +1,4 @@
-/// Compair - App Widget
+/// Qor AI - App Widget
 /// Blueprint Section 2, 14
 ///
 /// MaterialApp.router (GoRouter)
@@ -10,14 +10,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/l10n/app_localizations.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/services/notification_service.dart';
+import 'package:qor_ai/l10n/app_localizations.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/services/notification_service.dart';
 
-class CompairApp extends ConsumerWidget {
-  const CompairApp({super.key});
+class QorAiApp extends ConsumerWidget {
+  const QorAiApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,7 +26,7 @@ class CompairApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
-      title: 'Compair',
+      title: 'Qor AI',
       debugShowCheckedModeBanner: false,
 
       // Lokalizasyon - Blueprint Section 11.3

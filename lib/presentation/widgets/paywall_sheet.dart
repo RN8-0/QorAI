@@ -1,4 +1,4 @@
-/// Compair — Premium Paywall Screen (v2)
+/// Qor AI — Premium Paywall Screen (v2)
 /// Dark glassmorphism design, Free vs Pro comparison, 3-day trial
 library;
 
@@ -7,15 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/services/subscription_service.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/services/subscription_service.dart';
 
 const _kPremiumBase = AppTheme.premiumGold;
 const _kPremiumLight = AppTheme.premiumChampagne;
@@ -523,9 +523,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'sv' =>
         'Obegransade jamforelser, AI-chatt, lankanalys och en renare premiumupplevelse.',
       'tr' =>
-        'Free planda gunluk 10 Comp, Premium\'da sinirsiz Comp ile tum AI akislarinda daha hizli ve limitsiz deneyim.',
+        'Free planda gunluk 10 Q, Premium\'da sinirsiz Q ile tum AI akislarinda daha hizli ve limitsiz deneyim.',
       _ =>
-        'Free includes 10 Comp per day, while Premium unlocks unlimited Comp across every AI flow.',
+        'Free includes 10 Q per day, while Premium unlocks unlimited Q across every AI flow.',
     };
   }
 
@@ -559,15 +559,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
 
   String _dailyCreditPoolLabel(int count) {
     return _txt(
-      tr: '$count ${AppConstants.compCurrencyName}/gün',
-      en: '$count ${AppConstants.compCurrencyName}/day',
+      tr: '$count ${AppConstants.qorCurrencyName}/gün',
+      en: '$count ${AppConstants.qorCurrencyName}/day',
     );
   }
 
   String _unlimitedCreditsLabel() {
     return _txt(
-      tr: 'Sınırsız ${AppConstants.compCurrencyName}',
-      en: 'Unlimited ${AppConstants.compCurrencyName}',
+      tr: 'Sınırsız ${AppConstants.qorCurrencyName}',
+      en: 'Unlimited ${AppConstants.qorCurrencyName}',
     );
   }
 
@@ -653,7 +653,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                       shaderCallback: (bounds) =>
                           _kPremiumGradient.createShader(bounds),
                       child: Text(
-                        'COMPAIR PREMIUM',
+                        'QOR AI PREMIUM',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
@@ -987,7 +987,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           _buildShimmerBadge(),
           const SizedBox(height: 14),
           Text(
-            context.l10n?.paywallHeadline ?? 'Unlock Compair Premium',
+            context.l10n?.paywallHeadline ?? 'Unlock Qor AI Premium',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 26,
               fontWeight: FontWeight.w800,
@@ -1054,7 +1054,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'COMPAIR PREMIUM',
+                    'QOR AI PREMIUM',
                     style: GoogleFonts.plusJakartaSans(
                       color: context.textPrimary,
                       fontSize: 12,
@@ -1504,7 +1504,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.category_rounded,
       ),
       _TableRow(
-        _txt(tr: 'Günlük AI Comp', en: 'Daily AI Comp'),
+        _txt(tr: 'Günlük AI Q', en: 'Daily AI Q'),
         _dailyCreditPoolLabel(AppConstants.freeDailyAiCreditLimit),
         _unlimitedCreditsLabel(),
         Icons.bolt_rounded,

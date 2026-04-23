@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR ADMIN — PocketBase Client
+//  QOR AI ADMIN — PocketBase Client
 //  Static admin client backed by PocketBase
 // ═══════════════════════════════════════════════════════════════
 

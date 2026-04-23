@@ -1,4 +1,4 @@
-// Compair - YouTube Review Fetcher
+// Qor AI - YouTube Review Fetcher
 // Parses the public YouTube search HTML (ytInitialData) — no API key,
 // no Google Cloud project dependency.
 
@@ -92,7 +92,7 @@ class YouTubeService {
     _cleanCache();
     final cached = _cache[cacheKey];
     if (cached != null) {
-      debugPrint('=== COMPAIR: YouTube cache HIT for "$productName" ===');
+      debugPrint('=== QOR AI: YouTube cache HIT for "$productName" ===');
       return cached.videos;
     }
 
@@ -109,7 +109,7 @@ class YouTubeService {
       );
     }
 
-    debugPrint('=== COMPAIR: YouTube found ${results.length} videos for "$productName" ===');
+    debugPrint('=== QOR AI: YouTube found ${results.length} videos for "$productName" ===');
     return results;
   }
 
@@ -173,7 +173,7 @@ class YouTubeService {
       final embeddable = await _filterEmbeddable(pool, maxResults);
       return embeddable;
     } catch (e) {
-      debugPrint('=== COMPAIR: YouTube HTML parse error: $e ===');
+      debugPrint('=== QOR AI: YouTube HTML parse error: $e ===');
       return [];
     }
   }

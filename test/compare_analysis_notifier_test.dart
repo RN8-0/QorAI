@@ -1,4 +1,4 @@
-import 'package:compair/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -46,7 +46,7 @@ void main() {
       ], 'tr');
 
       expect(validation.isValid, isFalse);
-      expect(validation.error, contains('Bağlantı'));
+      expect(validation.error, contains('abonelik adı'));
     });
 
     test('allows free-text subscription candidates before AI validation', () {

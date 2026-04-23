@@ -1,4 +1,4 @@
-// Compair - Analytics Event Tracking Service
+// Qor AI - Analytics Event Tracking Service
 // Analytics provider is currently disabled. All methods are no-ops.
 // Kept as a stub so call sites don't need to change.
 

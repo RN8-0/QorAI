@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  COMPAIR WEBSITE — PocketBase Client
+//  QOR AI WEBSITE — PocketBase Client
 //  Public website data/auth client backed by PocketBase
 // ═══════════════════════════════════════════════════════════════
 

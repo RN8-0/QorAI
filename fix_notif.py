@@ -1,4 +1,6 @@
-path = r'C:\Users\RN8\Desktop\Compair-master\admin\js\notifications.js'
+from pathlib import Path
+
+path = Path(__file__).resolve().parent / 'admin' / 'js' / 'notifications.js'
 with open(path, encoding='utf-8') as f:
     content = f.read()
 

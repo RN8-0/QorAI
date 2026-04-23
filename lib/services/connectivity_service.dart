@@ -1,4 +1,4 @@
-/// Compair - Connectivity Service
+/// Qor AI - Connectivity Service
 /// Blueprint Section 7.5
 ///
 /// Monitors internet connection status

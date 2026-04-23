@@ -13,17 +13,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/search_ranking.dart';
-import 'package:compair/core/product_filter.dart';
-import 'package:compair/config/filter_config.dart';
-import 'package:compair/presentation/models/filter_models.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/filter_bottom_sheet.dart';
-import 'package:compair/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/search_ranking.dart';
+import 'package:qor_ai/core/product_filter.dart';
+import 'package:qor_ai/config/filter_config.dart';
+import 'package:qor_ai/presentation/models/filter_models.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/filter_bottom_sheet.dart';
+import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/data/models/product_model.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/data/models/product_model.dart';
 
 // ---------------------------------------------------------------------------
 // Sort options

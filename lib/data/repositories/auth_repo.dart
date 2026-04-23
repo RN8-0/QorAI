@@ -1,4 +1,4 @@
-/// Compair - Auth Repository
+/// Qor AI - Auth Repository
 library;
 
 import 'dart:async';
@@ -8,13 +8,13 @@ import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/data/datasources/hive_ds.dart';
-import 'package:compair/data/datasources/pb_ds.dart';
-import 'package:compair/data/models/user_model.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/services/cache_service.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/data/datasources/hive_ds.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
+import 'package:qor_ai/data/models/user_model.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/services/cache_service.dart';
 
 const String _kGoogleWebClientId =
     '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
@@ -386,7 +386,7 @@ class AuthRepository {
   Future<Result<UserEntity>> signInAnonymously() async {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return signUpWithEmail(
-      email: 'guest_$ts@compair.local',
+      email: 'guest_$ts@qorai.local',
       password: 'Guest@123456',
       displayName: 'Guest',
     );

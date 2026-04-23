@@ -1,9 +1,9 @@
-/// Compair - Get Recommendations Use Case
+/// Qor AI - Get Recommendations Use Case
 /// Blueprint Section 6.1, 7.2
 
-import 'package:compair/core/errors.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/user_entity.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
 
 /// Recommendation repository interface
 abstract class RecommendationRepository {

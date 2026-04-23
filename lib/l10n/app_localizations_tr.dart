@@ -9,7 +9,7 @@ class AppLocalizationsTr extends AppLocalizations {
   AppLocalizationsTr([String locale = 'tr']) : super(locale);
 
   @override
-  String get appTitle => 'Compair';
+  String get appTitle => 'Qor AI';
 
   @override
   String get home => 'Ana Sayfa';
@@ -60,7 +60,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get createProfile => 'Profil Oluştur';
 
   @override
-  String get welcomeTitle => 'Compair\'e Hoş Geldiniz';
+  String get welcomeTitle => 'Qor AI\'e Hoş Geldiniz';
 
   @override
   String get welcomeSubtitle => 'Yapay Zeka Destekli Kişisel Karar Motorunuz';
@@ -1203,7 +1203,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get mustBe13OrOlder =>
-      'Compair\'i kullanmak için en az 13 yaşında olmalısınız.';
+      'Qor AI\'i kullanmak için en az 13 yaşında olmalısınız.';
 
   @override
   String get pleaseEnterEmailToReset =>
@@ -1213,7 +1213,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get passwordResetEmailSent => 'Şifre sıfırlama e-postası gönderildi!';
 
   @override
-  String get compairTitle => 'Compair';
+  String get brandTitle => 'Qor AI';
 
   @override
   String get smarterDecisions => 'Yapay Zeka Destekli Daha Akıllı Kararlar';
@@ -1367,7 +1367,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get productsComparisonsRecs => 'Ürünler, karşılaştırmalar, öneriler';
 
   @override
-  String get compairAi => 'Compair AI';
+  String get brandAi => 'Qor AI';
 
   @override
   String get onlineKnowsPrefs => 'Çevrimiçi • Tercihlerinizi biliyor';
@@ -1714,7 +1714,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get quizProducts => 'Hangi ürünlerle ilgileniyorsunuz?';
 
   @override
-  String get quizUsage => 'Compair\'ı neden kullanıyorsunuz?';
+  String get quizUsage => 'Qor AI\'ı neden kullanıyorsunuz?';
 
   @override
   String get quizProfession => 'Mesleğiniz nedir?';
@@ -2855,7 +2855,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get specValUnderDisplay => 'Ekran Altı';
 
   @override
-  String get paywallPurchaseSuccess => 'Compair Pro\'ya hoş geldiniz! 🎉';
+  String get paywallPurchaseSuccess => 'Qor AI Pro\'ya hoş geldiniz! 🎉';
 
   @override
   String get paywallRestoreSuccess => 'Abonelik geri yüklendi! ✅';
@@ -3255,7 +3255,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get personalMatch => 'Kişisel\nEşleşme';
 
   @override
-  String get foundInDatabase => 'Compair Veritabanında Bulundu';
+  String get foundInDatabase => 'Qor AI Veritabanında Bulundu';
 
   @override
   String get techScoreLabel => 'Teknik Puan';
@@ -3270,7 +3270,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get signInToCompare => 'Ürünleri karşılaştırmak için giriş yapın';
 
   @override
-  String get poweredByAi => 'Compair AI tarafından desteklenmektedir';
+  String get poweredByAi => 'Qor AI tarafından desteklenmektedir';
 
   @override
   String get retryAvailable => 'Tekrar dene';

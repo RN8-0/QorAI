@@ -1,4 +1,4 @@
-/// Compair - Compare Screen
+/// Qor AI - Compare Screen
 /// Direct spec-by-spec comparison of products in the same category.
 library;
 
@@ -17,37 +17,37 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/product_filter.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/presentation/widgets/product_image_box.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
-import 'package:compair/services/youtube_service.dart';
-import 'package:compair/services/gemini_service.dart';
-import 'package:compair/services/profile_algorithm_service.dart';
-import 'package:compair/presentation/widgets/shared/shared_key_specs_grid.dart';
-import 'package:compair/presentation/widgets/shared/shared_youtube_card.dart';
-import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
-import 'package:compair/presentation/widgets/shared/shared_premium_section.dart';
-import 'package:compair/core/category_key_specs.dart' as keySpecs;
-import 'package:compair/presentation/widgets/shared/expandable_text.dart';
-import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/product_filter.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:qor_ai/services/youtube_service.dart';
+import 'package:qor_ai/services/gemini_service.dart';
+import 'package:qor_ai/services/profile_algorithm_service.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_youtube_card.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
+import 'package:qor_ai/core/category_key_specs.dart' as keySpecs;
+import 'package:qor_ai/presentation/widgets/shared/expandable_text.dart';
+import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:compair/services/spec_translation_service.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/presentation/widgets/login_required_dialog.dart';
-import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
+import 'package:qor_ai/services/spec_translation_service.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
+import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';

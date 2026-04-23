@@ -1,9 +1,9 @@
-/// Compair - Compare Products Use Case
+/// Qor AI - Compare Products Use Case
 /// Blueprint Section 7.2, 8.1
 
-import 'package:compair/core/errors.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/user_entity.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
 
 /// Repository interface (Domain layer - no dependencies)
 abstract class ComparisonRepository {

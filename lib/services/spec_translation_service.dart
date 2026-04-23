@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 
 /// Loads the EN→TR spec dictionary from assets and provides bidirectional translation.
 /// Uses the scraper's 7,300+ entry dictionary for comprehensive coverage.

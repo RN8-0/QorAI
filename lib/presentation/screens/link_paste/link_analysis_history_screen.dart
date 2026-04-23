@@ -1,4 +1,4 @@
-/// Compair — Link Analysis History Screen
+/// Qor AI — Link Analysis History Screen
 ///
 /// Firebase'den gelen geçmiş link analizlerini listeleyen tam ekran.
 /// Bir öğeye basınca analiz sonucu yeniden yüklenir; sola kaydırınca silinir.
@@ -9,9 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/presentation/providers/providers.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 
 bool _isTurkishAnalysisLocale(BuildContext context) =>
     Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';

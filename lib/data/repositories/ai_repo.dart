@@ -1,14 +1,14 @@
-/// Compair - AI Repository (including Link Analysis)
+/// Qor AI - AI Repository (including Link Analysis)
 /// Blueprint Section 7, 9
 
 import 'package:flutter/foundation.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/data/datasources/pb_ds.dart';
-import 'package:compair/data/models/other_models.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/services/ai_service.dart';
-import 'package:compair/services/metadata_service.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
+import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/services/ai_service.dart';
+import 'package:qor_ai/services/metadata_service.dart';
 
 class AIRepository {
   final AIService _aiService;

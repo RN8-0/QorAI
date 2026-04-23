@@ -1,9 +1,9 @@
-/// Compair - Other Firestore Models
+/// Qor AI - Other Firestore Models
 /// Blueprint Section 4.4 - categories, affiliate_clicks, user_links, trends, reviews
 
 import 'package:flutter/material.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/domain/entities/category_entity.dart';
+import 'package:qor_ai/domain/entities/category_entity.dart';
 
 // ─── Category Model ─── Section 4.4
 class CategoryModel extends CategoryEntity {

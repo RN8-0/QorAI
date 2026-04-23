@@ -4,12 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/routing/router.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/routing/router.dart';
 
 const _accent = AppTheme.brandBlue;
 const _accentLight = AppTheme.brandSkyBlue;

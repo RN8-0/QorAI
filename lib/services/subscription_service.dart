@@ -1,4 +1,4 @@
-/// Compair - Subscription Service (Google Play Billing)
+/// Qor AI - Subscription Service (Google Play Billing)
 /// Direct Google Play integration via in_app_purchase package
 ///
 /// Premium subscription management
@@ -11,9 +11,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/pb_client.dart';
 
 /// Subscription status
 class SubscriptionStatus {

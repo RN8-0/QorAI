@@ -1,4 +1,4 @@
-/// Compair - Metadata Service (OG Tags, Web Scraping)
+/// Qor AI - Metadata Service (OG Tags, Web Scraping)
 /// Blueprint Section 9.2
 ///
 /// Extracts Open Graph metadata from URLs:
@@ -9,8 +9,8 @@
 library;
 
 import 'package:dio/dio.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/services/cache_service.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/services/cache_service.dart';
 
 class MetadataService {
   final Dio _dio;

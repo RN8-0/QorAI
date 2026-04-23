@@ -1,7 +1,7 @@
-/// Compair - Dart Extension Methods
+/// Qor AI - Dart Extension Methods
 
 import 'package:flutter/material.dart';
-import 'package:compair/core/theme.dart';
+import 'package:qor_ai/core/theme.dart';
 
 // ─── String Extensions ───
 extension StringExtensions on String {

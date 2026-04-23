@@ -1,31 +1,31 @@
 // ═══════════════════════════════════════════════════════════
-//  COMPAIR ADMIN — Notification System
+//  QOR AI ADMIN — Notification System
 // ═══════════════════════════════════════════════════════════
 
 const NOTIF_TEMPLATES = [
   { id: 'new-feature', icon: '🚀', label: 'Yeni Özellik', type: 'feature',
     title: '🚀 Yeni Özellik Geldi!',
-    body: "Compair'e yepyeni bir özellik ekledik! Uygulamayı aç ve hemen keşfet — daha akıllı karşılaştırmalar seni bekliyor." },
+    body: "Qor AI'e yepyeni bir özellik ekledik! Uygulamayı aç ve hemen keşfet — daha akıllı karşılaştırmalar seni bekliyor." },
   { id: 'price-drop', icon: '📉', label: 'Fiyat Düştü', type: 'alert',
     title: '📉 Takip Ettiğin Üründe Fiyat Düştü!',
-    body: "İlgilendiğin bir ürünün fiyatı düştü. Hemen Compair'i aç ve fırsatı kaçırma — en iyi fiyatları gör." },
+    body: "İlgilendiğin bir ürünün fiyatı düştü. Hemen Qor AI'i aç ve fırsatı kaçırma — en iyi fiyatları gör." },
   { id: 'premium-offer', icon: '👑', label: 'Premium Teklifi', type: 'promo',
     title: '👑 Premium %50 İndirimde!',
     body: "Sınırsız AI karşılaştırma, gelişmiş analiz ve reklamsız deneyim. Premium'a sadece bu hafta özel %50 indirimle geç." },
   { id: 'maintenance', icon: '🔧', label: 'Bakım', type: 'system',
     title: '🔧 Planlı Bakım Bildirimi',
-    body: "Compair kısa süreli bakıma giriyor. Hizmet birkaç dakika kesintiye uğrayabilir. Sabrın için teşekkürler!" },
+    body: "Qor AI kısa süreli bakıma giriyor. Hizmet birkaç dakika kesintiye uğrayabilir. Sabrın için teşekkürler!" },
   { id: 'welcome-back', icon: '👋', label: 'Hoş Geldin', type: 'system',
     title: '👋 Seni Özledik!',
     body: "Son ziyaretinden bu yana yüzlerce yeni ürün ekledik. Tekrar aramıza hoş geldin — keşfetmeye devam et." },
   { id: 'review-request', icon: '⭐', label: 'Uygulamayı Puanla', type: 'system',
-    title: '⭐ Compair\'i Beğeniyor musun?',
+    title: '⭐ Qor AI\'i Beğeniyor musun?',
     body: "Uygulamamızı beğendiysen mağazada 5 yıldız ile puanlayarak destek olabilirsin. Geri bildiriminin değeri büyük!" },
   { id: 'weekly-summary', icon: '📊', label: 'Haftalık Özet', type: 'system',
     title: '📊 Haftalık Ürün Özetin Hazır',
     body: "Bu hafta ilgilendiğin kategorilerde öne çıkan 10 ürünü senin için derledik. Dokun ve incele!" },
   { id: 'tip', icon: '💡', label: 'İpucu', type: 'tip',
-    title: '💡 Compair Pro İpucu',
+    title: '💡 Qor AI Pro İpucu',
     body: "Biliyor muydun? Herhangi bir ürün linkini yapıştırarak AI'dan saniyeler içinde detaylı analiz alabilirsin." },
   { id: 'announcement', icon: '📢', label: 'Duyuru', type: 'system',
     title: '📢 Heyecan Verici Bir Duyurumuz Var!',
@@ -44,7 +44,7 @@ const NOTIF_TEMPLATES = [
     body: "Bu hafta veritabanımıza 200+ yeni ürün eklendi. Yeni nesil telefonlar, laptoplar, kulaklıklar ve daha fazlası seni bekliyor!" },
   { id: 'streak', icon: '🔥', label: 'Streak', type: 'tip',
     title: '🔥 Seri Bozulmasın!',
-    body: "Compair'i 3 gündür kullanmadın. Hadi geri dön ve serini koru — yeni ürünler ve fırsatlar seni bekliyor." },
+    body: "Qor AI'i 3 gündür kullanmadın. Hadi geri dön ve serini koru — yeni ürünler ve fırsatlar seni bekliyor." },
 ];
 
 const NOTIF_TYPE_ICONS = {
@@ -287,7 +287,7 @@ async function sendBroadcastNotification() {
         pb.collection('notifications').create({
           recipientId: user.id,
           senderId: 'system',
-          senderName: 'Compair Team',
+          senderName: 'Qor AI Team',
           type,
           title,
           body,

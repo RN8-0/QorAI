@@ -1,4 +1,4 @@
-/// Compair - Category Entity (Domain Layer)
+/// Qor AI - Category Entity (Domain Layer)
 /// Blueprint Section 4.4
 library;
 

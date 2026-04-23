@@ -1,11 +1,11 @@
 {
-    "name": "Compair",
-    "short_name": "Compair",
+    "name": "Qor AI",
+    "short_name": "Qor AI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#000000",
-    "description": "A new Flutter project.",
+    "description": "Qor AI - Personal Decision Engine.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

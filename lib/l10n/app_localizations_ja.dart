@@ -9,7 +9,7 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
-  String get appTitle => 'Compair';
+  String get appTitle => 'Qor AI';
 
   @override
   String get home => 'ホーム';
@@ -60,7 +60,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get createProfile => 'プロフィール作成';
 
   @override
-  String get welcomeTitle => 'Compairへようこそ';
+  String get welcomeTitle => 'Qor AIへようこそ';
 
   @override
   String get welcomeSubtitle => 'AIが支えるあなた専用の意思決定エンジン';
@@ -1179,7 +1179,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get mustBe13OrOlder =>
-      'You must be at least 13 years old to use Compair.';
+      'You must be at least 13 years old to use Qor AI.';
 
   @override
   String get pleaseEnterEmailToReset => 'パスワードリセットのためメールアドレスを入力してください';
@@ -1188,7 +1188,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get passwordResetEmailSent => 'パスワードリセットメールが送信されました！';
 
   @override
-  String get compairTitle => 'Compair';
+  String get brandTitle => 'Qor AI';
 
   @override
   String get smarterDecisions => 'AIが支援する、より賢い判断';
@@ -1337,7 +1337,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get productsComparisonsRecs => '製品、比較、推薦';
 
   @override
-  String get compairAi => 'Compair AI';
+  String get brandAi => 'Qor AI';
 
   @override
   String get onlineKnowsPrefs => 'オンライン • あなたの好みを把握';
@@ -1678,7 +1678,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get quizProducts => 'どの製品に興味がありますか？';
 
   @override
-  String get quizUsage => 'Compairを使う理由は？';
+  String get quizUsage => 'Qor AIを使う理由は？';
 
   @override
   String get quizProfession => 'ご職業は？';
@@ -2808,7 +2808,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get specValUnderDisplay => 'ディスプレイ下';
 
   @override
-  String get paywallPurchaseSuccess => 'Compair Proへようこそ！🎉';
+  String get paywallPurchaseSuccess => 'Qor AI Proへようこそ！🎉';
 
   @override
   String get paywallRestoreSuccess => 'サブスクリプション復元完了！✅';
@@ -3201,7 +3201,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get personalMatch => 'パーソナル\nマッチ';
 
   @override
-  String get foundInDatabase => 'Compairデータベースで見つかりました';
+  String get foundInDatabase => 'Qor AIデータベースで見つかりました';
 
   @override
   String get techScoreLabel => '技術スコア';
@@ -3216,7 +3216,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get signInToCompare => '比較するにはサインイン';
 
   @override
-  String get poweredByAi => 'Compair AIによる';
+  String get poweredByAi => 'Qor AIによる';
 
   @override
   String get retryAvailable => 'リトライ可能';

@@ -1,11 +1,11 @@
-// Compair — ensure the admins auth collection exists and is configured for GitHub OAuth.
+// Qor AI — ensure the admins auth collection exists and is configured for GitHub OAuth.
 const { req } = require('./pb');
 
-const GITHUB_CLIENT_ID = process.env.COMPAIR_ADMIN_GITHUB_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = process.env.COMPAIR_ADMIN_GITHUB_CLIENT_SECRET;
+const GITHUB_CLIENT_ID = process.env.QORAI_ADMIN_GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.QORAI_ADMIN_GITHUB_CLIENT_SECRET;
 
 if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
-  console.error('Set COMPAIR_ADMIN_GITHUB_CLIENT_ID and COMPAIR_ADMIN_GITHUB_CLIENT_SECRET.');
+  console.error('Set QORAI_ADMIN_GITHUB_CLIENT_ID and QORAI_ADMIN_GITHUB_CLIENT_SECRET.');
   process.exit(1);
 }
 
@@ -136,7 +136,7 @@ function buildAdminsCollection(usersCollection, preserveFieldIds = false) {
 }
 
 (async () => {
-  console.log('=== Compair — admins auth setup ===\n');
+  console.log('=== Qor AI — admins auth setup ===\n');
 
   const users = await req('GET', '/api/collections/users');
   if (users.status !== 200) {

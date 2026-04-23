@@ -1,10 +1,10 @@
-/// Compair - Utility Functions
+/// Qor AI - Utility Functions
 /// Blueprint Section 7.4, 8.1, 11.2
 
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:intl/intl.dart';
-import 'package:compair/core/constants.dart';
+import 'package:qor_ai/core/constants.dart';
 
 class AppUtils {
   AppUtils._();

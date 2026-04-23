@@ -1,8 +1,8 @@
-/// Compair - Comparison Model (Data Layer - Firestore)
+/// Qor AI - Comparison Model (Data Layer - Firestore)
 /// Blueprint Section 4.3
 
 import 'package:pocketbase/pocketbase.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
 
 class ComparisonModel extends ComparisonEntity {
   const ComparisonModel({

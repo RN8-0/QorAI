@@ -1,20 +1,20 @@
 import 'dart:ui';
 import 'dart:math' as math;
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:flutter/material.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/domain/entities/comparison_entity.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/routing/router.dart';
-import 'package:compair/core/errors.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/routing/router.dart';
+import 'package:qor_ai/core/errors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -589,7 +589,7 @@ class _SubscriptionsSection extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.asset(
-                    'assets/logo/compair_logo.png',
+                    'assets/logo/qor_ai_logo.png',
                     width: 28,
                     height: 28,
                     fit: BoxFit.contain,
@@ -1421,7 +1421,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                isTr ? 'Günlük AI Comp' : 'Daily AI Comp',
+                isTr ? 'Günlük AI Q' : 'Daily AI Q',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1476,11 +1476,11 @@ class _FreemiumUsageCard extends ConsumerWidget {
                       child: Text(
                         sub.isPremium
                             ? (isTr
-                              ? 'Sınırsız Comp aktif'
-                              : 'Unlimited Comp active')
+                              ? 'Sınırsız Q aktif'
+                              : 'Unlimited Q active')
                             : (isTr
-                              ? '$remainingCredits/$totalCredits Comp kaldı'
-                              : '$remainingCredits/$totalCredits Comp left'),
+                              ? '$remainingCredits/$totalCredits Qor kaldı'
+                              : '$remainingCredits/$totalCredits Qor left'),
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -1488,7 +1488,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    CompBalanceBadge(
+                    QorBalanceBadge(
                       remaining: remainingCredits,
                       total: totalCredits,
                       unlimited: sub.isPremium,
@@ -1500,11 +1500,11 @@ class _FreemiumUsageCard extends ConsumerWidget {
                 Text(
                   sub.isPremium
                       ? (isTr
-                        ? 'Premium ile tüm AI akışlarında Comp sınırı olmadan devam edersiniz.'
-                        : 'Premium removes Comp limits across all AI flows.')
+                        ? 'Premium ile tüm AI akışlarında Qor sınırı olmadan devam edersiniz.'
+                        : 'Premium removes Qor limits across all AI flows.')
                       : (isTr
-                        ? 'Comp bakiyesi günlük yenilenir. Ağır işlemler daha fazla Comp tüketir.'
-                        : 'Comp balance refreshes daily. Heavier actions consume more Comp.'),
+                        ? 'Q bakiyesi günlük yenilenir. Ağır işlemler daha fazla Q tüketir.'
+                        : 'Q balance refreshes daily. Heavier actions consume more Q.'),
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: context.textSecondary,
@@ -1600,7 +1600,7 @@ class _UsageRow extends StatelessWidget {
               ],
             ),
           ),
-          CompAmountBadge(
+          QorAmountBadge(
             amount: creditCost,
             unlimited: isPremium,
             color: color,

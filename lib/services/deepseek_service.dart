@@ -1,4 +1,4 @@
-/// Compair - DeepSeek AI Service (Text-based Intelligence)
+/// Qor AI - DeepSeek AI Service (Text-based Intelligence)
 ///
 /// Handles ALL text-only AI tasks. Gemini is used ONLY for:
 ///   - Google Search grounding (groundedQuery, enhancedSubscriptionAnalysis)
@@ -14,16 +14,16 @@ library;
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/errors.dart';
-import 'package:compair/core/pb_client.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/domain/entities/user_entity.dart';
-import 'package:compair/services/ai_service.dart';
-import 'package:compair/services/cache_service.dart';
-import 'package:compair/services/gemini_service.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/services/ai_service.dart';
+import 'package:qor_ai/services/cache_service.dart';
+import 'package:qor_ai/services/gemini_service.dart';
 
-/// DeepSeek V3 service — handles all text-based AI tasks for Compair.
+/// DeepSeek V3 service — handles all text-based AI tasks for Qor AI.
 /// Primary AI provider. Gemini is used ONLY for vision + web grounding.
 class DeepSeekService implements AIService {
   final Dio _dio;
@@ -76,7 +76,7 @@ class DeepSeekService implements AIService {
     final langName = _languageName(lang);
     final response = await _jsonRequest(
       system:
-          'You are Compair AI recommendation engine. '
+          'You are Qor AI recommendation engine. '
           'Suggest the best products based on the user profile. '
           'Write the "reason" field in $langName. '
           'Return JSON: {"recommendations":[{"productId":"…","score":0-100,"reason":"…"}]}',
@@ -360,7 +360,7 @@ class DeepSeekService implements AIService {
 
     final response = await _jsonRequest(
       system: '''
-You are Compair's subscription quiz engine. Generate a SHORT personalized quiz
+You are Qor AI's subscription quiz engine. Generate a SHORT personalized quiz
 (4-5 questions) to understand the user's needs for: $names.
 
 LANGUAGE: Generate ALL questions and options in $langName.
@@ -712,7 +712,7 @@ Return valid JSON:
   static String _comparisonSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are the Compair AI comparison engine. You receive a list of product IDs,
+You are the Qor AI comparison engine. You receive a list of product IDs,
 user profile data and their country. Your job is to produce a deep, fair,
 spec-by-spec comparison and pick a winner based on the user's priorities.
 
@@ -754,7 +754,7 @@ Return valid JSON:
   static String _linkAnalysisSystemPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's link analysis engine. You receive a product URL, optional metadata, and a user profile. Your job is to identify the EXACT product and analyze it for the user.
+You are Qor AI's link analysis engine. You receive a product URL, optional metadata, and a user profile. Your job is to identify the EXACT product and analyze it for the user.
 
 CRITICAL — PRODUCT IDENTIFICATION (ABSOLUTE RULES):
 1. The "productMetadata.title" field is your PRIMARY and MOST TRUSTED source. If it contains a clear product name, YOU MUST USE IT as the product title. Do NOT override it with a different product.
@@ -799,7 +799,7 @@ Return valid JSON:
   }
 
   static String _chatSystemPrompt(UserEntity profile, int currentYear) => '''
-You are Compair AI — a knowledgeable, friendly shopping and product advisor for ALL product categories.
+You are Qor AI — a knowledgeable, friendly shopping and product advisor for ALL product categories.
 
 ## YOUR PERSONALITY
 - Warm, conversational, occasionally humorous — a smart friend who knows products
@@ -848,7 +848,7 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
   static String _quizGenerationPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Compair's product quiz engine. Generate a SHORT personalized quiz
+You are Qor AI's product quiz engine. Generate a SHORT personalized quiz
 (4-6 questions) to understand the user's needs for a specific product category.
 
 LANGUAGE: Generate ALL questions and options in $langName.
@@ -879,7 +879,7 @@ Return valid JSON:
     final futureProofing = isTr ? 'Uzun Vadeli Değer' : 'Long-term Value';
     final lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : 'Lifestyle Match';
     return '''
-You are Compair's senior product analyst. Given a product, quiz answers, and user profile, produce a comprehensive, professional, highly detailed personalized match report.
+You are Qor AI's senior product analyst. Given a product, quiz answers, and user profile, produce a comprehensive, professional, highly detailed personalized match report.
 
 LANGUAGE: Write ALL text in $langName. Factor labels must also be in $langName.
 

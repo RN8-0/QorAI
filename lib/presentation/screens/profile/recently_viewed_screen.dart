@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/domain/entities/product_entity.dart';
-import 'package:compair/core/errors.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/core/errors.dart';
 import 'package:intl/intl.dart';
 
 class RecentlyViewedScreen extends ConsumerWidget {

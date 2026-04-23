@@ -1,4 +1,4 @@
-/// Compair – Subscription Intelligence Screen
+/// Qor AI – Subscription Intelligence Screen
 /// Modeled after AI Link Analysis — phase-based state machine with
 /// AI quiz generation and grounded web analysis.
 library;
@@ -11,18 +11,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:compair/core/theme.dart';
-import 'package:compair/core/constants.dart';
-import 'package:compair/domain/entities/ai_entities.dart';
-import 'package:compair/presentation/providers/providers.dart';
-import 'package:compair/presentation/widgets/glass_container.dart';
-import 'package:compair/presentation/widgets/gradient_button.dart';
-import 'package:compair/presentation/widgets/paywall_sheet.dart';
-import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
-import 'package:compair/presentation/widgets/comp_badges.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/glass_container.dart';
+import 'package:qor_ai/presentation/widgets/gradient_button.dart';
+import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
+import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:compair/presentation/screens/subscriptions/subscription_history_screen.dart';
-import 'package:compair/services/gemini_service.dart';
+import 'package:qor_ai/presentation/screens/subscriptions/subscription_history_screen.dart';
+import 'package:qor_ai/services/gemini_service.dart';
 
 // ─── Design tokens (mapped to global AppTheme brand palette) ─────────────────
 const _kPrimary = AppTheme.brandBlue;
@@ -334,7 +334,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               padding: const EdgeInsets.only(left: 12),
               child: Center(
                 child: Image.asset(
-                  'assets/logo/compair_logo.png',
+                  'assets/logo/qor_ai_logo.png',
                   width: 32,
                   height: 32,
                 ),
@@ -1045,7 +1045,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             label: isTr ? 'Abonelik Analizi' : 'Subscription Analysis',
             remaining: remaining,
             total: total,
-            period: ' ${AppConstants.compCurrencyName}',
+            period: ' ${AppConstants.qorCurrencyName}',
             progress: progress,
             color: barColor,
           ),
@@ -1055,7 +1055,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             label: isTr ? 'AI Sohbet' : 'AI Chat',
             remaining: remaining,
             total: total,
-            period: ' ${AppConstants.compCurrencyName}',
+            period: ' ${AppConstants.qorCurrencyName}',
             progress: progress,
             color: barColorAi,
           ),
@@ -1069,8 +1069,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 const SizedBox(width: 4),
                 Text(
                   isTr
-                      ? 'Premium ile sınırsız Comp aç'
-                      : 'Unlock unlimited Comp with Premium',
+                      ? 'Premium ile sınırsız Q aç'
+                      : 'Unlock unlimited Q with Premium',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -1312,7 +1312,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         ),
                       ),
                       const SizedBox(width: 10),
-                      CompAmountBadge(
+                      QorAmountBadge(
                         amount: analysisCreditCost,
                         unlimited: sub.isPremium,
                         color: Colors.white,
@@ -1755,7 +1755,7 @@ class _SubQuizViewState extends State<_SubQuizView> {
                 ),
                 child: Center(
                   child: Image.asset(
-                    'assets/logo/compair_logo.png',
+                    'assets/logo/qor_ai_logo.png',
                     width: 28,
                     height: 28,
                   ),

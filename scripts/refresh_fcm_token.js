@@ -3,8 +3,8 @@
  * Refresh FCM v1 access token and store it in PocketBase app_config/fcm_access_token.
  *
  * Run via systemd timer every 50 minutes (FCM tokens last 60min):
- *   /etc/systemd/system/compair-fcm.service
- *   /etc/systemd/system/compair-fcm.timer
+ *   /etc/systemd/system/qorai-fcm.service
+ *   /etc/systemd/system/qorai-fcm.timer
  *
  * Required env (in same folder, .env or exported):
  *   FCM_SERVICE_ACCOUNT_PATH  - path to Firebase service-account JSON

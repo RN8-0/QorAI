@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   Compair — app.js  (EPEY-style layout)
+   Qor AI — app.js  (EPEY-style layout)
    ═══════════════════════════════════════════════════════════════ */
 
 // PocketBase config lives in pb_client.js
@@ -277,7 +277,7 @@ function openModal(productId) {
             onclick="toggleCompare('${esc(p.id)}','${esc(p.name)}');updateModalCompareBtn('${esc(p.id)}')">
             ${inCompare ? '✓ Listede' : '+ Karşılaştırmaya Ekle'}
           </button>
-          <a href="compair://product/${esc(p.id)}" class="btn-app">📱 Uygulamada Aç</a>
+          <a href="qorai://product/${esc(p.id)}" class="btn-app">📱 Uygulamada Aç</a>
         </div>
       </div>
     </div>
@@ -413,7 +413,7 @@ function toggleTheme() {
   const current = html.getAttribute('data-theme') || 'dark';
   const next = current === 'dark' ? 'light' : 'dark';
   html.setAttribute('data-theme', next);
-  try { localStorage.setItem('compair-theme', next); } catch(e) {}
+  try { localStorage.setItem('qorai-theme', next); } catch(e) {}
   const btn = document.getElementById('theme-toggle');
   if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
 }
@@ -487,7 +487,7 @@ function showError(msg) {
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 
-  const theme = localStorage.getItem('compair-theme') || 'dark';
+  const theme = localStorage.getItem('qorai-theme') || 'dark';
   const themeBtn = document.getElementById('theme-toggle');
   if (themeBtn) themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
 

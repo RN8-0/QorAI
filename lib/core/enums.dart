@@ -1,4 +1,4 @@
-/// Compair - Enums
+/// Qor AI - Enums
 
 /// User ecosystem - Section 5.2 Question 1
 enum Ecosystem {

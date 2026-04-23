@@ -4,7 +4,7 @@
 ///
 /// Fires on every create / update / delete — even when the change is made
 /// directly in PocketBase's built-in admin UI (/_/), not just via the
-/// Compair admin web panel.
+/// Qor AI admin web panel.
 
 const TS_URL        = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 const TS_KEY        = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';

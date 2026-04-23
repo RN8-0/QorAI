@@ -3,9 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compair/config/filter_config.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/presentation/models/filter_models.dart';
+import 'package:qor_ai/config/filter_config.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/models/filter_models.dart';
 
 // ---------------------------------------------------------------------------
 // Public entry-point

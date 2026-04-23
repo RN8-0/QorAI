@@ -2,11 +2,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
-import 'package:compair/core/theme.dart';
-import 'package:compair/services/behavior_analysis_service.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/services/behavior_analysis_service.dart';
 
 const double _twoPi = math.pi * 2;
 const double _pi = math.pi;

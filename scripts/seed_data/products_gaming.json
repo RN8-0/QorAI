@@ -27,7 +27,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["playstation", "ps5", "sony", "konsol", "next-gen"],
       "affiliateLinks": {
@@ -65,7 +65,7 @@
       "ratings": {
         "expert": 8.8,
         "community": 4.5,
-        "compair": 88
+        "qorai": 88
       },
       "tags": ["xbox", "microsoft", "konsol", "game pass", "next-gen"],
       "affiliateLinks": {
@@ -102,7 +102,7 @@
       "ratings": {
         "expert": 8.5,
         "community": 4.5,
-        "compair": 85
+        "qorai": 85
       },
       "tags": ["nintendo", "switch", "oled", "taşınabilir", "mario", "zelda"],
       "affiliateLinks": {
@@ -140,7 +140,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.7,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["steam deck", "valve", "pc gaming", "taşınabilir", "steam"],
       "affiliateLinks": {
@@ -179,7 +179,7 @@
       "ratings": {
         "expert": 9.5,
         "community": 4.8,
-        "compair": 95
+        "qorai": 95
       },
       "tags": ["game pass", "xbox", "microsoft", "oyun aboneliği", "cloud gaming"],
       "affiliateLinks": {
@@ -216,7 +216,7 @@
       "ratings": {
         "expert": 7.5,
         "community": 4.0,
-        "compair": 75
+        "qorai": 75
       },
       "tags": ["playstation plus", "sony", "oyun aboneliği", "ps5", "ps4"],
       "affiliateLinks": {
@@ -251,7 +251,7 @@
       "ratings": {
         "expert": 7.0,
         "community": 3.8,
-        "compair": 70
+        "qorai": 70
       },
       "tags": ["nintendo", "switch online", "retro", "klasik oyunlar"],
       "affiliateLinks": {
@@ -287,7 +287,7 @@
       "ratings": {
         "expert": 9.2,
         "community": 4.7,
-        "compair": 92
+        "qorai": 92
       },
       "tags": ["logitech", "mouse", "gaming", "e-spor", "kablosuz"],
       "affiliateLinks": {
@@ -325,7 +325,7 @@
       "ratings": {
         "expert": 9.0,
         "community": 4.6,
-        "compair": 90
+        "qorai": 90
       },
       "tags": ["razer", "deathadder", "mouse", "gaming", "ergonomik"],
       "affiliateLinks": {
@@ -363,7 +363,7 @@
       "ratings": {
         "expert": 9.3,
         "community": 4.8,
-        "compair": 93
+        "qorai": 93
       },
       "tags": ["wooting", "klavye", "mekanik", "analog", "e-spor", "rapid trigger"],
       "affiliateLinks": {

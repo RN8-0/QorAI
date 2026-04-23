@@ -1,10 +1,10 @@
-/// Compair - Trend Card Widget
+/// Qor AI - Trend Card Widget
 /// Blueprint Section 6.2
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:compair/core/theme.dart';
-import 'package:compair/domain/entities/product_entity.dart';
+import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/domain/entities/product_entity.dart';
 
 class TrendCard extends StatelessWidget {
   final ProductEntity product;

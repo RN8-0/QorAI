@@ -1,12 +1,12 @@
-/// Compair — Behavior Tracking Service
+/// Qor AI — Behavior Tracking Service
 library;
 
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:compair/core/constants.dart';
-import 'package:compair/core/pb_client.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/pb_client.dart';
 
 class BehaviorTrackingService {
   static final BehaviorTrackingService _instance = BehaviorTrackingService._();
