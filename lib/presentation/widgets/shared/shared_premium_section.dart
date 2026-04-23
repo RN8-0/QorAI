@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/product_filter.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/utils.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
 import 'package:compair/presentation/widgets/login_required_dialog.dart';
 
@@ -158,6 +160,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: deepStep,
           hasContent: deepAnalysis != null,
           onTap: _toggleDeepAnalysis,
+          cost: AppConstants.detailAiCreditCost,
           expandedChild: deepAnalysis != null
               ? _buildDeepAnalysisVisual(deepAnalysis)
               : null,
@@ -179,6 +182,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: altsStep,
           hasContent: alternatives != null,
           onTap: _toggleAlternatives,
+          cost: AppConstants.detailAiCreditCost,
           expandedChild: alternatives != null
               ? _buildAlternativesVisual(alternatives)
               : null,
@@ -201,6 +205,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: advisorStep,
           hasContent: advisorResult != null,
           onTap: _toggleAdvisor,
+          cost: AppConstants.detailAiCreditCost,
           expandedChild: advisorResult != null
               ? _buildAdvisorVisual(advisorResult)
               : null,
@@ -223,6 +228,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: predStep,
           hasContent: predictionResult != null,
           onTap: _togglePrediction,
+          cost: AppConstants.detailAiCreditCost,
           expandedChild: predictionResult != null
               ? _buildPredictionVisual(predictionResult)
               : null,
@@ -241,6 +247,7 @@ class SharedPremiumFeaturesSectionState
     required bool isLoading,
     required bool hasContent,
     required VoidCallback onTap,
+    int? cost,
     String stepMessage = '',
     Widget? expandedChild,
   }) {
@@ -326,13 +333,24 @@ class SharedPremiumFeaturesSectionState
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                else
+                else ...[  
+                  if (cost != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: CompAmountBadge(
+                        amount: cost,
+                        color: gradient[0],
+                        fontSize: 11,
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      ),
+                    ),
                   Icon(
                     isExpanded
                         ? Icons.expand_less_rounded
                         : Icons.expand_more_rounded,
                     color: gradient[0],
                   ),
+                ],
               ],
             ),
             if (isExpanded && expandedChild != null) ...[

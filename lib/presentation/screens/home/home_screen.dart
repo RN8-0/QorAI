@@ -464,18 +464,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ],
                       ),
                     ),
-                    _AppBarButton(
-                      icon: Icons.document_scanner_rounded,
-                      tooltip: 'Scan product',
-                      onTap: () => context.push(AppRoutes.visualScanner),
-                      badge: CompBalanceBadge(
-                        remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
-                        total: AppConstants.freeDailyAiCreditLimit,
-                        unlimited: ref.watch(subscriptionServiceProvider).isPremium,
-                        color: AppTheme.brandBlue,
-                        fontSize: 8,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      ),
+                    CompAmountBadge(
+                      amount: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
+                      unlimited: ref.watch(subscriptionServiceProvider).isPremium,
+                      color: AppTheme.brandBlue,
+                      fontSize: 12,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     ),
                     const SizedBox(width: 8),
                     _NotificationButton(),
@@ -850,6 +844,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     color: context.textTertiaryColor,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  context.push(AppRoutes.visualScanner);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.document_scanner_rounded,
+                    size: 20,
+                    color: AppTheme.brandBlue,
                   ),
                 ),
               ),

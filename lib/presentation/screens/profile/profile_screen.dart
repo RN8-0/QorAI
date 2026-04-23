@@ -1392,20 +1392,8 @@ class _FreemiumUsageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sub = ref.watch(subscriptionServiceProvider);
-    final aiChats = ref.watch(freemiumUsageProvider('ai_chat'));
-    final compareAi = ref.watch(freemiumUsageProvider('compare_ai'));
-    final detailAi = ref.watch(freemiumUsageProvider('detail_ai'));
-    final detailMatchAi = ref.watch(freemiumUsageProvider('detail_match'));
-    final pcBuilderAi = ref.watch(freemiumUsageProvider('pc_builder_ai'));
-    final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
-    final linkCompare = ref.watch(freemiumUsageProvider('link_compare'));
-    final subAnalyses = ref.watch(
-      freemiumUsageProvider('subscription_analysis'),
-    );
-    final productScan = ref.watch(freemiumUsageProvider('product_scan'));
 
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    final l10n = context.l10n;
     final totalCredits = FreemiumLimits.dailyCredits;
     final usedCredits = sub.usedDailyCredits;
     final remainingCredits = sub.remainingDailyCredits;
@@ -1539,87 +1527,6 @@ class _FreemiumUsageCard extends ConsumerWidget {
                 ],
               ],
             ),
-          ),
-          const SizedBox(height: 14),
-          _UsageRow(
-            label: l10n?.aiChat ?? 'AI Chat',
-            icon: Icons.smart_toy_rounded,
-            color: AppTheme.brandCyan,
-            usageCount: aiChats,
-            creditCost: FreemiumLimits.costForFeature('ai_chat'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: 'Compare AI',
-            icon: Icons.compare_arrows_rounded,
-            color: AppTheme.premiumLight,
-            usageCount: compareAi,
-            creditCost: FreemiumLimits.costForFeature('compare_ai'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: isTr ? 'Detay AI' : 'Detail AI',
-            icon: Icons.auto_awesome_rounded,
-            color: AppTheme.brandBlue,
-            usageCount: detailAi,
-            creditCost: FreemiumLimits.costForFeature('detail_ai'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: isTr ? 'Eşleşme (AI)' : 'Match (AI)',
-            icon: Icons.person_search_rounded,
-            color: const Color(0xFF10B981),
-            usageCount: detailMatchAi,
-            creditCost: FreemiumLimits.costForFeature('detail_match'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: isTr ? 'PC Toplama AI' : 'PC Builder AI',
-            icon: Icons.memory_rounded,
-            color: AppTheme.brandSkyBlue,
-            usageCount: pcBuilderAi,
-            creditCost: FreemiumLimits.costForFeature('pc_builder_ai'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: l10n?.linkAnalysis ?? 'Link Analysis',
-            icon: Icons.link_rounded,
-            color: AppTheme.warning,
-            usageCount: linkAnalyses,
-            creditCost: FreemiumLimits.costForFeature('link_analysis'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: l10n?.linkCompare ?? 'Link Compare',
-            icon: Icons.compare_rounded,
-            color: AppTheme.premiumLight,
-            usageCount: linkCompare,
-            creditCost: FreemiumLimits.costForFeature('link_compare'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: l10n?.subAnalysis ?? 'Sub Analysis',
-            icon: Icons.subscriptions_rounded,
-            color: AppTheme.brandDeepBlue,
-            usageCount: subAnalyses,
-            creditCost: FreemiumLimits.costForFeature('subscription_analysis'),
-            isPremium: sub.isPremium,
-          ),
-          const SizedBox(height: 10),
-          _UsageRow(
-            label: l10n?.productScan ?? 'Product Scan',
-            icon: Icons.qr_code_scanner_rounded,
-            color: const Color(0xFF10B981),
-            usageCount: productScan,
-            creditCost: FreemiumLimits.costForFeature('product_scan'),
-            isPremium: sub.isPremium,
           ),
         ],
       ),

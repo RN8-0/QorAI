@@ -1509,60 +1509,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         _unlimitedCreditsLabel(),
         Icons.bolt_rounded,
       ),
-      _TableRow(
-        l?.aiChatMessages ?? 'AI Chat',
-        true,
-        true,
-        Icons.smart_toy_rounded,
-      ),
-      _TableRow(
-        'Compare AI',
-        true,
-        true,
-        Icons.compare_arrows_rounded,
-      ),
-      _TableRow(
-        'Detail AI',
-        true,
-        true,
-        Icons.auto_awesome_rounded,
-      ),
-      _TableRow(
-        _txt(tr: 'AI Ürün Özeti & Eşleşme', en: 'AI Summary & Match'),
-        true,
-        true,
-        Icons.psychology_rounded,
-      ),
-      _TableRow(
-        'PC Builder AI',
-        true,
-        true,
-        Icons.memory_rounded,
-      ),
-      _TableRow(
-        l?.linkAnalysis ?? 'Link Analysis',
-        true,
-        true,
-        Icons.link_rounded,
-      ),
-      _TableRow(
-        _txt(tr: 'Link Karşılaştırma', en: 'Link Compare'),
-        true,
-        true,
-        Icons.compare_rounded,
-      ),
-      _TableRow(
-        _txt(tr: 'Abonelik Analizi', en: 'Sub Analysis'),
-        true,
-        true,
-        Icons.subscriptions_rounded,
-      ),
-      _TableRow(
-        _txt(tr: 'Ürün Tarama', en: 'Product Scan'),
-        true,
-        true,
-        Icons.qr_code_scanner_rounded,
-      ),
       // ── Premium-only features ──
       _TableRow(
         l?.priceHistory ?? 'Price History',
@@ -1572,15 +1518,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       ),
       _TableRow(
         l?.pcBuilder ?? 'PC Builder',
-        true, // unlimited component slots on free tier
+        true,
         unlimited,
         Icons.build_rounded,
-      ),
-      _TableRow(
-        l?.saveProducts ?? 'Save Products',
-        _countItems(AppConstants.freeCollectionLimit),
-        unlimited,
-        Icons.bookmark_rounded,
       ),
       _TableRow(
         l?.prioritySupport ?? 'Priority Support',
