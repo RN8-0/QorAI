@@ -29,6 +29,7 @@ import 'package:compair/presentation/screens/profile/behavior_report_screen.dart
 import 'package:compair/presentation/screens/profile/recently_viewed_screen.dart';
 import 'package:compair/presentation/screens/notifications/notifications_screen.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_screen.dart';
+import 'package:compair/presentation/screens/pc_builder/pc_builder_history_screen.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
 import 'package:compair/presentation/screens/visual_scanner/visual_scanner_screen.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
