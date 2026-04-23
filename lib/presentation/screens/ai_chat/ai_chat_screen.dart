@@ -371,25 +371,27 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
               blurRadius: 8, offset: const Offset(0, -2)),
         ]),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: QorBalanceBadge(
-            remaining: sub.remainingDailyCredits,
-            total: AppConstants.freeDailyAiCreditLimit,
-            unlimited: sub.isPremium,
-            color: AppTheme.accentCyan,
+        if (!sub.isPremium) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: QorBalanceBadge(
+              remaining: sub.remainingDailyCredits,
+              total: AppConstants.freeDailyAiCreditLimit,
+              unlimited: false,
+              color: AppTheme.accentCyan,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: QorAmountBadge(
-            amount: aiChatCost,
-            unlimited: sub.isPremium,
-            color: AppTheme.accentCyan,
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: QorAmountBadge(
+              amount: aiChatCost,
+              unlimited: false,
+              color: AppTheme.accentCyan,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           // Pill-shaped text field
           Expanded(child: Container(

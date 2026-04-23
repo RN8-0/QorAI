@@ -81,6 +81,8 @@ class SharedPremiumFeaturesSectionState
 
   @override
   Widget build(BuildContext context) {
+    final subscription = ref.watch(subscriptionServiceProvider);
+    final hideQorCost = subscription.isPremium;
     final pid = widget.product.id;
     final localizedKey = LocalizedProductKey(
       productId: pid,
@@ -160,7 +162,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: deepStep,
           hasContent: deepAnalysis != null,
           onTap: _toggleDeepAnalysis,
-          cost: AppConstants.detailAiCreditCost,
+            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
           expandedChild: deepAnalysis != null
               ? _buildDeepAnalysisVisual(deepAnalysis)
               : null,
@@ -182,7 +184,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: altsStep,
           hasContent: alternatives != null,
           onTap: _toggleAlternatives,
-          cost: AppConstants.detailAiCreditCost,
+            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
           expandedChild: alternatives != null
               ? _buildAlternativesVisual(alternatives)
               : null,
@@ -205,7 +207,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: advisorStep,
           hasContent: advisorResult != null,
           onTap: _toggleAdvisor,
-          cost: AppConstants.detailAiCreditCost,
+            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
           expandedChild: advisorResult != null
               ? _buildAdvisorVisual(advisorResult)
               : null,
@@ -228,7 +230,7 @@ class SharedPremiumFeaturesSectionState
           stepMessage: predStep,
           hasContent: predictionResult != null,
           onTap: _togglePrediction,
-          cost: AppConstants.detailAiCreditCost,
+            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
           expandedChild: predictionResult != null
               ? _buildPredictionVisual(predictionResult)
               : null,

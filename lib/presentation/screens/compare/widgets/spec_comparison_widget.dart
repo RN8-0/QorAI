@@ -5864,22 +5864,24 @@ Rules:
                     ],
                   ),
                 ),
-                QorAmountBadge(
-                  amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
-                  unlimited: ref.watch(subscriptionServiceProvider).isPremium,
-                  color: AppTheme.brandBlue,
-                  fontSize: 10,
-                ),
-                const SizedBox(width: 6),
-                QorBalanceBadge(
-                  remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
-                  total: AppConstants.freeDailyAiCreditLimit,
-                  unlimited: ref.watch(subscriptionServiceProvider).isPremium,
-                  color: AppTheme.brandBlue,
-                  fontSize: 9,
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                ),
-                const SizedBox(width: 8),
+                if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
+                  QorAmountBadge(
+                    amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+                    unlimited: false,
+                    color: AppTheme.brandBlue,
+                    fontSize: 10,
+                  ),
+                  const SizedBox(width: 6),
+                  QorBalanceBadge(
+                    remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
+                    total: AppConstants.freeDailyAiCreditLimit,
+                    unlimited: false,
+                    color: AppTheme.brandBlue,
+                    fontSize: 9,
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Icon(
                   _matchScoreExpanded
                       ? Icons.expand_less_rounded
