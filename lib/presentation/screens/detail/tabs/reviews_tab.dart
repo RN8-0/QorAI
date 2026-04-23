@@ -231,6 +231,11 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
     final isLoading = reviewAsync is AsyncLoading;
     final loaded = result != null;
 
+    final sub = ref.watch(subscriptionServiceProvider);
+    if (!sub.isPremium && !sub.canUseDetailAi && !loaded) {
+      return const SizedBox.shrink();
+    }
+
     // AI step message (replaces subtitle when loading)
     final stepMessage = ref.watch(
       aiOperationStepProvider('${widget.product.id}_review'),

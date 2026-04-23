@@ -64,6 +64,7 @@ class AppRoutes {
   static const String pcBuilder = '/pc-builder';
   // PC Builder — aktif build ekranı (shell dışı, bottom bar yok)
   static const String pcBuilderStart = '/pc-builder-start';
+  static const String pcBuilderHistory = '/pc-builder-history';
   // Behavior Report
   static const String behaviorReport = '/behavior-report';
   // Premium Paywall
@@ -270,6 +271,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           child: const PcBuilderScreen(),
           transitionsBuilder: _slideUpTransition,
+          transitionDuration: AppConstants.pageTransitionDuration,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.pcBuilderHistory,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          child: const PcBuilderHistoryScreen(),
+          transitionsBuilder: _slideTransition,
           transitionDuration: AppConstants.pageTransitionDuration,
         ),
       ),

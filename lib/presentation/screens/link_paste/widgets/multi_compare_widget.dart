@@ -179,7 +179,7 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
         setState(() {
           _isComparing = false;
           _error =
-              '${_linkText(context, tr: 'AI karsilastirmasi basarisiz', en: 'AI comparison failed')}: '
+              '${_linkText(context, tr: 'AI karşılaştırması başarısız', en: 'AI comparison failed')}: '
               '${e.toString().length > 80 ? e.toString().substring(0, 80) : e}';
         });
       }

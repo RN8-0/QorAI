@@ -1632,26 +1632,99 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     if (_aiAnalysis == null) {
       final sub = ref.read(subscriptionServiceProvider);
       if (!sub.canUsePcBuilderAi) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _pcText(
-                context,
-                tr:
-                    'PC Builder AI günlük limitine ulaştınız (${AppConstants.freePcBuilderAiLimit}/gün). '
-                    'Sınırsız analiz için Premium\'a geçin!',
-                en:
-                    'PC Builder AI daily limit reached (${AppConstants.freePcBuilderAiLimit}/day). '
-                    'Upgrade to Premium for unlimited access!',
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A), // Fallback dark if not available
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                ),
               ),
-            ),
-            action: SnackBarAction(
-              label: 'Premium',
-              onPressed: () => showPaywallSheet(context),
-            ),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-          ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: AppTheme.brandBlue, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _pcText(
+                            context,
+                            tr: 'Günlük Limit Doldu',
+                            en: 'Daily Limit Reached',
+                          ),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _pcText(
+                      context,
+                      tr: 'PC Builder AI günlük limitine ulaştınız. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin!',
+                      en: 'You have reached your daily PC Builder AI limit. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks!',
+                    ),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        showPaywallSheet(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.brandBlue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        _pcText(
+                          context,
+                          tr: 'Premium\'u İncele',
+                          en: 'View Premium',
+                        ),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
         return;
       }
@@ -1671,7 +1744,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           ? const <_UpgradeSuggestion>[]
           : await _loadUpgradeSuggestions(focus);
       final buf = StringBuffer();
-      buf.writeln('You are an expert PC hardware analyst.');
+      buf.writeln('You are an expert PC hardware analyst with extreme attention to detail.');
       buf.writeln(
         'Keep every section label exactly as written in English so the app can parse them.',
       );
@@ -1679,7 +1752,13 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         'Write all explanations, bullet points, and recommendations in ${_analysisLanguageName()}.',
       );
       buf.writeln(
-        'If a bottleneck, mismatch, or weak component exists, state it clearly and prioritize actionable advice.',
+        'Your analysis MUST be comprehensive and much longer than a standard reply. Go deep into architectural nuances, real-world benchmarks, and potential future-proofing.',
+      );
+      buf.writeln(
+        'CRITICAL: If any incompatible parts exist (e.g. DDR4 RAM with DDR5 Motherboard, mismatched CPU/Motherboard sockets, insufficient PSU, or mismatched case sizes), you MUST explicitly identify them in the WEAKNESSES and RECOMMENDATIONS sections. Stop at nothing to point out compatibility errors!',
+      );
+      buf.writeln(
+        'FPS estimates MUST be highly realistic and strictly based on known empirical benchmarks for the given CPU/GPU combo at the specified resolution.',
       );
       buf.writeln();
       buf.writeln('=== BUILD COMPONENTS ===');
@@ -1816,6 +1895,24 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           _upgradeSuggestions = suggestions;
         });
         _saveToSession();
+
+        // Save history to SharedPreferences
+        try {
+          final uid = ref.read(authStateProvider).valueOrNull;
+          if (uid != null) {
+            final prefs = await SharedPreferences.getInstance();
+            final key = 'pc_build_history_$uid';
+            final historyList = prefs.getStringList(key) ?? [];
+            final newEntry = {
+              'date': DateTime.now().toIso8601String(),
+              'components': _selected.map((k, v) => MapEntry(k.name, v.name)),
+              'ai_analysis': response,
+              'total_score': _totalScore,
+            };
+            historyList.add(jsonEncode(newEntry));
+            await prefs.setStringList(key, historyList);
+          }
+        } catch (_) {}
 
         // Mirror AI analysis to users.analyzedProducts so admin panel sees it
         try {
@@ -3563,31 +3660,34 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                       const SizedBox(width: 10),
                       Expanded(
                         child: GestureDetector(
-                          onTap: _resetAll,
+                          onTap: () {
+                            // TODO: Add route to history screen
+                            context.push('/pc-builder-history');
+                          },
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             decoration: BoxDecoration(
-                              color: AppTheme.rose500.withValues(alpha: 0.1),
+                              color: AppTheme.brandBlue.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: AppTheme.rose500.withValues(alpha: 0.3),
+                                color: AppTheme.brandBlue.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 const Icon(
-                                  Icons.restart_alt_rounded,
+                                  Icons.history_rounded,
                                   size: 14,
-                                  color: AppTheme.rose500,
+                                  color: AppTheme.brandBlue,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  context.l10n?.reset ?? 'Reset',
+                                  _pcText(context, tr: 'Geçmiş', en: 'History'),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: AppTheme.rose500,
+                                    color: AppTheme.brandBlue,
                                   ),
                                 ),
                               ],
@@ -4076,9 +4176,10 @@ class _ComponentRow extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
+          child: Container(
             width: 38,
             height: 38,
+            color: Colors.white,
             child: p.imageUrl != null && p.imageUrl!.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: p.imageUrl!,
@@ -5264,7 +5365,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                                   child: Container(
                                     width: 52,
                                     height: 52,
-                                    color: ctx.surfaceColor,
+                                    color: Colors.white,
                                     child:
                                         detailProduct.imageUrl != null &&
                                             detailProduct.imageUrl!.isNotEmpty
@@ -5376,7 +5477,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                                   _pcText(
                                     ctx,
                                     en: 'No specifications available.',
-                                    tr: 'Teknik ozellik bulunamadi.',
+                                    tr: 'Teknik özellik bulunamadı.',
                                   ),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
@@ -5693,7 +5794,7 @@ class _ProductCard extends StatelessWidget {
                       child: Container(
                         width: 50,
                         height: 50,
-                        color: context.surfaceColor,
+                        color: Colors.white,
                         child:
                             product.imageUrl != null &&
                                 product.imageUrl!.isNotEmpty

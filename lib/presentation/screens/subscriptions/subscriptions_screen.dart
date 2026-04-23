@@ -2079,15 +2079,15 @@ class _SubResultView extends StatelessWidget {
   String _factorLabel(BuildContext context, String key) {
     switch (key.trim().toLowerCase()) {
       case 'usage_fit':
-        return _txt(context, tr: 'Kullanim Uyumu', en: 'Usage Fit');
+        return _txt(context, tr: 'Kullanım Uyumu', en: 'Usage Fit');
       case 'value_match':
         return _txt(context, tr: 'Fayda Uyumu', en: 'Benefit Match');
       case 'content_match':
-        return _txt(context, tr: 'Icerik Uyumu', en: 'Content Match');
+        return _txt(context, tr: 'İçerik Uyumu', en: 'Content Match');
       case 'ecosystem_fit':
         return _txt(context, tr: 'Ekosistem Uyumu', en: 'Ecosystem Fit');
       case 'lifestyle_match':
-        return _txt(context, tr: 'Yasam Tarzi Uyumu', en: 'Lifestyle Match');
+        return _txt(context, tr: 'Yaşam Tarzı Uyumu', en: 'Lifestyle Match');
       default:
         return key
             .replaceAll('_', ' ')

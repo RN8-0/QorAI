@@ -1549,8 +1549,10 @@ class _UsageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final safeUsed = used.clamp(0, limit);
+    final remaining = limit - safeUsed;
     final progress = limit == 0 ? 0.0 : (safeUsed / limit).clamp(0.0, 1.0);
     final isExhausted = safeUsed >= limit;
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
 
     return Row(
       children: [
@@ -1572,7 +1574,7 @@ class _UsageRow extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    '$safeUsed/$limit $period',
+                    isTr ? '$remaining/$limit kaldı' : '$remaining/$limit left',
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

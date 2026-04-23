@@ -1588,60 +1588,97 @@ Rules:
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
-        final theme = Theme.of(ctx);
         return SafeArea(
           top: false,
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.2),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E1E), // Solid dark surface
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.15),
+                  width: 1.5,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.dividerColor,
-                      borderRadius: BorderRadius.circular(99),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  specName,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: context.textSecondary,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.brandBlue.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          color: AppTheme.brandBlue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          specName,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        splashRadius: 24,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  fullValue,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: context.textPrimary,
-                    height: 1.4,
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    ),
+                    child: Text(
+                      fullValue,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                        height: 1.5,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

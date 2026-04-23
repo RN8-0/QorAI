@@ -1356,7 +1356,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               const SizedBox(height: 8),
               Text(
                 _txt(
-                  tr: 'Premium ozellikleriniz aktif. Tum limitler kaldirildi.',
+                  tr: 'Premium özellikleriniz aktif. Tüm limitler kaldırıldı.',
                   en: 'Your premium benefits are active and all limits are unlocked.',
                 ),
                 textAlign: TextAlign.center,

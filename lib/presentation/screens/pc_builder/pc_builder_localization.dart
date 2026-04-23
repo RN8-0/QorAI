@@ -283,7 +283,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
     'ar': 'الأحدث',
   },
   'No specifications available.': {
-    'tr': 'Ozellik bilgisi yok.',
+    'tr': 'Özellik bilgisi yok.',
     'de': 'Keine technischen Daten verfugbar.',
     'es': 'No hay especificaciones disponibles.',
     'fr': 'Aucune specification disponible.',

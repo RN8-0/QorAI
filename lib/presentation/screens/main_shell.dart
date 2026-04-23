@@ -904,8 +904,8 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
 
       // ── FAB Speech Bubble ─────────────────────────────────────────
       AnimatedPositioned(
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.elasticOut,
         bottom: bottomPadding + fabBottomBase,
         right: fabRight,
         child: GestureDetector(
