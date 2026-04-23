@@ -107,12 +107,13 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo/qor_ai_logo.png"
-  adaptive_icon_background: "#000000"
+  remove_alpha_ios: true
+  image_path: "assets/logo/qor_ai_app_icon.png"
+  adaptive_icon_background: "#010617"
   adaptive_icon_foreground: "assets/logo/qor_ai_logo.png"
   min_sdk_android: 21
   web:
     generate: true
-    image_path: "assets/logo/qor_ai_logo.png"
-    background_color: "#000000"
-    theme_color: "#000000"
+    image_path: "assets/logo/qor_ai_app_icon.png"
+    background_color: "#010617"
+    theme_color: "#010617"
