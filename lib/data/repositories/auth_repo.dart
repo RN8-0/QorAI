@@ -128,7 +128,10 @@ class AuthRepository {
     try {
       final google = GoogleSignIn(
         scopes: const ['email', 'profile'],
-        clientId: _kGoogleWebClientId,
+        serverClientId:
+            defaultTargetPlatform == TargetPlatform.android
+                ? null
+                : _kGoogleWebClientId,
       );
       await google.signOut();
       final account = await google.signIn();
