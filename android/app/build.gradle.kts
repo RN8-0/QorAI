@@ -41,7 +41,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.qorai.app"
+        applicationId = "com.compair.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

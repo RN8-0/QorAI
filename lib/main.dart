@@ -10,7 +10,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:qor_ai/app.dart';
-import 'package:qor_ai/firebase_options.dart';
 import 'package:qor_ai/services/cache_service.dart';
 import 'package:qor_ai/services/remote_config_service.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
@@ -87,9 +86,7 @@ void main() {
 
     // Initialize Firebase (required for FCM push notifications)
     if (!kIsWeb) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      await Firebase.initializeApp();
     }
 
     // System UI settings (mobile only)
