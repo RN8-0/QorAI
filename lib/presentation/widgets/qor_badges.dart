@@ -129,17 +129,44 @@ class _QCoinIcon extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: Text(
-          'Q',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: size * 0.54,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-            height: 1,
-          ),
+      child: Padding(
+        padding: EdgeInsets.all(size * 0.18),
+        child: CustomPaint(
+          painter: _QGlyphPainter(),
         ),
       ),
     );
   }
+}
+
+class _QGlyphPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = size.width * 0.16;
+    final center = Offset(size.width * 0.48, size.height * 0.48);
+    final radius = (size.shortestSide - stroke) * 0.38;
+
+    final ringPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, ringPaint);
+
+    final tailPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke * 0.9
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(center.dx + radius * 0.28, center.dy + radius * 0.34),
+      Offset(size.width * 0.9, size.height * 0.9),
+      tailPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
