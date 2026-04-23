@@ -353,7 +353,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
               if (!_isScanning)
                 Text(
                   _uiText(
-                    tr: 'Taramak icin kamerayi urune dogrultun',
+                    tr: 'Taramak için kamerası ürüne doğrultun',
                     en: 'Point camera at a product to scan',
                   ),
                   style: GoogleFonts.plusJakartaSans(
@@ -605,7 +605,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                   ),
                   decoration: InputDecoration(
                     hintText: _uiText(
-                      tr: 'Bu urun hakkinda soru sorun...',
+                      tr: 'Bu ürün hakkında soru sorun...',
                       en: 'Ask about this product...',
                     ),
                     hintStyle: GoogleFonts.plusJakartaSans(

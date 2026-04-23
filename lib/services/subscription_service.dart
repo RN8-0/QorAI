@@ -231,6 +231,16 @@ class SubscriptionService extends ChangeNotifier {
 
   SubscriptionService() {
     _usage = _emptyUsage();
+    // Pre-load usage from local storage immediately so the profile screen
+    // shows correct quota values before full initialize() completes.
+    unawaited(_preloadUsage());
+  }
+
+  /// Lightweight pre-load: restore usage counter from SharedPreferences
+  /// without triggering the full IAP initialization. Called from constructor.
+  Future<void> _preloadUsage() async {
+    await _restoreUsageFromLocal();
+    notifyListeners();
   }
 
   /// Initialize Google Play Billing
@@ -786,7 +796,8 @@ class SubscriptionService extends ChangeNotifier {
   /// Can a premium AI feature be used? (product detail screen)
   bool get canUseDetailAi {
     if (isPremium) return true;
-    return _normalizedUsage().detailAi < AppConstants.freeDetailAiLimit;
+    final u = _normalizedUsage();
+    return (u.detailAi + u.detailMatchAi) < AppConstants.freeDetailAiSharedLimit;
   }
 
   /// Can PC Builder AI analysis be used?
@@ -823,8 +834,8 @@ class SubscriptionService extends ChangeNotifier {
   /// Can AI-generated match score + short summary be used on product detail?
   bool get canUseDetailMatchAi {
     if (isPremium) return true;
-    return _normalizedUsage().detailMatchAi <
-        AppConstants.freeDetailMatchAiLimit;
+    final u = _normalizedUsage();
+    return (u.detailAi + u.detailMatchAi) < AppConstants.freeDetailAiSharedLimit;
   }
 
   /// Record comparison usage
@@ -875,8 +886,8 @@ class SubscriptionService extends ChangeNotifier {
       return Failure(
         UsageLimitException(
           featureName: 'detail_ai',
-          currentUsage: currentUsage.detailAi,
-          limit: AppConstants.freeDetailAiLimit,
+          currentUsage: currentUsage.detailAi + currentUsage.detailMatchAi,
+          limit: AppConstants.freeDetailAiSharedLimit,
         ),
       );
     }
@@ -893,8 +904,8 @@ class SubscriptionService extends ChangeNotifier {
       return Failure(
         UsageLimitException(
           featureName: 'detail_match_ai',
-          currentUsage: currentUsage.detailMatchAi,
-          limit: AppConstants.freeDetailMatchAiLimit,
+          currentUsage: currentUsage.detailAi + currentUsage.detailMatchAi,
+          limit: AppConstants.freeDetailAiSharedLimit,
         ),
       );
     }
@@ -1011,7 +1022,7 @@ class SubscriptionService extends ChangeNotifier {
 
   int get remainingDetailAi => isPremium
       ? -1
-      : AppConstants.freeDetailAiLimit - _normalizedUsage().detailAi;
+      : (AppConstants.freeDetailAiSharedLimit - (_normalizedUsage().detailAi + _normalizedUsage().detailMatchAi)).clamp(0, AppConstants.freeDetailAiSharedLimit);
 
   int get remainingPcBuilderAi => isPremium
       ? -1
@@ -1035,6 +1046,5 @@ class SubscriptionService extends ChangeNotifier {
       : AppConstants.freeProductScanLimit - _normalizedUsage().productScan;
   int get detailMatchAiRemaining => isPremium
       ? -1
-      : AppConstants.freeDetailMatchAiLimit -
-            _normalizedUsage().detailMatchAi;
+      : (AppConstants.freeDetailAiSharedLimit - (_normalizedUsage().detailAi + _normalizedUsage().detailMatchAi)).clamp(0, AppConstants.freeDetailAiSharedLimit);
 }

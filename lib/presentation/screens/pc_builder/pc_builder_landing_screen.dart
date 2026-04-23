@@ -325,7 +325,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
                   localizePcBuilderText(
                     context,
                     en: 'Start Building',
-                    tr: 'Toplamaya Basla',
+                    tr: 'Toplamaya Başla',
                   ),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
@@ -454,7 +454,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       localizePcBuilderText(
         context,
         en: 'Total power draw of selected components and PSU adequacy shown in real time.',
-        tr: 'Secilen bilesenlerin toplam guc tuketimi ve PSU yeterliligi anlik gosterilir.',
+        tr: 'Seçilen bileşenlerin toplam güç tüketimi ve PSU yeterliliği anlık gösterilir.',
       ),
     ),
     _Feature(
@@ -463,7 +463,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       localizePcBuilderText(
         context,
         en: '12 Component Categories',
-        tr: '12 Bilesen Kategorisi',
+        tr: '12 Bileşen Kategorisi',
       ),
       localizePcBuilderText(
         context,

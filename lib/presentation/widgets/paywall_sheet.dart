@@ -624,7 +624,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                     const SizedBox(height: 20),
                     Text(
                       _txt(
-                        tr: 'Hosgeldiniz!',
+                        tr: 'Hoşgeldiniz!',
                         en: 'Welcome!',
                       ),
                       style: GoogleFonts.plusJakartaSans(
@@ -651,7 +651,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                     const SizedBox(height: 14),
                     Text(
                       _txt(
-                        tr: 'Tum AI ozelliklerine sinirsiz erisim artik sizin! Keyifle kullanin.',
+                        tr: 'Tüm AI özelliklerine sınırsız erişim artık sizin! Keyifle kullanın.',
                         en: 'You now have unlimited access to all AI features! Enjoy.',
                       ),
                       style: GoogleFonts.plusJakartaSans(
@@ -684,7 +684,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                           ),
                           child: Text(
                             _txt(
-                              tr: 'Harika, basla!',
+                              tr: 'Harika, başla!',
                               en: 'Awesome, let\'s go!',
                             ),
                             style: GoogleFonts.plusJakartaSans(
@@ -1382,7 +1382,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             children: [
               _buildSubscriptionMetaRow(
                 icon: Icons.calendar_today_rounded,
-                label: _txt(tr: 'Baslangic tarihi', en: 'Started on'),
+                label: _txt(tr: 'Başlangıç tarihi', en: 'Started on'),
                 value: _formatDate(
                   _resolveSubscriptionDate(status, isStart: true),
                 ),
@@ -1391,7 +1391,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               _buildSubscriptionMetaRow(
                 icon: Icons.event_repeat_rounded,
                 label: _txt(
-                  tr: 'Tahmini yenilenme / bitis',
+                  tr: 'Tahmini yenilenme / bitiş',
                   en: 'Estimated renewal / end',
                 ),
                 value: _formatDate(
@@ -1403,8 +1403,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 icon: Icons.workspace_premium_rounded,
                 label: _txt(tr: 'Aktif plan', en: 'Active plan'),
                 value: switch (_planType(status.activeProductId)) {
-                  'yearly' => _txt(tr: 'Yillik', en: 'Yearly'),
-                  'monthly' => _txt(tr: 'Aylik', en: 'Monthly'),
+                  'yearly' => _txt(tr: 'Yıllık', en: 'Yearly'),
+                  'monthly' => _txt(tr: 'Aylık', en: 'Monthly'),
                   _ => 'Premium',
                 },
               ),
@@ -1478,7 +1478,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.play_circle_rounded,
       ),
       _TableRow(
-        _txt(tr: 'Urun Arama', en: 'Product Search'),
+        _txt(tr: 'Ürün Arama', en: 'Product Search'),
         true,
         true,
         Icons.search_rounded,
@@ -1509,7 +1509,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.auto_awesome_rounded,
       ),
       _TableRow(
-        _txt(tr: 'AI Urun Ozeti & Eslesme', en: 'AI Summary & Match'),
+        _txt(tr: 'AI Ürün Özeti & Eşleşme', en: 'AI Summary & Match'),
         _countPerDay(AppConstants.freeDetailMatchAiLimit),
         unlimited,
         Icons.psychology_rounded,
@@ -1527,7 +1527,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.link_rounded,
       ),
       _TableRow(
-        _txt(tr: 'Link Karsilastirma', en: 'Link Compare'),
+        _txt(tr: 'Link Karşılaştırma', en: 'Link Compare'),
         _countPerDay(AppConstants.freeLinkCompareLimit),
         unlimited,
         Icons.compare_rounded,
@@ -1539,7 +1539,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.subscriptions_rounded,
       ),
       _TableRow(
-        _txt(tr: 'Urun Tarama', en: 'Product Scan'),
+        _txt(tr: 'Ürün Tarama', en: 'Product Scan'),
         _countPerDay(AppConstants.freeProductScanLimit),
         unlimited,
         Icons.qr_code_scanner_rounded,
@@ -1593,7 +1593,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 Expanded(
                   flex: 3,
                   child: Text(
-                    _txt(tr: 'Ucretsiz', en: 'Free'),
+                    _txt(tr: 'Ücretsiz', en: 'Free'),
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       color: context.textSecondary,
@@ -1874,7 +1874,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Text(
           isPremium
               ? _txt(
-                  tr: 'Aboneliginiz aktif. Isterseniz Google Play uzerinden yonetebilirsiniz.',
+                  tr: 'Aboneliğiniz aktif. İsterseniz Google Play üzerinden yönetebilirsiniz.',
                   en: 'Your subscription is active. You can manage it from Google Play anytime.',
                 )
               : (context.l10n?.paywallLegalText ??

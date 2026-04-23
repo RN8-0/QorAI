@@ -64,6 +64,7 @@ class AppConstants {
   static const int freeDetailAiLimit = 2; // per day per tab (product detail premium AI)
   static const int freePcBuilderAiLimit = 3; // per day (PC builder AI analysis)
   static const int freeDetailMatchAiLimit = 2; // per day (AI match score on product detail; ücretsiz 2× sonra algoritma)
+  static const int freeDetailAiSharedLimit = 2; // combined daily quota: detailAi + detailMatchAi shared pool
   static const int freeLinkPasteLimit = 3; // per day (link single analysis)
   static const int freeLinkCompareLimit = 2; // per day (link compare tab)
   static const int freeSubscriptionAnalysisLimit = 3; // per day

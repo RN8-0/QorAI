@@ -1583,29 +1583,32 @@ Rules:
     required String specName,
     required String fullValue,
   }) {
+    HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final bgColor = isDark ? const Color(0xFF1A1A2E) : Colors.white;
+        final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
         return SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
             child: Container(
-              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E), // Solid dark surface
-                borderRadius: BorderRadius.circular(24),
+                color: bgColor,
+                borderRadius: BorderRadius.circular(28),
                 border: Border.all(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.15),
-                  width: 1.5,
+                  color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.25 : 0.12),
+                  width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
+                    color: AppTheme.brandDeepBlue.withValues(alpha: isDark ? 0.4 : 0.12),
+                    blurRadius: 32,
+                    offset: const Offset(0, -8),
                   ),
                 ],
               ),
@@ -1613,70 +1616,137 @@ Rules:
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Handle bar
                   Center(
                     child: Container(
-                      width: 48,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 20),
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),
                   ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.brandBlue.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.info_outline_rounded,
-                          color: AppTheme.brandBlue,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          specName,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white.withValues(alpha: 0.9),
+                  // Header with gradient accent
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.brandDeepBlue, AppTheme.brandCyan],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.info_rounded,
+                            color: Colors.white,
+                            size: 18,
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        splashRadius: 24,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            specName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: textColor,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: textColor.withValues(alpha: 0.45),
+                            size: 20,
+                          ),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
-                    child: Text(
+                  ),
+                  const SizedBox(height: 12),
+                  // Divider
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Divider(
+                      height: 1,
+                      color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.18 : 0.10),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Value
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                    child: SelectableText(
                       fullValue,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                        height: 1.5,
-                        letterSpacing: 0.2,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                        height: 1.55,
+                        letterSpacing: 0.1,
                       ),
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  // Copy button
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                    child: GestureDetector(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: fullValue));
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              _isTr ? 'Kopyalandı' : 'Copied',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                            ),
+                            duration: const Duration(seconds: 1),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue, AppTheme.brandCyan],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isTr ? 'Kopyala' : 'Copy',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -4650,6 +4720,7 @@ Rules:
               final localizedValue = _localizedSpecValue(context, val);
               return Expanded(
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: isMissing
                       ? null
                       : () => _showSpecValueBottomSheet(

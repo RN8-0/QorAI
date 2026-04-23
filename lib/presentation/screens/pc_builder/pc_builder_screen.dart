@@ -957,7 +957,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     return _pcText(
       context,
       en: 'The build is broadly usable, but the next improvement should target the lowest-performing core component to keep the system balanced.',
-      tr: 'Sistem genel olarak kullanilabilir durumda; fakat dengeyi korumak icin siradaki gelistirme en zayif temel bilesene odaklanmali.',
+      tr: 'Sistem genel olarak kullanılabilir durumda; fakat dengeyi korumak için sıradaki geliştirme en zayıf temel bileşene odaklanmalı.',
     );
   }
 
@@ -1083,7 +1083,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       PcComponent.cooler => _pcText(
         context,
         en: 'Matches the current socket and is a stronger thermal fit for the selected processor.',
-        tr: 'Mevcut soketle eslesiyor ve secili islemci icin daha guclu bir termal eslesme sunuyor.',
+        tr: 'Mevcut soketle eşleşiyor ve seçili işlemci için daha güçlü bir termal eşleşme sunuyor.',
       ),
       PcComponent.storage => _pcText(
         context,
@@ -1746,53 +1746,35 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           ? const <_UpgradeSuggestion>[]
           : await _loadUpgradeSuggestions(focus);
       final buf = StringBuffer();
-      buf.writeln('You are an expert PC hardware analyst with extreme attention to detail.');
-      buf.writeln(
-        'Keep every section label exactly as written in English so the app can parse them.',
-      );
-      buf.writeln(
-        'Write all explanations, bullet points, and recommendations in ${_analysisLanguageName()}.',
-      );
-      buf.writeln(
-        'Your analysis MUST be comprehensive and much longer than a standard reply. Go deep into architectural nuances, real-world benchmarks, and potential future-proofing.',
-      );
-      buf.writeln(
-        'CRITICAL: If any incompatible parts exist (e.g. DDR4 RAM with DDR5 Motherboard, mismatched CPU/Motherboard sockets, insufficient PSU, or mismatched case sizes), you MUST explicitly identify them in the WEAKNESSES and RECOMMENDATIONS sections. Stop at nothing to point out compatibility errors!',
-      );
-      buf.writeln(
-        'FPS estimates MUST be highly realistic and strictly based on known empirical benchmarks for the given CPU/GPU combo at the specified resolution.',
-      );
+      buf.writeln('You are a world-class PC hardware expert. Respond ONLY in the exact format below.');
+      buf.writeln('Language for explanations: ${_analysisLanguageName()}.');
+      buf.writeln('RULES:');
+      buf.writeln('1. Keep ALL section labels exactly as written (uppercase). Do NOT add extra text outside sections.');
+      buf.writeln('2. FPS numbers must be REALISTIC integers based on real-world GPU/CPU benchmarks (not theoretical maximums). Use conservative estimates.');
+      buf.writeln('3. If any incompatibility exists (socket mismatch, DDR4/DDR5 conflict, PSU too weak, case size mismatch), you MUST flag it in WEAKNESSES and RECOMMENDATIONS as a critical error.');
+      buf.writeln('4. Be CONCISE: each bullet point must be a single short sentence (max 15 words). No fluff.');
       buf.writeln();
       buf.writeln('=== BUILD COMPONENTS ===');
       for (final c in PcComponent.values) {
         final p = _selected[c];
         if (p != null) {
-          buf.writeln(
-            '${c.name.toUpperCase()}: ${p.name} (Score: ${p.techScore.round()}/100)',
-          );
-          final specs = p.specs.entries
-              .take(10)
-              .map((e) => '  ${e.key}: ${e.value}')
-              .join('\n');
+          buf.writeln('${c.name.toUpperCase()}: ${p.name} (Score: ${p.techScore.round()}/100)');
+          final specs = p.specs.entries.take(8).map((e) => '  ${e.key}: ${e.value}').join('\n');
           if (specs.isNotEmpty) buf.writeln(specs);
         }
       }
       buf.writeln();
       buf.writeln('=== SYSTEM METRICS ===');
-      buf.writeln('Total estimated power draw: ${_estimatedPower.round()}W');
-      if (_psuWattage != null)
-        buf.writeln(
-          'PSU capacity: ${_psuWattage!.round()}W (headroom: ${_psuHeadroom!.round()}W)',
-        );
-      if (_selectedSocket != null)
-        buf.writeln('Platform socket: $_selectedSocket');
-      if (_selectedMemType != null)
-        buf.writeln('Memory type: $_selectedMemType');
+      buf.writeln('Total power draw: ${_estimatedPower.round()}W');
+      if (_psuWattage != null) buf.writeln('PSU: ${_psuWattage!.round()}W (headroom: ${_psuHeadroom!.round()}W)');
+      if (_selectedSocket != null) buf.writeln('Socket: $_selectedSocket');
+      if (_selectedMemType != null) buf.writeln('Memory: $_selectedMemType');
       final gpuConn = _selected[PcComponent.gpu] != null
           ? _Compat.gpuPowerConnector(_selected[PcComponent.gpu]!)
           : null;
-      if (gpuConn != null) buf.writeln('GPU power connector: $gpuConn');
+      if (gpuConn != null) buf.writeln('GPU connector: $gpuConn');
       buf.writeln('Build score: ${_totalScore.round()}/100');
+      buf.writeln('Compatibility issues: ${_compatIssues.isEmpty ? "None" : _compatIssues.map((i) => i.message).join(", ")}');
       buf.writeln();
       if (_localDiagnosis != null) {
         buf.writeln('=== LOCAL DIAGNOSIS ===');
@@ -1806,53 +1788,30 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       }
       if (suggestions.isNotEmpty) {
         buf.writeln('=== COMPATIBLE UPGRADE CANDIDATES ===');
-        for (final suggestion in suggestions) {
-          buf.writeln(
-            '- ${suggestion.component.name.toUpperCase()}: ${suggestion.product.name} (${suggestion.product.techScore.round()}/100) — ${suggestion.reason}',
-          );
+        for (final s in suggestions) {
+          buf.writeln('- ${s.component.name.toUpperCase()}: ${s.product.name} (${s.product.techScore.round()}/100) — ${s.reason}');
         }
         buf.writeln();
       }
-      buf.writeln(
-        'Respond in this EXACT format (do not add extra text outside sections):',
-      );
+      buf.writeln('Respond in this EXACT format:');
       buf.writeln();
-      buf.writeln(
-        'BOTTLENECK: [0-100]% - [component name]: [one sentence explanation]',
-      );
-      buf.writeln(
-        'PERFORMANCE_TIER: [Budget/Mid-Range/High-End/Enthusiast/Ultra]',
-      );
+      buf.writeln('BOTTLENECK: [0-100]% - [component]: [one short sentence]');
+      buf.writeln('PERFORMANCE_TIER: [Budget/Mid-Range/High-End/Enthusiast/Ultra]');
       buf.writeln();
       buf.writeln('FPS_1080P:');
-      buf.writeln('- Fortnite: [fps] FPS');
-      buf.writeln('- CS2: [fps] FPS');
-      buf.writeln('- Valorant: [fps] FPS');
-      buf.writeln('- GTA V: [fps] FPS');
-      buf.writeln('- Cyberpunk 2077: [fps] FPS');
-      buf.writeln('- Elden Ring: [fps] FPS');
-      buf.writeln('- Apex Legends: [fps] FPS');
-      buf.writeln('- COD Warzone: [fps] FPS');
+      for (final g in ['Fortnite', 'CS2', 'Valorant', 'GTA V', 'Cyberpunk 2077', 'Elden Ring', 'Apex Legends', 'COD Warzone']) {
+        buf.writeln('- $g: [fps] FPS');
+      }
       buf.writeln();
       buf.writeln('FPS_1440P:');
-      buf.writeln('- Fortnite: [fps] FPS');
-      buf.writeln('- CS2: [fps] FPS');
-      buf.writeln('- Valorant: [fps] FPS');
-      buf.writeln('- GTA V: [fps] FPS');
-      buf.writeln('- Cyberpunk 2077: [fps] FPS');
-      buf.writeln('- Elden Ring: [fps] FPS');
-      buf.writeln('- Apex Legends: [fps] FPS');
-      buf.writeln('- COD Warzone: [fps] FPS');
+      for (final g in ['Fortnite', 'CS2', 'Valorant', 'GTA V', 'Cyberpunk 2077', 'Elden Ring', 'Apex Legends', 'COD Warzone']) {
+        buf.writeln('- $g: [fps] FPS');
+      }
       buf.writeln();
       buf.writeln('FPS_4K:');
-      buf.writeln('- Fortnite: [fps] FPS');
-      buf.writeln('- CS2: [fps] FPS');
-      buf.writeln('- Valorant: [fps] FPS');
-      buf.writeln('- GTA V: [fps] FPS');
-      buf.writeln('- Cyberpunk 2077: [fps] FPS');
-      buf.writeln('- Elden Ring: [fps] FPS');
-      buf.writeln('- Apex Legends: [fps] FPS');
-      buf.writeln('- COD Warzone: [fps] FPS');
+      for (final g in ['Fortnite', 'CS2', 'Valorant', 'GTA V', 'Cyberpunk 2077', 'Elden Ring', 'Apex Legends', 'COD Warzone']) {
+        buf.writeln('- $g: [fps] FPS');
+      }
       buf.writeln();
       buf.writeln('STRENGTHS:');
       buf.writeln('- [strength 1]');
@@ -1864,28 +1823,20 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       buf.writeln('- [weakness 2]');
       buf.writeln('- [weakness 3]');
       buf.writeln();
-      buf.writeln(
-        'UPGRADE_PRIORITY: [component name] — [why upgrade it first, 1 sentence]',
-      );
+      buf.writeln('UPGRADE_PRIORITY: [component] — [why, one sentence]');
       buf.writeln();
       buf.writeln('RECOMMENDATIONS:');
       if (suggestions.isNotEmpty) {
-        for (final suggestion in suggestions) {
-          final current = _selected[suggestion.component];
-          if (current == null) continue;
-          buf.writeln(
-            '- Instead of ${current.name}, consider ${suggestion.product.name} — [brief reason connected to this build]',
-          );
+        for (final s in suggestions) {
+          final cur = _selected[s.component];
+          if (cur == null) continue;
+          buf.writeln('- Replace ${cur.name} with ${s.product.name} — [short reason]');
         }
       } else {
-        buf.writeln(
-          '- If the provided candidate pool is not enough, say that clearly and explain the safest next upgrade direction.',
-        );
+        buf.writeln('- [Best upgrade direction for this build]');
       }
       buf.writeln();
-      buf.writeln(
-        'POWER_ANALYSIS: [1 sentence about GPU power connector requirements and PSU adequacy, mention specific connector type if relevant]',
-      );
+      buf.writeln('POWER_ANALYSIS: [One sentence about PSU adequacy and GPU connector requirements]');
 
       final deepseekService = ref.read(deepSeekServiceProvider);
       final response = await deepseekService.freeTextQuery(buf.toString());
@@ -1981,6 +1932,14 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   context.canPop() ? context.pop() : context.go(AppRoutes.home),
             ),
             actions: [
+              IconButton(
+                icon: Icon(
+                  Icons.history_rounded,
+                  color: AppTheme.brandBlue,
+                ),
+                tooltip: _pcText(context, tr: 'Geçmiş', en: 'History'),
+                onPressed: () => context.push('/pc-builder-history'),
+              ),
               if (cnt > 0)
                 TextButton.icon(
                   onPressed: _resetAll,
@@ -1990,7 +1949,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     color: Color(0xFFEF4444),
                   ),
                   label: Text(
-                    context.l10n?.reset ?? 'Reset',
+                    context.l10n?.reset ?? 'Sıfırla',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       color: const Color(0xFFEF4444),
@@ -2562,7 +2521,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
               _pcText(
                 context,
                 en: 'Recommended products',
-                tr: 'Onerilen urunler',
+                tr: 'Önerilen ürünler',
               ),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11,
@@ -3560,6 +3519,62 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         PcComponent.ram.accentColor,
                       ),
                   ],
+                  // Uyumsuz parçalar özet bölümünde göster
+                  if (_compatIssues.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.rose500.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.rose500.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, size: 14, color: AppTheme.rose500),
+                              const SizedBox(width: 6),
+                              Text(
+                                _pcText(context, en: 'Compatibility Issues', tr: 'Uyumsuzluk Sorunları'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.rose500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ..._compatIssues.map((issue) => Padding(
+                            padding: const EdgeInsets.only(bottom: 3),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  issue.icon,
+                                  size: 12,
+                                  color: issue.color,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    issue.title,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10,
+                                      color: context.textSecondary,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   // Component list
                   ...PcComponent.values.map((c) {
@@ -3621,83 +3636,40 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     );
                   }),
                   const SizedBox(height: 12),
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _shareBuild,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              gradient: _accentGradient,
-                              borderRadius: BorderRadius.circular(10),
+                  // Share Build butonu (Geçmiş artık AppBar'da)
+                  GestureDetector(
+                    onTap: _shareBuild,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: _accentGradient,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.share_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _pcText(
+                              context,
+                              en: 'Share Build',
+                              tr: 'Sistemi Paylaş',
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.share_rounded,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _pcText(
-                                    context,
-                                    en: 'Share Build',
-                                    tr: 'Sistemi Paylaş',
-                                  ),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            // TODO: Add route to history screen
-                            context.push('/pc-builder-history');
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.history_rounded,
-                                  size: 14,
-                                  color: AppTheme.brandBlue,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _pcText(context, tr: 'Geçmiş', en: 'History'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.brandBlue,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -5002,20 +4974,6 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   },
                 ),
                 const Spacer(),
-                if (_brands.isNotEmpty || _quickFilter != null)
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      _brands.clear();
-                      _quickFilter = null;
-                    }),
-                    child: Text(
-                      context.l10n?.clearFilters ?? 'Clear',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        color: AppTheme.brandBlue,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),

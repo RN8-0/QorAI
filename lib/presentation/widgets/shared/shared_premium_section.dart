@@ -192,7 +192,7 @@ class SharedPremiumFeaturesSectionState
           icon: Icons.support_agent_rounded,
           title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
           subtitle: _txt(
-            tr: 'Ihtiyaclariniza ozel satin alma tavsiyeleri',
+            tr: 'İhtiyaçlarınıza özel satın alma tavsiyeleri',
             en: 'Tailored buying advice for your needs',
           ),
           gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
