@@ -486,14 +486,13 @@ class _ProfileBody extends ConsumerWidget {
             ),
           ),
 
-        // ─── Freemium Usage (if free) ───
-        if (!isPremium)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-              child: _FreemiumUsageCard(),
-            ),
+        // ─── Q Usage / Premium Spotlight ───
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+            child: _FreemiumUsageCard(),
           ),
+        ),
 
         // ─── Content Sections ───
         SliverPadding(
@@ -1401,6 +1400,124 @@ class _FreemiumUsageCard extends ConsumerWidget {
         ? 1.0
         : (usedCredits / totalCredits).clamp(0.0, 1.0);
 
+    if (sub.isPremium) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppTheme.premiumDeep.withValues(alpha: 0.95),
+              AppTheme.premiumBase.withValues(alpha: 0.92),
+              AppTheme.premiumLight.withValues(alpha: 0.80),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.premiumBase.withValues(alpha: 0.22),
+              blurRadius: 26,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isTr ? 'Premium Qor Akışı' : 'Premium Qor Flow',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isTr
+                            ? 'Tüm AI özellikleri aktif ve günlük Q limiti sizin için kapalı.'
+                            : 'All AI features stay active and your daily Q limit stays off.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          height: 1.4,
+                          color: Colors.white.withValues(alpha: 0.82),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isTr ? 'Günlük AI Q' : 'Daily AI Q',
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withValues(alpha: 0.86),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      isTr ? 'Sınırsız Q' : 'Unlimited Q',
+                      style: GoogleFonts.inter(
+                        color: AppTheme.premiumDeep,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1436,7 +1553,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  sub.isPremium ? 'PRO' : 'FREE',
+                  'FREE',
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -1452,15 +1569,10 @@ class _FreemiumUsageCard extends ConsumerWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: sub.isPremium
-                    ? [
-                        AppTheme.premiumBase.withValues(alpha: 0.22),
-                        AppTheme.brandCyan.withValues(alpha: 0.14),
-                      ]
-                    : [
-                        AppTheme.premiumBase.withValues(alpha: 0.10),
-                        AppTheme.brandBlue.withValues(alpha: 0.06),
-                      ],
+                colors: [
+                  AppTheme.premiumBase.withValues(alpha: 0.10),
+                  AppTheme.brandBlue.withValues(alpha: 0.06),
+                ],
               ),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
@@ -1474,13 +1586,9 @@ class _FreemiumUsageCard extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        sub.isPremium
-                            ? (isTr
-                              ? 'Sınırsız Q aktif'
-                              : 'Unlimited Q active')
-                            : (isTr
-                              ? '$remainingCredits/$totalCredits Qor kaldı'
-                              : '$remainingCredits/$totalCredits Qor left'),
+                        isTr
+                            ? '$remainingCredits/$totalCredits Qor kaldı'
+                            : '$remainingCredits/$totalCredits Qor left',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -1491,40 +1599,34 @@ class _FreemiumUsageCard extends ConsumerWidget {
                     QorBalanceBadge(
                       remaining: remainingCredits,
                       total: totalCredits,
-                      unlimited: sub.isPremium,
+                      unlimited: false,
                       color: AppTheme.premiumBase,
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  sub.isPremium
-                      ? (isTr
-                        ? 'Premium ile tüm AI akışlarında Qor sınırı olmadan devam edersiniz.'
-                        : 'Premium removes Qor limits across all AI flows.')
-                      : (isTr
-                        ? 'Q bakiyesi günlük yenilenir. Ağır işlemler daha fazla Q tüketir.'
-                        : 'Q balance refreshes daily. Heavier actions consume more Q.'),
+                  isTr
+                      ? 'Q bakiyesi günlük yenilenir. Ağır işlemler daha fazla Q tüketir.'
+                      : 'Q balance refreshes daily. Heavier actions consume more Q.',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: context.textSecondary,
                     height: 1.45,
                   ),
                 ),
-                if (!sub.isPremium) ...[
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: creditProgress,
-                      minHeight: 7,
-                      backgroundColor: AppTheme.premiumBase.withValues(alpha: 0.14),
-                      valueColor: const AlwaysStoppedAnimation(
-                        AppTheme.premiumBase,
-                      ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: creditProgress,
+                    minHeight: 7,
+                    backgroundColor: AppTheme.premiumBase.withValues(alpha: 0.14),
+                    valueColor: const AlwaysStoppedAnimation(
+                      AppTheme.premiumBase,
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
