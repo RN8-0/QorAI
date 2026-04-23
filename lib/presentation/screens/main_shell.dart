@@ -812,8 +812,11 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const fabSize = 50.0;
-    const fabBottom = AppTheme.navBarTotalClearance - 2.0;
     const fabRight = 14.0;
+    // Kategori (browse) sekmesinde alt nav yok: FAB ekranın sağ altına; diğer sekmelerde nav üstüne.
+    final isBrowse = widget.currentRoute.contains('browse');
+    final fabBottomBase =
+        isBrowse ? 10.0 : (AppTheme.navBarTotalClearance - 2.0);
 
     // Hide when actively comparing (≥2 products selected — hideNavBarProvider=true)
     final hideForCompare = ref.watch(hideNavBarProvider);
@@ -826,7 +829,7 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
         ? Colors.black.withValues(alpha: 0.55)
         : Colors.black.withValues(alpha: 0.18);
 
-    final panelBottomOffset = bottomPadding + fabBottom + fabSize + 6;
+    final panelBottomOffset = bottomPadding + fabBottomBase + fabSize + 6;
 
     return LayoutBuilder(builder: (context, constraints) {
       final availH = constraints.maxHeight;
@@ -849,7 +852,9 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
           ),
 
         // ── Chat Panel ────────────────────────────────────────────────
-        Positioned(
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
           bottom: panelBottomOffset,
           right: fabRight - 2,
           left: 12,
@@ -898,8 +903,10 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
         ),
 
       // ── FAB Speech Bubble ─────────────────────────────────────────
-      Positioned(
-        bottom: bottomPadding + fabBottom,
+      AnimatedPositioned(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        bottom: bottomPadding + fabBottomBase,
         right: fabRight,
         child: GestureDetector(
           onTap: _toggle,

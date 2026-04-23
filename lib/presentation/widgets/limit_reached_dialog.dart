@@ -11,7 +11,7 @@ import 'package:compair/presentation/widgets/paywall_sheet.dart';
 const Map<String, Map<String, String>> _limitDialogTranslations = {
   'dailyLimitReached': {
     'en': 'Daily Limit Reached',
-    'tr': 'Gunluk Limit Doldu',
+    'tr': 'Günlük Limit Doldu',
     'de': 'Tageslimit erreicht',
     'es': 'Limite diario alcanzado',
     'fr': 'Limite quotidienne atteinte',
@@ -27,7 +27,7 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
     'en':
         'You have used all your free credits for today. Upgrade to Premium for unlimited access to all AI features.',
     'tr':
-        'Bugunluk ucretsiz haklarinizi kullandiniz. Tum AI ozelliklerine sinirsiz erisim icin Premium\'a yukselin.',
+        'Bugünlük ücretsiz haklarınızı kullandınız. Tüm AI özelliklerine sınırsız erişim için Premium\'a yükselin.',
     'de':
         'Sie haben heute alle kostenlosen Credits verbraucht. Upgraden Sie auf Premium fur unbegrenzten Zugang.',
     'es':
@@ -50,7 +50,7 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
   },
   'goPremium': {
     'en': 'Go Premium',
-    'tr': 'Premium\'a Gec',
+    'tr': 'Premium\'a Geç',
     'de': 'Premium holen',
     'es': 'Hacerse Premium',
     'fr': 'Passer Premium',
@@ -64,7 +64,7 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
   },
   'continueFree': {
     'en': 'Continue Free',
-    'tr': 'Ucretsiz Devam Et',
+    'tr': 'Ücretsiz Devam Et',
     'de': 'Kostenlos fortfahren',
     'es': 'Continuar gratis',
     'fr': 'Continuer gratuitement',

@@ -589,7 +589,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         'Pick the age range closest to you',
       ),
       subtitle: _t(
-        'Oneri tonu ve kesif hizi buna gore ayarlanir.',
+        'Öneri tonu ve keşif hızı buna göre ayarlanır.',
         'This helps tune exploration pace and recommendation tone.',
       ),
       algorithmHint: _t(
@@ -1817,25 +1817,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   child: Text(
                     _t('Atla', 'Skip'),
                     style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: _primaryTextColor,
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _surfaceStrongColor,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    _t('Zorunlu', 'Required'),
-                    style: TextStyle(
-                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: _primaryTextColor,
                     ),

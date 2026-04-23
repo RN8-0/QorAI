@@ -70,7 +70,9 @@ class _VariantsSection extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 6),
                 child: Text(
-                  'Available Models',
+                  Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
+                      ? 'Mevcut Modeller'
+                      : 'Available Models',
                   style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),

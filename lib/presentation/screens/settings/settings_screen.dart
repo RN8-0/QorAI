@@ -884,13 +884,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ref
                               .read(selectedCountryProvider.notifier)
                               .setCountry(entry.key);
-                          // Auto-switch language to match the country's official language
-                          final langCode = entry.value.language;
-                          if (_languageNames.containsKey(langCode)) {
-                            ref
-                                .read(localeProvider.notifier)
-                                .setLocale(langCode);
-                          }
                           // Save to Firestore if logged in
                           _updateFirestoreCountry(
                             ref,

@@ -23,32 +23,29 @@ class CountryNotifier extends StateNotifier<String> {
   }
 
   void _load() {
-    // 1. Check if user manually set a country
     final saved = _cacheService.getCountry();
+    final manuallySet = _cacheService.isCountryManuallySet();
     if (saved.isNotEmpty) {
-      state = saved;
-      return;
+      final normalized = _normalizeSupportedCountry(saved);
+      state = normalized;
+      if (normalized != saved) {
+        _cacheService.saveCountry(normalized);
+      }
     }
-    // 2. Kick off IP detection in background
-    _ref.listen(detectedLocationProvider, (_, next) {
-      next.whenData((location) {
-        // Only auto-set if user hasn't manually chosen
-        if (!_cacheService.isCountryManuallySet() &&
-            location.countryCode.isNotEmpty) {
-          state = location.countryCode;
-          _cacheService.saveCountry(location.countryCode);
-          _cacheService.saveCurrency(location.currency);
-        }
-      });
-    });
+    // Always keep auto-detection active when country wasn't manually chosen.
+    // This fixes stale "US" defaults that could persist forever.
+    if (!manuallySet) {
+      _attachAutoDetectionListener();
+    }
   }
 
   void setCountry(String countryCode) {
-    state = countryCode;
-    _cacheService.saveCountry(countryCode);
+    final normalized = _normalizeSupportedCountry(countryCode);
+    state = normalized;
+    _cacheService.saveCountry(normalized);
     _cacheService.setCountryManuallySet(true);
     // Also update currency from SupportedCountries
-    final info = SupportedCountries.countries[countryCode];
+    final info = SupportedCountries.countries[normalized];
     if (info != null) {
       _cacheService.saveCurrency(info.currency);
     }
@@ -65,16 +62,56 @@ class CountryNotifier extends StateNotifier<String> {
     // the listener in _load() never fires again for the new session.
     _ref.invalidate(detectedLocationProvider);
     // Re-attach the listener so it picks up the fresh detection result.
+    _attachAutoDetectionListener();
+  }
+
+  void _attachAutoDetectionListener() {
     _ref.listen(detectedLocationProvider, (_, next) {
       next.whenData((location) {
-        if (!_cacheService.isCountryManuallySet() &&
-            location.countryCode.isNotEmpty) {
-          state = location.countryCode;
-          _cacheService.saveCountry(location.countryCode);
-          _cacheService.saveCurrency(location.currency);
+        if (_cacheService.isCountryManuallySet()) return;
+        final detectedCode = _resolveBestCountryCode(location.countryCode);
+        if (detectedCode.isEmpty) return;
+        if (state != detectedCode) {
+          state = detectedCode;
         }
+        _cacheService.saveCountry(detectedCode);
+        final info = SupportedCountries.countries[detectedCode];
+        _cacheService.saveCurrency(info?.currency ?? location.currency);
       });
     });
+  }
+
+  String _normalizeSupportedCountry(String rawCountryCode) {
+    final normalized = rawCountryCode.trim().toUpperCase();
+    if (SupportedCountries.countries.containsKey(normalized)) {
+      return normalized;
+    }
+    return _deviceLocaleCountryFallback();
+  }
+
+  String _resolveBestCountryCode(String rawDetectedCode) {
+    final normalized = rawDetectedCode.trim().toUpperCase();
+    if (SupportedCountries.countries.containsKey(normalized)) {
+      return normalized;
+    }
+    return _deviceLocaleCountryFallback();
+  }
+
+  String _deviceLocaleCountryFallback() {
+    try {
+      final deviceCountry =
+          WidgetsBinding
+              .instance
+              .platformDispatcher
+              .locale
+              .countryCode
+              ?.toUpperCase() ??
+          '';
+      if (SupportedCountries.countries.containsKey(deviceCountry)) {
+        return deviceCountry;
+      }
+    } catch (_) {}
+    return 'US';
   }
 }
 

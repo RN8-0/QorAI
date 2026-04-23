@@ -1392,6 +1392,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final aiChats = ref.watch(freemiumUsageProvider('ai_chat'));
     final detailAi = ref.watch(freemiumUsageProvider('detail_ai'));
+    final detailMatchAi = ref.watch(freemiumUsageProvider('detail_match'));
     final pcBuilderAi = ref.watch(freemiumUsageProvider('pc_builder_ai'));
     final linkAnalyses = ref.watch(freemiumUsageProvider('link_analysis'));
     final linkCompare = ref.watch(freemiumUsageProvider('link_compare'));
@@ -1466,6 +1467,15 @@ class _FreemiumUsageCard extends ConsumerWidget {
             color: AppTheme.brandBlue,
             used: detailAi,
             limit: FreemiumLimits.detailAiPerDay,
+            period: todayLabel,
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: isTr ? 'Eşleşme (AI)' : 'Match (AI)',
+            icon: Icons.person_search_rounded,
+            color: const Color(0xFF10B981),
+            used: detailMatchAi,
+            limit: FreemiumLimits.detailMatchAiPerDay,
             period: todayLabel,
           ),
           const SizedBox(height: 10),

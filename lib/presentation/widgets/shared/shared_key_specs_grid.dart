@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/core/category_key_specs.dart' as keySpecs;
+import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:compair/l10n/app_localizations.dart';
 
 /// Shared key specs grid widget used by both detail and compare screens.
 /// Shows category-aware key specifications in a 3-column grid (6 or 9 cells).
@@ -424,7 +426,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
               Icon(Icons.auto_awesome_rounded, size: 16, color: theme.colorScheme.primary),
               const SizedBox(width: 6),
               Text(
-                'Key Specs',
+                AppLocalizations.of(context)?.specs ?? 'Key Specs',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -469,7 +471,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
                                 Flexible(child: buildValue(context, entry.value)),
                                 const SizedBox(height: 2),
                                 Text(
-                                  entry.key,
+                                  _localizedSpecKey(context, entry.key),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w500,
@@ -493,5 +495,16 @@ class SharedKeySpecsGrid extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _localizedSpecKey(BuildContext context, String rawKey) {
+    final locale = Localizations.localeOf(context).languageCode.toLowerCase();
+    if (locale == 'en') return rawKey;
+    final translated = spec_dict.translateSpec(rawKey, locale).trim();
+    if (translated.isNotEmpty &&
+        translated.toLowerCase() != rawKey.toLowerCase()) {
+      return translated;
+    }
+    return rawKey;
   }
 }

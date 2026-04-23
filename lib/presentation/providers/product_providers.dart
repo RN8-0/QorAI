@@ -2524,6 +2524,7 @@ class FreemiumLimits {
   static int get subscriptionAnalysesPerDay =>
       AppConstants.freeSubscriptionAnalysisLimit;
   static int get productScanPerDay => AppConstants.freeProductScanLimit;
+  static int get detailMatchAiPerDay => AppConstants.freeDetailMatchAiLimit;
 }
 
 final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
@@ -2538,6 +2539,7 @@ final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
     'link_compare' => subscription.linkCompareUsed,
     'subscription_analysis' => subscription.subscriptionAnalysesUsed,
     'product_scan' => subscription.productScanUsed,
+    'detail_match' => subscription.detailMatchAiUsed,
     _ => 0,
   };
 });
@@ -2554,6 +2556,7 @@ Future<bool> checkAndIncrementUsage(WidgetRef ref, String feature) async {
     'link_compare' => subscription.recordLinkCompare(),
     'subscription_analysis' => subscription.recordSubscriptionAnalysis(),
     'product_scan' => subscription.recordProductScan(),
+    'detail_match' => subscription.recordDetailMatchAi(),
     _ => const Success<void>(null),
   };
   return result.isSuccess;

@@ -19,6 +19,8 @@ import 'package:compair/presentation/screens/pc_builder/pc_builder_localization.
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/presentation/widgets/login_required_dialog.dart';
 import 'package:compair/routing/router.dart';
+import 'package:compair/core/spec_word_dictionary.dart' as pc_spec_dict;
+import 'package:compair/services/spec_translation_service.dart';
 
 /// App-theme gradient (brandDeepBlue → brandBlue → brandCyan).
 const _accentGradient = LinearGradient(
@@ -131,13 +133,19 @@ String _pcText(BuildContext context, {required String en, required String tr}) {
 
 class _Compat {
   static String _normalizeSocket(String raw) {
-    var s = raw.trim().toUpperCase().replaceAll('SOCKET', '').replaceAll('FCLGA', 'LGA');
+    var s = raw
+        .trim()
+        .toUpperCase()
+        .replaceAll('SOCKET', '')
+        .replaceAll('FCLGA', 'LGA');
     // Strip non-alphanumeric (spaces, hyphens, etc.) first.
     s = s.replaceAll(RegExp(r'[^A-Z0-9]'), '');
     // Normalize Threadripper socket names so "STR5" and "TR5" compare equal.
     // sTR4 → uppercase STR4 → strip 'S' prefix → TR4
     // This handles both sTR4/sTR5 (official) and TR4/TR5 (shorthand) forms.
-    if (s.startsWith('STR') && s.length > 3 && RegExp(r'^STR\d+$').hasMatch(s)) {
+    if (s.startsWith('STR') &&
+        s.length > 3 &&
+        RegExp(r'^STR\d+$').hasMatch(s)) {
       s = s.substring(1); // STR5 → TR5
     }
     return s;
@@ -1472,9 +1480,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             final mbSocket = _Compat.socket(mb);
             if (mbSocket != null && mbSocket != newSocket) {
               _selected.remove(PcComponent.motherboard);
-              removed.add(
-                _pcText(context, tr: 'Anakart', en: 'Motherboard'),
-              );
+              removed.add(_pcText(context, tr: 'Anakart', en: 'Motherboard'));
             }
           }
           final cooler = _selected[PcComponent.cooler];
@@ -1631,9 +1637,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             content: Text(
               _pcText(
                 context,
-                tr: 'PC Builder AI günlük limitine ulaştınız (${AppConstants.freePcBuilderAiLimit}/gün). '
+                tr:
+                    'PC Builder AI günlük limitine ulaştınız (${AppConstants.freePcBuilderAiLimit}/gün). '
                     'Sınırsız analiz için Premium\'a geçin!',
-                en: 'PC Builder AI daily limit reached (${AppConstants.freePcBuilderAiLimit}/day). '
+                en:
+                    'PC Builder AI daily limit reached (${AppConstants.freePcBuilderAiLimit}/day). '
                     'Upgrade to Premium for unlimited access!',
               ),
             ),
@@ -4419,6 +4427,61 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     return entries;
   }
 
+  String _sentenceCaseLocalized(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return t;
+    final first = t[0];
+    final upper = switch (first) {
+      'i' => 'İ',
+      'ı' => 'I',
+      _ => first.toUpperCase(),
+    };
+    return '$upper${t.substring(1)}';
+  }
+
+  String _localizedSpecLabel(BuildContext context, String key) {
+    final locale = Localizations.localeOf(context).languageCode;
+    if (locale == 'en') return key;
+    final svc = SpecTranslationService.instance;
+    final normalized = key.trim().replaceAll('_', ' ');
+    if (svc.isLoaded) {
+      final translated = svc.translateLabelForLocale(normalized, locale);
+      if (translated.trim().isNotEmpty &&
+          translated.toLowerCase() != normalized.toLowerCase()) {
+        return _sentenceCaseLocalized(translated);
+      }
+    }
+    final dictionaryTranslated = pc_spec_dict.translateSpec(normalized, locale);
+    if (dictionaryTranslated.trim().isNotEmpty &&
+        dictionaryTranslated.toLowerCase() != normalized.toLowerCase()) {
+      return _sentenceCaseLocalized(dictionaryTranslated);
+    }
+    return _sentenceCaseLocalized(normalized);
+  }
+
+  String _localizedSpecValue(BuildContext context, String value) {
+    final locale = Localizations.localeOf(context).languageCode;
+    if (locale == 'en') return value;
+    final svc = SpecTranslationService.instance;
+    final normalized = value.trim();
+    if (svc.isLoaded) {
+      final translated = svc.translateValueForLocale(normalized, locale);
+      if (translated.trim().isNotEmpty &&
+          translated.toLowerCase() != normalized.toLowerCase()) {
+        return _sentenceCaseLocalized(translated);
+      }
+    }
+    final dictionaryTranslated = pc_spec_dict.translateSpecValue(
+      normalized,
+      locale,
+    );
+    if (dictionaryTranslated.trim().isNotEmpty &&
+        dictionaryTranslated.toLowerCase() != normalized.toLowerCase()) {
+      return _sentenceCaseLocalized(dictionaryTranslated);
+    }
+    return _sentenceCaseLocalized(normalized);
+  }
+
   List<ProductEntity> _applyFilters(List<ProductEntity> all) {
     var list = List<ProductEntity>.from(all);
     // Compat — socket filter for MB and cooler (lenient: unknown socket = included)
@@ -5340,7 +5403,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                                         Expanded(
                                           flex: 2,
                                           child: Text(
-                                            e.key,
+                                            _localizedSpecLabel(ctx, e.key),
                                             style: GoogleFonts.plusJakartaSans(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w600,
@@ -5351,7 +5414,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                                         Expanded(
                                           flex: 3,
                                           child: Text(
-                                            e.value,
+                                            _localizedSpecValue(ctx, e.value),
                                             style: GoogleFonts.plusJakartaSans(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w500,

@@ -56,6 +56,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   // Personalized Match state
   bool _matchScoreExpanded = false;
   bool _matchScoreFetched = false;
+  final Map<_AiPanelType, String> _aiProgressText = {};
 
   // Floating YouTube player overlay
   OverlayEntry? _pipOverlay;
@@ -126,6 +127,20 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   }
 
   String _localizedFeature(String feature) => '${feature}_${_appLang}';
+
+  String _detailCtaLabel() => _isTr ? 'Detay' : 'Detail';
+
+  String _sentenceCaseLocalized(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return t;
+    final first = t[0];
+    final upper = switch (first) {
+      'i' => 'İ',
+      'ı' => 'I',
+      _ => first.toUpperCase(),
+    };
+    return '$upper${t.substring(1)}';
+  }
 
   String _predictionProductContext(ProductEntity product) {
     final details = <String>[
@@ -410,17 +425,24 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  /// Fetch from Gemini with automatic retry on parse failure (max 3 attempts)
+  /// Fetch from DeepSeek (low cost) with Gemini fallback on persistent parse failures.
   Future<({Map<String, dynamic>? data, String? error})> _fetchWithRetry(
     String prompt,
     String label,
     String lang, {
     int maxTokens = 4096,
+    void Function(String message)? onProgress,
+    bool allowGeminiFallback = false,
   }) async {
     final deepseek = ref.read(deepSeekServiceProvider);
     String? lastError;
     for (var attempt = 1; attempt <= 3; attempt++) {
       try {
+        onProgress?.call(
+          _isTr
+              ? 'AI modeli çalıştırılıyor (DeepSeek deneme $attempt/3)…'
+              : 'Running AI model (DeepSeek attempt $attempt/3)…',
+        );
         final result = await deepseek.jsonFreeTextQuery(
           prompt,
           language: lang,
@@ -440,6 +462,27 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         lastError = e.toString();
         debugPrint('[Compair] $label attempt $attempt error: $e');
         if (attempt < 3) await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+    if (allowGeminiFallback) {
+      try {
+        onProgress?.call(
+          _isTr
+              ? 'Sonuç doğrulaması için Gemini ile yeniden değerlendiriliyor…'
+              : 'Re-checking with Gemini for result quality…',
+        );
+        final gemini = ref.read(geminiServiceProvider);
+        final result = await gemini.jsonFreeTextQuery(
+          prompt,
+          language: lang,
+          maxTokens: maxTokens,
+          tier: AiTier.lite,
+        );
+        final parsed = _tryParseJson(result);
+        if (parsed != null) return (data: parsed, error: null);
+        lastError = 'Gemini fallback parse failed';
+      } catch (e) {
+        lastError = e.toString();
       }
     }
     return (data: null, error: lastError);
@@ -503,6 +546,13 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         _predictionLoading = value;
         break;
     }
+    if (!value) {
+      _aiProgressText.remove(panel);
+    }
+  }
+
+  void _setAiPanelProgress(_AiPanelType panel, String message) {
+    _aiProgressText[panel] = message;
   }
 
   void _setAiPanelData(
@@ -555,19 +605,88 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  void _showLimitExhaustedSnackBar(BuildContext context, String featureName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$featureName daily limit reached. Upgrade to Premium for unlimited access!',
-        ),
-        action: SnackBarAction(
-          label: 'Premium',
-          onPressed: () => showPaywallSheet(context),
-        ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
+  void _showLimitExhaustedDialog(BuildContext context, {String? featureName}) {
+    showLimitReachedDialog(context, featureName: featureName);
+  }
+
+  void _showSpecValueDetailSheet(BuildContext context, String rawValue) {
+    final full = _localizedSpecValue(context, rawValue);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: Material(
+              color: ctx.surfaceElevatedColor,
+              borderRadius: BorderRadius.circular(22),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 16, 12, 20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: AppTheme.brandCyan.withValues(alpha: 0.25),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                    BoxShadow(
+                      color: AppTheme.brandCyan.withValues(alpha: 0.12),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 22,
+                          color: AppTheme.brandCyan,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _isTr ? 'Özellik değeri' : 'Specification',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      full,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        height: 1.45,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -589,7 +708,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     if (shouldFetch) {
       final sub = ref.read(subscriptionServiceProvider);
       if (!sub.canUseCompareAi) {
-        _showLimitExhaustedSnackBar(context, 'Compare AI');
+        _showLimitExhaustedDialog(context, featureName: 'Compare AI');
         return;
       }
       sub.recordCompareAi();
@@ -625,6 +744,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       _setAiPanelData(panel, result: cacheResult, structured: parsed);
       _setAiPanelLoading(panel, false);
       _setAiPanelError(panel, hasError: false, message: null);
+      _setAiPanelProgress(
+        panel,
+        _isTr ? 'Önbellekten hızlıca yüklendi' : 'Loaded quickly from cache',
+      );
     });
   }
 
@@ -637,6 +760,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       _setAiPanelData(panel, result: result, structured: structured);
       _setAiPanelLoading(panel, false);
       _setAiPanelError(panel, hasError: false, message: null);
+      _setAiPanelProgress(
+        panel,
+        _isTr ? 'Analiz tamamlandı' : 'Analysis completed',
+      );
     });
   }
 
@@ -644,6 +771,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     setState(() {
       _setAiPanelError(panel, hasError: true, message: message);
       _setAiPanelLoading(panel, false);
+      _setAiPanelProgress(
+        panel,
+        _isTr ? 'Analiz tamamlanamadı' : 'Analysis failed',
+      );
     });
   }
 
@@ -663,6 +794,14 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     try {
       final cached = await _loadAiCache(cacheFeature);
       if (cached != null && cached['result'] != null) {
+        if (mounted) {
+          setState(() {
+            _setAiPanelProgress(
+              panel,
+              _isTr ? 'Önbellek kontrol ediliyor…' : 'Checking cache…',
+            );
+          });
+        }
         final cacheResult = cached['result'] as String;
         final parsed = cached['structured'] != null
             ? Map<String, dynamic>.from(cached['structured'] as Map)
@@ -683,11 +822,26 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (startMessage != null) {
         debugPrint(startMessage);
       }
+      if (mounted) {
+        setState(() {
+          _setAiPanelProgress(
+            panel,
+            _isTr ? 'İstek hazırlanıyor…' : 'Preparing request…',
+          );
+        });
+      }
       final result = await _fetchWithRetry(
         prompt,
         debugLabel,
         lang,
         maxTokens: maxTokens,
+        allowGeminiFallback: true,
+        onProgress: (message) {
+          if (!mounted) return;
+          setState(() {
+            _setAiPanelProgress(panel, message);
+          });
+        },
       );
       if (!mounted) return;
 
@@ -771,11 +925,16 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
 
     await _runAiPanelRequest(
       panel: _AiPanelType.deepAnalysis,
-      cacheFeature: _localizedFeature('deep_analysis_v2'),
+      cacheFeature: _localizedFeature('deep_analysis_v3'),
       debugLabel: 'Deep Analysis',
       staleCacheMessage:
           '[Compair] Deep Analysis cache unparseable — re-fetching',
-      prompt: prompt,
+      prompt:
+          '$prompt\n'
+          'Quality constraints:\n'
+          '- Write evidence-based analysis, not generic claims.\n'
+          '- Every product must include at least one concrete technical reason tied to specs/positioning.\n'
+          '- verdict and recommendation should each be 4-6 sentences and should differ in focus.',
       lang: lang,
       maxTokens: 8192,
       startMessage: '[Compair] Deep Analysis starting for: $productNames',
@@ -813,11 +972,16 @@ Return ONLY valid JSON:
 
     await _runAiPanelRequest(
       panel: _AiPanelType.alternatives,
-      cacheFeature: _localizedFeature('alternatives'),
+      cacheFeature: _localizedFeature('alternatives_v2'),
       debugLabel: 'Alternatives',
       staleCacheMessage:
           '[Compair] Alternatives cache unparseable — re-fetching',
-      prompt: prompt,
+      prompt:
+          '$prompt\n'
+          'Quality constraints:\n'
+          '- why_better must be 2-3 sentences with category-specific detail.\n'
+          '- Avoid repeating the same sentence structure across alternatives.\n'
+          '- Include realistic and differentiated price band commentary.',
       lang: lang,
       maxTokens: 2048,
       startMessage: '[Compair] Alternatives starting for: $productNames',
@@ -866,10 +1030,15 @@ Return ONLY valid JSON, no markdown, no explanation:
 
     await _runAiPanelRequest(
       panel: _AiPanelType.advisor,
-      cacheFeature: _localizedFeature('advisor'),
+      cacheFeature: _localizedFeature('advisor_v2'),
       debugLabel: 'Advisor',
       staleCacheMessage: '[Compair] Advisor cache unparseable — re-fetching',
-      prompt: prompt,
+      prompt:
+          '$prompt\n'
+          'Quality constraints:\n'
+          '- final_verdict should be 4-6 sentences with explicit trade-offs.\n'
+          '- Avoid generic advice; tie recommendation to concrete product context.\n'
+          '- Use varied wording across products and points.',
       lang: lang,
       maxTokens: 2048,
       startMessage: '[Compair] Advisor starting',
@@ -928,10 +1097,15 @@ Rules:
 
     await _runAiPanelRequest(
       panel: _AiPanelType.prediction,
-      cacheFeature: _localizedFeature('prediction_v4'),
+      cacheFeature: _localizedFeature('prediction_v5'),
       debugLabel: 'Prediction',
       staleCacheMessage: '[Compair] Prediction cache unparseable — re-fetching',
-      prompt: prompt,
+      prompt:
+          '$prompt\n'
+          'Quality constraints:\n'
+          '- reason must be 4-6 sentences (minimum 90 words) with product-specific evidence.\n'
+          '- Mention at least one concrete trigger (release cadence, model refresh window, segment competition, or premium/budget cycle).\n'
+          '- Do not repeat near-identical reasoning across products.',
       lang: lang,
       maxTokens: 4096,
       startMessage: '[Compair] Prediction starting',
@@ -1352,20 +1526,20 @@ Rules:
     final svc = SpecTranslationService.instance;
     final canonicalKey = svc.isLoaded ? svc.canonicalizeToEnglish(k) : k;
     final specExact = map[k] ?? map[canonicalKey];
-    if (specExact != null) return specExact;
+    if (specExact != null) return _sentenceCaseLocalized(specExact);
     if (svc.isLoaded) {
       final translated = svc.translateLabelForLocale(key, locale);
       if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
-        return translated;
+        return _sentenceCaseLocalized(translated);
       }
     }
     if (locale != 'en') {
       final translated = spec_dict.translateSpec(canonicalKey, locale);
       if (translated.toLowerCase() != canonicalKey.toLowerCase()) {
-        return translated;
+        return _sentenceCaseLocalized(translated);
       }
     }
-    return _formatKey(canonicalKey);
+    return _sentenceCaseLocalized(_formatKey(canonicalKey));
   }
 
   /// Translate spec values (colors, materials, booleans, etc.)
@@ -1375,30 +1549,104 @@ Rules:
     final svc = SpecTranslationService.instance;
     final canonicalValue = svc.isLoaded ? svc.canonicalizeToEnglish(val) : val;
     final canonicalLower = canonicalValue.trim().toLowerCase();
-    if (locale == 'en') return canonicalValue;
+    if (locale == 'en') return _sentenceCaseLocalized(canonicalValue);
     // Boolean/status shortcuts
     final l = context.l10n;
     if (l != null) {
       if (canonicalLower == 'yes' || canonicalLower == 'true') {
-        return l.specValYes;
+        return _sentenceCaseLocalized(l.specValYes);
       }
       if (canonicalLower == 'no' ||
           canonicalLower == 'no.' ||
           canonicalLower == 'false') {
-        return l.specValNo;
+        return _sentenceCaseLocalized(l.specValNo);
       }
-      if (canonicalLower == 'available') return l.specValAvailable;
+      if (canonicalLower == 'available') {
+        return _sentenceCaseLocalized(l.specValAvailable);
+      }
       if (canonicalLower == 'not available' || canonicalLower == 'n/a') {
-        return l.specValNotAvailable;
+        return _sentenceCaseLocalized(l.specValNotAvailable);
       }
     }
     if (svc.isLoaded) {
       final translated = svc.translateValueForLocale(val, locale);
-      if (translated.toLowerCase() != canonicalLower) return translated;
+      if (translated.toLowerCase() != canonicalLower) {
+        return _sentenceCaseLocalized(translated);
+      }
     }
     final translated = spec_dict.translateSpecValue(canonicalValue, locale);
-    if (translated != canonicalValue) return translated;
-    return canonicalValue;
+    if (translated != canonicalValue) return _sentenceCaseLocalized(translated);
+    return _sentenceCaseLocalized(canonicalValue);
+  }
+
+  void _showSpecValueBottomSheet({
+    required String specName,
+    required String fullValue,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return SafeArea(
+          top: false,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  specName,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: context.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  fullValue,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// Returns the index of the "better" value for a given spec.
@@ -4361,19 +4609,16 @@ Rules:
                 winnerIndex: winnerIdx,
                 theme: theme,
               );
+              final localizedName = _localizedSpecName(context, spec.label);
+              final localizedValue = _localizedSpecValue(context, val);
               return Expanded(
-                child: Tooltip(
-                  message: _localizedSpecValue(context, val),
-                  preferBelow: false,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.inverseSurface,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  textStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onInverseSurface,
-                  ),
+                child: GestureDetector(
+                  onTap: isMissing
+                      ? null
+                      : () => _showSpecValueBottomSheet(
+                          specName: localizedName,
+                          fullValue: localizedValue,
+                        ),
                   child: Container(
                     margin: EdgeInsets.symmetric(
                       horizontal: isCompact ? 1.5 : 2,
@@ -4398,7 +4643,7 @@ Rules:
                           : null,
                     ),
                     child: Text(
-                      _localizedSpecValue(context, val),
+                      localizedValue,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: isCompact ? 9 : 10,
                         fontWeight: style.weight,
@@ -5032,77 +5277,75 @@ Rules:
                                         !isMissing;
 
                                     return Expanded(
-                                      child: Tooltip(
-                                        message: _localizedSpecValue(
-                                          context,
-                                          val,
-                                        ),
-                                        preferBelow: false,
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () => _showSpecValueDetailSheet(
                                             context,
-                                          ).colorScheme.inverseSurface,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
+                                            val,
                                           ),
-                                        ),
-                                        textStyle: GoogleFonts.plusJakartaSans(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onInverseSurface,
-                                        ),
-                                        child: Container(
-                                          margin: const EdgeInsets.symmetric(
-                                            horizontal: 3,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isBetter
-                                                ? AppTheme.scoreExcellent
-                                                      .withValues(alpha: 0.12)
-                                                : isWorse
-                                                ? AppTheme.error.withValues(
-                                                    alpha: 0.06,
-                                                  )
-                                                : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Container(
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 3,
                                             ),
-                                            border: isBetter
-                                                ? Border.all(
-                                                    color: AppTheme
-                                                        .scoreExcellent
-                                                        .withValues(alpha: 0.3),
-                                                  )
-                                                : null,
-                                          ),
-                                          child: Text(
-                                            _localizedSpecValue(context, val),
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 10,
-                                              fontWeight: isBetter
-                                                  ? FontWeight.w700
-                                                  : (isMissing
-                                                        ? FontWeight.w400
-                                                        : FontWeight.w500),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
                                               color: isBetter
                                                   ? AppTheme.scoreExcellent
+                                                        .withValues(
+                                                          alpha: 0.12,
+                                                        )
                                                   : isWorse
                                                   ? AppTheme.error.withValues(
-                                                      alpha: 0.7,
+                                                      alpha: 0.06,
                                                     )
-                                                  : isMissing
-                                                  ? context.textTertiaryColor
-                                                  : context.textSecondary,
+                                                  : Colors.transparent,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: isBetter
+                                                  ? Border.all(
+                                                      color: AppTheme
+                                                          .scoreExcellent
+                                                          .withValues(
+                                                            alpha: 0.3,
+                                                          ),
+                                                    )
+                                                  : null,
                                             ),
-                                            textAlign: TextAlign.center,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                            child: Text(
+                                              _localizedSpecValue(
+                                                context,
+                                                val,
+                                              ),
+                                              style: GoogleFonts
+                                                  .plusJakartaSans(
+                                                fontSize: 10,
+                                                fontWeight: isBetter
+                                                    ? FontWeight.w700
+                                                    : (isMissing
+                                                          ? FontWeight.w400
+                                                          : FontWeight.w500),
+                                                color: isBetter
+                                                    ? AppTheme.scoreExcellent
+                                                    : isWorse
+                                                    ? AppTheme.error
+                                                        .withValues(
+                                                          alpha: 0.7,
+                                                        )
+                                                    : isMissing
+                                                    ? context
+                                                        .textTertiaryColor
+                                                    : context.textSecondary,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -5326,6 +5569,7 @@ Rules:
               : null,
           isError: _advisorError,
           errorMsg: _advisorErrorMsg,
+          loadingStatusText: _aiProgressText[_AiPanelType.advisor],
           onRetry: () => _retryAiPanel(_AiPanelType.advisor, _fetchAdvisor),
           onTap: _toggleAdvisor,
         ),
@@ -5346,6 +5590,7 @@ Rules:
               : null,
           isError: _deepAnalysisError,
           errorMsg: _deepAnalysisErrorMsg,
+          loadingStatusText: _aiProgressText[_AiPanelType.deepAnalysis],
           onRetry: () =>
               _retryAiPanel(_AiPanelType.deepAnalysis, _fetchDeepAnalysis),
           onTap: _toggleDeepAnalysis,
@@ -5367,6 +5612,7 @@ Rules:
               : null,
           isError: _alternativesError,
           errorMsg: _alternativesErrorMsg,
+          loadingStatusText: _aiProgressText[_AiPanelType.alternatives],
           onRetry: () =>
               _retryAiPanel(_AiPanelType.alternatives, _fetchAlternatives),
           onTap: _toggleAlternatives,
@@ -5388,6 +5634,7 @@ Rules:
               : null,
           isError: _predictionError,
           errorMsg: _predictionErrorMsg,
+          loadingStatusText: _aiProgressText[_AiPanelType.prediction],
           onRetry: () =>
               _retryAiPanel(_AiPanelType.prediction, _fetchPrediction),
           onTap: _togglePrediction,
@@ -5439,7 +5686,7 @@ Rules:
                 // Check AI feature limit before fetching
                 final sub = ref.read(subscriptionServiceProvider);
                 if (!sub.canUseCompareAi) {
-                  _showLimitExhaustedSnackBar(context, 'Compare AI');
+                  _showLimitExhaustedDialog(context, featureName: 'Compare AI');
                   return;
                 }
                 sub.recordCompareAi();
@@ -5459,7 +5706,10 @@ Rules:
                       ),
                     ).notifier,
                   );
-                  notifier.fetchMatchScore(product: product);
+                  notifier.fetchMatchScore(
+                    product: product,
+                    forCompareBatch: true,
+                  );
                 }
               }
             },
@@ -5684,8 +5934,7 @@ Rules:
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
-                                        context.l10n?.details ??
-                                            (_isTr ? 'Detaylar' : 'Details'),
+                                        _detailCtaLabel(),
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w700,
@@ -5724,6 +5973,7 @@ Rules:
     bool isError = false,
     VoidCallback? onRetry,
     String? errorMsg,
+    String? loadingStatusText,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
@@ -5786,6 +6036,25 @@ Rules:
                           color: context.textSecondary,
                         ),
                       ),
+                      if (isLoading &&
+                          loadingStatusText != null &&
+                          loadingStatusText.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Text(
+                            loadingStatusText,
+                            key: ValueKey(loadingStatusText),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: gradient[0].withValues(alpha: 0.9),
+                              fontStyle: FontStyle.italic,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

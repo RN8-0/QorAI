@@ -38,6 +38,7 @@ import 'package:compair/presentation/widgets/shared/shared_similar_card.dart';
 import 'package:compair/presentation/widgets/shared/shared_premium_section.dart';
 import 'package:compair/core/category_key_specs.dart' as keySpecs;
 import 'package:compair/presentation/widgets/shared/expandable_text.dart';
+import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:compair/core/pb_client.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';

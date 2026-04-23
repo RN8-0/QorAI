@@ -67,6 +67,32 @@ class IpLocationService {
       debugPrint('=== COMPAIR: ipapi.co failed: $e ===');
     }
 
+    // 3) Fallback: ipwho.is/json (free, no auth)
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        'https://ipwho.is/',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 5),
+          sendTimeout: const Duration(seconds: 5),
+        ),
+      );
+      final data = res.data;
+      final success = data?['success'] == true;
+      if (success && data != null && data['country_code'] != null) {
+        final result = IpLocationResult(
+          countryCode: (data['country_code'] as String?) ?? 'US',
+          currency: (data['currency'] is Map)
+              ? ((data['currency'] as Map)['code'] as String? ?? 'USD')
+              : 'USD',
+          countryName: (data['country'] as String?) ?? 'United States',
+        );
+        await _saveToCache(result);
+        return result;
+      }
+    } catch (e) {
+      debugPrint('=== COMPAIR: ipwho.is failed: $e ===');
+    }
+
     return const IpLocationResult();
   }
 

@@ -241,6 +241,7 @@ class SubscriptionService extends ChangeNotifier {
 
     try {
       await _restoreUsageFromLocal();
+      notifyListeners();
 
       final available = await _iap.isAvailable();
       if (!available) {

@@ -639,7 +639,8 @@ class _DeepAnalysisNotifier
         'Rules:\n'
         '- Provide 3-5 strengths and 2-4 weaknesses\n'
         '- Scores should be realistic and varied (not all 80-90)\n'
-        '- Pros/cons should be concise (max 10 words each)\n'
+        '- Pros/cons should be specific and informative (8-18 words each)\n'
+        '- Verdict must include concrete technical or category-specific evidence\n'
         '- Be honest and specific, not generic praise',
         language: _languageCode,
       );
@@ -779,12 +780,13 @@ class _AlternativesCacheNotifier
         '      "advantage": "<one clear advantage over $productName>",\n'
         '      "tradeoff": "<one disadvantage or compromise>",\n'
         '      "priceComparison": "<cheaper/similar/pricier>",\n'
-        '      "bestFor": "<target user in 5 words max>",\n'
+        '      "bestFor": "<target user profile, 1 sentence>",\n'
         '      "whyBetter": "<brief reason this might be preferred>"\n'
         '    }\n'
         '  ]\n'
         '}\n\n'
-        'Provide exactly 5 real alternative products. Be specific with actual product names.',
+        'Provide exactly 5 real alternative products. '
+        'Use complete model names and include concrete differences (performance, battery, camera, software, build quality, price band).',
         language: _languageCode,
       );
       if (result.isNotEmpty) {
@@ -909,7 +911,7 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
         '  "valueRating": <number 1-10>,\n'
         '  "ratingExplanation": "<1 sentence explaining the rating>"\n'
         '}\n\n'
-        'Be specific and honest. Reasons should be concise (max 15 words each).',
+        'Be specific and honest. Reasons should be detailed (12-24 words each) with concrete user impact.',
         language: _languageCode,
       );
       if (result.isNotEmpty) {
@@ -1044,7 +1046,7 @@ class _PredictionCacheNotifier
         '  "bestTimeToBuy": "<when to buy, 1-2 sentences>",\n'
         '  "expectedDrop": "<expected price change description>",\n'
         '  "buyOrWait": "<buy/wait>",\n'
-        '  "reasoning": "<2-3 sentence explanation of the prediction>"\n'
+        '  "reasoning": "<4-6 sentence explanation of the prediction with product-specific triggers>"\n'
         '}\n\n'
         'Analyze this specific product:\n'
         '- Product name: $productName\n'
@@ -1218,8 +1220,8 @@ class _PredictionCacheNotifier
 
     final expectedDrop = isTr
         ? trend == 'down'
-              ? 'Kisa vadede yaklasik %$trendPercentage civari bir geri cekilme potansiyeli var.'
-              : 'Fiyatin yakin donemde yatay kalmasi daha olasi.'
+              ? 'Kısa vadede yaklaşık %$trendPercentage civarı bir geri çekilme potansiyeli var.'
+              : 'Fiyatın yakın dönemde yatay kalması daha olası.'
         : trend == 'down'
         ? 'There is roughly a $trendPercentage% downside window in the near term.'
         : 'Pricing is more likely to stay flat in the near term.';
@@ -1263,7 +1265,7 @@ class _PredictionCacheNotifier
         lower.contains('depends on the market') ||
         lower.contains('depends on market') ||
         lower.contains('belirsiz') ||
-        lower.contains('degisken olabilir');
+        lower.contains('değişken olabilir');
   }
 
   int? _extractInt(String source, RegExp regex) {
@@ -1344,7 +1346,12 @@ class _GeminiMatchScoreNotifier
           : key.normalizedLanguageCode,
       super(const AsyncValue.data(null));
 
-  Future<void> fetchMatchScore({required ProductEntity product}) async {
+  Future<void> fetchMatchScore({
+    required ProductEntity product,
+    /// Karşılaştır ekranındaki toplu eşleşme: kotayı `recordCompareAi` karşılar;
+    /// ürün detay `detailMatchAi` tüketimi yapılmaz.
+    bool forCompareBatch = false,
+  }) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
 
@@ -1353,8 +1360,10 @@ class _GeminiMatchScoreNotifier
     if (user == null || !user.quizCompleted) return;
     final sub = _ref.read(subscriptionServiceProvider);
     if (!sub.isPremium) {
-      _fallbackToLocal(product);
-      return;
+      if (!forCompareBatch && !sub.canUseDetailMatchAi) {
+        _fallbackToLocal(product);
+        return;
+      }
     }
 
     // Defer the state mutation to the next microtask so this is safe even
@@ -1369,7 +1378,11 @@ class _GeminiMatchScoreNotifier
     state = const AsyncValue.loading();
 
     try {
-      await _doFetchMatchScore(product: product, user: user).timeout(
+      await _doFetchMatchScore(
+        product: product,
+        user: user,
+        forCompareBatch: forCompareBatch,
+      ).timeout(
         const Duration(seconds: 12),
         onTimeout: () {
           throw Exception('match score outer timeout (12s)');
@@ -1410,6 +1423,7 @@ class _GeminiMatchScoreNotifier
   Future<void> _doFetchMatchScore({
     required ProductEntity product,
     required dynamic user,
+    bool forCompareBatch = false,
   }) async {
     final profileLangCode = (user.language as String).trim().toLowerCase();
       final langCode = _languageCode.isNotEmpty
@@ -1610,6 +1624,11 @@ class _GeminiMatchScoreNotifier
       await Future<void>.delayed(const Duration(milliseconds: 300));
       _clearStep(product.id);
       state = AsyncValue.data(matchResult);
+
+      final subForQuota = _ref.read(subscriptionServiceProvider);
+      if (!subForQuota.isPremium && !forCompareBatch) {
+        subForQuota.recordDetailMatchAi();
+      }
 
       unawaited(
         Future<void>(() async {
