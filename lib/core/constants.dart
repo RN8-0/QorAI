@@ -56,6 +56,7 @@ class AppConstants {
   static const Duration cardAnimationDuration = Duration(milliseconds: 200);
   static const Duration staggerDelay = Duration(milliseconds: 50);
   static const Duration skeletonCrossfadeDuration = Duration(milliseconds: 200);
+  static const String compCurrencyName = 'Comp';
 
   // Free Tier Limits - Section 12.2
   static const int freeComparisonLimit = 5; // per day

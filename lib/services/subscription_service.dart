@@ -7,7 +7,6 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -129,6 +128,9 @@ class UsageCounter {
 }
 
 class SubscriptionService extends ChangeNotifier {
+  static const String _legacyUsageStorageKey = 'freemium_usage_v2';
+  static const String _usageStorageKeyPrefix = 'freemium_usage_v3_';
+  static const String _usageNamespaceCacheKey = 'freemium_usage_namespace';
   final InAppPurchase _iap = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
 
@@ -136,6 +138,7 @@ class SubscriptionService extends ChangeNotifier {
   SubscriptionStatus _profileStatus = SubscriptionStatus.free;
   late UsageCounter _usage;
   bool _initialized = false;
+  String _usageNamespace = 'guest_device';
 
   List<ProductDetails> _products = [];
   Completer<Result<bool>>? _purchaseCompleter;
@@ -422,8 +425,9 @@ class SubscriptionService extends ChangeNotifier {
 
   Future<void> _saveUsageToLocal() async {
     final prefs = await SharedPreferences.getInstance();
+    final storageKey = await _usageStorageKey(prefs);
     await prefs.setString(
-      'freemium_usage_v2',
+      storageKey,
       jsonEncode({
         'comparisons': _usage.comparisons,
         'aiQuestions': _usage.aiQuestions,
@@ -461,11 +465,10 @@ class SubscriptionService extends ChangeNotifier {
     await prefs.remove('active_product_id');
     await prefs.remove('premium_purchase_date');
     await prefs.remove('premium_expiration_date');
-    // Also wipe freemium usage so the next account starts with a fresh quota.
-    await prefs.remove('freemium_usage_v2');
     _status = SubscriptionStatus.free;
     _profileStatus = SubscriptionStatus.free;
-    _usage = _emptyUsage();
+    _usageNamespace = 'guest_device';
+    await _restoreUsageFromLocal();
     // Reset init flag so initialize() will re-run (and call restorePurchases)
     // the next time the subscription service is needed for the new account.
     _initialized = false;
@@ -562,7 +565,8 @@ class SubscriptionService extends ChangeNotifier {
 
   Future<void> _restoreUsageFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('freemium_usage_v2');
+    final storageKey = await _usageStorageKey(prefs);
+    final raw = prefs.getString(storageKey) ?? prefs.getString(_legacyUsageStorageKey);
     if (raw == null || raw.isEmpty) {
       _usage = _emptyUsage();
       return;
@@ -601,9 +605,19 @@ class SubscriptionService extends ChangeNotifier {
             data['detailMatchAiPeriodKey'] as String? ?? _dailyPeriodKey(),
       );
       _usage = _normalizedUsage();
+      if (prefs.getString(storageKey) == null) {
+        await prefs.setString(storageKey, raw);
+      }
     } catch (_) {
       _usage = _emptyUsage();
     }
+  }
+
+  Future<void> refreshUsageIdentity({bool force = false}) async {
+    final nextNamespace = _resolveUsageNamespace();
+    if (!force && nextNamespace == _usageNamespace) return;
+    await _restoreUsageFromLocal();
+    notifyListeners();
   }
 
   /// Purchase a product
@@ -714,6 +728,30 @@ class SubscriptionService extends ChangeNotifier {
   String _dailyPeriodKey([DateTime? now]) {
     final date = now ?? DateTime.now();
     return '${date.year}-${date.month}-${date.day}';
+  }
+
+  String _resolveUsageNamespace() {
+    try {
+      if (!pb.authStore.isValid) return 'guest_device';
+      final record = pb.authStore.record;
+      if (record == null) return 'guest_device';
+      final rawEmail = record.data['email']?.toString().trim().toLowerCase();
+      if (rawEmail != null && rawEmail.isNotEmpty) {
+        return rawEmail.replaceAll(RegExp(r'[^a-z0-9]'), '_');
+      }
+      final rawId = record.id.trim().toLowerCase();
+      if (rawId.isNotEmpty) {
+        return 'user_$rawId';
+      }
+    } catch (_) {}
+    return 'guest_device';
+  }
+
+  Future<String> _usageStorageKey(SharedPreferences prefs) async {
+    final namespace = _resolveUsageNamespace();
+    _usageNamespace = namespace;
+    await prefs.setString(_usageNamespaceCacheKey, namespace);
+    return '$_usageStorageKeyPrefix$namespace';
   }
 
   UsageCounter _normalizedUsage() {

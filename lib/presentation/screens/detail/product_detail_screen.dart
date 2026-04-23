@@ -20,6 +20,7 @@ import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
 import 'package:compair/services/profile_algorithm_service.dart';

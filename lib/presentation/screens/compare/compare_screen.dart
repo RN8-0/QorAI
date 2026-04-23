@@ -26,6 +26,7 @@ import 'package:compair/domain/entities/comparison_entity.dart';
 import 'package:compair/domain/entities/user_entity.dart';
 import 'package:compair/data/models/other_models.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/presentation/widgets/product_image_box.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/core/spec_word_dictionary.dart' as spec_dict;

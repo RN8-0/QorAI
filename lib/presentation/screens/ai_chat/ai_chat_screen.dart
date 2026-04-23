@@ -1,8 +1,10 @@
 import 'package:compair/core/app_keys.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/data/models/chat_conversation.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/screens/ai_chat/chat_history_screen.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/routing/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -355,9 +357,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   Widget _buildInputArea(double bottomPadding) {
     final hasText = _ctrl.text.trim().isNotEmpty;
     final sub = ref.watch(subscriptionServiceProvider);
-    final isTurkish =
-        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
-    final aiChatCost = sub.creditCostForFeature('ai_chat');
     // When keyboard is open, don't add navBar clearance (avoids overflow)
     final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final extraBottom = (widget.isOverlay || keyboardOpen) ? 0.0 : AppTheme.navBarHeight;
@@ -376,27 +375,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Align(
           alignment: Alignment.centerRight,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: AppTheme.accentCyan.withValues(alpha: 0.22),
-              ),
-            ),
-            child: Text(
-              sub.isPremium
-                  ? (isTurkish ? 'AI Chat · Sınırsız' : 'AI Chat · Unlimited')
-                  : (isTurkish
-                        ? 'AI Chat · $aiChatCost kredi'
-                        : 'AI Chat · $aiChatCost credits'),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.accentCyan,
-              ),
-            ),
+          child: CompBalanceBadge(
+            remaining: sub.remainingDailyCredits,
+            total: AppConstants.freeDailyAiCreditLimit,
+            unlimited: sub.isPremium,
+            color: AppTheme.accentCyan,
           ),
         ),
         const SizedBox(height: 8),

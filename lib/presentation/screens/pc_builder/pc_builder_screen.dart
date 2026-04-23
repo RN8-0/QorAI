@@ -17,6 +17,7 @@ import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
 import 'package:compair/presentation/screens/pc_builder/pc_builder_localization.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/presentation/widgets/login_required_dialog.dart';
 import 'package:compair/routing/router.dart';
@@ -1667,8 +1668,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         child: Text(
                           _pcText(
                             context,
-                            tr: 'Günlük Kredi Yetmiyor',
-                            en: 'Not Enough Daily Credits',
+                            tr: 'Günlük Comp Yetmiyor',
+                            en: 'Not Enough Daily Comp',
                           ),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 20,
@@ -1683,8 +1684,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   Text(
                     _pcText(
                       context,
-                      tr: 'Günlük krediniz bu analiz için yetmiyor. PC Builder AI 2 kredi tüketir. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin. Kredileriniz yarın yenilenecektir.',
-                      en: 'You do not have enough daily credits for this analysis. PC Builder AI costs 2 credits. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks. Your credits will refresh tomorrow.',
+                      tr: 'Günlük Comp bakiyeniz bu analiz için yetmiyor. PC Builder AI 2 Comp tüketir. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin. Comp bakiyeniz yarın yenilenecektir.',
+                      en: 'You do not have enough daily Comp balance for this analysis. PC Builder AI costs 2 Comp. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks. Your Comp balance will refresh tomorrow.',
                     ),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
@@ -2467,29 +2468,21 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              ref.watch(subscriptionServiceProvider).isPremium
-                                  ? '∞'
-                                  : _pcText(
-                                      context,
-                                      en: '${ref.watch(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai')} credits',
-                                      tr: '${ref.watch(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai')} kredi',
-                                    ),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
+                          CompAmountBadge(
+                            amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai'),
+                            unlimited: ref.watch(subscriptionServiceProvider).isPremium,
+                            color: Colors.white,
+                            fontSize: 10,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          ),
+                          const SizedBox(width: 6),
+                          CompBalanceBadge(
+                            remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
+                            total: AppConstants.freeDailyAiCreditLimit,
+                            unlimited: ref.watch(subscriptionServiceProvider).isPremium,
+                            color: Colors.white,
+                            fontSize: 9,
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                           ),
                         ],
                       ),

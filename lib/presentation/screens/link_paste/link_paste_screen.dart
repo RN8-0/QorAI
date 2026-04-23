@@ -25,6 +25,7 @@ import 'package:compair/presentation/screens/link_paste/link_analysis_history_sc
 import 'package:compair/core/constants.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 
 // ── Part files ──
 part 'widgets/quiz_widgets.dart';
@@ -1094,16 +1095,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         : (sub.usedDailyCredits / total).clamp(0.0, 1.0);
     final isLow = remaining <= 2;
     final barColor = isLow ? AppTheme.error : AppTheme.brandBlue;
-    final linkCost = sub.creditCostForFeature('link_analysis');
     final usageLabel = _linkText(
       context,
-      tr: 'Link Analizi · $linkCost kredi',
-      en: 'Link Analysis · $linkCost credits',
+      tr: 'Bağlantı Analizi',
+      en: 'Link Analysis',
     );
     final periodLabel = _linkText(
       context,
-      tr: '$remaining/$total kredi',
-      en: '$remaining/$total credits',
+      tr: '$remaining/$total ${AppConstants.compCurrencyName}',
+      en: '$remaining/$total ${AppConstants.compCurrencyName}',
     );
     final ctaLabel = _linkText(context, tr: 'Premium', en: 'Premium');
 
@@ -3007,29 +3007,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.16),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                      sub.isPremium
-                                          ? '∞'
-                                          : _linkText(
-                                              context,
-                                              tr: '$actionCost kredi',
-                                              en: '$actionCost credits',
-                                            ),
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                                CompAmountBadge(
+                                  amount: actionCost,
+                                  unlimited: sub.isPremium,
+                                  color: Colors.white,
                                 ),
                               ],
                             ),

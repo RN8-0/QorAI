@@ -5864,27 +5864,20 @@ Rules:
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    ref.watch(subscriptionServiceProvider).isPremium
-                        ? '∞'
-                        : ((Localizations.localeOf(context).languageCode == 'tr')
-                              ? '${ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai')} kredi'
-                              : '${ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai')} credits'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.brandBlue,
-                    ),
-                  ),
+                CompAmountBadge(
+                  amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+                  unlimited: ref.watch(subscriptionServiceProvider).isPremium,
+                  color: AppTheme.brandBlue,
+                  fontSize: 10,
+                ),
+                const SizedBox(width: 6),
+                CompBalanceBadge(
+                  remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
+                  total: AppConstants.freeDailyAiCreditLimit,
+                  unlimited: ref.watch(subscriptionServiceProvider).isPremium,
+                  color: AppTheme.brandBlue,
+                  fontSize: 9,
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                 ),
                 const SizedBox(width: 8),
                 Icon(

@@ -6,9 +6,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:compair/core/errors.dart';
+import 'package:compair/core/constants.dart';
 import 'package:camera/camera.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -588,7 +590,6 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   Widget _buildFollowUpInput() {
     final sub = ref.watch(subscriptionServiceProvider);
-    final aiChatCost = sub.creditCostForFeature('ai_chat');
     return SafeArea(
       top: false,
       child: Container(
@@ -603,13 +604,11 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
           children: [
             Align(
               alignment: Alignment.centerRight,
-              child: _buildCreditBadge(
-                sub.isPremium
-                    ? _uiText(tr: 'AI Soru · Sınırsız', en: 'AI Question · Unlimited')
-                    : _uiText(
-                        tr: 'AI Soru · $aiChatCost kredi',
-                        en: 'AI Question · $aiChatCost credits',
-                      ),
+              child: CompBalanceBadge(
+                remaining: sub.remainingDailyCredits,
+                total: AppConstants.freeDailyAiCreditLimit,
+                unlimited: sub.isPremium,
+                color: AppTheme.neonCyan,
               ),
             ),
             const SizedBox(height: 8),
@@ -680,26 +679,6 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     );
   }
 
-  Widget _buildCreditBadge(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppTheme.neonCyan.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: AppTheme.neonCyan.withValues(alpha: 0.28),
-        ),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppTheme.neonCyan,
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Scan line painter ──────────────────────────────────────────────────────

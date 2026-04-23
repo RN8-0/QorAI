@@ -12,10 +12,12 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:compair/core/constants.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/core/product_name_localizer.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/presentation/widgets/product_image_box.dart';
 import 'package:compair/presentation/widgets/shimmer_skeleton.dart';
 import 'package:compair/presentation/widgets/subscription_logo_widget.dart';
@@ -466,6 +468,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       icon: Icons.document_scanner_rounded,
                       tooltip: 'Scan product',
                       onTap: () => context.push(AppRoutes.visualScanner),
+                      badge: CompBalanceBadge(
+                        remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
+                        total: AppConstants.freeDailyAiCreditLimit,
+                        unlimited: ref.watch(subscriptionServiceProvider).isPremium,
+                        color: AppTheme.brandBlue,
+                        fontSize: 8,
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     _NotificationButton(),
@@ -2914,11 +2924,13 @@ class _AppBarButton extends StatelessWidget {
   final VoidCallback onTap;
   final bool isPremium;
   final String? tooltip;
+  final Widget? badge;
   const _AppBarButton({
     required this.icon,
     required this.onTap,
     this.isPremium = false,
     this.tooltip,
+    this.badge,
   });
 
   @override
@@ -2928,36 +2940,43 @@ class _AppBarButton extends StatelessWidget {
         HapticFeedback.lightImpact();
         onTap();
       },
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          gradient: isPremium ? AppTheme.premiumGradient : null,
-          color: isPremium
-              ? null
-              : context.textTertiaryColor.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isPremium
-                ? AppTheme.premiumChampagne.withValues(alpha: 0.45)
-                : context.dividerColor,
-            width: 0.5,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              gradient: isPremium ? AppTheme.premiumGradient : null,
+              color: isPremium
+                  ? null
+                  : context.textTertiaryColor.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isPremium
+                    ? AppTheme.premiumChampagne.withValues(alpha: 0.45)
+                    : context.dividerColor,
+                width: 0.5,
+              ),
+              boxShadow: isPremium
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.premiumGold.withValues(alpha: 0.30),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: isPremium ? Colors.white : context.textTertiaryColor,
+            ),
           ),
-          boxShadow: isPremium
-              ? [
-                  BoxShadow(
-                    color: AppTheme.premiumGold.withValues(alpha: 0.30),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: isPremium ? Colors.white : context.textTertiaryColor,
-        ),
+          if (badge != null)
+            Positioned(right: -8, bottom: -10, child: badge!),
+        ],
       ),
     );
     if (tooltip == null || tooltip!.isEmpty) return button;

@@ -10,8 +10,8 @@ import 'package:compair/presentation/widgets/paywall_sheet.dart';
 
 const Map<String, Map<String, String>> _limitDialogTranslations = {
   'dailyLimitReached': {
-    'en': 'Not Enough Daily Credits',
-    'tr': 'Günlük Kredi Yetmiyor',
+    'en': 'Not Enough Daily Comp',
+    'tr': 'Günlük Comp Yetmiyor',
     'de': 'Tageslimit erreicht',
     'es': 'Limite diario alcanzado',
     'fr': 'Limite quotidienne atteinte',
@@ -25,9 +25,9 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
   },
   'limitMessage': {
     'en':
-      'You do not have enough free credits for this action today. Upgrade to Premium for unlimited access to all AI features.',
+      'You do not have enough free Comp for this action today. Upgrade to Premium for unlimited access to all AI features.',
     'tr':
-      'Bu işlem için bugün yeterli ücretsiz krediniz yok. Tüm AI özelliklerine sınırsız erişim için Premium\'a yükselin.',
+      'Bu işlem için bugün yeterli ücretsiz Comp bakiyeniz yok. Tüm AI özelliklerine sınırsız erişim için Premium\'a yükselin.',
     'de':
         'Sie haben heute alle kostenlosen Credits verbraucht. Upgraden Sie auf Premium fur unbegrenzten Zugang.',
     'es':
@@ -49,8 +49,8 @@ const Map<String, Map<String, String>> _limitDialogTranslations = {
         'لقد استخدمت جميع رصيدك المجاني لليوم. قم بالترقية إلى بريميوم للوصول غير المحدود.',
   },
   'resetTomorrow': {
-    'en': 'Your free credits will refresh tomorrow.',
-    'tr': 'Ücretsiz kredileriniz yarın yenilenecektir.',
+    'en': 'Your free Comp balance will refresh tomorrow.',
+    'tr': 'Ücretsiz Comp bakiyeniz yarın yenilenecektir.',
   },
   'goPremium': {
     'en': 'Go Premium',

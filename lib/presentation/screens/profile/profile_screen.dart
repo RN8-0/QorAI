@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/routing/router.dart';
 import 'package:compair/core/errors.dart';
@@ -1432,7 +1433,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                isTr ? 'Günlük AI Kredileri' : 'Daily AI Credits',
+                isTr ? 'Günlük AI Comp' : 'Daily AI Comp',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1487,11 +1488,11 @@ class _FreemiumUsageCard extends ConsumerWidget {
                       child: Text(
                         sub.isPremium
                             ? (isTr
-                                  ? 'Sınırsız kredi aktif'
-                                  : 'Unlimited credits active')
+                              ? 'Sınırsız Comp aktif'
+                              : 'Unlimited Comp active')
                             : (isTr
-                                  ? '$remainingCredits/$totalCredits kredi kaldı'
-                                  : '$remainingCredits/$totalCredits credits left'),
+                              ? '$remainingCredits/$totalCredits Comp kaldı'
+                              : '$remainingCredits/$totalCredits Comp left'),
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -1499,27 +1500,11 @@ class _FreemiumUsageCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        sub.isPremium
-                            ? '∞'
-                            : (isTr
-                                  ? '$usedCredits kullanıldı'
-                                  : '$usedCredits used'),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.premiumBase,
-                        ),
-                      ),
+                    CompBalanceBadge(
+                      remaining: remainingCredits,
+                      total: totalCredits,
+                      unlimited: sub.isPremium,
+                      color: AppTheme.premiumBase,
                     ),
                   ],
                 ),
@@ -1527,11 +1512,11 @@ class _FreemiumUsageCard extends ConsumerWidget {
                 Text(
                   sub.isPremium
                       ? (isTr
-                            ? 'Premium ile tüm AI akışlarında kredi sınırı olmadan devam edersiniz.'
-                            : 'Premium removes credit limits across all AI flows.')
+                        ? 'Premium ile tüm AI akışlarında Comp sınırı olmadan devam edersiniz.'
+                        : 'Premium removes Comp limits across all AI flows.')
                       : (isTr
-                            ? 'Krediler günlük yenilenir. Ağır işlemler daha fazla kredi tüketir.'
-                            : 'Credits refresh daily. Heavier actions consume more credits.'),
+                        ? 'Comp bakiyesi günlük yenilenir. Ağır işlemler daha fazla Comp tüketir.'
+                        : 'Comp balance refreshes daily. Heavier actions consume more Comp.'),
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: context.textSecondary,
@@ -1708,22 +1693,10 @@ class _UsageRow extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              isPremium
-                  ? (isTr ? 'Sınırsız' : 'Unlimited')
-                  : (isTr ? '$creditCost kredi' : '$creditCost credits'),
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
+          CompAmountBadge(
+            amount: creditCost,
+            unlimited: isPremium,
+            color: color,
           ),
         ],
       ),

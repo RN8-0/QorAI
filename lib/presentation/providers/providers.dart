@@ -133,7 +133,11 @@ final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
       next.whenData((uid) {
         if (uid != null && !service.isInitialized) {
           unawaited(service.initialize());
+          unawaited(service.refreshUsageIdentity(force: true));
+        } else if (uid != null) {
+          unawaited(service.refreshUsageIdentity(force: true));
         } else if (uid == null) {
+          unawaited(service.refreshUsageIdentity(force: true));
           unawaited(service.syncProfileEntitlement(isPremium: false));
         }
       });
@@ -149,6 +153,7 @@ final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
 
     ref.listen<AsyncValue<UserEntity?>>(userProfileProvider, (_, next) {
       next.whenData((user) {
+        unawaited(service.refreshUsageIdentity(force: true));
         final premiumDetails = user?.userSubscriptionDetails['premium'];
         unawaited(
           service.syncProfileEntitlement(

@@ -19,6 +19,7 @@ import 'package:compair/presentation/widgets/glass_container.dart';
 import 'package:compair/presentation/widgets/gradient_button.dart';
 import 'package:compair/presentation/widgets/paywall_sheet.dart';
 import 'package:compair/presentation/widgets/animated_gradient_input_shell.dart';
+import 'package:compair/presentation/widgets/comp_badges.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:compair/presentation/screens/subscriptions/subscription_history_screen.dart';
 import 'package:compair/services/gemini_service.dart';
@@ -1026,9 +1027,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     final isLow = remaining <= 2;
     final barColor = isLow ? AppTheme.error : _kAccent;
     final barColorAi = isLow ? AppTheme.error : _kPrimary;
-    final subscriptionCost = sub.creditCostForFeature('subscription_analysis');
-    final aiChatCost = sub.creditCostForFeature('ai_chat');
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1044,24 +1042,20 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         children: [
           _UsageMeter(
             icon: Icons.analytics_outlined,
-            label: isTr
-                ? 'Abonelik Analizi · $subscriptionCost kredi'
-                : 'Subscription Analysis · $subscriptionCost credits',
+            label: isTr ? 'Abonelik Analizi' : 'Subscription Analysis',
             remaining: remaining,
             total: total,
-            period: isTr ? ' kredi' : ' credits',
+            period: ' ${AppConstants.compCurrencyName}',
             progress: progress,
             color: barColor,
           ),
           const SizedBox(height: 8),
           _UsageMeter(
             icon: Icons.auto_awesome,
-            label: isTr
-                ? 'AI Sohbet · $aiChatCost kredi'
-                : 'AI Chat · $aiChatCost credits',
+            label: isTr ? 'AI Sohbet' : 'AI Chat',
             remaining: remaining,
             total: total,
-            period: isTr ? ' kredi' : ' credits',
+            period: ' ${AppConstants.compCurrencyName}',
             progress: progress,
             color: barColorAi,
           ),
@@ -1075,8 +1069,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 const SizedBox(width: 4),
                 Text(
                   isTr
-                      ? 'Premium ile sınırsız kredi aç'
-                      : 'Unlock unlimited credits with Premium',
+                      ? 'Premium ile sınırsız Comp aç'
+                      : 'Unlock unlimited Comp with Premium',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -1096,7 +1090,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   Widget _buildInputCard(bool isWorking) {
     final sub = ref.watch(subscriptionServiceProvider);
     final analysisCreditCost = sub.creditCostForFeature('subscription_analysis');
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1319,27 +1312,10 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          sub.isPremium
-                              ? '∞'
-                              : (isTr
-                                    ? '$analysisCreditCost kredi'
-                                    : '$analysisCreditCost credits'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            color: Colors.white,
-                          ),
-                        ),
+                      CompAmountBadge(
+                        amount: analysisCreditCost,
+                        unlimited: sub.isPremium,
+                        color: Colors.white,
                       ),
                     ],
                   ),

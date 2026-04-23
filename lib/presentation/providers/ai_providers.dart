@@ -94,8 +94,8 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         role: PersistedMsgRole.system,
         text: isTr
-            ? 'Yeterli günlük krediniz yok. AI Chat $aiChatCost kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
-            : 'Not enough daily credits. AI Chat costs $aiChatCost credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
+          ? 'Yeterli günlük Comp bakiyeniz yok. AI Chat $aiChatCost Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
+          : 'Not enough daily Comp balance. AI Chat costs $aiChatCost Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
         status: PersistedMsgStatus.error,
       ));
       return;

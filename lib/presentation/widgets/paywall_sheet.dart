@@ -523,9 +523,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'sv' =>
         'Obegransade jamforelser, AI-chatt, lankanalys och en renare premiumupplevelse.',
       'tr' =>
-        'Gunluk 10 kredi yerine Premium\'da sinirsiz kredi, tum AI akislarinda daha hizli ve limitsiz deneyim.',
+        'Free planda gunluk 10 Comp, Premium\'da sinirsiz Comp ile tum AI akislarinda daha hizli ve limitsiz deneyim.',
       _ =>
-        'Unlimited credits across every AI flow, plus faster analysis and a cleaner premium experience.',
+        'Free includes 10 Comp per day, while Premium unlocks unlimited Comp across every AI flow.',
     };
   }
 
@@ -558,15 +558,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   }
 
   String _dailyCreditPoolLabel(int count) {
-    return _txt(tr: '$count kredi/gün', en: '$count credits/day');
-  }
-
-  String _creditCostLabel(int count) {
-    return _txt(tr: '$count kredi/işlem', en: '$count credits/action');
+    return _txt(
+      tr: '$count ${AppConstants.compCurrencyName}/gün',
+      en: '$count ${AppConstants.compCurrencyName}/day',
+    );
   }
 
   String _unlimitedCreditsLabel() {
-    return _txt(tr: 'Sınırsız kredi', en: 'Unlimited credits');
+    return _txt(
+      tr: 'Sınırsız ${AppConstants.compCurrencyName}',
+      en: 'Unlimited ${AppConstants.compCurrencyName}',
+    );
   }
 
   void _showPurchaseSuccessScreen() {
@@ -1502,63 +1504,63 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         Icons.category_rounded,
       ),
       _TableRow(
-        _txt(tr: 'Günlük AI Kredisi', en: 'Daily AI Credits'),
+        _txt(tr: 'Günlük AI Comp', en: 'Daily AI Comp'),
         _dailyCreditPoolLabel(AppConstants.freeDailyAiCreditLimit),
         _unlimitedCreditsLabel(),
         Icons.bolt_rounded,
       ),
       _TableRow(
         l?.aiChatMessages ?? 'AI Chat',
-        _creditCostLabel(AppConstants.aiChatCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.smart_toy_rounded,
       ),
       _TableRow(
         'Compare AI',
-        _creditCostLabel(AppConstants.compareAiCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.compare_arrows_rounded,
       ),
       _TableRow(
         'Detail AI',
-        _creditCostLabel(AppConstants.detailAiCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.auto_awesome_rounded,
       ),
       _TableRow(
         _txt(tr: 'AI Ürün Özeti & Eşleşme', en: 'AI Summary & Match'),
-        _creditCostLabel(AppConstants.detailMatchAiCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.psychology_rounded,
       ),
       _TableRow(
         'PC Builder AI',
-        _creditCostLabel(AppConstants.pcBuilderAiCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.memory_rounded,
       ),
       _TableRow(
         l?.linkAnalysis ?? 'Link Analysis',
-        _creditCostLabel(AppConstants.linkAnalysisCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.link_rounded,
       ),
       _TableRow(
         _txt(tr: 'Link Karşılaştırma', en: 'Link Compare'),
-        _creditCostLabel(AppConstants.linkCompareCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.compare_rounded,
       ),
       _TableRow(
         _txt(tr: 'Abonelik Analizi', en: 'Sub Analysis'),
-        _creditCostLabel(AppConstants.subscriptionAnalysisCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.subscriptions_rounded,
       ),
       _TableRow(
         _txt(tr: 'Ürün Tarama', en: 'Product Scan'),
-        _creditCostLabel(AppConstants.productScanCreditCost),
-        _unlimitedCreditsLabel(),
+        true,
+        true,
         Icons.qr_code_scanner_rounded,
       ),
       // ── Premium-only features ──

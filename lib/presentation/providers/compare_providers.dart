@@ -207,8 +207,8 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
       state = state.copyWith(
         error:
             _appLang == 'tr'
-                ? 'Yeterli günlük krediniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
-                : 'Not enough daily credits. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
+                ? 'Yeterli günlük Comp bakiyeniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
+                : 'Not enough daily Comp balance. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
         isLoading: false,
       );
       return;
@@ -322,8 +322,8 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         phase: LinkFlowPhase.idle,
         error:
             _appLang == 'tr'
-                ? 'Yeterli günlük krediniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
-                : 'Not enough daily credits. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
+                ? 'Yeterli günlük Comp bakiyeniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
+                : 'Not enough daily Comp balance. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
       );
       return;
     }
@@ -1449,8 +1449,8 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         phase: SubFlowPhase.idle,
         error:
             _appLang == 'tr'
-                ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
-                : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
+                ? 'Yeterli günlük Comp bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
+                : 'Not enough daily Comp balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
       );
       return;
     }
@@ -1549,9 +1549,9 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       if (subQuota.isFailure) {
         state = state.copyWith(
           phase: SubFlowPhase.idle,
-          error: _appLang == 'tr'
-              ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
-              : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
+            error: _appLang == 'tr'
+              ? 'Yeterli günlük Comp bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
+              : 'Not enough daily Comp balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
         );
         return;
       }
@@ -1578,8 +1578,8 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
         error: _appLang == 'tr'
-            ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
-            : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
+          ? 'Yeterli günlük Comp bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
+          : 'Not enough daily Comp balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
       );
       return;
     }
@@ -1614,8 +1614,8 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
         error: _appLang == 'tr'
-            ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
-            : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
+          ? 'Yeterli günlük Comp bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Comp tüketir. Comp bakiyeniz yarın yenilenir veya Premium ile sınırsız Comp açabilirsiniz.'
+          : 'Not enough daily Comp balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Comp. Your Comp balance refreshes tomorrow or upgrade to Premium for unlimited Comp.',
       );
       return;
     }
