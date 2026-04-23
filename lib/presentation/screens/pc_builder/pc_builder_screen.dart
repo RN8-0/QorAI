@@ -1774,7 +1774,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           : null;
       if (gpuConn != null) buf.writeln('GPU connector: $gpuConn');
       buf.writeln('Build score: ${_totalScore.round()}/100');
-      buf.writeln('Compatibility issues: ${_compatIssues.isEmpty ? "None" : _compatIssues.map((i) => i.message).join(", ")}');
+      buf.writeln('Compatibility issues: ${_compatIssues.isEmpty ? "None" : _compatIssues.map((i) => i.title).join(", ")}');
       buf.writeln();
       if (_localDiagnosis != null) {
         buf.writeln('=== LOCAL DIAGNOSIS ===');
