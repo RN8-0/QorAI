@@ -5864,6 +5864,29 @@ Rules:
                     ],
                   ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.brandBlue.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    ref.watch(subscriptionServiceProvider).isPremium
+                        ? '∞'
+                        : ((Localizations.localeOf(context).languageCode == 'tr')
+                              ? '${ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai')} kredi'
+                              : '${ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai')} credits'),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.brandBlue,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Icon(
                   _matchScoreExpanded
                       ? Icons.expand_less_rounded

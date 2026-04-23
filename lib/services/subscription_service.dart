@@ -781,61 +781,90 @@ class SubscriptionService extends ChangeNotifier {
     return true;
   }
 
+  int _usedCreditsFor(UsageCounter usage) {
+    return usage.aiQuestions * AppConstants.aiChatCreditCost +
+        usage.compareAi * AppConstants.compareAiCreditCost +
+        usage.detailAi * AppConstants.detailAiCreditCost +
+        usage.detailMatchAi * AppConstants.detailMatchAiCreditCost +
+        usage.pcBuilderAi * AppConstants.pcBuilderAiCreditCost +
+        usage.linkPastes * AppConstants.linkAnalysisCreditCost +
+        usage.linkCompare * AppConstants.linkCompareCreditCost +
+        usage.subscriptionAnalyses *
+            AppConstants.subscriptionAnalysisCreditCost +
+        usage.productScan * AppConstants.productScanCreditCost;
+  }
+
+  bool _canSpendCredits(String featureName) {
+    if (isPremium) return true;
+    return remainingDailyCredits >= AppConstants.creditCostForFeature(featureName);
+  }
+
+  Failure<void> _creditLimitFailure(String featureName, UsageCounter usage) {
+    return Failure(
+      UsageLimitException(
+        featureName: featureName,
+        currentUsage: _usedCreditsFor(usage),
+        limit: AppConstants.freeDailyAiCreditLimit,
+        message: 'Insufficient daily credits',
+      ),
+    );
+  }
+
+  int get usedDailyCredits => isPremium ? 0 : _usedCreditsFor(_normalizedUsage());
+
+  int get remainingDailyCredits => isPremium
+      ? -1
+      : (AppConstants.freeDailyAiCreditLimit - usedDailyCredits).clamp(
+          0,
+          AppConstants.freeDailyAiCreditLimit,
+        );
+
+  int creditCostForFeature(String featureName) =>
+      AppConstants.creditCostForFeature(featureName);
+
   /// Can an AI question be asked?
   bool get canAskAI {
-    if (isPremium) return true;
-    return _normalizedUsage().aiQuestions < AppConstants.freeAiQuestionLimit;
+    return _canSpendCredits('ai_chat');
   }
 
   /// Can a premium AI feature be used? (compare screen)
   bool get canUseCompareAi {
-    if (isPremium) return true;
-    return _normalizedUsage().compareAi < AppConstants.freeCompareAiLimit;
+    return _canSpendCredits('compare_ai');
   }
 
   /// Can a premium AI feature be used? (product detail screen)
   bool get canUseDetailAi {
-    if (isPremium) return true;
-    final u = _normalizedUsage();
-    return (u.detailAi + u.detailMatchAi) < AppConstants.freeDetailAiSharedLimit;
+    return _canSpendCredits('detail_ai');
   }
 
   /// Can PC Builder AI analysis be used?
   bool get canUsePcBuilderAi {
-    if (isPremium) return true;
-    return _normalizedUsage().pcBuilderAi < AppConstants.freePcBuilderAiLimit;
+    return _canSpendCredits('pc_builder_ai');
   }
 
   /// Can a link be pasted? (single analysis)
   bool get canPasteLink {
-    if (isPremium) return true;
-    return _normalizedUsage().linkPastes < AppConstants.freeLinkPasteLimit;
+    return _canSpendCredits('link_analysis');
   }
 
   /// Can link compare tab be used?
   bool get canUseLinkCompare {
-    if (isPremium) return true;
-    return _normalizedUsage().linkCompare < AppConstants.freeLinkCompareLimit;
+    return _canSpendCredits('link_compare');
   }
 
   /// Can a subscription analysis be performed?
   bool get canAnalyzeSubscription {
-    if (isPremium) return true;
-    return _normalizedUsage().subscriptionAnalyses <
-        AppConstants.freeSubscriptionAnalysisLimit;
+    return _canSpendCredits('subscription_analysis');
   }
 
   /// Can a product scan be performed?
   bool get canScanProduct {
-    if (isPremium) return true;
-    return _normalizedUsage().productScan < AppConstants.freeProductScanLimit;
+    return _canSpendCredits('product_scan');
   }
 
   /// Can AI-generated match score + short summary be used on product detail?
   bool get canUseDetailMatchAi {
-    if (isPremium) return true;
-    final u = _normalizedUsage();
-    return (u.detailAi + u.detailMatchAi) < AppConstants.freeDetailAiSharedLimit;
+    return _canSpendCredits('detail_match');
   }
 
   /// Record comparison usage
@@ -847,13 +876,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordAIQuestion() {
     final currentUsage = _normalizedUsage();
     if (!canAskAI) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'ai_question',
-          currentUsage: currentUsage.aiQuestions,
-          limit: AppConstants.freeAiQuestionLimit,
-        ),
-      );
+      return _creditLimitFailure('ai_question', currentUsage);
     }
     _usage = currentUsage.copyWith(aiQuestions: currentUsage.aiQuestions + 1);
     unawaited(_saveUsageToLocal());
@@ -865,13 +888,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordCompareAi() {
     final currentUsage = _normalizedUsage();
     if (!canUseCompareAi) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'compare_ai',
-          currentUsage: currentUsage.compareAi,
-          limit: AppConstants.freeCompareAiLimit,
-        ),
-      );
+      return _creditLimitFailure('compare_ai', currentUsage);
     }
     _usage = currentUsage.copyWith(compareAi: currentUsage.compareAi + 1);
     unawaited(_saveUsageToLocal());
@@ -883,13 +900,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordDetailAi() {
     final currentUsage = _normalizedUsage();
     if (!canUseDetailAi) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'detail_ai',
-          currentUsage: currentUsage.detailAi + currentUsage.detailMatchAi,
-          limit: AppConstants.freeDetailAiSharedLimit,
-        ),
-      );
+      return _creditLimitFailure('detail_ai', currentUsage);
     }
     _usage = currentUsage.copyWith(detailAi: currentUsage.detailAi + 1);
     unawaited(_saveUsageToLocal());
@@ -901,13 +912,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordDetailMatchAi() {
     final currentUsage = _normalizedUsage();
     if (!canUseDetailMatchAi) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'detail_match_ai',
-          currentUsage: currentUsage.detailAi + currentUsage.detailMatchAi,
-          limit: AppConstants.freeDetailAiSharedLimit,
-        ),
-      );
+      return _creditLimitFailure('detail_match_ai', currentUsage);
     }
     _usage = currentUsage.copyWith(
       detailMatchAi: currentUsage.detailMatchAi + 1,
@@ -921,13 +926,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordPcBuilderAi() {
     final currentUsage = _normalizedUsage();
     if (!canUsePcBuilderAi) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'pc_builder_ai',
-          currentUsage: currentUsage.pcBuilderAi,
-          limit: AppConstants.freePcBuilderAiLimit,
-        ),
-      );
+      return _creditLimitFailure('pc_builder_ai', currentUsage);
     }
     _usage = currentUsage.copyWith(pcBuilderAi: currentUsage.pcBuilderAi + 1);
     unawaited(_saveUsageToLocal());
@@ -939,13 +938,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordLinkPaste() {
     final currentUsage = _normalizedUsage();
     if (!canPasteLink) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'link_paste',
-          currentUsage: currentUsage.linkPastes,
-          limit: AppConstants.freeLinkPasteLimit,
-        ),
-      );
+      return _creditLimitFailure('link_paste', currentUsage);
     }
     _usage = currentUsage.copyWith(linkPastes: currentUsage.linkPastes + 1);
     unawaited(_saveUsageToLocal());
@@ -957,13 +950,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordSubscriptionAnalysis() {
     final currentUsage = _normalizedUsage();
     if (!canAnalyzeSubscription) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'subscription_analysis',
-          currentUsage: currentUsage.subscriptionAnalyses,
-          limit: AppConstants.freeSubscriptionAnalysisLimit,
-        ),
-      );
+      return _creditLimitFailure('subscription_analysis', currentUsage);
     }
     _usage = currentUsage.copyWith(
       subscriptionAnalyses: currentUsage.subscriptionAnalyses + 1,
@@ -977,13 +964,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordLinkCompare() {
     final currentUsage = _normalizedUsage();
     if (!canUseLinkCompare) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'link_compare',
-          currentUsage: currentUsage.linkCompare,
-          limit: AppConstants.freeLinkCompareLimit,
-        ),
-      );
+      return _creditLimitFailure('link_compare', currentUsage);
     }
     _usage = currentUsage.copyWith(linkCompare: currentUsage.linkCompare + 1);
     unawaited(_saveUsageToLocal());
@@ -995,13 +976,7 @@ class SubscriptionService extends ChangeNotifier {
   Result<void> recordProductScan() {
     final currentUsage = _normalizedUsage();
     if (!canScanProduct) {
-      return Failure(
-        UsageLimitException(
-          featureName: 'product_scan',
-          currentUsage: currentUsage.productScan,
-          limit: AppConstants.freeProductScanLimit,
-        ),
-      );
+      return _creditLimitFailure('product_scan', currentUsage);
     }
     _usage = currentUsage.copyWith(productScan: currentUsage.productScan + 1);
     unawaited(_saveUsageToLocal());
@@ -1014,37 +989,36 @@ class SubscriptionService extends ChangeNotifier {
 
   int get remainingAIQuestions => isPremium
       ? -1
-      : AppConstants.freeAiQuestionLimit - _normalizedUsage().aiQuestions;
+      : remainingDailyCredits;
 
   int get remainingCompareAi => isPremium
       ? -1
-      : AppConstants.freeCompareAiLimit - _normalizedUsage().compareAi;
+      : remainingDailyCredits;
 
   int get remainingDetailAi => isPremium
       ? -1
-      : (AppConstants.freeDetailAiSharedLimit - (_normalizedUsage().detailAi + _normalizedUsage().detailMatchAi)).clamp(0, AppConstants.freeDetailAiSharedLimit);
+      : remainingDailyCredits;
 
   int get remainingPcBuilderAi => isPremium
       ? -1
-      : AppConstants.freePcBuilderAiLimit - _normalizedUsage().pcBuilderAi;
+      : remainingDailyCredits;
 
   int get remainingLinkPastes => isPremium
       ? -1
-      : AppConstants.freeLinkPasteLimit - _normalizedUsage().linkPastes;
+      : remainingDailyCredits;
 
   int get remainingLinkCompare => isPremium
       ? -1
-      : AppConstants.freeLinkCompareLimit - _normalizedUsage().linkCompare;
+      : remainingDailyCredits;
 
   int get remainingSubscriptionAnalyses => isPremium
       ? -1
-      : AppConstants.freeSubscriptionAnalysisLimit -
-            _normalizedUsage().subscriptionAnalyses;
+      : remainingDailyCredits;
 
   int get remainingProductScan => isPremium
       ? -1
-      : AppConstants.freeProductScanLimit - _normalizedUsage().productScan;
+      : remainingDailyCredits;
   int get detailMatchAiRemaining => isPremium
       ? -1
-      : (AppConstants.freeDetailAiSharedLimit - (_normalizedUsage().detailAi + _normalizedUsage().detailMatchAi)).clamp(0, AppConstants.freeDetailAiSharedLimit);
+      : remainingDailyCredits;
 }

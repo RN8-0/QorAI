@@ -327,6 +327,29 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                     ],
                   ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentTeal.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    ref.watch(subscriptionServiceProvider).isPremium
+                        ? '∞'
+                        : (Localizations.localeOf(context).languageCode == 'tr'
+                              ? '${ref.watch(subscriptionServiceProvider).creditCostForFeature('detail_ai')} kredi'
+                              : '${ref.watch(subscriptionServiceProvider).creditCostForFeature('detail_ai')} credits'),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.accentTeal,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 if (isLoading)
                   const SizedBox(
                     width: 20,

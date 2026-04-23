@@ -354,6 +354,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   Widget _buildInputArea(double bottomPadding) {
     final hasText = _ctrl.text.trim().isNotEmpty;
+    final sub = ref.watch(subscriptionServiceProvider);
+    final isTurkish =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    final aiChatCost = sub.creditCostForFeature('ai_chat');
     // When keyboard is open, don't add navBar clearance (avoids overflow)
     final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final extraBottom = (widget.isOverlay || keyboardOpen) ? 0.0 : AppTheme.navBarHeight;
@@ -370,6 +374,32 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
               blurRadius: 8, offset: const Offset(0, -2)),
         ]),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: AppTheme.accentCyan.withValues(alpha: 0.22),
+              ),
+            ),
+            child: Text(
+              sub.isPremium
+                  ? (isTurkish ? 'AI Chat · Sınırsız' : 'AI Chat · Unlimited')
+                  : (isTurkish
+                        ? 'AI Chat · $aiChatCost kredi'
+                        : 'AI Chat · $aiChatCost credits'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.accentCyan,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           // Pill-shaped text field
           Expanded(child: Container(

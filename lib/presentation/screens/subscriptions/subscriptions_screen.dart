@@ -1018,15 +1018,16 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     final sub = ref.watch(subscriptionServiceProvider);
     if (sub.isPremium) return const SizedBox.shrink();
 
-    final remaining = sub.remainingSubscriptionAnalyses;
-    final total = AppConstants.freeSubscriptionAnalysisLimit;
-    final remainingAi = sub.remainingAIQuestions;
-    final totalAi = AppConstants.freeAiQuestionLimit;
-    final progress = (total - remaining) / total;
-    final progressAi = (totalAi - remainingAi) / totalAi;
-    final isLow = remaining <= 1;
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final remaining = sub.remainingDailyCredits;
+    final total = AppConstants.freeDailyAiCreditLimit;
+    final used = sub.usedDailyCredits;
+    final progress = total == 0 ? 0.0 : (used / total).clamp(0.0, 1.0);
+    final isLow = remaining <= 2;
     final barColor = isLow ? AppTheme.error : _kAccent;
-    final barColorAi = remainingAi <= 3 ? AppTheme.error : _kPrimary;
+    final barColorAi = isLow ? AppTheme.error : _kPrimary;
+    final subscriptionCost = sub.creditCostForFeature('subscription_analysis');
+    final aiChatCost = sub.creditCostForFeature('ai_chat');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1041,29 +1042,30 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       ),
       child: Column(
         children: [
-          // Subscription analysis limit
           _UsageMeter(
             icon: Icons.analytics_outlined,
-            label: 'Abonelik Analizi',
+            label: isTr
+                ? 'Abonelik Analizi · $subscriptionCost kredi'
+                : 'Subscription Analysis · $subscriptionCost credits',
             remaining: remaining,
             total: total,
-            period: '/ay',
+            period: isTr ? ' kredi' : ' credits',
             progress: progress,
             color: barColor,
           ),
           const SizedBox(height: 8),
-          // AI question limit
           _UsageMeter(
             icon: Icons.auto_awesome,
-            label: 'AI Sorusu',
-            remaining: remainingAi,
-            total: totalAi,
-            period: '/gün',
-            progress: progressAi,
+            label: isTr
+                ? 'AI Sohbet · $aiChatCost kredi'
+                : 'AI Chat · $aiChatCost credits',
+            remaining: remaining,
+            total: total,
+            period: isTr ? ' kredi' : ' credits',
+            progress: progress,
             color: barColorAi,
           ),
           const SizedBox(height: 8),
-          // Premium upsell
           GestureDetector(
             onTap: () => showPaywallSheet(context),
             child: Row(
@@ -1072,7 +1074,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 const Icon(Icons.auto_awesome, size: 13, color: _kAccent),
                 const SizedBox(width: 4),
                 Text(
-                  'Premium ile sınırsız kullan',
+                  isTr
+                      ? 'Premium ile sınırsız kredi aç'
+                      : 'Unlock unlimited credits with Premium',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -1090,6 +1094,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   // ── Input Card ─────────────────────────────────────────────────────────────
 
   Widget _buildInputCard(bool isWorking) {
+    final sub = ref.watch(subscriptionServiceProvider);
+    final analysisCreditCost = sub.creditCostForFeature('subscription_analysis');
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1309,6 +1316,29 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
                           color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          sub.isPremium
+                              ? '∞'
+                              : (isTr
+                                    ? '$analysisCreditCost kredi'
+                                    : '$analysisCreditCost credits'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],

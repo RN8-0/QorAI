@@ -87,10 +87,15 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final sub = _ref.read(subscriptionServiceProvider);
     final quota = sub.recordAIQuestion();
     if (quota.isFailure) {
+      final locale = _ref.read(localeProvider);
+      final isTr = locale?.languageCode.toLowerCase() == 'tr';
+      final aiChatCost = sub.creditCostForFeature('ai_chat');
       _addMsg(PersistedChatMsg(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         role: PersistedMsgRole.system,
-        text: 'Daily AI question limit reached. Upgrade to Premium for unlimited!',
+        text: isTr
+            ? 'Yeterli günlük krediniz yok. AI Chat $aiChatCost kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
+            : 'Not enough daily credits. AI Chat costs $aiChatCost credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
         status: PersistedMsgStatus.error,
       ));
       return;
@@ -326,4 +331,4 @@ final chatHistoryProvider =
         .streamChatConversations(userId);
   },
 );
-
+

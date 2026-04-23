@@ -5,9 +5,11 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:compair/core/errors.dart';
 import 'package:camera/camera.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/presentation/providers/providers.dart';
+import 'package:compair/presentation/widgets/limit_reached_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -98,6 +100,13 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
   Future<void> _captureAndScan() async {
     if (_camCtrl == null || _isScanning) return;
 
+    final sub = ref.read(subscriptionServiceProvider);
+    final quota = sub.recordProductScan();
+    if (quota.isFailure) {
+      showLimitReachedDialog(context, featureName: 'product-scan');
+      return;
+    }
+
     HapticFeedback.heavyImpact();
     setState(() {
       _isScanning = true;
@@ -152,6 +161,13 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   Future<void> _askFollowUp(String question) async {
     if (question.trim().isEmpty || _capturedImagePath == null) return;
+
+    final sub = ref.read(subscriptionServiceProvider);
+    final quota = sub.recordAIQuestion();
+    if (quota.isFailure) {
+      showLimitReachedDialog(context, featureName: 'ai-chat');
+      return;
+    }
 
     HapticFeedback.lightImpact();
     _questionCtrl.clear();
@@ -571,6 +587,8 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
   }
 
   Widget _buildFollowUpInput() {
+    final sub = ref.watch(subscriptionServiceProvider);
+    final aiChatCost = sub.creditCostForFeature('ai_chat');
     return SafeArea(
       top: false,
       child: Container(
@@ -580,66 +598,104 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
             top: BorderSide(color: context.dividerColor.withValues(alpha: 0.5)),
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Container(
-                constraints: const BoxConstraints(
-                  minHeight: 40,
-                  maxHeight: 100,
-                ),
-                decoration: BoxDecoration(
-                  color: context.surfaceVariantColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: context.dividerColor.withValues(alpha: 0.5),
-                  ),
-                ),
-                child: TextField(
-                  controller: _questionCtrl,
-                  maxLines: null,
-                  onSubmitted: (v) => _askFollowUp(v),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: context.textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: _uiText(
-                      tr: 'Bu ürün hakkında soru sorun...',
-                      en: 'Ask about this product...',
-                    ),
-                    hintStyle: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: context.textTertiaryColor,
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                  ),
-                ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: _buildCreditBadge(
+                sub.isPremium
+                    ? _uiText(tr: 'AI Soru · Sınırsız', en: 'AI Question · Unlimited')
+                    : _uiText(
+                        tr: 'AI Soru · $aiChatCost kredi',
+                        en: 'AI Question · $aiChatCost credits',
+                      ),
               ),
             ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _askFollowUp(_questionCtrl.text),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppTheme.primaryGradient,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minHeight: 40,
+                      maxHeight: 100,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.surfaceVariantColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: context.dividerColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _questionCtrl,
+                      maxLines: null,
+                      onSubmitted: (v) => _askFollowUp(v),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: context.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: _uiText(
+                          tr: 'Bu ürün hakkında soru sorun...',
+                          en: 'Ask about this product...',
+                        ),
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          color: context.textTertiaryColor,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.arrow_upward_rounded,
-                  color: Colors.white,
-                  size: 20,
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _askFollowUp(_questionCtrl.text),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppTheme.primaryGradient,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_upward_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCreditBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.neonCyan.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppTheme.neonCyan.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.neonCyan,
         ),
       ),
     );

@@ -2514,6 +2514,7 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
 
 class FreemiumLimits {
   // Single source of truth → AppConstants.
+  static int get dailyCredits => AppConstants.freeDailyAiCreditLimit;
   static int get comparisonsPerDay => AppConstants.freeComparisonLimit;
   static int get aiChatsPerDay => AppConstants.freeAiQuestionLimit;
   static int get compareAiPerDay => AppConstants.freeCompareAiLimit;
@@ -2525,6 +2526,9 @@ class FreemiumLimits {
       AppConstants.freeSubscriptionAnalysisLimit;
   static int get productScanPerDay => AppConstants.freeProductScanLimit;
   static int get detailMatchAiPerDay => AppConstants.freeDetailMatchAiLimit;
+
+  static int costForFeature(String feature) =>
+      AppConstants.creditCostForFeature(feature);
 }
 
 final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {

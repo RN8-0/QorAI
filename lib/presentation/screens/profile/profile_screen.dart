@@ -1390,7 +1390,9 @@ class _PreferenceChip extends StatelessWidget {
 class _FreemiumUsageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sub = ref.watch(subscriptionServiceProvider);
     final aiChats = ref.watch(freemiumUsageProvider('ai_chat'));
+    final compareAi = ref.watch(freemiumUsageProvider('compare_ai'));
     final detailAi = ref.watch(freemiumUsageProvider('detail_ai'));
     final detailMatchAi = ref.watch(freemiumUsageProvider('detail_match'));
     final pcBuilderAi = ref.watch(freemiumUsageProvider('pc_builder_ai'));
@@ -1402,8 +1404,13 @@ class _FreemiumUsageCard extends ConsumerWidget {
     final productScan = ref.watch(freemiumUsageProvider('product_scan'));
 
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    final todayLabel = isTr ? 'bugün' : 'today';
     final l10n = context.l10n;
+    final totalCredits = FreemiumLimits.dailyCredits;
+    final usedCredits = sub.usedDailyCredits;
+    final remainingCredits = sub.remainingDailyCredits;
+    final creditProgress = sub.isPremium
+        ? 1.0
+        : (usedCredits / totalCredits).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1419,13 +1426,13 @@ class _FreemiumUsageCard extends ConsumerWidget {
           Row(
             children: [
               Icon(
-                Icons.pie_chart_rounded,
+                Icons.bolt_rounded,
                 size: 18,
                 color: AppTheme.premiumBase,
               ),
               const SizedBox(width: 8),
               Text(
-                l10n?.dailyUsage ?? 'Daily Usage',
+                isTr ? 'Günlük AI Kredileri' : 'Daily AI Credits',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1440,7 +1447,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'FREE',
+                  sub.isPremium ? 'PRO' : 'FREE',
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -1452,76 +1459,182 @@ class _FreemiumUsageCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: sub.isPremium
+                    ? [
+                        AppTheme.premiumBase.withValues(alpha: 0.22),
+                        AppTheme.brandCyan.withValues(alpha: 0.14),
+                      ]
+                    : [
+                        AppTheme.premiumBase.withValues(alpha: 0.10),
+                        AppTheme.brandBlue.withValues(alpha: 0.06),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.premiumBase.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        sub.isPremium
+                            ? (isTr
+                                  ? 'Sınırsız kredi aktif'
+                                  : 'Unlimited credits active')
+                            : (isTr
+                                  ? '$remainingCredits/$totalCredits kredi kaldı'
+                                  : '$remainingCredits/$totalCredits credits left'),
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        sub.isPremium
+                            ? '∞'
+                            : (isTr
+                                  ? '$usedCredits kullanıldı'
+                                  : '$usedCredits used'),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.premiumBase,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  sub.isPremium
+                      ? (isTr
+                            ? 'Premium ile tüm AI akışlarında kredi sınırı olmadan devam edersiniz.'
+                            : 'Premium removes credit limits across all AI flows.')
+                      : (isTr
+                            ? 'Krediler günlük yenilenir. Ağır işlemler daha fazla kredi tüketir.'
+                            : 'Credits refresh daily. Heavier actions consume more credits.'),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: context.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+                if (!sub.isPremium) ...[
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: creditProgress,
+                      minHeight: 7,
+                      backgroundColor: AppTheme.premiumBase.withValues(alpha: 0.14),
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppTheme.premiumBase,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           _UsageRow(
             label: l10n?.aiChat ?? 'AI Chat',
             icon: Icons.smart_toy_rounded,
             color: AppTheme.brandCyan,
-            used: aiChats,
-            limit: FreemiumLimits.aiChatsPerDay,
-            period: todayLabel,
+            usageCount: aiChats,
+            creditCost: FreemiumLimits.costForFeature('ai_chat'),
+            isPremium: sub.isPremium,
+          ),
+          const SizedBox(height: 10),
+          _UsageRow(
+            label: 'Compare AI',
+            icon: Icons.compare_arrows_rounded,
+            color: AppTheme.premiumLight,
+            usageCount: compareAi,
+            creditCost: FreemiumLimits.costForFeature('compare_ai'),
+            isPremium: sub.isPremium,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: isTr ? 'Detay AI' : 'Detail AI',
             icon: Icons.auto_awesome_rounded,
             color: AppTheme.brandBlue,
-            used: detailAi,
-            limit: FreemiumLimits.detailAiPerDay,
-            period: todayLabel,
+            usageCount: detailAi,
+            creditCost: FreemiumLimits.costForFeature('detail_ai'),
+            isPremium: sub.isPremium,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: isTr ? 'Eşleşme (AI)' : 'Match (AI)',
             icon: Icons.person_search_rounded,
             color: const Color(0xFF10B981),
-            used: detailMatchAi,
-            limit: FreemiumLimits.detailMatchAiPerDay,
-            period: todayLabel,
+            usageCount: detailMatchAi,
+            creditCost: FreemiumLimits.costForFeature('detail_match'),
+            isPremium: sub.isPremium,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: isTr ? 'PC Toplama AI' : 'PC Builder AI',
             icon: Icons.memory_rounded,
             color: AppTheme.brandSkyBlue,
-            used: pcBuilderAi,
-            limit: FreemiumLimits.pcBuilderAiPerDay,
-            period: todayLabel,
+            usageCount: pcBuilderAi,
+            creditCost: FreemiumLimits.costForFeature('pc_builder_ai'),
+            isPremium: sub.isPremium,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: l10n?.linkAnalysis ?? 'Link Analysis',
             icon: Icons.link_rounded,
             color: AppTheme.warning,
-            used: linkAnalyses,
-            limit: FreemiumLimits.linkAnalysesPerDay,
-            period: todayLabel,
+            usageCount: linkAnalyses,
+            creditCost: FreemiumLimits.costForFeature('link_analysis'),
+            isPremium: sub.isPremium,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: l10n?.linkCompare ?? 'Link Compare',
             icon: Icons.compare_rounded,
             color: AppTheme.premiumLight,
-            used: linkCompare,
-            limit: FreemiumLimits.linkComparePerDay,
-            period: todayLabel,
+            usageCount: linkCompare,
+            creditCost: FreemiumLimits.costForFeature('link_compare'),
+            isPremium: sub.isPremium,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: l10n?.subAnalysis ?? 'Sub Analysis',
             icon: Icons.subscriptions_rounded,
             color: AppTheme.brandDeepBlue,
-            used: subAnalyses,
-            limit: FreemiumLimits.subscriptionAnalysesPerDay,
-            period: todayLabel,
+            usageCount: subAnalyses,
+            creditCost: FreemiumLimits.costForFeature('subscription_analysis'),
+            isPremium: sub.isPremium,
           ),
           const SizedBox(height: 10),
           _UsageRow(
             label: l10n?.productScan ?? 'Product Scan',
             icon: Icons.qr_code_scanner_rounded,
             color: const Color(0xFF10B981),
-            used: productScan,
-            limit: FreemiumLimits.productScanPerDay,
-            period: todayLabel,
+            usageCount: productScan,
+            creditCost: FreemiumLimits.costForFeature('product_scan'),
+            isPremium: sub.isPremium,
           ),
         ],
       ),
@@ -1533,74 +1646,87 @@ class _UsageRow extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
-  final int used;
-  final int limit;
-  final String period;
+  final int usageCount;
+  final int creditCost;
+  final bool isPremium;
 
   const _UsageRow({
     required this.label,
     required this.icon,
     required this.color,
-    required this.used,
-    required this.limit,
-    required this.period,
+    required this.usageCount,
+    required this.creditCost,
+    required this.isPremium,
   });
 
   @override
   Widget build(BuildContext context) {
-    final safeUsed = used.clamp(0, limit);
-    final remaining = limit - safeUsed;
-    final progress = limit == 0 ? 0.0 : (safeUsed / limit).clamp(0.0, 1.0);
-    final isExhausted = safeUsed >= limit;
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
 
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    isTr ? '$remaining/$limit kaldı' : '$remaining/$limit left',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isExhausted
-                          ? const Color(0xFFEF4444)
-                          : context.textTertiaryColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 6,
-                  backgroundColor: color.withValues(alpha: 0.20),
-                  valueColor: AlwaysStoppedAnimation(
-                    isExhausted ? const Color(0xFFEF4444) : color,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  isTr
+                      ? '$usageCount kullanım bugün işlendi'
+                      : '$usageCount uses processed today',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              isPremium
+                  ? (isTr ? 'Sınırsız' : 'Unlimited')
+                  : (isTr ? '$creditCost kredi' : '$creditCost credits'),
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -206,7 +206,9 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
     if (limitResult.isFailure) {
       state = state.copyWith(
         error:
-            'You have reached the weekly link analysis limit. Upgrade to Premium for unlimited usage!',
+            _appLang == 'tr'
+                ? 'Yeterli günlük krediniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
+                : 'Not enough daily credits. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
         isLoading: false,
       );
       return;
@@ -318,7 +320,10 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     if (limitResult.isFailure) {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
-        error: 'Weekly link analysis limit reached. Upgrade to Premium!',
+        error:
+            _appLang == 'tr'
+                ? 'Yeterli günlük krediniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
+                : 'Not enough daily credits. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
       );
       return;
     }
@@ -1443,7 +1448,9 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
         error:
-            'Daily subscription analysis limit reached (${AppConstants.freeSubscriptionAnalysisLimit}/day). Upgrade to Premium!',
+            _appLang == 'tr'
+                ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
+                : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
       );
       return;
     }
@@ -1542,8 +1549,9 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       if (subQuota.isFailure) {
         state = state.copyWith(
           phase: SubFlowPhase.idle,
-          error:
-              'Daily subscription analysis limit reached. Upgrade to Premium!',
+          error: _appLang == 'tr'
+              ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
+              : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
         );
         return;
       }
@@ -1569,7 +1577,9 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: 'Daily subscription analysis limit reached. Upgrade to Premium!',
+        error: _appLang == 'tr'
+            ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
+            : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
       );
       return;
     }
@@ -1603,7 +1613,9 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: 'Daily subscription analysis limit reached. Upgrade to Premium!',
+        error: _appLang == 'tr'
+            ? 'Yeterli günlük krediniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} kredi tüketir. Krediler yarın yenilenir veya Premium ile sınırsız kredi açabilirsiniz.'
+            : 'Not enough daily credits. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} credits. Credits refresh tomorrow or upgrade to Premium for unlimited credits.',
       );
       return;
     }

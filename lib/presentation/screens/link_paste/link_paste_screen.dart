@@ -1087,20 +1087,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final sub = ref.watch(subscriptionServiceProvider);
     if (sub.isPremium) return const SizedBox.shrink();
 
-    final remaining = sub.remainingLinkPastes;
-    final total = AppConstants.freeLinkPasteLimit;
-    final progress = (total - remaining) / total;
-    final isLow = remaining <= 1;
+    final remaining = sub.remainingDailyCredits;
+    final total = AppConstants.freeDailyAiCreditLimit;
+    final progress = total == 0
+        ? 0.0
+        : (sub.usedDailyCredits / total).clamp(0.0, 1.0);
+    final isLow = remaining <= 2;
     final barColor = isLow ? AppTheme.error : AppTheme.brandBlue;
+    final linkCost = sub.creditCostForFeature('link_analysis');
     final usageLabel = _linkText(
       context,
-      tr: 'Link Analizi',
-      en: 'Link Analysis',
+      tr: 'Link Analizi · $linkCost kredi',
+      en: 'Link Analysis · $linkCost credits',
     );
     final periodLabel = _linkText(
       context,
-      tr: '$remaining/$total hafta',
-      en: '$remaining/$total week',
+      tr: '$remaining/$total kredi',
+      en: '$remaining/$total credits',
     );
     final ctaLabel = _linkText(context, tr: 'Premium', en: 'Premium');
 
@@ -2806,6 +2809,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final validCount = _urlControllers
         .where((c) => c.text.trim().isNotEmpty && _isValidUrl(c.text.trim()))
         .length;
+    final sub = ref.watch(subscriptionServiceProvider);
+    final actionCost = sub.creditCostForFeature(
+      validCount > 1 ? 'link_compare' : 'link_analysis',
+    );
 
     return Column(
       children: [
@@ -2997,6 +3004,31 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                     fontSize: 14,
                                     color: Colors.white,
                                     letterSpacing: -0.3,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                      sub.isPremium
+                                          ? '∞'
+                                          : _linkText(
+                                              context,
+                                              tr: '$actionCost kredi',
+                                              en: '$actionCost credits',
+                                            ),
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ],

@@ -59,6 +59,16 @@ class AppConstants {
 
   // Free Tier Limits - Section 12.2
   static const int freeComparisonLimit = 5; // per day
+  static const int freeDailyAiCreditLimit = 10; // shared daily AI credit pool
+  static const int aiChatCreditCost = 1;
+  static const int compareAiCreditCost = 2;
+  static const int detailAiCreditCost = 1;
+  static const int detailMatchAiCreditCost = 1;
+  static const int pcBuilderAiCreditCost = 2;
+  static const int linkAnalysisCreditCost = 2;
+  static const int linkCompareCreditCost = 3;
+  static const int subscriptionAnalysisCreditCost = 2;
+  static const int productScanCreditCost = 3;
   static const int freeAiQuestionLimit = 3; // per day (AI chat)
   static const int freeCompareAiLimit = 2; // per day (compare premium AI tabs)
   static const int freeDetailAiLimit = 2; // per day per tab (product detail premium AI)
@@ -73,6 +83,21 @@ class AppConstants {
   static const int freeCollectionLimit = 10; // max saved products
   static const int freePriceHistoryDays = 7;
   static const int proPriceHistoryDays = 90;
+
+  static int creditCostForFeature(String featureName) {
+    return switch (featureName) {
+      'ai_question' || 'ai_chat' => aiChatCreditCost,
+      'compare_ai' => compareAiCreditCost,
+      'detail_ai' => detailAiCreditCost,
+      'detail_match_ai' || 'detail_match' => detailMatchAiCreditCost,
+      'pc_builder_ai' => pcBuilderAiCreditCost,
+      'link_paste' || 'link_analysis' => linkAnalysisCreditCost,
+      'link_compare' => linkCompareCreditCost,
+      'subscription_analysis' => subscriptionAnalysisCreditCost,
+      'product_scan' => productScanCreditCost,
+      _ => 1,
+    };
+  }
 
   // Premium Pricing (3-day free trial on both plans)
   static const double monthlyProPrice = 3.99;

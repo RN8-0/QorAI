@@ -13,7 +13,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compair/core/errors.dart';
-import 'package:compair/core/constants.dart';
 import 'package:compair/core/theme.dart';
 import 'package:compair/domain/entities/product_entity.dart';
 import 'package:compair/presentation/providers/providers.dart';
@@ -1668,8 +1667,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         child: Text(
                           _pcText(
                             context,
-                            tr: 'Günlük Limit Doldu',
-                            en: 'Daily Limit Reached',
+                            tr: 'Günlük Kredi Yetmiyor',
+                            en: 'Not Enough Daily Credits',
                           ),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 20,
@@ -1684,8 +1683,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   Text(
                     _pcText(
                       context,
-                      tr: 'PC Builder AI günlük limitine ulaştınız. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin!',
-                      en: 'You have reached your daily PC Builder AI limit. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks!',
+                      tr: 'Günlük krediniz bu analiz için yetmiyor. PC Builder AI 2 kredi tüketir. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin. Kredileriniz yarın yenilenecektir.',
+                      en: 'You do not have enough daily credits for this analysis. PC Builder AI costs 2 credits. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks. Your credits will refresh tomorrow.',
                     ),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
@@ -1752,7 +1751,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       buf.writeln('1. Keep ALL section labels exactly as written (uppercase). Do NOT add extra text outside sections.');
       buf.writeln('2. FPS numbers must be REALISTIC integers based on real-world GPU/CPU benchmarks (not theoretical maximums). Use conservative estimates.');
       buf.writeln('3. If any incompatibility exists (socket mismatch, DDR4/DDR5 conflict, PSU too weak, case size mismatch), you MUST flag it in WEAKNESSES and RECOMMENDATIONS as a critical error.');
-      buf.writeln('4. Be CONCISE: each bullet point must be a single short sentence (max 15 words). No fluff.');
+      buf.writeln('4. Write detailed but efficient analysis. Each bullet can use up to 28 words and may include one short supporting clause.');
+      buf.writeln('5. OVERVIEW, THERMALS, and POWER_ANALYSIS may each contain up to 2 short sentences.');
+      buf.writeln('6. Mention exact component names when a recommendation depends on a specific bottleneck or incompatibility.');
       buf.writeln();
       buf.writeln('=== BUILD COMPONENTS ===');
       for (final c in PcComponent.values) {
@@ -1795,8 +1796,15 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       }
       buf.writeln('Respond in this EXACT format:');
       buf.writeln();
+      buf.writeln('OVERVIEW: [2 short sentences summarizing what this build is good at and where it struggles]');
+      buf.writeln();
       buf.writeln('BOTTLENECK: [0-100]% - [component]: [one short sentence]');
       buf.writeln('PERFORMANCE_TIER: [Budget/Mid-Range/High-End/Enthusiast/Ultra]');
+      buf.writeln();
+      buf.writeln('IDEAL_USE:');
+      buf.writeln('- [best use case 1 with context]');
+      buf.writeln('- [best use case 2 with context]');
+      buf.writeln('- [best use case 3 with context]');
       buf.writeln();
       buf.writeln('FPS_1080P:');
       for (final g in ['Fortnite', 'CS2', 'Valorant', 'GTA V', 'Cyberpunk 2077', 'Elden Ring', 'Apex Legends', 'COD Warzone']) {
@@ -1817,6 +1825,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       buf.writeln('- [strength 1]');
       buf.writeln('- [strength 2]');
       buf.writeln('- [strength 3]');
+      buf.writeln('- [strength 4 if meaningful]');
       buf.writeln();
       buf.writeln('WEAKNESSES:');
       buf.writeln('- [weakness 1]');
@@ -1830,13 +1839,15 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         for (final s in suggestions) {
           final cur = _selected[s.component];
           if (cur == null) continue;
-          buf.writeln('- Replace ${cur.name} with ${s.product.name} — [short reason]');
+          buf.writeln('- Replace ${cur.name} with ${s.product.name} — [detailed reason]');
         }
       } else {
-        buf.writeln('- [Best upgrade direction for this build]');
+        buf.writeln('- [Best upgrade direction for this build with reason]');
       }
       buf.writeln();
-      buf.writeln('POWER_ANALYSIS: [One sentence about PSU adequacy and GPU connector requirements]');
+      buf.writeln('THERMALS: [1-2 short sentences about cooling balance, airflow, and likely thermal pressure]');
+      buf.writeln();
+      buf.writeln('POWER_ANALYSIS: [1-2 short sentences about PSU adequacy, headroom, and GPU connector requirements]');
 
       final deepseekService = ref.read(deepSeekServiceProvider);
       final response = await deepseekService.freeTextQuery(buf.toString());
@@ -1861,6 +1872,22 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
               'components': _selected.map((k, v) => MapEntry(k.name, v.name)),
               'ai_analysis': response,
               'total_score': _totalScore,
+              'estimated_power': _estimatedPower,
+              'psu_wattage': _psuWattage,
+              'power_headroom': _psuHeadroom,
+              'socket': _selectedSocket,
+              'memory_type': _selectedMemType,
+              'upgrade_focus': focus?.name,
+              'compatibility_issues': _compatIssues
+                  .map(
+                    (issue) => {
+                      'title': issue.title,
+                      'detail': issue.detail,
+                      'severity': issue.severity.name,
+                      'component': issue.component?.name,
+                    },
+                  )
+                  .toList(),
             };
             historyList.add(jsonEncode(newEntry));
             await prefs.setStringList(key, historyList);
@@ -2428,13 +2455,43 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         ),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(
-                        _pcText(context, en: 'Analyze', tr: 'Analiz Et'),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _pcText(context, en: 'Analyze', tr: 'Analiz Et'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              ref.watch(subscriptionServiceProvider).isPremium
+                                  ? '∞'
+                                  : _pcText(
+                                      context,
+                                      en: '${ref.watch(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai')} credits',
+                                      tr: '${ref.watch(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai')} kredi',
+                                    ),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -2634,6 +2691,67 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       }).toList();
     }
 
+    final overviewMatch = RegExp(
+      r'OVERVIEW:\s*(.+?)(?=BOTTLENECK:|PERFORMANCE_TIER:|IDEAL_USE:|FPS_1080P:|$)',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(analysis);
+    if (overviewMatch != null) {
+      final overviewText = overviewMatch.group(1)!.trim();
+      if (overviewText.isNotEmpty) {
+        sections.add(
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.brandDeepBlue.withValues(alpha: 0.10),
+                  AppTheme.brandCyan.withValues(alpha: 0.06),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.brandDeepBlue.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.insights_rounded,
+                      size: 16,
+                      color: AppTheme.brandDeepBlue,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _pcText(context, en: 'Build Overview', tr: 'Build Özeti'),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.brandDeepBlue,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  overviewText,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: context.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
     // ── Bottleneck ──────────────────────────────────────────────────────────
     final bottleneckMatch = RegExp(
       r'BOTTLENECK:\s*(.+)',
@@ -2811,6 +2929,25 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       );
     }
 
+    final idealUseMatch = RegExp(
+      r'IDEAL_USE:(.*?)(?=FPS_1080P:|FPS_1440P:|FPS_4K:|STRENGTHS:|WEAKNESSES:|$)',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(analysis);
+    if (idealUseMatch != null) {
+      final items = parseBullets(idealUseMatch.group(1)!);
+      if (items.isNotEmpty) {
+        sections.add(
+          _bulletSection(
+            context,
+            _pcText(context, en: '🎯 Ideal Use', tr: '🎯 İdeal Kullanım'),
+            items,
+            AppTheme.brandBlue,
+          ),
+        );
+      }
+    }
+
     // ── FPS by Resolution (tabbed) ────────────────────────────────────────────
     final fps1080 = RegExp(
       r'FPS_1080P:(.*?)(?=FPS_1440P:|FPS_4K:|STRENGTHS:|WEAKNESSES:|$)',
@@ -2849,7 +2986,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
     // ── Strengths ─────────────────────────────────────────────────────────────
     final strengthsMatch = RegExp(
-      r'STRENGTHS:(.*?)(?=WEAKNESSES:|UPGRADE_PRIORITY:|RECOMMENDATIONS:|POWER_ANALYSIS:|$)',
+      r'STRENGTHS:(.*?)(?=WEAKNESSES:|UPGRADE_PRIORITY:|RECOMMENDATIONS:|THERMALS:|POWER_ANALYSIS:|$)',
       caseSensitive: false,
       dotAll: true,
     ).firstMatch(analysis);
@@ -2868,7 +3005,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
     // ── Weaknesses ────────────────────────────────────────────────────────────
     final weaknessMatch = RegExp(
-      r'WEAKNESSES:(.*?)(?=UPGRADE_PRIORITY:|RECOMMENDATIONS:|POWER_ANALYSIS:|$)',
+      r'WEAKNESSES:(.*?)(?=UPGRADE_PRIORITY:|RECOMMENDATIONS:|THERMALS:|POWER_ANALYSIS:|$)',
       caseSensitive: false,
       dotAll: true,
     ).firstMatch(analysis);
@@ -2944,7 +3081,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
 
     // ── Recommendations ───────────────────────────────────────────────────────
     final recsMatch = RegExp(
-      r'RECOMMENDATIONS:(.*?)(?=POWER_ANALYSIS:|$)',
+      r'RECOMMENDATIONS:(.*?)(?=THERMALS:|POWER_ANALYSIS:|$)',
       caseSensitive: false,
       dotAll: true,
     ).firstMatch(analysis);
@@ -3016,6 +3153,65 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    final thermalsMatch = RegExp(
+      r'THERMALS:\s*(.+?)(?=POWER_ANALYSIS:|$)',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(analysis);
+    if (thermalsMatch != null) {
+      final thermalsText = thermalsMatch.group(1)!.trim();
+      if (thermalsText.isNotEmpty) {
+        sections.add(
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: PcComponent.cooler.accentColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: PcComponent.cooler.accentColor.withValues(alpha: 0.20),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.air_rounded,
+                  size: 16,
+                  color: PcComponent.cooler.accentColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _pcText(context, en: 'Thermals', tr: 'Termal Durum'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: PcComponent.cooler.accentColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        thermalsText,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: context.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -4254,12 +4450,19 @@ class _ComponentPickerPage extends ConsumerStatefulWidget {
 }
 
 class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
+  final TextEditingController _searchController = TextEditingController();
   String _search = '';
   String _sort = 'score';
   final Set<String> _brands = {};
   String? _quickFilter;
   bool _showFilters = false;
   bool _compatOnly = true;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   double get _selectedPowerWithoutPsu {
     double total = 0;
@@ -4464,6 +4667,88 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
       default:
         return true;
     }
+  }
+
+  String _sortLabel(BuildContext context) {
+    return switch (_sort) {
+      'name' => context.l10n?.sortByName ?? 'Name',
+      'brand' => context.l10n?.brand ?? 'Brand',
+      'price' => context.l10n?.price ?? 'Price',
+      'newest' => _pcText(context, en: 'Newest', tr: 'En Yeni'),
+      _ => context.l10n?.sortByScore ?? 'Score',
+    };
+  }
+
+  String? _quickFilterLabel(BuildContext context) {
+    return switch (_quickFilter) {
+      'amd' => 'AMD',
+      'intel' => 'Intel',
+      'atx' => 'ATX',
+      'matx' => 'mATX',
+      'mitx' => 'mITX',
+      'ddr5' => 'DDR5',
+      'ddr4' => 'DDR4',
+      '32gb' => '32GB+',
+      '12v' => '16-pin',
+      '12gb' => '12GB+',
+      'm2' => 'M.2 / NVMe',
+      'sata' => 'SATA',
+      '1tb' => '1TB+',
+      'atx3' => 'ATX 3.x',
+      '750w' => '750W+',
+      '850w' => '850W+',
+      'socket' => _pcText(
+        context,
+        en: 'Socket ${widget.socketFilter ?? ''}',
+        tr: 'Soket ${widget.socketFilter ?? ''}',
+      ).trim(),
+      'liquid' => _pcText(context, en: 'Liquid', tr: 'Sıvı'),
+      'air' => _pcText(context, en: 'Air', tr: 'Hava'),
+      _ => null,
+    };
+  }
+
+  bool get _hasManualFilters {
+    return _search.isNotEmpty ||
+        _quickFilter != null ||
+        _brands.isNotEmpty ||
+        _sort != 'score';
+  }
+
+  List<String> _activeFilterLabels(BuildContext context) {
+    final labels = <String>[];
+    if (_search.isNotEmpty) {
+      labels.add(
+        _pcText(context, en: 'Search: $_search', tr: 'Arama: $_search'),
+      );
+    }
+    final quickLabel = _quickFilterLabel(context);
+    if (quickLabel != null && quickLabel.isNotEmpty) {
+      labels.add(quickLabel);
+    }
+    if (_sort != 'score') {
+      labels.add(
+        _pcText(
+          context,
+          en: 'Sort: ${_sortLabel(context)}',
+          tr: 'Sıralama: ${_sortLabel(context)}',
+        ),
+      );
+    }
+    labels.addAll(_brands.take(8));
+    return labels;
+  }
+
+  void _clearManualFilters({required bool hasCompat}) {
+    setState(() {
+      _search = '';
+      _searchController.clear();
+      _sort = 'score';
+      _brands.clear();
+      _quickFilter = null;
+      _showFilters = false;
+      _compatOnly = hasCompat;
+    });
   }
 
   List<MapEntry<String, String>> _detailEntries(ProductEntity product) {
@@ -4764,6 +5049,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                       border: Border.all(color: context.dividerColor),
                     ),
                     child: TextField(
+                      controller: _searchController,
                       onChanged: (v) =>
                           setState(() => _search = v.trim().toLowerCase()),
                       style: GoogleFonts.plusJakartaSans(
@@ -4785,6 +5071,19 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                           size: 18,
                           color: context.textTertiaryColor,
                         ),
+                        suffixIcon: _search.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: () => setState(() {
+                                  _search = '';
+                                  _searchController.clear();
+                                }),
+                                icon: Icon(
+                                  Icons.close_rounded,
+                                  size: 18,
+                                  color: context.textTertiaryColor,
+                                ),
+                              ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
                           vertical: 12,
@@ -4907,46 +5206,63 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                     if (quickFilters.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
-                        alignment: Alignment.centerLeft,
-                        child: Wrap(
-                          spacing: 5,
-                          runSpacing: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ...quickFilters.map((filter) {
-                              final selected = _quickFilter == filter.key;
-                              return GestureDetector(
-                                onTap: () => setState(() {
-                                  _quickFilter = selected ? null : filter.key;
+                            Text(
+                              _pcText(
+                                context,
+                                en: 'Quick Filters',
+                                tr: 'Hızlı Filtreler',
+                              ),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: context.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 5,
+                              runSpacing: 5,
+                              children: [
+                                ...quickFilters.map((filter) {
+                                  final selected = _quickFilter == filter.key;
+                                  return GestureDetector(
+                                    onTap: () => setState(() {
+                                      _quickFilter = selected ? null : filter.key;
+                                    }),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: selected
+                                            ? accent.withValues(alpha: 0.15)
+                                            : context.surfaceVariantColor,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: selected
+                                              ? accent
+                                              : context.dividerColor,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        filter.value,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: selected
+                                              ? accent
+                                              : context.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  );
                                 }),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? accent.withValues(alpha: 0.15)
-                                        : context.surfaceVariantColor,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: selected
-                                          ? accent
-                                          : context.dividerColor,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    filter.value,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: selected
-                                          ? accent
-                                          : context.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -4954,6 +5270,79 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   ],
                 );
               },
+            ),
+          if (_hasManualFilters)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: accent.withValues(alpha: 0.16)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          _pcText(
+                            context,
+                            en: 'Active Filters',
+                            tr: 'Aktif Filtreler',
+                          ),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: accent,
+                          ),
+                        ),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => _clearManualFilters(hasCompat: hasCompat),
+                          child: Text(
+                            _pcText(context, en: 'Clear all', tr: 'Tümünü temizle'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _activeFilterLabels(context)
+                          .map(
+                            (label) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: context.surfaceColor,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: context.dividerColor),
+                              ),
+                              child: Text(
+                                label,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textSecondary,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
             ),
           // Count
           Padding(
@@ -5120,44 +5509,58 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     if (sorted.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-      child: Wrap(
-        spacing: 5,
-        runSpacing: 5,
-        children: sorted.map((b) {
-          final sel = _brands.contains(b);
-          return GestureDetector(
-            onTap: () => setState(() {
-              if (sel)
-                _brands.remove(b);
-              else
-                _brands.add(b);
-            }),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: sel
-                    ? widget.component.accentColor.withValues(alpha: 0.15)
-                    : context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: sel
-                      ? widget.component.accentColor
-                      : context.dividerColor,
-                ),
-              ),
-              child: Text(
-                b,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  color: sel
-                      ? widget.component.accentColor
-                      : context.textSecondary,
-                ),
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _pcText(context, en: 'Brands', tr: 'Markalar'),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: context.textSecondary,
             ),
-          );
-        }).toList(),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 5,
+            runSpacing: 5,
+            children: sorted.map((b) {
+              final sel = _brands.contains(b);
+              return GestureDetector(
+                onTap: () => setState(() {
+                  if (sel)
+                    _brands.remove(b);
+                  else
+                    _brands.add(b);
+                }),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: sel
+                        ? widget.component.accentColor.withValues(alpha: 0.15)
+                        : context.surfaceVariantColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: sel
+                          ? widget.component.accentColor
+                          : context.dividerColor,
+                    ),
+                  ),
+                  child: Text(
+                    b,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: sel
+                          ? widget.component.accentColor
+                          : context.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
