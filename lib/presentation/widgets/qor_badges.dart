@@ -20,9 +20,7 @@ class QorAmountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = unlimited
-        ? '∞ ${AppConstants.qorCurrencyName}'
-        : '${amount ?? 0} ${AppConstants.qorCurrencyName}';
+    final label = unlimited ? '∞' : '${amount ?? 0}';
 
     return Container(
       padding: padding,
@@ -70,9 +68,7 @@ class QorBalanceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = unlimited
-        ? '∞ ${AppConstants.qorCurrencyName}'
-        : '$remaining/$total ${AppConstants.qorCurrencyName}';
+    final label = unlimited ? '∞' : '$remaining/$total';
 
     return Container(
       padding: padding,

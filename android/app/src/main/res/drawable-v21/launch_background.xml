@@ -4,6 +4,6 @@
     <item android:gravity="center">
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/ic_launcher" />
+            android:src="@drawable/qor_launch_logo" />
     </item>
 </layer-list>

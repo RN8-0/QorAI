@@ -550,10 +550,23 @@ class _DesktopSidebar extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF010617)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : AppTheme.brandBlue.withValues(alpha: 0.12),
+                      ),
+                    ),
                     child: Image.asset('assets/logo/qor_ai_logo_512.png',
-                        width: 36, height: 36, fit: BoxFit.cover),
+                        width: 32, height: 32, fit: BoxFit.contain),
                   ),
                   if (isExpanded) ...[
                     const SizedBox(width: 12),

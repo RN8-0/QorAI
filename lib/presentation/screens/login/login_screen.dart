@@ -401,11 +401,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             ),
             const SizedBox(width: 4),
-            Image.asset(
-              'assets/logo/qor_ai_logo.png',
-              width: 32,
-              height: 32,
-              filterQuality: FilterQuality.high,
+            Container(
+              width: 40,
+              height: 40,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.02)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : AppTheme.brandBlue.withValues(alpha: 0.12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.brandCyan.withValues(alpha: 0.14),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/logo/qor_ai_logo.png',
+                filterQuality: FilterQuality.high,
+              ),
             ),
             const SizedBox(width: 8),
             ShaderMask(
@@ -467,13 +488,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Logo — no container/circle, just transparent PNG
-                Image.asset(
-                  'assets/logo/qor_ai_logo.png',
-                  width: 80,
-                  height: 80,
-                  filterQuality: FilterQuality.high,
+                Container(
+                  width: 132,
+                  height: 132,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.015)
+                        : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : AppTheme.brandBlue.withValues(alpha: 0.10),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.brandCyan.withValues(alpha: 0.20),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/logo/qor_ai_logo.png',
+                    width: 100,
+                    height: 100,
+                    filterQuality: FilterQuality.high,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 ShaderMask(
                   blendMode: BlendMode.srcIn,
                   shaderCallback: (bounds) =>

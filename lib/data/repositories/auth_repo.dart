@@ -125,6 +125,11 @@ class AuthRepository {
   /// which validates it with Google's tokeninfo endpoint and upserts the
   /// user in `users`. No Firebase, no client secret on device.
   Future<Result<UserEntity>> signInWithGoogle() async {
+    Future<Result<UserEntity>> fallbackToOAuth() {
+      debugPrint('[auth] Falling back to PocketBase OAuth2 Google flow');
+      return _signInWithOAuth2('google', scopes: ['email', 'profile']);
+    }
+
     try {
       final google = GoogleSignIn(
         scopes: const ['email', 'profile'],
@@ -240,6 +245,10 @@ class AuthRepository {
       );
     } catch (e) {
       debugPrint('[auth] signInWithGoogle error: $e');
+      final err = e.toString();
+      if (err.contains('sign_in_failed') || err.contains('ApiException: 10')) {
+        return fallbackToOAuth();
+      }
       return Failure(
         AuthException(
           message: 'Google sign-in failed: ${e.toString()}',

@@ -374,11 +374,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildAppBar(BuildContext context, AsyncValue userProfile) {
     final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? (context.l10n?.goodMorning ?? 'Good morning')
-        : hour < 17
-        ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
-        : (context.l10n?.goodEvening ?? 'Good evening');
+    final isNight = hour < 5 || hour >= 22;
+    final greetingEmoji = isNight
+      ? '🌙'
+      : hour < 12
+      ? '☀️'
+      : hour < 17
+      ? '👋'
+      : '✨';
+    final greetingText = isNight
+      ? (context.l10n?.goodEvening ?? 'Good evening')
+      : hour < 12
+      ? (context.l10n?.goodMorning ?? 'Good morning')
+      : hour < 17
+      ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
+      : (context.l10n?.goodEvening ?? 'Good evening');
+    final greeting = '$greetingEmoji $greetingText';
 
     // Resolve first name: entity → authStore displayName → authStore name
     String? _resolveFirstName() {
