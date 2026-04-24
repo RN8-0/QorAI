@@ -76,6 +76,7 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 - Run `node scripts/audit_coolify_security.js` or `npm --prefix scripts run audit:coolify-security` to audit Coolify dashboard/app HTTPS and edge protection settings
 - Run `node scripts/patch_coolify_app_domains.js` or `npm --prefix scripts run patch:coolify-app-domains` after setting `COOLIFY_ADMIN_APP_FQDN`, `COOLIFY_WEBSITE_FQDN`, and optional `COOLIFY_POCKETBASE_FQDN`
 - Run `node scripts/patch_coolify_admin_basic_auth.js` or `npm --prefix scripts run patch:coolify-admin-basic-auth` after setting `COOLIFY_ADMIN_BASIC_AUTH_USERNAME` and `COOLIFY_ADMIN_BASIC_AUTH_PASSWORD`
+- `github.io` is not a usable free domain for Coolify/PocketBase on your own server; for a free hostname use a provider like DuckDNS, or use a paid custom domain
 - Keep the Coolify dashboard off public `:8000` access; prefer a domain with HTTPS plus firewall/VPN/Tailscale restriction
 - Treat direct HTTP access to the Coolify panel as sensitive: rotate tokens/sessions if the panel was used over plain HTTP
 

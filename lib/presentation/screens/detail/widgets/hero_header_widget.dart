@@ -14,10 +14,40 @@ class _HeroHeader extends StatefulWidget {
 
 class _HeroHeaderState extends State<_HeroHeader> {
   int _selectedIndex = 0;
+  bool _thumbStripReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 260), () {
+        if (!mounted) return;
+        setState(() => _thumbStripReady = true);
+      });
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.product.id != widget.product.id) {
+      _selectedIndex = 0;
+      _thumbStripReady = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 260), () {
+          if (!mounted) return;
+          setState(() => _thumbStripReady = true);
+        });
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final allImages = widget.product.allImages;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
+    final thumbCacheWidth = (56 * dpr).round().clamp(84, 180);
+    final heroCacheWidth = (220 * dpr).round().clamp(280, 720);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final imageBg = isDark ? Colors.white : Colors.white;
@@ -46,48 +76,76 @@ class _HeroHeaderState extends State<_HeroHeader> {
                   if (allImages.length > 1)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: List.generate(allImages.length.clamp(0, 8), (i) {
-                            final isSelected = _selectedIndex == i;
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedIndex = i),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                margin: const EdgeInsets.only(bottom: 8),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: !_thumbStripReady
+                            ? SizedBox(
+                                key: const ValueKey('hero-thumb-skeleton'),
                                 width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppTheme.primaryBlue
-                                        : context.textTertiaryColor,
-                                    width: isSelected ? 2 : 1,
+                                child: Column(
+                                  children: List.generate(
+                                    dart_math.min(allImages.length, 4),
+                                    (index) => Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      width: 56,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
                                   ),
-                                  color: isSelected
-                                      ? AppTheme.primaryBlue.withValues(alpha: 0.06)
-                                      : imageBg,
-                                  boxShadow: isSelected
-                                      ? [BoxShadow(color: AppTheme.primaryBlue.withValues(alpha: 0.2), blurRadius: 6)]
-                                      : null,
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(9),
-                                  child: CachedNetworkImage(
-                                    imageUrl: allImages[i],
-                                    fit: BoxFit.contain,
-                                    memCacheWidth: 120,
-                                    maxWidthDiskCache: 120,
-                                    fadeInDuration: const Duration(milliseconds: 100),
-                                    placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
-                                    errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: AppTheme.slate600, size: 20),
-                                  ),
+                              )
+                            : SingleChildScrollView(
+                                key: const ValueKey('hero-thumb-strip'),
+                                child: Column(
+                                  children: List.generate(allImages.length.clamp(0, 8), (i) {
+                                    final isSelected = _selectedIndex == i;
+                                    return GestureDetector(
+                                      onTap: () => setState(() => _selectedIndex = i),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        width: 56,
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? AppTheme.primaryBlue
+                                                : context.textTertiaryColor,
+                                            width: isSelected ? 2 : 1,
+                                          ),
+                                          color: isSelected
+                                              ? AppTheme.primaryBlue.withValues(alpha: 0.06)
+                                              : imageBg,
+                                          boxShadow: isSelected
+                                              ? [
+                                                  BoxShadow(
+                                                    color: AppTheme.primaryBlue.withValues(alpha: 0.14),
+                                                    blurRadius: 4,
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(9),
+                                          child: CachedNetworkImage(
+                                            imageUrl: allImages[i],
+                                            fit: BoxFit.contain,
+                                            memCacheWidth: thumbCacheWidth,
+                                            maxWidthDiskCache: thumbCacheWidth,
+                                            fadeInDuration: const Duration(milliseconds: 80),
+                                            placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
+                                            errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: AppTheme.slate600, size: 20),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
                                 ),
                               ),
-                            );
-                          }),
-                        ),
                       ),
                     ),
 
@@ -124,8 +182,8 @@ class _HeroHeaderState extends State<_HeroHeader> {
                                     key: ValueKey(_selectedIndex),
                                     imageUrl: allImages[_selectedIndex],
                                     fit: BoxFit.contain,
-                                    memCacheWidth: 520,
-                                    maxWidthDiskCache: 520,
+                                    memCacheWidth: heroCacheWidth,
+                                    maxWidthDiskCache: heroCacheWidth,
                                     fadeInDuration: const Duration(milliseconds: 120),
                                     placeholder: (_, __) => const ColoredBox(color: Colors.white),
                                     errorWidget: (_, __, ___) =>

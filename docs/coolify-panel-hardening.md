@@ -15,6 +15,59 @@ Target state for Qor AI:
 - Public `:8000` closed at firewall level
 - Access restricted with at least one edge layer: IP allowlist, VPN, Tailscale, Cloudflare Access, or HTTP basic auth
 
+## GitHub domain question
+
+- GitHub does not provide a free general-purpose domain for external servers
+- `github.io` only works for GitHub Pages static hosting
+- You cannot point the Coolify panel, PocketBase API, or your existing server processes to a `github.io` URL as if it were your own domain
+- If you need a free public hostname without buying a domain, use a dynamic DNS provider such as DuckDNS
+
+## Free domain alternative: DuckDNS
+
+If you do not want to buy a domain yet, the practical free option is to create subdomains such as:
+
+- `qorai-app.duckdns.org`
+- `qorai-admin.duckdns.org`
+- `qorai-panel.duckdns.org`
+- `qorai-api.duckdns.org`
+
+Then patch Coolify FQDN values with:
+
+```env
+COOLIFY_ADMIN_APP_FQDN=https://qorai-admin.duckdns.org
+COOLIFY_WEBSITE_FQDN=https://qorai-app.duckdns.org
+COOLIFY_POCKETBASE_FQDN=https://qorai-api.duckdns.org
+```
+
+The panel reverse proxy example becomes:
+
+```nginx
+server {
+    listen 80;
+    server_name qorai-panel.duckdns.org;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name qorai-panel.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/qorai-panel.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/qorai-panel.duckdns.org/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection upgrade;
+    }
+}
+```
+
 ## 1. DNS records
 
 Point these records to `46.225.95.201`:
