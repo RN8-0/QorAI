@@ -980,9 +980,21 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
                   ],
                 ),
+                if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: QorAmountBadge(
+                      amount: AppConstants.creditCostForFeature('link_analysis'),
+                      unlimited: false,
+                      color: AppTheme.brandBlue,
+                      fontSize: 10,
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _buildModernUrlField(
                   controller: _singleUrlController,
@@ -1059,14 +1071,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             letterSpacing: -0.3,
                           ),
                         ),
-                        if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
-                          const SizedBox(width: 8),
-                          QorAmountBadge(
-                            amount: AppConstants.creditCostForFeature('link_analysis'),
-                            unlimited: false,
-                            color: Colors.white,
-                          ),
-                        ],
                       ],
                     ),
                   ),

@@ -249,7 +249,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           } else {
             parts.add(
               _uiText(
-                tr: 'Size ozel secildi',
+                tr: 'Senin icin secildi',
                 en: 'Personalized for you',
               ),
             );
@@ -259,13 +259,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         // Part 2: Budget or activity hint
         final budget = user.budgetRange;
         if (budget == 'premium' || budget == 'high') {
-          parts.add(_uiText(tr: 'premium secimler', en: 'premium picks'));
+          parts.add(_uiText(tr: 'premium oneriler', en: 'premium picks'));
         } else if (budget == 'low') {
           parts.add(_uiText(tr: 'uygun fiyat odakli', en: 'budget-friendly'));
         } else if (budget == 'mid') {
-          parts.add(_uiText(tr: 'orta segment secimler', en: 'mid-range picks'));
+          parts.add(_uiText(tr: 'orta segment oneriler', en: 'mid-range picks'));
         } else {
-          parts.add(_uiText(tr: 'aktivitenize gore', en: 'based on your activity'));
+          parts.add(_uiText(tr: 'etkinligine gore', en: 'based on your activity'));
         }
 
         return parts.join(' • ');
@@ -284,7 +284,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final hour = DateTime.now().hour;
     final isNight = hour < 5 || hour >= 22;
     final greetingEmoji = isNight
-      ? '🌙'
+      ? '🌕'
       : hour < 12
       ? '🌅'
       : hour < 17

@@ -5701,6 +5701,7 @@ Rules:
     final userProfile = ref.watch(userProfileProvider);
     final user = userProfile.valueOrNull;
     final quizCompleted = user != null && user.quizCompleted;
+    final isUserProfileLoading = userProfile.isLoading;
     final productCount = widget.products.length;
     final barColors = [
       const Color(0xFF3B82F6),
@@ -5816,15 +5817,7 @@ Rules:
                     unlimited: false,
                     color: AppTheme.brandBlue,
                     fontSize: 10,
-                  ),
-                  const SizedBox(width: 6),
-                  QorBalanceBadge(
-                    remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
-                    total: AppConstants.freeDailyAiCreditLimit,
-                    unlimited: false,
-                    color: AppTheme.brandBlue,
-                    fontSize: 9,
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   ),
                   const SizedBox(width: 8),
                 ],
@@ -5844,7 +5837,46 @@ Rules:
               onTap: () {},
               child: Column(
                 children: [
-                  if (!quizCompleted)
+                  if (isUserProfileLoading)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            AppTheme.brandSkyBlue,
+                            AppTheme.brandDeepBlue,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            context.l10n?.computingMatch ??
+                                'Eşleşme hesaplanıyor...',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (!quizCompleted)
                     GestureDetector(
                       onTap: () => context.push('/quiz'),
                       child: Container(

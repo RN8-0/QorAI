@@ -583,7 +583,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         }
       } else if (category.isNotEmpty &&
           product.category.toLowerCase() == category &&
-          similar.length < 6) {
+          similar.length < 12) {
         similar.add(product);
       }
     }

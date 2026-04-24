@@ -244,6 +244,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       userProfileProvider
           .select((u) => u.valueOrNull?.quizCompleted ?? false),
     );
+    final isUserProfileLoading = ref.watch(
+      userProfileProvider.select((u) => u.isLoading),
+    );
     final isPremium = ref.watch(
       subscriptionServiceProvider.select((service) => service.isPremium),
     );
@@ -396,6 +399,39 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                                         const SizedBox(height: 2),
                                         _AiStepText(productId: widget.product.id),
                                       ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : isUserProfileLoading
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      context.l10n?.computingMatch ??
+                                          'Eşleşme hesaplanıyor...',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.primaryBlue,
+                                      ),
                                     ),
                                   ),
                                 ],

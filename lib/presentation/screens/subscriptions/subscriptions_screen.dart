@@ -1227,6 +1227,20 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
           ),
         ),
 
+        if (!sub.isPremium) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: QorAmountBadge(
+              amount: analysisCreditCost,
+              unlimited: false,
+              color: _kPrimary,
+              fontSize: 10,
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            ),
+          ),
+        ],
+
         const SizedBox(height: 14),
 
         // Suggestion chips
@@ -1311,14 +1325,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           color: Colors.white,
                         ),
                       ),
-                      if (!sub.isPremium) ...[
-                        const SizedBox(width: 10),
-                        QorAmountBadge(
-                          amount: analysisCreditCost,
-                          unlimited: false,
-                          color: Colors.white,
-                        ),
-                      ],
                     ],
                   ),
                 ),

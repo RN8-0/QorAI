@@ -253,9 +253,7 @@ class SharedPremiumFeaturesSectionState
     String stepMessage = '',
     Widget? expandedChild,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
+    return AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         padding: const EdgeInsets.all(16),
@@ -274,86 +272,90 @@ class SharedPremiumFeaturesSectionState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: gradient),
-                    borderRadius: BorderRadius.circular(12),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: gradient),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: context.surfaceVariantColor,
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    icon,
-                    color: context.surfaceVariantColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 250),
-                        child: Text(
-                          key: ValueKey(
+                        const SizedBox(height: 2),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child: Text(
+                            key: ValueKey(
+                              isLoading && stepMessage.isNotEmpty
+                                  ? stepMessage
+                                  : subtitle,
+                            ),
                             isLoading && stepMessage.isNotEmpty
                                 ? stepMessage
                                 : subtitle,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: isLoading && stepMessage.isNotEmpty
+                                  ? gradient[0].withValues(alpha: 0.85)
+                                  : context.textSecondary,
+                              fontStyle: isLoading && stepMessage.isNotEmpty
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          isLoading && stepMessage.isNotEmpty
-                              ? stepMessage
-                              : subtitle,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: isLoading && stepMessage.isNotEmpty
-                                ? gradient[0].withValues(alpha: 0.85)
-                                : context.textSecondary,
-                            fontStyle: isLoading && stepMessage.isNotEmpty
-                                ? FontStyle.italic
-                                : FontStyle.normal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isLoading)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else ...[
+                    if (cost != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: QorAmountBadge(
+                          amount: cost,
+                          color: gradient[0],
+                          fontSize: 10,
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                if (isLoading)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else ...[  
-                  if (cost != null)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: QorAmountBadge(
-                        amount: cost,
-                        color: gradient[0],
-                        fontSize: 11,
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      ),
+                    Icon(
+                      isExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: gradient[0],
                     ),
-                  Icon(
-                    isExpanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    color: gradient[0],
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
             if (isExpanded && expandedChild != null) ...[
               const SizedBox(height: 14),
@@ -361,8 +363,7 @@ class SharedPremiumFeaturesSectionState
             ],
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDeepAnalysisVisual(DeepAnalysisResult r) {
@@ -884,7 +885,7 @@ class SharedPremiumFeaturesSectionState
                         ),
                       ),
                       child: Text(
-                        '$roundedValue ${AppConstants.qorCurrencyName}',
+                        '$roundedValue/10',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,

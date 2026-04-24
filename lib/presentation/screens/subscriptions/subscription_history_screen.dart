@@ -88,7 +88,13 @@ class _SubscriptionHistoryScreenState
     final seen = <String>{};
     final merged = <Map<String, dynamic>>[];
     for (final item in [...pending, ...firebase]) {
-      final key = (item['timestamp'] as String?) ?? '';
+      final timestamp = (item['timestamp'] as String?) ?? '';
+      final services = ((item['services'] as List?) ?? const [])
+          .map((e) => e.toString().trim().toLowerCase())
+          .toList()
+        ..sort();
+      final winner = item['winner']?.toString().trim().toLowerCase() ?? '';
+      final key = '$timestamp|${services.join(',')}|$winner';
       if (seen.add(key)) merged.add(item);
     }
     merged.sort((a, b) => _historyDateOf(b).compareTo(_historyDateOf(a)));
