@@ -73,6 +73,10 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 - Admin access is handled through GitHub OAuth on the `admins` auth collection and then upgraded to a PocketBase superuser session on the backend
 - User deletion and product/app management are handled directly through PocketBase
 - No Firebase Auth / Firestore dependency remains in runtime flows
+- Run `node scripts/audit_coolify_security.js` or `npm --prefix scripts run audit:coolify-security` to audit Coolify dashboard/app HTTPS and edge protection settings
+- Run `node scripts/patch_coolify_admin_basic_auth.js` or `npm --prefix scripts run patch:coolify-admin-basic-auth` after setting `COOLIFY_ADMIN_BASIC_AUTH_USERNAME` and `COOLIFY_ADMIN_BASIC_AUTH_PASSWORD`
+- Keep the Coolify dashboard off public `:8000` access; prefer a domain with HTTPS plus firewall/VPN/Tailscale restriction
+- Treat direct HTTP access to the Coolify panel as sensitive: rotate tokens/sessions if the panel was used over plain HTTP
 
 ---
 

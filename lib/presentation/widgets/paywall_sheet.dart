@@ -571,9 +571,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'sv' =>
         'Obegransade jamforelser, AI-chatt, lankanalys och en renare premiumupplevelse.',
       'tr' =>
-        'Qor AI Chat, görsel tarayıcı, akıllı link analizi ve premium önerilerde sınırsız deneyim.',
+        'Qor AI Premium ile tüm AI akışlarında sınır kalkar; daha hızlı karar verir, ürünleri daha net tarar ve her öneriyi kendi profilinize göre alırsınız.',
       _ =>
-        'Free includes 10 Q per day, while Premium unlocks unlimited Q across every AI flow.',
+        'Premium removes the cap across every AI flow so you can compare, scan, and ask without slowing down.',
     };
   }
 
@@ -938,23 +938,21 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                     const SizedBox(height: 20),
                     _buildComparisonTable(),
                     const SizedBox(height: 20),
-                    _buildFeatureHighlights(),
-                    const SizedBox(height: 16),
-                    _buildFooter(),
+                    _buildPremiumMomentumDeck(isPremium: true),
                   ] else ...[
                     _buildHeroSection(),
-                    const SizedBox(height: 24),
-                    _buildTrialBanner(),
                     const SizedBox(height: 20),
+                    _buildPremiumMomentumDeck(),
+                    const SizedBox(height: 20),
+                    _buildTrialBanner(),
+                    const SizedBox(height: 18),
                     _buildPlanToggle(),
                     const SizedBox(height: 20),
                     _buildComparisonTable(),
-                    const SizedBox(height: 20),
-                    _buildFeatureHighlights(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 22),
                     _buildCTAButton(),
-                    const SizedBox(height: 8),
-                    _buildFooter(),
+                    const SizedBox(height: 10),
+                    _buildRestoreLink(),
                   ],
                   const SizedBox(height: 8),
                 ],
@@ -1454,7 +1452,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                   ],
                 ),
                 child: const Icon(
-                  Icons.verified_rounded,
+                  Icons.diamond_rounded,
                   color: Colors.white,
                   size: 36,
                 ),
@@ -1476,8 +1474,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               const SizedBox(height: 8),
               Text(
                 _txt(
-                  tr: 'Premium özellikleriniz aktif. Tüm limitler kaldırıldı.',
-                  en: 'Your premium benefits are active and all limits are unlocked.',
+                  tr: 'Qor AI Chat, görsel tarayıcı, link analizi ve premium öneriler artık tamamen açık.',
+                  en: 'Qor AI Chat, visual scanner, link analysis, and premium recommendations are fully unlocked.',
                 ),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
@@ -1563,7 +1561,30 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final l = context.l10n;
     final unlimited = l?.unlimited ?? 'Unlimited';
     final rows = [
-      // ── Free features (available to everyone) ──
+      _TableRow(
+        _txt(tr: 'Qor AI Chat', en: 'Qor AI Chat'),
+        _dailyCreditPoolLabel(AppConstants.freeDailyAiCreditLimit),
+        _unlimitedCreditsLabel(),
+        Icons.chat_bubble_outline_rounded,
+      ),
+      _TableRow(
+        _txt(tr: 'Görsel Tarayıcı', en: 'Visual Scanner'),
+        _txt(tr: 'Sınırlı Q ile', en: 'Uses free Q'),
+        unlimited,
+        Icons.image_search_rounded,
+      ),
+      _TableRow(
+        _txt(tr: 'Akıllı Link Analizi', en: 'Smart Link Analysis'),
+        _txt(tr: 'Sınırlı Q ile', en: 'Uses free Q'),
+        unlimited,
+        Icons.link_rounded,
+      ),
+      _TableRow(
+        _txt(tr: 'Premium Öneriler', en: 'Premium Recommendations'),
+        _txt(tr: 'Standart', en: 'Standard'),
+        _txt(tr: 'Daha derin kişiselleştirme', en: 'Deeper personalization'),
+        Icons.auto_awesome_rounded,
+      ),
       _TableRow(
         l?.productComparisons ?? 'Product Comparisons',
         true,
@@ -1588,13 +1609,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         true,
         Icons.category_rounded,
       ),
-      _TableRow(
-        _txt(tr: 'Günlük AI Q', en: 'Daily AI Q'),
-        _dailyCreditPoolLabel(AppConstants.freeDailyAiCreditLimit),
-        _unlimitedCreditsLabel(),
-        Icons.bolt_rounded,
-      ),
-      // ── Premium-only features ──
       _TableRow(
         l?.pcBuilder ?? 'PC Builder',
         true,
@@ -1668,6 +1682,116 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           for (int i = 0; i < rows.length; i++)
             _buildTableRow(rows[i], i == rows.length - 1),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumMomentumDeck({bool isPremium = false}) {
+    final items = [
+      (
+        Icons.bolt_rounded,
+        _txt(tr: 'Daha hızlı karar ver', en: 'Decide faster'),
+        _txt(
+          tr: 'Tek tek sekmeler arasında kaybolmadan, tüm kritik içgörüleri tek akışta görün.',
+          en: 'See the critical product insight in one flow instead of hopping between tabs.',
+        ),
+      ),
+      (
+        Icons.diamond_rounded,
+        _txt(tr: 'Sınır değil hız hissi', en: 'Feel speed, not limits'),
+        _txt(
+          tr: isPremium
+              ? 'Premium aktif olduğu için tüm AI akışları doğrudan açık ve limitsiz.'
+              : 'Premium, Q limitlerini kaldırır ve yoğun kullanımda sizi yarıda bırakmaz.',
+          en: isPremium
+              ? 'Premium is active, so every AI flow stays open and unlimited.'
+              : 'Premium removes Q limits so heavy usage never cuts you off mid-flow.',
+        ),
+      ),
+      (
+        Icons.psychology_alt_rounded,
+        _txt(tr: 'Size göre daha isabetli', en: 'More tailored to you'),
+        _txt(
+          tr: 'Profiliniz, ilgi alanlarınız ve cihaz ekosisteminiz önerilere daha güçlü yansır.',
+          en: 'Your profile, interests, and ecosystem shape stronger recommendations.',
+        ),
+      ),
+    ];
+
+    return Column(
+      children: items
+          .map(
+            (item) => Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: _kPremiumBase.withValues(alpha: 0.16)),
+                boxShadow: [
+                  BoxShadow(
+                    color: _kPremiumBase.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: _kPremiumGradient,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(item.$1, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.$2,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.$3,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            height: 1.45,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildRestoreLink() {
+    return TextButton(
+      onPressed: _isPurchasing ? null : _restore,
+      child: Text(
+        context.l10n?.paywallRestoreButton ?? 'Restore purchases',
+        style: GoogleFonts.plusJakartaSans(
+          color: context.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

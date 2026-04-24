@@ -218,7 +218,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
     'ar': 'تحليل',
   },
   'Build Summary': {
-    'tr': 'Sistem Ozeti',
+    'tr': 'Sistem Özeti',
     'de': 'Build-Zusammenfassung',
     'es': 'Resumen de la build',
     'fr': 'Resume de la configuration',

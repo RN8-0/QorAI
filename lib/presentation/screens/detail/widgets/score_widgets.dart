@@ -78,6 +78,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _maybeRecomputeFitScore();
+      _maybeTriggerGeminiFetch();
       // Pre-set the "triggered" flag if quiz is done and no cached result
       // exists yet. This makes the loading indicator show from frame-1,
       // before _prefetchMatchScoreOnce() fires ~80ms later.
@@ -181,10 +182,11 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final cacheKey = _currentCacheKey();
     if (_lastRequestedLanguage == cacheKey.normalizedLanguageCode) return;
     _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
+    final existing = ref.read(geminiMatchScoreProvider(cacheKey));
+    if (existing.isLoading || existing.valueOrNull != null) return;
     // Arm the flag before calling fetchMatchScore so there's no window
     // where localFitScore shows through before aiLoading becomes true.
-    final existing = ref.read(geminiMatchScoreProvider(cacheKey));
-    if (existing.valueOrNull == null && mounted) {
+    if (mounted) {
       setState(() => _geminiFetchTriggered = true);
     }
     ref

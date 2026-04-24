@@ -7,6 +7,7 @@ class PersistedChatMsg {
   final String id;
   final PersistedMsgRole role;
   final String text;
+  final String? imagePath;
   final PersistedMsgStatus status;
   final DateTime timestamp;
 
@@ -14,6 +15,7 @@ class PersistedChatMsg {
     required this.id,
     required this.role,
     required this.text,
+    this.imagePath,
     this.status = PersistedMsgStatus.sent,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
@@ -23,6 +25,9 @@ class PersistedChatMsg {
         DateTime.now().millisecondsSinceEpoch.toString(),
     role: PersistedMsgRole.values.byName(m['role'] as String? ?? 'ai'),
     text: m['text'] as String? ?? '',
+    imagePath: (m['imagePath'] as String?)?.trim().isNotEmpty == true
+      ? (m['imagePath'] as String).trim()
+      : null,
     status: PersistedMsgStatus.values
         .byName(m['status'] as String? ?? 'sent'),
     timestamp: m['timestamp'] is String
@@ -34,6 +39,7 @@ class PersistedChatMsg {
     'id': id,
     'role': role.name,
     'text': text,
+    if (imagePath != null && imagePath!.isNotEmpty) 'imagePath': imagePath,
     'status': status.name,
     'timestamp': timestamp.toIso8601String(),
   };

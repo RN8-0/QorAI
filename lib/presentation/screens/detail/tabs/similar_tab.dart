@@ -11,13 +11,21 @@ class _SimilarProductsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      primary: false,
+    return CustomScrollView(
+      key: PageStorageKey<String>('similar-tab-${product.id}'),
+      primary: true,
       physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 40),
-      children: [
-        RepaintBoundary(
-          child: _SimilarProductsSection(product: product, isDark: isDark),
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            MediaQuery.of(context).padding.bottom + 40,
+          ),
+          sliver: RepaintBoundary(
+            child: _SimilarProductsSection(product: product, isDark: isDark),
+          ),
         ),
       ],
     );
@@ -35,81 +43,105 @@ class _SimilarProductsSection extends ConsumerWidget {
     final similarAsync = ref.watch(similarProductsProvider(product));
 
     return similarAsync.when(
-      loading: () => _SimilarShimmer(isDark: isDark),
-      error: (_, __) => Center(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 48),
-          child: Column(
-            children: [
-              Icon(Icons.widgets_outlined, size: 48,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
-              const SizedBox(height: 12),
-              Text('No similar products found',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
-            ],
-          ),
-        ),
+      loading: () => SliverToBoxAdapter(child: _SimilarShimmer(isDark: isDark)),
+      error: (_, __) => SliverFillRemaining(
+        hasScrollBody: false,
+        child: _SimilarEmptyState(isDark: isDark),
       ),
       data: (products) {
-        if (products.isEmpty) return Center(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 48),
-            child: Column(
-              children: [
-                Icon(Icons.widgets_outlined, size: 48,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
-                const SizedBox(height: 12),
-                Text('No similar products found',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
-              ],
-            ),
-          ),
-        );
+        if (products.isEmpty) {
+          return SliverFillRemaining(
+            hasScrollBody: false,
+            child: _SimilarEmptyState(isDark: isDark),
+          );
+        }
         // Use provider's persona-aware ordering (already scored)
         final raw = products.take(12).toList();
         // Çift sayı garantisi: tek sayıysa son elemanı düş (minimum 2)
-        final top = raw.length.isOdd && raw.length > 1 ? raw.sublist(0, raw.length - 1) : raw;
+        final top = raw.length.isOdd && raw.length > 1
+            ? raw.sublist(0, raw.length - 1)
+            : raw;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 14),
-              child: Row(children: [
-                Container(
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.primaryBlue, Color(0xFF7C3AED)]),
-                    borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.widgets_rounded, size: 16, color: Colors.white),
+        return SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppTheme.primaryBlue, Color(0xFF7C3AED)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.widgets_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      context.l10n?.similarProducts ?? 'Similar Products',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Text(context.l10n?.similarProducts ?? 'Similar Products',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16, fontWeight: FontWeight.w700,
-                    color: context.textPrimary)),
-              ]),
+              ),
             ),
-            // 2-column grid
-            GridView.builder(
-              primary: false,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+            SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _SimilarGridCard(product: top[index]),
+                childCount: top.length,
+              ),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 0.82,
               ),
-              itemCount: top.length,
-              itemBuilder: (context, i) => _SimilarGridCard(product: top[i]),
             ),
           ],
         );
       },
+    );
+  }
+}
+
+class _SimilarEmptyState extends StatelessWidget {
+  final bool isDark;
+  const _SimilarEmptyState({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 48),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.widgets_outlined,
+            size: 48,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No similar products found',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

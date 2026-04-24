@@ -435,7 +435,7 @@ class SharedPremiumFeaturesSectionState
         if (r.strengths.isNotEmpty) ...[
           _buildSectionLabel(
             Icons.trending_up_rounded,
-            _txt(tr: 'Guclu Yonler', en: 'Strengths'),
+            _txt(tr: 'Güçlü Yönler', en: 'Strengths'),
             AppTheme.green500,
           ),
           const SizedBox(height: 8),

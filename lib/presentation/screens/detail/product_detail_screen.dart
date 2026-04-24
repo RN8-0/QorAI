@@ -115,7 +115,6 @@ class _DetailBody extends ConsumerStatefulWidget {
 }
 
 class _DetailBodyState extends ConsumerState<_DetailBody> {
-  String? _lastPrefetchedMatchKey;
   bool _tabViewReady = false;
   // Defer overview content (variants, description, pros/cons) to post-frame
   // so the first frame after navigation is minimal and doesn't stutter.
@@ -140,9 +139,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             _contentReady = true;
             _tabViewReady = true;
           });
-          Future.delayed(const Duration(milliseconds: 800), () {
-            if (mounted) _prefetchMatchScoreOnce();
-          });
         }
       } else {
         void listener(AnimationStatus s) {
@@ -156,10 +152,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             Future.delayed(const Duration(milliseconds: 950), () {
               if (!mounted) return;
               setState(() => _tabViewReady = true);
-              // Start AI fetch after tabs are ready.
-              Future.delayed(const Duration(milliseconds: 1100), () {
-                if (mounted) _prefetchMatchScoreOnce();
-              });
             });
           }
         }
@@ -200,45 +192,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         'techScore': widget.product.techScore.toString(),
         'productId': widget.product.id,
       };
-    });
-  }
-
-  void _prefetchMatchScoreOnce() {
-    // Context locale is always up-to-date; prefer it over localeProvider which
-    // may still be null during the first frame after login.
-    String languageCode;
-    try {
-      languageCode = Localizations.localeOf(context).languageCode.toLowerCase();
-    } catch (_) {
-      final locale = ref.read(localeProvider);
-      languageCode = (locale?.languageCode ?? 'en').toLowerCase();
-    }
-    _prefetchMatchScore(languageCode);
-  }
-
-  void _prefetchMatchScore(String languageCode) {
-    final normalizedLanguageCode = languageCode.trim().toLowerCase();
-    final cacheKey = '${widget.product.id}|$normalizedLanguageCode';
-    if (_lastPrefetchedMatchKey == cacheKey) return;
-
-    final user = ref.read(userProfileProvider).valueOrNull;
-    if (user == null || !user.quizCompleted) return;
-    final isPremium = ref.read(
-      subscriptionServiceProvider.select((service) => service.isPremium),
-    );
-    if (!isPremium) return;
-
-    _lastPrefetchedMatchKey = cacheKey;
-    final localizedKey = LocalizedProductKey(
-      productId: widget.product.id,
-      languageCode: normalizedLanguageCode,
-    );
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref
-          .read(geminiMatchScoreProvider(localizedKey).notifier)
-          .fetchMatchScore(product: widget.product);
     });
   }
 

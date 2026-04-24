@@ -1206,9 +1206,9 @@ async function loadUserQuizzes(uid){
   try{
     const u=allUsers.find(x=>x.uid===uid)||{};
     const newQuizHistory=u.quizHistory||[];
-    const onboardingEntries=buildUserOnboardingEntries(u);
     const answerHistory=safeArray(u.quizAnswerHistory).slice().sort((a,b)=>(String(b.timestamp||b.created||'')).localeCompare(String(a.timestamp||a.created||'')));
     const latestTrackedAnswers=safeArray(answerHistory[0]?.answeredQuestions);
+    const onboardingEntries=buildUserOnboardingEntries(u,latestTrackedAnswers);
 
     if(!newQuizHistory.length&&!onboardingEntries.length&&!answerHistory.length){
       el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🧠</div><div>Henüz quiz çözülmemiş</div></div>`;
@@ -1271,15 +1271,22 @@ function formatUserFieldList(values){
     .filter(item=>item&&item.toLowerCase()!=='none');
 }
 
-function buildUserOnboardingEntries(user){
+function buildUserOnboardingEntries(user,trackedAnswers=[]){
   const entries=[];
+  const seenLabels=new Set();
   const pushValue=(label,value)=>{
     const text=formatUserFieldValue(value);
-    if(text)entries.push({label,value:text});
+    if(text){
+      entries.push({label,value:text});
+      seenLabels.add(label.toLowerCase());
+    }
   };
   const pushList=(label,values)=>{
     const items=formatUserFieldList(values);
-    if(items.length)entries.push({label,value:items.join(', ')});
+    if(items.length){
+      entries.push({label,value:items.join(', ')});
+      seenLabels.add(label.toLowerCase());
+    }
   };
   pushValue('Ekosistem',user.ecosystem);
   pushValue('Bütçe',user.budgetRange);
@@ -1287,12 +1294,22 @@ function buildUserOnboardingEntries(user){
   pushValue('Meslek',user.profession);
   pushValue('Cinsiyet',user.gender);
   pushValue('Kullanım Amacı',user.usageIntent);
+  pushValue('Birincil Kategori',user.primaryCategory);
   pushValue('Dil',user.language);
   pushValue('Ülke',user.country);
+  pushValue('Para Birimi',user.currency);
   pushList('İlgi Kategorileri',user.interestCategories);
   pushList('Karar Öncelikleri',user.priorities);
   pushList('Mevcut Cihazlar',user.currentDevices);
   pushList('Abonelikler',user.subscriptions);
+  safeArray(trackedAnswers).forEach(answer=>{
+    const label=formatUserFieldValue(answer.question||answer.label||answer.field);
+    const value=formatUserFieldValue(answer.answer||answer.selectedOption||answer.value);
+    if(!label||!value)return;
+    if(seenLabels.has(label.toLowerCase()))return;
+    entries.push({label,value});
+    seenLabels.add(label.toLowerCase());
+  });
   return entries;
 }
 
@@ -1355,7 +1372,9 @@ async function loadUserProfile(uid){
   try{
     const u=allUsers.find(x=>x.uid===uid);
     if(!u){el.innerHTML='Kullanıcı bulunamadı';return;}
-    const onboardingEntries=buildUserOnboardingEntries(u);
+    const answerHistory=safeArray(u.quizAnswerHistory).slice().sort((a,b)=>(String(b.timestamp||b.created||'')).localeCompare(String(a.timestamp||a.created||'')));
+    const latestTrackedAnswers=safeArray(answerHistory[0]?.answeredQuestions);
+    const onboardingEntries=buildUserOnboardingEntries(u,latestTrackedAnswers);
 
     let html=`<div class="card" style="margin:0 0 16px;padding:14px">
       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">👤 Profil Özeti</div>

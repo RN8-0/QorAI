@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:qor_ai/core/app_keys.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/theme.dart';
@@ -576,16 +578,44 @@ class _BubbleWidget extends StatelessWidget {
         color: isUser ? null : (isError ? AppTheme.error.withValues(alpha: 0.1) : null),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: SelectableText(
-        msg.text,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-          height: 1.45,
-          color: isUser ? context.textPrimary
-              : isError ? AppTheme.error
-                  : context.textPrimary,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if ((msg.imagePath ?? '').isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.file(
+                File(msg.imagePath!),
+                width: 220,
+                height: 220,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 220,
+                  height: 220,
+                  color: context.surfaceVariantColor,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.image_not_supported_rounded,
+                    color: context.textTertiaryColor,
+                  ),
+                ),
+              ),
+            ),
+            if (msg.text.trim().isNotEmpty) const SizedBox(height: 10),
+          ],
+          if (msg.text.trim().isNotEmpty)
+            SelectableText(
+              msg.text,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                height: 1.45,
+                color: isUser ? context.textPrimary
+                    : isError ? AppTheme.error
+                        : context.textPrimary,
+              ),
+            ),
+        ],
       ),
     );
   }

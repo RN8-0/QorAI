@@ -24,7 +24,6 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider);
-    final isPremium = ref.watch(premiumProvider);
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -58,7 +57,7 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.workspace_premium_rounded, size: 20),
+              icon: const Icon(Icons.diamond_rounded, size: 20),
               color: Colors.white,
               onPressed: () => context.push(AppRoutes.premium),
               style: IconButton.styleFrom(
@@ -525,20 +524,6 @@ class _ProfileBody extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Comparison History Preview
-              _ContentSection(
-                title: _profileText(
-                  context,
-                  tr: 'Profil Sinyallerin',
-                  en: 'Your Profile Signals',
-                ),
-                icon: Icons.psychology_alt_rounded,
-                color: AppTheme.brandCyan,
-                child: _ProfileSignalsSection(user: user),
-              ),
-
-              const SizedBox(height: 16),
-
               // Comparison History Preview
               _ContentSection(
                 title: context.l10n?.comparisonHistory ?? 'Comparison History',

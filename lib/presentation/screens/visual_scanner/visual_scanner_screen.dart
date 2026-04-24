@@ -124,6 +124,14 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
       final file = await _camCtrl!.takePicture();
       _capturedImagePath = file.path;
 
+      _chatMessages.add(
+        _ScannerChat(
+          role: _ChatRole.user,
+          text: _uiText(tr: 'Taradığınız fotoğraf', en: 'Captured photo'),
+          imagePath: file.path,
+        ),
+      );
+
       final bytes = await File(file.path).readAsBytes();
       final base64Image = base64Encode(bytes);
 
@@ -164,14 +172,15 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   Future<void> _askFollowUp(String question) async {
     if (question.trim().isEmpty || _capturedImagePath == null) return;
-    if (!(_scanInsight?.isConfirmedProduct ?? false)) {
+    if (!(_scanInsight?.isConfirmedProduct ?? false) &&
+        question.trim().length < 3) {
       setState(() {
         _chatMessages.add(
           _ScannerChat(
             role: _ChatRole.ai,
             text: _uiText(
-              tr: 'Önce net bir ürün taraması yapmam gerekiyor. Ürün olmayan veya çok karanlık karelerde sohbet açmıyorum.',
-              en: 'I need a clear product scan first. I do not open product chat for non-product or very dark frames.',
+              tr: 'Daha net yardımcı olmam için ürünün marka ve modelini yazın. Örnek: Dyson V15 Detect veya iPhone 15 Pro.',
+              en: 'Write the product brand and model so I can help more clearly. Example: Dyson V15 Detect or iPhone 15 Pro.',
             ),
           ),
         );
@@ -314,7 +323,8 @@ User question:
 $question
 
 Instructions:
-- Answer only about the product visible in the image.
+- If the product is not fully confirmed, combine the image with the user's typed model/details and be explicit about uncertainty.
+- Answer only about the product visible in the image or the model the user provides.
 - Be direct, premium-quality, useful, and natural.
 - No JSON, no markdown tables, no code fences.
 - Prefer clear advice over generic filler.
@@ -392,8 +402,8 @@ Instructions:
     final reason = cleaned.isNotEmpty
         ? cleaned
         : _uiText(
-            tr: 'Ürün doğrulanamadı. Lütfen ışığı artırıp ürünü kadrajın merkezine alarak tekrar tara.',
-            en: 'The product could not be verified. Increase the light, center the item, and scan again.',
+            tr: 'Kareden ürün netleşmedi. Marka ve modeli yazarsanız daha ayrıntılı yardımcı olabilirim.',
+            en: 'The item is not clear from the frame. If you type the brand and model, I can help in more detail.',
           );
 
     return _ScannerInsight(
@@ -445,14 +455,14 @@ Instructions:
     if (!insight.isProduct) {
       return insight.lowLight
           ? _uiText(
-              tr: 'Bu kare çok karanlık veya net değil. Ürünü doğrulayamıyorum. Işığı artırıp ürünü kadrajın merkezine alarak tekrar tara.',
-              en: 'This frame is too dark or unclear. I cannot verify the product. Increase the light and place the item in the center, then scan again.',
+              tr: 'Kare çok karanlık veya net değil. İsterseniz ışığı artırıp tekrar tarayın ya da ürünün marka ve modelini yazın; ayrıntıları birlikte netleştirelim.',
+              en: 'This frame is too dark or unclear. You can scan again with better light, or type the brand and model so we can clarify the details together.',
             )
           : (insight.reason.isNotEmpty
                 ? insight.reason
                 : _uiText(
-                    tr: 'Bu görüntüde tanımlanabilir bir ürün göremedim. Duvar, masa, oda gibi ürün olmayan karelerde analiz yapmıyorum.',
-                    en: 'I could not find an identifiable product in this image. I do not run product analysis on non-product scenes like walls, desks, or rooms.',
+                    tr: 'Bu kareden ürünü netleştiremedim. Marka ve modeli yazarsanız ürün hakkında daha detaylı bilgi verebilirim.',
+                    en: 'I could not clarify the product from this frame. If you type the brand and model, I can give more detailed guidance.',
                   ));
     }
 
@@ -491,6 +501,7 @@ Instructions:
                 ? PersistedMsgRole.user
                 : PersistedMsgRole.ai,
             text: msg.text,
+            imagePath: msg.imagePath,
             timestamp: msg.timestamp,
           ),
         )
@@ -746,10 +757,14 @@ Instructions:
                       gradient: AppTheme.primaryGradient,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      color: Colors.white,
-                      size: 18,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.asset(
+                        'assets/logo/qor_ai_logo.png',
+                        width: 18,
+                        height: 18,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -781,8 +796,8 @@ Instructions:
                         else
                           Text(
                             _uiText(
-                              tr: 'Net ürün algısı yok',
-                              en: 'No clear product detected',
+                              tr: 'Modeli yaz, birlikte netleştirelim',
+                              en: 'Type the model and let’s clarify it',
                             ),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
@@ -879,8 +894,8 @@ Instructions:
                             ? insight.title
                             : _uiText(tr: 'Ürün bulundu', en: 'Product found'))
                       : _uiText(
-                          tr: 'Ürün doğrulanamadı',
-                          en: 'Product could not be verified',
+                          tr: 'Modeli yazın, ürünü netleştireyim',
+                          en: 'Type the model and I will clarify the product',
                         ),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
@@ -965,13 +980,41 @@ Instructions:
                 : context.dividerColor.withValues(alpha: 0.45),
           ),
         ),
-        child: SelectableText(
-          msg.text,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13.5,
-            height: 1.5,
-            color: context.textPrimary,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if ((msg.imagePath ?? '').isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.file(
+                  File(msg.imagePath!),
+                  width: 220,
+                  height: 220,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 220,
+                    height: 220,
+                    color: context.surfaceVariantColor,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.image_not_supported_rounded,
+                      color: context.textTertiaryColor,
+                    ),
+                  ),
+                ),
+              ),
+              if (msg.text.trim().isNotEmpty) const SizedBox(height: 10),
+            ],
+            if (msg.text.trim().isNotEmpty)
+              SelectableText(
+                msg.text,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: context.textPrimary,
+                ),
+              ),
+          ],
         ),
       ),
     ).animate().fadeIn(duration: 300.ms);
@@ -982,7 +1025,7 @@ Instructions:
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(16),
@@ -990,12 +1033,17 @@ Instructions:
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppTheme.neonCyan.withValues(alpha: 0.7),
+            Container(
+              width: 24,
+              height: 24,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.74),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Image.asset(
+                'assets/logo/qor_ai_logo.png',
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(width: 8),
@@ -1013,7 +1061,7 @@ Instructions:
   }
 
   Widget _buildFollowUpInput() {
-    final canChat = _scanInsight?.isConfirmedProduct ?? false;
+    final canChat = _hasResult && !_isScanning;
     return SafeArea(
       top: false,
       child: Container(
@@ -1038,8 +1086,8 @@ Instructions:
                 ),
                 child: Text(
                   _uiText(
-                    tr: 'Bu alanda yalnızca doğrulanmış ürünlerle sohbet açılır. Ürünü daha net ışıkta tekrar tarayın.',
-                    en: 'Chat opens here only for verified products. Re-scan the item with clearer light.',
+                    tr: 'Ürün tam netleşmediyse marka ve modeli yazın. Örnek: Dyson V15 Detect, Xiaomi Robot Vacuum X20+.',
+                    en: 'If the product is not fully clear, type the brand and model. Example: Dyson V15 Detect, Xiaomi Robot Vacuum X20+.',
                   ),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
@@ -1075,10 +1123,13 @@ Instructions:
                       decoration: InputDecoration(
                         hintText: _uiText(
                           tr: canChat
-                              ? 'Bu ürün hakkında soru sorun...'
-                              : 'Önce ürün tarayın...'
-                              ,
-                          en: 'Ask about this product...',
+                              ? ((_scanInsight?.isConfirmedProduct ?? false)
+                                    ? 'Bu ürün hakkında soru sorun...'
+                                    : 'Ürün modeli veya kısa detay yazın...')
+                              : 'Tarama hazırlanıyor...',
+                          en: (_scanInsight?.isConfirmedProduct ?? false)
+                              ? 'Ask about this product...'
+                              : 'Type the product model or a short detail...',
                         ),
                         hintStyle: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
@@ -1237,10 +1288,12 @@ enum _ChatRole { user, ai }
 class _ScannerChat {
   final _ChatRole role;
   final String text;
+  final String? imagePath;
   final DateTime timestamp;
   _ScannerChat({
     required this.role,
     required this.text,
+    this.imagePath,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 }

@@ -376,7 +376,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Ust-Orta',
           labelEn: 'Upper Mid',
           emoji: '🚀',
-          detailTr: 'Biraz daha guclu',
+          detailTr: 'Biraz daha güçlü',
           detailEn: 'More powerful',
           coverCategory: 'laptops',
         ),
@@ -385,7 +385,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Premium',
           labelEn: 'Premium',
           emoji: '👑',
-          detailTr: 'En ust seviye',
+          detailTr: 'En üst seviye',
           detailEn: 'Top tier',
           coverCategory: 'cameras',
         ),
@@ -394,7 +394,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           labelTr: 'Farketmez',
           labelEn: 'Any',
           emoji: '✨',
-          detailTr: 'Kategoriye gore karar veririm',
+          detailTr: 'Kategoriye göre karar veririm',
           detailEn: 'I decide per category',
           coverCategory: 'headphones',
         ),
@@ -433,7 +433,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ),
         _QuizOption(
           value: 'design',
-          labelTr: 'Tasarim',
+          labelTr: 'Tasarım',
           labelEn: 'Design',
           emoji: '🎨',
           coverCategory: 'tablets',
@@ -454,14 +454,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ),
         _QuizOption(
           value: 'durability',
-          labelTr: 'Dayaniklilik',
+          labelTr: 'Dayanıklılık',
           labelEn: 'Durability',
           emoji: '🛡️',
           coverCategory: 'robot-vacuums',
         ),
         _QuizOption(
           value: 'battery',
-          labelTr: 'Pil Omru',
+          labelTr: 'Pil Ömrü',
           labelEn: 'Battery Life',
           emoji: '🔋',
           coverCategory: 'smartphones',
@@ -475,7 +475,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ),
         _QuizOption(
           value: 'portability',
-          labelTr: 'Tasınabilirlik',
+          labelTr: 'Taşınabilirlik',
           labelEn: 'Portability',
           emoji: '🎒',
           coverCategory: 'e-readers',
@@ -489,7 +489,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         ),
         _QuizOption(
           value: 'creator',
-          labelTr: 'Uretici Is Akisi',
+          labelTr: 'Üretici İş Akışı',
           labelEn: 'Creator Workflow',
           emoji: '🎬',
           coverCategory: 'monitors',
@@ -524,11 +524,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     _QuizStep(
       field: 'usageIntent',
       title: _t(
-        'En cok hangi amac icin satin aliyorsun?',
+        'En çok hangi amaç için satın alıyorsun?',
         'What are you mainly buying for?',
       ),
       subtitle: _t(
-        'Bu secim match score ve ana sayfa kategorilerini dogrudan etkiler.',
+        'Bu seçim match score ve ana sayfa kategorilerini doğrudan etkiler.',
         'This directly changes match scores and home-screen category priority.',
       ),
       algorithmHint: _t(
@@ -2635,6 +2635,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
     switch (result) {
       case Success():
+        ref.read(behaviorTrackingProvider).trackQuizAnswers(
+          category: _interestCategories.isNotEmpty
+              ? _interestCategories.first
+              : 'smartphones',
+          answeredQuestions: _buildQuizAnswerSnapshot(),
+        );
         ref.invalidate(userProfileProvider);
         ref.invalidate(homeFeedProvider);
         ref.invalidate(categoryCoversProvider);
@@ -2650,6 +2656,84 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         );
         return;
     }
+  }
+
+  List<Map<String, dynamic>> _buildQuizAnswerSnapshot() {
+    final answers = <Map<String, dynamic>>[];
+
+    void addAnswer(_QuizStep step, dynamic rawValue) {
+      if (rawValue == null) return;
+      if (rawValue is List && rawValue.isEmpty) return;
+      if (rawValue is String && rawValue.trim().isEmpty) return;
+
+      String answerText;
+      if (rawValue is List<String>) {
+        final labels = rawValue
+            .map((value) => _quizAnswerLabel(step, value))
+            .where((value) => value.trim().isNotEmpty)
+            .toList();
+        if (labels.isEmpty) return;
+        answerText = labels.join(', ');
+      } else {
+        answerText = _quizAnswerLabel(step, rawValue.toString());
+      }
+
+      answers.add({
+        'field': step.field,
+        'question': step.title,
+        'answer': answerText,
+      });
+    }
+
+    for (final step in _steps) {
+      switch (step.field) {
+        case 'interestCategories':
+          addAnswer(step, List<String>.from(_interestCategories));
+          break;
+        case 'ecosystem':
+          addAnswer(step, _ecosystem);
+          break;
+        case 'budgetRange':
+          addAnswer(step, _budgetRange);
+          break;
+        case 'priorities':
+          addAnswer(step, List<String>.from(_priorities));
+          break;
+        case 'currentDevices':
+          addAnswer(step, List<String>.from(_currentDevices));
+          break;
+        case 'usageIntent':
+          addAnswer(step, _usageIntent);
+          break;
+        case 'ageRange':
+          addAnswer(step, _ageRange);
+          break;
+        case 'profession':
+          addAnswer(step, _profession);
+          break;
+        case 'subscriptions':
+          addAnswer(step, List<String>.from(_subscriptions));
+          break;
+      }
+    }
+
+    return answers;
+  }
+
+  String _quizAnswerLabel(_QuizStep step, String value) {
+    final option = step.options.cast<_QuizOption?>().firstWhere(
+      (item) => item?.value == value,
+      orElse: () => null,
+    );
+    if (option == null) {
+      return value
+          .replaceAll(RegExp(r'[_-]+'), ' ')
+          .split(' ')
+          .where((part) => part.isNotEmpty)
+          .map((part) => part[0].toUpperCase() + part.substring(1))
+          .join(' ');
+    }
+    return _isTurkish ? option.labelTr : option.labelEn;
   }
 
   Widget _buildCompletionScreen(Map<String, String> covers) {

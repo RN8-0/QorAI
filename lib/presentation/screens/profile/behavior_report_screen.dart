@@ -663,7 +663,7 @@ class _HeroSnapshotCardState extends State<_HeroSnapshotCard>
                           _t(
                             context,
                             en: 'Interests, intent, and profile strength.',
-                            tr: 'Ilgi alanlarin, niyetin ve profil gucun.',
+                            tr: 'İlgi alanların, niyetin ve profil gücün.',
                           ),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
@@ -1839,7 +1839,7 @@ class _InsightsSummaryCard extends StatelessWidget {
           body: _t(
             context,
             en: 'Your profile has enough signal for accurate suggestions.',
-            tr: 'Profilin dogru oneriler icin yeterince sinyal veriyor.',
+            tr: 'Profilin doğru öneriler için yeterince sinyal veriyor.',
           ),
         ),
       );
@@ -1853,7 +1853,7 @@ class _InsightsSummaryCard extends StatelessWidget {
           title: _t(
             context,
             en: 'High purchase energy',
-            tr: 'Yuksek alim enerjisi',
+            tr: 'Yüksek alım enerjisi',
           ),
           body: _t(
             context,
@@ -1869,7 +1869,7 @@ class _InsightsSummaryCard extends StatelessWidget {
         _Tip(
           icon: Icons.explore_rounded,
           color: AppTheme.scoreAverage,
-          title: _t(context, en: 'Still exploring', tr: 'Hala kesifte'),
+          title: _t(context, en: 'Still exploring', tr: 'Hâlâ keşifte'),
           body: _t(
             context,
             en: 'Great time to compare a few options side-by-side.',
@@ -1885,14 +1885,14 @@ class _InsightsSummaryCard extends StatelessWidget {
           title: _t(
             context,
             en: 'Try a discovery session',
-            tr: 'Bir kesif oturumu dene',
+            tr: 'Bir keşif oturumu dene',
           ),
           body: _t(
             context,
             en:
                 'Browse a few trending categories — your interest map will sharpen fast.',
             tr:
-                'Birkac populer kategoriye goz at — ilgi haritan hizla sekillenir.',
+                'Birkaç popüler kategoriye göz at — ilgi haritan hızla şekillenir.',
           ),
         ),
       );
@@ -1906,7 +1906,7 @@ class _InsightsSummaryCard extends StatelessWidget {
           title: _t(
             context,
             en: 'Focused interests detected',
-            tr: 'Odakli ilgiler belirlendi',
+            tr: 'Odaklı ilgiler belirlendi',
           ),
           body: _t(
             context,

@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "seed-database.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "audit:coolify-security": "node audit_coolify_security.js",
+    "patch:coolify-admin-basic-auth": "node patch_coolify_admin_basic_auth.js"
   },
   "keywords": [],
   "author": "",
