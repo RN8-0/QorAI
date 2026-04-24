@@ -1316,17 +1316,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                           ),
                         ],
                       ),
-                      if (!sub.isPremium)
-                        Positioned(
-                          right: 12,
-                          bottom: 8,
-                          child: QorAmountBadge(
-                            amount: analysisCreditCost,
-                            color: Colors.white,
-                            fontSize: 10,
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                          ),
-                        ),
                     ],
                   ),
                 ),

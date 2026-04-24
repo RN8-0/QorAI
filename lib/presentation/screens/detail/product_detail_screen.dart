@@ -1,6 +1,7 @@
 /// Qor AI - Product Detail Screen (v2 — redesigned)
 library;
 
+import 'dart:async';
 import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/gestures.dart';

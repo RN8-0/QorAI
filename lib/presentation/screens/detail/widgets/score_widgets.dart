@@ -424,206 +424,98 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                   ),
                 ],
                 Expanded(
-                  child: fitScore != null
-                      ? RepaintBoundary(
-                          child: _AnimatedScoreCell(
-                            label: context.l10n?.yourMatch ?? 'Your Match',
-                            score: fitScore,
-                            color: matchColor,
-                            icon: Icons.person_outline,
-                          ),
-                        )
-                      : showMatchLoading
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 16,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 44,
-                                    height: 44,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        CircularProgressIndicator(
-                                          strokeWidth: 3,
-                                          valueColor: AlwaysStoppedAnimation(
-                                            AppTheme.primaryBlue,
-                                          ),
-                                        ),
-                                        Icon(
-                                          Icons.auto_awesome,
-                                          size: 16,
-                                          color: AppTheme.primaryBlue,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          context.l10n?.yourMatch ??
-                                              'Your Match',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.slate500,
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        _AiStepText(productId: widget.product.id),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : isMatchProfileResolving
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 16,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n?.computingMatch ??
-                                          'Eşleşme hesaplanıyor...',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppTheme.primaryBlue,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : showFreeAiRequest && _cachedFitScore == null
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 16,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 44,
-                                    height: 44,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        CircularProgressIndicator(
-                                          strokeWidth: 3,
-                                          valueColor: AlwaysStoppedAnimation(
-                                            AppTheme.primaryBlue,
-                                          ),
-                                        ),
-                                        Icon(
-                                          Icons.calculate_outlined,
-                                          size: 16,
-                                          color: AppTheme.primaryBlue,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n?.yourMatch ?? 'Your Match',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppTheme.primaryBlue,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : GestureDetector(
-                          onTap: () {
-                            final isLoggedInNow =
-                                ref.read(authStateProvider).valueOrNull != null;
-                            if (!isLoggedInNow) {
-                              context.go(AppRoutes.login);
-                              return;
-                            }
-                            context.push(AppRoutes.quiz);
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                              horizontal: 16,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 44,
-                                  height: 44,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      CircularProgressIndicator(
-                                        value: 1.0,
-                                        strokeWidth: 3,
-                                        color: context.surfaceVariantColor,
-                                      ),
-                                      Icon(
-                                        Icons.lock_outline_rounded,
-                                        size: 16,
-                                        color: context.textSecondary,
-                                      ),
-                                    ],
-                                  ),
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(
+                          top: _showAiButton && !_geminiFetchTriggered ? 6 : 0,
+                        ),
+                        child: fitScore != null
+                            ? RepaintBoundary(
+                                child: _AnimatedScoreCell(
+                                  label: context.l10n?.yourMatch ?? 'Your Match',
+                                  score: fitScore,
+                                  color: matchColor,
+                                  icon: Icons.person_outline,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        context.l10n?.yourMatch ?? 'Your Match',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.slate500,
-                                          letterSpacing: 0.4,
-                                        ),
+                              )
+                            : showMatchLoading
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 16,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 44,
+                                      height: 44,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            strokeWidth: 3,
+                                            valueColor: AlwaysStoppedAnimation(
+                                              AppTheme.primaryBlue,
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.auto_awesome,
+                                            size: 16,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        context.l10n?.takeQuiz ?? 'Take Quiz',
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            context.l10n?.yourMatch ??
+                                                'Your Match',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.slate500,
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          _AiStepText(productId: widget.product.id),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : isMatchProfileResolving
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 16,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        context.l10n?.computingMatch ??
+                                            'Eşleşme hesaplanıyor...',
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
@@ -632,32 +524,151 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                                           color: AppTheme.primaryBlue,
                                         ),
                                       ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : showFreeAiRequest && _cachedFitScore == null
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 16,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 44,
+                                      height: 44,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            strokeWidth: 3,
+                                            valueColor: AlwaysStoppedAnimation(
+                                              AppTheme.primaryBlue,
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.calculate_outlined,
+                                            size: 16,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        context.l10n?.yourMatch ?? 'Your Match',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.primaryBlue,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : GestureDetector(
+                                onTap: () {
+                                  final isLoggedInNow =
+                                      ref.read(authStateProvider).valueOrNull != null;
+                                  if (!isLoggedInNow) {
+                                    context.go(AppRoutes.login);
+                                    return;
+                                  }
+                                  context.push(AppRoutes.quiz);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                    horizontal: 16,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 44,
+                                        height: 44,
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            CircularProgressIndicator(
+                                              value: 1.0,
+                                              strokeWidth: 3,
+                                              color: context.surfaceVariantColor,
+                                            ),
+                                            Icon(
+                                              Icons.lock_outline_rounded,
+                                              size: 16,
+                                              color: context.textSecondary,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              context.l10n?.yourMatch ?? 'Your Match',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.slate500,
+                                                letterSpacing: 0.4,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              context.l10n?.takeQuiz ?? 'Take Quiz',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppTheme.primaryBlue,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ],
+                              ),
+                      ),
+                      if (_showAiButton && !_geminiFetchTriggered)
+                        Positioned(
+                          top: 6,
+                          right: 10,
+                          child: GestureDetector(
+                            onTap: _requestManualAiMatch,
+                            child: QorAmountBadge(
+                              amount: detailMatchCost,
+                              color: AppTheme.primaryBlue,
+                              fontSize: 11,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                             ),
                           ),
                         ),
+                    ],
+                  ),
                 ),
               ],
             ),
         ),
-        // AI trigger button — free user, quiz done, algorithm score ready, no AI yet
-        if (_showAiButton && !_geminiFetchTriggered)
-          Positioned(
-            top: 8,
-            right: 12,
-            child: GestureDetector(
-              onTap: _requestManualAiMatch,
-              child: QorAmountBadge(
-                amount: detailMatchCost,
-                color: AppTheme.primaryBlue,
-                fontSize: 11,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              ),
-            ),
-          ),
         ],
         ),
         // Gemini reason text (tap to expand)

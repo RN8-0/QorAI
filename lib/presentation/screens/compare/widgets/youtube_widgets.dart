@@ -262,6 +262,8 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   double _dy = -1;
   bool _positionSet = false;
   late final YoutubePlayerController _ytCtrl;
+  StreamSubscription<YoutubePlayerValue>? _ytSub;
+  bool _fallbackTriggered = false;
 
   static const _playerW = 300.0;
   static const _playerH = 169.0;
@@ -277,10 +279,27 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
         showFullscreenButton: false,
       ),
     );
+    _ytSub = _ytCtrl.stream.listen((value) {
+      if (!value.hasError) return;
+      _openYoutubeFallback();
+    });
+  }
+
+  Future<void> _openYoutubeFallback() async {
+    if (_fallbackTriggered) return;
+    _fallbackTriggered = true;
+    widget.onClose();
+    final uri = Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    }
   }
 
   @override
   void dispose() {
+    _ytSub?.cancel();
     _ytCtrl.close();
     super.dispose();
   }
@@ -387,7 +406,9 @@ class _CompareFullscreenPlayer extends StatefulWidget {
 
 class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
   late final YoutubePlayerController _ytCtrl;
+  StreamSubscription<YoutubePlayerValue>? _ytSub;
   bool _isLandscape = false;
+  bool _fallbackTriggered = false;
 
   @override
   void initState() {
@@ -400,6 +421,23 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
         showFullscreenButton: true,
       ),
     );
+    _ytSub = _ytCtrl.stream.listen((value) {
+      if (!value.hasError) return;
+      _openYoutubeFallback();
+    });
+  }
+
+  Future<void> _openYoutubeFallback() async {
+    if (_fallbackTriggered) return;
+    _fallbackTriggered = true;
+    final navigator = Navigator.of(context);
+    if (mounted) navigator.pop();
+    final uri = Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    }
   }
 
   void _toggleOrientation() {
@@ -419,6 +457,7 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
 
   @override
   void dispose() {
+    _ytSub?.cancel();
     _ytCtrl.close();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
@@ -477,7 +516,9 @@ class _NativeCompareVideoPlayer extends StatefulWidget {
 
 class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
   late final YoutubePlayerController _ytCtrl;
+  StreamSubscription<YoutubePlayerValue>? _ytSub;
   bool _isLandscape = false;
+  bool _fallbackTriggered = false;
 
   @override
   void initState() {
@@ -490,6 +531,23 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
         showFullscreenButton: true,
       ),
     );
+    _ytSub = _ytCtrl.stream.listen((value) {
+      if (!value.hasError) return;
+      _openYoutubeFallback();
+    });
+  }
+
+  Future<void> _openYoutubeFallback() async {
+    if (_fallbackTriggered) return;
+    _fallbackTriggered = true;
+    final navigator = Navigator.of(context);
+    if (mounted) navigator.pop();
+    final uri = Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    }
   }
 
   void _toggleOrientation() {
@@ -509,6 +567,7 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
 
   @override
   void dispose() {
+    _ytSub?.cancel();
     _ytCtrl.close();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
