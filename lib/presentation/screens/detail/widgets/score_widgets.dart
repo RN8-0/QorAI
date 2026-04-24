@@ -172,6 +172,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final isPremium = ref.read(
       subscriptionServiceProvider.select((service) => service.isPremium),
     );
+    if (!isPremium) return;
     if (isPremium) {
       final cacheKey = _currentCacheKey();
       final matchAsync = ref.read(geminiMatchScoreProvider(cacheKey));
@@ -188,8 +189,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     if (_cachedFitScoreKey == memoKey && _cachedFitScore != null) return;
 
     _fitScoreScheduled = true;
-    // Keep the very first seconds focused on scroll/input responsiveness.
-    Future.delayed(const Duration(milliseconds: 2200), () async {
+    // Keep the route transition responsive, but don't leave completed-quiz
+    // users waiting seconds before the match state appears.
+    Future.delayed(const Duration(milliseconds: 450), () async {
       if (!mounted) {
         _fitScoreScheduled = false;
         return;
@@ -212,6 +214,36 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
         _cachedFitScoreKey = memoKey;
       });
     });
+  }
+
+  void _requestManualAiMatch() {
+    final isLoggedInNow = ref.read(authStateProvider).valueOrNull != null;
+    if (!isLoggedInNow) {
+      context.go(AppRoutes.login);
+      return;
+    }
+
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user == null || !user.quizCompleted) {
+      context.push(AppRoutes.quiz);
+      return;
+    }
+
+    final subscription = ref.read(subscriptionServiceProvider);
+    if (!subscription.canUseDetailMatchAi) {
+      showLimitReachedDialog(context, featureName: 'detail-match');
+      return;
+    }
+
+    final cacheKey = _currentCacheKey();
+    final existing = ref.read(geminiMatchScoreProvider(cacheKey));
+    if (existing.isLoading || existing.valueOrNull != null) return;
+
+    _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
+    setState(() => _geminiFetchTriggered = true);
+    ref
+        .read(geminiMatchScoreProvider(cacheKey).notifier)
+        .fetchMatchScore(product: widget.product);
   }
 
   void _maybeTriggerGeminiFetch() {
@@ -264,8 +296,13 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final isPremium = ref.watch(
       subscriptionServiceProvider.select((service) => service.isPremium),
     );
+    final detailMatchCost = ref.watch(
+      subscriptionServiceProvider.select(
+        (service) => service.creditCostForFeature('detail_match'),
+      ),
+    );
 
-    final int? localFitScore = quizDone ? _cachedFitScore : null;
+    final int? localFitScore = quizDone && isPremium ? _cachedFitScore : null;
 
     // Watch AI result.
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
@@ -291,18 +328,23 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     // loading indicator, which caused the "goes up then goes down" oscillation.
     final bool waitingForAI =
         quizDone &&
-        isPremium &&
         (_geminiFetchTriggered || aiLoading) &&
         matchResult == null;
 
     // AI score is authoritative; local score is a fallback only when AI
     // has definitively returned null (quota exhausted / timeout).
     final int? fitScore =
-        matchResult?.matchScore ?? (waitingForAI ? null : localFitScore);
+      matchResult?.matchScore ?? (waitingForAI ? null : localFitScore);
     final bool showMatchLoading = waitingForAI;
     final String? reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;
+    final bool showFreeAiRequest =
+      quizDone &&
+      !isPremium &&
+      matchResult == null &&
+      !showMatchLoading &&
+      !isMatchProfileResolving;
 
     if (isPremium &&
         quizDone &&
@@ -460,6 +502,95 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                                     ),
                                   ),
                                 ],
+                              ),
+                            )
+                          : showFreeAiRequest
+                          ? GestureDetector(
+                              onTap: _requestManualAiMatch,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 16,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 44,
+                                      height: 44,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            value: 1.0,
+                                            strokeWidth: 3,
+                                            color: AppTheme.primaryBlue
+                                                .withValues(alpha: 0.18),
+                                          ),
+                                          Icon(
+                                            Icons.auto_awesome_rounded,
+                                            size: 16,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            context.l10n?.yourMatch ??
+                                                'Your Match',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.slate500,
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  context.l10n
+                                                          ?.seeMyMatchScore ??
+                                                      'See My Match Score',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight:
+                                                        FontWeight.w700,
+                                                    color: AppTheme.primaryBlue,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              QorAmountBadge(
+                                                amount: detailMatchCost,
+                                                color: AppTheme.primaryBlue,
+                                                fontSize: 10,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 3,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             )
                           : GestureDetector(

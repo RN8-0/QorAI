@@ -5626,6 +5626,9 @@ Rules:
           loadingStatusText: _aiProgressText[_AiPanelType.advisor],
           onRetry: () => _retryAiPanel(_AiPanelType.advisor, _fetchAdvisor),
           onTap: _toggleAdvisor,
+          cost: ref.watch(subscriptionServiceProvider).isPremium
+              ? null
+              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
         ),
         const SizedBox(height: 14),
         // 3. AI Deep Analysis
@@ -5648,6 +5651,9 @@ Rules:
           onRetry: () =>
               _retryAiPanel(_AiPanelType.deepAnalysis, _fetchDeepAnalysis),
           onTap: _toggleDeepAnalysis,
+            cost: ref.watch(subscriptionServiceProvider).isPremium
+              ? null
+              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
         ),
         const SizedBox(height: 14),
         // 4. Smart Alternatives
@@ -5670,6 +5676,9 @@ Rules:
           onRetry: () =>
               _retryAiPanel(_AiPanelType.alternatives, _fetchAlternatives),
           onTap: _toggleAlternatives,
+            cost: ref.watch(subscriptionServiceProvider).isPremium
+              ? null
+              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
         ),
         const SizedBox(height: 14),
         // 5. Price Prediction
@@ -5692,6 +5701,9 @@ Rules:
           onRetry: () =>
               _retryAiPanel(_AiPanelType.prediction, _fetchPrediction),
           onTap: _togglePrediction,
+            cost: ref.watch(subscriptionServiceProvider).isPremium
+              ? null
+              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
         ),
       ],
     );
@@ -5789,15 +5801,31 @@ Rules:
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        context.l10n?.personalizedMatch ?? 'Personalized Match',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              context.l10n?.personalizedMatch ?? 'Personalized Match',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
+                            const SizedBox(width: 8),
+                            QorAmountBadge(
+                              amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+                              unlimited: false,
+                              color: AppTheme.brandBlue,
+                              fontSize: 10,
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -5811,16 +5839,6 @@ Rules:
                     ],
                   ),
                 ),
-                if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
-                  QorAmountBadge(
-                    amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
-                    unlimited: false,
-                    color: AppTheme.brandBlue,
-                    fontSize: 10,
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  ),
-                  const SizedBox(width: 8),
-                ],
                 Icon(
                   _matchScoreExpanded
                       ? Icons.expand_less_rounded
@@ -6078,6 +6096,7 @@ Rules:
     VoidCallback? onRetry,
     String? errorMsg,
     String? loadingStatusText,
+    num? cost,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
@@ -6122,15 +6141,31 @@ Rules:
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (cost != null) ...[
+                            const SizedBox(width: 8),
+                            QorAmountBadge(
+                              amount: cost,
+                              unlimited: false,
+                              color: gradient[0],
+                              fontSize: 10,
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(

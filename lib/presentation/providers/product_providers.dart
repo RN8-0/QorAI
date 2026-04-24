@@ -2809,7 +2809,7 @@ class FreemiumLimits {
   static int get productScanPerDay => AppConstants.freeProductScanLimit;
   static int get detailMatchAiPerDay => AppConstants.freeDetailMatchAiLimit;
 
-  static int costForFeature(String feature) =>
+  static num costForFeature(String feature) =>
       AppConstants.creditCostForFeature(feature);
 }
 
@@ -3146,6 +3146,12 @@ final similarProductsProvider =
             }).toList();
             _addUnique(candidates, related);
           }
+        }
+
+        // Step 5: broad fallback from the remaining deduped pool so
+        // sparse categories do not get stuck at 4-6 similar products.
+        if (candidates.length < _kSimilarProductsLimit) {
+          _addUnique(candidates, deduped);
         }
 
         if (candidates.isEmpty) return [];
