@@ -30,8 +30,6 @@ const double _kHorizontalCardRowHeight = 246;
 const double _kHomeFeedCardHeight = 214;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 const int _kHorizontalInitialItemLimit = 16;
-const int _kCatalogInitialItemLimit = 18;
-const int _kCatalogPageSize = 12;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -49,8 +47,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final Stopwatch _initSw = Stopwatch();
   bool _firstDataLogged = false;
   bool _secondarySectionsReady = false;
-  bool _catalogAppendLocked = false;
-  int _catalogVisibleCount = _kCatalogInitialItemLimit;
 
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
@@ -86,19 +82,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (!_scrollCtrl.hasClients) return;
 
     _savedScrollOffset = _scrollCtrl.offset;
-
-    if (_catalogAppendLocked) return;
-    if (_scrollCtrl.position.extentAfter < 900) {
-      _catalogAppendLocked = true;
-      if (mounted) {
-        setState(() {
-          _catalogVisibleCount += _kCatalogPageSize;
-        });
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _catalogAppendLocked = false;
-      });
-    }
   }
 
   void _startHeroAutoScroll() {
@@ -222,7 +205,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         color: AppTheme.primaryBlue,
         onRefresh: () async {
           HapticFeedback.mediumImpact();
-          setState(() => _catalogVisibleCount = _kCatalogInitialItemLimit);
           clearInMemoryFeedCache();
           ref.invalidate(homeFeedProvider);
           ref.invalidate(categoriesProvider);
@@ -316,20 +298,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(child: _buildDiscoverSection()),
             ],
 
-            SliverToBoxAdapter(
-              child: _SectionHeader(
-                title: _uiText(tr: 'Senin için katalog', en: 'Catalog for You'),
-                icon: Icons.view_stream_rounded,
-                iconColor: const Color(0xFF2563EB),
-                subtitle: _uiText(
-                  tr: 'Tekrarsız ürün akışı, davranışlarına göre sıralanır ve aşağı indikçe genişler.',
-                  en: 'A deduplicated feed ranked for your behavior that keeps expanding as you scroll.',
-                ),
-                onSeeAll: () => context.push(AppRoutes.search),
-              ),
-            ),
-            SliverToBoxAdapter(child: _buildCatalogStreamSection(homeFeed)),
-
             const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
         ),
@@ -341,12 +309,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
         ? tr
         : en;
-  }
-
-  Color _catalogScoreColor(double score) {
-    if (score >= 80) return const Color(0xFF34C759);
-    if (score >= 60) return const Color(0xFFFF9500);
-    return const Color(0xFFFF3B30);
   }
 
   // === HELPERS ===============================================================
@@ -2444,248 +2406,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               onRetry: () => ref.invalidate(discoverProductsProvider),
             ),
           ),
-    );
-  }
-
-  Widget _buildCatalogStreamSection(AsyncValue<HomeFeed> homeFeed) {
-    final country = ref.watch(selectedCountryProvider);
-
-    return homeFeed.when(
-      loading: () => Padding(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
-        child: _buildSkeletonRow(height: 280, cardWidth: 165),
-      ),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (feed) {
-        if (feed.all.isEmpty) return const SizedBox.shrink();
-
-        final visibleCount = min(feed.all.length, _catalogVisibleCount);
-        final hasMore = visibleCount < feed.all.length;
-        final items = feed.all.take(visibleCount).toList();
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: context.surfaceVariantColor,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _uiText(
-                          tr: '$visibleCount / ${feed.all.length} ürün gösteriliyor. Aşağı indikçe yeni öneriler açılır.',
-                          en: '$visibleCount / ${feed.all.length} products are visible. More recommendations unlock as you scroll.',
-                        ),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: context.textSecondary,
-                          height: 1.35,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _uiText(tr: 'Tekrarsız', en: 'Deduped'),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.brandBlue,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: items.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.69,
-                ),
-                itemBuilder: (context, index) {
-                  final product = items[index];
-                  final price = product.getPriceForCountry(country);
-                  return _buildCatalogCard(product, price);
-                },
-              ),
-              if (hasMore) ...[
-                const SizedBox(height: 14),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: context.surfaceVariantColor,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppTheme.brandBlue,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          _uiText(
-                            tr: 'Kaydırdıkça yeni ürünler yükleniyor',
-                            en: 'More products load while you keep scrolling',
-                          ),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: context.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCatalogCard(ProductEntity product, double? price) {
-    final title = localizeProductName(
-      product.name,
-      Localizations.localeOf(context).languageCode,
-    );
-
-    return GestureDetector(
-      onTap: () => context.push('/product/${product.id}'),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? context.surfaceVariantColor
-              : Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: AppTheme.brandCyan.withValues(alpha: 0.15),
-            width: 0.8,
-          ),
-          boxShadow: context.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 142,
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-              ),
-              child: ProductImageBox(
-                imageUrl: product.imageURL.isNotEmpty ? product.imageURL : null,
-                height: 120,
-                borderRadius: BorderRadius.circular(14),
-                padding: EdgeInsets.zero,
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if ((product.brand ?? '').isNotEmpty)
-                      Text(
-                        product.brand!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: context.textTertiaryColor,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
-                        height: 1.2,
-                      ),
-                    ),
-                    const Spacer(),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (price != null && price > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              '\$${price.toStringAsFixed(0)}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.primaryBlue,
-                              ),
-                            ),
-                          ),
-                        if (product.techScore > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: _catalogScoreColor(product.techScore).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              'Tech ${product.techScore.round()}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: _catalogScoreColor(product.techScore),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

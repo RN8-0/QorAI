@@ -695,6 +695,65 @@ class _HomeFeedRawArgs {
   });
 }
 
+String _homeFeedBrandKey(ProductEntity product) {
+  return (product.brand ?? '').toLowerCase().trim();
+}
+
+String _homeFeedModelKey(ProductEntity product) {
+  final normalizedName = normalizeProductName(product.name);
+  final brand = _homeFeedBrandKey(product);
+  if (brand.isNotEmpty && normalizedName.startsWith('$brand ')) {
+    return normalizedName.substring(brand.length).trim();
+  }
+  return normalizedName;
+}
+
+List<ProductEntity> _spreadHomeFeedVariety(
+  List<ProductEntity> products, {
+  int recentWindow = 2,
+}) {
+  if (products.length < 3) return List<ProductEntity>.from(products);
+
+  final remaining = List<ProductEntity>.from(products);
+  final arranged = <ProductEntity>[];
+  final recentBrands = <String>[];
+  final recentModels = <String>[];
+
+  while (remaining.isNotEmpty) {
+    int chosenIndex = remaining.indexWhere((product) {
+      final brand = _homeFeedBrandKey(product);
+      final model = _homeFeedModelKey(product);
+      return !recentBrands.contains(brand) && !recentModels.contains(model);
+    });
+
+    chosenIndex = chosenIndex >= 0
+        ? chosenIndex
+        : remaining.indexWhere((product) {
+            final model = _homeFeedModelKey(product);
+            return !recentModels.contains(model);
+          });
+
+    chosenIndex = chosenIndex >= 0
+        ? chosenIndex
+        : remaining.indexWhere((product) {
+            final brand = _homeFeedBrandKey(product);
+            return !recentBrands.contains(brand);
+          });
+
+    if (chosenIndex < 0) chosenIndex = 0;
+
+    final selected = remaining.removeAt(chosenIndex);
+    arranged.add(selected);
+
+    recentBrands.add(_homeFeedBrandKey(selected));
+    recentModels.add(_homeFeedModelKey(selected));
+    if (recentBrands.length > recentWindow) recentBrands.removeAt(0);
+    if (recentModels.length > recentWindow) recentModels.removeAt(0);
+  }
+
+  return arranged;
+}
+
 // Top-level wrapper so compute() can spawn it in a background isolate.
 HomeFeed _buildHomeFeedIsolate(_HomeFeedArgs args) => _buildHomeFeed(
   args.products,
@@ -1108,7 +1167,7 @@ HomeFeed _buildHomeFeed(
         '=== QOR AI:   $cat: ${all.length} total → ${diverse.length} after diversity (brands: ${brandCount.entries.map((e) => '${e.key}:${e.value}').join(', ')}) ===',
       );
     }
-    byCategory[cat] = diverse;
+    byCategory[cat] = _spreadHomeFeedVariety(diverse);
   }
 
   // ── TRENDING: YouTube-style top products (max 2 per brand, 3 per category) ─
@@ -1139,6 +1198,7 @@ HomeFeed _buildHomeFeed(
     }
     if (trending.length >= 100) break;
   }
+  final diversifiedTrending = _spreadHomeFeedVariety(trending);
 
   // ── FEATURED: Best product per mainstream category (unique brands) ────────
   final featured = <ProductEntity>[];
@@ -1189,6 +1249,7 @@ HomeFeed _buildHomeFeed(
       if (featured.length >= 12) break;
     }
   }
+  final diversifiedFeatured = _spreadHomeFeedVariety(featured);
 
   // ── NEW ARRIVALS: recent products with decent quality ─────────────────────
   // Prefer createdAt for genuinely new additions to the database
@@ -1231,6 +1292,7 @@ HomeFeed _buildHomeFeed(
     }
     if (newArrivals.length >= 50) break;
   }
+  final diversifiedNewArrivals = _spreadHomeFeedVariety(newArrivals);
 
   // ── DISCOVER: High-quality hidden gems — products NOT in trending/featured ──
   final trendingIds = trending.map((p) => p.id).toSet();
@@ -1272,6 +1334,11 @@ HomeFeed _buildHomeFeed(
     }
     if (discover.length >= 30) break;
   }
+  final diversifiedDiscover = _spreadHomeFeedVariety(discover);
+  final diversifiedAll = _spreadHomeFeedVariety(
+    allScored.map((entry) => entry.product).toList(),
+    recentWindow: 3,
+  );
 
   // Build priority category list based on behavior + profile
   // Only include categories with at least 4 products
@@ -1341,12 +1408,12 @@ HomeFeed _buildHomeFeed(
   }
 
   return HomeFeed(
-    trending: trending,
-    featured: featured,
+    trending: diversifiedTrending,
+    featured: diversifiedFeatured,
     byCategory: byCategory,
-    newArrivals: newArrivals,
-    discover: discover,
-    all: pool,
+    newArrivals: diversifiedNewArrivals,
+    discover: diversifiedDiscover,
+    all: diversifiedAll,
     priorityCategories: priorityCats,
   );
 }
@@ -2195,7 +2262,7 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     }
     if (result.length >= 50) break;
   }
-  return result;
+  return _spreadHomeFeedVariety(result, recentWindow: 3);
 });
 
 /// Category priority based on user's interests + behavior
@@ -2250,9 +2317,15 @@ final topInCategoryProvider =
           .toList();
       if (fresh.length < 5) {
         // Not enough fresh products, show top ones
-        return (category: topCat, products: catProducts.take(30).toList());
+        return (
+          category: topCat,
+          products: _spreadHomeFeedVariety(catProducts.take(30).toList()),
+        );
       }
-      return (category: topCat, products: fresh);
+      return (
+        category: topCat,
+        products: _spreadHomeFeedVariety(fresh),
+      );
     });
 
 /// "Recently Analyzed" — products user has analyzed with AI
@@ -2348,7 +2421,7 @@ final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
     }
     if (result.length >= 30) break;
   }
-  return result;
+  return _spreadHomeFeedVariety(result, recentWindow: 3);
 });
 
 /// Calculate fit score for a specific product
