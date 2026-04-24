@@ -25,6 +25,7 @@ class PbDataSource {
   late final Dio _dio;
   bool _realtimeUnsupported = false;
   bool _notificationsRealtimeUnsupported = false;
+  bool _publicConfigUnsupported = false;
   static const _savedAnalysesCollection = 'saved_analyses';
   static const _linkHistoryCategory = 'link_history';
   static const _subscriptionHistoryCategory = 'subscription_history';
@@ -56,6 +57,21 @@ class PbDataSource {
     );
   }
 
+  static bool _isMissingCollectionContextError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('missing collection context') ||
+        (text.contains('statuscode: 404') &&
+            text.contains('/api/collections/'));
+  }
+
+  static bool _isRealtimeUnsupportedError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('missing or invalid client id') ||
+        text.contains('missing collection context') ||
+        text.contains('failed to establish sse connection') ||
+        (text.contains('statuscode: 404') && text.contains('/api/realtime'));
+  }
+
   Stream<T> _createRealtimeStream<T>({
     required String collection,
     String topic = '*',
@@ -84,13 +100,6 @@ class PbDataSource {
       });
     }
 
-    bool isRealtimeUnsupportedError(Object error) {
-      final text = error.toString().toLowerCase();
-      return text.contains('missing or invalid client id') ||
-          text.contains('missing collection context') ||
-          (text.contains('statuscode: 404') && text.contains('/api/realtime'));
-    }
-
     controller = StreamController<T>(
       onListen: () {
         unawaited(() async {
@@ -110,7 +119,7 @@ class PbDataSource {
               }
             });
           } catch (error) {
-            if (isRealtimeUnsupportedError(error)) {
+            if (_isRealtimeUnsupportedError(error)) {
               _realtimeUnsupported = true;
               debugPrint(
                 '[PbDs] realtime unavailable for "$collection", polling fallback enabled',
@@ -1255,12 +1264,7 @@ class PbDataSource {
         });
         backoffAttempts = 0; // reset on success
       } catch (e) {
-        final errorText = e.toString().toLowerCase();
-        final realtimeUnsupported =
-            errorText.contains('missing or invalid client id') ||
-            errorText.contains('missing collection context') ||
-            (errorText.contains('statuscode: 404') &&
-                errorText.contains('/api/realtime'));
+        final realtimeUnsupported = _isRealtimeUnsupportedError(e);
         if (realtimeUnsupported) {
           _notificationsRealtimeUnsupported = true;
           if (backoffAttempts == 0) {
@@ -1729,6 +1733,8 @@ class PbDataSource {
   // ────────────────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getPublicConfig() async {
+    if (_publicConfigUnsupported) return {};
+
     try {
       final result = await _pb
           .collection('public_config')
@@ -1741,6 +1747,10 @@ class PbDataSource {
       }
       return config;
     } catch (e) {
+      if (_isMissingCollectionContextError(e)) {
+        _publicConfigUnsupported = true;
+        return {};
+      }
       debugPrint('[PB] getPublicConfig failed: $e');
       return {};
     }

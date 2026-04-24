@@ -34,11 +34,11 @@ Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
 }
 
 void _scheduleDeferredStartupTasks() {
-  Future.delayed(const Duration(milliseconds: 900), () {
+  Future.delayed(const Duration(milliseconds: 2500), () {
     unawaited(_initializeSpecTranslations());
   });
   if (!kIsWeb) {
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(const Duration(seconds: 8), () {
       unawaited(_initializeNotifications());
     });
   }
@@ -130,7 +130,10 @@ void main() {
     }
 
     // Initialize Remote Config via PocketBase
-    final remoteConfigService = RemoteConfigService.fromPb(PbDataSource());
+    final remoteConfigService = RemoteConfigService.fromPb(
+      PbDataSource(),
+      deferredLoad: const Duration(seconds: 6),
+    );
 
     debugPrint('=== QOR AI: Calling runApp ===');
 

@@ -1,6 +1,23 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
+
+String _normalizeSpecText(String text) {
+  return text.replaceAll('\u00A0', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
+Map<String, Map<String, String>> _buildSpecTranslationMaps(String rawJson) {
+  final decoded = Map<String, String>.from(json.decode(rawJson) as Map);
+  final reverse = <String, String>{};
+  for (final entry in decoded.entries) {
+    reverse[_normalizeSpecText(entry.value).toLowerCase()] = entry.key;
+  }
+  return {
+    'enTr': decoded,
+    'trEn': reverse,
+  };
+}
 
 /// Loads the EN→TR spec dictionary from assets and provides bidirectional translation.
 /// Uses the scraper's 7,300+ entry dictionary for comprehensive coverage.
@@ -20,19 +37,16 @@ class SpecTranslationService {
   );
 
   String normalize(String text) =>
-      text.replaceAll('\u00A0', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+      _normalizeSpecText(text);
 
   Future<void> init() async {
     if (_enTr != null || _loading) return;
     _loading = true;
     try {
       final raw = await rootBundle.loadString('assets/en_tr_specs.json');
-      _enTr = Map<String, String>.from(json.decode(raw) as Map);
-      // Build reverse map for TR→EN translation
-      _trEn = {};
-      for (final entry in _enTr!.entries) {
-        _trEn![normalize(entry.value).toLowerCase()] = entry.key;
-      }
+      final decoded = await compute(_buildSpecTranslationMaps, raw);
+      _enTr = decoded['enTr'] ?? <String, String>{};
+      _trEn = decoded['trEn'] ?? <String, String>{};
     } catch (_) {
       _enTr = {};
       _trEn = {};

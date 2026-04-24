@@ -1636,6 +1636,8 @@ void _scheduleLegacyFeedCacheCleanup(CacheService cache, UserEntity? user) {
 /// Flag to prevent concurrent background refreshes
 bool _isRefreshingFeed = false;
 
+bool _adminConfigUnsupported = false;
+
 /// Completer to prevent concurrent first-time network fetches
 Completer<HomeFeed>? _pendingFeedFetch;
 
@@ -1772,7 +1774,7 @@ Future<_FeedConfig> _awaitFastFeedConfig(
 ) async {
   try {
     return await configFuture.timeout(
-      const Duration(milliseconds: 650),
+      const Duration(milliseconds: 250),
       onTimeout: () => const _FeedConfig(),
     );
   } catch (_) {
@@ -1780,9 +1782,18 @@ Future<_FeedConfig> _awaitFastFeedConfig(
   }
 }
 
+bool _isPublicConfigUnavailableError(Object error) {
+  final text = error.toString().toLowerCase();
+  return text.contains('missing collection context') ||
+      (text.contains('statuscode: 404') &&
+          text.contains('/api/collections/public_config'));
+}
+
 Future<_FeedConfig> _fetchAdminConfig() async {
-    try {
-      final record = await pb
+  if (_adminConfigUnsupported) return const _FeedConfig();
+
+  try {
+    final record = await pb
         .collection('public_config')
         .getFirstListItem('key = "algorithm"')
         .timeout(const Duration(seconds: 5));
@@ -1792,7 +1803,11 @@ Future<_FeedConfig> _fetchAdminConfig() async {
       hiddenIds: List<String>.from(data['hiddenProducts'] ?? []),
       disabledCats: List<String>.from(data['disabledCategories'] ?? []),
     );
-  } catch (_) {}
+  } catch (error) {
+    if (_isPublicConfigUnavailableError(error)) {
+      _adminConfigUnsupported = true;
+    }
+  }
   return const _FeedConfig();
 }
 

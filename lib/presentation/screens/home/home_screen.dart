@@ -27,7 +27,7 @@ import 'package:qor_ai/core/pb_client.dart';
 
 const double _kHorizontalCardRowHeight = 246;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
-const int _kHorizontalInitialItemLimit = 16;
+const int _kHorizontalInitialItemLimit = 12;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
