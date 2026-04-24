@@ -127,6 +127,20 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return _isTurkish ? tr : en;
   }
 
+  String _localizedFilterLabel(String label) {
+    return FilterConfig.localizeLabel(
+      label,
+      languageCode: _isTurkish ? 'tr' : 'en',
+    );
+  }
+
+  String _localizedFilterOption(String label) {
+    return FilterConfig.localizeOptionLabel(
+      label,
+      languageCode: _isTurkish ? 'tr' : 'en',
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -849,27 +863,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     );
   }
 
-  Future<void> _openSortFilterSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _SortFilterSheet(
-        currentSort: _sortOption,
-        filterState: _filterState,
-        categoryId: _activeCategoryId,
-        products: _allProducts,
-        onApply: (sort, filters) {
-          setState(() {
-            _sortOption = sort;
-            _filterState = filters;
-          });
-        },
-      ),
-    );
-  }
-
   Widget _buildActiveFilterChips() {
     final definitions = _filterDefinitions;
     final chips = <Widget>[];
@@ -881,9 +874,14 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           if (selected != null && selected.isNotEmpty) {
             final labels = (def.options ?? [])
                 .where((o) => selected.contains(o.id))
-                .map((o) => o.label)
+                .map((o) => _localizedFilterOption(o.label))
                 .join(', ');
-            chips.add(_activeChip('${def.label}: $labels', def.id));
+            chips.add(
+              _activeChip(
+                '${_localizedFilterLabel(def.label)}: $labels',
+                def.id,
+              ),
+            );
           }
         case FilterType.rangeSlider:
           if (_filterState.ranges.containsKey(def.id)) {
@@ -894,14 +892,24 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             final fmt = isDecimal
                 ? '${r.start.toStringAsFixed(1)}–${r.end.toStringAsFixed(1)}$unit'
                 : '${r.start.round()}–${r.end.round()}$unit';
-            chips.add(_activeChip('${def.label}: $fmt', def.id));
+            chips.add(
+              _activeChip(
+                '${_localizedFilterLabel(def.label)}: $fmt',
+                def.id,
+              ),
+            );
           }
         case FilterType.toggle:
           final v = _filterState.toggles[def.id];
           if (v != null) {
             final yes = context.l10n?.yes ?? 'Yes';
             final no = context.l10n?.no ?? 'No';
-            chips.add(_activeChip('${def.label}: ${v ? yes : no}', def.id));
+            chips.add(
+              _activeChip(
+                '${_localizedFilterLabel(def.label)}: ${v ? yes : no}',
+                def.id,
+              ),
+            );
           }
       }
     }
@@ -1170,217 +1178,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     );
   }
 
-  Widget _buildCountBar(int count) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-      child: Row(
-        children: [
-          Text(
-            context.l10n?.productCount(count) ??
-                '$count product${count == 1 ? '' : 's'}',
-            style: GoogleFonts.plusJakartaSans(
-              color: context.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const Spacer(),
-          if (_filterState.isActive || _searchQuery.isNotEmpty)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _filterState = const FilterState();
-                  _searchController.clear();
-                });
-              },
-              child: Text(
-                context.l10n?.clearAll ?? 'Clear all',
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.primaryBlue,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
-
-// ---------------------------------------------------------------------------
-// Product card
-// ---------------------------------------------------------------------------
-
-class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product, required this.onTap});
-
-  final ProductEntity product;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl =
-        product.imageUrl ??
-        (product.allImages.isNotEmpty ? product.allImages.first : null);
-    final usPrice = product.prices['US'];
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              context.surfaceVariantColor,
-              context.surfaceVariantColor.withValues(alpha: 0.90),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.brandCyan.withValues(alpha: 0.10),
-            width: 0.8,
-          ),
-          boxShadow: [
-            ...AppTheme.cardShadow,
-            BoxShadow(
-              color: AppTheme.brandCyan.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: -2,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── product image ──────────────────────────────────────────────
-            ProductImageBox(
-              imageUrl: imageUrl,
-              fallbackUrls: product.images,
-              height: 140,
-              width: double.infinity,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              padding: const EdgeInsets.all(10),
-            ),
-
-            // ── product info ───────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: context.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  if ((product.brand ?? '').isNotEmpty)
-                    Text(
-                      product.brand!,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: context.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  if (usPrice != null) ...[
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '\$${usPrice.round()}',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: context.surfaceVariantColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (product.techScore > 0) ...[
-                    const SizedBox(height: 6),
-                    _TechScoreBadge(score: product.techScore),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// TechScore badge
-// ---------------------------------------------------------------------------
-
-class _TechScoreBadge extends StatelessWidget {
-  const _TechScoreBadge({required this.score});
-
-  final double score;
-
-  Color _scoreColor() {
-    if (score >= 80) return AppTheme.scoreExcellent;
-    if (score >= 60) return AppTheme.scoreGood;
-    if (score >= 40) return AppTheme.scoreAverage;
-    return AppTheme.scorePoor;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _scoreColor();
-    final progress = (score / 100).clamp(0.0, 1.0);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 24,
-          height: 24,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CircularProgressIndicator(
-                value: progress,
-                strokeWidth: 3,
-                backgroundColor: color.withValues(alpha: 0.15),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-              Text(
-                '${score.round()}',
-                style: GoogleFonts.plusJakartaSans(
-                  color: color,
-                  fontSize: 7,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Product List Tile (horizontal card for list view)
 // ---------------------------------------------------------------------------
@@ -1406,7 +1204,6 @@ class _ProductListTile extends StatelessWidget {
     final usPrice = product.prices['US'];
     final score = product.techScore;
     final scoreColor = _scoreColor(score);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),

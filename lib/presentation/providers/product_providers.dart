@@ -1673,8 +1673,8 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     if (staleResult.data != null && (staleResult.data as List).isNotEmpty) {
       final sw = Stopwatch()..start();
       final rawList = staleResult.data as List;
-      // Await admin config only after cache hit (fast path)
-      final config = await configFuture;
+      // Keep the cached-first path responsive even if admin config is slow.
+      final config = await _awaitFastFeedConfig(configFuture);
       final feed = await compute(
         _buildHomeFeedFromRawIsolate,
         _HomeFeedRawArgs(
@@ -1765,6 +1765,19 @@ class _FeedConfig {
     this.hiddenIds = const [],
     this.disabledCats = const [],
   });
+}
+
+Future<_FeedConfig> _awaitFastFeedConfig(
+  Future<_FeedConfig> configFuture,
+) async {
+  try {
+    return await configFuture.timeout(
+      const Duration(milliseconds: 650),
+      onTimeout: () => const _FeedConfig(),
+    );
+  } catch (_) {
+    return const _FeedConfig();
+  }
 }
 
 Future<_FeedConfig> _fetchAdminConfig() async {
@@ -2902,6 +2915,8 @@ final productVariantsProvider =
 // ─── SIMILAR PRODUCTS PROVIDER ───
 // ════════════════════════════════════════════════════
 
+const int _kSimilarProductsLimit = 26;
+
 /// Finds truly similar products: same category, persona-aware scoring,
 /// variant exclusion, brand diversity. Uses homeFeed cache + Firestore.
 final similarProductsProvider =
@@ -2969,7 +2984,7 @@ final similarProductsProvider =
               final tsProducts = await ds
                   .getProductsByCategoryTs(
                     category: product.category,
-                    limit: 100,
+                    limit: 160,
                     sortBy: 'techScore:desc',
                   )
                   .timeout(const Duration(seconds: 6));
@@ -2985,7 +3000,7 @@ final similarProductsProvider =
             try {
               final result = await ref
                   .read(productRepositoryProvider)
-                  .getProducts(category: product.category, limit: 80)
+                  .getProducts(category: product.category, limit: 140)
                   .timeout(const Duration(seconds: 8));
               result.when(
                 success: (products) {
@@ -3199,15 +3214,27 @@ final similarProductsProvider =
 
         scored.sort((a, b) => b.value.compareTo(a.value));
 
-        // Take top results with strict brand diversity (max 3 per brand)
+        // Take top results with brand diversity first, then backfill to keep
+        // the grid dense on the similar tabs.
         final result = <ProductEntity>[];
+        final selectedIds = <String>{};
         final brandCount = <String, int>{};
         for (final entry in scored) {
           final brand = entry.key.brand?.toLowerCase() ?? 'unknown';
-          if ((brandCount[brand] ?? 0) >= 3) continue;
+          if ((brandCount[brand] ?? 0) >= 4) continue;
           brandCount[brand] = (brandCount[brand] ?? 0) + 1;
           result.add(entry.key);
-          if (result.length >= 12) break;
+          selectedIds.add(entry.key.id);
+          if (result.length >= _kSimilarProductsLimit) break;
+        }
+
+        if (result.length < _kSimilarProductsLimit) {
+          for (final entry in scored) {
+            if (selectedIds.contains(entry.key.id)) continue;
+            result.add(entry.key);
+            selectedIds.add(entry.key.id);
+            if (result.length >= _kSimilarProductsLimit) break;
+          }
         }
 
         // Çift sayı garantisi: tek sayıysa son elemanı düş (minimum 2)

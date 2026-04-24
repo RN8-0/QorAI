@@ -48,16 +48,20 @@ class FilterDefinition {
         isDynamic: isDynamic,
         specKeys: specKeys,
       );
-}
 
-// ---------------------------------------------------------------------------
-// Helper to build a FilterOption list from plain string labels.
-// ---------------------------------------------------------------------------
-List<FilterOption> _opts(List<String> labels) => labels
-    .map(
-      (l) => FilterOption(id: l.toLowerCase().replaceAll(' ', '_'), label: l),
-    )
-    .toList();
+  FilterDefinition withRange({double? minValue, double? maxValue}) =>
+      FilterDefinition(
+        id: id,
+        label: label,
+        type: type,
+        options: options,
+        minValue: minValue ?? this.minValue,
+        maxValue: maxValue ?? this.maxValue,
+        unit: unit,
+        isDynamic: isDynamic,
+        specKeys: specKeys,
+      );
+}
 
 // ---------------------------------------------------------------------------
 // Shared dynamic brand filter – options populated at runtime from products
@@ -970,6 +974,16 @@ const List<FilterDefinition> _powerBankFilters = [
 const List<FilterDefinition> _genericFilters = [
   _dynamicBrandFilter,
   FilterDefinition(
+    id: 'price',
+    label: 'Price Range',
+    type: FilterType.rangeSlider,
+    minValue: 0,
+    maxValue: 50000,
+    unit: '\$',
+    isDynamic: true,
+    specKeys: ['price', 'Price'],
+  ),
+  FilterDefinition(
     id: 'tech_score',
     label: 'Score Range',
     type: FilterType.multiSelect,
@@ -1458,6 +1472,51 @@ const List<FilterDefinition> _gamepadFilters = [
     ],
     specKeys: ['Platform', 'Compatibility'],
   ),
+  FilterDefinition(
+    id: 'connection_type',
+    label: 'Connection Type',
+    type: FilterType.multiSelect,
+    options: [
+      FilterOption(id: 'wired', label: 'Kablolu'),
+      FilterOption(id: 'wireless', label: 'Kablosuz'),
+      FilterOption(id: 'bluetooth', label: 'Bluetooth'),
+      FilterOption(id: '2_4ghz', label: '2.4 GHz'),
+    ],
+    specKeys: ['Connection Type', 'Connectivity', 'Wireless', 'Bluetooth'],
+  ),
+  FilterDefinition(
+    id: 'battery_life',
+    label: 'Battery Life',
+    type: FilterType.rangeSlider,
+    minValue: 0,
+    maxValue: 80,
+    unit: 'saat',
+    specKeys: ['Battery Life', 'Battery', 'Pil Ömrü', 'Runtime'],
+  ),
+  FilterDefinition(
+    id: 'vibration',
+    label: 'Vibration',
+    type: FilterType.toggle,
+    specKeys: ['Vibration', 'Haptic', 'Titreşim'],
+  ),
+  FilterDefinition(
+    id: 'gyro_controls',
+    label: 'Gyro Controls',
+    type: FilterType.toggle,
+    specKeys: ['Gyro', 'Gyroscope', 'Motion Control', 'Jiroskop'],
+  ),
+  FilterDefinition(
+    id: 'back_buttons',
+    label: 'Back Buttons',
+    type: FilterType.toggle,
+    specKeys: ['Back Buttons', 'Paddles', 'Programmable Buttons'],
+  ),
+  FilterDefinition(
+    id: 'hall_effect',
+    label: 'Hall Effect',
+    type: FilterType.toggle,
+    specKeys: ['Hall Effect', 'Hall Sensor', 'Hall Effect Joystick'],
+  ),
 ];
 
 const List<FilterDefinition> _microphoneFilters = [
@@ -1492,6 +1551,80 @@ const List<FilterDefinition> _microphoneFilters = [
 
 class FilterConfig {
   FilterConfig._();
+
+  static const Map<String, String> _trLabelMap = {
+    'Brand': 'Marka',
+    'Price Range': 'Fiyat Aralığı',
+    'Score Range': 'Skor Aralığı',
+    'Wireless': 'Kablosuz',
+    'Platform': 'Platform',
+    'Connection Type': 'Bağlantı Tipi',
+    'Battery Life': 'Pil Ömrü',
+    'Vibration': 'Titreşim',
+    'Gyro Controls': 'Jiroskop Kontrolü',
+    'Back Buttons': 'Arka Tuşlar',
+    'Hall Effect': 'Hall Effect',
+    'Storage': 'Depolama',
+    'Screen Size': 'Ekran Boyutu',
+    'Operating System': 'İşletim Sistemi',
+    'Processor Brand': 'İşlemci Markası',
+    'Processor': 'İşlemci',
+    'Resolution': 'Çözünürlük',
+    'Refresh Rate': 'Yenileme Hızı',
+    'Panel Type': 'Panel Tipi',
+    'Camera Type': 'Kamera Tipi',
+    'Sensor Size': 'Sensör Boyutu',
+    'Video Resolution': 'Video Çözünürlüğü',
+    'Smart TV': 'Akıllı TV',
+    'Switch Type': 'Switch Türü',
+    'Layout': 'Dizilim',
+    'DPI': 'DPI',
+    'Socket': 'Soket',
+    'Form Factor': 'Form Faktörü',
+    'Chipset': 'Yonga Seti',
+    'Wi-Fi Standard': 'Wi-Fi Standardı',
+    'Mesh Support': 'Mesh Desteği',
+    'Capacity': 'Kapasite',
+    'Display Resolution': 'Ekran Çözünürlüğü',
+    'Type': 'Tip',
+    'Polar Pattern': 'Kutup Deseni',
+  };
+
+  static const Map<String, String> _trOptionMap = {
+    '0–40 (Poor)': '0–40 (Zayıf)',
+    '40–60 (Average)': '40–60 (Orta)',
+    '60–80 (Good)': '60–80 (İyi)',
+    '80–100 (Excellent)': '80–100 (Mükemmel)',
+  };
+
+  static String localizeLabel(String label, {required String languageCode}) {
+    if (!languageCode.toLowerCase().startsWith('tr')) return label;
+    return _trLabelMap[label] ?? label;
+  }
+
+  static String localizeOptionLabel(
+    String label, {
+    required String languageCode,
+  }) {
+    if (!languageCode.toLowerCase().startsWith('tr')) return label;
+    return _trOptionMap[label] ?? label;
+  }
+
+  static List<FilterDefinition> _mergeDefinitions(
+    List<FilterDefinition> primary,
+    List<FilterDefinition> secondary,
+  ) {
+    final seen = <String>{};
+    final merged = <FilterDefinition>[];
+
+    for (final def in [...primary, ...secondary]) {
+      if (seen.add(def.id)) {
+        merged.add(def);
+      }
+    }
+
+    return merged;
+  }
 
   static const Map<String, List<FilterDefinition>> _categoryFilters = {
     'smartphones': _smartphoneFilters,
@@ -1542,7 +1675,9 @@ class FilterConfig {
 
   /// Get static filter definitions for a category.
   static List<FilterDefinition> getFilters(String categoryId) {
-    return _categoryFilters[categoryId.toLowerCase()] ?? _genericFilters;
+    final categoryFilters = _categoryFilters[categoryId.toLowerCase()];
+    if (categoryFilters == null) return List<FilterDefinition>.from(_genericFilters);
+    return _mergeDefinitions(categoryFilters, _genericFilters);
   }
 
   /// Get filter definitions with dynamic options populated from products.
@@ -1554,30 +1689,69 @@ class FilterConfig {
     final defs = getFilters(categoryId);
     if (products.isEmpty) return defs;
 
-    return defs.map((def) {
+    return defs.map<FilterDefinition?>((def) {
+      if (def.id == 'price' && def.type == FilterType.rangeSlider) {
+        final prices = <double>[];
+        for (final p in products) {
+          try {
+            final productPrices = p.prices;
+            if (productPrices is Map) {
+              for (final value in productPrices.values) {
+                if (value is num && value > 0) {
+                  prices.add(value.toDouble());
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (prices.isNotEmpty) {
+          final minPrice = prices.reduce((a, b) => a < b ? a : b);
+          final maxPrice = prices.reduce((a, b) => a > b ? a : b);
+          final roundedMin = minPrice < 100
+              ? 0.0
+              : ((minPrice / 100).floor() * 100).toDouble();
+          var roundedMax = ((maxPrice / 100).ceil() * 100).toDouble();
+          if (roundedMax <= roundedMin) {
+            roundedMax = roundedMin + 100;
+          }
+          return def.withRange(minValue: roundedMin, maxValue: roundedMax);
+        }
+
+        // Hide the price filter entirely when the category has no real price
+        // data; otherwise the sheet claims price support that the app cannot
+        // actually apply.
+        return null;
+      }
+
       if (!def.isDynamic) return def;
 
       if (def.id == 'brand') {
-        // Count products per brand for frequency-based sorting
         final brandCount = <String, int>{};
+        final brandLabels = <String, String>{};
         for (final p in products) {
-          final brand = (p.brand as String?) ?? '';
+          final brand = ((p.brand as String?) ?? '').trim();
           if (brand.isNotEmpty) {
-            brandCount[brand] = (brandCount[brand] ?? 0) + 1;
+            final normalizedBrand = brand.toLowerCase();
+            brandCount[normalizedBrand] = (brandCount[normalizedBrand] ?? 0) + 1;
+            final currentLabel = brandLabels[normalizedBrand];
+            if (currentLabel == null || brand.length > currentLabel.length) {
+              brandLabels[normalizedBrand] = brand;
+            }
           }
         }
-        // Sort by frequency desc, then alphabetically
         final sorted = brandCount.keys.toList()
           ..sort((a, b) {
             final cmp = brandCount[b]!.compareTo(brandCount[a]!);
-            return cmp != 0 ? cmp : a.compareTo(b);
+            if (cmp != 0) return cmp;
+            return (brandLabels[a] ?? a).compareTo(brandLabels[b] ?? b);
           });
         return def.withOptions(
           sorted
               .map(
                 (b) => FilterOption(
-                  id: b.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
-                  label: b,
+                  id: b.replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+                  label: brandLabels[b] ?? b,
                 ),
               )
               .toList(),
@@ -1612,6 +1786,6 @@ class FilterConfig {
             )
             .toList(),
       );
-    }).toList();
+    }).whereType<FilterDefinition>().toList();
   }
 }

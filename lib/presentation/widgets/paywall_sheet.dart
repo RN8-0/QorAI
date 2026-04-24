@@ -516,57 +516,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     return null;
   }
 
-  String _countPerDay(int count) {
-    return switch (_languageCode) {
-      'ar' => '$count/يوم',
-      'de' => '$count/Tag',
-      'es' => '$count/dia',
-      'fr' => '$count/jour',
-      'it' => '$count/giorno',
-      'ja' => '$count/日',
-      'nl' => '$count/dag',
-      'pl' => '$count/dzien',
-      'pt' => '$count/dia',
-      'sv' => '$count/dag',
-      'tr' => '$count/gün',
-      _ => '$count/day',
-    };
-  }
-
-  String _countDays(int count) {
-    return switch (_languageCode) {
-      'ar' => '$count يوم',
-      'de' => '$count Tage',
-      'es' => '$count dias',
-      'fr' => '$count jours',
-      'it' => '$count giorni',
-      'ja' => '$count日',
-      'nl' => '$count dagen',
-      'pl' => '$count dni',
-      'pt' => '$count dias',
-      'sv' => '$count dagar',
-      'tr' => '$count gün',
-      _ => '$count days',
-    };
-  }
-
-  String _countItems(int count) {
-    return switch (_languageCode) {
-      'ar' => '$count عنصر',
-      'de' => '$count Artikel',
-      'es' => '$count elementos',
-      'fr' => '$count articles',
-      'it' => '$count elementi',
-      'ja' => '$count件',
-      'nl' => '$count items',
-      'pl' => '$count elementow',
-      'pt' => '$count itens',
-      'sv' => '$count objekt',
-      'tr' => '$count ürün',
-      _ => '$count items',
-    };
-  }
-
   String _premiumUpsellSummary() {
     return switch (_languageCode) {
       'ar' =>
@@ -712,20 +661,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                         fontWeight: FontWeight.w900,
                         color: context.textPrimary,
                         letterSpacing: -0.5,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ShaderMask(
-                      shaderCallback: (bounds) =>
-                          _kPremiumGradient.createShader(bounds),
-                      child: Text(
-                        'QOR AI PREMIUM',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 2,
-                        ),
+                    Text(
+                      'QOR AI PREMIUM',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: _kPremiumBase,
+                        letterSpacing: 2,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -738,6 +685,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                         fontSize: 14,
                         color: context.textSecondary,
                         height: 1.5,
+                        decoration: TextDecoration.none,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -771,6 +719,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
+                              decoration: TextDecoration.none,
                             ),
                           ),
                         ),
@@ -829,90 +778,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       return;
     }
     _purchase(product);
-  }
-
-  void _showLinkAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A1628),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(Icons.account_circle_rounded, color: _kPremiumBase, size: 24),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Account Required',
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'You need to connect your Google or Apple account to purchase a subscription.',
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white70,
-            fontSize: 14,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              context.l10n?.cancel ?? 'Cancel',
-              style: GoogleFonts.plusJakartaSans(color: Colors.white54),
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _linkGoogleAccount();
-            },
-            icon: const Icon(Icons.g_mobiledata, size: 24),
-            label: Text(
-              'Connect Google',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kPremiumBase,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _linkGoogleAccount() async {
-    final authRepo = ref.read(authRepositoryProvider);
-    final result = await authRepo.linkGoogleAccount();
-    if (!mounted) return;
-    switch (result) {
-      case Success():
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Google account connected successfully! ✅'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF10B981),
-          ),
-        );
-      case Failure(error: final e):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.error,
-          ),
-        );
-    }
   }
 
   @override
@@ -1005,7 +870,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget _buildOrb(double size, Color color, double opacity) {
     return AnimatedBuilder(
       animation: _floatAnim,
-      builder: (_, __) => Transform.translate(
+      builder: (context, child) => Transform.translate(
         offset: Offset(0, _floatAnim.value),
         child: Container(
           width: size,
@@ -1045,7 +910,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         children: [
           AnimatedBuilder(
             animation: _floatAnim,
-            builder: (_, __) => Transform.translate(
+            builder: (context, child) => Transform.translate(
               offset: Offset(0, _floatAnim.value * 0.4),
               child: Container(
                 width: 74,
@@ -1157,7 +1022,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget _buildShimmerBadge() {
     return AnimatedBuilder(
       animation: _shimmerController,
-      builder: (_, __) {
+      builder: (context, child) {
         final shimmer = _shimmerController.value;
         return ClipRRect(
           borderRadius: BorderRadius.circular(20),
@@ -1775,7 +1640,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       _TableRow(
         l?.pcBuilder ?? 'PC Builder',
         true,
-        unlimited,
+        true,
         Icons.build_rounded,
       ),
       _TableRow(
@@ -2019,93 +1884,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     );
   }
 
-  Widget _buildFeatureHighlights() {
-    final features = [
-      (
-        Icons.link_rounded,
-        _kPremiumBase,
-        _txt(tr: 'Akıllı Link Analizi', en: 'Smart Link Analysis'),
-        _txt(
-          tr: 'Herhangi bir ürün linkini yapıştırın, anında AI ürün analizi alın.',
-          en: 'Paste any product URL for instant AI product analysis.',
-        ),
-      ),
-      (
-        Icons.compare_arrows_rounded,
-        _kPremiumDeep,
-        _txt(tr: 'Yan Yana Karşılaştır', en: 'Side-by-Side Compare'),
-        _txt(
-          tr: 'Daha fazla ürünü AI özetleri ve daha güçlü bağlam ile karşılaştırın.',
-          en: 'Compare more products with AI summaries and better context.',
-        ),
-      ),
-      (
-        Icons.image_search_rounded,
-        _kPremiumLight,
-        _txt(tr: 'Premium Görsel Tarama', en: 'Premium Visual Scanning'),
-        _txt(
-          tr: 'Ürünleri daha doğru tanır, ürün olmayan kareleri filtreler ve sohbet geçmişiyle birleşir.',
-          en: 'Identifies products more accurately, filters non-product frames, and syncs with chat history.',
-        ),
-      ),
-    ];
-
-    return Column(
-      children: List.generate(
-        features.length,
-        (i) => Container(
-          width: double.infinity,
-          margin: EdgeInsets.only(bottom: i == features.length - 1 ? 0 : 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: features[i].$2.withValues(alpha: 0.18)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: features[i].$2.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(features[i].$1, color: features[i].$2, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      features[i].$3,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: context.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      features[i].$4,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: context.textSecondary,
-                        fontSize: 11,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCTAButton() {
     final service = ref.read(subscriptionServiceProvider);
     final prods = service.products;
@@ -2207,41 +1985,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     );
   }
 
-  Widget _buildFooter() {
-    final isPremium = ref.watch(subscriptionServiceProvider).isPremium;
-    return Column(
-      children: [
-        TextButton(
-          onPressed: _isPurchasing ? null : _restore,
-          child: Text(
-            context.l10n?.paywallRestoreButton ?? 'Restore purchases',
-            style: GoogleFonts.plusJakartaSans(
-              color: context.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Text(
-          isPremium
-              ? _txt(
-                  tr: 'Aboneliğiniz aktif. İsterseniz Google Play üzerinden yönetebilirsiniz.',
-                  en: 'Your subscription is active. You can manage it from Google Play anytime.',
-                )
-              : (context.l10n?.paywallLegalText ??
-                    _txt(
-                      tr: 'Abonelik otomatik yenilenir. İstediğiniz zaman iptal edebilirsiniz. ${AppConstants.trialDays} gün ücretsiz deneme içerir.',
-                      en: 'Auto-renews. Cancel anytime. ${AppConstants.trialDays}-day free trial.',
-                    )),
-          style: GoogleFonts.plusJakartaSans(
-            color: context.textTertiaryColor,
-            fontSize: 11,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
 }
 
 class _TableRow {

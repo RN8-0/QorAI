@@ -19,7 +19,7 @@ String _scoreLevelLabel(BuildContext context, int score) {
     'pl': ['Swietny', 'Dobry', 'Sredni', 'Niski'],
     'pt': ['Excelente', 'Bom', 'Medio', 'Baixo'],
     'sv': ['Utmarkt', 'Bra', 'Medel', 'Lag'],
-    'tr': ['Mukemmel', 'Iyi', 'Orta', 'Dusuk'],
+    'tr': ['Mükemmel', 'İyi', 'Orta', 'Düşük'],
   };
   final localeLabels = labels[languageCode] ?? labels['en']!;
   if (score >= 80) return localeLabels[0];
@@ -60,6 +60,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     with SingleTickerProviderStateMixin {
   String? _lastRequestedLanguage;
   bool _reasonExpanded = false;
+  ProviderSubscription<AsyncValue<UserEntity?>>? _userProfileSub;
+  ProviderSubscription<AsyncValue<BehaviorSignals>>? _behaviorSignalsSub;
+  ProviderSubscription<Locale?>? _localeSub;
 
   // Memoize fit score so we don't re-run the algorithm on every rebuild.
   int? _cachedFitScore;
@@ -75,15 +78,43 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
   @override
   void initState() {
     super.initState();
+    _userProfileSub = ref.listenManual<AsyncValue<UserEntity?>>(
+      userProfileProvider,
+      (previous, next) {
+        _maybeRecomputeFitScore();
+        _maybeTriggerGeminiFetch();
+      },
+    );
+    _behaviorSignalsSub = ref.listenManual<AsyncValue<BehaviorSignals>>(
+      behaviorSignalsProvider,
+      (previous, next) {
+        _maybeRecomputeFitScore();
+      },
+    );
+    _localeSub = ref.listenManual<Locale?>(
+      localeProvider,
+      (previous, next) {
+        _maybeTriggerGeminiFetch();
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _maybeRecomputeFitScore();
-      _maybeTriggerGeminiFetch();
-      // Pre-set the "triggered" flag if quiz is done and no cached result
-      // exists yet. This makes the loading indicator show from frame-1,
-      // before _prefetchMatchScoreOnce() fires ~80ms later.
-      _prearmGeminiFetchFlag();
+      Future<void>.delayed(const Duration(milliseconds: 260), () {
+        if (!mounted) return;
+        // Let the first route frames settle before starting AI + score work.
+        _prearmGeminiFetchFlag();
+        _maybeRecomputeFitScore();
+        _maybeTriggerGeminiFetch();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _userProfileSub?.close();
+    _behaviorSignalsSub?.close();
+    _localeSub?.close();
+    super.dispose();
   }
 
   /// Sets _geminiFetchTriggered = true if an AI fetch will happen,
@@ -209,18 +240,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     );
     final techScore = widget.product.techScore.toInt();
 
-    // React to user profile / behavior changes off-build.
-    ref.listen<AsyncValue<UserEntity?>>(userProfileProvider, (_, __) {
-      _maybeRecomputeFitScore();
-      _maybeTriggerGeminiFetch();
-    });
-    ref.listen<AsyncValue<BehaviorSignals>>(behaviorSignalsProvider, (_, __) {
-      _maybeRecomputeFitScore();
-    });
-    ref.listen<Locale?>(localeProvider, (_, __) {
-      _maybeTriggerGeminiFetch();
-    });
-
     final quizDone = ref.watch(
       userProfileProvider
           .select((u) => u.valueOrNull?.quizCompleted ?? false),
@@ -241,14 +260,12 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
 
     // Clear _geminiFetchTriggered once the AI fetch completes so that
     // the local-score fallback can show if AI returned null.
-    ref.listen<AsyncValue<GeminiMatchResult?>>(
-      geminiMatchScoreProvider(cacheKey),
-      (prev, next) {
-        if (next is AsyncData && _geminiFetchTriggered) {
-          if (mounted) setState(() => _geminiFetchTriggered = false);
-        }
-      },
-    );
+    if (_geminiFetchTriggered && matchAsync is AsyncData) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_geminiFetchTriggered) return;
+        setState(() => _geminiFetchTriggered = false);
+      });
+    }
 
     // "Waiting for AI" is true if:
     //   • we pre-armed the flag (fetch not started yet), OR
@@ -501,68 +518,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     );
   }
 
-  Widget _buildMatchLoading(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.4),
-                  ),
-                ),
-                Icon(
-                  Icons.auto_awesome,
-                  size: 14,
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.6),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  context.l10n?.yourMatch ?? 'Your Match',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.slate500,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _localizedMatchLoadingText(context),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Animated score cell with count-up animation
@@ -829,125 +784,6 @@ class _ScoreCell extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ScoreTrio extends StatelessWidget {
-  final ProductEntity product;
-  const _ScoreTrio({required this.product});
-
-  @override
-  Widget build(BuildContext context) {
-    // If no scores, show nothing or empty state
-    if (product.techScore == 0 &&
-        product.ratings.community == 0 &&
-        product.ratings.expert == 0) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _CircularScore(
-          label: context.l10n?.techScore ?? 'Tech Score',
-          score: product.techScore.toInt(),
-          color: AppTheme.primaryBlue,
-          icon: Icons.memory,
-        ),
-        _CircularScore(
-          label: context.l10n?.userScore ?? 'User Score',
-          score: (product.ratings.community * 10).toInt(),
-          color: AppTheme.accentCyan,
-          icon: Icons.people,
-        ),
-        _CircularScore(
-          label: context.l10n?.expertScore ?? 'Expert Score',
-          score: product.ratings.expert.toInt(),
-          color: AppTheme.premiumPurple,
-          icon: Icons.star,
-        ),
-      ],
-    );
-  }
-}
-
-class _CircularScore extends StatelessWidget {
-  final String label;
-  final int score;
-  final Color color;
-  final IconData icon;
-
-  const _CircularScore({
-    required this.label,
-    required this.score,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: 70,
-          height: 70,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 70,
-                height: 70,
-                child: CircularProgressIndicator(
-                  value: 1.0,
-                  strokeWidth: 6,
-                  color: context.surfaceVariantColor,
-                ),
-              ),
-              SizedBox(
-                width: 70,
-                height: 70,
-                child: ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [color.withValues(alpha: 0.6), color],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds),
-                  child: CircularProgressIndicator(
-                    value: score / 100,
-                    strokeWidth: 6,
-                    valueColor: AlwaysStoppedAnimation(context.textPrimary),
-                    strokeCap: StrokeCap.round,
-                  ),
-                ),
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 16, color: color),
-                  Text(
-                    '$score',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: context.textSecondary,
-          ),
-        ),
-      ],
     );
   }
 }

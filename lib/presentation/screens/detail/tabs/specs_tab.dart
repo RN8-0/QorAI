@@ -1324,7 +1324,7 @@ class _SpecRow extends StatelessWidget {
     }
     final translated = spec_dict.translateSpecValue(canonicalValue, locale);
     if (translated != canonicalValue) {
-      return translated;
+      return _applyValueTitleCase(translated);
     }
     return _applyValueTitleCase(val);
   }

@@ -49,6 +49,60 @@ mixin GeminiCacheNotifierMixin<T> on StateNotifier<AsyncValue<T?>> {
   }
 }
 
+bool _isTurkishLanguage(String languageCode) {
+  return languageCode.trim().toLowerCase().startsWith('tr');
+}
+
+bool _looksEnglishPredictionText(String text) {
+  final lower = text.trim().toLowerCase();
+  if (lower.isEmpty) return false;
+  if (RegExp(r'[çğıöşü]').hasMatch(lower)) return false;
+
+  const englishSignals = [
+    'buy',
+    'wait',
+    'price',
+    'trend',
+    'drop',
+    'sale',
+    'because',
+    'window',
+    'likely',
+    'forecast',
+    'product',
+    'discount',
+    'timing',
+  ];
+  const turkishSignals = [
+    'fiyat',
+    'bekle',
+    'al',
+    'kampanya',
+    'indirim',
+    'ürün',
+    'yakın',
+    'olas',
+    'düş',
+    'yatay',
+    'şimdi',
+  ];
+
+  final englishScore = englishSignals.where(lower.contains).length;
+  final turkishScore = turkishSignals.where(lower.contains).length;
+  return englishScore >= 2 && turkishScore == 0;
+}
+
+String _localizedPredictionField(
+  String value,
+  String fallback, {
+  required String languageCode,
+}) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return fallback;
+  if (!_isTurkishLanguage(languageCode)) return trimmed;
+  return _looksEnglishPredictionText(trimmed) ? fallback : trimmed;
+}
+
 // ════════════════════════════════════════════════════
 // ─── AI REVIEW SUMMARY CACHE ───
 // ════════════════════════════════════════════════════
@@ -103,6 +157,7 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
   final Ref _ref;
   final String _productId;
   final String _languageCode;
+  static const int _cacheVersion = 2;
   _AIReviewNotifier(this._ref, LocalizedProductKey key)
     : _productId = key.productId,
       _languageCode = key.normalizedLanguageCode.isEmpty
@@ -135,7 +190,7 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
     state = const AsyncValue.loading();
 
     // Check disk cache first (24h TTL)
-    final cacheKey = 'ai_review_${_languageCode}_$_productId';
+    final cacheKey = 'ai_review_v${_cacheVersion}_${_languageCode}_$_productId';
     _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
       final cached = await _cache.get<String>(cacheKey);
@@ -565,6 +620,7 @@ class _DeepAnalysisNotifier
   final Ref _ref;
   final String _productId;
   final String _languageCode;
+  static const int _cacheVersion = 2;
 
   _DeepAnalysisNotifier(this._ref, LocalizedProductKey key)
     : _productId = key.productId,
@@ -601,7 +657,8 @@ class _DeepAnalysisNotifier
     state = const AsyncValue.loading();
 
     // Disk cache check
-    final cacheKey = 'deep_analysis_${_languageCode}_$_productId';
+    final cacheKey =
+      'deep_analysis_v${_cacheVersion}_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
@@ -627,6 +684,8 @@ class _DeepAnalysisNotifier
       final result = await deepseek.jsonFreeTextQuery(
         'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
         'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
+        'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and the verdict MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+        'If the selected language is Turkish, do not write explanatory text in English anywhere except official product or model names.\n\n'
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "overallScore": <number 0-100>,\n'
@@ -723,6 +782,7 @@ class _AlternativesCacheNotifier
   final Ref _ref;
   final String _productId;
   final String _languageCode;
+  static const int _cacheVersion = 2;
   _AlternativesCacheNotifier(this._ref, LocalizedProductKey key)
     : _productId = key.productId,
       _languageCode = key.normalizedLanguageCode.isEmpty
@@ -753,7 +813,8 @@ class _AlternativesCacheNotifier
     state = const AsyncValue.loading();
 
     // Disk cache check
-    final cacheKey = 'alternatives_${_languageCode}_$_productId';
+    final cacheKey =
+      'alternatives_v${_cacheVersion}_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
@@ -772,6 +833,8 @@ class _AlternativesCacheNotifier
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final result = await deepseek.jsonFreeTextQuery(
+        'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and short explanations MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+        'If the selected language is Turkish, do not use English in the explanation fields.\n\n'
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "alternatives": [\n'
@@ -847,6 +910,7 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
   final Ref _ref;
   final String _productId;
   final String _languageCode;
+  static const int _cacheVersion = 2;
   _AdvisorCacheNotifier(this._ref, LocalizedProductKey key)
     : _productId = key.productId,
       _languageCode = key.normalizedLanguageCode.isEmpty
@@ -882,7 +946,7 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     state = const AsyncValue.loading();
 
     // Disk cache check
-    final cacheKey = 'advisor_${_languageCode}_$_productId';
+    final cacheKey = 'advisor_v${_cacheVersion}_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
@@ -901,6 +965,8 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     try {
       final deepseek = _ref.read(deepSeekServiceProvider);
       final result = await deepseek.jsonFreeTextQuery(
+        'IMPORTANT: Return ONLY valid JSON. ALL text fields and list items MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+        'If the selected language is Turkish, do not use English in the advice text.\n\n'
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "whoShouldBuy": "<2 sentence description of the ideal buyer>",\n'
@@ -973,7 +1039,7 @@ class _PredictionCacheNotifier
   final Ref _ref;
   final String _productId;
   final String _languageCode;
-  static const int _predictionCacheVersion = 3;
+  static const int _predictionCacheVersion = 4;
   _PredictionCacheNotifier(this._ref, LocalizedProductKey key)
     : _productId = key.productId,
       _languageCode = key.normalizedLanguageCode.isEmpty
@@ -1039,6 +1105,9 @@ class _PredictionCacheNotifier
       final cat = category.isEmpty ? 'tech product' : category;
       final result = await deepseek.jsonFreeTextQuery(
         'Current year: ${DateTime.now().year}.\n'
+        'IMPORTANT: Return ONLY valid JSON. ALL explanatory text fields MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+        'If the selected language is Turkish, do not write English analysis text anywhere except official product/model names. '
+        'The buyOrWait field must still be exactly either "buy" or "wait".\n\n'
         'Return a JSON object with this EXACT structure:\n'
         '{\n'
         '  "trend": "<up/down/stable>",\n'
@@ -1108,16 +1177,20 @@ class _PredictionCacheNotifier
       trendPercentage: parsed.trendPercentage > 0
           ? parsed.trendPercentage
           : heuristic.trendPercentage,
-      bestTimeToBuy: parsed.bestTimeToBuy.trim().isNotEmpty
-          ? parsed.bestTimeToBuy.trim()
-          : heuristic.bestTimeToBuy,
-      expectedDrop: parsed.expectedDrop.trim().isNotEmpty
-          ? parsed.expectedDrop.trim()
-          : heuristic.expectedDrop,
-      buyOrWait: parsed.buyOrWait.trim().isNotEmpty
-          ? parsed.buyOrWait.trim()
-          : heuristic.buyOrWait,
-      reasoning: !_looksGenericPrediction(reasoning)
+      bestTimeToBuy: _localizedPredictionField(
+        parsed.bestTimeToBuy,
+        heuristic.bestTimeToBuy,
+        languageCode: _languageCode,
+      ),
+      expectedDrop: _localizedPredictionField(
+        parsed.expectedDrop,
+        heuristic.expectedDrop,
+        languageCode: _languageCode,
+      ),
+      buyOrWait: _normalizeBuyOrWait(parsed.buyOrWait) ?? heuristic.buyOrWait,
+      reasoning:
+          !_looksGenericPrediction(reasoning) &&
+              !_looksEnglishPredictionText(reasoning)
           ? reasoning
           : heuristic.reasoning,
     );
@@ -1251,9 +1324,20 @@ class _PredictionCacheNotifier
 
   String? _normalizeTrend(String raw) {
     final value = raw.trim().toLowerCase();
+    if (value.contains('düş') || value.contains('dus')) return 'down';
     if (value.contains('down') || value.contains('drop')) return 'down';
+    if (value.contains('yüksel') || value.contains('yuksel')) return 'up';
     if (value.contains('up') || value.contains('rise')) return 'up';
+    if (value.contains('sabit') || value.contains('yatay')) return 'stable';
     if (value.contains('stable') || value.contains('flat')) return 'stable';
+    return null;
+  }
+
+  String? _normalizeBuyOrWait(String raw) {
+    final value = raw.trim().toLowerCase();
+    if (value.isEmpty) return null;
+    if (value.contains('wait') || value.contains('bekle')) return 'wait';
+    if (value.contains('buy') || value.contains('al')) return 'buy';
     return null;
   }
 
@@ -1314,15 +1398,17 @@ class GeminiMatchResult {
 /// (e.g. "Profil verisi yükleniyor…"). Empty string = no active step.
 /// Keyed by product ID so multiple detail pages don't interfere.
 final aiMatchStepProvider = StateProvider.family<String, String>(
-  (_, __) => '',
+  (ref, productId) => '',
 );
 
 /// Generic AI operation step message provider.
 /// Key format: "${productId}_${operation}" (e.g. "abc123_review", "abc123_deep")
 /// Empty string = no active step.
 final aiOperationStepProvider = StateProvider.family<String, String>(
-  (_, __) => '',
+  (ref, operationKey) => '',
 );
+
+String _encodeJsonString(Map<String, dynamic> payload) => jsonEncode(payload);
 
 final geminiMatchScoreProvider =
     StateNotifierProvider.family<
@@ -1400,7 +1486,6 @@ class _GeminiMatchScoreNotifier
       }
     }
   }
-
   String _stepMsg(String langCode, String tr, String en) =>
       langCode == 'tr' ? tr : en;
 
@@ -1565,16 +1650,22 @@ class _GeminiMatchScoreNotifier
           '50-61 adequate but compromised / 40-49 poor fit.\n'
           'Rule: if techScore >= 85 and no major spec mismatch → score >= 75.\n'
           'Signals to weigh: weightVector priorities, usageIntent, profession, budget vs price, '
-          'techScore, top specs, pros/cons, behavioral signals (recent views/favorites).\n\n'
-          'USER:${jsonEncode(profileJson)}\n'
-          'PRODUCT:${jsonEncode(productJson)}\n\n'
+          'techScore, top specs, pros/cons, behavioral signals (recent views/favorites).\n\n';
+      final encodedProfileJson = await compute(_encodeJsonString, profileJson);
+      final encodedProductJson = await compute(_encodeJsonString, productJson);
+      if (!mounted) return;
+
+      final promptWithPayload =
+          '$prompt'
+          'USER:$encodedProfileJson\n'
+          'PRODUCT:$encodedProductJson\n\n'
           'JSON: {"matchScore":<int>,"reason":"<4-6 sentences in $langDisplay>",'
           '"topMatchFactors":["specific_strength_1","specific_strength_2","specific_strength_3"],'
           '"missingFactors":["specific_gap_1","specific_gap_2"]}';
 
       final result = await gemini
           .jsonFreeTextQuery(
-            prompt,
+            promptWithPayload,
             language: langCode,
             maxTokens: 2500, // increased for longer, more detailed responses
           )
@@ -1840,6 +1931,8 @@ class _GeminiMatchScoreNotifier
     required List<String> focusAreas,
   }) {
     final highlights = <({String text, double score})>[];
+    final langCode = (_ref.read(localeProvider)?.languageCode ?? 'en')
+        .toLowerCase();
     final focusKeywords = focusAreas.map(_focusKeywordsForLabel).toList();
 
     double focusScore(String source) {
@@ -1853,20 +1946,26 @@ class _GeminiMatchScoreNotifier
 
     for (final pro in product.pros.take(5)) {
       final score = 2.4 + focusScore(pro);
-      highlights.add((text: pro.trim(), score: score));
+      highlights.add((
+        text: _localizeHighlightText(pro.trim(), langCode),
+        score: score,
+      ));
     }
 
     for (final entry in product.keySpecs.entries) {
       final value = entry.value.toString().trim();
       if (value.isEmpty) continue;
-      final text = '${entry.key}: $value';
+      final text = _localizeHighlightText('${entry.key}: $value', langCode);
       final score = 1.4 + focusScore(text);
       highlights.add((text: text, score: score));
     }
 
     if (product.techScore >= 90) {
       highlights.add((
-        text: 'Tech score ${product.techScore.toStringAsFixed(0)}/100',
+        text: _localizeHighlightText(
+          'Tech score ${product.techScore.toStringAsFixed(0)}/100',
+          langCode,
+        ),
         score:
             focusAreas.any((area) => area == 'Performance' || area == 'Gaming')
             ? 3.0
@@ -1889,6 +1988,17 @@ class _GeminiMatchScoreNotifier
       if (deduped.length >= 6) break;
     }
     return deduped;
+  }
+
+  String _localizeHighlightText(String text, String langCode) {
+    if (langCode != 'tr') return text;
+
+    return text
+        .replaceAll(RegExp(r'\bTech score\b', caseSensitive: false), 'Teknik puan')
+        .replaceAll(RegExp(r'\bSupport\b', caseSensitive: false), 'Desteği')
+        .replaceAll(RegExp(r':\s*Yes\b', caseSensitive: false), ': Var')
+        .replaceAll(RegExp(r':\s*No\b', caseSensitive: false), ': Yok')
+        .replaceAll(RegExp(r'\binch\b', caseSensitive: false), 'inç');
   }
 
   List<String> _buildTradeOffs({

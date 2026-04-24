@@ -177,7 +177,7 @@ class _ComparisonHero extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isDark
               ? AppTheme.brandBlue.withValues(alpha: 0.24)
@@ -187,9 +187,9 @@ class _ComparisonHero extends StatelessWidget {
             ? AppTheme.cardShadow
             : [
                 BoxShadow(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                  blurRadius: 30,
-                  offset: const Offset(0, 16),
+                  color: AppTheme.brandBlue.withValues(alpha: 0.10),
+                  blurRadius: 22,
+                  offset: const Offset(0, 12),
                 ),
               ],
       ),
@@ -228,7 +228,7 @@ class _ComparisonHero extends StatelessWidget {
                     Text(
                       'Son karşılaştırmalarınız burada akıllı bir özetle listelenir.',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
+                        fontSize: 11,
                         height: 1.45,
                         color: context.textSecondary,
                       ),
@@ -270,13 +270,13 @@ class _HeroMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      width: 108,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 96,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.05)
             : Colors.white.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
@@ -289,7 +289,7 @@ class _HeroMetric extends StatelessWidget {
           Text(
             value,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: FontWeight.w800,
               color: _accent,
             ),
@@ -298,7 +298,7 @@ class _HeroMetric extends StatelessWidget {
           Text(
             label,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
               color: context.textSecondary,
             ),
@@ -431,8 +431,8 @@ class _ComparisonCard extends ConsumerWidget {
         context.push(AppRoutes.comparisonResult, extra: comparison);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(18),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           gradient: Theme.of(context).brightness == Brightness.dark
               ? LinearGradient(
@@ -453,7 +453,7 @@ class _ComparisonCard extends ConsumerWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: Theme.of(context).brightness == Brightness.dark
                 ? AppTheme.brandCyan.withValues(alpha: 0.16)
@@ -463,9 +463,9 @@ class _ComparisonCard extends ConsumerWidget {
               ? AppTheme.cardShadow
               : [
                   BoxShadow(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.16),
-                    blurRadius: 28,
-                    offset: const Offset(0, 16),
+                    color: AppTheme.brandBlue.withValues(alpha: 0.10),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
                   ),
                 ],
         ),
@@ -476,19 +476,19 @@ class _ComparisonCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
                     gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.compare_arrows_rounded,
-                    size: 20,
+                    size: 18,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,7 +496,7 @@ class _ComparisonCard extends ConsumerWidget {
                       Text(
                         comparison.title ?? 'Comparison',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: context.textPrimary,
                           letterSpacing: -0.3,
@@ -508,7 +508,7 @@ class _ComparisonCard extends ConsumerWidget {
                       Text(
                         '${comparison.occurrenceCount} kez karşılaştırıldı',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: _accent,
                         ),
@@ -518,8 +518,8 @@ class _ComparisonCard extends ConsumerWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
+                    horizontal: 8,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(
@@ -527,26 +527,26 @@ class _ComparisonCard extends ConsumerWidget {
                           ? 0.06
                           : 0.8,
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.chevron_right_rounded,
-                    size: 20,
+                    size: 18,
                     color: _accent,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(
                   alpha: Theme.of(context).brightness == Brightness.dark
                       ? 0.04
                       : 0.78,
                 ),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white.withValues(alpha: 0.06)
@@ -557,8 +557,8 @@ class _ComparisonCard extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 6,
+                      runSpacing: 6,
                       children: productFutures
                           .take(4)
                           .map(
@@ -625,16 +625,16 @@ class _ProductThumb extends StatelessWidget {
       return _ProductThumbPlaceholder();
     }
     return Container(
-      width: 56,
-      height: 56,
+      width: 50,
+      height: 50,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _accent.withValues(alpha: 0.15)),
         color: Colors.white,
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(5),
         child: CachedNetworkImage(
           imageUrl: product!.imageURL,
           fit: BoxFit.contain,
@@ -671,20 +671,20 @@ class _MetaPill extends StatelessWidget {
         : context.surfaceVariantColor.withValues(alpha: 0.8);
     final textColor = accent ? _accent : context.textSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: textColor),
-          const SizedBox(width: 6),
+          Icon(icon, size: 13, color: textColor),
+          const SizedBox(width: 5),
           Text(
             text,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w700,
               color: textColor,
             ),
@@ -699,16 +699,16 @@ class _ProductThumbPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 56,
-      height: 56,
+      width: 50,
+      height: 50,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         color: Colors.white,
         border: Border.all(color: _accent.withValues(alpha: 0.1)),
       ),
       child: Icon(
         Icons.image_outlined,
-        size: 20,
+        size: 18,
         color: context.textTertiaryColor,
       ),
     );

@@ -53,12 +53,25 @@ class _FilterBottomSheet extends StatefulWidget {
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late FilterState _state;
   late final List<FilterDefinition> _definitions;
+  final Map<String, String> _sectionQueries = {};
+
+  bool get _hasPriceFilter => _definitions.any((def) => def.id == 'price');
 
   bool get _isTurkish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
 
   String _fallbackText({required String en, required String tr}) {
     return _isTurkish ? tr : en;
+  }
+
+  String get _languageCode => _isTurkish ? 'tr' : 'en';
+
+  String _displayLabel(String label) {
+    return FilterConfig.localizeLabel(label, languageCode: _languageCode);
+  }
+
+  String _displayOptionLabel(String label) {
+    return FilterConfig.localizeOptionLabel(label, languageCode: _languageCode);
   }
 
   @override
@@ -159,6 +172,133 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     }
   }
 
+  List<FilterOption> _visibleOptions(FilterDefinition def) {
+    final query = (_sectionQueries[def.id] ?? '').trim().toLowerCase();
+    final selected = _selectedFor(def.id);
+    final options = [...(def.options ?? const <FilterOption>[])];
+    options.sort((a, b) {
+      final selectedCompare = (selected.contains(b.id) ? 1 : 0) -
+          (selected.contains(a.id) ? 1 : 0);
+      if (selectedCompare != 0) return selectedCompare;
+      return _displayOptionLabel(a.label).compareTo(_displayOptionLabel(b.label));
+    });
+
+    if (query.isEmpty) return options;
+
+    return options.where((opt) {
+      final label = _displayOptionLabel(opt.label).toLowerCase();
+      return label.contains(query) || opt.label.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  String _activeSectionSummary(FilterDefinition def) {
+    switch (def.type) {
+      case FilterType.multiSelect:
+        final selected = _selectedFor(def.id);
+        final labels = (def.options ?? const <FilterOption>[])
+            .where((opt) => selected.contains(opt.id))
+            .map((opt) => _displayOptionLabel(opt.label))
+            .toList();
+        if (labels.isEmpty) return '';
+        if (labels.length <= 2) return labels.join(', ');
+        return '${labels.take(2).join(', ')} +${labels.length - 2}';
+      case FilterType.rangeSlider:
+        final range = _state.ranges[def.id];
+        if (range == null) return '';
+        final unit = def.unit != null ? ' ${def.unit}' : '';
+        final isDecimal = ((def.maxValue ?? 100) - (def.minValue ?? 0)) < 50;
+        final start = isDecimal
+            ? range.start.toStringAsFixed(1)
+            : range.start.round().toString();
+        final end = isDecimal
+            ? range.end.toStringAsFixed(1)
+            : range.end.round().toString();
+        return '$start-$end$unit';
+      case FilterType.toggle:
+        final toggle = _toggleFor(def.id);
+        if (toggle == null) return '';
+        return toggle
+            ? _fallbackText(en: 'Yes', tr: 'Evet')
+            : _fallbackText(en: 'No', tr: 'Hayır');
+    }
+  }
+
+  Widget _buildActiveSummary() {
+    if (!_state.isActive) return const SizedBox.shrink();
+
+    final chips = _definitions
+        .where((def) => _sectionActiveCount(def) > 0)
+        .map((def) {
+          final summary = _activeSectionSummary(def);
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.brandCyan.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.18),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _displayLabel(def.label),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  if (summary.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      summary,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        })
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _fallbackText(
+              en: 'Selected filters',
+              tr: 'Seçili filtreler',
+            ),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: context.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: chips,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   IconData _iconForSection(FilterDefinition def) {
     final id = def.id.toLowerCase();
     if (id.contains('brand')) return Icons.verified_rounded;
@@ -202,6 +342,14 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? context.surfaceColor : AppTheme.surfaceLight;
     final activeCount = _state.activeCount;
+    final orderedDefinitions = [..._definitions]
+      ..sort((a, b) {
+        final activeCompare = _sectionActiveCount(b).compareTo(
+          _sectionActiveCount(a),
+        );
+        if (activeCompare != 0) return activeCompare;
+        return _displayLabel(a.label).compareTo(_displayLabel(b.label));
+      });
 
     return Container(
       constraints: BoxConstraints(
@@ -301,8 +449,12 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       const SizedBox(height: 2),
                       Text(
                         _fallbackText(
-                          en: 'Refine by brand, specs and price',
-                          tr: 'Marka, özellik ve fiyata göre daralt',
+                          en: _hasPriceFilter
+                              ? 'Refine by brand, specs and price'
+                              : 'Refine by brand and specs',
+                          tr: _hasPriceFilter
+                              ? 'Marka, özellik ve fiyata göre daralt'
+                              : 'Marka ve özelliklere göre daralt',
                         ),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
@@ -365,14 +517,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             color: context.dividerColor.withValues(alpha: 0.25),
           ),
 
+          if (activeCount > 0) _buildActiveSummary(),
+
           // ── filter list ──
           Flexible(
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-              itemCount: _definitions.length,
+              itemCount: orderedDefinitions.length,
               shrinkWrap: true,
               itemBuilder: (context, i) {
-                final def = _definitions[i];
+                final def = orderedDefinitions[i];
                 return _buildSection(def, isDark);
               },
             ),
@@ -512,7 +666,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    def.label,
+                    _displayLabel(def.label),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
@@ -576,71 +730,144 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final options = def.options ?? [];
     if (options.isEmpty) return const SizedBox.shrink();
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.map((opt) {
-        final isSelected = selected.contains(opt.id);
-        return GestureDetector(
-          onTap: () => _toggleOption(def.id, opt.id),
-          behavior: HitTestBehavior.opaque,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              gradient: isSelected ? AppTheme.primaryGradient : null,
-              color: isSelected
-                  ? null
-                  : (isDark
-                        ? context.surfaceColor.withValues(alpha: 0.6)
-                        : context.surfaceVariantColor.withValues(alpha: 0.7)),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isSelected
-                    ? Colors.transparent
-                    : context.dividerColor.withValues(alpha: 0.35),
-                width: 1,
+    final visibleOptions = _visibleOptions(def);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (options.length >= 8) ...[
+          TextField(
+            onChanged: (value) {
+              setState(() {
+                final trimmed = value.trim();
+                if (trimmed.isEmpty) {
+                  _sectionQueries.remove(def.id);
+                } else {
+                  _sectionQueries[def.id] = trimmed;
+                }
+              });
+            },
+            decoration: InputDecoration(
+              hintText: _fallbackText(
+                en: 'Search in ${_displayLabel(def.label).toLowerCase()}',
+                tr: '${_displayLabel(def.label)} içinde ara',
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: AppTheme.brandCyan.withValues(alpha: 0.28),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isSelected) ...[
-                  const Icon(
-                    Icons.check_rounded,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: 5),
-                ],
-                Text(
-                  opt.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12.5,
-                    fontWeight: isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                    color: isSelected ? Colors.white : context.textPrimary,
-                    letterSpacing: -0.1,
-                  ),
+              prefixIcon: const Icon(Icons.search_rounded, size: 18),
+              isDense: true,
+              filled: true,
+              fillColor: isDark
+                  ? context.surfaceColor.withValues(alpha: 0.62)
+                  : context.surfaceVariantColor.withValues(alpha: 0.75),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: context.dividerColor.withValues(alpha: 0.24),
                 ),
-              ],
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: context.dividerColor.withValues(alpha: 0.24),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.45),
+                ),
+              ),
             ),
           ),
-        );
-      }).toList(),
+          const SizedBox(height: 12),
+        ],
+        if (visibleOptions.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              _fallbackText(
+                en: 'No matching options found',
+                tr: 'Eşleşen seçenek bulunamadı',
+              ),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: visibleOptions.map((opt) {
+              final isSelected = selected.contains(opt.id);
+              return GestureDetector(
+                onTap: () => _toggleOption(def.id, opt.id),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: isSelected ? AppTheme.primaryGradient : null,
+                    color: isSelected
+                        ? null
+                        : (isDark
+                              ? context.surfaceColor.withValues(alpha: 0.6)
+                              : context.surfaceVariantColor.withValues(
+                                  alpha: 0.7,
+                                )),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.transparent
+                          : context.dividerColor.withValues(alpha: 0.35),
+                      width: 1,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.brandCyan.withValues(alpha: 0.28),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isSelected) ...[
+                        const Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                      Text(
+                        _displayOptionLabel(opt.label),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12.5,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: isSelected ? Colors.white : context.textPrimary,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
     );
   }
 

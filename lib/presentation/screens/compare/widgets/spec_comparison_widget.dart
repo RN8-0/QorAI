@@ -611,82 +611,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
 
   void _showSpecValueDetailSheet(BuildContext context, String rawValue) {
     final full = _localizedSpecValue(context, rawValue);
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-            child: Material(
-              color: ctx.surfaceElevatedColor,
-              borderRadius: BorderRadius.circular(22),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(18, 16, 12, 20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: AppTheme.brandCyan.withValues(alpha: 0.25),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
-                    ),
-                    BoxShadow(
-                      color: AppTheme.brandCyan.withValues(alpha: 0.12),
-                      blurRadius: 20,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.tune_rounded,
-                          size: 22,
-                          color: AppTheme.brandCyan,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _isTr ? 'Özellik değeri' : 'Specification',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      full,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        height: 1.45,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+    _showSpecValueBottomSheet(
+      specName: _isTr ? 'Özellik değeri' : 'Specification value',
+      fullValue: full,
     );
   }
 
@@ -1590,164 +1517,175 @@ Rules:
       isScrollControlled: true,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final bgColor = isDark ? const Color(0xFF1A1A2E) : Colors.white;
+        final bgColor = isDark ? const Color(0xFF121826) : const Color(0xFFFDFEFF);
         final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
         return SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.25 : 0.12),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.brandDeepBlue.withValues(alpha: isDark ? 0.4 : 0.12),
-                    blurRadius: 32,
-                    offset: const Offset(0, -8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle bar
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(top: 12, bottom: 8),
-                      decoration: BoxDecoration(
-                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(99),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Material(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.22 : 0.10),
                       ),
-                    ),
-                  ),
-                  // Header with gradient accent
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppTheme.brandDeepBlue, AppTheme.brandCyan],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.info_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            specName,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
-                              height: 1.3,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.close_rounded,
-                            color: textColor.withValues(alpha: 0.45),
-                            size: 20,
-                          ),
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.10),
+                          blurRadius: 22,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Divider
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Divider(
-                      height: 1,
-                      color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.18 : 0.10),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  // Value
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                    child: SelectableText(
-                      fullValue,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                        height: 1.55,
-                        letterSpacing: 0.1,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Copy button
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                    child: GestureDetector(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: fullValue));
-                        Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _isTr ? 'Kopyalandı' : 'Copied',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 13),
-                            ),
-                            duration: const Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppTheme.brandDeepBlue, AppTheme.brandBlue, AppTheme.brandCyan],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
-                            const SizedBox(width: 8),
-                            Text(
-                              _isTr ? 'Kopyala' : 'Copy',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 34,
+                              height: 4,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: textColor.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(99),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.18 : 0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.tune_rounded,
+                                  size: 18,
+                                  color: AppTheme.brandBlue,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _isTr ? 'Ozellik degeri' : 'Specification value',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: textColor.withValues(alpha: 0.55),
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      specName,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: textColor,
+                                        height: 1.25,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.close_rounded,
+                                  color: textColor.withValues(alpha: 0.48),
+                                  size: 19,
+                                ),
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : const Color(0xFFF5F9FD),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.16 : 0.08),
+                              ),
+                            ),
+                            child: SelectableText(
+                              fullValue,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: textColor,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: fullValue));
+                                Navigator.of(ctx).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      _isTr ? 'Kopyalandi' : 'Copied',
+                                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: const Color(0xFF0F172A),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy_rounded, size: 16),
+                              label: Text(
+                                _isTr ? 'Kopyala' : 'Copy',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.brandBlue,
+                                backgroundColor: AppTheme.brandBlue.withValues(alpha: isDark ? 0.18 : 0.08),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                ],
+                ),
               ),
             ),
           ),
@@ -5538,11 +5476,9 @@ Rules:
           loading: () => _buildSimilarShimmer(),
           error: (_, __) => _buildSimilarEmpty(),
           data: (products) {
-            // Filter out compared products and take top 12
-            final filtered = products
-                .where((p) => !excludeIds.contains(p.id))
-                .take(12)
-                .toList();
+            final filtered = _takeEvenCompareSimilarProducts(
+              products.where((p) => !excludeIds.contains(p.id)),
+            );
             if (filtered.isEmpty) return _buildSimilarEmpty();
 
             return Column(
@@ -5607,13 +5543,13 @@ Rules:
             Icon(
               Icons.widgets_outlined,
               size: 48,
-              color: context.textTertiaryColor?.withValues(alpha: 0.5),
+              color: context.textTertiaryColor.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 12),
             Text(
               context.l10n?.noSimilarProductsFound ??
                   (_isTr
-                      ? 'Benzer urun bulunamadi'
+                      ? 'Benzer ürün bulunamadı'
                       : 'No similar products found'),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
@@ -5645,6 +5581,16 @@ Rules:
         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
     );
+  }
+
+  List<ProductEntity> _takeEvenCompareSimilarProducts(
+    Iterable<ProductEntity> products,
+  ) {
+    final raw = products.take(26).toList();
+    if (raw.length.isOdd && raw.length > 1) {
+      return raw.sublist(0, raw.length - 1);
+    }
+    return raw;
   }
 
   Widget _buildProTab() {

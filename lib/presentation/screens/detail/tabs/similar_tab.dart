@@ -30,6 +30,19 @@ class _SimilarProductsTab extends ConsumerWidget {
   }
 }
 
+const int _kSimilarTabLimit = 26;
+
+List<ProductEntity> _takeEvenSimilarProducts(
+  Iterable<ProductEntity> products, {
+  int maxItems = _kSimilarTabLimit,
+}) {
+  final raw = products.take(maxItems).toList();
+  if (raw.length.isOdd && raw.length > 1) {
+    return raw.sublist(0, raw.length - 1);
+  }
+  return raw;
+}
+
 // ── Similar Products Section (2-Column Grid) ──
 class _SimilarProductsSection extends ConsumerWidget {
   final ProductEntity product;
@@ -42,7 +55,7 @@ class _SimilarProductsSection extends ConsumerWidget {
 
     return similarAsync.when(
       loading: () => SliverToBoxAdapter(child: _SimilarShimmer(isDark: isDark)),
-      error: (_, __) => SliverFillRemaining(
+      error: (error, stackTrace) => SliverFillRemaining(
         hasScrollBody: false,
         child: _SimilarEmptyState(isDark: isDark),
       ),
@@ -53,12 +66,7 @@ class _SimilarProductsSection extends ConsumerWidget {
             child: _SimilarEmptyState(isDark: isDark),
           );
         }
-        // Use provider's persona-aware ordering (already scored)
-        final raw = products.take(12).toList();
-        // Çift sayı garantisi: tek sayıysa son elemanı düş (minimum 2)
-        final top = raw.length.isOdd && raw.length > 1
-            ? raw.sublist(0, raw.length - 1)
-            : raw;
+        final top = _takeEvenSimilarProducts(products);
 
         return SliverMainAxisGroup(
           slivers: [
@@ -132,7 +140,8 @@ class _SimilarEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No similar products found',
+            context.l10n?.noSimilarProductsFound ??
+                'No similar products found',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
