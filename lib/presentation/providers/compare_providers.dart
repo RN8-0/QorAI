@@ -1943,10 +1943,10 @@ final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((
   );
 });
 
-/// Reviews for a product (realtime stream)
-final productReviewsProvider = StreamProvider.family<List<ReviewModel>, String>(
+/// Reviews for a product (single load to keep detail startup quiet and stable)
+final productReviewsProvider = FutureProvider.family<List<ReviewModel>, String>(
   (ref, productId) {
-    return ref.read(pbDataSourceProvider).watchProductReviews(productId);
+    return ref.read(pbDataSourceProvider).getProductReviews(productId);
   },
 );
 

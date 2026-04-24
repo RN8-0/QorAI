@@ -99,7 +99,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Future<void>.delayed(const Duration(milliseconds: 260), () {
+      Future<void>.delayed(const Duration(milliseconds: 1200), () {
         if (!mounted) return;
         // Let the first route frames settle before starting AI + score work.
         _prearmGeminiFetchFlag();
@@ -177,7 +177,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
 
     _fitScoreScheduled = true;
     // Keep the very first seconds focused on scroll/input responsiveness.
-    Future.delayed(const Duration(milliseconds: 1400), () async {
+    Future.delayed(const Duration(milliseconds: 2200), () async {
       if (!mounted) {
         _fitScoreScheduled = false;
         return;

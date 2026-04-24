@@ -26,9 +26,20 @@ class MatchScoreService {
 
   static Map<String, dynamic>? _algoConfig;
   static DateTime? _algoConfigFetchedAt;
+  static bool _algoConfigUnsupported = false;
+
+  bool _isPublicConfigUnavailableError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('missing collection context') ||
+        (text.contains('statuscode: 404') &&
+            text.contains('/api/collections/public_config'));
+  }
 
   /// Fetch algorithm config from PocketBase (cached for 10 minutes)
   Future<Map<String, dynamic>> _getAlgoConfig() async {
+    if (_algoConfigUnsupported) {
+      return const {};
+    }
     if (_algoConfig != null &&
         _algoConfigFetchedAt != null &&
         DateTime.now().difference(_algoConfigFetchedAt!).inMinutes < 10) {
@@ -41,7 +52,11 @@ class MatchScoreService {
       _algoConfig = record.data;
       _algoConfigFetchedAt = DateTime.now();
       return _algoConfig!;
-    } catch (_) {}
+    } catch (error) {
+      if (_isPublicConfigUnavailableError(error)) {
+        _algoConfigUnsupported = true;
+      }
+    }
     return {};
   }
 
@@ -205,7 +220,7 @@ class MatchScoreService {
       try {
         // Store match cache as a field on the user record
         final existingCache =
-            (userRecord?.data['match_cache'] as Map<String, dynamic>?) ?? {};
+            (userRecord.data['match_cache'] as Map<String, dynamic>?) ?? {};
         existingCache[product.id] = {
           'score': finalScore,
           'explanation': explanation,
