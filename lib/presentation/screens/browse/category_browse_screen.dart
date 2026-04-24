@@ -1141,6 +1141,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
+            cacheExtent: 600,
             padding: EdgeInsets.fromLTRB(
               12,
               8,

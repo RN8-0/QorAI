@@ -30,11 +30,16 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   static const _playerW = 300.0;
   static const _playerH = 169.0;
 
+  static const _kUserAgent =
+      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
         'https://www.youtube.com/embed/${widget.videoId}'
@@ -60,24 +65,7 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    if (!_positionSet) {
-      _dx = size.width - _playerW - 12;
-      _dy = size.height - _playerH - 100;
-      _positionSet = true;
-    }
-
-    return Positioned(
-      left: _dx, top: _dy,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: _playerW, height: _playerH,
-          decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
+    final size = MediaQuery.sizeOf(context);
                 color: Colors.black.withValues(alpha: 0.55),
                 blurRadius: 24, offset: const Offset(0, 8)),
             ],
@@ -168,11 +156,16 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
   late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
+  static const _kUserAgent =
+      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
         'https://www.youtube.com/embed/${widget.videoId}'
@@ -250,11 +243,16 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
   late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
+  static const _kUserAgent =
+      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
         'https://www.youtube.com/embed/${widget.videoId}'

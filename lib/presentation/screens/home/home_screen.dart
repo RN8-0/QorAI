@@ -100,6 +100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         },
         child: CustomScrollView(
           controller: _scrollCtrl,
+          cacheExtent: 800,
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
@@ -331,7 +332,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     final userName = resolveFirstName();
-    final subscription = ref.watch(subscriptionServiceProvider);
+    final isPremium = ref.watch(
+      subscriptionServiceProvider.select((s) => s.isPremium),
+    );
+    final remainingCredits = ref.watch(
+      subscriptionServiceProvider.select((s) => s.remainingDailyCredits),
+    );
 
     return SliverToBoxAdapter(
       child: Container(
@@ -370,7 +376,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   ),
                                 ),
                             child: Text(
-                              subscription.isPremium
+                              isPremium
                                   ? 'Premium'
                                   : 'Qor AI',
                               style: GoogleFonts.plusJakartaSans(
@@ -396,15 +402,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                     ),
                     QorAmountBadge(
-                      amount: subscription.remainingDailyCredits,
-                      unlimited: subscription.isPremium,
+                      amount: remainingCredits,
+                      unlimited: isPremium,
                       color: AppTheme.brandBlue,
                       fontSize: 12,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     ),
                     const SizedBox(width: 8),
                     _NotificationButton(),
-                    if (!subscription.isPremium) ...[
+                    if (!isPremium) ...[
                       const SizedBox(width: 8),
                       _AppBarButton(
                         icon: Icons.diamond_rounded,

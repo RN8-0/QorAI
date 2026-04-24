@@ -266,11 +266,16 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   static const _playerW = 300.0;
   static const _playerH = 169.0;
 
+  static const _kUserAgent =
+      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
         'https://www.youtube.com/embed/${widget.videoId}'
@@ -384,11 +389,16 @@ class _CompareFullscreenPlayerState extends State<_CompareFullscreenPlayer> {
   late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
+  static const _kUserAgent =
+      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
         'https://www.youtube.com/embed/${widget.videoId}'
@@ -468,11 +478,16 @@ class _NativeCompareVideoPlayerState extends State<_NativeCompareVideoPlayer> {
   late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
+  static const _kUserAgent =
+      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
         'https://www.youtube.com/embed/${widget.videoId}'

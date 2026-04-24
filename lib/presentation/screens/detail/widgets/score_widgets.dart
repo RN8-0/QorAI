@@ -172,7 +172,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final isPremium = ref.read(
       subscriptionServiceProvider.select((service) => service.isPremium),
     );
-    if (!isPremium) return;
+    // Premium: skip algorithm if AI fetch is running or already returned a score
     if (isPremium) {
       final cacheKey = _currentCacheKey();
       final matchAsync = ref.read(geminiMatchScoreProvider(cacheKey));
