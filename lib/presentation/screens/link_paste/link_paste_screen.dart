@@ -1207,6 +1207,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   /// TAB 2: Compare (2-4 products)
   Widget _buildCompareTab() {
+    final sub = ref.watch(subscriptionServiceProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
@@ -1259,6 +1260,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     ),
                   ],
                 ),
+                if (!sub.isPremium) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: QorAmountBadge(
+                      amount: sub.creditCostForFeature('link_compare'),
+                      unlimited: false,
+                      color: AppTheme.brandCyan,
+                      fontSize: 10,
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 // URL input fields (2-4)
                 ...List.generate(
@@ -2828,6 +2842,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     return Column(
       children: [
+        if (!sub.isPremium) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: QorAmountBadge(
+              amount: actionCost,
+              unlimited: false,
+              color: AppTheme.brandBlue,
+              fontSize: 10,
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         // All link input fields
         for (int i = 0; i < _urlControllers.length; i++) ...[
           _buildLinkField(i, isWorking),
@@ -3018,14 +3045,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                     letterSpacing: -0.3,
                                   ),
                                 ),
-                                if (!sub.isPremium) ...[
-                                  const SizedBox(width: 8),
-                                  QorAmountBadge(
-                                    amount: actionCost,
-                                    unlimited: false,
-                                    color: Colors.white,
-                                  ),
-                                ],
                               ],
                             ),
                           ),

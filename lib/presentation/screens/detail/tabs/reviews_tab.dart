@@ -232,9 +232,6 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
     final loaded = result != null;
 
     final sub = ref.watch(subscriptionServiceProvider);
-    if (!sub.isPremium && !sub.canUseDetailAi && !loaded) {
-      return const SizedBox.shrink();
-    }
 
     // AI step message (replaces subtitle when loading)
     final stepMessage = ref.watch(
@@ -309,8 +306,10 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                           ),
                           isLoading && stepMessage.isNotEmpty
                               ? stepMessage
-                              : (context.l10n?.poweredByAi ??
-                                  'Powered by Qor AI'),
+                              : (!sub.isPremium && !loaded
+                                ? 'Dokununca 1 Q ile ürün özeti hazırlanır'
+                                : (context.l10n?.poweredByAi ??
+                                  'Powered by Qor AI')),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             color: isLoading && stepMessage.isNotEmpty
@@ -333,15 +332,7 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                     unlimited: false,
                     color: AppTheme.accentTeal,
                     fontSize: 10,
-                  ),
-                  const SizedBox(width: 6),
-                  QorBalanceBadge(
-                    remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
-                    total: AppConstants.freeDailyAiCreditLimit,
-                    unlimited: false,
-                    color: AppTheme.accentTeal,
-                    fontSize: 9,
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   ),
                   const SizedBox(width: 8),
                 ],

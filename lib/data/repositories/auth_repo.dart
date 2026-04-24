@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
@@ -510,9 +511,17 @@ class AuthRepository {
     final data = (e.response['data'] as Map?)?.cast<String, dynamic>() ?? {};
     final message = e.response['message'] as String? ?? '';
     if (e.statusCode == 400) {
-      if (data['email'] != null) return 'This email address is already in use';
+      if (data['email'] != null) {
+        return _authText(
+          tr: 'Bu e-posta adresi zaten kullanılıyor',
+          en: 'This email address is already in use',
+        );
+      }
       if (data['password'] != null) {
-        return 'Password is too short (min 8 chars)';
+        return _authText(
+          tr: 'Şifre çok kısa (en az 8 karakter olmalı)',
+          en: 'Password is too short (min 8 chars)',
+        );
       }
       // Show PB's own message for OAuth/other 400 errors
       if (message.isNotEmpty &&
@@ -526,12 +535,36 @@ class AuthRepository {
           return '${entry.key}: ${fieldErr['message']}';
         }
       }
-      return 'Invalid data provided';
+      return _authText(tr: 'Geçersiz bilgiler girildi', en: 'Invalid data provided');
     }
-    if (e.statusCode == 401) return 'Incorrect email or password';
-    if (e.statusCode == 403) return 'This action is not allowed';
-    if (e.statusCode == 404) return 'No account found for this email';
-    return 'An error occurred (${e.statusCode})';
+    if (e.statusCode == 401) {
+      return _authText(
+        tr: 'E-posta veya şifre hatalı',
+        en: 'Incorrect email or password',
+      );
+    }
+    if (e.statusCode == 403) {
+      return _authText(
+        tr: 'Bu işlem için yetkiniz yok',
+        en: 'This action is not allowed',
+      );
+    }
+    if (e.statusCode == 404) {
+      return _authText(
+        tr: 'Bu e-posta için bir hesap bulunamadı',
+        en: 'No account found for this email',
+      );
+    }
+    return _authText(
+      tr: 'Bir hata oluştu (${e.statusCode})',
+      en: 'An error occurred (${e.statusCode})',
+    );
+  }
+
+  String _authText({required String tr, required String en}) {
+    final languageCode =
+        ui.PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+    return languageCode == 'tr' ? tr : en;
   }
 
   String _mapGoogleAuthError(String code, String detail, int status) {

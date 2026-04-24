@@ -99,12 +99,12 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Future<void>.delayed(const Duration(milliseconds: 1200), () {
+      Future<void>.delayed(const Duration(milliseconds: 350), () {
         if (!mounted) return;
-        // Let the first route frames settle before starting AI + score work.
+        // Let the first route frames settle before starting AI work.
         _prearmGeminiFetchFlag();
-        _maybeRecomputeFitScore();
         _maybeTriggerGeminiFetch();
+        _maybeRecomputeFitScore();
       });
     });
   }
@@ -169,6 +169,18 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
 
     final user = ref.read(userProfileProvider).valueOrNull;
     if (user == null || !user.quizCompleted) return;
+    final isPremium = ref.read(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
+    if (isPremium) {
+      final cacheKey = _currentCacheKey();
+      final matchAsync = ref.read(geminiMatchScoreProvider(cacheKey));
+      final aiStillPending =
+          _geminiFetchTriggered ||
+          matchAsync is AsyncLoading ||
+          _lastRequestedLanguage != cacheKey.normalizedLanguageCode;
+      if (matchAsync.valueOrNull != null || aiStillPending) return;
+    }
 
     final behavior =
         ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
@@ -239,14 +251,16 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       languageCode: languageCode,
     );
     final techScore = widget.product.techScore.toInt();
+    final authUser = ref.watch(
+      authStateProvider.select((state) => state.valueOrNull),
+    );
+    final userProfileAsync = ref.watch(userProfileProvider);
+    final userProfile = userProfileAsync.valueOrNull;
 
-    final quizDone = ref.watch(
-      userProfileProvider
-          .select((u) => u.valueOrNull?.quizCompleted ?? false),
-    );
-    final isUserProfileLoading = ref.watch(
-      userProfileProvider.select((u) => u.isLoading),
-    );
+    final quizDone = userProfile?.quizCompleted ?? false;
+    final isUserProfileLoading = userProfileAsync.isLoading;
+    final isMatchProfileResolving =
+        authUser != null && (isUserProfileLoading || userProfile == null);
     final isPremium = ref.watch(
       subscriptionServiceProvider.select((service) => service.isPremium),
     );
@@ -289,6 +303,17 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final String? reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;
+
+    if (isPremium &&
+        quizDone &&
+        matchResult == null &&
+        !showMatchLoading &&
+        _cachedFitScore == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _maybeRecomputeFitScore();
+      });
+    }
 
     if (techScore == 0 && fitScore == null && !quizDone && !showMatchLoading) {
       return const SizedBox.shrink();
@@ -404,7 +429,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                                 ],
                               ),
                             )
-                          : isUserProfileLoading
+                          : isMatchProfileResolving
                           ? Padding(
                               padding: const EdgeInsets.symmetric(
                                 vertical: 14,
@@ -439,9 +464,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                             )
                           : GestureDetector(
                           onTap: () {
-                            final isLoggedIn =
+                            final isLoggedInNow =
                                 ref.read(authStateProvider).valueOrNull != null;
-                            if (!isLoggedIn) {
+                            if (!isLoggedInNow) {
                               context.go(AppRoutes.login);
                               return;
                             }

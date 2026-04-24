@@ -190,6 +190,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   Widget _buildHeader(BuildContext context) {
     final top = widget.isOverlay ? 0.0 : MediaQuery.of(context).padding.top;
+    final sub = ref.watch(subscriptionServiceProvider);
+    final aiChatCost = sub.creditCostForFeature('ai_chat');
     return Container(
       padding: EdgeInsets.only(top: top + 10, bottom: 10, left: 16, right: 12),
       decoration: BoxDecoration(
@@ -228,6 +230,25 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
             ),
           ),
         ),
+        if (!sub.isPremium) ...[
+          QorBalanceBadge(
+            remaining: sub.remainingDailyCredits,
+            total: AppConstants.freeDailyAiCreditLimit,
+            unlimited: false,
+            color: AppTheme.accentCyan,
+            fontSize: 9,
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          ),
+          const SizedBox(width: 6),
+          QorAmountBadge(
+            amount: aiChatCost,
+            unlimited: false,
+            color: AppTheme.accentCyan,
+            fontSize: 10,
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+          ),
+          const SizedBox(width: 8),
+        ],
         // Right: home (full screen only)
         if (!widget.isOverlay) ...[
           GestureDetector(
@@ -355,8 +376,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   Widget _buildInputArea(double bottomPadding) {
     final hasText = _ctrl.text.trim().isNotEmpty;
-    final sub = ref.watch(subscriptionServiceProvider);
-    final aiChatCost = sub.creditCostForFeature('ai_chat');
     // When keyboard is open, don't add navBar clearance (avoids overflow)
     final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final extraBottom = (widget.isOverlay || keyboardOpen) ? 0.0 : AppTheme.navBarHeight;
@@ -373,27 +392,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
               blurRadius: 8, offset: const Offset(0, -2)),
         ]),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (!sub.isPremium) ...[
-          Align(
-            alignment: Alignment.centerRight,
-            child: QorBalanceBadge(
-              remaining: sub.remainingDailyCredits,
-              total: AppConstants.freeDailyAiCreditLimit,
-              unlimited: false,
-              color: AppTheme.accentCyan,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: QorAmountBadge(
-              amount: aiChatCost,
-              unlimited: false,
-              color: AppTheme.accentCyan,
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           // Pill-shaped text field
           Expanded(child: Container(

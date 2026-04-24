@@ -648,15 +648,100 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildInitialAvatar(String name) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Image.asset(
-        'assets/images/default_avatar.jpeg',
-        width: 52,
-        height: 52,
-        fit: BoxFit.cover,
+    final palette = _avatarPalettes[_avatarSeed(name) % _avatarPalettes.length];
+    final initials = _avatarInitials(name);
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: palette,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: palette.last.withValues(alpha: 0.22),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            top: -10,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.16),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Center(
+            child: Text(
+              initials,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: initials.length > 1 ? 20 : 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6,
+              ),
+            ),
+          ),
+          Positioned(
+            right: 6,
+            bottom: 6,
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: 8,
+                color: palette.last,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  static const List<List<Color>> _avatarPalettes = [
+    [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+    [Color(0xFF06B6D4), Color(0xFF0F766E)],
+    [Color(0xFF8B5CF6), Color(0xFF4F46E5)],
+    [Color(0xFFF97316), Color(0xFFEA580C)],
+    [Color(0xFF10B981), Color(0xFF059669)],
+  ];
+
+  int _avatarSeed(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+  }
+
+  String _avatarInitials(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) return 'Q';
+    if (parts.length == 1) {
+      final part = parts.first;
+      return part.substring(0, part.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+        .toUpperCase();
   }
 
   Widget _buildPlanBadge(bool isPremium) {
