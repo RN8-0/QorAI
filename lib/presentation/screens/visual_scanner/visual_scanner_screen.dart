@@ -6,11 +6,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:qor_ai/core/errors.dart';
-import 'package:qor_ai/core/constants.dart';
 import 'package:camera/camera.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/data/models/chat_conversation.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
-import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -37,6 +36,8 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
   final _chatMessages = <_ScannerChat>[];
   final _scrollCtrl = ScrollController();
   late AnimationController _scanAnimCtrl;
+  _ScannerInsight? _scanInsight;
+  String? _linkedConversationId;
 
   bool get _isTurkish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
@@ -113,6 +114,8 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     setState(() {
       _isScanning = true;
       _hasResult = false;
+      _scanInsight = null;
+      _linkedConversationId = null;
       _chatMessages.clear();
     });
     _scanAnimCtrl.repeat();
@@ -128,28 +131,26 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
       final response = await gemini.analyzeImage(
         base64Image: base64Image,
         mimeType: 'image/jpeg',
-        prompt:
-            'Identify this product precisely. Tell me:\n'
-            '1. Product name and brand\n'
-            '2. Key specifications\n'
-            '3. Approximate price range\n'
-            '4. Quick verdict (is it worth buying?)\n\n'
-            'Be concise but informative. Use bullet points.\n'
-            'IMPORTANT: Respond in $_responseLanguageName.',
+        prompt: _buildScanPrompt(),
       );
+      final insight = _parseScannerInsight(response);
+      final initialMessage = _buildInitialMessage(insight);
 
       setState(() {
         _hasResult = true;
-        _chatMessages.add(_ScannerChat(role: _ChatRole.ai, text: response));
+        _scanInsight = insight;
+        _chatMessages.add(_ScannerChat(role: _ChatRole.ai, text: initialMessage));
       });
+      await _persistScannerConversation();
     } catch (e) {
       setState(() {
         _hasResult = true;
+        _scanInsight = null;
         _chatMessages.add(
           _ScannerChat(
             role: _ChatRole.ai,
             text: _uiText(
-              tr: 'Gorsel analiz edilemedi. Lutfen tekrar deneyin.',
+              tr: 'Görsel analiz edilemedi. Lütfen tekrar deneyin.',
               en: 'Could not analyze the image. Please try again.',
             ),
           ),
@@ -163,6 +164,21 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   Future<void> _askFollowUp(String question) async {
     if (question.trim().isEmpty || _capturedImagePath == null) return;
+    if (!(_scanInsight?.isConfirmedProduct ?? false)) {
+      setState(() {
+        _chatMessages.add(
+          _ScannerChat(
+            role: _ChatRole.ai,
+            text: _uiText(
+              tr: 'Önce net bir ürün taraması yapmam gerekiyor. Ürün olmayan veya çok karanlık karelerde sohbet açmıyorum.',
+              en: 'I need a clear product scan first. I do not open product chat for non-product or very dark frames.',
+            ),
+          ),
+        );
+      });
+      _scrollToBottom();
+      return;
+    }
 
     final sub = ref.read(subscriptionServiceProvider);
     final quota = sub.recordAIQuestion();
@@ -179,6 +195,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
       _isScanning = true;
     });
     _scrollToBottom();
+    ref.read(behaviorTrackingProvider).trackAIChatQuery(question);
 
     try {
       final bytes = await File(_capturedImagePath!).readAsBytes();
@@ -192,23 +209,21 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
       final response = await gemini.analyzeImage(
         base64Image: base64Image,
         mimeType: 'image/jpeg',
-        prompt:
-            'Previous conversation about this product:\n$chatContext\n\n'
-            'User\'s follow-up question: $question\n\n'
-            'Answer concisely based on the product in the image.\n'
-            'IMPORTANT: Respond in $_responseLanguageName.',
+        prompt: _buildFollowUpPrompt(chatContext, question),
       );
+      final cleaned = _cleanScannerAnswer(response);
 
       setState(() {
-        _chatMessages.add(_ScannerChat(role: _ChatRole.ai, text: response));
+        _chatMessages.add(_ScannerChat(role: _ChatRole.ai, text: cleaned));
       });
+      await _persistScannerConversation();
     } catch (e) {
       setState(() {
         _chatMessages.add(
           _ScannerChat(
             role: _ChatRole.ai,
             text: _uiText(
-              tr: 'Uzgunum, bu istegi isleyemedim. Tekrar deneyin.',
+              tr: 'Üzgünüm, bu isteği işleyemedim. Tekrar deneyin.',
               en: 'Sorry, I couldn\'t process that. Try again.',
             ),
           ),
@@ -237,8 +252,212 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     setState(() {
       _hasResult = false;
       _capturedImagePath = null;
+      _scanInsight = null;
+      _linkedConversationId = null;
       _chatMessages.clear();
     });
+  }
+
+  String _buildScanPrompt() {
+    return '''
+You are Qor AI visual shopping assistant.
+
+Task:
+- Decide whether the main subject is a real consumer product that can be identified for shopping.
+- If the image is mostly a wall, floor, person, pet, furniture, random object, abstract scene, screenshot, or too dark/blurry to verify, mark it as not a product.
+- If lighting is too low or the product is not visible enough, say so clearly.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "isProduct": true,
+  "lowLight": false,
+  "confidence": 0,
+  "title": "",
+  "brand": "",
+  "category": "",
+  "summary": "",
+  "highlights": ["", "", ""],
+  "priceBand": "",
+  "verdict": "",
+  "reason": ""
+}
+
+Rules:
+- Use plain natural $_responseLanguageName text values inside JSON.
+- No markdown, no code fences, no bullet symbols inside fields.
+- Use proper Turkish characters when the response language is Turkish.
+- If not a product, set isProduct=false and explain briefly in "reason".
+- If low light or unclear, set lowLight=true.
+- Keep summary and verdict concise and high quality.
+''';
+  }
+
+  String _buildFollowUpPrompt(String chatContext, String question) {
+    final insight = _scanInsight;
+    return '''
+You are Qor AI, a premium product advisor inside the Visual Scanner flow.
+
+Confirmed product context:
+- Title: ${insight?.title ?? '-'}
+- Brand: ${insight?.brand ?? '-'}
+- Category: ${insight?.category ?? '-'}
+- Summary: ${insight?.summary ?? '-'}
+- Verdict: ${insight?.verdict ?? '-'}
+
+Conversation so far:
+$chatContext
+
+User question:
+$question
+
+Instructions:
+- Answer only about the product visible in the image.
+- Be direct, premium-quality, useful, and natural.
+- No JSON, no markdown tables, no code fences.
+- Prefer clear advice over generic filler.
+- If something is uncertain, say that briefly instead of inventing.
+- Respond in $_responseLanguageName using proper Turkish characters when Turkish is selected.
+''';
+  }
+
+  _ScannerInsight _parseScannerInsight(String raw) {
+    final jsonMap = _tryExtractJson(raw);
+    if (jsonMap == null) {
+      return _ScannerInsight(
+        isProduct: true,
+        lowLight: false,
+        confidence: 60,
+        title: _uiText(tr: 'Ürün Analizi', en: 'Product Analysis'),
+        brand: '',
+        category: '',
+        summary: _cleanScannerAnswer(raw),
+        highlights: const [],
+        priceBand: '',
+        verdict: '',
+        reason: '',
+      );
+    }
+    final highlights = ((jsonMap['highlights'] as List?) ?? const [])
+        .map((item) => _cleanScannerAnswer(item.toString()))
+        .where((item) => item.trim().isNotEmpty)
+        .take(4)
+        .toList();
+    return _ScannerInsight(
+      isProduct: jsonMap['isProduct'] == true,
+      lowLight: jsonMap['lowLight'] == true,
+      confidence: (jsonMap['confidence'] as num?)?.toInt() ?? 0,
+      title: _cleanScannerAnswer((jsonMap['title'] ?? '').toString()),
+      brand: _cleanScannerAnswer((jsonMap['brand'] ?? '').toString()),
+      category: _cleanScannerAnswer((jsonMap['category'] ?? '').toString()),
+      summary: _cleanScannerAnswer((jsonMap['summary'] ?? '').toString()),
+      highlights: highlights,
+      priceBand: _cleanScannerAnswer((jsonMap['priceBand'] ?? '').toString()),
+      verdict: _cleanScannerAnswer((jsonMap['verdict'] ?? '').toString()),
+      reason: _cleanScannerAnswer((jsonMap['reason'] ?? '').toString()),
+    );
+  }
+
+  Map<String, dynamic>? _tryExtractJson(String raw) {
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {}
+    final start = raw.indexOf('{');
+    final end = raw.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      final candidate = raw.substring(start, end + 1);
+      try {
+        return Map<String, dynamic>.from(jsonDecode(candidate) as Map);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  String _cleanScannerAnswer(String text) {
+    var cleaned = text.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replaceAll(RegExp(r'^```[a-zA-Z]*\s*'), '');
+      cleaned = cleaned.replaceAll(RegExp(r'```$'), '');
+    }
+    cleaned = cleaned.replaceAll(RegExp(r'^\s*[*#\-]+\s*', multiLine: true), '');
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^\s*\d+[\.)]\s*', multiLine: true),
+      (_) => '',
+    );
+    cleaned = cleaned.replaceAll('**', '');
+    return cleaned.trim();
+  }
+
+  String _buildInitialMessage(_ScannerInsight insight) {
+    if (!insight.isProduct) {
+      return insight.lowLight
+          ? _uiText(
+              tr: 'Bu kare çok karanlık veya net değil. Ürünü doğrulayamıyorum. Işığı artırıp ürünü kadrajın merkezine alarak tekrar tara.',
+              en: 'This frame is too dark or unclear. I cannot verify the product. Increase the light and place the item in the center, then scan again.',
+            )
+          : (insight.reason.isNotEmpty
+                ? insight.reason
+                : _uiText(
+                    tr: 'Bu görüntüde tanımlanabilir bir ürün göremedim. Duvar, masa, oda gibi ürün olmayan karelerde analiz yapmıyorum.',
+                    en: 'I could not find an identifiable product in this image. I do not run product analysis on non-product scenes like walls, desks, or rooms.',
+                  ));
+    }
+
+    final lines = <String>[];
+    final titleLine = [
+      if (insight.title.isNotEmpty) insight.title,
+      if (insight.brand.isNotEmpty && !insight.title.toLowerCase().contains(insight.brand.toLowerCase())) insight.brand,
+    ].join(' · ');
+    if (titleLine.isNotEmpty) lines.add(titleLine);
+    if (insight.summary.isNotEmpty) lines.add(insight.summary);
+    if (insight.highlights.isNotEmpty) {
+      lines.add(insight.highlights.map((item) => '• $item').join('\n'));
+    }
+    final footer = <String>[];
+    if (insight.priceBand.isNotEmpty) {
+      footer.add('${_uiText(tr: 'Fiyat', en: 'Price')}: ${insight.priceBand}');
+    }
+    if (insight.verdict.isNotEmpty) {
+      footer.add(
+        '${_uiText(tr: 'Qor AI yorumu', en: 'Qor AI take')}: ${insight.verdict}',
+      );
+    }
+    if (footer.isNotEmpty) lines.add(footer.join('\n'));
+    return lines.join('\n\n').trim();
+  }
+
+  Future<void> _persistScannerConversation() async {
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user == null || _chatMessages.isEmpty) return;
+    final ds = ref.read(pbDataSourceProvider);
+    final messages = _chatMessages
+        .map(
+          (msg) => PersistedChatMsg(
+            id: '${msg.timestamp.millisecondsSinceEpoch}_${msg.role.name}',
+            role: msg.role == _ChatRole.user
+                ? PersistedMsgRole.user
+                : PersistedMsgRole.ai,
+            text: msg.text,
+            timestamp: msg.timestamp,
+          ),
+        )
+        .toList();
+    final title = _scanInsight?.title.isNotEmpty == true
+        ? _uiText(tr: 'Görsel Tarayıcı · ', en: 'Visual Scanner · ') +
+            _scanInsight!.title
+        : _uiText(tr: 'Görsel Tarayıcı', en: 'Visual Scanner');
+    if (_linkedConversationId == null) {
+      final conv = ChatConversation(
+        id: '',
+        userId: user.uid,
+        title: title,
+        messages: messages,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      _linkedConversationId = await ds.createChatConversation(conv);
+      return;
+    }
+    await ds.updateChatConversation(user.uid, _linkedConversationId!, messages, title);
   }
 
   @override
@@ -358,7 +577,6 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
   }
 
   Widget _buildScanButton() {
-    final sub = ref.watch(subscriptionServiceProvider);
     return Positioned(
       bottom: 0,
       left: 0,
@@ -423,14 +641,6 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                         ),
                 ),
               ),
-              if (!_isScanning) ...[
-                const SizedBox(height: 12),
-                QorAmountBadge(
-                  amount: AppConstants.creditCostForFeature('product_scan'),
-                  unlimited: sub.isPremium,
-                  color: Colors.white,
-                ),
-              ],
             ],
           ),
         ),
@@ -449,7 +659,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
         ),
         decoration: BoxDecoration(
           color: context.surfaceColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.3),
@@ -489,18 +699,51 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    _uiText(tr: 'Tarama Sonucu', en: 'Scan Result'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: context.textPrimary,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _uiText(tr: 'Tarama Sonucu', en: 'Scan Result'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        if (_scanInsight?.isConfirmedProduct ?? false)
+                          Text(
+                            _scanInsight?.title.isNotEmpty == true
+                                ? _scanInsight!.title
+                                : _uiText(tr: 'Ürün doğrulandı', en: 'Product verified'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.neonCyan,
+                            ),
+                          )
+                        else
+                          Text(
+                            _uiText(
+                              tr: 'Net ürün algısı yok',
+                              en: 'No clear product detected',
+                            ),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
             const Divider(height: 1),
+            if (_scanInsight != null) _buildInsightCard(),
             // Chat messages
             Flexible(
               child: ListView.builder(
@@ -526,34 +769,152 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     );
   }
 
+  Widget _buildInsightCard() {
+    final insight = _scanInsight!;
+    final chips = <String>[
+      if (insight.category.isNotEmpty) insight.category,
+      if (insight.priceBand.isNotEmpty) insight.priceBand,
+      if (insight.confidence > 0)
+        '${_uiText(tr: 'Güven', en: 'Confidence')} ${insight.confidence}%',
+    ];
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.brandBlue.withValues(alpha: 0.10),
+            AppTheme.neonCyan.withValues(alpha: 0.08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: (_scanInsight?.isConfirmedProduct ?? false)
+              ? AppTheme.neonCyan.withValues(alpha: 0.20)
+              : context.dividerColor.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  insight.isConfirmedProduct
+                      ? Icons.shopping_bag_rounded
+                      : Icons.visibility_off_rounded,
+                  color: insight.isConfirmedProduct
+                      ? AppTheme.brandBlue
+                      : context.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  insight.isConfirmedProduct
+                      ? (insight.title.isNotEmpty
+                            ? insight.title
+                            : _uiText(tr: 'Ürün bulundu', en: 'Product found'))
+                      : _uiText(
+                          tr: 'Ürün doğrulanamadı',
+                          en: 'Product could not be verified',
+                        ),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (chips.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: chips
+                  .map(
+                    (chip) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        chip,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildChatBubble(_ScannerChat msg) {
     final isUser = msg.role == _ChatRole.user;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
         decoration: BoxDecoration(
-          color: isUser
-              ? AppTheme.brandBlue.withValues(alpha: 0.15)
-              : context.surfaceVariantColor,
+          gradient: isUser
+              ? LinearGradient(
+                  colors: [
+                    AppTheme.brandBlue.withValues(alpha: 0.18),
+                    AppTheme.neonCyan.withValues(alpha: 0.12),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [
+                    context.surfaceVariantColor,
+                    context.surfaceVariantColor.withValues(alpha: 0.92),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
             bottomLeft: Radius.circular(isUser ? 16 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 16),
           ),
-          border: isUser
-              ? Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.3))
-              : null,
+          border: Border.all(
+            color: isUser
+                ? AppTheme.brandBlue.withValues(alpha: 0.24)
+                : context.dividerColor.withValues(alpha: 0.45),
+          ),
         ),
         child: SelectableText(
           msg.text,
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
+            fontSize: 13.5,
             height: 1.5,
             color: context.textPrimary,
           ),
@@ -598,8 +959,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
   }
 
   Widget _buildFollowUpInput() {
-    final sub = ref.watch(subscriptionServiceProvider);
-    final followUpCost = AppConstants.creditCostForFeature('ai_chat');
+    final canChat = _scanInsight?.isConfirmedProduct ?? false;
     return SafeArea(
       top: false,
       child: Container(
@@ -612,25 +972,28 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: QorBalanceBadge(
-                remaining: sub.remainingDailyCredits,
-                total: AppConstants.freeDailyAiCreditLimit,
-                unlimited: sub.isPremium,
-                color: AppTheme.neonCyan,
+            if (!canChat)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: context.surfaceVariantColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
+                ),
+                child: Text(
+                  _uiText(
+                    tr: 'Bu alanda yalnızca doğrulanmış ürünlerle sohbet açılır. Ürünü daha net ışıkta tekrar tarayın.',
+                    en: 'Chat opens here only for verified products. Re-scan the item with clearer light.',
+                  ),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: context.textSecondary,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: QorAmountBadge(
-                amount: followUpCost,
-                unlimited: sub.isPremium,
-                color: AppTheme.neonCyan,
-              ),
-            ),
-            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -648,6 +1011,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                     ),
                     child: TextField(
                       controller: _questionCtrl,
+                      enabled: canChat,
                       maxLines: null,
                       onSubmitted: (v) => _askFollowUp(v),
                       style: GoogleFonts.plusJakartaSans(
@@ -656,7 +1020,10 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                       ),
                       decoration: InputDecoration(
                         hintText: _uiText(
-                          tr: 'Bu ürün hakkında soru sorun...',
+                          tr: canChat
+                              ? 'Bu ürün hakkında soru sorun...'
+                              : 'Önce ürün tarayın...'
+                              ,
                           en: 'Ask about this product...',
                         ),
                         hintStyle: GoogleFonts.plusJakartaSans(
@@ -675,13 +1042,20 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: () => _askFollowUp(_questionCtrl.text),
+                  onTap: canChat ? () => _askFollowUp(_questionCtrl.text) : null,
                   child: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: AppTheme.primaryGradient,
+                      gradient: canChat
+                          ? AppTheme.primaryGradient
+                          : LinearGradient(
+                              colors: [
+                                context.dividerColor,
+                                context.dividerColor,
+                              ],
+                            ),
                     ),
                     child: const Icon(
                       Icons.arrow_upward_rounded,
@@ -809,5 +1183,40 @@ enum _ChatRole { user, ai }
 class _ScannerChat {
   final _ChatRole role;
   final String text;
-  const _ScannerChat({required this.role, required this.text});
+  final DateTime timestamp;
+  _ScannerChat({
+    required this.role,
+    required this.text,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+}
+
+class _ScannerInsight {
+  final bool isProduct;
+  final bool lowLight;
+  final int confidence;
+  final String title;
+  final String brand;
+  final String category;
+  final String summary;
+  final List<String> highlights;
+  final String priceBand;
+  final String verdict;
+  final String reason;
+
+  const _ScannerInsight({
+    required this.isProduct,
+    required this.lowLight,
+    required this.confidence,
+    required this.title,
+    required this.brand,
+    required this.category,
+    required this.summary,
+    required this.highlights,
+    required this.priceBand,
+    required this.verdict,
+    required this.reason,
+  });
+
+  bool get isConfirmedProduct => isProduct && !lowLight && confidence >= 55;
 }

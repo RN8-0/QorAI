@@ -249,9 +249,14 @@ class ProductRepository {
   Future<Result<List<ProductEntity>>> searchProducts({
     required String query,
     int limit = 20,
+    int page = 1,
   }) async {
     try {
-      final products = await _pbDS.searchProducts(query: query, limit: limit);
+      final products = await _pbDS.searchProducts(
+        query: query,
+        limit: limit,
+        page: page,
+      );
       return Success(products);
     } catch (e) {
       return Failure(ServerException(message: e.toString()));

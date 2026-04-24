@@ -154,6 +154,7 @@ function showView(name){
   if(name==='dashboard')refreshDashboard();
   if(name==='products'&&!allProducts.length)loadProducts();
   if(name==='users')loadUsers();
+  if(name==='userinsights')loadUsers();
   if(name==='algorithm')loadAlgorithmConfig();
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
@@ -179,6 +180,245 @@ function toast(msg,type='i',dur=4000){
 // ═══════════════════════════════════════
 
 let catChart=null,trendChart=null;
+let userPlanChart=null,userPersonaChart=null,userInterestChart=null;
+let userBehaviorChart=null,userInterestBreakdownChart=null,userQuizTypeChart=null,userAnalysisCategoryChart=null;
+let activityActionChart=null,allActivityLogs=[];
+
+const ALGORITHM_WEIGHT_FIELDS=['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf'];
+const ALGORITHM_BEHAVIOR_FIELDS=['boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget'];
+
+function safeArray(value){return Array.isArray(value)?value:[]}
+function safeMap(value){return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}
+function parseDateValue(...values){for(const value of values){if(!value)continue;const dt=new Date(value);if(!Number.isNaN(dt.getTime()))return dt}return null}
+function formatDateLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—'}
+function formatDateTimeLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}
+function getUserComparisonCount(user){return Number(user.comparisonsCount||user.comparisonCount||safeArray(user.comparisonHistory).length||0)}
+function getUserLastActive(user){return parseDateValue(user.lastActive,user.updatedAt,user.updated,user.createdAt,user.created)}
+
+function computeProfileCompleteness(user){
+  const checks=[
+    !!String(user.displayName||'').trim(),
+    !!String(user.email||'').trim(),
+    !!String(user.photoURL||'').trim(),
+    safeArray(user.priorities).length>0,
+    safeArray(user.currentDevices).length>0,
+    safeArray(user.interestCategories).length>0,
+    !!String(user.ageRange||'').trim(),
+    !!String(user.profession||'').trim(),
+    !!String(user.usageIntent||'').trim(),
+    !!String(user.primaryCategory||'').trim(),
+    safeMap(user.profileVector)&&Object.keys(safeMap(user.profileVector)).length>0,
+    safeArray(user.quizHistory).length>0,
+  ];
+  const done=checks.filter(Boolean).length;
+  return Math.round(done/checks.length*100);
+}
+
+function collectUserInterestScores(user){
+  const scores={};
+  const add=(label,amount=1)=>{
+    const key=String(label||'').trim().toLowerCase();
+    if(!key)return;
+    scores[key]=(scores[key]||0)+amount;
+  };
+  safeArray(user.interestCategories).forEach(label=>add(label,3));
+  Object.entries(safeMap(user.categoryViewCounts)).forEach(([label,count])=>add(label,Number(count)||0));
+  Object.entries(safeMap(user.categoryVisitCounts)).forEach(([label,count])=>add(label,(Number(count)||0)*0.8));
+  safeArray(user.quizHistory).forEach(entry=>{add(entry.category,1.3);add(entry.type,0.8);add(entry.mode,0.6)});
+  safeArray(user.analyzedProducts).forEach(entry=>add(entry.category,1.2));
+  if(user.primaryCategory)add(user.primaryCategory,2.5);
+  return Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+}
+
+function classifyUserPersona(user){
+  const comparisonCount=getUserComparisonCount(user);
+  const analysisCount=safeArray(user.analyzedProducts).length;
+  const searchCount=safeArray(user.searchHistory).length;
+  const favoriteCount=safeArray(user.favorites).length;
+  const quizCount=safeArray(user.quizHistory).length;
+  if(user.isPremium&&(comparisonCount+analysisCount)>=14)return 'Premium Power';
+  if(comparisonCount>=12||analysisCount>=15)return 'Analyst';
+  if(searchCount>=10||quizCount>=6)return 'Explorer';
+  if(favoriteCount>=5||comparisonCount>=4)return 'Focused Buyer';
+  return 'New User';
+}
+
+function buildUserNarrative(user){
+  const persona=classifyUserPersona(user);
+  const interests=collectUserInterestScores(user).slice(0,3).map(([label])=>label).join(', ');
+  const budget=String(user.budgetRange||'mid');
+  const ecosystem=String(user.ecosystem||'mixed');
+  const summaryBits=[persona,'budget:'+budget,'ecosystem:'+ecosystem];
+  if(interests)summaryBits.push('focus:'+interests);
+  return summaryBits.join(' • ');
+}
+
+function resetChart(name){
+  const current={userPlanChart,userPersonaChart,userInterestChart,userBehaviorChart,userInterestBreakdownChart,userQuizTypeChart,userAnalysisCategoryChart,activityActionChart}[name];
+  if(current){current.destroy();}
+  if(name==='userPlanChart')userPlanChart=null;
+  if(name==='userPersonaChart')userPersonaChart=null;
+  if(name==='userInterestChart')userInterestChart=null;
+  if(name==='userBehaviorChart')userBehaviorChart=null;
+  if(name==='userInterestBreakdownChart')userInterestBreakdownChart=null;
+  if(name==='userQuizTypeChart')userQuizTypeChart=null;
+  if(name==='userAnalysisCategoryChart')userAnalysisCategoryChart=null;
+  if(name==='activityActionChart')activityActionChart=null;
+}
+
+function mountChart(name,canvas,config){
+  if(!canvas||typeof Chart==='undefined')return null;
+  resetChart(name);
+  const chart=new Chart(canvas,config);
+  if(name==='userPlanChart')userPlanChart=chart;
+  if(name==='userPersonaChart')userPersonaChart=chart;
+  if(name==='userInterestChart')userInterestChart=chart;
+  if(name==='userBehaviorChart')userBehaviorChart=chart;
+  if(name==='userInterestBreakdownChart')userInterestBreakdownChart=chart;
+  if(name==='userQuizTypeChart')userQuizTypeChart=chart;
+  if(name==='userAnalysisCategoryChart')userAnalysisCategoryChart=chart;
+  if(name==='activityActionChart')activityActionChart=chart;
+  return chart;
+}
+
+function chartTextColor(){return getCSS('--text2')||'#a1a1aa'}
+function chartGridColor(){return getCSS('--border')||'#27272a'}
+function chartPalette(){return ['#7c3aed','#3b82f6','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#14b8a6']}
+
+function renderRankBars(targetId,entries){
+  const el=document.getElementById(targetId);
+  if(!el)return;
+  if(!entries.length){el.innerHTML='<div class="placeholder">No data</div>';return}
+  const max=entries[0][1]||1;
+  el.innerHTML=entries.map(([label,value])=>`<div class="rank-bar-item"><div class="rank-bar-label">${escHtml(label)}</div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(8,Math.round(value/max*100))}%"></div></div><div class="rank-bar-value">${value}</div></div>`).join('');
+}
+
+function renderUserIntelligence(){
+  const users=allUsers||[];
+  const updatedEl=document.getElementById('userIntelligenceUpdatedAt');
+  if(updatedEl)updatedEl.textContent=users.length?('Updated '+new Date().toLocaleTimeString('tr-TR')):'';
+  if(!users.length){
+    ['uiTotalUsers','uiQuizCoverage','uiAnalysisCoverage','uiAvgCompleteness'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0'});
+    renderRankBars('userCountryBars',[]);
+    const insightEl=document.getElementById('userIntelligenceInsights');if(insightEl)insightEl.innerHTML='<div class="placeholder">No user data</div>';
+    resetChart('userPlanChart');resetChart('userPersonaChart');resetChart('userInterestChart');
+    return;
+  }
+
+  const planSplit={Premium:0,Free:0};
+  const personas={};
+  const interests={};
+  const countries={};
+  const languages={};
+  const budgets={};
+  const ecosystems={};
+  let quizUsers=0,analysisUsers=0,completenessTotal=0;
+
+  users.forEach(user=>{
+    planSplit[user.isPremium?'Premium':'Free']++;
+    const persona=classifyUserPersona(user);
+    personas[persona]=(personas[persona]||0)+1;
+    collectUserInterestScores(user).slice(0,5).forEach(([label,value])=>{interests[label]=(interests[label]||0)+value});
+    const country=String(user.country||'Unknown');countries[country]=(countries[country]||0)+1;
+    const lang=String(user.language||'Unknown');languages[lang]=(languages[lang]||0)+1;
+    const budget=String(user.budgetRange||'mid');budgets[budget]=(budgets[budget]||0)+1;
+    const ecosystem=String(user.ecosystem||'mixed');ecosystems[ecosystem]=(ecosystems[ecosystem]||0)+1;
+    if(safeArray(user.quizHistory).length)quizUsers++;
+    if(safeArray(user.analyzedProducts).length)analysisUsers++;
+    completenessTotal+=computeProfileCompleteness(user);
+  });
+
+  const avgCompleteness=Math.round(completenessTotal/users.length);
+  const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+  setText('uiTotalUsers',String(users.length));
+  setText('uiQuizCoverage',`${Math.round(quizUsers/users.length*100)}%`);
+  setText('uiAnalysisCoverage',`${Math.round(analysisUsers/users.length*100)}%`);
+  setText('uiAvgCompleteness',`${avgCompleteness}%`);
+
+  const countryEntries=Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const interestEntries=Object.entries(interests).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  renderRankBars('userCountryBars',countryEntries);
+
+  const insightEl=document.getElementById('userIntelligenceInsights');
+  if(insightEl){
+    const topPersona=Object.entries(personas).sort((a,b)=>b[1]-a[1])[0];
+    const topBudget=Object.entries(budgets).sort((a,b)=>b[1]-a[1])[0];
+    const topEco=Object.entries(ecosystems).sort((a,b)=>b[1]-a[1])[0];
+    const topLang=Object.entries(languages).sort((a,b)=>b[1]-a[1])[0];
+    insightEl.innerHTML=[
+      `<div class="insight-item"><div class="insight-label">PERSONA</div>${topPersona?`${escHtml(topPersona[0])} users lead with ${topPersona[1]} profiles.`:'No persona signal yet.'}</div>`,
+      `<div class="insight-item"><div class="insight-label">INTEREST</div>${interestEntries[0]?`${escHtml(interestEntries[0][0])} is the strongest shared interest cluster.`:'Interest data is still building.'}</div>`,
+      `<div class="insight-item"><div class="insight-label">BUDGET</div>${topBudget?`${escHtml(topBudget[0])} budget band appears most often.`:'Budget preference data is limited.'}</div>`,
+      `<div class="insight-item"><div class="insight-label">ECOSYSTEM</div>${topEco?`${escHtml(topEco[0])} ecosystem currently dominates the audience.`:'Ecosystem preference is not clear yet.'}</div>`,
+      `<div class="insight-item"><div class="insight-label">LANGUAGE</div>${topLang?`${escHtml(topLang[0])} is the most active app language among users.`:'Language signal unavailable.'}</div>`,
+    ].join('');
+  }
+
+  mountChart('userPlanChart',document.getElementById('userPlanChart'),{
+    type:'doughnut',
+    data:{labels:Object.keys(planSplit),datasets:[{data:Object.values(planSplit),backgroundColor:['#7c3aed','#3b82f6'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:chartTextColor()}}}}
+  });
+
+  mountChart('userPersonaChart',document.getElementById('userPersonaChart'),{
+    type:'doughnut',
+    data:{labels:Object.keys(personas),datasets:[{data:Object.values(personas),backgroundColor:chartPalette(),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:chartTextColor()}}}}
+  });
+
+  mountChart('userInterestChart',document.getElementById('userInterestChart'),{
+    type:'bar',
+    data:{labels:interestEntries.map(([label])=>label),datasets:[{data:interestEntries.map(([,value])=>Number(value.toFixed?value.toFixed(1):value)),backgroundColor:'#7c3aed',borderRadius:8}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:chartGridColor()},ticks:{color:chartTextColor()}},y:{grid:{display:false},ticks:{color:chartTextColor()}}}}
+  });
+}
+
+function renderUserOverviewCharts(uid){
+  const user=allUsers.find(entry=>entry.uid===uid);if(!user)return;
+  const behaviorData={
+    Views:safeArray(user.productViewHistory).length,
+    Searches:safeArray(user.searchHistory).length,
+    Comparisons:getUserComparisonCount(user),
+    Quizzes:safeArray(user.quizHistory).length,
+    AI:safeArray(user.analyzedProducts).length,
+    Favorites:safeArray(user.favoriteHistory).length||safeArray(user.favorites).length,
+  };
+  const interestEntries=collectUserInterestScores(user).slice(0,6);
+
+  mountChart('userBehaviorChart',document.getElementById('userBehaviorChartCanvas'),{
+    type:'bar',
+    data:{labels:Object.keys(behaviorData),datasets:[{data:Object.values(behaviorData),backgroundColor:['#3b82f6','#06b6d4','#7c3aed','#8b5cf6','#22c55e','#f59e0b'],borderRadius:10}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:chartTextColor()}},y:{grid:{color:chartGridColor()},ticks:{color:chartTextColor()},beginAtZero:true}}}
+  });
+
+  mountChart('userInterestBreakdownChart',document.getElementById('userInterestBreakdownChartCanvas'),{
+    type:'doughnut',
+    data:{labels:interestEntries.map(([label])=>label),datasets:[{data:interestEntries.map(([,value])=>value),backgroundColor:chartPalette(),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:chartTextColor()}}}}
+  });
+}
+
+function renderUserQuizChart(quizSessions){
+  const grouped={};
+  quizSessions.forEach(session=>{const label=String(session.type||session.mode||session.category||'quiz');grouped[label]=(grouped[label]||0)+1});
+  const entries=Object.entries(grouped);
+  mountChart('userQuizTypeChart',document.getElementById('userQuizTypeChartCanvas'),{
+    type:'bar',
+    data:{labels:entries.map(([label])=>label),datasets:[{data:entries.map(([,value])=>value),backgroundColor:'#8b5cf6',borderRadius:10}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:chartTextColor()}},y:{grid:{color:chartGridColor()},ticks:{color:chartTextColor()},beginAtZero:true}}}
+  });
+}
+
+function renderUserAnalysisChart(items){
+  const grouped={};
+  items.forEach(item=>{const label=String(item.category||item.mode||'analysis');grouped[label]=(grouped[label]||0)+1});
+  const entries=Object.entries(grouped).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mountChart('userAnalysisCategoryChart',document.getElementById('userAnalysisCategoryChartCanvas'),{
+    type:'bar',
+    data:{labels:entries.map(([label])=>label),datasets:[{data:entries.map(([,value])=>value),backgroundColor:'#22c55e',borderRadius:10}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:chartTextColor()}},y:{grid:{color:chartGridColor()},ticks:{color:chartTextColor()},beginAtZero:true}}}
+  });
+}
 
 function normalizeConfigData(data){
   if (!data || typeof data !== 'object') return {};
@@ -721,10 +961,10 @@ async function deleteProduct(id){if(!confirm('Bu ürünü silmek istediğinize e
 let allUsers=[],filteredUsers=[],userPage=1;const UPER=50;
 
 async function loadUsers(){
-  try{const items=await pbGetAll('users',{sort:'id'});allUsers=items.map(d=>({uid:d.id,...d.data()}));const prem=allUsers.filter(u=>u.isPremium).length;const active=allUsers.filter(u=>{const la=u.lastActive?new Date(u.lastActive):null;return la&&la>new Date(Date.now()-30*864e5)}).length;
+  try{const items=await pbGetAll('users',{sort:'-created'});allUsers=items.map(d=>({uid:d.id,...d.data()}));const prem=allUsers.filter(u=>u.isPremium).length;const active=allUsers.filter(u=>{const la=getUserLastActive(u);return la&&la>new Date(Date.now()-30*864e5)}).length;
   document.getElementById('usTotalCount').textContent=allUsers.length;document.getElementById('usPremiumCount').textContent=prem;document.getElementById('usFreeCount').textContent=allUsers.length-prem;document.getElementById('usActiveCount').textContent=active;document.getElementById('usersCount').textContent=allUsers.length;
   const countries=[...new Set(allUsers.map(u=>u.country).filter(Boolean))].sort();document.getElementById('userCountryFilter').innerHTML='<option value="">All Countries</option>'+countries.map(c=>`<option>${escHtml(c)}</option>`).join('');
-  filterUsers()}catch(e){toast('Users error: '+String(e.message || e),'e')}
+  filterUsers();renderUserIntelligence()}catch(e){toast('Users error: '+String(e.message || e),'e')}
 }
 
 function filterUsers(){
@@ -742,7 +982,7 @@ function renderUsers(){
   const list=document.getElementById('userList'),start=(userPage-1)*UPER,page=filteredUsers.slice(start,start+UPER);
   if(!page.length){list.innerHTML='<div class="placeholder">No users</div>';return}
   let h='<div class="user-hdr"><span></span><span>User</span><span>Country</span><span>Status</span><span>Joined</span></div>';
-  h+=page.map(u=>{const av=userAvatarHtml(u);const j=u.createdAt?new Date(u.createdAt).toLocaleDateString():'';return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
+  h+=page.map(u=>{const av=userAvatarHtml(u);const j=formatDateLabel(u.createdAt||u.created||u.updated);return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
   list.innerHTML=h;
   const total=Math.ceil(filteredUsers.length/UPER),pe=document.getElementById('userPagination');
   if(total<=1){pe.innerHTML='';return}
@@ -756,16 +996,23 @@ function openUserDetail(uid){
   document.getElementById('userModalTitle').textContent=u.displayName||'Kullanıcı';
   const b=document.getElementById('userModalBody');
   const safeUid=escJs(uid);
-  const j=u.createdAt?new Date(u.createdAt):'';
-  const la=u.lastActive?new Date(u.lastActive):'';
+  const j=parseDateValue(u.createdAt,u.created);
+  const la=getUserLastActive(u);
   const jStr=j?j.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
   const laStr=la?la.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
 
   // Engagement analysis
   const daysSinceJoin=j?Math.floor((Date.now()-j.getTime())/864e5):0;
   const daysSinceActive=la?Math.floor((Date.now()-la.getTime())/864e5):999;
-  const compCount=u.comparisonCount||0;
+  const compCount=getUserComparisonCount(u);
   const favCount=u.favorites?.length||u.favoriteCount||0;
+  const analysisCount=safeArray(u.analyzedProducts).length;
+  const quizCount=safeArray(u.quizHistory).length;
+  const searchCount=safeArray(u.searchHistory).length;
+  const completeness=computeProfileCompleteness(u);
+  const persona=classifyUserPersona(u);
+  const topInterests=collectUserInterestScores(u).slice(0,5);
+  const narrative=buildUserNarrative(u);
 
   // Activity status
   let activityStatus,actColor;
@@ -776,7 +1023,7 @@ function openUserDetail(uid){
 
   // User type analysis
   let userType='Yeni Kullanıcı';
-  if(compCount>=20)userType='Power User';
+  if(compCount>=20||analysisCount>=20)userType='Power User';
   else if(compCount>=5)userType='Aktif Kullanıcı';
   else if(daysSinceJoin>=7&&compCount===0)userType='Pasif Kullanıcı';
 
@@ -792,6 +1039,18 @@ function openUserDetail(uid){
       </div>
       <div>${u.isPremium?'<span class="badge badge-premium" style="font-size:12px;padding:6px 12px">Premium</span>':'<span class="badge badge-ghost" style="font-size:12px;padding:6px 12px">Free</span>'}</div>
     </div>
+    <div class="card" style="margin:0 0 16px;padding:16px;background:linear-gradient(135deg,rgba(124,58,237,.16),rgba(59,130,246,.10));border-color:rgba(124,58,237,.18)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--text2);text-transform:uppercase;font-weight:700;margin-bottom:6px">AI Persona</div>
+          <div style="font-size:22px;font-weight:800;letter-spacing:-.4px">${escHtml(persona)}</div>
+          <div class="chart-note">${escHtml(narrative)}</div>
+        </div>
+        <div class="feature-pill-row">
+          ${topInterests.length?topInterests.map(([label,value])=>`<span class="feature-pill">${escHtml(label)} · ${Math.round(value)}</span>`).join(''):'<span class="feature-pill ghost">No strong category signal yet</span>'}
+        </div>
+      </div>
+    </div>
     <!-- Tab Navigation -->
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px">
       <button class="user-tab active" data-tab="overview" onclick="switchUserTab(this,'${safeUid}')">📊 Genel</button>
@@ -802,13 +1061,29 @@ function openUserDetail(uid){
     </div>
     <!-- Overview Tab -->
     <div class="user-tab-panel active" data-panel="overview">
-      <div class="form-grid" style="margin-bottom:16px">
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Kayıt Tarihi</div><div style="font-size:14px;font-weight:700;margin-top:4px">${jStr}</div></div>
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Son Aktivite</div><div style="font-size:14px;font-weight:700;margin-top:4px">${laStr}</div></div>
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ülke</div><div style="font-size:14px;font-weight:700;margin-top:4px">${escHtml(u.country||'—')}</div></div>
-        <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:14px;font-weight:700;margin-top:4px">${compCount}</div></div>
+      <div class="metric-grid-compact">
+        <div class="metric-tile"><div class="metric-tile-value">${jStr}</div><div class="metric-tile-label">Kayıt Tarihi</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${laStr}</div><div class="metric-tile-label">Son Aktivite</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${completeness}%</div><div class="metric-tile-label">Profile Score</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${engRate}%</div><div class="metric-tile-label">Engagement</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${compCount}</div><div class="metric-tile-label">Comparisons</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${analysisCount}</div><div class="metric-tile-label">AI Analyses</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${quizCount}</div><div class="metric-tile-label">Quiz Sessions</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${searchCount}</div><div class="metric-tile-label">Searches</div></div>
       </div>
-      <div class="card" style="margin:0 0 16px;padding:14px">
+      <div class="user-overview-grid">
+        <div class="card" style="margin:0;padding:14px">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Davranış Dağılımı</div>
+          <div class="chart-shell" style="height:260px"><canvas id="userBehaviorChartCanvas"></canvas></div>
+          <div class="chart-note">View, search, compare, quiz ve AI kullanım dengesi bu grafikle okunur.</div>
+        </div>
+        <div class="card" style="margin:0;padding:14px">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧲 İlgi Haritası</div>
+          <div class="chart-shell" style="height:260px"><canvas id="userInterestBreakdownChartCanvas"></canvas></div>
+          <div class="chart-note">Kategori, analiz ve quiz geçmişinden türetilen baskın ilgi alanları.</div>
+        </div>
+      </div>
+      <div class="card" style="margin:16px 0 16px;padding:14px">
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Kullanıcı Analizi</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
           <div><span style="color:var(--text2)">Kullanıcı Tipi:</span> <b>${escHtml(userType)}</b></div>
@@ -855,6 +1130,7 @@ function openUserDetail(uid){
       </div>
     </div>`;
   document.getElementById('userModal').style.display='flex';
+  setTimeout(()=>renderUserOverviewCharts(uid),0);
 }
 
 function switchUserTab(btn, uid){
@@ -878,20 +1154,20 @@ async function loadUserBehavior(uid){
   const el=document.getElementById('behaviorContent');
   if(el.dataset.loaded)return;
   try{
+    const u=allUsers.find(x=>x.uid===uid)||{};
     const [rvRes,compRes]=await Promise.all([
-      pbGetList('recently_viewed',1,20,{filter:`user="${uid}"`,sort:'-created'}),
-      pbGetList('comparisons',1,20,{filter:`user="${uid}"`,sort:'-created'})
+      pbGetList('recently_viewed',1,20,{filter:`userId="${uid}"`,sort:'-created'}),
+      pbGetList('comparisons',1,20,{filter:`userId="${uid}"`,sort:'-created'})
     ]);
     const views=rvRes.items;
     const comps=compRes.items;
-    const u=allUsers.find(x=>x.uid===uid)||{};
-    const prefData=u.quizPreferences||{};
-    const catInterests=Object.entries(prefData).filter(([k])=>k.startsWith('cat_')).map(([k,v])=>({cat:k.replace('cat_',''),count:v})).sort((a,b)=>b.count-a.count);
-    const prefWeights=Object.entries(prefData).filter(([k])=>k.startsWith('pref_')).map(([k,v])=>({pref:k.replace('pref_','').replace(/_/g,' '),count:v})).sort((a,b)=>b.count-a.count).slice(0,10);
+    const catInterests=collectUserInterestScores(u).slice(0,8).map(([cat,count])=>({cat,count}));
+    const prefWeights=Object.entries(safeMap(u.quizPreferenceCounts)).map(([key,value])=>({pref:key.replace(/:/g,' → '),count:Number(value)||0})).sort((a,b)=>b.count-a.count).slice(0,10);
+    const comparisonHistory=safeArray(u.comparisonHistory);
 
     let html=`<div class="form-grid" style="margin-bottom:16px">
       <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ürün Görüntüleme</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#22c55e">${views.length}</div></div>
-      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f59e0b">${comps.length}</div></div>
+      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f59e0b">${Math.max(comps.length,comparisonHistory.length)}</div></div>
     </div>`;
 
     if(catInterests.length){
@@ -909,7 +1185,7 @@ async function loadUserBehavior(uid){
 
     if(views.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">👁️ Son Görüntülenen Ürünler</div><div style="max-height:200px;overflow-y:auto">`;
-      views.forEach(v=>{const date=v.created?new Date(v.created).toLocaleDateString('tr-TR'):'—';html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(v.productName||v.product||'—')}</span><span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span></div>`;});
+      views.forEach(v=>{const date=v.created?new Date(v.created).toLocaleDateString('tr-TR'):'—';html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(v.productId||v.productName||'—')}</span><span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span></div>`;});
       html+=`</div></div>`;
     }
 
@@ -938,7 +1214,9 @@ async function loadUserQuizzes(uid){
     }
 
     newQuizHistory.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
-    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${newQuizHistory.length} quiz oturumu bulundu</div>`;
+    const scores=newQuizHistory.map(q=>Number(q.score)||0).filter(Boolean);
+    const avgScore=scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length):0;
+    let html=`<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${newQuizHistory.length}</div><div class="metric-tile-label">Sessions</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Score</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.mode==='compare')).length}</div><div class="metric-tile-label">Compare Quiz</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.type==='subscription'||q.mode==='subscription')).length}</div><div class="metric-tile-label">Subscription Quiz</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧠 Quiz Dagilimi</div><div class="chart-shell" style="height:220px"><canvas id="userQuizTypeChartCanvas"></canvas></div></div>`;
 
     for(const d of newQuizHistory){
       const date=d.timestamp?new Date(d.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -958,6 +1236,7 @@ async function loadUserQuizzes(uid){
     }
     el.innerHTML=html;
     el.dataset.loaded='1';
+    setTimeout(()=>renderUserQuizChart(newQuizHistory),0);
   }catch(e){
     el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
@@ -968,10 +1247,8 @@ async function loadUserAnalysis(uid){
   const el=document.getElementById('analysisContent');
   if(el.dataset.loaded)return;
   try{
-    const userDocRef=await pbGetDoc('users',uid);
-    const data=userDocRef.exists?userDocRef.data():{};
-    const analyzedProducts=data.analyzedProducts||[];
-    const quizHistory=data.quizHistory||[];
+    const u=allUsers.find(x=>x.uid===uid)||{};
+    const analyzedProducts=safeArray(u.analyzedProducts);
 
     if(!analyzedProducts.length){
       el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>Henüz AI analiz yapılmamış</div></div>`;
@@ -981,8 +1258,10 @@ async function loadUserAnalysis(uid){
 
     // Sort by timestamp descending
     analyzedProducts.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+    const scores=analyzedProducts.map(item=>Number(item.score)||0).filter(Boolean);
+    const avgScore=scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length):0;
 
-    let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:12px">${analyzedProducts.length} ürün analiz edilmiş</div>`;
+    let html=`<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${analyzedProducts.length}</div><div class="metric-tile-label">Analyses</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Match</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='compare')).length}</div><div class="metric-tile-label">Compare AI</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='subscription')).length}</div><div class="metric-tile-label">Subs AI</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🤖 Analiz Kategorileri</div><div class="chart-shell" style="height:220px"><canvas id="userAnalysisCategoryChartCanvas"></canvas></div></div>`;
 
     for(const p of analyzedProducts){
       const date=p.timestamp?new Date(p.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -1006,6 +1285,7 @@ async function loadUserAnalysis(uid){
 
     el.innerHTML=html;
     el.dataset.loaded='1';
+    setTimeout(()=>renderUserAnalysisChart(analyzedProducts),0);
   }catch(e){
     el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
@@ -1080,13 +1360,21 @@ async function loadUserProfile(uid){
       html+=`</div></div>`;
     }
 
+    const profileVectorEntries=Object.entries(safeMap(u.profileVector)).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0)).slice(0,8);
+    if(profileVectorEntries.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📈 Profil Vektoru</div>
+        <div class="rank-bar-list">${profileVectorEntries.map(([key,value])=>`<div class="rank-bar-item"><div class="rank-bar-label">${escHtml(key)}</div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(8,Math.round(Number(value)*100))}%"></div></div><div class="rank-bar-value">${Number(value).toFixed(2)}</div></div>`).join('')}</div>
+      </div>`;
+    }
+
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
     el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
-async function togglePremium(uid,v){try{await pbUpdateDoc('users',uid,{isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
+async function togglePremium(uid,v){try{await pbUpdateDoc('users',uid,{isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;logActivity(v?'user_premium_enable':'user_premium_disable',`Premium ${v?'enabled':'disabled'}: ${uid}`,{userId:uid});openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
 async function deleteUser(uid){
   if(!confirm('Delete this user? This will permanently remove their account.'))return;
   try{
@@ -1099,16 +1387,55 @@ async function deleteUser(uid){
 // ═══════════════════════════════════════
 //  ALGORITHM
 // ═══════════════════════════════════════
-function updateAlgoLabel(input){const id=input.id.replace(/^(weight|boost)/,'label');const el=document.getElementById(id);if(el)el.textContent=input.value+'%'}
+function updateAlgoLabel(input){const id=input.id.replace(/^(weight|boost)/,'label');const el=document.getElementById(id);if(el)el.textContent=input.value+'%';updateAlgorithmHealth()}
 
-async function loadAlgorithmConfig(){try{const d=await pbGetDoc('public_config','algorithm');if(!d.exists)return;const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist)document.getElementById('brandBlacklist').value=c.brandBlacklist;if(c.brandBoost)document.getElementById('brandBoost').value=c.brandBoost;loadPinnedProducts(c.pinnedProducts||[]);loadHiddenProducts(c.hiddenProducts||[]);loadCategoryToggles(c.disabledCategories||[])}catch(e){console.error(e)}}
+function updateAlgorithmHealth(){
+  const weightSum=ALGORITHM_WEIGHT_FIELDS.reduce((sum,id)=>sum+(parseInt(document.getElementById(id)?.value||'0',10)||0),0);
+  const behaviorSum=ALGORITHM_BEHAVIOR_FIELDS.reduce((sum,id)=>sum+(parseInt(document.getElementById(id)?.value||'0',10)||0),0);
+  const disabledCount=(_disabledCategories||[]).length;
+  const cacheHours=parseInt(document.getElementById('cacheDuration')?.value||'0',10)||0;
+  const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+  setText('algoWeightSum',`${weightSum}%`);
+  setText('algoBehaviorSum',`${behaviorSum}%`);
+  setText('algoDisabledCategories',String(disabledCount));
+  setText('algoCacheHours',`${cacheHours}h`);
+  const note=document.getElementById('algorithmHealthNote');
+  if(note){
+    if(weightSum!==100)note.textContent=`Weight sum is ${weightSum}%. Recommendation models stay easier to reason about when this total is 100%.`;
+    else if(disabledCount>10)note.textContent=`${disabledCount} categories are disabled. Home feed breadth may shrink noticeably.`;
+    else note.textContent='Configuration looks balanced. Discovery, conversion and cache controls are within healthy limits.';
+  }
+}
+
+function normalizeAlgorithmWeights(){
+  const values=ALGORITHM_WEIGHT_FIELDS.map(id=>parseInt(document.getElementById(id)?.value||'0',10)||0);
+  const sum=values.reduce((acc,value)=>acc+value,0)||1;
+  let normalized=values.map(value=>Math.round(value/sum*100));
+  const drift=100-normalized.reduce((acc,value)=>acc+value,0);
+  normalized[0]=(normalized[0]||0)+drift;
+  ALGORITHM_WEIGHT_FIELDS.forEach((id,index)=>{const el=document.getElementById(id);if(el){el.value=normalized[index];updateAlgoLabel(el)}});
+  updateAlgorithmHealth();
+}
+
+function applyAlgorithmPreset(name){
+  const presets={
+    balanced:{weightPersonalFit:40,weightExpert:25,weightCommunity:20,weightPricePerf:15,boostCategoryView:12,boostSearch:8,boostQuiz:15,boostCompare:10,boostEcosystem:18,boostBudget:15},
+    discovery:{weightPersonalFit:32,weightExpert:20,weightCommunity:28,weightPricePerf:20,boostCategoryView:18,boostSearch:15,boostQuiz:11,boostCompare:8,boostEcosystem:12,boostBudget:10},
+    conversion:{weightPersonalFit:48,weightExpert:22,weightCommunity:12,weightPricePerf:18,boostCategoryView:10,boostSearch:9,boostQuiz:18,boostCompare:16,boostEcosystem:20,boostBudget:17},
+  };
+  const preset=presets[name]||presets.balanced;
+  Object.entries(preset).forEach(([id,value])=>{const el=document.getElementById(id);if(el){el.value=value;updateAlgoLabel(el)}});
+  updateAlgorithmHealth();
+}
+
+async function loadAlgorithmConfig(){try{const d=await pbGetDoc('public_config','algorithm');if(!d.exists){updateAlgorithmHealth();return;}const c=d.data();['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el&&c[f]!==undefined){el.value=c[f];updateAlgoLabel(el)}});if(c.brandBlacklist!==undefined)document.getElementById('brandBlacklist').value=c.brandBlacklist||'';if(c.brandBoost!==undefined)document.getElementById('brandBoost').value=c.brandBoost||'';loadPinnedProducts(c.pinnedProducts||[]);loadHiddenProducts(c.hiddenProducts||[]);loadCategoryToggles(c.disabledCategories||[]);updateAlgorithmHealth()}catch(e){console.error(e);updateAlgorithmHealth()}}
 
 async function saveAlgorithmConfig(){
   const c={};['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf','boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget','minYear','maxPerBrand','trendingCount','newArrivalsCount','productsPerCategory','cacheDuration'].forEach(f=>{const el=document.getElementById(f);if(el)c[f]=parseInt(el.value)||0});
   c.brandBlacklist=document.getElementById('brandBlacklist').value;c.brandBoost=document.getElementById('brandBoost').value;
   c.pinnedProducts=_pinnedProducts||[];c.hiddenProducts=_hiddenProducts||[];c.disabledCategories=_disabledCategories||[];
   c.updatedAt=serverTimestamp();
-  try{await pbSetDoc('public_config','algorithm',c);toast('Saved','s');logActivity('algorithm_update','Algorithm config updated')}catch(e){toast('Error: '+e.message,'e')}
+  try{await pbSetDoc('public_config','algorithm',c);updateAlgorithmHealth();toast('Saved','s');logActivity('algorithm_update','Algorithm config updated')}catch(e){toast('Error: '+e.message,'e')}
 }
 
 // ═══════════════════════════════════════
@@ -1208,16 +1535,19 @@ function toggleCategory(cat, enabled) {
   } else {
     if (!_disabledCategories.includes(cat)) _disabledCategories.push(cat);
   }
+  updateAlgorithmHealth();
 }
 
 function selectAllCategories() {
   _disabledCategories = [];
   loadCategoryToggles([]);
+  updateAlgorithmHealth();
 }
 
 function deselectAllCategories() {
   _disabledCategories = [...ALL_CATEGORIES];
   loadCategoryToggles([...ALL_CATEGORIES]);
+  updateAlgorithmHealth();
 }
 
 async function previewFeedStats() {
@@ -1281,22 +1611,69 @@ async function logActivity(action,detail,meta={}){
   }catch(e){console.warn('Log error:',e)}
 }
 
-let activityLogPage=1;
+function bucketActivityAction(action){
+  const value=String(action||'').toLowerCase();
+  if(value.includes('product'))return 'product';
+  if(value.includes('user'))return 'user';
+  if(value.includes('algorithm')||value.includes('cache'))return 'algorithm';
+  if(value.includes('scrape')||value.includes('import')||value.includes('export'))return 'scraper';
+  return 'system';
+}
+
+function renderActivityLog(){
+  const el=document.getElementById('activityLogList');
+  if(!el)return;
+  const query=(document.getElementById('activitySearchInput')?.value||'').trim().toLowerCase();
+  const type=(document.getElementById('activityTypeFilter')?.value||'').trim();
+  const logs=(allActivityLogs||[]).filter(log=>{
+    if(type&&log.bucket!==type)return false;
+    if(query&&!`${log.detail||''} ${log.action||''} ${log.admin||''}`.toLowerCase().includes(query))return false;
+    return true;
+  });
+
+  const total=(allActivityLogs||[]).length;
+  const today=(allActivityLogs||[]).filter(log=>{
+    const dt=parseDateValue(log.timestamp,log.created);
+    if(!dt)return false;
+    return dt>new Date(Date.now()-864e5);
+  }).length;
+  const admins=new Set((allActivityLogs||[]).map(log=>log.admin).filter(Boolean)).size;
+  const actionCounts={};
+  (allActivityLogs||[]).forEach(log=>{const label=String(log.action||'system');actionCounts[label]=(actionCounts[label]||0)+1});
+  const topAction=Object.entries(actionCounts).sort((a,b)=>b[1]-a[1])[0];
+  const setText=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value};
+  setText('activityTotal',String(total));
+  setText('activityToday',String(today));
+  setText('activityAdmins',String(admins));
+  setText('activityTopAction',topAction?topAction[0]:'—');
+
+  const groupedByBucket={};
+  (allActivityLogs||[]).forEach(log=>{groupedByBucket[log.bucket]=(groupedByBucket[log.bucket]||0)+1});
+  const bucketEntries=Object.entries(groupedByBucket);
+  mountChart('activityActionChart',document.getElementById('activityActionChart'),{
+    type:'doughnut',
+    data:{labels:bucketEntries.map(([label])=>label),datasets:[{data:bucketEntries.map(([,value])=>value),backgroundColor:chartPalette(),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:chartTextColor()}}}}
+  });
+
+  if(!logs.length){el.innerHTML='<div class="audit-empty">Bu filtre ile görünen bir kayıt yok. Activity Log; ürün, kullanıcı, algoritma, import/export ve sistem değişikliklerinin denetim kaydını tutar.</div>';return}
+  const actionIcons={product_edit:'✏️',product_delete:'🗑️',product_add:'➕',user_delete:'👤',user_premium_enable:'⭐',user_premium_disable:'⭐',bulk_category:'📂',bulk_brand:'🏷️',export:'📤',import:'📥',algorithm_update:'🧠',cache_clear:'🧹'};
+  el.innerHTML=logs.map(l=>{
+    const ts=formatDateTimeLabel(l.timestamp||l.created);
+    const icon=actionIcons[l.action]||'📋';
+    return`<div class="log-row"><span class="log-icon">${icon}</span><div class="log-info"><div class="log-detail">${escHtml(l.detail||l.action)}</div><div class="log-meta">${escHtml(l.admin||'system')} · ${ts} · ${escHtml(l.bucket)}</div></div></div>`;
+  }).join('');
+}
+
 async function loadActivityLog(){
   const el=document.getElementById('activityLogList');
   if(!el)return;
   el.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Yükleniyor...</div>';
   try{
-    const result=await pbGetList('admin_logs',1,100,{sort:'-timestamp'});
-    if(!result.items.length){el.innerHTML='<div class="placeholder">Henüz aktivite yok</div>';return}
-    const logs=result.items;
-    const actionIcons={product_edit:'✏️',product_delete:'🗑️',product_add:'➕',user_delete:'👤',user_premium:'⭐',bulk_category:'📂',bulk_brand:'🏷️',export:'📤',import:'📥'};
-    el.innerHTML=logs.map(l=>{
-      const ts=l.timestamp?new Date(l.timestamp).toLocaleString('tr-TR'):'—';
-      const icon=actionIcons[l.action]||'📋';
-      return`<div class="log-row"><span class="log-icon">${icon}</span><div class="log-info"><div class="log-detail">${escHtml(l.detail||l.action)}</div><div class="log-meta">${escHtml(l.admin||'')} · ${ts}</div></div></div>`;
-    }).join('');
-  }catch(e){el.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+escHtml(e.message)+'</div>'}
+    const result=await pbGetList('admin_logs',1,150,{sort:'-timestamp'});
+    allActivityLogs=result.items.map(item=>({...item,bucket:bucketActivityAction(item.action)}));
+    renderActivityLog();
+  }catch(e){allActivityLogs=[];resetChart('activityActionChart');el.innerHTML='<div class="audit-empty">Activity log collection su an okunamiyor. Bu ekran admin audit merkezi olarak kullanilir; collection veya yetki tekrar kontrol edilmeli.</div>'}
 }
 
 // ═══════════════════════════════════════

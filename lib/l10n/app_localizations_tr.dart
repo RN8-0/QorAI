@@ -1793,7 +1793,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get midRange => 'Orta Segment';
 
   @override
-  String get premium => 'Üst Segment';
+  String get premium => 'Premium';
 
   @override
   String get doesNotMatter => 'Fark Etmez';

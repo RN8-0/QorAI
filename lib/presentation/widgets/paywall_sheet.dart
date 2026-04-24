@@ -181,6 +181,54 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
         'Din prenumeration ar aktiv. Du kan hantera den nar som helst via Google Play.',
     'ar': 'اشتراكك نشط. يمكنك إدارته في أي وقت من خلال Google Play.',
   },
+  'Smart Link Analysis': {
+    'de': 'Intelligente Link-Analyse',
+    'es': 'Analisis inteligente de enlaces',
+    'fr': 'Analyse intelligente des liens',
+    'it': 'Analisi intelligente dei link',
+    'ja': 'スマートリンク分析',
+    'nl': 'Slimme linkanalyse',
+    'pl': 'Inteligentna analiza linkow',
+    'pt': 'Analise inteligente de links',
+    'sv': 'Smart lankanalys',
+    'ar': 'تحليل الروابط الذكي',
+  },
+  'Paste any product URL for instant AI product analysis.': {
+    'de': 'Fuge eine beliebige Produkt-URL ein, um sofort eine KI-Analyse zu erhalten.',
+    'es': 'Pega cualquier URL de producto para obtener un analisis instantaneo con IA.',
+    'fr': 'Collez n importe quelle URL produit pour obtenir instantanement une analyse IA.',
+    'it': 'Incolla qualsiasi URL prodotto per ottenere subito un analisi AI.',
+    'ja': '商品のURLを貼り付けるだけで、AIによる即時分析を取得できます。',
+    'nl': 'Plak een product-URL voor directe AI-productanalyse.',
+    'pl': 'Wklej dowolny adres URL produktu, aby natychmiast uzyskac analize AI.',
+    'pt': 'Cole qualquer URL de produto para obter uma analise instantanea com IA.',
+    'sv': 'Klistra in valfri produkt-URL for omedelbar AI-analys.',
+    'ar': 'الصق اي رابط منتج للحصول على تحليل فوري بالذكاء الاصطناعي.',
+  },
+  'Side-by-Side Compare': {
+    'de': 'Direkter Vergleich',
+    'es': 'Comparacion lado a lado',
+    'fr': 'Comparaison cote a cote',
+    'it': 'Confronto affiancato',
+    'ja': '並べて比較',
+    'nl': 'Vergelijk naast elkaar',
+    'pl': 'Porownanie obok siebie',
+    'pt': 'Comparacao lado a lado',
+    'sv': 'Jamfor sida vid sida',
+    'ar': 'مقارنة جنبا الى جنب',
+  },
+  'Compare more products with AI summaries and better context.': {
+    'de': 'Vergleiche mehr Produkte mit KI-Zusammenfassungen und besserem Kontext.',
+    'es': 'Compara mas productos con resúmenes de IA y mejor contexto.',
+    'fr': 'Comparez plus de produits avec des resumes IA et un meilleur contexte.',
+    'it': 'Confronta piu prodotti con riepiloghi AI e un contesto migliore.',
+    'ja': 'AI要約とより良い文脈で、さらに多くの商品を比較できます。',
+    'nl': 'Vergelijk meer producten met AI-samenvattingen en betere context.',
+    'pl': 'Porownuj wiecej produktow dzieki podsumowaniom AI i lepszemu kontekstowi.',
+    'pt': 'Compare mais produtos com resumos de IA e contexto melhor.',
+    'sv': 'Jamfor fler produkter med AI-sammanfattningar och battre kontext.',
+    'ar': 'قارن المزيد من المنتجات مع ملخصات الذكاء الاصطناعي وسياق اوضح.',
+  },
 };
 
 void showPaywallSheet(BuildContext context) {
@@ -479,7 +527,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'pl' => '$count dni',
       'pt' => '$count dias',
       'sv' => '$count dagar',
-      'tr' => '$count gun',
+      'tr' => '$count gün',
       _ => '$count days',
     };
   }
@@ -496,7 +544,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'pl' => '$count elementow',
       'pt' => '$count itens',
       'sv' => '$count objekt',
-      'tr' => '$count urun',
+      'tr' => '$count ürün',
       _ => '$count items',
     };
   }
@@ -523,7 +571,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'sv' =>
         'Obegransade jamforelser, AI-chatt, lankanalys och en renare premiumupplevelse.',
       'tr' =>
-        'Free planda gunluk 10 Q, Premium\'da sinirsiz Q ile tum AI akislarinda daha hizli ve limitsiz deneyim.',
+        'Qor AI Chat, görsel tarayıcı, akıllı link analizi ve premium önerilerde sınırsız deneyim.',
       _ =>
         'Free includes 10 Q per day, while Premium unlocks unlimited Q across every AI flow.',
     };
@@ -551,7 +599,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'sv' =>
         'Ingen kostnad i ${AppConstants.trialDays} dagar, sedan startar din valda plan.',
       'tr' =>
-        '${AppConstants.trialDays} gun boyunca ucret alinmaz, sonra sectiginiz plan baslar.',
+        '${AppConstants.trialDays} gün ücretsiz, ardından seçtiğiniz plan devreye girer.',
       _ =>
         'No charge for ${AppConstants.trialDays} days, then your selected plan starts.',
     };
@@ -1009,6 +1057,62 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             ),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 14),
+          _buildHeroPills(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroPills() {
+    final pills = [
+      (
+        Icons.chat_bubble_outline_rounded,
+        _txt(tr: 'Sınırsız Qor AI Chat', en: 'Unlimited Qor AI Chat'),
+      ),
+      (
+        Icons.image_search_rounded,
+        _txt(tr: 'Gelişmiş görsel tarayıcı', en: 'Advanced visual scanner'),
+      ),
+      (
+        Icons.tips_and_updates_rounded,
+        _txt(tr: 'Daha akıllı öneriler', en: 'Smarter recommendations'),
+      ),
+    ];
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: pills
+          .map(
+            (pill) => _buildHeroPill(icon: pill.$1, label: pill.$2),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildHeroPill({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _kPremiumBase.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _kPremiumBase.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: _kPremiumDeep),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -1403,27 +1507,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                   _resolveSubscriptionDate(status, isStart: true),
                 ),
               ),
-              const SizedBox(height: 12),
-              _buildSubscriptionMetaRow(
-                icon: Icons.event_repeat_rounded,
-                label: _txt(
-                  tr: 'Tahmini yenilenme / bitiş',
-                  en: 'Estimated renewal / end',
-                ),
-                value: _formatDate(
-                  _resolveSubscriptionDate(status, isStart: false),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildSubscriptionMetaRow(
-                icon: Icons.workspace_premium_rounded,
-                label: _txt(tr: 'Aktif plan', en: 'Active plan'),
-                value: switch (_planType(status.activeProductId)) {
-                  'yearly' => _txt(tr: 'Yıllık', en: 'Yearly'),
-                  'monthly' => _txt(tr: 'Aylık', en: 'Monthly'),
-                  _ => 'Premium',
-                },
-              ),
             ],
           ),
         ),
@@ -1654,62 +1737,82 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       (
         Icons.link_rounded,
         _kPremiumBase,
-        'Smart Link Analysis',
-        'Paste any product URL for instant AI product analysis.',
+        _txt(tr: 'Akıllı Link Analizi', en: 'Smart Link Analysis'),
+        _txt(
+          tr: 'Herhangi bir ürün linkini yapıştırın, anında AI ürün analizi alın.',
+          en: 'Paste any product URL for instant AI product analysis.',
+        ),
       ),
       (
         Icons.compare_arrows_rounded,
         _kPremiumDeep,
-        'Side-by-Side Compare',
-        'Compare more products with AI summaries and better context.',
+        _txt(tr: 'Yan Yana Karşılaştır', en: 'Side-by-Side Compare'),
+        _txt(
+          tr: 'Daha fazla ürünü AI özetleri ve daha güçlü bağlam ile karşılaştırın.',
+          en: 'Compare more products with AI summaries and better context.',
+        ),
+      ),
+      (
+        Icons.image_search_rounded,
+        _kPremiumLight,
+        _txt(tr: 'Premium Görsel Tarama', en: 'Premium Visual Scanning'),
+        _txt(
+          tr: 'Ürünleri daha doğru tanır, ürün olmayan kareleri filtreler ve sohbet geçmişiyle birleşir.',
+          en: 'Identifies products more accurately, filters non-product frames, and syncs with chat history.',
+        ),
       ),
     ];
 
-    return Row(
+    return Column(
       children: List.generate(
         features.length,
-        (i) => Expanded(
-          child: Container(
-            margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: context.surfaceVariantColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: features[i].$2.withValues(alpha: 0.2)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: features[i].$2.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(features[i].$1, color: features[i].$2, size: 18),
+        (i) => Container(
+          width: double.infinity,
+          margin: EdgeInsets.only(bottom: i == features.length - 1 ? 0 : 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: features[i].$2.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: features[i].$2.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  features[i].$3,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: context.textPrimary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textAlign: TextAlign.center,
+                child: Icon(features[i].$1, color: features[i].$2, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      features[i].$3,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: context.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      features[i].$4,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: context.textSecondary,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  features[i].$4,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: context.textSecondary,
-                    fontSize: 9,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1723,11 +1826,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     String label;
     if (prods.isNotEmpty) {
       final product = prods[_selectedPlan < prods.length ? _selectedPlan : 0];
-      label = 'Start Free Trial — ${product.price}';
+      label = _txt(
+        tr: 'Premium\'u başlat • ${product.price}',
+        en: 'Start Free Trial • ${product.price}',
+      );
     } else {
       label = _selectedPlan == 0
-          ? 'Start Free Trial — \$${AppConstants.yearlyProPrice.toStringAsFixed(2)}/yr'
-          : 'Start Free Trial — \$${AppConstants.monthlyProPrice.toStringAsFixed(2)}/mo';
+          ? _txt(
+              tr: 'Premium\'u başlat • \$${AppConstants.yearlyProPrice.toStringAsFixed(2)}/yıl',
+              en: 'Start Free Trial • \$${AppConstants.yearlyProPrice.toStringAsFixed(2)}/yr',
+            )
+          : _txt(
+              tr: 'Premium\'u başlat • \$${AppConstants.monthlyProPrice.toStringAsFixed(2)}/ay',
+              en: 'Start Free Trial • \$${AppConstants.monthlyProPrice.toStringAsFixed(2)}/mo',
+            );
     }
 
     return AnimatedBuilder(
@@ -1788,7 +1900,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                       Text(
                         _isLoading
                             ? (context.l10n?.paywallStartYearly ??
-                                  'Start Free Trial')
+                                  _txt(
+                                    tr: 'Ücretsiz denemeyi başlat',
+                                    en: 'Start Free Trial',
+                                  ))
                             : label,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
@@ -1827,7 +1942,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                   en: 'Your subscription is active. You can manage it from Google Play anytime.',
                 )
               : (context.l10n?.paywallLegalText ??
-                    'Auto-renews. Cancel anytime. ${AppConstants.trialDays}-day free trial.'),
+                    _txt(
+                      tr: 'Abonelik otomatik yenilenir. İstediğiniz zaman iptal edebilirsiniz. ${AppConstants.trialDays} gün ücretsiz deneme içerir.',
+                      en: 'Auto-renews. Cancel anytime. ${AppConstants.trialDays}-day free trial.',
+                    )),
           style: GoogleFonts.plusJakartaSans(
             color: context.textTertiaryColor,
             fontSize: 11,

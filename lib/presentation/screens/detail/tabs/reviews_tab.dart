@@ -327,22 +327,24 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                     ],
                   ),
                 ),
-                QorAmountBadge(
-                  amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('detail_ai'),
-                  unlimited: ref.watch(subscriptionServiceProvider).isPremium,
-                  color: AppTheme.accentTeal,
-                  fontSize: 10,
-                ),
-                const SizedBox(width: 6),
-                QorBalanceBadge(
-                  remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
-                  total: AppConstants.freeDailyAiCreditLimit,
-                  unlimited: ref.watch(subscriptionServiceProvider).isPremium,
-                  color: AppTheme.accentTeal,
-                  fontSize: 9,
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                ),
-                const SizedBox(width: 8),
+                if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
+                  QorAmountBadge(
+                    amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('detail_ai'),
+                    unlimited: false,
+                    color: AppTheme.accentTeal,
+                    fontSize: 10,
+                  ),
+                  const SizedBox(width: 6),
+                  QorBalanceBadge(
+                    remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
+                    total: AppConstants.freeDailyAiCreditLimit,
+                    unlimited: false,
+                    color: AppTheme.accentTeal,
+                    fontSize: 9,
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 if (isLoading)
                   const SizedBox(
                     width: 20,

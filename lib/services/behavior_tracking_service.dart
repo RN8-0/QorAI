@@ -115,6 +115,26 @@ class BehaviorTrackingService {
     if (productIds.isEmpty) {
       return;
     }
+    final normalizedIds = productIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+    if (normalizedIds.isEmpty) {
+      return;
+    }
+    _fireAndForget('trackComparison', (uid) async {
+      await _appendHistory(
+        uid,
+        'comparisonHistory',
+        _entry({
+          'productIds': normalizedIds,
+          'productId': normalizedIds.first,
+          'count': normalizedIds.length,
+        }),
+        maxItems: 80,
+      );
+    });
   }
 
   void trackPriceTap(String productId) {

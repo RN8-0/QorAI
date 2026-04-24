@@ -38,6 +38,7 @@ class _ComparisonsScreenState extends ConsumerState<ComparisonsScreen> {
   @override
   Widget build(BuildContext context) {
     final comparisonsAsync = ref.watch(userComparisonsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -68,13 +69,14 @@ class _ComparisonsScreenState extends ConsumerState<ComparisonsScreen> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          gradient: Theme.of(context).brightness == Brightness.dark
+          gradient: isDark
               ? AppTheme.meshBackgroundGradient
               : LinearGradient(
                   colors: [
                     context.backgroundColor,
-                    AppTheme.brandBlue.withValues(alpha: 0.05),
-                    AppTheme.brandCyan.withValues(alpha: 0.04),
+                    const Color(0xFFEAF6FF),
+                    const Color(0xFFF5FBFF),
+                    AppTheme.brandCyan.withValues(alpha: 0.06),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -108,12 +110,19 @@ class _ComparisonsScreenState extends ConsumerState<ComparisonsScreen> {
                 if (comparisons.isEmpty) {
                   return _EmptyState(onRetry: _refresh);
                 }
-                return ListView.builder(
+                return ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 108, 16, 100),
-                  itemCount: comparisons.length,
-                  itemBuilder: (ctx, i) =>
-                      _ComparisonCard(comparison: comparisons[i]),
+                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 100),
+                  children: [
+                    _ComparisonHero(
+                      count: comparisons.length,
+                      latest: comparisons.first,
+                    ),
+                    const SizedBox(height: 18),
+                    ...comparisons.map(
+                      (comparison) => _ComparisonCard(comparison: comparison),
+                    ),
+                  ],
                 );
               },
               failure: (err) => ListView(
@@ -131,6 +140,170 @@ class _ComparisonsScreenState extends ConsumerState<ComparisonsScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ComparisonHero extends StatelessWidget {
+  final int count;
+  final ComparisonEntity latest;
+
+  const _ComparisonHero({required this.count, required this.latest});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? LinearGradient(
+                colors: [
+                  AppTheme.brandDeepBlue.withValues(alpha: 0.26),
+                  AppTheme.brandBlue.withValues(alpha: 0.20),
+                  AppTheme.brandCyan.withValues(alpha: 0.16),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [
+                  Color(0xFFD9F0FF),
+                  Color(0xFFF6FBFF),
+                  Color(0xFFE8F8FF),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: isDark
+              ? AppTheme.brandBlue.withValues(alpha: 0.24)
+              : AppTheme.brandBlue.withValues(alpha: 0.14),
+        ),
+        boxShadow: isDark
+            ? AppTheme.cardShadow
+            : [
+                BoxShadow(
+                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                  blurRadius: 30,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.auto_graph_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n?.comparisonHistory ?? 'Comparison History',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Son karsilastirmalariniz burada akilli bir ozetle listelenir.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        height: 1.45,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _HeroMetric(label: 'Toplam', value: '$count'),
+              _HeroMetric(
+                label: 'Son urun sayisi',
+                value: '${latest.itemIds.length}',
+              ),
+              _HeroMetric(
+                label: 'Tekrar',
+                value: '${latest.occurrenceCount}x',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _HeroMetric({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 108,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : AppTheme.brandBlue.withValues(alpha: 0.10),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: _accent,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: context.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -258,39 +431,60 @@ class _ComparisonCard extends ConsumerWidget {
         context.push(AppRoutes.comparisonResult, extra: comparison);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              context.surfaceVariantColor,
-              _accentLight.withValues(alpha: 0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          gradient: Theme.of(context).brightness == Brightness.dark
+              ? LinearGradient(
+                  colors: [
+                    context.surfaceVariantColor,
+                    AppTheme.brandBlue.withValues(alpha: 0.10),
+                    AppTheme.brandCyan.withValues(alpha: 0.08),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : const LinearGradient(
+                  colors: [
+                    Color(0xFFF7FCFF),
+                    Color(0xFFDFF3FF),
+                    Color(0xFFF1FAFF),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.brandCyan.withValues(alpha: 0.16)
+                : AppTheme.brandBlue.withValues(alpha: 0.12),
           ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
-          boxShadow: AppTheme.cardShadow,
+          boxShadow: Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.cardShadow
+              : [
+                  BoxShadow(
+                    color: AppTheme.brandBlue.withValues(alpha: 0.16),
+                    blurRadius: 28,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title row
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [_accent, _accentLight],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(13),
                   ),
                   child: const Icon(
                     Icons.compare_arrows_rounded,
-                    size: 18,
+                    size: 20,
                     color: Colors.white,
                   ),
                 ),
@@ -302,28 +496,40 @@ class _ComparisonCard extends ConsumerWidget {
                       Text(
                         comparison.title ?? 'Comparison',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
                           color: context.textPrimary,
+                          letterSpacing: -0.3,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         '${comparison.occurrenceCount} kez karsilastirildi',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: _accent,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.06
+                          : 0.8,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
                     Icons.chevron_right_rounded,
                     size: 20,
                     color: _accent,
@@ -331,56 +537,59 @@ class _ComparisonCard extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Product images row
-            SizedBox(
-              height: 56,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.04
+                      : 0.78,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : AppTheme.brandBlue.withValues(alpha: 0.08),
+                ),
+              ),
               child: Row(
                 children: [
-                  ...productFutures
-                      .take(4)
-                      .map(
-                        (async) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: async.when(
-                            data: (product) => _ProductThumb(product: product),
-                            loading: () => _ProductThumbPlaceholder(),
-                            error: (error, stackTrace) =>
-                                _ProductThumbPlaceholder(),
-                          ),
-                        ),
-                      ),
-                  const Spacer(),
-                  // Date
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: productFutures
+                          .take(4)
+                          .map(
+                            (async) => async.when(
+                              data: (product) => _ProductThumb(product: product),
+                              loading: () => _ProductThumbPlaceholder(),
+                              error: (error, stackTrace) =>
+                                  _ProductThumbPlaceholder(),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        _formatDateLabel(comparison.createdAt),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: context.textTertiaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      _MetaPill(
+                        icon: Icons.calendar_today_rounded,
+                        text: _formatDateLabel(comparison.createdAt),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatTime(comparison.createdAt),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: context.textTertiaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      const SizedBox(height: 6),
+                      _MetaPill(
+                        icon: Icons.schedule_rounded,
+                        text: _formatTime(comparison.createdAt),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${comparison.itemIds.length} urun',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: _accent,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      const SizedBox(height: 6),
+                      _MetaPill(
+                        icon: Icons.layers_rounded,
+                        text: '${comparison.itemIds.length} urun',
+                        accent: true,
                       ),
                     ],
                   ),
@@ -439,6 +648,48 @@ class _ProductThumb extends StatelessWidget {
             color: context.textTertiaryColor,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MetaPill extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final bool accent;
+
+  const _MetaPill({
+    required this.icon,
+    required this.text,
+    this.accent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = accent
+        ? _accent.withValues(alpha: 0.12)
+        : context.surfaceVariantColor.withValues(alpha: 0.8);
+    final textColor = accent ? _accent : context.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -25,8 +25,13 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
+  final _resultsScrollCtrl = ScrollController();
   List<ProductEntity> _results = [];
   bool _searching = false;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  int _currentPage = 1;
+  String _activeQuery = '';
   Timer? _debounce;
 
   bool get _isTurkish =>
@@ -71,14 +76,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void initState() {
     super.initState();
     _focus.requestFocus();
+    _resultsScrollCtrl.addListener(_handleResultsScroll);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _resultsScrollCtrl.dispose();
     _ctrl.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  void _handleResultsScroll() {
+    if (!_resultsScrollCtrl.hasClients || _searching || _loadingMore || !_hasMore) {
+      return;
+    }
+    if (_resultsScrollCtrl.position.extentAfter < 320) {
+      _loadMore();
+    }
   }
 
   void _onChanged(String q) {
@@ -87,52 +103,98 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       setState(() {
         _results = [];
         _searching = false;
+        _loadingMore = false;
+        _hasMore = false;
+        _currentPage = 1;
+        _activeQuery = '';
       });
       return;
     }
     setState(() => _searching = true);
-    _debounce = Timer(const Duration(milliseconds: 350), () => _search(q));
+    _debounce = Timer(const Duration(milliseconds: 350), () => _search(q, page: 1));
   }
 
-  Future<void> _search(String q) async {
-    if (q.trim().isEmpty) return;
-    setState(() => _searching = true);
-    ref.read(searchQueryProvider.notifier).state = q;
+  Future<void> _search(String q, {required int page, bool append = false}) async {
+    final trimmed = q.trim();
+    if (trimmed.isEmpty) return;
+
+    setState(() {
+      if (append) {
+        _loadingMore = true;
+      } else {
+        _searching = true;
+        _currentPage = 1;
+        _hasMore = false;
+      }
+    });
+
+    _activeQuery = trimmed;
+    ref.read(searchQueryProvider.notifier).state = trimmed;
+
     try {
       final result = await ref
           .read(productRepositoryProvider)
-          .searchProducts(query: q.trim(), limit: AppConstants.searchPageSize);
-      if (!mounted) return;
+          .searchProducts(
+            query: trimmed,
+            limit: AppConstants.searchPageSize,
+            page: page,
+          );
+      if (!mounted || _ctrl.text.trim() != trimmed) return;
+
       switch (result) {
         case Success(data: final products):
-          final ranked = rankProductsForQuery(products, q.trim());
+          final merged = append
+              ? [
+                  ..._results,
+                  ...products.where(
+                    (candidate) => !_results.any((item) => item.id == candidate.id),
+                  ),
+                ]
+              : products;
+          final ranked = rankProductsForQuery(
+            merged,
+            trimmed,
+            limit: merged.length,
+          );
           setState(() {
             _results = ranked;
             _searching = false;
+            _loadingMore = false;
+            _hasMore = products.length >= AppConstants.searchPageSize;
+            _currentPage = page;
           });
-          if (products.isNotEmpty) {
+          if (!append && products.isNotEmpty) {
             final recent = List<String>.from(ref.read(recentSearchesProvider));
-            recent.remove(q);
-            recent.insert(0, q);
+            recent.remove(trimmed);
+            recent.insert(0, trimmed);
             if (recent.length > 10) recent.removeRange(10, recent.length);
             ref.read(recentSearchesProvider.notifier).state = recent;
           }
         case Failure(error: final e):
           debugPrint('SEARCH UI: failure: $e');
           setState(() {
-            _results = [];
+            if (!append) _results = [];
             _searching = false;
+            _loadingMore = false;
+            _hasMore = false;
           });
       }
     } catch (e) {
       debugPrint('SEARCH UI: exception: $e');
       if (mounted) {
         setState(() {
-          _results = [];
+          if (!append) _results = [];
           _searching = false;
+          _loadingMore = false;
+          _hasMore = false;
         });
       }
     }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || _searching || !_hasMore || _activeQuery.isEmpty) return;
+    await _search(_activeQuery, page: _currentPage + 1, append: true);
   }
 
   void _openProduct(ProductEntity p) {
@@ -204,6 +266,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                   setState(() {
                                     _results = [];
                                     _searching = false;
+                                    _loadingMore = false;
+                                    _hasMore = false;
+                                    _currentPage = 1;
+                                    _activeQuery = '';
                                   });
                                 },
                                 child: Icon(
@@ -230,6 +296,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       setState(() {
                         _results = [];
                         _searching = false;
+                        _loadingMore = false;
+                        _hasMore = false;
+                        _currentPage = 1;
+                        _activeQuery = '';
                       });
                     },
                     child: Text(
@@ -586,14 +656,47 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget _buildResults(double bottom) {
     final country = ref.watch(selectedCountryProvider);
     return ListView.builder(
+      controller: _resultsScrollCtrl,
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 8,
         bottom: bottom + AppTheme.navBarTotalClearance + 20,
       ),
-      itemCount: _results.length,
+      itemCount: _results.length + (_loadingMore ? 1 : 0),
       itemBuilder: (context, i) {
+        if (i >= _results.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Center(
+              child: Column(
+                children: [
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppTheme.neonCyan,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _fallbackText(
+                      en: 'Loading more products...',
+                      tr: 'Daha fazla ürün yükleniyor...',
+                    ),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final p = _results[i];
         final price = p.getPriceForCountry(country);
         final priceStr = price != null ? '\$${price.toStringAsFixed(0)}' : null;

@@ -660,10 +660,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildPlanBadge(bool isPremium) {
+    final gradient = isPremium
+        ? AppTheme.premiumGradient
+        : AppTheme.primaryGradient;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        gradient: gradient,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

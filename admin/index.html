@@ -21,8 +21,8 @@
           <p>Admin Panel</p>
         </div>
       <div class="login-copy">
-        <h2>Yonetici Girisi</h2>
-        <p>Yalnizca yetkili GitHub hesabi ile giris yap.</p>
+        <h2>Yönetici Girişi</h2>
+        <p>Yalnızca yetkili GitHub hesabı ile giriş yap.</p>
       </div>
       <div class="login-actions">
         <button type="button" id="loginBtn" class="btn-oauth btn-github" onclick="handleGitHubLogin()">
@@ -34,8 +34,8 @@
           <span>GitHub ile devam et</span>
         </button>
         <div class="login-note">
-          <span>Bu panel yalnizca izinli GitHub kullanicisi icin acilir.</span>
-          <span>GitHub dogrulamasi tamamlaninca oturum otomatik acilir.</span>
+          <span>Bu panel yalnızca izinli GitHub kullanıcısı için açılır.</span>
+          <span>GitHub doğrulaması tamamlanınca oturum otomatik açılır.</span>
         </div>
       </div>
       <div id="loginError" class="login-error"></div>
@@ -70,6 +70,10 @@
         <a class="nav-link" data-view="users" onclick="showView('users')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
           <span>Users</span>
+        </a>
+        <a class="nav-link" data-view="userinsights" onclick="showView('userinsights')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+          <span>User Intelligence</span>
         </a>
         <a class="nav-link" data-view="algorithm" onclick="showView('algorithm')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -203,15 +207,71 @@
 
       <!-- User Modal -->
       <div id="userModal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeUserModal()">
-        <div class="modal-box" style="max-width:640px;max-height:85vh;overflow-y:auto">
+        <div class="modal-box modal-lg modal-user-detail">
           <div class="modal-head"><h2 id="userModalTitle">User</h2><button class="modal-x" onclick="closeUserModal()">✕</button></div>
           <div class="modal-body" id="userModalBody"></div>
         </div>
       </div>
 
+      <section id="userinsightsView" class="view">
+        <div class="view-header">
+          <h1>User Intelligence</h1>
+          <div class="view-actions">
+            <span class="text-muted" id="userIntelligenceUpdatedAt"></span>
+            <button class="btn btn-ghost" onclick="loadUsers()">Refresh</button>
+          </div>
+        </div>
+        <div class="stats-grid stats-4-sm" style="margin-bottom:20px">
+          <div class="stat-card-sm"><div class="stat-value-sm" id="uiTotalUsers">—</div><div class="stat-label-sm">Total Users</div></div>
+          <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="uiQuizCoverage">—</div><div class="stat-label-sm">Quiz Coverage</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="uiAnalysisCoverage">—</div><div class="stat-label-sm">AI Coverage</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="uiAvgCompleteness">—</div><div class="stat-label-sm">Profile Avg</div></div>
+        </div>
+        <div class="grid-3 intelligence-chart-grid">
+          <div class="card">
+            <div class="card-title">Plan Split</div>
+            <div class="chart-shell"><canvas id="userPlanChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Persona Distribution</div>
+            <div class="chart-shell"><canvas id="userPersonaChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Top Interest Categories</div>
+            <div class="chart-shell"><canvas id="userInterestChart"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2 intelligence-detail-grid">
+          <div class="card">
+            <div class="card-title">Country Momentum</div>
+            <div id="userCountryBars" class="rank-bar-list"><div class="placeholder">Loading...</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">What Users Like</div>
+            <div id="userIntelligenceInsights" class="insight-stack"><div class="placeholder">Loading...</div></div>
+          </div>
+        </div>
+      </section>
+
       <!-- ===== ALGORITHM ===== -->
       <section id="algorithmView" class="view">
         <div class="view-header"><h1>Algorithm</h1><button class="btn btn-primary" onclick="saveAlgorithmConfig()">Save</button></div>
+        <div class="card">
+          <div class="card-title">Algorithm Health</div>
+          <div class="stats-grid stats-4-sm" style="margin-bottom:16px">
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoWeightSum">—</div><div class="stat-label-sm">Weight Sum</div></div>
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoBehaviorSum">—</div><div class="stat-label-sm">Behavior Sum</div></div>
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoDisabledCategories">—</div><div class="stat-label-sm">Disabled Categories</div></div>
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoCacheHours">—</div><div class="stat-label-sm">Cache Hours</div></div>
+          </div>
+          <div class="toolbar" style="margin-bottom:10px">
+            <button class="btn btn-ghost btn-sm" onclick="normalizeAlgorithmWeights()">Normalize to 100%</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('balanced')">Balanced</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('discovery')">Discovery</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('conversion')">Conversion</button>
+          </div>
+          <div class="text-muted" id="algorithmHealthNote">Configuration health is loading...</div>
+        </div>
         <div class="card"><div class="card-title">Match Score Weights</div>
           <div class="slider-group">
             <div class="slider-row"><label>Personal Fit</label><input type="range" min="0" max="100" value="40" id="weightPersonalFit" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelPersonalFit">40%</span></div>
@@ -242,7 +302,7 @@
             <div class="form-field"><label>Max per Brand (per category)</label><input class="input" type="number" id="maxPerBrand" value="3" min="1" max="10"></div>
             <div class="form-field"><label>Trending Count</label><input class="input" type="number" id="trendingCount" value="70" min="10" max="200"></div>
             <div class="form-field"><label>New Arrivals Count</label><input class="input" type="number" id="newArrivalsCount" value="35" min="5" max="100"></div>
-            <div class="form-field"><label>Products per Category</label><input class="input" type="number" id="productsPerCategory" value="40" min="10" max="100"><small class="text-muted">Fetched from Firestore per category</small></div>
+            <div class="form-field"><label>Products per Category</label><input class="input" type="number" id="productsPerCategory" value="40" min="10" max="100"><small class="text-muted">Home feed each category cap</small></div>
             <div class="form-field"><label>Cache Duration (hours)</label><input class="input" type="number" id="cacheDuration" value="4" min="1" max="48"></div>
           </div>
           <div style="margin-top:16px">
@@ -536,6 +596,40 @@
           <h1>Aktivite Log</h1>
           <div class="view-actions">
             <button class="btn btn-ghost" onclick="loadActivityLog()">Yenile</button>
+          </div>
+        </div>
+        <div class="stats-grid stats-4-sm" style="margin-bottom:20px">
+          <div class="stat-card-sm"><div class="stat-value-sm" id="activityTotal">—</div><div class="stat-label-sm">Total Logs</div></div>
+          <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="activityToday">—</div><div class="stat-label-sm">Today</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="activityAdmins">—</div><div class="stat-label-sm">Admins</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="activityTopAction">—</div><div class="stat-label-sm">Top Action</div></div>
+        </div>
+        <div class="toolbar">
+          <div class="search-field">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="activitySearchInput" placeholder="Log detail ara..." oninput="renderActivityLog()">
+          </div>
+          <select id="activityTypeFilter" class="field-select" onchange="renderActivityLog()">
+            <option value="">All Actions</option>
+            <option value="product">Product</option>
+            <option value="user">User</option>
+            <option value="algorithm">Algorithm</option>
+            <option value="scraper">Scraper</option>
+            <option value="system">System</option>
+          </select>
+        </div>
+        <div class="grid-2 intelligence-detail-grid">
+          <div class="card">
+            <div class="card-title">Bu sayfa ne iş yapar?</div>
+            <div id="activityPurpose" class="insight-stack">
+              <div class="insight-item"><div class="insight-label">AUDIT</div>Ürün, kullanıcı, algoritma, import/export ve sistem seviyesindeki admin değişikliklerini takip eder.</div>
+              <div class="insight-item"><div class="insight-label">OPERATIONS</div>Hangi aksiyonların ne sıklıkta tetiklendiği, hangi adminin ne yaptığı ve bugün sistemde neler olduğu burada izlenir.</div>
+              <div class="insight-item"><div class="insight-label">DEBUG</div>Liste boş ise log koleksiyonu henüz veri biriktirmemiş olabilir; yine de bu ekran denetim merkezi olarak kalır.</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Action Distribution</div>
+            <div class="chart-shell"><canvas id="activityActionChart"></canvas></div>
           </div>
         </div>
         <div class="card">

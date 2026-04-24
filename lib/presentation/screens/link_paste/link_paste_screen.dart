@@ -1059,12 +1059,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        QorAmountBadge(
-                          amount: AppConstants.creditCostForFeature('link_analysis'),
-                          unlimited: ref.watch(subscriptionServiceProvider).isPremium,
-                          color: Colors.white,
-                        ),
+                        if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
+                          const SizedBox(width: 8),
+                          QorAmountBadge(
+                            amount: AppConstants.creditCostForFeature('link_analysis'),
+                            unlimited: false,
+                            color: Colors.white,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -3012,12 +3014,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                     letterSpacing: -0.3,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                QorAmountBadge(
-                                  amount: actionCost,
-                                  unlimited: sub.isPremium,
-                                  color: Colors.white,
-                                ),
+                                if (!sub.isPremium) ...[
+                                  const SizedBox(width: 8),
+                                  QorAmountBadge(
+                                    amount: actionCost,
+                                    unlimited: false,
+                                    color: Colors.white,
+                                  ),
+                                ],
                               ],
                             ),
                           ),

@@ -24,6 +24,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider);
+    final isPremium = ref.watch(premiumProvider);
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -43,6 +44,30 @@ class ProfileScreen extends ConsumerWidget {
         ),
         centerTitle: true,
         actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              gradient: AppTheme.premiumGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.premiumBase.withValues(alpha: 0.22),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.workspace_premium_rounded, size: 20),
+              color: Colors.white,
+              onPressed: () => context.push(AppRoutes.premium),
+              style: IconButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(40, 40),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             decoration: BoxDecoration(
@@ -328,8 +353,8 @@ class _ProfileBody extends ConsumerWidget {
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
                                       colors: [
-                                        AppTheme.brandBlue,
-                                        AppTheme.brandCyan,
+                                        AppTheme.premiumDeep,
+                                        AppTheme.premiumBase,
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
@@ -487,12 +512,13 @@ class _ProfileBody extends ConsumerWidget {
           ),
 
         // ─── Q Usage / Premium Spotlight ───
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-            child: _FreemiumUsageCard(),
+        if (!isPremium)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              child: _FreemiumUsageCard(),
+            ),
           ),
-        ),
 
         // ─── Content Sections ───
         SliverPadding(
@@ -1401,119 +1427,78 @@ class _FreemiumUsageCard extends ConsumerWidget {
         : (usedCredits / totalCredits).clamp(0.0, 1.0);
 
     if (sub.isPremium) {
-      return Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.premiumDeep.withValues(alpha: 0.95),
-              AppTheme.premiumBase.withValues(alpha: 0.92),
-              AppTheme.premiumLight.withValues(alpha: 0.80),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.premiumBase.withValues(alpha: 0.22),
-              blurRadius: 26,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isTr ? 'Premium Qor Akışı' : 'Premium Qor Flow',
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isTr
-                            ? 'Tüm AI özellikleri aktif ve günlük Q limiti sizin için kapalı.'
-                            : 'All AI features stay active and your daily Q limit stays off.',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          height: 1.4,
-                          color: Colors.white.withValues(alpha: 0.82),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      return GestureDetector(
+        onTap: () => context.push(AppRoutes.premium),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.premiumDeep.withValues(alpha: 0.95),
+                AppTheme.premiumBase.withValues(alpha: 0.92),
+                AppTheme.premiumLight.withValues(alpha: 0.80),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.premiumBase.withValues(alpha: 0.20),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      isTr ? 'Günlük AI Q' : 'Daily AI Q',
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Premium Account',
                       style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.86),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      isTr ? 'Sınırsız Q' : 'Unlimited Q',
-                      style: GoogleFonts.inter(
-                        color: AppTheme.premiumDeep,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Sınırsız Qor',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white.withValues(alpha: 0.88),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white.withValues(alpha: 0.92),
+                size: 20,
+              ),
+            ],
+          ),
         ),
       );
     }

@@ -1398,12 +1398,14 @@ class PbDataSource {
   Future<List<ProductModel>> searchProducts({
     required String query,
     int limit = 50,
+    int page = 1,
     String? category,
   }) async {
     final q = query.trim();
     if (q.isEmpty || q == '___warm___' || q == '_warmup_') return [];
 
-    final cacheKey = '${q.toLowerCase()}|${category ?? ''}|$limit';
+    final safePage = page < 1 ? 1 : page;
+    final cacheKey = '${q.toLowerCase()}|${category ?? ''}|$limit|$safePage';
     final cached = _searchResultCache[cacheKey];
     if (cached != null &&
         DateTime.now().difference(cached.time) < _searchResultCacheTtl) {
@@ -1416,6 +1418,7 @@ class PbDataSource {
         'query_by': 'name,brand,subcategory,keySpecsText,tags',
         'query_by_weights': '8,5,4,2,3',
         'per_page': limit,
+        'page': safePage,
         'sort_by': '_text_match:desc,techScore:desc',
         'prioritize_exact_match': true,
         'prioritize_token_position': true,
@@ -1451,7 +1454,10 @@ class PbDataSource {
 
     // Fallback: homeFeed products
     if (_homeFeedProducts != null && _homeFeedProducts!.isNotEmpty) {
-      return _scoreAndRankProducts(_homeFeedProducts!, q, limit);
+      final ranked = _scoreAndRankProducts(_homeFeedProducts!, q, limit * safePage);
+      final start = (safePage - 1) * limit;
+      if (start >= ranked.length) return [];
+      return ranked.skip(start).take(limit).toList();
     }
 
     return [];
