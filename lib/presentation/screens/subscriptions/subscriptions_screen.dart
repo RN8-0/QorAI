@@ -1093,19 +1093,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!sub.isPremium) ...[
-          Align(
-            alignment: Alignment.centerRight,
-            child: QorAmountBadge(
-              amount: analysisCreditCost,
-              unlimited: false,
-              color: _kPrimary,
-              fontSize: 10,
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
         // Animated gradient border input
         AnimatedGradientInputShell(
           topContent: _chips.isNotEmpty
@@ -1307,23 +1294,39 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      const Icon(
-                        Icons.auto_awesome,
-                        color: Colors.white,
-                        size: 20,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.auto_awesome,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            context.l10n?.startAnalysis ?? 'Start Analysis',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        context.l10n?.startAnalysis ?? 'Start Analysis',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: Colors.white,
+                      if (!sub.isPremium)
+                        Positioned(
+                          right: 12,
+                          bottom: 8,
+                          child: QorAmountBadge(
+                            amount: analysisCreditCost,
+                            color: Colors.white,
+                            fontSize: 10,
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

@@ -37,8 +37,8 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
-        'https://www.youtube-nocookie.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=1&rel=0&modestbranding=1&vq=hd1080&hd=1',
+        'https://www.youtube.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=1&rel=0&modestbranding=1&vq=hd1080',
       ));
   }
 
@@ -175,8 +175,8 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
-        'https://www.youtube-nocookie.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&hd=1&fs=1',
+        'https://www.youtube.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
       ));
   }
 
@@ -257,8 +257,8 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
-        'https://www.youtube-nocookie.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&hd=1&fs=1',
+        'https://www.youtube.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
       ));
   }
 

@@ -75,6 +75,10 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
   // oscillation the user reported).
   bool _geminiFetchTriggered = false;
 
+  // Once the AI match button becomes visible, it stays visible until tapped.
+  // Prevents the badge from flickering during profile/score loading transitions.
+  bool _showAiButton = false;
+
   @override
   void initState() {
     super.initState();
@@ -240,7 +244,10 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     if (existing.isLoading || existing.valueOrNull != null) return;
 
     _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
-    setState(() => _geminiFetchTriggered = true);
+    setState(() {
+      _geminiFetchTriggered = true;
+      _showAiButton = false;
+    });
     ref
         .read(geminiMatchScoreProvider(cacheKey).notifier)
         .fetchMatchScore(product: widget.product);
@@ -345,6 +352,15 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       matchResult == null &&
       !showMatchLoading &&
       !isMatchProfileResolving;
+
+    // Latch the button visible once conditions first become true.
+    // Only hide it when the user taps it (_geminiFetchTriggered).
+    if (showFreeAiRequest && _cachedFitScore != null && !_showAiButton) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _showAiButton = true);
+      });
+    }
 
     if (quizDone &&
         matchResult == null &&
@@ -627,39 +643,18 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
               ],
             ),
         ),
-        // AI trigger button — free user, quiz done, no AI yet
-        if (showFreeAiRequest && !_geminiFetchTriggered)
+        // AI trigger button — free user, quiz done, algorithm score ready, no AI yet
+        if (_showAiButton && !_geminiFetchTriggered)
           Positioned(
-            top: -8,
+            top: -10,
             right: 12,
             child: GestureDetector(
               onTap: _requestManualAiMatch,
-              child: Container(
+              child: QorAmountBadge(
+                amount: detailMatchCost,
+                color: AppTheme.primaryBlue,
+                fontSize: 11,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'AI',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 3),
-                    QorAmountBadge(
-                      amount: detailMatchCost,
-                      color: Colors.white,
-                      fontSize: 10,
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
