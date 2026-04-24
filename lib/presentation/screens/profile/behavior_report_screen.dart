@@ -118,7 +118,7 @@ class _EmptyState extends StatelessWidget {
               ),
           const SizedBox(height: 16),
           Text(
-            _t(context, en: 'No behavior data yet', tr: 'Henuz davranis verisi yok'),
+            _t(context, en: 'No behavior data yet', tr: 'Henüz davranış verisi yok'),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -130,7 +130,7 @@ class _EmptyState extends StatelessWidget {
             _t(
               context,
               en: 'Start browsing products to see insights',
-              tr: 'Urunlere goz atarak icgoruleri gorun',
+              tr: 'Ürünlere göz atarak içgörüleri görün',
             ),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
@@ -234,12 +234,12 @@ class _BehaviorReportBody extends StatelessWidget {
               title: _t(
                 context,
                 en: 'Purchase Readiness',
-                tr: 'Satin Alma Hazirligi',
+                tr: 'Satın Alma Hazırlığı',
               ),
               subtitle: _t(
                 context,
                 en: 'How close you are to your next purchase',
-                tr: 'Bir sonraki alisverise ne kadar yakinsin',
+                tr: 'Bir sonraki alışverişe ne kadar yakınsın',
               ),
               delay: 200,
             ),
@@ -263,12 +263,12 @@ class _BehaviorReportBody extends StatelessWidget {
                 title: _t(
                   context,
                   en: 'Category Engagement',
-                  tr: 'Kategori Etkilesimi',
+                  tr: 'Kategori Etkileşimi',
                 ),
                 subtitle: _t(
                   context,
                   en: 'Where your curiosity lives',
-                  tr: 'Ilginin en cok oldugu alanlar',
+                  tr: 'İlginin en çok olduğu alanlar',
                 ),
                 delay: 340,
               ),
@@ -312,11 +312,11 @@ class _BehaviorReportBody extends StatelessWidget {
                   ],
                 ),
                 iconColor: AppTheme.premiumBase,
-                title: _t(context, en: 'Interest Cloud', tr: 'Ilgi Bulutu'),
+                title: _t(context, en: 'Interest Cloud', tr: 'İlgi Bulutu'),
                 subtitle: _t(
                   context,
                   en: 'Stronger topics appear larger',
-                  tr: 'Guclu konular daha buyuk gorunur',
+                  tr: 'Güçlü konular daha büyük görünür',
                 ),
                 delay: 540,
               ),
@@ -330,7 +330,6 @@ class _BehaviorReportBody extends StatelessWidget {
               const SizedBox(height: 26),
             ],
 
-            // ─── Activity Pulse ───
             _SectionHeader(
               icon: Icons.favorite_rounded,
               gradient: LinearGradient(
@@ -340,11 +339,11 @@ class _BehaviorReportBody extends StatelessWidget {
                 ],
               ),
               iconColor: AppTheme.scorePoor,
-              title: _t(context, en: 'Activity Pulse', tr: 'Aktivite Nabzi'),
+              title: _t(context, en: 'Activity Pulse', tr: 'Aktivite Nabzı'),
               subtitle: _t(
                 context,
                 en: 'A snapshot of your recent footprint',
-                tr: 'Son hareketlerinin bir ozeti',
+                tr: 'Son hareketlerinin bir özeti',
               ),
               delay: 700,
             ),
@@ -359,7 +358,6 @@ class _BehaviorReportBody extends StatelessWidget {
                 .moveY(begin: 12, end: 0),
             const SizedBox(height: 26),
 
-            // ─── Score Breakdown ───
             if (hasData && topCategories.isNotEmpty) ...[
               _SectionHeader(
                 icon: Icons.bar_chart_rounded,
@@ -370,11 +368,11 @@ class _BehaviorReportBody extends StatelessWidget {
                   ],
                 ),
                 iconColor: AppTheme.success,
-                title: _t(context, en: 'Score Breakdown', tr: 'Skor Dagilimi'),
+                title: _t(context, en: 'Score Breakdown', tr: 'Skor Dağılımı'),
                 subtitle: _t(
                   context,
                   en: 'Relative weight per category',
-                  tr: 'Kategoriye gore goreceli agirlik',
+                  tr: 'Kategoriye göre göreceli ağırlık',
                 ),
                 delay: 880,
               ),
@@ -399,11 +397,11 @@ class _BehaviorReportBody extends StatelessWidget {
                 ],
               ),
               iconColor: AppTheme.premiumBase,
-              title: _t(context, en: 'Personalized Tips', tr: 'Kisisel Oneriler'),
+              title: _t(context, en: 'Personalized Tips', tr: 'Kişisel Öneriler'),
               subtitle: _t(
                 context,
                 en: 'Smart nudges based on your profile',
-                tr: 'Profiline gore akilli oneriler',
+                tr: 'Profiline göre akıllı öneriler',
               ),
               delay: 1080,
             ),
@@ -651,7 +649,7 @@ class _HeroSnapshotCardState extends State<_HeroSnapshotCard>
                           _t(
                             context,
                             en: 'Personal Insight Snapshot',
-                            tr: 'Kisisel Icgoru Ozeti',
+                            tr: 'Kişisel İçgörü Özeti',
                           ),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 17,
@@ -832,7 +830,7 @@ class _ScoreRingsSection extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _AnimatedRingCard(
-            label: _t(context, en: 'Purchase Intent', tr: 'Satin Alma Niyeti'),
+            label: _t(context, en: 'Purchase Intent', tr: 'Satın Alma Niyeti'),
             value: purchaseIntent,
             displayValue: '${(purchaseIntent * 100).round()}%',
             gradient: AppTheme.premiumGradient,
@@ -1534,7 +1532,7 @@ class _ActivityPulseStrip extends StatelessWidget {
       ),
       _PulseItem(
         icon: Icons.star_rounded,
-        label: _t(context, en: 'Strong interests', tr: 'Guclu ilgiler'),
+        label: _t(context, en: 'Strong interests', tr: 'Güçlü ilgiler'),
         value: '$strongInterests',
         color: AppTheme.premiumBase,
       ),
@@ -1862,7 +1860,7 @@ class _InsightsSummaryCard extends StatelessWidget {
             en:
                 'You are close to a decision — review your favorites before you buy.',
             tr:
-                'Karara yakinsin — satin almadan once favorilerini gozden gecir.',
+                'Karara yakınsın — satın almadan önce favorilerini gözden geçir.',
           ),
         ),
       );
@@ -1875,7 +1873,7 @@ class _InsightsSummaryCard extends StatelessWidget {
           body: _t(
             context,
             en: 'Great time to compare a few options side-by-side.',
-            tr: 'Iki-uc secenegi yan yana karsilastirmak icin ideal zaman.',
+            tr: 'İki-üç seçeneği yan yana karşılaştırmak için ideal zaman.',
           ),
         ),
       );
@@ -1915,7 +1913,7 @@ class _InsightsSummaryCard extends StatelessWidget {
             en:
                 'We will prioritize products that match your $strongInterests strongest topics.',
             tr:
-                '$strongInterests guclu ilginle eslesen urunleri one cikaracagiz.',
+                '$strongInterests güçlü ilginle eşleşen ürünleri öne çıkaracağız.',
           ),
         ),
       );

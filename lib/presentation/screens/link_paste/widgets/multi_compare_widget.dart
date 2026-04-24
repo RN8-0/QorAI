@@ -142,7 +142,7 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
         setState(
           () => _error = _linkText(
             context,
-            tr: 'Karsilastirma icin en az 2 urun gerekiyor.',
+            tr: 'Karşılaştırma için en az 2 ürün gerekiyor.',
             en: 'Need at least 2 products to compare.',
           ),
         );
@@ -195,8 +195,8 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
 
     buf.writeln(
       isSameCategory
-          ? '## ${_linkText(context, tr: 'Ayni Kategori Karsilastirmasi', en: 'Same-Category Comparison')}'
-          : '## ${_linkText(context, tr: 'Kategoriler Arasi Karsilastirma', en: 'Cross-Category Comparison')}',
+          ? '## ${_linkText(context, tr: 'Aynı Kategori Karşılaştırması', en: 'Same-Category Comparison')}'
+          : '## ${_linkText(context, tr: 'Kategoriler Arası Karşılaştırma', en: 'Cross-Category Comparison')}',
     );
     buf.writeln('');
 

@@ -226,7 +226,7 @@ class _ComparisonHero extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Son karsilastirmalariniz burada akilli bir ozetle listelenir.',
+                      'Son karşılaştırmalarınız burada akıllı bir özetle listelenir.',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         height: 1.45,
@@ -245,7 +245,7 @@ class _ComparisonHero extends StatelessWidget {
             children: [
               _HeroMetric(label: 'Toplam', value: '$count'),
               _HeroMetric(
-                label: 'Son urun sayisi',
+                label: 'Son ürün sayısı',
                 value: '${latest.itemIds.length}',
               ),
               _HeroMetric(
@@ -386,7 +386,7 @@ class _EmptyState extends StatelessWidget {
                         const Icon(Icons.add_rounded, color: Colors.white, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          'Yeni karsilastirma baslat',
+                          'Yeni karşılaştırma başlat',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -402,7 +402,7 @@ class _EmptyState extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onRetry,
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Gecmisi yenile'),
+                    label: const Text('Geçmişi yenile'),
                   ),
                 ],
               ],
@@ -506,7 +506,7 @@ class _ComparisonCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${comparison.occurrenceCount} kez karsilastirildi',
+                        '${comparison.occurrenceCount} kez karşılaştırıldı',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

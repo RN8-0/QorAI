@@ -527,6 +527,20 @@ class _ProfileBody extends ConsumerWidget {
             delegate: SliverChildListDelegate([
               // Comparison History Preview
               _ContentSection(
+                title: _profileText(
+                  context,
+                  tr: 'Profil Sinyallerin',
+                  en: 'Your Profile Signals',
+                ),
+                icon: Icons.psychology_alt_rounded,
+                color: AppTheme.brandCyan,
+                child: _ProfileSignalsSection(user: user),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Comparison History Preview
+              _ContentSection(
                 title: context.l10n?.comparisonHistory ?? 'Comparison History',
                 icon: Icons.compare_arrows_rounded,
                 color: AppTheme.brandBlue,
@@ -935,6 +949,338 @@ class _ContentSection extends StatelessWidget {
           Padding(padding: const EdgeInsets.all(16), child: child),
         ],
       ),
+    );
+  }
+}
+
+String _profileText(BuildContext context, {required String tr, required String en}) {
+  return Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
+      ? tr
+      : en;
+}
+
+String _humanizeProfileValue(BuildContext context, String value) {
+  const trMap = <String, String>{
+    'mixed': 'Karışık',
+    'low': 'Düşük',
+    'mid': 'Orta',
+    'high': 'Yüksek',
+    'premium': 'Premium',
+    'student': 'Öğrenci',
+    'other': 'Diğer',
+    'none': 'Yok',
+    'all': 'Genel',
+  };
+
+  final normalized = value.trim().toLowerCase();
+  final mapped = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
+      ? trMap[normalized]
+      : null;
+  if (mapped != null) return mapped;
+
+  final words = value
+      .trim()
+      .replaceAll(RegExp(r'[_-]+'), ' ')
+      .split(RegExp(r'\s+'))
+      .where((item) => item.isNotEmpty)
+      .toList();
+  if (words.isEmpty) return value;
+  return words
+      .map(
+        (item) => item[0].toUpperCase() + item.substring(1).toLowerCase(),
+      )
+      .join(' ');
+}
+
+class _ProfileSignalsSection extends StatelessWidget {
+  final UserEntity? user;
+
+  const _ProfileSignalsSection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = user;
+    if (profile == null) {
+      return Text(
+        _profileText(
+          context,
+          tr: 'Profil verisi hazırlanıyor.',
+          en: 'Preparing profile data.',
+        ),
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          color: context.textTertiaryColor,
+        ),
+      );
+    }
+
+    final facts = <({String label, String value})>[
+      if (profile.ecosystem.trim().isNotEmpty)
+        (
+          label: _profileText(context, tr: 'Ekosistem', en: 'Ecosystem'),
+          value: _humanizeProfileValue(context, profile.ecosystem),
+        ),
+      if (profile.budgetRange.trim().isNotEmpty)
+        (
+          label: _profileText(context, tr: 'Bütçe', en: 'Budget'),
+          value: _humanizeProfileValue(context, profile.budgetRange),
+        ),
+      if ((profile.ageRange ?? '').trim().isNotEmpty)
+        (
+          label: _profileText(context, tr: 'Yaş Aralığı', en: 'Age Range'),
+          value: profile.ageRange!,
+        ),
+      if ((profile.profession ?? '').trim().isNotEmpty)
+        (
+          label: _profileText(context, tr: 'Meslek', en: 'Profession'),
+          value: _humanizeProfileValue(context, profile.profession!),
+        ),
+      if ((profile.usageIntent ?? '').trim().isNotEmpty)
+        (
+          label: _profileText(context, tr: 'Kullanım Amacı', en: 'Usage'),
+          value: _humanizeProfileValue(context, profile.usageIntent!),
+        ),
+      if (profile.country.trim().isNotEmpty)
+        (
+          label: _profileText(context, tr: 'Ülke', en: 'Country'),
+          value: profile.country,
+        ),
+    ];
+
+    final vectorEntries = profile.profileVector.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (facts.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: facts
+                .map(
+                  (fact) => _ProfileSignalChip(
+                    label: fact.label,
+                    value: fact.value,
+                  ),
+                )
+                .toList(),
+          ),
+        if (profile.interestCategories.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _ProfileSignalGroup(
+            title: _profileText(
+              context,
+              tr: 'İlgi Kategorileri',
+              en: 'Interest Categories',
+            ),
+            values: profile.interestCategories
+                .map((item) => _humanizeProfileValue(context, item))
+                .toList(),
+            accent: AppTheme.brandCyan,
+          ),
+        ],
+        if (profile.priorities.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _ProfileSignalGroup(
+            title: _profileText(
+              context,
+              tr: 'Karar Öncelikleri',
+              en: 'Decision Priorities',
+            ),
+            values: profile.priorities
+                .map((item) => _humanizeProfileValue(context, item))
+                .toList(),
+            accent: AppTheme.brandBlue,
+          ),
+        ],
+        if (profile.currentDevices.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _ProfileSignalGroup(
+            title: _profileText(
+              context,
+              tr: 'Mevcut Cihazlar',
+              en: 'Current Devices',
+            ),
+            values: profile.currentDevices
+                .map((item) => _humanizeProfileValue(context, item))
+                .toList(),
+            accent: AppTheme.brandSkyBlue,
+          ),
+        ],
+        if (profile.subscriptions.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _ProfileSignalGroup(
+            title: _profileText(
+              context,
+              tr: 'Abonelikler',
+              en: 'Subscriptions',
+            ),
+            values: profile.subscriptions
+                .map((item) => _humanizeProfileValue(context, item))
+                .toList(),
+            accent: const Color(0xFF10B981),
+          ),
+        ],
+        if (vectorEntries.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Text(
+            _profileText(context, tr: 'Profil Vektörü', en: 'Profile Vector'),
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: context.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...vectorEntries.take(5).map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 96,
+                    child: Text(
+                      _humanizeProfileValue(context, entry.key),
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: entry.value.clamp(0, 1),
+                        minHeight: 8,
+                        backgroundColor: context.dividerColor.withValues(
+                          alpha: 0.4,
+                        ),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppTheme.brandCyan,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    entry.value.toStringAsFixed(2),
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProfileSignalChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ProfileSignalChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.brandCyan.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: context.textTertiaryColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileSignalGroup extends StatelessWidget {
+  final String title;
+  final List<String> values;
+  final Color accent;
+
+  const _ProfileSignalGroup({
+    required this.title,
+    required this.values,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: context.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: values
+              .map(
+                (value) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: accent.withValues(alpha: 0.18)),
+                  ),
+                  child: Text(
+                    value,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 }

@@ -403,15 +403,15 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     _QuizStep(
       field: 'priorities',
       title: _t(
-        'Karsilastirmada senin icin en onemli sey ne?',
+        'Karşılaştırmada senin için en önemli şey ne?',
         'What matters most when you compare?',
       ),
       subtitle: _t(
-        'Birden fazla secim yapabilirsin.',
+        'Birden fazla seçim yapabilirsin.',
         'You can choose more than one.',
       ),
       algorithmHint: _t(
-        'Bu secimler AI aciklamalarini ve puan agirliklarini etkiler.',
+        'Bu seçimler AI açıklamalarını ve puan ağırlıklarını etkiler.',
         'These selections influence AI explanations and score weighting.',
       ),
       type: _StepType.multi,

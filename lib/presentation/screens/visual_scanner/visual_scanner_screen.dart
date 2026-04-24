@@ -304,6 +304,9 @@ Confirmed product context:
 - Summary: ${insight?.summary ?? '-'}
 - Verdict: ${insight?.verdict ?? '-'}
 
+User profile context:
+${_buildUserProfileContext()}
+
 Conversation so far:
 $chatContext
 
@@ -320,22 +323,36 @@ Instructions:
 ''';
   }
 
+  String _buildUserProfileContext() {
+    final user = ref.read(userProfileProvider).valueOrNull;
+    if (user == null) return '-';
+
+    final lines = <String>[];
+    if (user.ecosystem.trim().isNotEmpty) {
+      lines.add('Ecosystem: ${user.ecosystem}');
+    }
+    if (user.budgetRange.trim().isNotEmpty) {
+      lines.add('Budget: ${user.budgetRange}');
+    }
+    if ((user.usageIntent ?? '').trim().isNotEmpty) {
+      lines.add('Usage intent: ${user.usageIntent}');
+    }
+    if (user.priorities.isNotEmpty) {
+      lines.add('Priorities: ${user.priorities.join(', ')}');
+    }
+    if (user.currentDevices.isNotEmpty) {
+      lines.add('Current devices: ${user.currentDevices.join(', ')}');
+    }
+    if (user.interestCategories.isNotEmpty) {
+      lines.add('Interest categories: ${user.interestCategories.join(', ')}');
+    }
+    return lines.isEmpty ? '-' : lines.join('\n');
+  }
+
   _ScannerInsight _parseScannerInsight(String raw) {
     final jsonMap = _tryExtractJson(raw);
     if (jsonMap == null) {
-      return _ScannerInsight(
-        isProduct: true,
-        lowLight: false,
-        confidence: 60,
-        title: _uiText(tr: 'Ürün Analizi', en: 'Product Analysis'),
-        brand: '',
-        category: '',
-        summary: _cleanScannerAnswer(raw),
-        highlights: const [],
-        priceBand: '',
-        verdict: '',
-        reason: '',
-      );
+      return _fallbackScannerInsight(raw);
     }
     final highlights = ((jsonMap['highlights'] as List?) ?? const [])
         .map((item) => _cleanScannerAnswer(item.toString()))
@@ -354,6 +371,43 @@ Instructions:
       priceBand: _cleanScannerAnswer((jsonMap['priceBand'] ?? '').toString()),
       verdict: _cleanScannerAnswer((jsonMap['verdict'] ?? '').toString()),
       reason: _cleanScannerAnswer((jsonMap['reason'] ?? '').toString()),
+    );
+  }
+
+  _ScannerInsight _fallbackScannerInsight(String raw) {
+    final cleaned = _cleanScannerAnswer(raw);
+    final normalized = cleaned.toLowerCase();
+    final lowLight = [
+      'low light',
+      'too dark',
+      'dark frame',
+      'karanlık',
+      'çok karanlık',
+      'net değil',
+      'bulanık',
+      'unclear',
+      'blurry',
+    ].any(normalized.contains);
+
+    final reason = cleaned.isNotEmpty
+        ? cleaned
+        : _uiText(
+            tr: 'Ürün doğrulanamadı. Lütfen ışığı artırıp ürünü kadrajın merkezine alarak tekrar tara.',
+            en: 'The product could not be verified. Increase the light, center the item, and scan again.',
+          );
+
+    return _ScannerInsight(
+      isProduct: false,
+      lowLight: lowLight,
+      confidence: 0,
+      title: '',
+      brand: '',
+      category: '',
+      summary: '',
+      highlights: const [],
+      priceBand: '',
+      verdict: '',
+      reason: reason,
     );
   }
 

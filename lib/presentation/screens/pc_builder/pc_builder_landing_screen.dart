@@ -252,7 +252,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
                       localizePcBuilderText(
                         context,
                         en: 'PC Builder',
-                        tr: 'PC Toplayici',
+                        tr: 'PC Toplayıcı',
                       ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 28,
@@ -267,7 +267,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
                     localizePcBuilderText(
                       context,
                       en: 'AI-powered compatibility check\nand performance analysis',
-                      tr: 'YZ destekli uyumluluk kontrolu\nve performans analizi',
+                      tr: 'YZ destekli uyumluluk kontrolü\nve performans analizi',
                     ),
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
@@ -421,12 +421,12 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       localizePcBuilderText(
         context,
         en: 'Compatibility Check',
-        tr: 'Uyumluluk Kontrolu',
+        tr: 'Uyumluluk Kontrolü',
       ),
       localizePcBuilderText(
         context,
         en: 'Socket, RAM and PSU compatibility is verified automatically. Incompatible parts cannot be selected.',
-        tr: 'Soket, RAM ve PSU uyumlulugu otomatik kontrol edilir. Uyumsuz parcalar secilemez.',
+        tr: 'Soket, RAM ve PSU uyumluluğu otomatik kontrol edilir. Uyumsuz parçalar seçilemez.',
       ),
     ),
     _Feature(
@@ -440,7 +440,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       localizePcBuilderText(
         context,
         en: 'Bottleneck detection, gaming FPS estimates and performance tier powered by Qor AI.',
-        tr: 'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Qor AI ile sunulur.',
+        tr: 'Darboğaz tespiti, oyun FPS tahmini ve performans seviyesi Qor AI ile sunulur.',
       ),
     ),
     _Feature(
@@ -449,7 +449,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       localizePcBuilderText(
         context,
         en: 'Power Calculation',
-        tr: 'Guc Hesaplama',
+        tr: 'Güç Hesaplama',
       ),
       localizePcBuilderText(
         context,
@@ -468,7 +468,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
       localizePcBuilderText(
         context,
         en: 'From CPU to keyboard, monitor to headset — build a complete system on one screen.',
-        tr: 'CPU dan klavyeye, monitorden kulakliga kadar tam sistemi tek ekranda kurun.',
+        tr: 'CPU\'dan klavyeye, monitörden kulaklığa kadar tam sistemi tek ekranda kurun.',
       ),
     ),
   ];

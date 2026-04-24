@@ -22,7 +22,7 @@ String localizePcBuilderText(
 
 const Map<String, Map<String, String>> _exactPhraseTranslations = {
   'PC Builder': {
-    'tr': 'PC Toplayici',
+    'tr': 'PC Toplayıcı',
     'de': 'PC-Baukasten',
     'es': 'Constructor de PC',
     'fr': 'Assembleur PC',
@@ -35,7 +35,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
     'ar': 'منشئ الكمبيوتر',
   },
   'Start Building': {
-    'tr': 'Toplamaya Basla',
+    'tr': 'Toplamaya Başla',
     'de': 'Build starten',
     'es': 'Comenzar a montar',
     'fr': 'Commencer le montage',
@@ -48,7 +48,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
     'ar': 'ابدأ التجميع',
   },
   'AI-powered compatibility check\nand performance analysis': {
-    'tr': 'YZ destekli uyumluluk kontrolu\nve performans analizi',
+    'tr': 'YZ destekli uyumluluk kontrolü\nve performans analizi',
     'de': 'KI-gestutzte Kompatibilitatsprufung\nund Leistungsanalyse',
     'es': 'Comprobacion de compatibilidad\ny analisis de rendimiento con IA',
     'fr': 'Verification de compatibilite\net analyse des performances par IA',
@@ -61,7 +61,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
     'ar': 'فحص التوافق وتحليل الأداء\nبواسطة الذكاء الاصطناعي',
   },
   'Compatibility Check': {
-    'tr': 'Uyumluluk Kontrolu',
+    'tr': 'Uyumluluk Kontrolü',
     'de': 'Kompatibilitatsprufung',
     'es': 'Comprobacion de compatibilidad',
     'fr': 'Verification de compatibilite',
@@ -75,7 +75,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
   },
   'Socket, RAM and PSU compatibility is verified automatically. Incompatible parts cannot be selected.': {
     'tr':
-        'Soket, RAM ve PSU uyumlulugu otomatik kontrol edilir. Uyumsuz parcalar secilemez.',
+        'Soket, RAM ve PSU uyumluluğu otomatik kontrol edilir. Uyumsuz parçalar seçilemez.',
     'de':
         'Die Kompatibilitat von Sockel, RAM und Netzteil wird automatisch gepruft. Inkompatible Teile konnen nicht ausgewahlt werden.',
     'es':
@@ -111,7 +111,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
   },
   'Bottleneck detection, gaming FPS estimates and performance tier powered by Qor AI.': {
     'tr':
-        'Darbogaz tespiti, oyun FPS tahmini ve performans seviyesi Qor AI ile sunulur.',
+        'Darboğaz tespiti, oyun FPS tahmini ve performans seviyesi Qor AI ile sunulur.',
     'de':
         'Engpasserkennung, Gaming-FPS-Schatzungen und Leistungsklasse mit Qor AI.',
     'es':
@@ -133,7 +133,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
         'اكتشاف عنق الزجاجة وتقدير FPS للألعاب ومستوى الأداء بواسطة Qor AI.',
   },
   'Power Calculation': {
-    'tr': 'Guc Hesaplama',
+    'tr': 'Güç Hesaplama',
     'de': 'Leistungsberechnung',
     'es': 'Calculo de energia',
     'fr': 'Calcul de puissance',
@@ -147,7 +147,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
   },
   'Total power draw of selected components and PSU adequacy shown in real time.': {
     'tr':
-        'Secilen bilesenlerin toplam guc tuketimi ve PSU yeterliligi anlik gosterilir.',
+        'Seçilen bileşenlerin toplam güç tüketimi ve PSU yeterliliği anlık gösterilir.',
     'de':
         'Gesamtleistungsaufnahme der ausgewahlten Komponenten und Netzteil-Eignung werden in Echtzeit angezeigt.',
     'es':
@@ -169,7 +169,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
         'يتم عرض استهلاك الطاقة الكلي للمكونات المختارة ومدى كفاية مزود الطاقة في الوقت الفعلي.',
   },
   '12 Component Categories': {
-    'tr': '12 Bilesen Kategorisi',
+    'tr': '12 Bileşen Kategorisi',
     'de': '12 Komponenten-Kategorien',
     'es': '12 categorias de componentes',
     'fr': '12 categories de composants',
@@ -183,7 +183,7 @@ const Map<String, Map<String, String>> _exactPhraseTranslations = {
   },
   'From CPU to keyboard, monitor to headset — build a complete system on one screen.': {
     'tr':
-        'CPU dan klavyeye, monitorden kulakliga kadar tam sistemi tek ekranda kurun.',
+        'CPU\'dan klavyeye, monitörden kulaklığa kadar tam sistemi tek ekranda kurun.',
     'de':
         'Von CPU bis Tastatur, von Monitor bis Headset — stelle ein komplettes System auf einem Bildschirm zusammen.',
     'es':

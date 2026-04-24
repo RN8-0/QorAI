@@ -425,7 +425,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (_singleSubmitInFlight) return;
     final startFailureMessage = _linkText(
       context,
-      tr: 'Analiz baslatilamadi. Lutfen tekrar deneyin.',
+      tr: 'Analiz başlatılamadı. Lütfen tekrar deneyin.',
       en: 'Analysis could not be started. Please try again.',
     );
     final normalizedUrl = _extractUrlCandidate(_singleUrlController.text);

@@ -1047,7 +1047,7 @@ function openUserDetail(uid){
           <div class="chart-note">${escHtml(narrative)}</div>
         </div>
         <div class="feature-pill-row">
-          ${topInterests.length?topInterests.map(([label,value])=>`<span class="feature-pill">${escHtml(label)} · ${Math.round(value)}</span>`).join(''):'<span class="feature-pill ghost">No strong category signal yet</span>'}
+            ${topInterests.length?topInterests.map(([label,value])=>`<span class="feature-pill">${escHtml(label)} · ${Math.round(value)}</span>`).join(''):'<span class="feature-pill ghost">Henüz güçlü kategori sinyali yok</span>'}
         </div>
       </div>
     </div>
@@ -1064,18 +1064,18 @@ function openUserDetail(uid){
       <div class="metric-grid-compact">
         <div class="metric-tile"><div class="metric-tile-value">${jStr}</div><div class="metric-tile-label">Kayıt Tarihi</div></div>
         <div class="metric-tile"><div class="metric-tile-value">${laStr}</div><div class="metric-tile-label">Son Aktivite</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${completeness}%</div><div class="metric-tile-label">Profile Score</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${engRate}%</div><div class="metric-tile-label">Engagement</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${compCount}</div><div class="metric-tile-label">Comparisons</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${analysisCount}</div><div class="metric-tile-label">AI Analyses</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${quizCount}</div><div class="metric-tile-label">Quiz Sessions</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${searchCount}</div><div class="metric-tile-label">Searches</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${completeness}%</div><div class="metric-tile-label">Profil Skoru</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${engRate}%</div><div class="metric-tile-label">Etkileşim</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${compCount}</div><div class="metric-tile-label">Karşılaştırmalar</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${analysisCount}</div><div class="metric-tile-label">AI Analizleri</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${quizCount}</div><div class="metric-tile-label">Quiz Oturumları</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${searchCount}</div><div class="metric-tile-label">Aramalar</div></div>
       </div>
       <div class="user-overview-grid">
         <div class="card" style="margin:0;padding:14px">
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Davranış Dağılımı</div>
           <div class="chart-shell" style="height:260px"><canvas id="userBehaviorChartCanvas"></canvas></div>
-          <div class="chart-note">View, search, compare, quiz ve AI kullanım dengesi bu grafikle okunur.</div>
+          <div class="chart-note">Görüntüleme, arama, karşılaştırma, quiz ve AI kullanım dengesi bu grafikle okunur.</div>
         </div>
         <div class="card" style="margin:0;padding:14px">
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧲 İlgi Haritası</div>
@@ -1206,8 +1206,11 @@ async function loadUserQuizzes(uid){
   try{
     const u=allUsers.find(x=>x.uid===uid)||{};
     const newQuizHistory=u.quizHistory||[];
+    const onboardingEntries=buildUserOnboardingEntries(u);
+    const answerHistory=safeArray(u.quizAnswerHistory).slice().sort((a,b)=>(String(b.timestamp||b.created||'')).localeCompare(String(a.timestamp||a.created||'')));
+    const latestTrackedAnswers=safeArray(answerHistory[0]?.answeredQuestions);
 
-    if(!newQuizHistory.length){
+    if(!newQuizHistory.length&&!onboardingEntries.length&&!answerHistory.length){
       el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🧠</div><div>Henüz quiz çözülmemiş</div></div>`;
       el.dataset.loaded='1';
       return;
@@ -1216,15 +1219,27 @@ async function loadUserQuizzes(uid){
     newQuizHistory.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
     const scores=newQuizHistory.map(q=>Number(q.score)||0).filter(Boolean);
     const avgScore=scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length):0;
-    let html=`<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${newQuizHistory.length}</div><div class="metric-tile-label">Sessions</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Score</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.mode==='compare')).length}</div><div class="metric-tile-label">Compare Quiz</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.type==='subscription'||q.mode==='subscription')).length}</div><div class="metric-tile-label">Subscription Quiz</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧠 Quiz Dagilimi</div><div class="chart-shell" style="height:220px"><canvas id="userQuizTypeChartCanvas"></canvas></div></div>`;
+    let html='';
+
+    if(onboardingEntries.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Kullanıcı Tanıma Quiz Özeti</div>${renderUserSummaryGrid(onboardingEntries,'Henüz onboarding cevabı kaydedilmemiş.')}</div>`;
+    }
+
+    if(latestTrackedAnswers.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">📝 Son Cevaplanan Quiz Soruları</div>${latestTrackedAnswers.map(answer=>`<div style="margin-bottom:6px;font-size:11px"><span style="color:var(--text2)">${escHtml(answer.question||answer.label||'Soru')}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${escHtml(answer.answer||answer.selectedOption||answer.value||'—')}</span></div>`).join('')}</div>`;
+    }
+
+    if(newQuizHistory.length){
+      html+=`<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${newQuizHistory.length}</div><div class="metric-tile-label">Oturum</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Ortalama Skor</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.mode==='compare')).length}</div><div class="metric-tile-label">Karşılaştırma Quiz</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.type==='subscription'||q.mode==='subscription')).length}</div><div class="metric-tile-label">Abonelik Quiz</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧠 Quiz Dağılımı</div><div class="chart-shell" style="height:220px"><canvas id="userQuizTypeChartCanvas"></canvas></div></div>`;
+    }
 
     for(const d of newQuizHistory){
       const date=d.timestamp?new Date(d.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
       const score=d.score?Math.round(d.score):'—';
       const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
       const answers=d.answers||[];
-      const mode=d.mode==='compare'?'🔀 Compare':'🔍 Single';
-      html+=`<div class="card" style="margin:0 0 12px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-size:12px;font-weight:700">${escHtml(d.category||'AI Analiz')} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode}</span></div><div style="font-size:10px;color:var(--text3)">${date}</div></div><div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div></div>`;
+      const mode=d.mode==='compare'?'🔀 Karşılaştırma':'🔍 Tekil';
+      html+=`<div class="card" style="margin:0 0 12px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-size:12px;font-weight:700">${escHtml(d.category||'Quiz Oturumu')} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode}</span></div><div style="font-size:10px;color:var(--text3)">${date}</div></div><div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div></div>`;
       if(d.productUrl)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.productUrl)}</div>`;
       if(d.productUrls&&d.productUrls.length)for(const url of d.productUrls)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(url)}</div>`;
       if(answers.length){
@@ -1236,12 +1251,55 @@ async function loadUserQuizzes(uid){
     }
     el.innerHTML=html;
     el.dataset.loaded='1';
-    setTimeout(()=>renderUserQuizChart(newQuizHistory),0);
+    if(newQuizHistory.length)setTimeout(()=>renderUserQuizChart(newQuizHistory),0);
   }catch(e){
     el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
 function closeUserModal(){document.getElementById('userModal').style.display='none'}
+
+function formatUserFieldValue(value){
+  if(value==null)return '';
+  const text=String(value).trim();
+  if(!text)return '';
+  return text.replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function formatUserFieldList(values){
+  return safeArray(values)
+    .map(item=>formatUserFieldValue(item))
+    .filter(item=>item&&item.toLowerCase()!=='none');
+}
+
+function buildUserOnboardingEntries(user){
+  const entries=[];
+  const pushValue=(label,value)=>{
+    const text=formatUserFieldValue(value);
+    if(text)entries.push({label,value:text});
+  };
+  const pushList=(label,values)=>{
+    const items=formatUserFieldList(values);
+    if(items.length)entries.push({label,value:items.join(', ')});
+  };
+  pushValue('Ekosistem',user.ecosystem);
+  pushValue('Bütçe',user.budgetRange);
+  pushValue('Yaş Aralığı',user.ageRange);
+  pushValue('Meslek',user.profession);
+  pushValue('Cinsiyet',user.gender);
+  pushValue('Kullanım Amacı',user.usageIntent);
+  pushValue('Dil',user.language);
+  pushValue('Ülke',user.country);
+  pushList('İlgi Kategorileri',user.interestCategories);
+  pushList('Karar Öncelikleri',user.priorities);
+  pushList('Mevcut Cihazlar',user.currentDevices);
+  pushList('Abonelikler',user.subscriptions);
+  return entries;
+}
+
+function renderUserSummaryGrid(entries,emptyText='Belirtilmiş veri yok'){
+  if(!entries.length)return `<div style="color:var(--text3);font-size:12px">${escHtml(emptyText)}</div>`;
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">${entries.map(entry=>`<div><span style="color:var(--text2)">${escHtml(entry.label)}:</span> <b>${escHtml(entry.value)}</b></div>`).join('')}</div>`;
+}
 
 async function loadUserAnalysis(uid){
   const el=document.getElementById('analysisContent');
@@ -1297,6 +1355,7 @@ async function loadUserProfile(uid){
   try{
     const u=allUsers.find(x=>x.uid===uid);
     if(!u){el.innerHTML='Kullanıcı bulunamadı';return;}
+    const onboardingEntries=buildUserOnboardingEntries(u);
 
     let html=`<div class="card" style="margin:0 0 16px;padding:14px">
       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">👤 Profil Özeti</div>
@@ -1311,6 +1370,10 @@ async function loadUserProfile(uid){
         <div><span style="color:var(--text2)">Kullanım:</span> <b>${escHtml(u.usageIntent||'Belirtilmemiş')}</b></div>
       </div>
     </div>`;
+
+    if(onboardingEntries.length){
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Kullanıcı Tanıma Quiz Cevapları</div>${renderUserSummaryGrid(onboardingEntries,'Onboarding yanıtları henüz görünmüyor.')}</div>`;
+    }
 
     // Priorities
     const priorities=u.priorities||[];
@@ -1363,7 +1426,7 @@ async function loadUserProfile(uid){
     const profileVectorEntries=Object.entries(safeMap(u.profileVector)).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0)).slice(0,8);
     if(profileVectorEntries.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📈 Profil Vektoru</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📈 Profil Vektörü</div>
         <div class="rank-bar-list">${profileVectorEntries.map(([key,value])=>`<div class="rank-bar-item"><div class="rank-bar-label">${escHtml(key)}</div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(8,Math.round(Number(value)*100))}%"></div></div><div class="rank-bar-value">${Number(value).toFixed(2)}</div></div>`).join('')}</div>
       </div>`;
     }

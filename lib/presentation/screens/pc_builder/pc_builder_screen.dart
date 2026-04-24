@@ -930,28 +930,28 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       return _pcText(
         context,
         en: 'GPU score is noticeably ahead of the CPU, so the processor is the first likely bottleneck under high-refresh gaming loads.',
-        tr: 'GPU skoru CPU’dan belirgin sekilde ileride; bu nedenle yuksek tazeleme hizli oyunlarda ilk darboğaz adayi islemci oluyor.',
+        tr: 'GPU skoru CPU’dan belirgin şekilde ileride; bu nedenle yüksek tazeleme hızlı oyunlarda ilk darboğaz adayı işlemci oluyor.',
       );
     }
     if (focus == PcComponent.gpu && cpu != null && gpu != null) {
       return _pcText(
         context,
         en: 'CPU platform looks stronger than the selected GPU, so graphics performance is the first upgrade area for gaming and rendering.',
-        tr: 'CPU platformu secili GPU’dan daha guclu gorunuyor; bu nedenle oyun ve render tarafinda ilk gelistirme alani ekran karti.',
+        tr: 'CPU platformu seçili GPU’dan daha güçlü görünüyor; bu nedenle oyun ve render tarafında ilk geliştirme alanı ekran kartı.',
       );
     }
     if (focus == PcComponent.psu && headroom != null) {
       return _pcText(
         context,
         en: 'Power budget is too tight for comfortable spikes and future upgrades. A PSU with more headroom will stabilize the build.',
-        tr: 'Guc butcesi ani yuklenmeler ve gelecekteki upgradeler icin dar kaliyor. Daha fazla payli bir PSU sistemi daha guvenli hale getirir.',
+        tr: 'Güç bütçesi ani yüklenmeler ve gelecekteki yükseltmeler için dar kalıyor. Daha fazla paylı bir PSU sistemi daha güvenli hale getirir.',
       );
     }
     if (focus == PcComponent.ram && ram != null) {
       return _pcText(
         context,
         en: 'Memory is the soft spot of this build, either because of speed/capacity or because the rest of the platform scales higher.',
-        tr: 'Bu sistemin yumusak noktasi RAM; kapasite/hiz seviyesi ya da platformun geri kalaninin daha yuksege cikabilmesi nedeniyle once RAM bakilmali.',
+        tr: 'Bu sistemin yumuşak noktası RAM; kapasite/hız seviyesi ya da platformun geri kalanının daha yükseğe çıkabilmesi nedeniyle önce RAM bakılmalı.',
       );
     }
 
@@ -1069,17 +1069,17 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       PcComponent.cpu => _pcText(
         context,
         en: 'Keeps the ${_selectedSocket ?? "current"} platform while adding about +$gain score.',
-        tr: '${_selectedSocket ?? "mevcut"} platformunda kalip yaklasik +$gain puan kazandiriyor.',
+        tr: '${_selectedSocket ?? "mevcut"} platformunda kalıp yaklaşık +$gain puan kazandırıyor.',
       ),
       PcComponent.gpu => _pcText(
         context,
         en: 'Raises graphics headroom by about +$gain score without breaking the current case fit rules.',
-        tr: 'Mevcut kasa uyumunu bozmadan grafik tarafinda yaklasik +$gain puanlik pay aciyor.',
+        tr: 'Mevcut kasa uyumunu bozmadan grafik tarafında yaklaşık +$gain puanlık pay açıyor.',
       ),
       PcComponent.psu => _pcText(
         context,
         en: 'Adds cleaner power margin with ${(_Compat.psuWattage(candidate) ?? 0).round()}W capacity.',
-        tr: '${(_Compat.psuWattage(candidate) ?? 0).round()}W kapasiteyle daha rahat guc payi sunuyor.',
+        tr: '${(_Compat.psuWattage(candidate) ?? 0).round()}W kapasiteyle daha rahat güç payı sunuyor.',
       ),
       PcComponent.cooler => _pcText(
         context,
@@ -1089,22 +1089,22 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       PcComponent.storage => _pcText(
         context,
         en: 'Fits the motherboard storage layout and improves overall drive quality by about +$gain score.',
-        tr: 'Anakart depolama yapisina uyuyor ve disk kalitesini yaklasik +$gain puan artiriyor.',
+        tr: 'Anakart depolama yapısına uyuyor ve disk kalitesini yaklaşık +$gain puan artırıyor.',
       ),
       PcComponent.ram => _pcText(
         context,
         en: 'Stays on ${_selectedMemType ?? "the current memory platform"} and improves balance.',
-        tr: '${_selectedMemType ?? "mevcut bellek platformunda"} kalip sistem dengesini iyilestiriyor.',
+        tr: '${_selectedMemType ?? "mevcut bellek platformunda"} kalıp sistem dengesini iyileştiriyor.',
       ),
       PcComponent.motherboard => _pcText(
         context,
         en: 'Keeps the platform socket while giving the build a stronger board foundation.',
-        tr: 'Platform soketini korurken sisteme daha guclu bir anakart temeli veriyor.',
+        tr: 'Platform soketini korurken sisteme daha güçlü bir anakart temeli veriyor.',
       ),
       PcComponent.pcCase => _pcText(
         context,
         en: 'Preserves motherboard and GPU fit while improving overall case quality.',
-        tr: 'Anakart ve GPU sigmasini korurken kasa kalitesini yukseltiyor.',
+        tr: 'Anakart ve GPU sığmasını korurken kasa kalitesini yükseltiyor.',
       ),
       _ => _pcText(
         context,
@@ -1384,12 +1384,12 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             title: _pcText(
               context,
               en: 'Modern GPU Power Check',
-              tr: 'Modern GPU Guc Kontrolu',
+              tr: 'Modern GPU Güç Kontrolü',
             ),
             detail: _pcText(
               context,
               en: 'GPU needs a modern 16-pin / 12VHPWR-style feed, but PSU metadata does not clearly advertise ATX 3.x / PCIe 5 support.',
-              tr: 'GPU modern 16-pin / 12VHPWR benzeri baglanti istiyor; PSU verisinde ATX 3.x / PCIe 5 destegi net gorunmuyor.',
+              tr: 'GPU modern 16-pin / 12VHPWR benzeri bağlantı istiyor; PSU verisinde ATX 3.x / PCIe 5 desteği net görünmüyor.',
             ),
             component: PcComponent.gpu,
           ),
@@ -2791,7 +2791,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     _pcText(
                       context,
                       en: 'Bottleneck analysis',
-                      tr: 'Darbogaz analizi',
+                      tr: 'Darboğaz analizi',
                     ),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
@@ -4525,7 +4525,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
         _pcText(
           context,
           en: 'Power >= ${_requiredPsuWattage!.round()}W',
-          tr: 'Guc >= ${_requiredPsuWattage!.round()}W',
+          tr: 'Güç >= ${_requiredPsuWattage!.round()}W',
         ),
       if (widget.component == PcComponent.psu &&
           widget.allSelected[PcComponent.gpu] != null &&
