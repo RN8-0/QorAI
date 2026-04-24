@@ -124,7 +124,7 @@ function collectAppRisks(app, key) {
       formatRisk(
         isAdminSurface ? 'MEDIUM' : 'LOW',
         `${app.name || key} sslip.io üzerinde yayınlanıyor`,
-        'sslip.io TLS alabilir ama üretim yönetim yüzeyi için özel domain ve erişim kısıtı daha doğru olur.',
+        'sslip.io TLS alabilir ama üretimde panel.qorai.app, admin.qorai.app veya api.qorai.app gibi özel domainler daha doğru olur.',
       ),
     );
   }
@@ -249,10 +249,11 @@ async function main() {
 
   console.log('');
   console.log('[Recommended Next Steps]');
-  console.log('1. Coolify dashboard URL\'ini HTTPS + domain arkasına al ve public :8000 erişimini kapat.');
-  console.log('2. Dashboard erişimini firewall, VPN veya Cloudflare/Tailscale ile sınırla.');
-  console.log('3. Admin surface için edge katmanında ek auth veya ağ kısıtı uygula.');
-  console.log('4. Token ve admin session\'ları HTTP kullanımından sonra rotate et.');
+  console.log('1. Coolify dashboard URL\'ini panel.qorai.app gibi HTTPS bir domain arkasına al ve public :8000 erişimini kapat.');
+  console.log('2. Admin uygulamasını admin.qorai.app, website\'i qorai.app / www.qorai.app alanlarına taşı.');
+  console.log('3. Dashboard erişimini firewall, VPN veya Cloudflare/Tailscale ile sınırla.');
+  console.log('4. Admin surface için edge katmanında ek auth veya ağ kısıtı uygula.');
+  console.log('5. Token ve admin session\'ları HTTP kullanımından sonra rotate et.');
 
   if (highCount > 0) {
     process.exitCode = 1;

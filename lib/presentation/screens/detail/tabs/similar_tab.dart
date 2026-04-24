@@ -23,9 +23,7 @@ class _SimilarProductsTab extends ConsumerWidget {
             16,
             MediaQuery.of(context).padding.bottom + 40,
           ),
-          sliver: RepaintBoundary(
-            child: _SimilarProductsSection(product: product, isDark: isDark),
-          ),
+          sliver: _SimilarProductsSection(product: product, isDark: isDark),
         ),
       ],
     );

@@ -354,7 +354,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String? _getPersonalizationSubtitle(AsyncValue userProfile) {
     return userProfile.when(
       data: (user) {
-        if (user == null) return 'Trending picks • most popular this week';
+        if (user == null) {
+          return _uiText(
+            tr: 'Trend seçimler • bu haftanın en popülerleri',
+            en: 'Trending picks • most popular this week',
+          );
+        }
         if (!user.quizCompleted)
           return context.l10n?.completeProfileSuggestion ??
               'Complete your profile for better picks';
@@ -363,21 +368,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         // Part 1: Audience descriptor
         if (user.profession != null && user.profession != 'other') {
           final labels = {
-            'engineer': context.l10n?.engineers ?? 'Engineers',
-            'designer': context.l10n?.designers ?? 'Designers',
-            'student': context.l10n?.students ?? 'Students',
-            'manager': context.l10n?.managers ?? 'Managers',
-            'healthcare': context.l10n?.healthcarePros ?? 'Healthcare pros',
-            'teacher': context.l10n?.teachers ?? 'Teachers',
-            'finance': context.l10n?.financePros ?? 'Finance pros',
+            'engineer': context.l10n?.engineers ?? _uiText(tr: 'Mühendisler', en: 'Engineers'),
+            'designer': context.l10n?.designers ?? _uiText(tr: 'Tasarımcılar', en: 'Designers'),
+            'student': context.l10n?.students ?? _uiText(tr: 'Öğrenciler', en: 'Students'),
+            'manager': context.l10n?.managers ?? _uiText(tr: 'Yöneticiler', en: 'Managers'),
+            'healthcare': context.l10n?.healthcarePros ?? _uiText(tr: 'Sağlık profesyonelleri', en: 'Healthcare pros'),
+            'teacher': context.l10n?.teachers ?? _uiText(tr: 'Öğretmenler', en: 'Teachers'),
+            'finance': context.l10n?.financePros ?? _uiText(tr: 'Finans profesyonelleri', en: 'Finance pros'),
           };
-          final label = labels[user.profession] ?? 'you';
+          final label = labels[user.profession] ?? _uiText(tr: 'sizin için', en: 'you');
           final eco = user.ecosystem == 'apple'
               ? 'Apple '
               : user.ecosystem == 'android'
               ? 'Android '
               : '';
-          parts.add('Picks for $eco$label');
+          parts.add(
+            _uiText(
+              tr: '$eco$label için seçtiklerimiz',
+              en: 'Picks for $eco$label',
+            ),
+          );
         } else {
           final ecosystem = user.ecosystem == 'apple'
               ? 'Apple'
@@ -385,28 +395,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ? 'Android'
               : null;
           if (ecosystem != null) {
-            parts.add('Curated for $ecosystem users');
+            parts.add(
+              _uiText(
+                tr: '$ecosystem kullanıcıları için seçildi',
+                en: 'Curated for $ecosystem users',
+              ),
+            );
           } else {
-            parts.add('Personalized for you');
+            parts.add(
+              _uiText(
+                tr: 'Size özel seçildi',
+                en: 'Personalized for you',
+              ),
+            );
           }
         }
 
         // Part 2: Budget or activity hint
         final budget = user.budgetRange;
         if (budget == 'premium' || budget == 'high') {
-          parts.add('premium picks');
+          parts.add(_uiText(tr: 'premium seçimler', en: 'premium picks'));
         } else if (budget == 'low') {
-          parts.add('budget-friendly');
+          parts.add(_uiText(tr: 'uygun fiyat odaklı', en: 'budget-friendly'));
         } else if (budget == 'mid') {
-          parts.add('mid-range picks');
+          parts.add(_uiText(tr: 'orta segment seçimler', en: 'mid-range picks'));
         } else {
-          parts.add('based on your activity');
+          parts.add(_uiText(tr: 'aktivitenize göre', en: 'based on your activity'));
         }
 
         return parts.join(' • ');
       },
       loading: () => null,
-      error: (_, __) => 'Trending picks • most popular this week',
+      error: (_, __) => _uiText(
+        tr: 'Trend seçimler • bu haftanın en popülerleri',
+        en: 'Trending picks • most popular this week',
+      ),
     );
   }
 

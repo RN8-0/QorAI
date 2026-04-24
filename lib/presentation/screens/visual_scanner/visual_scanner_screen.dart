@@ -77,6 +77,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   Future<void> _initCamera() async {
     try {
+      if (_camCtrl != null) return;
       final cameras = await availableCameras();
       if (cameras.isEmpty) return;
       _camCtrl = CameraController(
@@ -88,6 +89,20 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
       if (mounted) setState(() => _isCameraReady = true);
     } catch (e) {
       debugPrint('Camera init error: $e');
+    }
+  }
+
+  Future<void> _shutdownCamera() async {
+    final controller = _camCtrl;
+    _camCtrl = null;
+    if (mounted) {
+      setState(() => _isCameraReady = false);
+    }
+    if (controller == null) return;
+    try {
+      await controller.dispose();
+    } catch (e) {
+      debugPrint('Camera dispose error: $e');
     }
   }
 
@@ -123,6 +138,7 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     try {
       final file = await _camCtrl!.takePicture();
       _capturedImagePath = file.path;
+      await _shutdownCamera();
 
       _chatMessages.add(
         _ScannerChat(
@@ -260,11 +276,13 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     HapticFeedback.mediumImpact();
     setState(() {
       _hasResult = false;
+      _isScanning = false;
       _capturedImagePath = null;
       _scanInsight = null;
       _linkedConversationId = null;
       _chatMessages.clear();
     });
+    _initCamera();
   }
 
   String _buildScanPrompt() {
@@ -529,38 +547,79 @@ Instructions:
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Camera preview or captured image
-          if (_hasResult && _capturedImagePath != null)
-            Positioned.fill(
-              child: Image.file(File(_capturedImagePath!), fit: BoxFit.cover),
-            )
-          else if (_isCameraReady && _camCtrl != null)
-            Positioned.fill(child: CameraPreview(_camCtrl!))
-          else
-            const Positioned.fill(
-              child: Center(
-                child: CircularProgressIndicator(color: AppTheme.neonCyan),
+      body: AnimatedSwitcher(
+        duration: 320.ms,
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: _hasResult ? _buildResultExperience() : _buildCameraExperience(),
+      ),
+    );
+  }
+
+  Widget _buildCameraExperience() {
+    return Stack(
+      key: const ValueKey('scanner-camera'),
+      children: [
+        if (_capturedImagePath != null && _isScanning)
+          Positioned.fill(
+            child: Image.file(File(_capturedImagePath!), fit: BoxFit.cover),
+          )
+        else if (_isCameraReady && _camCtrl != null)
+          Positioned.fill(child: CameraPreview(_camCtrl!))
+        else
+          const Positioned.fill(
+            child: Center(
+              child: CircularProgressIndicator(color: AppTheme.neonCyan),
+            ),
+          ),
+        if (_capturedImagePath != null && _isScanning)
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withValues(alpha: 0.18),
+                    Colors.black.withValues(alpha: 0.62),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
             ),
-
-          // Dark overlay when result shown
-          if (_hasResult)
-            Positioned.fill(
-              child: Container(color: Colors.black.withValues(alpha: 0.7)),
+          ),
+        if (_isScanning) _buildScanOverlay(),
+        _buildTopBar(),
+        if (_capturedImagePath != null && _isScanning)
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 140,
+            child: Column(
+              children: [
+                Opacity(
+                  opacity: 0.92,
+                  child: Image.asset(
+                    'assets/logo/qor_ai_logo.png',
+                    width: 84,
+                    height: 84,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _uiText(tr: 'Qor AI görseli analiz ediyor', en: 'Qor AI is analyzing the image'),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
-
-          // Scan animation overlay
-          if (_isScanning && !_hasResult) _buildScanOverlay(),
-
-          // Top bar
-          _buildTopBar(),
-
-          // Bottom: scan button or results
-          if (!_hasResult) _buildScanButton() else _buildResultSheet(),
-        ],
-      ),
+          ),
+        if (!_isScanning) _buildScanButton(),
+      ],
     );
   }
 
@@ -713,128 +772,264 @@ Instructions:
     );
   }
 
-  Widget _buildResultSheet() {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.65,
-        ),
-        decoration: BoxDecoration(
-          color: context.surfaceColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.dividerColor,
-                borderRadius: BorderRadius.circular(2),
+  Widget _buildResultExperience() {
+    return Stack(
+      key: const ValueKey('scanner-result'),
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFF8FCFF),
+                  const Color(0xFFEAF5FF),
+                  const Color(0xFFFDFEFF),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-            // Title
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 10,
+          right: -18,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: 0.11,
+              child: Image.asset(
+                'assets/logo/qor_ai_logo.png',
+                width: 170,
+                height: 170,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                child: Row(
+                  children: [
+                    _buildTopActionButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: () => Navigator.of(context).pop(),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.asset(
-                        'assets/logo/qor_ai_logo.png',
-                        width: 18,
-                        height: 18,
-                        fit: BoxFit.contain,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            'assets/logo/qor_ai_logo.png',
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _uiText(tr: 'Qor AI Tarama Sohbeti', en: 'Qor AI Scan Chat'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: context.textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  (_scanInsight?.isConfirmedProduct ?? false)
+                                      ? (_scanInsight?.title.isNotEmpty == true
+                                            ? _scanInsight!.title
+                                            : _uiText(tr: 'Ürün doğrulandı', en: 'Product verified'))
+                                      : _uiText(
+                                          tr: 'Modeli yaz, birlikte netleştirelim',
+                                          en: 'Type the model and let’s clarify it',
+                                        ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: context.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _uiText(tr: 'Tarama Sonucu', en: 'Scan Result'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: context.textPrimary,
-                          ),
-                        ),
-                        if (_scanInsight?.isConfirmedProduct ?? false)
-                          Text(
-                            _scanInsight?.title.isNotEmpty == true
-                                ? _scanInsight!.title
-                                : _uiText(tr: 'Ürün doğrulandı', en: 'Product verified'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.neonCyan,
-                            ),
-                          )
-                        else
-                          Text(
-                            _uiText(
-                              tr: 'Modeli yaz, birlikte netleştirelim',
-                              en: 'Type the model and let’s clarify it',
-                            ),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: context.textSecondary,
-                            ),
-                          ),
-                      ],
+                    const SizedBox(width: 12),
+                    _buildTopActionButton(
+                      icon: Icons.refresh_rounded,
+                      onTap: _resetScanner,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            if (_scanInsight != null) _buildInsightCard(),
-            // Chat messages
-            Flexible(
-              child: ListView.builder(
-                controller: _scrollCtrl,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  ],
                 ),
-                itemCount: _chatMessages.length + (_isScanning ? 1 : 0),
-                itemBuilder: (context, i) {
-                  if (i == _chatMessages.length && _isScanning) {
-                    return _buildThinkingBubble();
-                  }
-                  return _buildChatBubble(_chatMessages[i]);
-                },
               ),
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  itemCount: _chatMessages.length + (_isScanning ? 1 : 0) + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Column(
+                        children: [
+                          _buildResultHeroCard(),
+                          if (_scanInsight != null) _buildInsightCard(),
+                        ],
+                      );
+                    }
+                    final chatIndex = index - 1;
+                    if (chatIndex == _chatMessages.length && _isScanning) {
+                      return _buildThinkingBubble();
+                    }
+                    return _buildChatBubble(_chatMessages[chatIndex]);
+                  },
+                ),
+              ),
+              _buildFollowUpInput(),
+            ],
+          ),
+        ),
+      ],
+    ).animate().fadeIn(duration: 260.ms);
+  }
+
+  Widget _buildTopActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
-            // Follow-up input
-            _buildFollowUpInput(),
           ],
         ),
-      ).animate().slideY(begin: 0.3, duration: 400.ms, curve: Curves.easeOut),
+        child: Icon(icon, color: context.textPrimary, size: 22),
+      ),
+    );
+  }
+
+  Widget _buildResultHeroCard() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.94),
+            const Color(0xFFEAF7FF),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brandBlue.withValues(alpha: 0.08),
+            blurRadius: 26,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Image.asset(
+                'assets/logo/qor_ai_logo.png',
+                width: 46,
+                height: 46,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _uiText(tr: 'Tarama tamamlandı', en: 'Scan completed'),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _uiText(
+                        tr: 'Kamera kapatıldı. Şimdi ürünün modelini yazabilir veya ayrıntılı soru sorabilirsiniz.',
+                        en: 'The camera is now closed. You can type the model or ask detailed follow-up questions.',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        height: 1.45,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildHeroChip(
+                (_scanInsight?.isConfirmedProduct ?? false)
+                    ? _uiText(tr: 'Ürün doğrulandı', en: 'Product verified')
+                    : _uiText(tr: 'Model bekleniyor', en: 'Waiting for model'),
+              ),
+              if ((_scanInsight?.category ?? '').isNotEmpty)
+                _buildHeroChip(_scanInsight!.category),
+              if ((_scanInsight?.priceBand ?? '').isNotEmpty)
+                _buildHeroChip(_scanInsight!.priceBand),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.12)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: context.textPrimary,
+        ),
+      ),
     );
   }
 
@@ -847,7 +1042,7 @@ Instructions:
         '${_uiText(tr: 'Güven', en: 'Confidence')} ${insight.confidence}%',
     ];
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -948,22 +1143,22 @@ Instructions:
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.8,
+          maxWidth: MediaQuery.of(context).size.width * 0.84,
         ),
         decoration: BoxDecoration(
           gradient: isUser
               ? LinearGradient(
                   colors: [
-                    AppTheme.brandBlue.withValues(alpha: 0.18),
-                    AppTheme.neonCyan.withValues(alpha: 0.12),
+                    AppTheme.brandBlue.withValues(alpha: 0.16),
+                    AppTheme.neonCyan.withValues(alpha: 0.10),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
               : LinearGradient(
                   colors: [
-                    context.surfaceVariantColor,
-                    context.surfaceVariantColor.withValues(alpha: 0.92),
+                    Colors.white.withValues(alpha: 0.96),
+                    const Color(0xFFF4FAFF),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -1025,32 +1220,37 @@ Instructions:
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0.96),
+              const Color(0xFFF0F8FF),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.12)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 24,
-              height: 24,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.74),
-                borderRadius: BorderRadius.circular(8),
-              ),
+            Opacity(
+              opacity: 0.95,
               child: Image.asset(
                 'assets/logo/qor_ai_logo.png',
+                width: 30,
+                height: 30,
                 fit: BoxFit.contain,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Text(
               _uiText(tr: 'Analiz ediliyor...', en: 'Analyzing...'),
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
                 color: context.textSecondary,
               ),
             ),
@@ -1061,20 +1261,28 @@ Instructions:
   }
 
   Widget _buildFollowUpInput() {
-    final canChat = _hasResult && !_isScanning;
+    final inputEnabled = _hasResult && !_isScanning;
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
         decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.94),
           border: Border(
             top: BorderSide(color: context.dividerColor.withValues(alpha: 0.5)),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, -6),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!canChat)
+            if ((_scanInsight?.isConfirmedProduct ?? false) == false)
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 10),
@@ -1105,15 +1313,15 @@ Instructions:
                       maxHeight: 100,
                     ),
                     decoration: BoxDecoration(
-                      color: context.surfaceVariantColor,
-                      borderRadius: BorderRadius.circular(20),
+                      color: const Color(0xFFF3F7FD),
+                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: context.dividerColor.withValues(alpha: 0.5),
+                        color: AppTheme.brandBlue.withValues(alpha: 0.10),
                       ),
                     ),
                     child: TextField(
                       controller: _questionCtrl,
-                      enabled: canChat,
+                      enabled: inputEnabled,
                       maxLines: null,
                       onSubmitted: (v) => _askFollowUp(v),
                       style: GoogleFonts.plusJakartaSans(
@@ -1122,14 +1330,16 @@ Instructions:
                       ),
                       decoration: InputDecoration(
                         hintText: _uiText(
-                          tr: canChat
+                          tr: inputEnabled
                               ? ((_scanInsight?.isConfirmedProduct ?? false)
                                     ? 'Bu ürün hakkında soru sorun...'
                                     : 'Ürün modeli veya kısa detay yazın...')
-                              : 'Tarama hazırlanıyor...',
+                              : 'Qor AI yanıt hazırlıyor...',
                           en: (_scanInsight?.isConfirmedProduct ?? false)
                               ? 'Ask about this product...'
-                              : 'Type the product model or a short detail...',
+                              : (inputEnabled
+                                    ? 'Type the product model or a short detail...'
+                                    : 'Qor AI is preparing a reply...'),
                         ),
                         hintStyle: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
@@ -1147,13 +1357,13 @@ Instructions:
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: canChat ? () => _askFollowUp(_questionCtrl.text) : null,
+                  onTap: inputEnabled ? () => _askFollowUp(_questionCtrl.text) : null,
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: canChat
+                      gradient: inputEnabled
                           ? AppTheme.primaryGradient
                           : LinearGradient(
                               colors: [
@@ -1165,7 +1375,7 @@ Instructions:
                     child: const Icon(
                       Icons.arrow_upward_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 22,
                     ),
                   ),
                 ),

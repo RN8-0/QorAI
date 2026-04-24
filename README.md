@@ -74,6 +74,7 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 - User deletion and product/app management are handled directly through PocketBase
 - No Firebase Auth / Firestore dependency remains in runtime flows
 - Run `node scripts/audit_coolify_security.js` or `npm --prefix scripts run audit:coolify-security` to audit Coolify dashboard/app HTTPS and edge protection settings
+- Run `node scripts/patch_coolify_app_domains.js` or `npm --prefix scripts run patch:coolify-app-domains` after setting `COOLIFY_ADMIN_APP_FQDN`, `COOLIFY_WEBSITE_FQDN`, and optional `COOLIFY_POCKETBASE_FQDN`
 - Run `node scripts/patch_coolify_admin_basic_auth.js` or `npm --prefix scripts run patch:coolify-admin-basic-auth` after setting `COOLIFY_ADMIN_BASIC_AUTH_USERNAME` and `COOLIFY_ADMIN_BASIC_AUTH_PASSWORD`
 - Keep the Coolify dashboard off public `:8000` access; prefer a domain with HTTPS plus firewall/VPN/Tailscale restriction
 - Treat direct HTTP access to the Coolify panel as sensitive: rotate tokens/sessions if the panel was used over plain HTTP
@@ -134,9 +135,9 @@ Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
 | Site | URL | Content |
 |------|-----|---------|
 | `qorai-website` | https://qorai.app | Public website |
-| `qorai-admin` | https://z1221ae58okr865xdquykps8.46.225.95.201.sslip.io | Admin panel |
+| `qorai-admin` | `COOLIFY_ADMIN_APP_FQDN` -> target: https://admin.qorai.app | Admin panel |
 
-Note: `https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io` is the PocketBase backend endpoint, not the public website.
+Note: the current fallback backend/admin endpoints may still be `sslip.io` until the fixed Qor AI domains are patched and DNS is pointed.
 
 Deploy:
 ```bash
