@@ -34,7 +34,7 @@ Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
 }
 
 void _scheduleDeferredStartupTasks() {
-  Future.delayed(const Duration(milliseconds: 2500), () {
+  Future.delayed(const Duration(seconds: 8), () {
     unawaited(_initializeSpecTranslations());
   });
   if (!kIsWeb) {

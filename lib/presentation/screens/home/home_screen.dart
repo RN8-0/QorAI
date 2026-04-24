@@ -27,7 +27,8 @@ import 'package:qor_ai/core/pb_client.dart';
 
 const double _kHorizontalCardRowHeight = 246;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
-const int _kHorizontalInitialItemLimit = 12;
+const int _kHorizontalInitialItemLimit = 8;
+const int _kInitialCategoryChipLimit = 18;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -1120,9 +1121,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildCategoriesSection() {
     final categories = _getFlatCategories(context);
-    final half = (categories.length / 2).ceil();
-    final row1 = categories.sublist(0, half);
-    final row2 = categories.sublist(half);
+    final visibleCategories = _secondarySectionsReady
+        ? categories
+        : categories.take(_kInitialCategoryChipLimit).toList(growable: false);
+    final half = (visibleCategories.length / 2).ceil();
+    final row1 = visibleCategories.sublist(0, half);
+    final row2 = visibleCategories.sublist(half);
 
     return Column(
       children: [
@@ -1158,50 +1162,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final id = cat['id'] as String;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            context.push(
-              '${AppRoutes.browse}?id=$id&name=${Uri.encodeComponent(name)}',
-            );
-          },
-          child: Container(
-            width: 76,
-            margin: const EdgeInsets.only(right: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? color.withValues(alpha: 0.15)
-                        : color.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: context.textPrimary.withValues(alpha: 0.80),
-                    height: 1.2,
-                  ),
-                ),
-              ],
+      onTap: () {
+        HapticFeedback.selectionClick();
+        context.push(
+          '${AppRoutes.browse}?id=$id&name=${Uri.encodeComponent(name)}',
+        );
+      },
+      child: Container(
+        width: 76,
+        margin: const EdgeInsets.only(right: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? color.withValues(alpha: 0.15)
+                    : color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: color, size: 24),
             ),
-          ),
-        )
-        .animate()
-        .fadeIn(delay: (30 * index).ms, duration: 280.ms)
-        .slideX(begin: 0.06, end: 0, duration: 280.ms);
+            const SizedBox(height: 7),
+            Text(
+              name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary.withValues(alpha: 0.80),
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // === PERSONALIZED SECTION ==================================================
@@ -1261,13 +1262,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ) ??
                       0;
                   return _WideProductCard(
-                        product: product,
-                        price: price,
-                        onTap: () => context.push('/product/${product.id}'),
-                      )
-                      .animate()
-                      .fadeIn(delay: (60 * min(index, 5)).ms, duration: 350.ms)
-                      .slideX(begin: 0.05, duration: 350.ms);
+                    product: product,
+                    price: price,
+                    onTap: () => context.push('/product/${product.id}'),
+                  );
                 },
               );
             },
@@ -1478,16 +1476,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               final price =
                   p.getPriceForCountry(ref.read(selectedCountryProvider)) ?? 0;
               return _TrendingWideCard(
-                    rank: index + 1,
-                    product: p,
-                    price: price,
-                    onTap: () => p.id.isNotEmpty
-                        ? context.push('/product/${p.id}')
-                        : null,
-                  )
-                  .animate()
-                  .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
-                  .slideX(begin: 0.06, duration: 300.ms);
+                rank: index + 1,
+                product: p,
+                price: price,
+                onTap: () =>
+                    p.id.isNotEmpty ? context.push('/product/${p.id}') : null,
+              );
             },
           );
         },
