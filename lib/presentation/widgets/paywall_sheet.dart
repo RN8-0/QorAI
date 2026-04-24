@@ -447,6 +447,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     };
   }
 
+  ProductDetails? _findProductById(
+    List<ProductDetails> products,
+    String productId,
+  ) {
+    for (final product in products) {
+      if (product.id == productId) return product;
+    }
+    return null;
+  }
+
+  ProductDetails? _selectedProduct(List<ProductDetails> products) {
+    final productId = _selectedPlan == 0
+        ? AppConstants.yearlySubscriptionId
+        : AppConstants.monthlySubscriptionId;
+    return _findProductById(products, productId) ??
+        (products.isNotEmpty ? products.first : null);
+  }
+
   String _formatDate(DateTime? date) {
     if (date == null) {
       return _txt(tr: 'Bilinmiyor', en: 'Unknown');
@@ -794,7 +812,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       return;
     }
 
-    final product = prods[_selectedPlan < prods.length ? _selectedPlan : 0];
+    final product = _selectedProduct(prods);
+    if (product == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _txt(
+              tr: 'Abonelik ürünü yüklenemedi. Lütfen biraz sonra tekrar deneyin.',
+              en: 'Subscription product could not be loaded. Please try again.',
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
     _purchase(product);
   }
 
@@ -935,6 +968,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                   const SizedBox(height: 20),
                   if (isPremium) ...[
                     _buildActiveSubscriptionSection(service),
+                    if (service.status.activeProductId ==
+                        AppConstants.monthlySubscriptionId) ...[
+                      const SizedBox(height: 20),
+                      _buildYearlyUpgradeSection(service),
+                    ],
                     const SizedBox(height: 20),
                     _buildComparisonTable(),
                     const SizedBox(height: 20),
@@ -1512,6 +1550,131 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     );
   }
 
+  Widget _buildYearlyUpgradeSection(SubscriptionService service) {
+    final status = service.status;
+    final prods = service.products;
+    final yearlyProduct = _findProductById(
+      prods,
+      AppConstants.yearlySubscriptionId,
+    );
+    final isCurrentPlanSelected = _selectedPlan == 1;
+    final yearlyLabel = yearlyProduct?.price ??
+        '\$${AppConstants.yearlyProPrice.toStringAsFixed(2)}/yıl';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _kPremiumBase.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _txt(
+              tr: 'Yıllık plana geç',
+              en: 'Switch to yearly',
+            ),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _txt(
+              tr: 'Aylık planınız aktif. Yıllık pakete geçerek daha düşük aylık maliyetle Premium kullanabilirsiniz.',
+              en: 'Your monthly plan is active. Move to yearly for a lower effective monthly price.',
+            ),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: context.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildPlanToggle(),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: isCurrentPlanSelected
+                    ? null
+                    : _kPremiumGradient,
+                color: isCurrentPlanSelected
+                    ? context.surfaceElevatedColor
+                    : null,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isCurrentPlanSelected
+                      ? context.dividerColor
+                      : Colors.transparent,
+                ),
+              ),
+              child: ElevatedButton(
+                onPressed: (_isPurchasing || _isLoading || isCurrentPlanSelected)
+                    ? null
+                    : _handlePurchaseTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  disabledBackgroundColor: Colors.transparent,
+                  disabledForegroundColor: context.textSecondary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: _isPurchasing
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        isCurrentPlanSelected
+                            ? _txt(
+                                tr: 'Mevcut aylık plan aktif',
+                                en: 'Current monthly plan is active',
+                              )
+                            : _txt(
+                                tr: 'Yıllık plana geç • $yearlyLabel',
+                                en: 'Switch to yearly • $yearlyLabel',
+                              ),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isCurrentPlanSelected
+                              ? context.textSecondary
+                              : Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _txt(
+              tr: 'Aktif plan: ${_planLabel(status.activeProductId)}',
+              en: 'Active plan: ${_planLabel(status.activeProductId)}',
+            ),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              color: context.textTertiaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSubscriptionMetaRow({
     required IconData icon,
     required String label,
@@ -1948,8 +2111,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final prods = service.products;
 
     String label;
-    if (prods.isNotEmpty) {
-      final product = prods[_selectedPlan < prods.length ? _selectedPlan : 0];
+    final product = _selectedProduct(prods);
+    if (product != null) {
       label = _txt(
         tr: 'Premium\'u başlat • ${product.price}',
         en: 'Start Free Trial • ${product.price}',

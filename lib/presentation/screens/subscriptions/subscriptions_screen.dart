@@ -419,12 +419,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   String _getTitle(SubFlowPhase phase) {
-    final isPremium = ref.watch(subscriptionServiceProvider).isPremium;
     switch (phase) {
       case SubFlowPhase.idle:
-        if (isPremium) {
-          return context.l10n?.premium ?? 'Premium';
-        }
         return context.l10n?.subscriptionIntelligence ??
             'Subscription Intelligence';
       case SubFlowPhase.quizLoading:

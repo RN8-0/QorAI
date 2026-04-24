@@ -215,8 +215,25 @@ final behaviorTrackingProvider = Provider<BehaviorTrackingService>((ref) {
 final behaviorSignalsProvider = FutureProvider<BehaviorSignals>((ref) async {
   // Only rebuild when user logs in/out — not on every profile stream emit
   ref.watch(userProfileProvider.select((u) => u.valueOrNull?.uid));
+  final activeSearchQuery = ref.watch(searchQueryProvider);
   final user = ref.read(userProfileProvider).valueOrNull;
   if (user == null) return BehaviorSignals.empty;
+
+  final hiveDs = ref.read(hiveDataSourceProvider);
+  final recentSearches = <String>[
+    if (activeSearchQuery.trim().length >= 2) activeSearchQuery.trim(),
+    ...hiveDs.getRecentSearches(),
+  ];
+  final dedupedSearches = <String>[];
+  final seenSearches = <String>{};
+  for (final query in recentSearches) {
+    final normalized = query.trim();
+    if (normalized.length < 2) continue;
+    final key = normalized.toLowerCase();
+    if (!seenSearches.add(key)) continue;
+    dedupedSearches.add(normalized);
+    if (dedupedSearches.length >= 12) break;
+  }
 
   // Viewed product IDs (from PB + Hive)
   final viewedIds =
@@ -245,6 +262,7 @@ final behaviorSignalsProvider = FutureProvider<BehaviorSignals>((ref) async {
     favorites: favorites,
     productViews: productViews,
     categoryViews: categoryViews,
+    recentSearches: dedupedSearches,
   );
 });
 

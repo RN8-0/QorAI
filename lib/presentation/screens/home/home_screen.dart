@@ -3,7 +3,6 @@
 /// parallax cards and spring animations.
 library;
 
-import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,36 +38,20 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with TickerProviderStateMixin {
-  late final AnimationController _heroCtrl;
   late final ScrollController _scrollCtrl;
-  late final PageController _heroPageCtrl;
-  Timer? _heroAutoScroll;
-  int _currentHeroPage = 0;
   final Stopwatch _initSw = Stopwatch();
   bool _firstDataLogged = false;
   bool _secondarySectionsReady = false;
 
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
-  static int _savedHeroPage = 0;
 
   @override
   void initState() {
     super.initState();
     _initSw.start();
     debugPrint('=== QOR AI: HomeScreen initState ===');
-    // Hero carousel is not currently mounted (dead code path);
-    // controllers kept idle to avoid wasted frames / timer callbacks.
-    _heroCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 12),
-    );
     _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
-    _currentHeroPage = _savedHeroPage;
-    _heroPageCtrl = PageController(
-      viewportFraction: 0.92,
-      initialPage: _currentHeroPage,
-    );
     _scrollCtrl.addListener(_handleScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 1200), () {
@@ -84,34 +67,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _savedScrollOffset = _scrollCtrl.offset;
   }
 
-  void _startHeroAutoScroll() {
-    _heroAutoScroll?.cancel();
-    _heroAutoScroll = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!_heroPageCtrl.hasClients) return;
-      final maxPage =
-          (_heroPageCtrl.position.maxScrollExtent /
-                  (_heroPageCtrl.position.viewportDimension * 0.92))
-              .ceil();
-      _currentHeroPage = (_currentHeroPage + 1) % (maxPage + 1);
-      _heroPageCtrl.animateToPage(
-        _currentHeroPage,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOutCubic,
-      );
-    });
-  }
-
   @override
   void dispose() {
     // Save scroll position for when user returns
     if (_scrollCtrl.hasClients) {
       _savedScrollOffset = _scrollCtrl.offset;
     }
-    _savedHeroPage = _currentHeroPage;
-    _heroCtrl.dispose();
     _scrollCtrl.dispose();
-    _heroPageCtrl.dispose();
-    _heroAutoScroll?.cancel();
     super.dispose();
   }
 
@@ -224,14 +186,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             _buildQuizReminder(userProfile),
             SliverToBoxAdapter(child: _buildSearchBar(context)),
 
-            // Categories
-            SliverToBoxAdapter(
-              child: _SectionHeader(
-                title: context.l10n?.categories ?? 'Categories',
-              ),
-            ),
-            SliverToBoxAdapter(child: _buildCategoriesSection()),
-
             // For You
             SliverToBoxAdapter(
               child: _SectionHeader(
@@ -244,16 +198,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildPersonalizedSection()),
 
-            if (_secondarySectionsReady) ...[
-              // ── TOP IN CATEGORY (dynamic) ─────────────────────────────────
-              ..._buildTopInCategorySection(),
-              // ── RECENTLY VIEWED SECTION ───────────────────────────────────
-              ..._buildRecentlyViewedSection(),
-              // ── RECENTLY ANALYZED ─────────────────────────────────────────
-              ..._buildRecentlyAnalyzedSection(),
-            ],
-
-            // ── TRENDING ────────────────────────────────────────────────────
+            // Trending stays close to the hero/search flow for faster discovery.
             SliverToBoxAdapter(
               child: _SectionHeader(
                 title: context.l10n?.trendingToday ?? 'Trending Today',
@@ -263,6 +208,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
             SliverToBoxAdapter(child: _buildTrendsSection(homeFeed)),
+
+            // Categories comes after the first recommendation layer.
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: context.l10n?.categories ?? 'Categories',
+              ),
+            ),
+            SliverToBoxAdapter(child: _buildCategoriesSection()),
+
+            if (_secondarySectionsReady) ...[
+              // ── TOP IN CATEGORY (dynamic) ─────────────────────────────────
+              ..._buildTopInCategorySection(),
+              // ── RECENTLY VIEWED SECTION ───────────────────────────────────
+              ..._buildRecentlyViewedSection(),
+              // ── RECENTLY ANALYZED ─────────────────────────────────────────
+              ..._buildRecentlyAnalyzedSection(),
+            ],
 
             // ── NEW ARRIVALS ────────────────────────────────────────────────
             SliverToBoxAdapter(
@@ -1073,325 +1035,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0);
   }
 
-  // === HERO BANNER ===========================================================
-
-  Widget _buildHeroCarousel() {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return ref
-        .watch(featuredProductsProvider)
-        .when(
-          data: (products) {
-            if (products.isEmpty) return const SizedBox.shrink();
-            return Column(
-              children: [
-                SizedBox(
-                  height: 220,
-                  child: PageView.builder(
-                    controller: _heroPageCtrl,
-                    itemCount: products.length,
-                    onPageChanged: (i) => setState(() => _currentHeroPage = i),
-                    itemBuilder: (context, index) {
-                      final p = products[index];
-                      final scoreColor = _getTechScoreColor(p.techScore);
-                      // Parallax scale effect
-                      double scale = 1.0;
-                      if (_heroPageCtrl.position.haveDimensions) {
-                        final page =
-                            _heroPageCtrl.page ?? _currentHeroPage.toDouble();
-                        scale = (1 - (page - index).abs() * 0.08).clamp(
-                          0.92,
-                          1.0,
-                        );
-                      }
-                      return GestureDetector(
-                        onTap: () => context.push('/product/${p.id}'),
-                        child: Transform.scale(
-                              scale: scale,
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(24),
-                                  color: context.surfaceVariantColor,
-                                  border: Border.all(
-                                    color:
-                                        Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? context.dividerColor
-                                        : Colors.black.withValues(alpha: 0.06),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: scoreColor.withValues(alpha: 0.10),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                    BoxShadow(
-                                      color:
-                                          (isDark
-                                                  ? Colors.black
-                                                  : Colors.black12)
-                                              .withValues(
-                                                alpha: isDark ? 0.04 : 0.06,
-                                              ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Positioned(
-                                      right: -30,
-                                      top: -30,
-                                      child: Container(
-                                        width: 150,
-                                        height: 150,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: RadialGradient(
-                                            colors: [
-                                              scoreColor.withValues(
-                                                alpha: 0.08,
-                                              ),
-                                              Colors.transparent,
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(18),
-                                      child: Row(
-                                        children: [
-                                          // Image left
-                                          Container(
-                                            width: 110,
-                                            height: 184,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(14),
-                                            ),
-                                            padding: const EdgeInsets.all(8),
-                                            child: p.imageURL.isNotEmpty
-                                                ? AnimatedBuilder(
-                                                    animation: _heroCtrl,
-                                                    child: ProductImageBox(
-                                                      imageUrl: p.imageURL,
-                                                      height: 143,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            10,
-                                                          ),
-                                                      padding: EdgeInsets.zero,
-                                                    ),
-                                                    builder: (_, child) =>
-                                                        Transform.translate(
-                                                      offset: Offset(
-                                                        0,
-                                                        -3 +
-                                                            (6 *
-                                                                sin(_heroCtrl
-                                                                        .value *
-                                                                    pi)),
-                                                      ),
-                                                      child: child,
-                                                    ),
-                                                  )
-                                                : const SizedBox(),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          // Details right
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 4,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: [
-                                                        scoreColor.withValues(
-                                                          alpha: 0.12,
-                                                        ),
-                                                        scoreColor.withValues(
-                                                          alpha: 0.06,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          20,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    p.category.isNotEmpty
-                                                        ? p.category[0]
-                                                                  .toUpperCase() +
-                                                              p.category
-                                                                  .substring(1)
-                                                        : 'Featured',
-                                                    style:
-                                                        GoogleFonts.plusJakartaSans(
-                                                          color: scoreColor,
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                        ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  p.name,
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style:
-                                                      GoogleFonts.plusJakartaSans(
-                                                        color:
-                                                            context.textPrimary,
-                                                        fontSize: 17,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        letterSpacing: -0.5,
-                                                        height: 1.15,
-                                                      ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                if (p.techScore > 0)
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 5,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme.accentCyan
-                                                          .withValues(
-                                                            alpha: 0.12,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        Icon(
-                                                          Icons
-                                                              .local_fire_department_rounded,
-                                                          size: 13,
-                                                          color: AppTheme
-                                                              .accentCyan,
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 4,
-                                                        ),
-                                                        Text(
-                                                          '${p.techScore.toInt()}',
-                                                          style:
-                                                              GoogleFonts.plusJakartaSans(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w700,
-                                                                color: AppTheme
-                                                                    .accentCyan,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                const SizedBox(height: 10),
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 14,
-                                                        vertical: 7,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    gradient: AppTheme
-                                                        .primaryGradient,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          20,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    'View Details',
-                                                    style:
-                                                        GoogleFonts.plusJakartaSans(
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: Colors.white,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                      ).animate().fadeIn(duration: 400.ms);
-                    },
-                  ),
-                ),
-                // Page indicators
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    products.length,
-                    (i) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: i == _currentHeroPage ? 20 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(3),
-                        color: i == _currentHeroPage
-                            ? AppTheme.neonCyan
-                            : context.dividerColor,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-          loading: () =>
-              Container(
-                    height: 190,
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: context.surfaceVariantColor,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .shimmer(duration: 1200.ms, color: Colors.white10),
-          error: (_, __) => const SizedBox.shrink(),
-        );
-  }
-
   // === TRUST STRIP =============================================================
 
   Widget _buildTrustStrip() {
@@ -2132,7 +1775,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
         data: (feed) {
-          var products = feed.byCategory[categoryId] ?? [];
+          final products = _categorySectionProducts(feed, categoryId);
           if (products.isEmpty) return const SizedBox.shrink();
 
           return ListView.builder(
@@ -2181,7 +1824,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
         data: (feed) {
-          var products = feed.byCategory[categoryId] ?? [];
+          final products = _categorySectionProducts(feed, categoryId);
           if (products.isEmpty) return const SizedBox.shrink();
 
           final display = products.take(_kHorizontalInitialItemLimit).toList();
@@ -2216,6 +1859,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === TRENDING ==============================================================
 
+  List<ProductEntity> _categorySectionProducts(HomeFeed feed, String categoryId) {
+    final products = feed.byCategory[categoryId] ?? const <ProductEntity>[];
+    if (products.isEmpty) return products;
+
+    final blockedIds = <String>{
+      ...feed.featured.take(4).map((product) => product.id),
+      ...feed.trending.take(12).map((product) => product.id),
+      ...feed.newArrivals.take(12).map((product) => product.id),
+      ...feed.discover.take(12).map((product) => product.id),
+    };
+
+    final filtered = products
+        .where((product) => !blockedIds.contains(product.id))
+        .toList();
+    return filtered.length >= 4 ? filtered : products;
+  }
+
   Widget _buildTrendsSection(AsyncValue<HomeFeed> homeFeed) {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
@@ -2228,7 +1888,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             );
           }
           final trending = feed.trending;
-          if (trending.isEmpty)
+          if (trending.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -2249,6 +1909,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ],
               ),
             );
+          }
           final display = trending.take(_kHorizontalInitialItemLimit).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -2288,11 +1949,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildNewArrivalsSection() {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
-      child: ref
-          .watch(newArrivalsProvider)
-          .when(
+      child: ref.watch(newArrivalsProvider).when(
             data: (products) {
-              if (products.isEmpty)
+              if (products.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -2313,6 +1972,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ],
                   ),
                 );
+              }
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
@@ -2322,7 +1982,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   final p = products[index];
                   final price =
                       p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
-                      0;
+                          0;
                   return _WideProductCard(
                         product: p,
                         price: price,
@@ -2339,9 +1999,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               height: _kHorizontalCardRowHeight,
               cardWidth: 155,
             ),
-            error: (_, __) => _buildRetryWidget(
-              onRetry: () => ref.invalidate(newArrivalsProvider),
-            ),
+            error: (_, __) =>
+                _buildRetryWidget(onRetry: () => ref.invalidate(newArrivalsProvider)),
           ),
     );
   }
@@ -2351,11 +2010,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildDiscoverSection() {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
-      child: ref
-          .watch(discoverProductsProvider)
-          .when(
+      child: ref.watch(discoverProductsProvider).when(
             data: (products) {
-              if (products.isEmpty)
+              if (products.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -2376,6 +2033,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ],
                   ),
                 );
+              }
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
@@ -2385,7 +2043,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   final p = products[index];
                   final price =
                       p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
-                      0;
+                          0;
                   return _WideProductCard(
                         product: p,
                         price: price,
@@ -2412,9 +2070,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === TOP IN CATEGORY (dynamic) =============================================
 
   List<Widget> _buildTopInCategorySection() {
-    return ref
-        .watch(topInCategoryProvider)
-        .when(
+    return ref.watch(topInCategoryProvider).when(
           data: (data) {
             if (data.category.isEmpty || data.products.isEmpty) return [];
             final catName =
@@ -2438,14 +2094,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     scrollDirection: Axis.horizontal,
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
-                    itemCount: min(_kHorizontalInitialItemLimit, data.products.length),
+                    itemCount: min(
+                      _kHorizontalInitialItemLimit,
+                      data.products.length,
+                    ),
                     itemBuilder: (context, index) {
                       final p = data.products[index];
                       final price =
-                          p.getPriceForCountry(
-                            ref.read(selectedCountryProvider),
-                          ) ??
-                          0;
+                          p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
+                              0;
                       return _WideProductCard(
                             product: p,
                             price: price,
@@ -2471,9 +2128,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === RECENTLY ANALYZED =====================================================
 
   List<Widget> _buildRecentlyAnalyzedSection() {
-    return ref
-        .watch(recentlyAnalyzedProvider)
-        .when(
+    return ref.watch(recentlyAnalyzedProvider).when(
           data: (products) {
             if (products.isEmpty) return [];
             return [
@@ -2496,10 +2151,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
-                          p.getPriceForCountry(
-                            ref.read(selectedCountryProvider),
-                          ) ??
-                          0;
+                          p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
+                              0;
                       return _WideProductCard(
                             product: p,
                             price: price,
@@ -2525,9 +2178,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === VALUE PICKS ===========================================================
 
   List<Widget> _buildValuePicksSection() {
-    return ref
-        .watch(valuePicsProvider)
-        .when(
+    return ref.watch(valuePicsProvider).when(
           data: (products) {
             if (products.isEmpty) return [];
             return [
@@ -2551,10 +2202,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
-                          p.getPriceForCountry(
-                            ref.read(selectedCountryProvider),
-                          ) ??
-                          0;
+                          p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
+                              0;
                       return _WideProductCard(
                             product: p,
                             price: price,

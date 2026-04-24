@@ -549,6 +549,10 @@ final searchResultsProvider =
           });
         }
 
+        final trimmedQuery = query.trim();
+        if (trimmedQuery.length >= 2) {
+          unawaited(ref.read(hiveDataSourceProvider).addRecentSearch(trimmedQuery));
+        }
         AnalyticsService.instance.logProductSearch(query, deduped.length);
         return Success(deduped.take(100).toList());
       } catch (_) {
@@ -752,6 +756,104 @@ List<ProductEntity> _spreadHomeFeedVariety(
   }
 
   return arranged;
+}
+
+String _homeFeedPriceBand(num price) {
+  if (price <= 0) return 'unknown';
+  if (price < 200) return 'entry';
+  if (price < 500) return 'value';
+  if (price < 1000) return 'mid';
+  if (price < 1800) return 'upper';
+  return 'premium';
+}
+
+double _homeFeedSearchBoost(ProductEntity product, Set<String> searchTerms) {
+  if (searchTerms.isEmpty) return 0;
+
+  final searchable =
+      '${product.name} ${product.brand ?? ''} ${product.category}'
+          .toLowerCase();
+  final name = product.name.toLowerCase();
+  var score = 0.0;
+
+  for (final term in searchTerms) {
+    if (!searchable.contains(term)) continue;
+    if (name.startsWith(term)) {
+      score += 3.5;
+    } else if (name.contains(term)) {
+      score += 2.5;
+    } else {
+      score += 1.5;
+    }
+  }
+
+  return score.clamp(0, 14);
+}
+
+double _homeFeedAlternativeBoost(
+  ProductEntity product,
+  List<ProductEntity> seeds,
+  String country,
+) {
+  if (seeds.isEmpty) return 0;
+
+  var bestScore = 0.0;
+  for (final seed in seeds.take(10)) {
+    if (product.id == seed.id) continue;
+    if (product.category.toLowerCase().trim() !=
+        seed.category.toLowerCase().trim()) {
+      continue;
+    }
+    if (_homeFeedModelKey(product) == _homeFeedModelKey(seed)) {
+      continue;
+    }
+
+    var score = 8.0;
+    final productPrice = product.getPriceForCountry(country) ?? 0;
+    final seedPrice = seed.getPriceForCountry(country) ?? 0;
+    if (productPrice > 0 && seedPrice > 0) {
+      final largerPrice = max(productPrice, seedPrice).toDouble();
+      final diffRatio = (productPrice - seedPrice).abs() / largerPrice;
+      if (diffRatio <= 0.15) {
+        score += 10;
+      } else if (diffRatio <= 0.30) {
+        score += 7;
+      } else if (diffRatio <= 0.45) {
+        score += 4;
+      } else if (diffRatio <= 0.60) {
+        score += 2;
+      } else {
+        score -= 2;
+      }
+
+      if (_homeFeedPriceBand(productPrice) == _homeFeedPriceBand(seedPrice)) {
+        score += 4;
+      }
+    }
+
+    if (_homeFeedBrandKey(product) != _homeFeedBrandKey(seed)) {
+      score += 2;
+    }
+    if (product.techScore >= max(seed.techScore - 15, 40)) {
+      score += 2;
+    }
+
+    bestScore = max(bestScore, score);
+  }
+
+  return bestScore.clamp(0, 24);
+}
+
+Set<String> _visibleHomeShelfIds(
+  HomeFeed feed, {
+  int takePerSection = 12,
+}) {
+  return {
+    ...feed.featured.take(4).map((product) => product.id),
+    ...feed.trending.take(takePerSection).map((product) => product.id),
+    ...feed.newArrivals.take(takePerSection).map((product) => product.id),
+    ...feed.discover.take(takePerSection).map((product) => product.id),
+  };
 }
 
 // Top-level wrapper so compute() can spawn it in a background isolate.
@@ -2122,9 +2224,12 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
 ) async {
   // Only rebuild when user logs in/out — not on every profile stream emit
   ref.watch(userProfileProvider.select((u) => u.valueOrNull?.uid));
+  final activeSearchQuery = ref.watch(searchQueryProvider).trim();
   final user = ref.read(userProfileProvider).valueOrNull;
+  final country = ref.read(selectedCountryProvider);
   final feed = await ref.watch(homeFeedProvider.future);
   final behavior = await ref.watch(behaviorSignalsProvider.future);
+  final recentlyViewed = await ref.watch(recentlyViewedProductsProvider.future);
 
   if (feed.all.isEmpty) return <ProductEntity>[];
 
@@ -2157,14 +2262,26 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
       }
     }
   } catch (_) {}
-  // Also exclude heavily viewed products (user already knows them)
-  for (final entry in behavior.productViews.entries) {
-    if (entry.value >= 5) excludeIds.add(entry.key);
-  }
+
+  excludeIds.addAll(recentlyViewed.map((product) => product.id));
+  excludeIds.addAll(_visibleHomeShelfIds(feed));
 
   final algorithmService = ref.read(profileAlgorithmServiceProvider);
   var allProducts = <ProductEntity>[];
   final existingIds = <String>{};
+  final viewedSeeds = recentlyViewed.take(10).toList();
+  final recentSearchTerms = <String>{
+    if (activeSearchQuery.length >= 2)
+      ...activeSearchQuery
+          .toLowerCase()
+          .split(RegExp(r'[^a-z0-9]+'))
+          .where((term) => term.length >= 3),
+    for (final query in behavior.recentSearches.take(8))
+      ...query
+          .toLowerCase()
+          .split(RegExp(r'[^a-z0-9]+'))
+          .where((term) => term.length >= 3),
+  };
 
   // Get behavior-boosted category priorities
   final priorityCats = algorithmService.getCategoryPriority(
@@ -2195,6 +2312,46 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     return true; // mixed = no filter
   }
 
+  void addCandidate(ProductEntity product, {bool preferEcosystem = false}) {
+    if (product.id.isEmpty || excludeIds.contains(product.id)) return;
+    if (existingIds.contains(product.id)) return;
+    if (preferEcosystem && !isEcoMatch(product)) return;
+
+    allProducts.add(product);
+    existingIds.add(product.id);
+  }
+
+  // Same segment alternatives for products the user already explored.
+  for (final seed in viewedSeeds) {
+    final catProducts = feed.byCategory[seed.category.toLowerCase().trim()] ??
+        const <ProductEntity>[];
+    var added = 0;
+    for (final product in catProducts) {
+      if (_homeFeedAlternativeBoost(product, [seed], country) < 8) continue;
+      final beforeLength = allProducts.length;
+      addCandidate(product, preferEcosystem: true);
+      if (allProducts.length > beforeLength) added++;
+      if (added >= 10) break;
+    }
+  }
+
+  // Recent search intent should immediately influence the home feed.
+  if (recentSearchTerms.isNotEmpty) {
+    final searchMatches = feed.all
+        .where((product) => _homeFeedSearchBoost(product, recentSearchTerms) > 0)
+        .toList()
+      ..sort((a, b) {
+        final scoreA =
+            _homeFeedSearchBoost(a, recentSearchTerms) + (a.trendScore * 0.2);
+        final scoreB =
+            _homeFeedSearchBoost(b, recentSearchTerms) + (b.trendScore * 0.2);
+        return scoreB.compareTo(scoreA);
+      });
+    for (final product in searchMatches.take(60)) {
+      addCandidate(product);
+    }
+  }
+
   // Pull products from top 12 priority categories — MAX 8 per category
   final topCats = priorityCats.isNotEmpty
       ? priorityCats.take(12).toList()
@@ -2206,13 +2363,9 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     final catProducts = feed.byCategory[catLower] ?? [];
     int added = 0;
     for (final p in catProducts) {
-      if (!existingIds.contains(p.id) &&
-          !excludeIds.contains(p.id) &&
-          isEcoMatch(p)) {
-        allProducts.add(p);
-        existingIds.add(p.id);
-        added++;
-      }
+      final beforeLength = allProducts.length;
+      addCandidate(p, preferEcosystem: true);
+      if (allProducts.length > beforeLength) added++;
       if (added >= 5) break;
     }
   }
@@ -2223,44 +2376,67 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     final catProducts = feed.byCategory[catLower] ?? [];
     int added = 0;
     for (final p in catProducts) {
-      if (!existingIds.contains(p.id) && !excludeIds.contains(p.id)) {
-        allProducts.add(p);
-        existingIds.add(p.id);
-        added++;
-      }
+      final beforeLength = allProducts.length;
+      addCandidate(p);
+      if (allProducts.length > beforeLength) added++;
       if (added >= 4) break;
     }
   }
 
-  // Fill with cross-category trending products for discovery
-  if (allProducts.length < 60) {
-    for (final p in feed.trending) {
-      if (!existingIds.contains(p.id) && !excludeIds.contains(p.id)) {
-        allProducts.add(p);
-        existingIds.add(p.id);
-      }
-      if (allProducts.length >= 80) break;
+  // Fill remaining slots with catalogue depth, not the same visible shelves.
+  if (allProducts.length < 80) {
+    for (final product in feed.all) {
+      addCandidate(product);
+      if (allProducts.length >= 100) break;
     }
   }
 
-  // Sort with full profile algorithm
-  final sortedProducts = algorithmService.sortByRelevance(
-    user: user,
-    products: allProducts,
-    behavior: behavior,
-  );
+  // Sort with profile fit + segment alternatives + recent search intent.
+  final sortedProducts = List<ProductEntity>.from(allProducts)
+    ..sort((a, b) {
+      final fitA = algorithmService.calculateTotalFitScore(
+        user: user,
+        product: a,
+        behavior: behavior,
+      );
+      final fitB = algorithmService.calculateTotalFitScore(
+        user: user,
+        product: b,
+        behavior: behavior,
+      );
+      final altA = _homeFeedAlternativeBoost(a, viewedSeeds, country);
+      final altB = _homeFeedAlternativeBoost(b, viewedSeeds, country);
+      final searchA = _homeFeedSearchBoost(a, recentSearchTerms);
+      final searchB = _homeFeedSearchBoost(b, recentSearchTerms);
+      final freshnessA = a.createdAt != null &&
+              DateTime.now().difference(a.createdAt!).inDays < 180
+          ? 2.5
+          : 0.0;
+      final freshnessB = b.createdAt != null &&
+              DateTime.now().difference(b.createdAt!).inDays < 180
+          ? 2.5
+          : 0.0;
 
-  // Final diversity check: max 6 per category in output
+      final scoreA = fitA + altA + searchA + freshnessA;
+      final scoreB = fitB + altB + searchB + freshnessB;
+      return scoreB.compareTo(scoreA);
+    });
+
+  // Final diversity check: keep the shelf broad and non-repeating.
   final outputCatCount = <String, int>{};
+  final outputBrandCount = <String, int>{};
   final result = <ProductEntity>[];
   for (final p in sortedProducts) {
     final cat = p.category.toLowerCase();
+    final brand = _homeFeedBrandKey(p);
     final cnt = outputCatCount[cat] ?? 0;
-    if (cnt < 6) {
+    final brandCnt = outputBrandCount[brand] ?? 0;
+    if (cnt < 5 && brandCnt < 3) {
       result.add(p);
       outputCatCount[cat] = cnt + 1;
+      outputBrandCount[brand] = brandCnt + 1;
     }
-    if (result.length >= 50) break;
+    if (result.length >= 60) break;
   }
   return _spreadHomeFeedVariety(result, recentWindow: 3);
 });
@@ -2310,9 +2486,10 @@ final topInCategoryProvider =
         return (category: '', products: <ProductEntity>[]);
 
       // Return top products, exclude first few they've likely already seen
-      final viewedIds = behavior.productViews.keys.toSet();
+        final viewedIds = behavior.productViews.keys.toSet();
+        final blockedIds = {...viewedIds, ..._visibleHomeShelfIds(feed)};
       final fresh = catProducts
-          .where((p) => !viewedIds.contains(p.id))
+          .where((p) => !blockedIds.contains(p.id))
           .take(30)
           .toList();
       if (fresh.length < 5) {
@@ -2391,13 +2568,17 @@ final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((
 final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
   final feed = await ref.watch(homeFeedProvider.future);
   final country = ref.read(selectedCountryProvider);
+  final blockedIds = _visibleHomeShelfIds(feed);
 
   // Find products with high techScore but relatively low price
   final candidates = feed.all.where((p) {
     final score = p.techScore;
     final price = p.getPriceForCountry(country) ?? 0;
     // Good value: high score, reasonable price
-    return score >= 60 && price > 0 && price < 2000;
+    return score >= 60 &&
+        price > 0 &&
+        price < 2000 &&
+        !blockedIds.contains(p.id);
   }).toList();
 
   // Sort by value ratio (techScore / price)
