@@ -90,12 +90,16 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       final locale = _ref.read(localeProvider);
       final isTr = locale?.languageCode.toLowerCase() == 'tr';
       final aiChatCost = sub.creditCostForFeature('ai_chat');
+      final aiChatCostLabel = AppConstants.formatQorAmount(
+        aiChatCost,
+        languageCode: isTr ? 'tr' : 'en',
+      );
       _addMsg(PersistedChatMsg(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         role: PersistedMsgRole.system,
         text: isTr
-          ? 'Yeterli günlük Q bakiyeniz yok. AI Chat $aiChatCost Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
-          : 'Not enough daily Q balance. AI Chat costs $aiChatCost Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
+          ? 'Yeterli günlük Q bakiyeniz yok. AI Chat $aiChatCostLabel Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
+          : 'Not enough daily Q balance. AI Chat costs $aiChatCostLabel Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
         status: PersistedMsgStatus.error,
       ));
       return;

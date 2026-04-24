@@ -10,6 +10,24 @@ class _ReviewsTab extends ConsumerStatefulWidget {
 }
 
 class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
+  bool _showYouTubeSection = false;
+  bool _showUserReviewsSection = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 120), () {
+        if (!mounted) return;
+        setState(() => _showYouTubeSection = true);
+      });
+      Future<void>.delayed(const Duration(milliseconds: 260), () {
+        if (!mounted) return;
+        setState(() => _showUserReviewsSection = true);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final cardBg = context.surfaceVariantColor;
@@ -27,21 +45,54 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
         const SizedBox(height: 12),
 
         // ── YouTube Reviews ──
-        _YouTubeReviewsCard(
-          product: widget.product,
-          isDark: widget.isDark,
-          cardBg: cardBg,
-        ),
+        if (_showYouTubeSection)
+          _YouTubeReviewsCard(
+            product: widget.product,
+            isDark: widget.isDark,
+            cardBg: cardBg,
+          )
+        else
+          const _DeferredReviewCardPlaceholder(height: 220),
         const SizedBox(height: 12),
 
         // ── User Reviews ──
-        _UserReviewsCard(
-          product: widget.product,
-          isDark: widget.isDark,
-          cardBg: cardBg,
-        ),
+        if (_showUserReviewsSection)
+          _UserReviewsCard(
+            product: widget.product,
+            isDark: widget.isDark,
+            cardBg: cardBg,
+          )
+        else
+          const _DeferredReviewCardPlaceholder(height: 260),
         const SizedBox(height: 16),
       ],
+    );
+  }
+}
+
+class _DeferredReviewCardPlaceholder extends StatelessWidget {
+  final double height;
+
+  const _DeferredReviewCardPlaceholder({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: context.textTertiaryColor.withValues(alpha: 0.45),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -231,7 +282,14 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
     final isLoading = reviewAsync is AsyncLoading;
     final loaded = result != null;
 
-    final sub = ref.watch(subscriptionServiceProvider);
+    final isPremium = ref.watch(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
+    final detailAiCost = ref.watch(
+      subscriptionServiceProvider.select(
+        (service) => service.creditCostForFeature('detail_ai'),
+      ),
+    );
 
     // AI step message (replaces subtitle when loading)
     final stepMessage = ref.watch(
@@ -287,13 +345,31 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        context.l10n?.aiReviewSummary ?? 'AI Review Analysis',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              context.l10n?.aiReviewSummary ?? 'AI Review Analysis',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (!isPremium && !loaded)
+                            QorAmountBadge(
+                              amount: detailAiCost,
+                              color: AppTheme.accentTeal,
+                              fontSize: 10,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       AnimatedSwitcher(
@@ -306,10 +382,13 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                           ),
                           isLoading && stepMessage.isNotEmpty
                               ? stepMessage
-                              : (!sub.isPremium && !loaded
-                                ? 'Dokununca 1 Q ile ürün özeti hazırlanır'
-                                : (context.l10n?.poweredByAi ??
-                                  'Powered by Qor AI')),
+                              : (loaded && (result?.summary.isNotEmpty ?? false)
+                                  ? result!.summary
+                                  : (Localizations.localeOf(context)
+                                              .languageCode ==
+                                          'tr'
+                                      ? 'Topluluk yorumlarından oluşturulan AI özeti'
+                                      : 'AI summary built from community reviews')),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             color: isLoading && stepMessage.isNotEmpty
@@ -326,16 +405,6 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                     ],
                   ),
                 ),
-                if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
-                  QorAmountBadge(
-                    amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('detail_ai'),
-                    unlimited: false,
-                    color: AppTheme.accentTeal,
-                    fontSize: 10,
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  ),
-                  const SizedBox(width: 8),
-                ],
                 if (isLoading)
                   const SizedBox(
                     width: 20,

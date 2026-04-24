@@ -92,8 +92,8 @@ class ValidationException extends AppException {
 /// Usage limit exceeded errors - Section 12.2
 class UsageLimitException extends AppException {
   final String featureName;
-  final int currentUsage;
-  final int limit;
+  final num currentUsage;
+  final num limit;
 
   const UsageLimitException({
     required this.featureName,

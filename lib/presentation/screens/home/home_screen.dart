@@ -221,18 +221,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'teacher': context.l10n?.teachers ?? _uiText(tr: 'Ogretmenler', en: 'Teachers'),
             'finance': context.l10n?.financePros ?? _uiText(tr: 'Finans profesyonelleri', en: 'Finance pros'),
           };
-          final label = labels[user.profession] ?? _uiText(tr: 'sizin icin', en: 'you');
+          final label = labels[user.profession];
           final eco = user.ecosystem == 'apple'
               ? 'Apple '
               : user.ecosystem == 'android'
               ? 'Android '
               : '';
-          parts.add(
-            _uiText(
-              tr: '$eco$label icin sectiklerimiz',
-              en: 'Picks for $eco$label',
-            ),
-          );
+          if (label != null) {
+            parts.add(
+              _uiText(
+                tr: '$eco$label icin sectiklerimiz',
+                en: 'Picks for $eco$label',
+              ),
+            );
+          } else {
+            parts.add(
+              _uiText(
+                tr: 'Sana ozel secimler',
+                en: 'Personal picks for you',
+              ),
+            );
+          }
         } else {
           final ecosystem = user.ecosystem == 'apple'
               ? 'Apple'
@@ -284,12 +293,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final hour = DateTime.now().hour;
     final isNight = hour < 5 || hour >= 22;
     final greetingEmoji = isNight
-      ? '🌕'
+      ? '🌙'
       : hour < 12
       ? '🌅'
       : hour < 17
       ? '☀️'
-      : '🌆';
+      : '🌙';
     final greetingText = isNight
       ? (context.l10n?.goodEvening ?? 'Good evening')
       : hour < 12
@@ -438,6 +447,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   /// Avatar widget that instantly shows Firebase Auth user's photo (sync)
   /// and upgrades to Firestore profile data when stream resolves.
   Widget _buildAvatarWidget(AsyncValue userProfile) {
+    final fallbackName = _resolveAvatarName(userProfile);
     // Try Firestore profile first (has latest data)
     final firestoreWidget = userProfile.whenOrNull(
       data: (user) {
@@ -452,10 +462,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             maxWidthDiskCache: 114,
             fadeInDuration: const Duration(milliseconds: 100),
             errorWidget: (context, url, error) =>
-                _buildAvatarFallback(hasSignedInUser: user != null),
+                _buildAvatarFallback(name: fallbackName),
           );
         }
-        return _buildAvatarFallback(hasSignedInUser: user != null);
+        return _buildAvatarFallback(name: fallbackName);
       },
     );
     if (firestoreWidget != null) return firestoreWidget;
@@ -473,14 +483,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           memCacheWidth: 114,
           maxWidthDiskCache: 114,
           fadeInDuration: const Duration(milliseconds: 100),
-            errorWidget: (context, url, error) =>
-              _buildAvatarFallback(hasSignedInUser: true),
+          errorWidget: (context, url, error) =>
+              _buildAvatarFallback(name: fallbackName),
         );
       }
-      return _buildAvatarFallback(hasSignedInUser: true);
+      return _buildAvatarFallback(name: fallbackName);
     }
 
-    return _buildAvatarFallback(hasSignedInUser: false);
+    return _buildAvatarFallback(name: fallbackName);
+  }
+
+  String _resolveAvatarName(AsyncValue userProfile) {
+    final String? fromProfile = userProfile.whenOrNull<String?>(
+      data: (user) => user?.displayName.trim(),
+    );
+    if (fromProfile != null && fromProfile.isNotEmpty) {
+      return fromProfile;
+    }
+
+    final authRecord = pb.authStore.record;
+    if (authRecord != null) {
+      final displayName = authRecord.getStringValue('displayName').trim();
+      if (displayName.isNotEmpty) return displayName;
+      final name = authRecord.getStringValue('name').trim();
+      if (name.isNotEmpty) return name;
+      final email = authRecord.getStringValue('email').trim();
+      if (email.isNotEmpty) return email.split('@').first;
+    }
+
+    return 'Qor AI';
   }
 
   bool _isGeneratedAvatarUrl(String? photoUrl) {
@@ -488,30 +519,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return value.contains('ui-avatars.com');
   }
 
-  Widget _buildAvatarFallback({required bool hasSignedInUser}) {
-    if (hasSignedInUser) {
-      return Image.asset(
-        'assets/images/default_avatar.jpeg',
-        width: 38,
-        height: 38,
-        fit: BoxFit.cover,
-      );
-    }
-
+  Widget _buildAvatarFallback({required String name}) {
+    final palette = _homeAvatarPalettes[
+        _homeAvatarSeed(name) % _homeAvatarPalettes.length];
+    final initials = _homeAvatarInitials(name);
     return Container(
       width: 38,
       height: 38,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2196F3), Color(0xFF00BCD4)],
+          colors: palette,
         ),
       ),
-      child: const Center(
-        child: Icon(Icons.person_rounded, color: Colors.white, size: 20),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -6,
+            top: -6,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Center(
+            child: Text(
+              initials,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: initials.length > 1 ? 13 : 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  static const List<List<Color>> _homeAvatarPalettes = [
+    [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+    [Color(0xFF06B6D4), Color(0xFF0F766E)],
+    [Color(0xFF8B5CF6), Color(0xFF4F46E5)],
+    [Color(0xFFF97316), Color(0xFFEA580C)],
+    [Color(0xFF10B981), Color(0xFF059669)],
+  ];
+
+  int _homeAvatarSeed(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+  }
+
+  String _homeAvatarInitials(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) return 'Q';
+    if (parts.length == 1) {
+      final part = parts.first;
+      return part.substring(0, part.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
   // === QUIZ REMINDER =========================================================

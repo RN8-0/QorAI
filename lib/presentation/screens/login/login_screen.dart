@@ -65,9 +65,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
+    final localizedMessage = _normalizeAuthError(message);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(localizedMessage),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppTheme.error,
         margin: const EdgeInsets.all(20),
@@ -88,6 +89,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+  }
+
+  String _normalizeAuthError(String message) {
+    final raw = message.trim();
+    if (raw.isEmpty) return raw;
+
+    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    if (!isTr) return raw;
+
+    final lower = raw.toLowerCase();
+    if (lower.contains('already in use') ||
+        lower.contains('already exists') ||
+        lower.contains('email address is already in use')) {
+      return 'Bu e-posta adresi zaten kullanımda.';
+    }
+    if (lower.contains('invalid login credentials') ||
+        lower.contains('wrong password') ||
+        lower.contains('login failed') ||
+        lower.contains('invalid password') ||
+        lower.contains('invalid email or password')) {
+      return 'E-posta veya şifre hatalı.';
+    }
+    if (lower.contains('sign in cancelled') ||
+        lower.contains('sign-in was cancelled') ||
+        lower.contains('google sign-in was cancelled')) {
+      return 'Giriş işlemi iptal edildi.';
+    }
+    if (lower.contains('timed out') || lower.contains('timeout')) {
+      return 'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.';
+    }
+    if (lower.contains('password reset') && lower.contains('could not be sent')) {
+      return 'Şifre sıfırlama e-postası gönderilemedi.';
+    }
+    if (lower.contains('registration failed')) {
+      return 'Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin.';
+    }
+    if (lower.contains('authentication failed') || lower.contains('failed to authenticate')) {
+      return 'Kimlik doğrulama başarısız oldu.';
+    }
+    if (lower.startsWith('google sign-in failed:')) {
+      return 'Google ile giriş başarısız oldu. Lütfen tekrar deneyin.';
+    }
+    return raw;
   }
 
   Future<void> _navigateAfterLogin(bool quizCompleted) async {
@@ -423,10 +467,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
               ),
-              child: Image.asset(
-                'assets/logo/qor_ai_logo_512.png',
-                filterQuality: FilterQuality.medium,
-                isAntiAlias: true,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/logo/qor_ai_logo_512.png',
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  isAntiAlias: true,
+                  gaplessPlayback: true,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -472,12 +521,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 SizedBox(
                   width: 122,
                   height: 122,
-                  child: Image.asset(
-                    'assets/logo/qor_ai_logo_512.png',
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.medium,
-                    isAntiAlias: true,
-                    gaplessPlayback: true,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: Image.asset(
+                      'assets/logo/qor_ai_logo_512.png',
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      isAntiAlias: true,
+                      gaplessPlayback: true,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

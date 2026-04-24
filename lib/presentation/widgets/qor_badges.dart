@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class QorAmountBadge extends StatelessWidget {
-  final int? amount;
+  final num? amount;
   final bool unlimited;
   final Color color;
   final double fontSize;
@@ -20,7 +20,10 @@ class QorAmountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = unlimited ? '∞' : '${amount ?? 0}';
+    final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
+    final label = unlimited
+        ? '∞'
+        : AppConstants.formatQorAmount(amount ?? 0, languageCode: langCode);
 
     return Container(
       padding: padding,
@@ -49,8 +52,8 @@ class QorAmountBadge extends StatelessWidget {
 }
 
 class QorBalanceBadge extends StatelessWidget {
-  final int remaining;
-  final int total;
+  final num remaining;
+  final num total;
   final bool unlimited;
   final Color color;
   final double fontSize;
@@ -68,7 +71,10 @@ class QorBalanceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = unlimited ? '∞' : '$remaining/$total';
+    final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
+    final label = unlimited
+        ? '∞'
+        : '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)}';
 
     return Container(
       padding: padding,

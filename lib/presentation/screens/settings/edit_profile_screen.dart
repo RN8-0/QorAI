@@ -208,7 +208,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ),
       child: Row(
         children: [
-          _AvatarPreview(photoUrl: photoUrl, size: 72),
+          _AvatarPreview(photoUrl: photoUrl, name: name, size: 72),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -544,37 +544,112 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
 class _AvatarPreview extends StatelessWidget {
   final String photoUrl;
+  final String name;
   final double size;
 
-  const _AvatarPreview({required this.photoUrl, required this.size});
+  const _AvatarPreview({
+    required this.photoUrl,
+    required this.name,
+    required this.size,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(size / 3);
+    final radius = size / 2;
     if (photoUrl.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: borderRadius,
-        child: CachedNetworkImage(
-          imageUrl: photoUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => _fallback(borderRadius),
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: Colors.transparent,
+        child: ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: photoUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorWidget: (_, __, ___) => _fallback(radius),
+          ),
         ),
       );
     }
-    return _fallback(borderRadius);
+    return _fallback(radius);
   }
 
-  Widget _fallback(BorderRadius borderRadius) {
-    return ClipRRect(
-      borderRadius: borderRadius,
-      child: Image.asset(
-        'assets/images/default_avatar.jpeg',
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
+  Widget _fallback(double radius) {
+    return _GeneratedAvatar(name: name, radius: radius);
+  }
+}
+
+class _GeneratedAvatar extends StatelessWidget {
+  final String name;
+  final double radius;
+
+  const _GeneratedAvatar({required this.name, required this.radius});
+
+  static const List<List<Color>> _avatarPalettes = [
+    [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+    [Color(0xFF06B6D4), Color(0xFF0F766E)],
+    [Color(0xFF8B5CF6), Color(0xFF4F46E5)],
+    [Color(0xFFF97316), Color(0xFFEA580C)],
+    [Color(0xFF10B981), Color(0xFF059669)],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _avatarPalettes[_avatarSeed(name) % _avatarPalettes.length];
+    final initials = _avatarInitials(name);
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: palette,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: palette.last.withValues(alpha: 0.22),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              initials,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: radius * 0.62,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  int _avatarSeed(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+  }
+
+  String _avatarInitials(String value) {
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) return 'Q';
+    if (parts.length == 1) {
+      final part = parts.first;
+      return part.substring(0, part.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 }

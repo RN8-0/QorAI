@@ -81,8 +81,9 @@ class SharedPremiumFeaturesSectionState
 
   @override
   Widget build(BuildContext context) {
-    final subscription = ref.watch(subscriptionServiceProvider);
-    final hideQorCost = subscription.isPremium;
+    final hideQorCost = ref.watch(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
     final pid = widget.product.id;
     final localizedKey = LocalizedProductKey(
       productId: pid,
@@ -294,13 +295,30 @@ class SharedPremiumFeaturesSectionState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: context.textPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (cost != null) ...[
+                              const SizedBox(width: 8),
+                              QorAmountBadge(
+                                amount: cost,
+                                color: gradient[0],
+                                fontSize: 10,
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         AnimatedSwitcher(
@@ -337,16 +355,6 @@ class SharedPremiumFeaturesSectionState
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   else ...[
-                    if (cost != null)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: QorAmountBadge(
-                          amount: cost,
-                          color: gradient[0],
-                          fontSize: 10,
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        ),
-                      ),
                     Icon(
                       isExpanded
                           ? Icons.expand_less_rounded
@@ -885,7 +893,7 @@ class SharedPremiumFeaturesSectionState
                         ),
                       ),
                       child: Text(
-                        '$roundedValue/10',
+                        '$roundedValue / 10',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,

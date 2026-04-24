@@ -85,17 +85,27 @@ class _SubscriptionHistoryScreenState
     List<Map<String, dynamic>> pending,
     List<Map<String, dynamic>> firebase,
   ) {
-    final seen = <String>{};
+    final seen = <String, DateTime>{};
     final merged = <Map<String, dynamic>>[];
     for (final item in [...pending, ...firebase]) {
-      final timestamp = (item['timestamp'] as String?) ?? '';
+      final timestamp = _historyDateOf(item);
       final services = ((item['services'] as List?) ?? const [])
           .map((e) => e.toString().trim().toLowerCase())
           .toList()
         ..sort();
       final winner = item['winner']?.toString().trim().toLowerCase() ?? '';
-      final key = '$timestamp|${services.join(',')}|$winner';
-      if (seen.add(key)) merged.add(item);
+      final summary = (item['analysisResult'] as String? ?? '')
+          .trim()
+          .toLowerCase();
+      final shortSummary =
+          summary.length > 80 ? summary.substring(0, 80) : summary;
+      final key = '${services.join(',')}|$winner|$shortSummary';
+      final previous = seen[key];
+      if (previous != null && previous.difference(timestamp).inSeconds.abs() <= 120) {
+        continue;
+      }
+      seen[key] = timestamp;
+      merged.add(item);
     }
     merged.sort((a, b) => _historyDateOf(b).compareTo(_historyDateOf(a)));
     return merged;

@@ -20,6 +20,7 @@ class _SpecsCard extends StatefulWidget {
 
 class _SpecsCardState extends State<_SpecsCard> {
   late Map<String, bool> _expanded;
+  late Map<String, dynamic> _sortedSpecs;
 
   // Icons per spec group — matches Firestore group names from admin panel
   IconData _getGroupIcon(String groupKey) {
@@ -136,7 +137,26 @@ class _SpecsCardState extends State<_SpecsCard> {
   @override
   void initState() {
     super.initState();
-    _expanded = {for (final key in widget.specs.keys) key: false};
+    _sortedSpecs = _sortSpecs(widget.specs);
+    _expanded = {for (final key in _sortedSpecs.keys) key: false};
+  }
+
+  @override
+  void didUpdateWidget(covariant _SpecsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.specs, widget.specs)) return;
+    _sortedSpecs = _sortSpecs(widget.specs);
+    _expanded = {
+      for (final key in _sortedSpecs.keys) key: _expanded[key] ?? false,
+    };
+  }
+
+  Map<String, dynamic> _sortSpecs(Map<String, dynamic> specs) {
+    final sortedEntries = specs.entries.toList()
+      ..sort(
+        (a, b) => _sectionPriority(a.key).compareTo(_sectionPriority(b.key)),
+      );
+    return Map.fromEntries(sortedEntries);
   }
 
   /// Converts a spec value to displayable string.
@@ -818,11 +838,7 @@ class _SpecsCardState extends State<_SpecsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final sortedEntries = widget.specs.entries.toList()
-      ..sort(
-        (a, b) => _sectionPriority(a.key).compareTo(_sectionPriority(b.key)),
-      );
-    final specs = Map.fromEntries(sortedEntries);
+    final specs = _sortedSpecs;
 
     return Container(
       decoration: BoxDecoration(
@@ -1039,6 +1055,14 @@ class _SpecRow extends StatelessWidget {
           return w[0].toUpperCase() + w.substring(1);
         })
         .join(' ');
+  }
+
+  static String _capitalizeLeadingLetter(String s) {
+    if (s.isEmpty) return s;
+    final match = RegExp(r'[A-Za-zÇĞİÖŞÜçğıöşü]').firstMatch(s);
+    if (match == null) return s;
+    final index = match.start;
+    return '${s.substring(0, index)}${s[index].toUpperCase()}${s.substring(index + 1)}';
   }
 
   static bool _isConnectorWord(String word) {
@@ -1332,6 +1356,7 @@ class _SpecRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trimmed = value.trim();
+    final displayLabel = _capitalizeLeadingLetter(label.trim());
     if (trimmed.isEmpty ||
         trimmed == '?' ||
         trimmed == 'null' ||
@@ -1376,7 +1401,7 @@ class _SpecRow extends StatelessWidget {
               Expanded(
                 flex: 4,
                 child: Text(
-                  label,
+                  displayLabel,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
@@ -1397,9 +1422,11 @@ class _SpecRow extends StatelessWidget {
 
   /// Displays a single value string. Font shrinks automatically for long text.
   Widget _buildValueText(BuildContext context, String text) {
-    final fontSize = text.length > 45 ? 11.5 : (text.length > 30 ? 12.0 : 13.0);
+    final displayText = _capitalizeLeadingLetter(text.trim());
+    final fontSize =
+        displayText.length > 45 ? 11.5 : (displayText.length > 30 ? 12.0 : 13.0);
     return Text(
-      text,
+      displayText,
       style: TextStyle(
         fontSize: fontSize,
         fontWeight: FontWeight.w500,

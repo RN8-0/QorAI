@@ -1093,6 +1093,19 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (!sub.isPremium) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: QorAmountBadge(
+              amount: analysisCreditCost,
+              unlimited: false,
+              color: _kPrimary,
+              fontSize: 10,
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         // Animated gradient border input
         AnimatedGradientInputShell(
           topContent: _chips.isNotEmpty
@@ -1226,20 +1239,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
             ],
           ),
         ),
-
-        if (!sub.isPremium) ...[
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: QorAmountBadge(
-              amount: analysisCreditCost,
-              unlimited: false,
-              color: _kPrimary,
-              fontSize: 10,
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            ),
-          ),
-        ],
 
         const SizedBox(height: 14),
 
@@ -1639,8 +1638,8 @@ class _InfoItem {
 class _UsageMeter extends StatelessWidget {
   final IconData icon;
   final String label;
-  final int remaining;
-  final int total;
+  final num remaining;
+  final num total;
   final String period;
   final double progress;
   final Color color;
@@ -1657,6 +1656,7 @@ class _UsageMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
     return Row(
       children: [
         Icon(icon, size: 16, color: color),
@@ -1677,7 +1677,7 @@ class _UsageMeter extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '$remaining/$total$period',
+                    '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)}$period',
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,

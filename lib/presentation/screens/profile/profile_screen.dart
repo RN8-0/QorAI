@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
@@ -720,6 +721,7 @@ class _UserAvatarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photoUrl = _resolvedPhotoUrl(user);
+    final effectiveName = _effectiveDisplayName(user, context);
 
     if (photoUrl != null) {
       return CircleAvatar(
@@ -734,28 +736,88 @@ class _UserAvatarWidget extends StatelessWidget {
             memCacheWidth: (radius * 6).round(),
             maxWidthDiskCache: (radius * 6).round(),
             fadeInDuration: const Duration(milliseconds: 100),
-            errorWidget: (_, __, ___) => _EmailAvatar(radius: radius),
+            errorWidget: (_, __, ___) =>
+                _EmailAvatar(name: effectiveName, radius: radius),
           ),
         ),
       );
     }
 
-    return _EmailAvatar(radius: radius);
+    return _EmailAvatar(name: effectiveName, radius: radius);
   }
 }
 
-/// Consistent avatar for email/password users — same image for everyone.
 class _EmailAvatar extends StatelessWidget {
+  final String name;
   final double radius;
-  const _EmailAvatar({this.radius = 36});
+  const _EmailAvatar({required this.name, this.radius = 36});
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: radius,
-      backgroundImage: const AssetImage('assets/images/default_avatar.jpeg'),
-      backgroundColor: AppTheme.brandBlue,
+    final palette = _avatarPalettes[_avatarSeed(name) % _avatarPalettes.length];
+    final initials = _avatarInitials(name);
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: palette,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: palette.last.withValues(alpha: 0.22),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              initials,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: radius * 0.62,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  static const List<List<Color>> _avatarPalettes = [
+    [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+    [Color(0xFF06B6D4), Color(0xFF0F766E)],
+    [Color(0xFF8B5CF6), Color(0xFF4F46E5)],
+    [Color(0xFFF97316), Color(0xFFEA580C)],
+    [Color(0xFF10B981), Color(0xFF059669)],
+  ];
+
+  int _avatarSeed(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+  }
+
+  String _avatarInitials(String value) {
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) return 'Q';
+    if (parts.length == 1) {
+      final part = parts.first;
+      return part.substring(0, part.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 }
 
@@ -1750,6 +1812,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
     final sub = ref.watch(subscriptionServiceProvider);
 
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
     final totalCredits = FreemiumLimits.dailyCredits;
     final usedCredits = sub.usedDailyCredits;
     final remainingCredits = sub.remainingDailyCredits;
@@ -1903,8 +1966,8 @@ class _FreemiumUsageCard extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         isTr
-                            ? '$remainingCredits/$totalCredits Qor kaldı'
-                            : '$remainingCredits/$totalCredits Qor left',
+                            ? '${AppConstants.formatQorAmount(remainingCredits, languageCode: langCode)}/${AppConstants.formatQorAmount(totalCredits, languageCode: langCode)} Qor kaldı'
+                            : '${AppConstants.formatQorAmount(remainingCredits, languageCode: langCode)}/${AppConstants.formatQorAmount(totalCredits, languageCode: langCode)} Qor left',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,

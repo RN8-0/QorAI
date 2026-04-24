@@ -980,21 +980,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ],
                       ),
                     ),
+                    if (!ref.watch(subscriptionServiceProvider).isPremium)
+                      QorAmountBadge(
+                        amount: AppConstants.creditCostForFeature('link_analysis'),
+                        unlimited: false,
+                        color: AppTheme.brandBlue,
+                        fontSize: 10,
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      ),
                   ],
                 ),
-                if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: QorAmountBadge(
-                      amount: AppConstants.creditCostForFeature('link_analysis'),
-                      unlimited: false,
-                      color: AppTheme.brandBlue,
-                      fontSize: 10,
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 16),
                 _buildModernUrlField(
                   controller: _singleUrlController,
@@ -1105,6 +1100,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final progress = total == 0
         ? 0.0
         : (sub.usedDailyCredits / total).clamp(0.0, 1.0);
+    final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
     final isLow = remaining <= 2;
     final barColor = isLow ? AppTheme.error : AppTheme.brandBlue;
     final usageLabel = _linkText(
@@ -1114,8 +1110,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
     final periodLabel = _linkText(
       context,
-      tr: '$remaining/$total ${AppConstants.qorCurrencyName}',
-      en: '$remaining/$total ${AppConstants.qorCurrencyName}',
+      tr:
+          '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
+      en:
+          '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
     );
     final ctaLabel = _linkText(context, tr: 'Premium', en: 'Premium');
 
@@ -1258,21 +1256,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ],
                       ),
                     ),
+                    if (!sub.isPremium)
+                      QorAmountBadge(
+                        amount: sub.creditCostForFeature('link_compare'),
+                        unlimited: false,
+                        color: AppTheme.brandCyan,
+                        fontSize: 10,
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      ),
                   ],
                 ),
-                if (!sub.isPremium) ...[
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: QorAmountBadge(
-                      amount: sub.creditCostForFeature('link_compare'),
-                      unlimited: false,
-                      color: AppTheme.brandCyan,
-                      fontSize: 10,
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 16),
                 // URL input fields (2-4)
                 ...List.generate(

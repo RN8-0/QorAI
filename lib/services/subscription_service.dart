@@ -819,7 +819,7 @@ class SubscriptionService extends ChangeNotifier {
     return true;
   }
 
-  int _usedCreditsFor(UsageCounter usage) {
+  double _usedCreditsFor(UsageCounter usage) {
     return usage.aiQuestions * AppConstants.aiChatCreditCost +
         usage.compareAi * AppConstants.compareAiCreditCost +
         usage.detailAi * AppConstants.detailAiCreditCost +
@@ -848,16 +848,17 @@ class SubscriptionService extends ChangeNotifier {
     );
   }
 
-  int get usedDailyCredits => isPremium ? 0 : _usedCreditsFor(_normalizedUsage());
+    double get usedDailyCredits =>
+      isPremium ? 0 : _usedCreditsFor(_normalizedUsage());
 
-  int get remainingDailyCredits => isPremium
+    double get remainingDailyCredits => isPremium
       ? -1
       : (AppConstants.freeDailyAiCreditLimit - usedDailyCredits).clamp(
           0,
           AppConstants.freeDailyAiCreditLimit,
-        );
+      ).toDouble();
 
-  int creditCostForFeature(String featureName) =>
+    num creditCostForFeature(String featureName) =>
       AppConstants.creditCostForFeature(featureName);
 
   /// Can an AI question be asked?
@@ -1027,36 +1028,38 @@ class SubscriptionService extends ChangeNotifier {
 
   int get remainingAIQuestions => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.aiChatCreditCost).floor();
 
   int get remainingCompareAi => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.compareAiCreditCost).floor();
 
   int get remainingDetailAi => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.detailAiCreditCost).floor();
 
   int get remainingPcBuilderAi => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.pcBuilderAiCreditCost).floor();
 
   int get remainingLinkPastes => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.linkAnalysisCreditCost).floor();
 
   int get remainingLinkCompare => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.linkCompareCreditCost).floor();
 
   int get remainingSubscriptionAnalyses => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits /
+          AppConstants.subscriptionAnalysisCreditCost)
+        .floor();
 
   int get remainingProductScan => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.productScanCreditCost).floor();
   int get detailMatchAiRemaining => isPremium
       ? -1
-      : remainingDailyCredits;
+      : (remainingDailyCredits / AppConstants.detailMatchAiCreditCost).floor();
 }

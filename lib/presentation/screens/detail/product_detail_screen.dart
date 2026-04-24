@@ -44,6 +44,7 @@ import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 part 'tabs/premium_tab.dart';
 part 'tabs/reviews_tab.dart';
@@ -119,6 +120,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   // Defer overview content (variants, description, pros/cons) to post-frame
   // so the first frame after navigation is minimal and doesn't stutter.
   bool _contentReady = false;
+  static const _tabWarmupDelay = Duration(milliseconds: 120);
 
   @override
   void initState() {
@@ -147,9 +149,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             if (!mounted) return;
             // Show overview content first (one frame for layout settle).
             setState(() => _contentReady = true);
-            // Delay tabs a bit so first interactive scroll frame stays smooth
-            // on low-end devices before heavy tab trees are built.
-            Future.delayed(const Duration(milliseconds: 950), () {
+            // Give the overview one short frame window, then mount the tabs.
+            Future.delayed(_tabWarmupDelay, () {
               if (!mounted) return;
               setState(() => _tabViewReady = true);
             });

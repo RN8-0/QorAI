@@ -62,7 +62,7 @@ class AppConstants {
   // Free Tier Limits - Section 12.2
   static const int freeComparisonLimit = 5; // per day
   static const int freeDailyAiCreditLimit = 10; // shared daily AI credit pool
-  static const int aiChatCreditCost = 1;
+  static const double aiChatCreditCost = 0.5;
   static const int compareAiCreditCost = 2;
   static const int detailAiCreditCost = 1;
   static const int detailMatchAiCreditCost = 1;
@@ -86,7 +86,7 @@ class AppConstants {
   static const int freePriceHistoryDays = 7;
   static const int proPriceHistoryDays = 90;
 
-  static int creditCostForFeature(String featureName) {
+  static num creditCostForFeature(String featureName) {
     return switch (featureName) {
       'ai_question' || 'ai_chat' => aiChatCreditCost,
       'compare_ai' => compareAiCreditCost,
@@ -99,6 +99,17 @@ class AppConstants {
       'product_scan' => productScanCreditCost,
       _ => 1,
     };
+  }
+
+  static String formatQorAmount(num amount, {String? languageCode}) {
+    final value = amount.toDouble();
+    final formatted = value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+    if ((languageCode ?? '').toLowerCase() == 'tr') {
+      return formatted.replaceAll('.', ',');
+    }
+    return formatted;
   }
 
   // Premium Pricing (3-day free trial on both plans)

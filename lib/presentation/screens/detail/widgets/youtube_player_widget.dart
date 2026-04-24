@@ -25,12 +25,7 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   double _dx = -1;
   double _dy = -1;
   bool _positionSet = false;
-  bool _hidden = false;
-
-  VideoPlayerController? _videoCtrl;
-  ChewieController? _chewieCtrl;
-  bool _loading = true;
-  bool _hasError = false;
+  late final WebViewController _webCtrl;
 
   static const _playerW = 300.0;
   static const _playerH = 169.0;
@@ -38,49 +33,16 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   @override
   void initState() {
     super.initState();
-    _initPlayer();
-  }
-
-  Future<void> _initPlayer() async {
-    try {
-      final yte = yt_explode.YoutubeExplode();
-      final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
-      yte.close();
-
-      final stream = _bestMuxed(manifest);
-      final url = stream.url.toString();
-
-      _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
-      await _videoCtrl!.initialize();
-
-      _chewieCtrl = ChewieController(
-        videoPlayerController: _videoCtrl!,
-        autoPlay: true,
-        looping: false,
-        showControls: false, // mini'de kontroller yok — tap ile fullscreen açılır
-        aspectRatio: 16 / 9,
-        allowFullScreen: false,
-        allowPlaybackSpeedChanging: false,
-        placeholder: Container(color: Colors.black),
-      );
-
-      if (mounted) setState(() => _loading = false);
-    } catch (_) {
-      if (mounted) setState(() { _loading = false; _hasError = true; });
-    }
-  }
-
-  @override
-  void dispose() {
-    _chewieCtrl?.dispose();
-    _videoCtrl?.dispose();
-    super.dispose();
+    _webCtrl = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..loadRequest(Uri.parse(
+        'https://www.youtube.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=1&rel=0&modestbranding=1&vq=hd1080',
+      ));
   }
 
   void _openFullscreen() {
-    if (_videoCtrl == null) return;
-    _videoCtrl!.pause();
-    setState(() => _hidden = true);
     Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
         fullscreenDialog: true,
@@ -89,33 +51,21 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
         pageBuilder: (_, __, ___) => _FullscreenYouTubePlayer(
           videoId: widget.videoId,
           title: widget.title,
-          existingController: _videoCtrl,
         ),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
       ),
-    ).then((_) {
-      if (mounted) {
-        setState(() => _hidden = false);
-        _videoCtrl?.play();
-      }
-    });
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_hidden) return const SizedBox.shrink();
-
     final size = MediaQuery.of(context).size;
     if (!_positionSet) {
       _dx = size.width - _playerW - 12;
       _dy = size.height - _playerH - 100;
       _positionSet = true;
     }
-
-    final thumb = widget.thumbnailUrl.isNotEmpty
-        ? widget.thumbnailUrl
-        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
 
     return Positioned(
       left: _dx, top: _dy,
@@ -135,18 +85,14 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Stack(children: [
-              // Video veya durum gösterimi
               Positioned.fill(
-                child: _loading
-                    ? _buildLoading(thumb)
-                    : _hasError
-                        ? _buildError(thumb)
-                        : GestureDetector(
-                            onTap: _openFullscreen,
-                            child: Chewie(controller: _chewieCtrl!),
-                          ),
+                child: GestureDetector(
+                  onTap: _openFullscreen,
+                  child: AbsorbPointer(
+                    child: WebViewWidget(controller: _webCtrl),
+                  ),
+                ),
               ),
-
               // Üst şerit — DRAG + fullscreen + kapat
               Positioned(top: 0, left: 0, right: 0,
                 child: GestureDetector(
@@ -178,11 +124,10 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
                           borderRadius: BorderRadius.circular(2)),
                       ),
                       const Spacer(),
-                      if (!_loading && !_hasError)
-                        _MiniBtn(
-                          icon: Icons.fullscreen_rounded,
-                          onTap: _openFullscreen,
-                        ),
+                      _MiniBtn(
+                        icon: Icons.fullscreen_rounded,
+                        onTap: _openFullscreen,
+                      ),
                       _MiniBtn(
                         icon: Icons.close_rounded,
                         onTap: widget.onClose,
@@ -197,52 +142,21 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
       ),
     );
   }
-
-  Widget _buildLoading(String thumb) {
-    return Stack(fit: StackFit.expand, children: [
-      Image.network(thumb, fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(color: Colors.black)),
-      Container(color: Colors.black.withValues(alpha: 0.5)),
-      const Center(child: CircularProgressIndicator(color: Colors.red, strokeWidth: 2)),
-    ]);
-  }
-
-  Widget _buildError(String thumb) {
-    return GestureDetector(
-      onTap: () {
-        setState(() { _loading = true; _hasError = false; });
-        _initPlayer();
-      },
-      child: Stack(fit: StackFit.expand, children: [
-        Image.network(thumb, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A1A))),
-        Container(color: Colors.black.withValues(alpha: 0.6)),
-        Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.refresh_rounded,
-            color: Colors.white.withValues(alpha: 0.7), size: 28),
-          const SizedBox(height: 6),
-          Text('Yeniden dene',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11, fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.7))),
-        ]),
-      ]),
-    );
-  }
 }
 
 // ═══════════════════════════════════════════════════════════
-// FULLSCREEN PLAYER — mevcut controller, video kesilmez
+// FULLSCREEN PLAYER — WebView embed, 1080p+
 // ═══════════════════════════════════════════════════════════
 
 class _FullscreenYouTubePlayer extends StatefulWidget {
   final String videoId;
   final String title;
-  final VideoPlayerController? existingController;
+  // existingController kept for API compat but no longer used
+  // ignore: unused_element
   const _FullscreenYouTubePlayer({
     required this.videoId,
     required this.title,
-    this.existingController,
+    VideoPlayerController? existingController,
   });
 
   @override
@@ -251,56 +165,19 @@ class _FullscreenYouTubePlayer extends StatefulWidget {
 }
 
 class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
-  VideoPlayerController? _videoCtrl;
-  ChewieController? _chewieCtrl;
-  bool _loading = true;
-  bool _ownController = false;
+  late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.existingController != null) {
-      _videoCtrl = widget.existingController!;
-      _ownController = false;
-      _setupChewie();
-    } else {
-      _ownController = true;
-      _loadAndPlay();
-    }
-  }
-
-  void _setupChewie() {
-    _chewieCtrl = ChewieController(
-      videoPlayerController: _videoCtrl!,
-      autoPlay: true,
-      looping: false,
-      showControls: true,
-      aspectRatio: 16 / 9,
-      allowFullScreen: false,
-      allowPlaybackSpeedChanging: true,
-      materialProgressColors: ChewieProgressColors(
-        playedColor: Colors.red,
-        handleColor: Colors.red,
-        backgroundColor: Colors.white24,
-        bufferedColor: Colors.white38,
-      ),
-    );
-    if (mounted) setState(() => _loading = false);
-  }
-
-  Future<void> _loadAndPlay() async {
-    try {
-      final yte = yt_explode.YoutubeExplode();
-      final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
-      yte.close();
-      final url = _bestMuxed(manifest).url.toString();
-      _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
-      await _videoCtrl!.initialize();
-      _setupChewie();
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
+    _webCtrl = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..loadRequest(Uri.parse(
+        'https://www.youtube.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
+      ));
   }
 
   void _toggleOrientation() {
@@ -320,10 +197,7 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
 
   @override
   void dispose() {
-    // Ekrandan çıkarken orientation sıfırla
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-    _chewieCtrl?.dispose();
-    if (_ownController) _videoCtrl?.dispose();
     super.dispose();
   }
 
@@ -334,15 +208,9 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Video — tüm ekranı kaplar
           Positioned.fill(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: Colors.red))
-                : _chewieCtrl != null
-                    ? Chewie(controller: _chewieCtrl!)
-                    : const Center(child: CircularProgressIndicator(color: Colors.red)),
+            child: WebViewWidget(controller: _webCtrl),
           ),
-          // Geri butonu — sol üst
           Positioned(
             top: topPadding + 8,
             left: 8,
@@ -351,7 +219,6 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
               onTap: () => Navigator.of(context).pop(),
             ),
           ),
-          // Döndür butonu — sağ üst
           Positioned(
             top: topPadding + 8,
             right: 8,
@@ -367,7 +234,6 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
     );
   }
 }
-
 // ═══════════════════════════════════════════════════════════
 // IN-APP PLAYER (liste kartından doğrudan açılır)
 // ═══════════════════════════════════════════════════════════
@@ -381,44 +247,19 @@ class _InAppYouTubePlayer extends StatefulWidget {
 }
 
 class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
-  VideoPlayerController? _videoCtrl;
-  ChewieController? _chewieCtrl;
-  bool _loading = true;
+  late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAndPlay();
-  }
-
-  Future<void> _loadAndPlay() async {
-    try {
-      final yte = yt_explode.YoutubeExplode();
-      final manifest = await yte.videos.streamsClient.getManifest(widget.videoId);
-      yte.close();
-      final url = _bestMuxed(manifest).url.toString();
-      _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(url));
-      await _videoCtrl!.initialize();
-      _chewieCtrl = ChewieController(
-        videoPlayerController: _videoCtrl!,
-        autoPlay: true,
-        looping: false,
-        showControls: true,
-        aspectRatio: 16 / 9,
-        allowFullScreen: false,
-        allowPlaybackSpeedChanging: true,
-        materialProgressColors: ChewieProgressColors(
-          playedColor: Colors.red,
-          handleColor: Colors.red,
-          backgroundColor: Colors.white24,
-          bufferedColor: Colors.white38,
-        ),
-      );
-      if (mounted) setState(() => _loading = false);
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
+    _webCtrl = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..loadRequest(Uri.parse(
+        'https://www.youtube.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
+      ));
   }
 
   void _toggleOrientation() {
@@ -439,8 +280,6 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
   @override
   void dispose() {
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-    _chewieCtrl?.dispose();
-    _videoCtrl?.dispose();
     super.dispose();
   }
 
@@ -452,11 +291,7 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: Colors.red))
-                : _chewieCtrl != null
-                    ? Chewie(controller: _chewieCtrl!)
-                    : const Center(child: Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48)),
+            child: WebViewWidget(controller: _webCtrl),
           ),
           Positioned(
             top: topPadding + 8,
@@ -536,23 +371,12 @@ class _MiniBtn extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-// YARDIMCI — en yüksek kaliteli muxed stream seç (720p > 480p > en yüksek)
+// YARDIMCI — mevcut en yüksek kaliteli muxed stream'i seç
 // ═══════════════════════════════════════════════════════════
 
 yt_explode.MuxedStreamInfo _bestMuxed(yt_explode.StreamManifest manifest) {
   final sorted = manifest.muxed.sortByBitrate();
   if (sorted.isEmpty) return manifest.muxed.withHighestBitrate();
-
-  // 720p varsa onu seç, yoksa 480p, yoksa en yüksek bitrate
-  for (final q in [
-    yt_explode.VideoQuality.high720,
-    yt_explode.VideoQuality.medium480,
-    yt_explode.VideoQuality.medium360,
-  ]) {
-    try {
-      return sorted.firstWhere((s) => s.videoQuality == q);
-    } catch (_) {}
-  }
   return sorted.last;
 }
 

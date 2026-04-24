@@ -670,18 +670,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       child: Stack(
         children: [
-          Positioned(
-            right: -10,
-            top: -10,
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
           Center(
             child: Text(
               initials,

@@ -192,6 +192,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     final top = widget.isOverlay ? 0.0 : MediaQuery.of(context).padding.top;
     final sub = ref.watch(subscriptionServiceProvider);
     final aiChatCost = sub.creditCostForFeature('ai_chat');
+    final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
+    final aiChatCostLabel =
+        '${AppConstants.formatQorAmount(aiChatCost, languageCode: langCode)} ${AppConstants.qorCurrencyName}';
     return Container(
       padding: EdgeInsets.only(top: top + 10, bottom: 10, left: 16, right: 12),
       decoration: BoxDecoration(
@@ -214,41 +217,53 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
           ),
           const SizedBox(width: 10),
         ],
-        // "Qor AI" title — no logo, no subtitle
+        // "Qor AI" title + inline Q cost
         Expanded(
-          child: Text.rich(
-            TextSpan(
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: context.textPrimary,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                    children: const [
+                      TextSpan(text: 'Qor '),
+                      TextSpan(text: 'AI'),
+                    ],
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              children: const [
-                TextSpan(text: 'Qor '),
-                TextSpan(text: 'AI'),
+              if (!sub.isPremium) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentCyan.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: AppTheme.accentCyan.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: Text(
+                    aiChatCostLabel,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.accentCyan,
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
-        if (!sub.isPremium) ...[
-          QorBalanceBadge(
-            remaining: sub.remainingDailyCredits,
-            total: AppConstants.freeDailyAiCreditLimit,
-            unlimited: false,
-            color: AppTheme.accentCyan,
-            fontSize: 9,
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-          ),
-          const SizedBox(width: 6),
-          QorAmountBadge(
-            amount: aiChatCost,
-            unlimited: false,
-            color: AppTheme.accentCyan,
-            fontSize: 10,
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-          ),
-          const SizedBox(width: 8),
-        ],
         // Right: home (full screen only)
         if (!widget.isOverlay) ...[
           GestureDetector(

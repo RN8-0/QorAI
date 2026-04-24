@@ -49,6 +49,8 @@ mixin GeminiCacheNotifierMixin<T> on StateNotifier<AsyncValue<T?>> {
   }
 }
 
+const Duration _premiumAiRequestTimeout = Duration(seconds: 18);
+
 bool _isTurkishLanguage(String languageCode) {
   return languageCode.trim().toLowerCase().startsWith('tr');
 }
@@ -206,9 +208,10 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
 
     _emitStep('Kullanıcı yorumları analiz ediliyor…', 'Analyzing user reviews…');
     try {
-      final deepseek = _ref.read(deepSeekServiceProvider);
+      final gemini = _ref.read(geminiServiceProvider);
       final langName = _getLanguageName(_languageCode);
-      final response = await deepseek.jsonFreeTextQuery(
+      final response = await gemini
+          .jsonFreeTextQuery(
         'You are a senior technology product analyst with expertise in consumer electronics. '
         'Based on your comprehensive knowledge of publicly available user reviews, Reddit threads, '
         'professional review sites (GSMArena, RTINGS, NotebookCheck, Tom\'s Hardware, etc.), '
@@ -226,7 +229,12 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
         '"criticized": Array of 3-4 specific, real-world issues users consistently report. '
         'Be honest and precise (e.g., "Thermal throttling under sustained CPU load" not just "heating").',
         language: _languageCode,
-      );
+        maxTokens: 1400,
+      )
+          .timeout(
+            _premiumAiRequestTimeout,
+            onTimeout: () => throw Exception('ai review timeout'),
+          );
 
       // Save raw response to disk cache
       if (response.isNotEmpty) {
@@ -675,13 +683,14 @@ class _DeepAnalysisNotifier
 
     _emitStep('Teknik özellikler değerlendiriliyor…', 'Evaluating technical specs…');
     try {
-      final deepseek = _ref.read(deepSeekServiceProvider);
+      final gemini = _ref.read(geminiServiceProvider);
       final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
       final brandInfo = (brand != null && brand.isNotEmpty) ? ' by $brand' : '';
       final yearInfo = (year != null && year > 0)
           ? ', released around $year'
           : '';
-      final result = await deepseek.jsonFreeTextQuery(
+      final result = await gemini
+          .jsonFreeTextQuery(
         'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
         'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
         'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and the verdict MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
@@ -702,7 +711,12 @@ class _DeepAnalysisNotifier
         '- Verdict must include concrete technical or category-specific evidence\n'
         '- Be honest and specific, not generic praise',
         language: _languageCode,
-      );
+        maxTokens: 1800,
+      )
+          .timeout(
+            _premiumAiRequestTimeout,
+            onTimeout: () => throw Exception('deep analysis timeout'),
+          );
       // Save to disk cache
       if (result.isNotEmpty) {
         cache
@@ -831,8 +845,9 @@ class _AlternativesCacheNotifier
 
     _emitStep('Alternatif ürünler aranıyor…', 'Searching for alternatives…');
     try {
-      final deepseek = _ref.read(deepSeekServiceProvider);
-      final result = await deepseek.jsonFreeTextQuery(
+      final gemini = _ref.read(geminiServiceProvider);
+      final result = await gemini
+          .jsonFreeTextQuery(
         'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and short explanations MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
         'If the selected language is Turkish, do not use English in the explanation fields.\n\n'
         'Return a JSON object with this EXACT structure:\n'
@@ -851,7 +866,12 @@ class _AlternativesCacheNotifier
         'Provide exactly 5 real alternative products. '
         'Use complete model names and include concrete differences (performance, battery, camera, software, build quality, price band).',
         language: _languageCode,
-      );
+        maxTokens: 900,
+      )
+          .timeout(
+            _premiumAiRequestTimeout,
+            onTimeout: () => throw Exception('alternatives timeout'),
+          );
       if (result.isNotEmpty) {
         cache
             .set(cacheKey, result, duration: const Duration(hours: 24))
@@ -963,8 +983,9 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
 
     _emitStep('Satın alma tavsiyeleri hazırlanıyor…', 'Preparing buying advice…');
     try {
-      final deepseek = _ref.read(deepSeekServiceProvider);
-      final result = await deepseek.jsonFreeTextQuery(
+      final gemini = _ref.read(geminiServiceProvider);
+      final result = await gemini
+          .jsonFreeTextQuery(
         'IMPORTANT: Return ONLY valid JSON. ALL text fields and list items MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
         'If the selected language is Turkish, do not use English in the advice text.\n\n'
         'Return a JSON object with this EXACT structure:\n'
@@ -979,7 +1000,12 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
         '}\n\n'
         'Be specific and honest. Reasons should be detailed (12-24 words each) with concrete user impact.',
         language: _languageCode,
-      );
+        maxTokens: 1100,
+      )
+          .timeout(
+            _premiumAiRequestTimeout,
+            onTimeout: () => throw Exception('advisor timeout'),
+          );
       if (result.isNotEmpty) {
         cache
             .set(cacheKey, result, duration: const Duration(hours: 24))
@@ -1101,9 +1127,10 @@ class _PredictionCacheNotifier
 
     _emitStep('Fiyat trendi analiz ediliyor…', 'Analyzing price trends…');
     try {
-      final deepseek = _ref.read(deepSeekServiceProvider);
+      final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
-      final result = await deepseek.jsonFreeTextQuery(
+      final result = await gemini
+          .jsonFreeTextQuery(
         'Current year: ${DateTime.now().year}.\n'
         'IMPORTANT: Return ONLY valid JSON. ALL explanatory text fields MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
         'If the selected language is Turkish, do not write English analysis text anywhere except official product/model names. '
@@ -1129,7 +1156,12 @@ class _PredictionCacheNotifier
         'Avoid stock phrases and explain the product-specific trigger behind the prediction. '
         'trendPercentage is the expected price change amount in percent.',
         language: _languageCode,
-      );
+        maxTokens: 1200,
+      )
+          .timeout(
+            _premiumAiRequestTimeout,
+            onTimeout: () => throw Exception('prediction timeout'),
+          );
       if (result.isNotEmpty) {
         cache
             .set(cacheKey, result, duration: const Duration(hours: 24))

@@ -244,6 +244,14 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     ref
         .read(geminiMatchScoreProvider(cacheKey).notifier)
         .fetchMatchScore(product: widget.product);
+
+    // Aynı anda AI yorum özetini de başlat
+    final reviewAsync = ref.read(aiReviewCacheProvider(cacheKey));
+    if (reviewAsync.valueOrNull == null && reviewAsync is! AsyncLoading) {
+      ref
+          .read(aiReviewCacheProvider(cacheKey).notifier)
+          .startAnalysis(widget.product.name);
+    }
   }
 
   void _maybeTriggerGeminiFetch() {
@@ -302,7 +310,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       ),
     );
 
-    final int? localFitScore = quizDone && isPremium ? _cachedFitScore : null;
+    final int? localFitScore = quizDone ? _cachedFitScore : null;
 
     // Watch AI result.
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
@@ -346,8 +354,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       !showMatchLoading &&
       !isMatchProfileResolving;
 
-    if (isPremium &&
-        quizDone &&
+    if (quizDone &&
         matchResult == null &&
         !showMatchLoading &&
         _cachedFitScore == null) {
@@ -371,6 +378,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
 
     return Column(
       children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
           decoration: BoxDecoration(
@@ -504,93 +514,49 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                                 ],
                               ),
                             )
-                          : showFreeAiRequest
-                          ? GestureDetector(
-                              onTap: _requestManualAiMatch,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                  horizontal: 16,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 44,
-                                      height: 44,
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          CircularProgressIndicator(
-                                            value: 1.0,
-                                            strokeWidth: 3,
-                                            color: AppTheme.primaryBlue
-                                                .withValues(alpha: 0.18),
+                          : showFreeAiRequest && _cachedFitScore == null
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 44,
+                                    height: 44,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            AppTheme.primaryBlue,
                                           ),
-                                          Icon(
-                                            Icons.auto_awesome_rounded,
-                                            size: 16,
-                                            color: AppTheme.primaryBlue,
-                                          ),
-                                        ],
+                                        ),
+                                        Icon(
+                                          Icons.calculate_outlined,
+                                          size: 16,
+                                          color: AppTheme.primaryBlue,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      context.l10n?.yourMatch ?? 'Your Match',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.primaryBlue,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            context.l10n?.yourMatch ??
-                                                'Your Match',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppTheme.slate500,
-                                              letterSpacing: 0.4,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  context.l10n
-                                                          ?.seeMyMatchScore ??
-                                                      'See My Match Score',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.w700,
-                                                    color: AppTheme.primaryBlue,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              QorAmountBadge(
-                                                amount: detailMatchCost,
-                                                color: AppTheme.primaryBlue,
-                                                fontSize: 10,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 3,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             )
                           : GestureDetector(
@@ -668,6 +634,46 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                 ),
               ],
             ),
+        ),
+        // AI trigger button — free user, quiz done, algorithm score ready, no AI yet
+        if (showFreeAiRequest && _cachedFitScore != null && !_geminiFetchTriggered)
+          Positioned(
+            top: -8,
+            right: 12,
+            child: GestureDetector(
+              onTap: _requestManualAiMatch,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.primaryBlue, AppTheme.brandCyan],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 11, color: Colors.white),
+                    const SizedBox(width: 4),
+                    QorAmountBadge(
+                      amount: detailMatchCost,
+                      color: Colors.white,
+                      fontSize: 10,
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
         ),
         // Gemini reason text (tap to expand)
         if (reason != null && fitScore != null)
