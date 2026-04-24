@@ -528,7 +528,7 @@ Instructions:
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  _uiText(tr: 'Gorsel Tarayici', en: 'Visual Scanner'),
+                  _uiText(tr: 'Görsel Tarayıcı', en: 'Visual Scanner'),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,

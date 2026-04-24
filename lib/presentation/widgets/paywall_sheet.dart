@@ -510,7 +510,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'pl' => '$count/dzien',
       'pt' => '$count/dia',
       'sv' => '$count/dag',
-      'tr' => '$count/gun',
+      'tr' => '$count/gün',
       _ => '$count/day',
     };
   }
