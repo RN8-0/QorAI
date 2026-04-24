@@ -66,6 +66,23 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    if (!_positionSet) {
+      _dx = size.width - _playerW - 12;
+      _dy = size.height - _playerH - 100;
+      _positionSet = true;
+    }
+
+    return Positioned(
+      left: _dx, top: _dy,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: _playerW, height: _playerH,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
                 color: Colors.black.withValues(alpha: 0.55),
                 blurRadius: 24, offset: const Offset(0, 8)),
             ],
