@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -14,6 +16,39 @@ fun localProp(key: String, default: String = ""): String {
         if (line.startsWith("$key=")) return line.substringAfter("=").trim()
     }
     return default
+}
+
+fun signingProp(primaryKey: String, legacyKey: String, default: String = ""): String {
+    val primaryValue = localProp(primaryKey)
+    if (primaryValue.isNotBlank()) return primaryValue
+
+    val keyPropertiesFile = rootProject.file("key.properties")
+    if (!keyPropertiesFile.exists()) return default
+
+    keyPropertiesFile.readLines().forEach { line ->
+        if (line.startsWith("$legacyKey=")) return line.substringAfter("=").trim()
+    }
+
+    return default
+}
+
+fun resolveStoreFile(configuredPath: String): File {
+    val trimmedPath = configuredPath.trim()
+    if (trimmedPath.isEmpty()) return rootProject.file("app/compair-release.jks")
+
+    val directFile = file(trimmedPath)
+    if (directFile.exists()) return directFile
+
+    val androidRelativeFile = rootProject.file(trimmedPath)
+    if (androidRelativeFile.exists()) return androidRelativeFile
+
+    val appRelativeFile = rootProject.file("app/$trimmedPath")
+    if (appRelativeFile.exists()) return appRelativeFile
+
+    val compatFile = rootProject.file("app/compair-release.jks")
+    if (compatFile.exists()) return compatFile
+
+    return appRelativeFile
 }
 
 android {
@@ -33,10 +68,10 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = localProp("RELEASE_KEY_ALIAS", "qorai")
-            keyPassword = localProp("RELEASE_KEY_PASSWORD")
-            storeFile = file(localProp("RELEASE_STORE_FILE", "qorai-release.jks"))
-            storePassword = localProp("RELEASE_STORE_PASSWORD")
+            keyAlias = signingProp("RELEASE_KEY_ALIAS", "keyAlias", "qorai")
+            keyPassword = signingProp("RELEASE_KEY_PASSWORD", "keyPassword")
+            storeFile = resolveStoreFile(signingProp("RELEASE_STORE_FILE", "storeFile", "qorai-release.jks"))
+            storePassword = signingProp("RELEASE_STORE_PASSWORD", "storePassword")
         }
     }
 
