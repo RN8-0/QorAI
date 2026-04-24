@@ -30,20 +30,15 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   static const _playerW = 300.0;
   static const _playerH = 169.0;
 
-  static const _kUserAgent =
-      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
-
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
-        'https://www.youtube.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=1&rel=0&modestbranding=1&vq=hd1080',
+        'https://www.youtube-nocookie.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=1&rel=0&modestbranding=1&vq=hd1080&hd=1',
       ));
   }
 
@@ -173,20 +168,15 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
   late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
-  static const _kUserAgent =
-      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
-
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
-        'https://www.youtube.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
+        'https://www.youtube-nocookie.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&hd=1&fs=1',
       ));
   }
 
@@ -260,20 +250,15 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
   late final WebViewController _webCtrl;
   bool _isLandscape = false;
 
-  static const _kUserAgent =
-      'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
-
   @override
   void initState() {
     super.initState();
     _webCtrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(_kUserAgent)
       ..setBackgroundColor(Colors.black)
       ..loadRequest(Uri.parse(
-        'https://www.youtube.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
+        'https://www.youtube-nocookie.com/embed/${widget.videoId}'
+        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&hd=1&fs=1',
       ));
   }
 

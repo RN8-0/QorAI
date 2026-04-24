@@ -244,14 +244,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     ref
         .read(geminiMatchScoreProvider(cacheKey).notifier)
         .fetchMatchScore(product: widget.product);
-
-    // Aynı anda AI yorum özetini de başlat
-    final reviewAsync = ref.read(aiReviewCacheProvider(cacheKey));
-    if (reviewAsync.valueOrNull == null && reviewAsync is! AsyncLoading) {
-      ref
-          .read(aiReviewCacheProvider(cacheKey).notifier)
-          .startAnalysis(widget.product.name);
-    }
   }
 
   void _maybeTriggerGeminiFetch() {
@@ -635,8 +627,8 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
               ],
             ),
         ),
-        // AI trigger button — free user, quiz done, algorithm score ready, no AI yet
-        if (showFreeAiRequest && _cachedFitScore != null && !_geminiFetchTriggered)
+        // AI trigger button — free user, quiz done, no AI yet
+        if (showFreeAiRequest && !_geminiFetchTriggered)
           Positioned(
             top: -8,
             right: 12,
@@ -645,23 +637,21 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.primaryBlue, AppTheme.brandCyan],
-                  ),
+                  color: AppTheme.primaryBlue,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryBlue.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.auto_awesome_rounded, size: 11, color: Colors.white),
-                    const SizedBox(width: 4),
+                    Text(
+                      'AI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
                     QorAmountBadge(
                       amount: detailMatchCost,
                       color: Colors.white,
