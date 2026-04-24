@@ -3,7 +3,6 @@ library;
 
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -20,6 +19,8 @@ import 'package:qor_ai/data/datasources/hive_ds.dart';
 import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 
+const _kStartupHeavyWorkDelay = Duration(seconds: 15);
+
 Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
   await Future.wait([
     cacheService.delete('home_feed_products'),
@@ -34,11 +35,11 @@ Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
 }
 
 void _scheduleDeferredStartupTasks() {
-  Future.delayed(const Duration(seconds: 8), () {
+  Future.delayed(_kStartupHeavyWorkDelay, () {
     unawaited(_initializeSpecTranslations());
   });
   if (!kIsWeb) {
-    Future.delayed(const Duration(seconds: 8), () {
+    Future.delayed(_kStartupHeavyWorkDelay, () {
       unawaited(_initializeNotifications());
     });
   }
@@ -84,11 +85,6 @@ void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Initialize Firebase (required for FCM push notifications)
-    if (!kIsWeb) {
-      await Firebase.initializeApp();
-    }
-
     // System UI settings (mobile only)
     if (!kIsWeb) {
       SystemChrome.setSystemUIOverlayStyle(
@@ -132,7 +128,7 @@ void main() {
     // Initialize Remote Config via PocketBase
     final remoteConfigService = RemoteConfigService.fromPb(
       PbDataSource(),
-      deferredLoad: const Duration(seconds: 6),
+      deferredLoad: const Duration(seconds: 12),
     );
 
     debugPrint('=== QOR AI: Calling runApp ===');

@@ -60,6 +60,8 @@ part 'compare_providers.dart';
 part 'cache_providers.dart';
 part 'ai_providers.dart';
 
+const _kSubscriptionStartupDelay = Duration(seconds: 12);
+
 // ════════════════════════════════════════════════════
 // ─── CORE SERVICE PROVIDERS ─── (Provider tipi)
 // ════════════════════════════════════════════════════
@@ -123,6 +125,19 @@ final deepSeekServiceProvider = Provider<DeepSeekService>((ref) {
 final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
   (ref) {
     final service = SubscriptionService();
+    bool initializationScheduled = false;
+
+    void scheduleInitialization() {
+      if (initializationScheduled || service.isInitialized) {
+        return;
+      }
+      initializationScheduled = true;
+      Future<void>.delayed(_kSubscriptionStartupDelay, () async {
+        if (!service.isInitialized) {
+          await service.initialize();
+        }
+      });
+    }
 
     // CRITICAL: use ref.listen (NOT ref.watch) for authStateProvider.
     // ref.watch would cause this ChangeNotifierProvider to be disposed and
@@ -132,7 +147,7 @@ final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
     ref.listen<AsyncValue<String?>>(authStateProvider, (_, next) {
       next.whenData((uid) {
         if (uid != null && !service.isInitialized) {
-          unawaited(service.initialize());
+          scheduleInitialization();
           unawaited(service.refreshUsageIdentity(force: true));
         } else if (uid != null) {
           unawaited(service.refreshUsageIdentity(force: true));
@@ -147,7 +162,7 @@ final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
     final currentAuth = ref.read(authStateProvider);
     currentAuth.whenData((uid) {
       if (uid != null && !service.isInitialized) {
-        unawaited(service.initialize());
+        scheduleInitialization();
       }
     });
 

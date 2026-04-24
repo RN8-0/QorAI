@@ -3,6 +3,7 @@
 library;
 
 import 'dart:io' show Platform;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -10,6 +11,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 /// FCM background message handler — must be top-level.
 @pragma('vm:entry-point')
 Future<void> notificationBackgroundHandler(RemoteMessage message) async {
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+  }
   debugPrint('[FCM] Background message: ${message.notification?.title}');
 }
 
@@ -35,7 +39,7 @@ class NotificationService {
   NotificationService._();
   static final instance = NotificationService._();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
 
@@ -53,6 +57,10 @@ class NotificationService {
   }
 
   Future<void> initialize() async {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+
     // Register background handler
     FirebaseMessaging.onBackgroundMessage(notificationBackgroundHandler);
 
