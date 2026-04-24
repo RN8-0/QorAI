@@ -25,7 +25,7 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   double _dx = -1;
   double _dy = -1;
   bool _positionSet = false;
-  late final WebViewController _webCtrl;
+  late final YoutubePlayerController _ytCtrl;
 
   static const _playerW = 300.0;
   static const _playerH = 169.0;
@@ -33,13 +33,20 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
   @override
   void initState() {
     super.initState();
-    _webCtrl = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..loadRequest(Uri.parse(
-        'https://www.youtube.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=1&rel=0&modestbranding=1&vq=hd1080',
-      ));
+    _ytCtrl = YoutubePlayerController.fromVideoId(
+      videoId: widget.videoId,
+      autoPlay: true,
+      params: const YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: false,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ytCtrl.close();
+    super.dispose();
   }
 
   void _openFullscreen() {
@@ -86,11 +93,9 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
             borderRadius: BorderRadius.circular(14),
             child: Stack(children: [
               Positioned.fill(
-                child: GestureDetector(
-                  onTap: _openFullscreen,
-                  child: AbsorbPointer(
-                    child: WebViewWidget(controller: _webCtrl),
-                  ),
+                child: YoutubePlayer(
+                  controller: _ytCtrl,
+                  aspectRatio: _playerW / _playerH,
                 ),
               ),
               // Üst şerit — DRAG + fullscreen + kapat
@@ -165,19 +170,20 @@ class _FullscreenYouTubePlayer extends StatefulWidget {
 }
 
 class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
-  late final WebViewController _webCtrl;
+  late final YoutubePlayerController _ytCtrl;
   bool _isLandscape = false;
 
   @override
   void initState() {
     super.initState();
-    _webCtrl = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..loadRequest(Uri.parse(
-        'https://www.youtube.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
-      ));
+    _ytCtrl = YoutubePlayerController.fromVideoId(
+      videoId: widget.videoId,
+      autoPlay: true,
+      params: const YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: true,
+      ),
+    );
   }
 
   void _toggleOrientation() {
@@ -197,6 +203,7 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
 
   @override
   void dispose() {
+    _ytCtrl.close();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
@@ -208,8 +215,12 @@ class _FullscreenYouTubePlayerState extends State<_FullscreenYouTubePlayer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: WebViewWidget(controller: _webCtrl),
+          const Positioned.fill(child: ColoredBox(color: Colors.black)),
+          Center(
+            child: YoutubePlayer(
+              controller: _ytCtrl,
+              aspectRatio: 16 / 9,
+            ),
           ),
           Positioned(
             top: topPadding + 8,
@@ -247,19 +258,20 @@ class _InAppYouTubePlayer extends StatefulWidget {
 }
 
 class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
-  late final WebViewController _webCtrl;
+  late final YoutubePlayerController _ytCtrl;
   bool _isLandscape = false;
 
   @override
   void initState() {
     super.initState();
-    _webCtrl = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..loadRequest(Uri.parse(
-        'https://www.youtube.com/embed/${widget.videoId}'
-        '?autoplay=1&playsinline=0&rel=0&modestbranding=1&vq=hd1080&fs=1',
-      ));
+    _ytCtrl = YoutubePlayerController.fromVideoId(
+      videoId: widget.videoId,
+      autoPlay: true,
+      params: const YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: true,
+      ),
+    );
   }
 
   void _toggleOrientation() {
@@ -279,6 +291,7 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
 
   @override
   void dispose() {
+    _ytCtrl.close();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
@@ -290,8 +303,12 @@ class _InAppYouTubePlayerState extends State<_InAppYouTubePlayer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: WebViewWidget(controller: _webCtrl),
+          const Positioned.fill(child: ColoredBox(color: Colors.black)),
+          Center(
+            child: YoutubePlayer(
+              controller: _ytCtrl,
+              aspectRatio: 16 / 9,
+            ),
           ),
           Positioned(
             top: topPadding + 8,

@@ -592,6 +592,78 @@ class HomeFeed {
   });
 }
 
+const _homeFeedReadyCacheVersion = 'v1';
+
+String _homeFeedReadyCacheKey(String country, UserEntity? user) {
+  return 'home_feed_ready_${country.toLowerCase()}_${user?.uid ?? "anon"}_$_homeFeedReadyCacheVersion';
+}
+
+List<String> _homeFeedIds(List<ProductEntity> products) {
+  return products.map((product) => product.id).toList(growable: false);
+}
+
+Map<String, dynamic> _serializeHomeFeedForCache(HomeFeed feed) {
+  final productsById = <String, Map<String, dynamic>>{};
+  for (final product in feed.all) {
+    productsById[product.id] = ProductModel.fromEntity(product).toMap();
+  }
+
+  return {
+    'productsById': productsById,
+    'all': _homeFeedIds(feed.all),
+    'trending': _homeFeedIds(feed.trending),
+    'featured': _homeFeedIds(feed.featured),
+    'newArrivals': _homeFeedIds(feed.newArrivals),
+    'discover': _homeFeedIds(feed.discover),
+    'priorityCategories': feed.priorityCategories,
+    'byCategory': feed.byCategory.map(
+      (key, value) => MapEntry(key, _homeFeedIds(value)),
+    ),
+  };
+}
+
+HomeFeed _restoreHomeFeedFromCacheIsolate(Map<String, dynamic> raw) {
+  final rawProductsById = Map<String, dynamic>.from(
+    raw['productsById'] as Map? ?? const {},
+  );
+  final productsById = <String, ProductEntity>{
+    for (final entry in rawProductsById.entries)
+      entry.key: ProductModel.fromMap(
+        Map<String, dynamic>.from(entry.value as Map),
+      ),
+  };
+
+  List<ProductEntity> pick(String key) {
+    final ids = List<String>.from(raw[key] as List? ?? const []);
+    return ids
+        .map((id) => productsById[id])
+        .whereType<ProductEntity>()
+        .toList(growable: false);
+  }
+
+  final rawByCategory = Map<String, dynamic>.from(
+    raw['byCategory'] as Map? ?? const {},
+  );
+
+  return HomeFeed(
+    trending: pick('trending'),
+    featured: pick('featured'),
+    byCategory: {
+      for (final entry in rawByCategory.entries)
+        entry.key: List<String>.from(entry.value as List? ?? const [])
+            .map((id) => productsById[id])
+            .whereType<ProductEntity>()
+            .toList(growable: false),
+    },
+    newArrivals: pick('newArrivals'),
+    discover: pick('discover'),
+    all: pick('all'),
+    priorityCategories: List<String>.from(
+      raw['priorityCategories'] as List? ?? const [],
+    ),
+  );
+}
+
 class _ViewedBehaviorSnapshot {
   final Map<String, double> categoryScores;
   final Map<String, double> brandScores;
@@ -1647,6 +1719,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final repo = ref.read(productRepositoryProvider);
   final cache = ref.read(cacheServiceProvider);
   final user = ref.read(userProfileProvider).valueOrNull;
+  final readyCacheKey = _homeFeedReadyCacheKey(country, user);
   final feedSw = Stopwatch()..start();
   debugPrint(
     '=== QOR AI: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===',
@@ -1666,6 +1739,56 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
 
   // Start admin config fetch CONCURRENTLY (don't block product loading)
   final configFuture = _fetchAdminConfig();
+
+  // 0.5 Ready-feed cache: skips the expensive rebuild from raw product maps.
+  try {
+    final readyResult = await cache.getLocalStaleAsync<Map<String, dynamic>>(
+      readyCacheKey,
+    );
+    final readyData = readyResult.data;
+    if (readyData != null) {
+      final sw = Stopwatch()..start();
+      final feed = await compute(
+        _restoreHomeFeedFromCacheIsolate,
+        Map<String, dynamic>.from(readyData),
+      );
+      sw.stop();
+      debugPrint(
+        '=== QOR AI: homeFeed from READY cache (stale=${readyResult.isStale}): ${feed.all.length} products in ${sw.elapsedMilliseconds}ms ===',
+      );
+      ref
+          .read(pbDataSourceProvider)
+          .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
+      _inMemoryFeed = feed;
+
+      debugPrint(
+        '=== QOR AI: homeFeed READY (ready-cache path) in ${feedSw.elapsedMilliseconds}ms ===',
+      );
+
+      if (readyResult.isStale && !_isRefreshingFeed) {
+        final config = await _awaitFastFeedConfig(configFuture);
+        _isRefreshingFeed = true;
+        _backgroundRefreshFeed(
+          ref,
+          repo,
+          cache,
+          country,
+          user,
+          cacheKey,
+          readyCacheKey,
+          config.pinnedIds,
+          config.hiddenIds,
+          config.disabledCats,
+        ).whenComplete(() {
+          _isRefreshingFeed = false;
+        });
+      }
+
+      return feed;
+    }
+  } catch (e) {
+    debugPrint('=== QOR AI: ready cache read error: $e ===');
+  }
 
   // 1. STALE-WHILE-REVALIDATE: Show cached data instantly, even if expired
   try {
@@ -1695,6 +1818,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
           .read(pbDataSourceProvider)
           .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
       _inMemoryFeed = feed;
+      Future.microtask(() => _saveReadyFeedToCache(cache, feed, readyCacheKey));
 
       debugPrint(
         '=== QOR AI: homeFeed READY (cache path) in ${feedSw.elapsedMilliseconds}ms ===',
@@ -1710,6 +1834,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
           country,
           user,
           cacheKey,
+          readyCacheKey,
           config.pinnedIds,
           config.hiddenIds,
           config.disabledCats,
@@ -1740,6 +1865,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       country,
       user,
       cacheKey,
+      readyCacheKey,
       config.pinnedIds,
       config.hiddenIds,
       config.disabledCats,
@@ -1819,6 +1945,7 @@ Future<void> _backgroundRefreshFeed(
   String country,
   UserEntity? user,
   String cacheKey,
+  String readyCacheKey,
   List<String> pinnedIds,
   List<String> hiddenIds,
   List<String> disabledCats,
@@ -1847,6 +1974,7 @@ Future<void> _backgroundRefreshFeed(
           disabledCats: disabledCats,
         ),
       );
+      _saveReadyFeedToCache(cache, _inMemoryFeed!, readyCacheKey);
       debugPrint(
         '=== QOR AI: Background refresh done: ${products.length} products ===',
       );
@@ -1864,6 +1992,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
   String country,
   UserEntity? user,
   String cacheKey,
+  String readyCacheKey,
   List<String> pinnedIds,
   List<String> hiddenIds,
   List<String> disabledCats,
@@ -1905,6 +2034,7 @@ Future<HomeFeed> _fetchFeedFromNetwork(
     ),
   );
   _inMemoryFeed = feed;
+  Future.microtask(() => _saveReadyFeedToCache(cache, feed, readyCacheKey));
   debugPrint(
     '=== QOR AI: HomeFeed built — trending:${feed.trending.length} cats:${feed.byCategory.length} all:${feed.all.length} ===',
   );
@@ -2041,6 +2171,17 @@ void _saveProductsToCache(
         .map((p) => ProductModel.fromEntity(p).toMap())
         .toList();
     cache.setLocal(cacheKey, maps, duration: const Duration(hours: 12));
+  } catch (_) {}
+}
+
+void _saveReadyFeedToCache(
+  CacheService cache,
+  HomeFeed feed,
+  String readyCacheKey,
+) {
+  try {
+    final raw = _serializeHomeFeedForCache(feed);
+    cache.setLocal(readyCacheKey, raw, duration: const Duration(hours: 12));
   } catch (_) {}
 }
 

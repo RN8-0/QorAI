@@ -1331,6 +1331,19 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   ),
                 ),
               ),
+        if (!sub.isPremium) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: QorAmountBadge(
+              amount: analysisCreditCost,
+              unlimited: false,
+              color: _kPrimary,
+              fontSize: 10,
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            ),
+          ),
+        ],
       ],
     );
   }

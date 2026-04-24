@@ -646,7 +646,7 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
         // AI trigger button — free user, quiz done, algorithm score ready, no AI yet
         if (_showAiButton && !_geminiFetchTriggered)
           Positioned(
-            top: -10,
+            top: 8,
             right: 12,
             child: GestureDetector(
               onTap: _requestManualAiMatch,
