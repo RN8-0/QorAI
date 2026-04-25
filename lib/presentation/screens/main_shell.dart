@@ -57,8 +57,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   /// After login, get FCM token and save to PocketBase user profile.
-  /// Retries until token is available (FCM init may complete after this widget mounts),
-  /// and listens for token refresh to keep PB up-to-date.
+  /// Uses event-driven flow (no polling): if the token is already available
+  /// register it immediately; otherwise rely on onTokenRefresh which fires
+  /// once the platform produces a token. This avoids the 30× sleep loop
+  /// the original implementation did on every cold start.
   Future<void> _registerFcmToken() async {
     if (kIsWeb) return;
     try {
@@ -67,23 +69,11 @@ class _MainShellState extends ConsumerState<MainShell> {
       if (uid == null) return;
 
       final pbDs = ref.read(pbDataSourceProvider);
+      final messaging = FirebaseMessaging.instance;
 
-      // Wait for token (up to ~30s) since NotificationService.init() may run async.
-      String? token = NotificationService.instance.token;
-      for (int i = 0; token == null && i < 30; i++) {
-        await Future.delayed(const Duration(seconds: 1));
-        token = NotificationService.instance.token;
-      }
-      if (token == null) {
-        debugPrint('[Shell] FCM token still null after 30s, giving up');
-        return;
-      }
-
-      await pbDs.updateFcmToken(uid, token);
-      debugPrint('[Shell] FCM token registered to PB for $uid');
-
-      // Re-register on token refresh.
-      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      // Listen for refreshes first so we never miss the initial token
+      // if it arrives between the read and the listener registration.
+      messaging.onTokenRefresh.listen((newToken) async {
         try {
           await pbDs.updateFcmToken(uid, newToken);
           debugPrint('[Shell] FCM token refreshed in PB for $uid');
@@ -91,6 +81,26 @@ class _MainShellState extends ConsumerState<MainShell> {
           debugPrint('[Shell] FCM token refresh PB write failed: $e');
         }
       });
+
+      // Try the cached token from NotificationService (sync), then fall back
+      // to FirebaseMessaging.getToken() which awaits the platform once.
+      final cached = NotificationService.instance.token;
+      String? token = cached;
+      if (token == null) {
+        try {
+          token = await messaging.getToken();
+        } catch (e) {
+          debugPrint('[Shell] getToken() error: $e');
+        }
+      }
+
+      if (token == null) {
+        // onTokenRefresh will pick it up later — no polling needed.
+        return;
+      }
+
+      await pbDs.updateFcmToken(uid, token);
+      debugPrint('[Shell] FCM token registered to PB for $uid');
     } catch (e) {
       debugPrint('[Shell] FCM token register error: $e');
     }
@@ -584,20 +594,23 @@ class _DesktopSidebar extends StatelessWidget {
             ),
             Divider(height: 1, color: context.dividerColor),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_buildNavItems(context).length, (index) {
-                  final item = _buildNavItems(context)[index];
-                  final isSelected = index == currentIndex;
-                  return _SidebarItem(
-                    icon: isSelected ? item.activeIcon : item.icon,
-                    label: item.label,
-                    isSelected: isSelected,
-                    isExpanded: isExpanded,
-                    onTap: () => onTap(index),
-                  );
-                }),
-              ),
+              child: Builder(builder: (context) {
+                final navItems = _buildNavItems(context);
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(navItems.length, (index) {
+                    final item = navItems[index];
+                    final isSelected = index == currentIndex;
+                    return _SidebarItem(
+                      icon: isSelected ? item.activeIcon : item.icon,
+                      label: item.label,
+                      isSelected: isSelected,
+                      isExpanded: isExpanded,
+                      onTap: () => onTap(index),
+                    );
+                  }),
+                );
+              }),
             ),
             if (isExpanded) ...[
               Divider(height: 1, color: context.dividerColor),

@@ -96,7 +96,7 @@ class ProductCardSkeleton extends StatelessWidget {
   }
 }
 
-/// Horizontal list shimmer
+/// Horizontal list shimmer — drives all cards from a single shimmer animation.
 class HorizontalListSkeleton extends StatelessWidget {
   final int itemCount;
   final double itemWidth;
@@ -111,14 +111,27 @@ class HorizontalListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return SizedBox(
       height: height,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: itemCount,
-        itemBuilder: (context, index) => const ProductCardSkeleton(),
+      child: Shimmer.fromColors(
+        baseColor: isDark ? AppTheme.slate800 : const Color(0xFFE2E8F0),
+        highlightColor: isDark ? AppTheme.slate700 : const Color(0xFFF1F5F9),
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: itemCount,
+          itemExtent: itemWidth + 12,
+          itemBuilder: (context, index) => Container(
+            width: itemWidth,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: context.surfaceVariantColor,
+              borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            ),
+          ),
+        ),
       ),
     );
   }

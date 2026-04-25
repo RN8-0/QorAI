@@ -88,9 +88,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final userProfile = ref.watch(userProfileProvider);
-    final homeFeed = ref.watch(homeFeedProvider);
-
     return Scaffold(
       body: RefreshIndicator(
         color: AppTheme.primaryBlue,
@@ -112,8 +109,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
-            _buildAppBar(context, userProfile),
-            _buildQuizReminder(userProfile),
+            _buildAppBar(context),
+            _buildQuizReminder(),
             SliverToBoxAdapter(child: _buildSearchBar(context)),
 
             SliverToBoxAdapter(
@@ -125,13 +122,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
             // For You
             SliverToBoxAdapter(
-              child: _SectionHeader(
-                title: context.l10n?.forYou ?? 'For You',
-                icon: Icons.auto_awesome_rounded,
-                iconColor: const Color(0xFFF59E0B),
-                subtitle: _getPersonalizationSubtitle(userProfile),
-                onSeeAll: () => context.push(AppRoutes.search),
-              ),
+              child: Consumer(builder: (context, ref, _) {
+                final userProfile = ref.watch(userProfileProvider);
+                return _SectionHeader(
+                  title: context.l10n?.forYou ?? 'For You',
+                  icon: Icons.auto_awesome_rounded,
+                  iconColor: const Color(0xFFF59E0B),
+                  subtitle: _getPersonalizationSubtitle(userProfile),
+                  onSeeAll: () => context.push(AppRoutes.search),
+                );
+              }),
             ),
             SliverToBoxAdapter(child: _buildPersonalizedSection()),
 
@@ -144,7 +144,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 onSeeAll: () => context.push(AppRoutes.search),
               ),
             ),
-            SliverToBoxAdapter(child: _buildTrendsSection(homeFeed)),
+            SliverToBoxAdapter(child: _buildTrendsSection()),
 
             if (_secondarySectionsReady) ...[
               // ÔöÇÔöÇ TOP IN CATEGORY (dynamic) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
@@ -170,7 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               SliverToBoxAdapter(child: _buildNewArrivalsSection()),
               // ÔöÇÔöÇ DYNAMIC PRIORITY CATEGORIES ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-              ..._buildPriorityCategorySections(homeFeed),
+              ..._buildPriorityCategorySections(),
               // ÔöÇÔöÇ VALUE PICKS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
               ..._buildValuePicksSection(),
               // ÔöÇÔöÇ DISCOVER ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
@@ -297,7 +297,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === APP BAR ===============================================================
 
-  Widget _buildAppBar(BuildContext context, AsyncValue userProfile) {
+  Widget _buildAppBar(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Consumer(builder: (context, ref, _) {
+        final userProfile = ref.watch(userProfileProvider);
+        return _buildAppBarContent(context, ref, userProfile);
+      }),
+    );
+  }
+
+  Widget _buildAppBarContent(
+      BuildContext context, WidgetRef ref, AsyncValue userProfile) {
     final hour = DateTime.now().hour;
     final isNight = hour < 5 || hour >= 22;
     final greetingEmoji = isNight
@@ -346,22 +356,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       subscriptionServiceProvider.select((s) => s.remainingDailyCredits),
     );
 
-    return SliverToBoxAdapter(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppTheme.brandBlue.withValues(alpha: 0.05),
-              Colors.transparent,
-            ],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppTheme.brandBlue.withValues(alpha: 0.05),
+            Colors.transparent,
+          ],
         ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 20, 8),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 20, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -453,8 +462,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   /// Avatar widget that instantly shows Firebase Auth user's photo (sync)
@@ -590,12 +598,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === QUIZ REMINDER =========================================================
 
-  Widget _buildQuizReminder(AsyncValue userProfile) {
-    final covers =
-        ref.watch(categoryCoversProvider).valueOrNull ??
-        const <String, String>{};
-    final heroImage =
-        covers['smartphones'] ?? covers['laptops'] ?? covers['headphones'];
+  Widget _buildQuizReminder() {
+    return Consumer(builder: (context, ref, _) {
+      final userProfile = ref.watch(userProfileProvider);
+      final covers =
+          ref.watch(categoryCoversProvider).valueOrNull ??
+          const <String, String>{};
+      final heroImage =
+          covers['smartphones'] ?? covers['laptops'] ?? covers['headphones'];
+      return _buildQuizReminderBody(userProfile, heroImage);
+    });
+  }
+
+  Widget _buildQuizReminderBody(AsyncValue userProfile, String? heroImage) {
 
     return userProfile.when(
       data: (user) {
@@ -1290,6 +1305,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === PERSONALIZED SECTION ==================================================
 
   Widget _buildPersonalizedSection() {
+    return Consumer(builder: (context, ref, _) {
+      return _buildPersonalizedSectionBody(ref);
+    });
+  }
+
+  Widget _buildPersonalizedSectionBody(WidgetRef ref) {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: ref
@@ -1506,7 +1527,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return filtered.length >= 4 ? filtered : products;
   }
 
-  Widget _buildTrendsSection(AsyncValue<HomeFeed> homeFeed) {
+  Widget _buildTrendsSection() {
+    return Consumer(builder: (context, ref, _) {
+      final homeFeed = ref.watch(homeFeedProvider);
+      return _buildTrendsSectionBody(homeFeed);
+    });
+  }
+
+  Widget _buildTrendsSectionBody(AsyncValue<HomeFeed> homeFeed) {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
@@ -1575,6 +1603,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === NEW ARRIVALS ==========================================================
 
   Widget _buildNewArrivalsSection() {
+    return Consumer(builder: (context, ref, _) {
+      return _buildNewArrivalsBody(ref);
+    });
+  }
+
+  Widget _buildNewArrivalsBody(WidgetRef ref) {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: ref.watch(newArrivalsProvider).when(
@@ -1635,6 +1669,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === DISCOVER (Hidden Gems) ================================================
 
   Widget _buildDiscoverSection() {
+    return Consumer(builder: (context, ref, _) {
+      return _buildDiscoverSectionBody(ref);
+    });
+  }
+
+  Widget _buildDiscoverSectionBody(WidgetRef ref) {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: ref.watch(discoverProductsProvider).when(
@@ -1696,6 +1736,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === TOP IN CATEGORY (dynamic) =============================================
 
   List<Widget> _buildTopInCategorySection() {
+    return [
+      SliverToBoxAdapter(
+        child: Consumer(builder: (context, ref, _) {
+          final slivers = _topInCategorySectionSlivers(ref);
+          if (slivers.isEmpty) return const SizedBox.shrink();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: slivers
+                .whereType<SliverToBoxAdapter>()
+                .map((s) => s.child ?? const SizedBox.shrink())
+                .toList(),
+          );
+        }),
+      ),
+    ];
+  }
+
+  List<Widget> _topInCategorySectionSlivers(WidgetRef ref) {
     return ref.watch(topInCategoryProvider).when(
           data: (data) {
             if (data.category.isEmpty || data.products.isEmpty) return [];
@@ -1750,6 +1808,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === RECENTLY ANALYZED =====================================================
 
   List<Widget> _buildRecentlyAnalyzedSection() {
+    return [
+      SliverToBoxAdapter(
+        child: Consumer(builder: (context, ref, _) {
+          final slivers = _recentlyAnalyzedSlivers(ref);
+          if (slivers.isEmpty) return const SizedBox.shrink();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: slivers
+                .whereType<SliverToBoxAdapter>()
+                .map((s) => s.child ?? const SizedBox.shrink())
+                .toList(),
+          );
+        }),
+      ),
+    ];
+  }
+
+  List<Widget> _recentlyAnalyzedSlivers(WidgetRef ref) {
     return ref.watch(recentlyAnalyzedProvider).when(
           data: (products) {
             if (products.isEmpty) return [];
@@ -1796,6 +1872,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === VALUE PICKS ===========================================================
 
   List<Widget> _buildValuePicksSection() {
+    return [
+      SliverToBoxAdapter(
+        child: Consumer(builder: (context, ref, _) {
+          final slivers = _valuePicksSlivers(ref);
+          if (slivers.isEmpty) return const SizedBox.shrink();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: slivers
+                .whereType<SliverToBoxAdapter>()
+                .map((s) => s.child ?? const SizedBox.shrink())
+                .toList(),
+          );
+        }),
+      ),
+    ];
+  }
+
+  List<Widget> _valuePicksSlivers(WidgetRef ref) {
     return ref.watch(valuePicsProvider).when(
           data: (products) {
             if (products.isEmpty) return [];
@@ -1844,6 +1938,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   /// Recently Viewed section ÔÇö shows products user has recently viewed from Firestore
   List<Widget> _buildRecentlyViewedSection() {
+    return [
+      SliverToBoxAdapter(
+        child: Consumer(builder: (context, ref, _) {
+          final slivers = _recentlyViewedSlivers(ref);
+          if (slivers.isEmpty) return const SizedBox.shrink();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: slivers
+                .whereType<SliverToBoxAdapter>()
+                .map((s) => s.child ?? const SizedBox.shrink())
+                .toList(),
+          );
+        }),
+      ),
+    ];
+  }
+
+  List<Widget> _recentlyViewedSlivers(WidgetRef ref) {
     final recentAsync = ref.watch(recentlyViewedProductsProvider);
     final recentProducts = recentAsync.valueOrNull ?? [];
     if (recentProducts.isEmpty) return [];
@@ -1884,7 +1996,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   /// Dynamic category sections ÔÇö ordered by user behavior & profile priority
-  List<Widget> _buildPriorityCategorySections(AsyncValue<HomeFeed> homeFeed) {
+  List<Widget> _buildPriorityCategorySections() {
+    // Wrap a single sliver builder so this only rebuilds when homeFeed changes.
+    return [
+      SliverToBoxAdapter(
+        child: Consumer(builder: (context, ref, _) {
+          final homeFeed = ref.watch(homeFeedProvider);
+          // Convert the list of slivers into a Column to avoid restructuring
+          // the parent CustomScrollView. Each child block is just SliverToBoxAdapter
+          // wrapped helpers which can be safely flattened to box widgets here.
+          final sectionWidgets = _buildPriorityCategorySectionsList(homeFeed);
+          if (sectionWidgets.isEmpty) return const SizedBox.shrink();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: sectionWidgets
+                .whereType<SliverToBoxAdapter>()
+                .map((s) => s.child ?? const SizedBox.shrink())
+                .toList(),
+          );
+        }),
+      ),
+    ];
+  }
+
+  List<Widget> _buildPriorityCategorySectionsList(
+      AsyncValue<HomeFeed> homeFeed) {
     final sections = <Widget>[];
 
     final priorityCategories =
