@@ -257,47 +257,7 @@ function buildPremiumPayload(user,plan){
   };
   return {isPremium:true,userSubscriptionDetails:existingDetails};
 }
-function buildPremiumTestScenarioData(user,plan=premiumPlanKey(user)){
-  const snapshot=getUserQCoinSnapshot(user);
-  const isPremiumPlan=plan!=='free';
-  const expectedHeader=isPremiumPlan?'Premium':'Qor AI';
-  const expectedPaywall=plan==='monthly'?'Aylık abonesiniz':plan==='yearly'?'Yıllık abonesiniz':plan==='premium'?'Premium abonesiniz':'Premium görünmemeli';
-  const expectedQ=isPremiumPlan?'Q Coin rozeti sonsuz / ∞ görünmeli':`Q Coin rozeti ${formatQCoinAmount(snapshot.total)} toplam havuza göre sonlu görünmeli`;
-  return {
-    plan,
-    generatedAt:new Date().toISOString(),
-    expectedHeader,
-    expectedPaywall,
-    expectedQ,
-    steps:[
-      'Admin panelinde planı kaydet ve kullanıcı detayını yeniden aç.',
-      'Cihazda uygulamayı tamamen kapatıp yeniden aç veya aşağı çekerek yenile.',
-      'Home üst başlığını kontrol et.',
-      'Q Coin rozeti ve Premium ekran metnini doğrula.',
-      'Bir AI aksiyonu çalıştırıp limit veya sınırsız kullanım davranışını teyit et.'
-    ],
-    checks:[
-      `Home başlığı: ${expectedHeader}`,
-      `Paywall metni: ${expectedPaywall}`,
-      `Q Coin beklentisi: ${expectedQ}`,
-      isPremiumPlan?'AI limitleri sınırsız kalmalı':'Günlük Q Coin düşmeli ve kullanım sayaçları artmalı'
-    ]
-  };
-}
-function normalizePremiumTestScenario(raw,user){
-  const fallback=buildPremiumTestScenarioData(user);
-  const data=safeMap(raw);
-  return {
-    ...fallback,
-    ...data,
-    steps:safeArray(data.steps).length?safeArray(data.steps):fallback.steps,
-    checks:safeArray(data.checks).length?safeArray(data.checks):fallback.checks,
-  };
-}
-function renderPremiumTestScenarioCard(user){
-  const scenario=normalizePremiumTestScenario(user.adminPremiumScenario,user);
-  return `<div class="card" style="margin:0 0 16px;padding:14px"><div class="card-title"><span>🧪 Canlı Premium Test Senaryosu</span><span style="font-size:11px;color:var(--text3)">${escHtml(formatDateTimeLabel(scenario.generatedAt))}</span></div><div style="font-size:12px;color:var(--text2);margin-bottom:10px">Bu senaryo canlı kullanıcıda plan değişimini uçtan uca doğrulamak için otomatik güncellenir.</div><div class="feature-pill-row" style="margin-bottom:12px"><span class="feature-pill">Plan: ${escHtml(premiumPlanDescription(scenario.plan))}</span><span class="feature-pill ghost">Home: ${escHtml(scenario.expectedHeader)}</span><span class="feature-pill ghost">Paywall: ${escHtml(scenario.expectedPaywall)}</span></div><div class="form-grid" style="gap:14px"><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Adımlar</div>${scenario.steps.map((step,index)=>`<div style="font-size:12px;line-height:1.6;margin-bottom:6px"><span style="color:var(--text3)">${index+1}.</span> ${escHtml(step)}</div>`).join('')}</div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Beklenen Sonuçlar</div>${scenario.checks.map(item=>`<div style="font-size:12px;line-height:1.6;margin-bottom:6px">• ${escHtml(item)}</div>`).join('')}</div></div></div>`;
-}
+
 function normalizeAdminAiProfile(raw){
   const data=safeMap(raw);
   return {
@@ -459,14 +419,16 @@ async function getPublicConfigMap(){
 }
 
 async function syncPublicConfigValue(key,value){
-  await pbSetDoc('public_config',key,{value});
   try{
     const pb=getPb();
     const result=await pb.collection('public_config').getList(1,1,{filter:`key="${_escapeFilterValue(key)}"`,$autoCancel:false});
     const existing=result.items[0];
     if(existing)await pb.collection('public_config').update(existing.id,{value,key},{$autoCancel:false});
     else await pb.collection('public_config').create({key,value},{$autoCancel:false});
-  }catch(e){console.warn('[public_config] sync failed',key,e)}
+  }catch(e){
+    console.warn('[public_config] sync failed',key,e);
+    throw e;
+  }
 }
 
 async function loadQCoinConfig(){
@@ -1464,8 +1426,8 @@ function openUserDetail(uid){
           <div class="metric-tile"><div class="metric-tile-value">${extraQLabel}</div><div class="metric-tile-label">Ekstra Q</div></div>
         </div>
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-          <div style="font-size:12px;color:var(--text2)">Global günlük havuz: <b>${formatQCoinAmount(_freeDailyAiCreditLimit)} Q</b></div>
-          ${u.isPremium?'<div style="font-size:12px;color:var(--text2)">Premium kullanıcı limitsiz erişime sahip.</div>':`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="addQCoinsToUser('${safeUid}')">Extra Q Ekle</button><button class="btn btn-ghost" onclick="resetUserQCoins('${safeUid}')">Q Coin Sıfırla</button></div>`}
+          <div style="font-size:12px;color:var(--text2)">Global günlük havuz: <b>${formatQCoinAmount(_freeDailyAiCreditLimit)} Q</b>${u.isPremium?' · <span style="color:#f59e0b">Premium (limitsiz)</span>':''}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="addQCoinsToUser('${safeUid}')">Extra Q Ekle</button><button class="btn btn-ghost btn-sm" onclick="resetUserQCoins('${safeUid}')">Q Coin Sıfırla</button></div>
         </div>
       </div>
       <div class="card" style="margin:0 0 16px;padding:14px">
@@ -1493,7 +1455,6 @@ function openUserDetail(uid){
           ${u.isPremium?`<button class="btn btn-ghost" onclick="saveUserPremiumPlan('${safeUid}','free')">Premium İptal</button>`:''}
         </div>
       </div>
-      ${renderPremiumTestScenarioCard(u)}
       ${renderAdminAiProfileCard(aiProfile,safeUid)}
       <div class="user-overview-grid">
         <div class="card" style="margin:0;padding:14px">
@@ -1883,12 +1844,10 @@ async function saveUserPremiumPlan(uid,forcedPlan){
   const select=document.getElementById(`userPremiumPlanSelect_${uid}`);
   const plan=(forcedPlan||select?.value||'free').toLowerCase();
   const payload=buildPremiumPayload(u,plan);
-  const scenario=buildPremiumTestScenarioData({...u,...payload,userSubscriptionDetails:payload.userSubscriptionDetails},plan);
   try{
-    await pbUpdateDoc('users',uid,{...payload,adminPremiumScenario:scenario});
+    await pbUpdateDoc('users',uid,payload);
     u.isPremium=payload.isPremium;
     u.userSubscriptionDetails=payload.userSubscriptionDetails;
-    u.adminPremiumScenario=scenario;
     logActivity(payload.isPremium?'user_premium_enable':'user_premium_disable',`Premium plan güncellendi: ${uid}`,{userId:uid,plan});
     openUserDetail(uid);renderUsers();toast(plan==='free'?'Premium iptal edildi':`Premium plan ${premiumPlanLabel(plan)} olarak güncellendi`,'s');
   }catch(e){toast('Error: '+e.message,'e')}

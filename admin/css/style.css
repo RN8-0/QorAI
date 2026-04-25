@@ -253,7 +253,7 @@ textarea.input{resize:vertical}
 .insight-label{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
 
 /* ── BADGES ── */
-.badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px}
+.badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;white-space:nowrap;display:inline-block}
 .badge-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .badge-premium{background:linear-gradient(135deg,var(--amber),#f97316);color:#fff}
 .badge-green{background:rgba(34,197,94,.12);color:var(--green)}

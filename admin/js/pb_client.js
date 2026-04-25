@@ -9,7 +9,6 @@ const CONFIG_COLLECTIONS = new Set(['app_config', 'public_config']);
 // Legacy collection aliases (older code paths reference removed collection names).
 // Map them to existing collections to avoid 404 noise in console / dashboard.
 const COLLECTION_ALIASES = {
-  public_config: 'app_config',
   admin_logs: 'scraper_logs',
 };
 
