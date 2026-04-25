@@ -609,11 +609,137 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     showLimitReachedDialog(context, featureName: featureName);
   }
 
+  /// Splits [rawValue] on its natural separators BEFORE translation
+  /// (translation services may collapse \n to spaces).  Then translates each
+  /// part individually, as the detail spec screen does.
+  String _buildSpecSheetValue(BuildContext context, String rawValue) {
+    final parts = _extractSpecValueParts(rawValue);
+    return parts.map((p) => _localizedSpecValue(context, p)).join('\n');
+  }
+
+  /// Mirrors _SpecRow._extractValueParts from the detail screen.
+  List<String> _extractSpecValueParts(String value) {
+    if (value.isEmpty) return [value];
+
+    final withNewlines = value
+        .replaceAll('•', '\n')
+        .replaceAll('·', '\n')
+        .replaceAll('|', '\n');
+
+    if (withNewlines.contains('\n')) {
+      final rawParts = withNewlines
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .map((p) => p.replaceFirst(RegExp(r'^[-•·\s]+'), '').trim())
+          .where((p) => p.isNotEmpty)
+          .toList();
+      if (rawParts.length >= 2) return rawParts;
+    }
+
+    final normalized = withNewlines
+        .replaceAllMapped(
+          RegExp(r'(?<=[+)])\s+(?=[A-ZÇĞİÖŞÜ0-9])'),
+          (_) => '\n',
+        )
+        .replaceAll(RegExp(r'[^\S\n]{2,}'), ' ')
+        .trim();
+
+    List<String>? parts;
+    if (normalized.contains('\n')) {
+      parts = normalized
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.contains(',') && normalized.length > 8) {
+      parts = normalized
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.contains(';') && normalized.length > 8) {
+      parts = normalized
+          .split(';')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.contains(' / ') && normalized.length > 8) {
+      parts = normalized
+          .split(' / ')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (normalized.length > 42 && _looksLikePackedSpecList(normalized)) {
+      parts = _chunkSpecValue(normalized);
+    }
+
+    return (parts ?? [normalized])
+        .map((p) => p.replaceFirst(RegExp(r'^[•\-\s]+'), '').trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+  }
+
+  static bool _looksLikePackedSpecList(String value) {
+    final words = value
+        .split(RegExp(r'\s+'))
+        .map((w) => w.trim())
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.length < 6) return false;
+    final capCount = words
+        .where((w) =>
+            RegExp(r'^[A-Z0-9ÇĞİÖŞÜ]').hasMatch(w) && !_isSpecConnector(w))
+        .length;
+    return capCount >= 4;
+  }
+
+  static bool _isSpecConnector(String word) {
+    const connectors = {
+      'and', 'or', 'with', 'for', 'to', 've', 'ile', 'veya',
+      'the', 'a', 'an', 'of', '&',
+    };
+    return connectors.contains(word.toLowerCase());
+  }
+
+  static List<String> _chunkSpecValue(String value) {
+    final words = value
+        .split(RegExp(r'\s+'))
+        .map((w) => w.trim())
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.length < 5) return [value];
+
+    final chunks = <String>[];
+    final current = <String>[];
+    var currentLength = 0;
+
+    for (final word in words) {
+      final startsFeature = current.isNotEmpty &&
+          current.length >= 2 &&
+          RegExp(r'^[A-Z0-9ÇĞİÖŞÜ]').hasMatch(word) &&
+          !_isSpecConnector(word) &&
+          currentLength >= 18;
+
+      if (startsFeature || currentLength >= 28) {
+        chunks.add(current.join(' '));
+        current
+          ..clear()
+          ..add(word);
+        currentLength = word.length;
+        continue;
+      }
+      current.add(word);
+      currentLength += word.length + 1;
+    }
+    if (current.isNotEmpty) chunks.add(current.join(' '));
+    return chunks.where((c) => c.trim().isNotEmpty).toList();
+  }
+
   void _showSpecValueDetailSheet(BuildContext context, String rawValue) {
-    final full = _localizedSpecValue(context, rawValue);
     _showSpecValueBottomSheet(
       specName: _isTr ? 'Özellik değeri' : 'Specification value',
-      fullValue: full,
+      fullValue: _buildSpecSheetValue(context, rawValue),
     );
   }
 
@@ -1697,39 +1823,20 @@ Rules:
     );
   }
 
-  /// Formats a raw spec value for display in the bottom sheet.
-  ///
-  /// Priority:
-  /// 1. Natural separators already in the string (newline, bullet •, pipe |)
-  /// 2. Character-by-character smart split:
-  ///    - Splits at commas/semicolons that are NOT inside parentheses and NOT
-  ///      between two digits (e.g. preserves "2,000,000:1").
-  ///    - NO capital-letter heuristic (prevents breaking "Dual-Layer", "Gamut").
+  /// The value received here is already pre-formatted by [_buildSpecSheetValue]
+  /// (each feature on its own line separated by \n).  We just normalize bullet
+  /// chars and strip leading dashes so the display is clean.
   String _formatSpecValueForSheet(String value) {
     if (value.isEmpty) return value;
-
-    // Step 1: replace bullet chars and pipe → newline
     final withNatural = value
         .replaceAll('•', '\n')
         .replaceAll('·', '\n')
         .replaceAll('|', '\n');
-
-    // If natural separators give 2+ non-empty parts, use them directly.
-    if (withNatural.contains('\n')) {
-      final parts = withNatural
-          .split('\n')
-          .map((s) => s.replaceFirst(RegExp(r'^[-•·\s]+'), '').trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-      if (parts.length >= 2) return parts.join('\n');
-    }
-
-    // Step 2: smart comma/semicolon split — character-by-character
-    final normalized =
-        withNatural.replaceAll(RegExp(r'[^\S\n]{2,}'), ' ').trim();
-    final items = _smartSplitSpecValue(normalized);
-    if (items.length <= 1) return normalized;
-    return items.join('\n');
+    return withNatural
+        .split('\n')
+        .map((s) => s.replaceFirst(RegExp(r'^[-•·\s]+'), '').trim())
+        .where((s) => s.isNotEmpty)
+        .join('\n');
   }
 
   /// Splits [value] at commas/semicolons, but:
@@ -1764,7 +1871,6 @@ Rules:
           final part = current.toString().trim();
           if (part.isNotEmpty) result.add(part);
           current.clear();
-          // Skip single leading space after the separator
           if (i + 1 < value.length && value[i + 1] == ' ') i++;
         }
       } else {
@@ -4746,7 +4852,8 @@ Rules:
                       ? null
                       : () => _showSpecValueBottomSheet(
                           specName: localizedName,
-                          fullValue: localizedValue,
+                          // Split raw val BEFORE translation to preserve \n
+                          fullValue: _buildSpecSheetValue(context, val),
                         ),
                   child: Container(
                     margin: EdgeInsets.symmetric(
