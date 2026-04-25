@@ -155,27 +155,13 @@ class SubscriptionService extends ChangeNotifier {
   Completer<void>? _initCompleter;
 
   SubscriptionStatus get status {
-    final pocketBaseStatus = _pocketBaseSnapshotStatus;
-    if (!_status.isPremium &&
-        !_profileStatus.isPremium &&
-        pocketBaseStatus == null) {
+    if (_profileStatus.isPremium) {
+      return _profileStatus;
+    }
+    if (_status.isPremium) {
       return _status;
     }
-    return SubscriptionStatus(
-      isPremium: true,
-      activeProductId:
-          _status.activeProductId ??
-          _profileStatus.activeProductId ??
-          pocketBaseStatus?.activeProductId,
-      purchaseDate:
-          _status.purchaseDate ??
-          _profileStatus.purchaseDate ??
-          pocketBaseStatus?.purchaseDate,
-      expirationDate:
-          _status.expirationDate ??
-          _profileStatus.expirationDate ??
-          pocketBaseStatus?.expirationDate,
-    );
+    return _pocketBaseSnapshotStatus ?? SubscriptionStatus.free;
   }
 
   bool get isPremium => status.isPremium;
@@ -437,6 +423,15 @@ class SubscriptionService extends ChangeNotifier {
     await _saveUsageToLocal();
   }
 
+  Future<void> _clearLocalPremiumCacheOnly() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('is_premium');
+    await prefs.remove('active_product_id');
+    await prefs.remove('premium_purchase_date');
+    await prefs.remove('premium_expiration_date');
+    _status = SubscriptionStatus.free;
+  }
+
   Future<void> _saveUsageToLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = await _usageStorageKey(prefs);
@@ -524,7 +519,6 @@ class SubscriptionService extends ChangeNotifier {
     DateTime? purchaseDate,
     DateTime? expirationDate,
   }) async {
-    final hadPremium = this.isPremium;
     final nextProfileStatus = isPremium
         ? SubscriptionStatus(
             isPremium: true,
@@ -542,13 +536,15 @@ class SubscriptionService extends ChangeNotifier {
 
     _profileStatus = nextProfileStatus;
 
-    if (!hadPremium && isPremium) {
+    if (isPremium) {
       _usage = _emptyUsage();
       await _saveToLocal(
         productId: activeProductId,
         purchaseDate: purchaseDate ?? DateTime.now(),
         expirationDate: expirationDate,
       );
+    } else {
+      await _clearLocalPremiumCacheOnly();
     }
 
     notifyListeners();

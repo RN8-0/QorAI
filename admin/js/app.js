@@ -192,9 +192,99 @@ function safeMap(value){return value&&typeof value==='object'&&!Array.isArray(va
 function safeNumber(value,fallback=0){const parsed=Number(value);return Number.isFinite(parsed)?parsed:fallback}
 function qCoinPeriodKey(date=new Date()){return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`}
 function formatQCoinAmount(value){const amount=Math.round(safeNumber(value)*10)/10;return Number.isInteger(amount)?String(amount):amount.toFixed(1).replace(/\.0$/,'')}
+const ADMIN_PREMIUM_PRODUCTS={monthly:'aylik_abonelik',yearly:'yillik_abonelik'};
 
 let _freeDailyAiCreditLimit=10;
 let _activeUserModalUid='';
+
+function premiumDetails(user){return safeMap(safeMap(user.userSubscriptionDetails).premium)}
+function premiumPlanKey(user){
+  const details=premiumDetails(user);
+  const productId=String(details.productId||details.activeProductId||'').trim();
+  const planType=String(details.planType||'').trim().toLowerCase();
+  if(planType==='monthly'||productId===ADMIN_PREMIUM_PRODUCTS.monthly)return 'monthly';
+  if(planType==='yearly'||productId===ADMIN_PREMIUM_PRODUCTS.yearly)return 'yearly';
+  return user.isPremium?'premium':'free';
+}
+function premiumPlanLabel(plan){
+  switch(plan){
+    case 'monthly': return 'Monthly';
+    case 'yearly': return 'Yearly';
+    case 'premium': return 'Premium';
+    default: return 'Free';
+  }
+}
+function premiumBadgeHtml(user,large=false){
+  const plan=premiumPlanKey(user);
+  if(plan==='free')return `<span class="badge badge-ghost"${large?' style="font-size:12px;padding:6px 12px"':''}>Free</span>`;
+  const label=plan==='monthly'?'Premium Monthly':plan==='yearly'?'Premium Yearly':'Premium';
+  return `<span class="badge badge-premium"${large?' style="font-size:12px;padding:6px 12px"':''}>${label}</span>`;
+}
+function formatIsoDate(value){
+  const dt=parseDateValue(value);
+  return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
+}
+function buildPremiumPayload(user,plan){
+  const existingDetails={...safeMap(user.userSubscriptionDetails)};
+  if(plan==='free'){
+    delete existingDetails.premium;
+    return {isPremium:false,userSubscriptionDetails:existingDetails};
+  }
+  const current=premiumDetails(user);
+  const now=new Date();
+  const keepStart=plan===premiumPlanKey(user)&&current.startedAt;
+  const startedAt=keepStart?String(current.startedAt):now.toISOString();
+  const startDate=parseDateValue(startedAt)||now;
+  const expiresAt=new Date(startDate.getTime()+(plan==='yearly'?365:30)*864e5).toISOString();
+  existingDetails.premium={
+    ...current,
+    productId:plan==='yearly'?ADMIN_PREMIUM_PRODUCTS.yearly:ADMIN_PREMIUM_PRODUCTS.monthly,
+    activeProductId:plan==='yearly'?ADMIN_PREMIUM_PRODUCTS.yearly:ADMIN_PREMIUM_PRODUCTS.monthly,
+    planType:plan,
+    startedAt,
+    expiresAt,
+    source:'admin',
+    updatedAt:new Date().toISOString(),
+  };
+  return {isPremium:true,userSubscriptionDetails:existingDetails};
+}
+function normalizeAdminAiProfile(raw){
+  const data=safeMap(raw);
+  return {
+    persona:String(data.persona||'').trim(),
+    summary:String(data.summary||'').trim(),
+    retentionRisk:String(data.retentionRisk||'').trim(),
+    monetizationSignal:String(data.monetizationSignal||'').trim(),
+    premiumRecommendation:String(data.premiumRecommendation||'').trim(),
+    qCoinAction:String(data.qCoinAction||'').trim(),
+    nextActions:safeArray(data.nextActions).map(item=>String(item||'').trim()).filter(Boolean).slice(0,4),
+    watchouts:safeArray(data.watchouts).map(item=>String(item||'').trim()).filter(Boolean).slice(0,3),
+    generatedAt:String(data.generatedAt||'').trim(),
+    model:String(data.model||'deepseek-chat').trim(),
+  };
+}
+function renderAdminAiProfileCard(profile,uid){
+  const p=normalizeAdminAiProfile(profile);
+  const hasContent=!!(p.summary||p.persona||p.retentionRisk||p.premiumRecommendation||p.qCoinAction||p.nextActions.length);
+  const generated=p.generatedAt?formatDateTimeLabel(p.generatedAt):'Henüz üretilmedi';
+  return `<div class="card" style="margin:0 0 16px;padding:14px"><div class="card-title"><span>🧠 DeepSeek Kullanıcı Portresi</span><button class="btn btn-primary btn-sm" onclick="generateUserDeepSeekProfile('${escJs(uid)}')">${hasContent?'Yenile':'Oluştur'}</button></div>${hasContent?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px"><div><span style="color:var(--text2)">Persona:</span> <b>${escHtml(p.persona||'—')}</b></div><div><span style="color:var(--text2)">Üretildi:</span> <b>${escHtml(generated)}</b></div><div style="grid-column:1/-1;line-height:1.6;color:var(--text1)">${escHtml(p.summary||'—')}</div><div><span style="color:var(--text2)">Retention Risk:</span> <b>${escHtml(p.retentionRisk||'—')}</b></div><div><span style="color:var(--text2)">Monetization:</span> <b>${escHtml(p.monetizationSignal||'—')}</b></div><div><span style="color:var(--text2)">Premium Önerisi:</span> <b>${escHtml(p.premiumRecommendation||'—')}</b></div><div><span style="color:var(--text2)">Q Coin Aksiyonu:</span> <b>${escHtml(p.qCoinAction||'—')}</b></div>${p.nextActions.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Önerilen sonraki adımlar</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.nextActions.map(item=>`<span class="feature-pill ghost">${escHtml(item)}</span>`).join('')}</div></div>`:''}${p.watchouts.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Dikkat noktaları</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.watchouts.map(item=>`<span class="feature-pill">${escHtml(item)}</span>`).join('')}</div></div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px;line-height:1.6">DeepSeek bu kullanıcının profilini, davranışını, Q Coin durumunu ve premium dönüşüm potansiyelini yorumlayıp admin için kısa aksiyon planı üretecek.</div>`}</div>`;
+}
+async function callDeepSeekAdminJson(messages,{maxTokens=1200,temperature=0.4}={}){
+  const token=getPb().authStore.token;
+  const response=await fetch(`${PB_URL}/api/ai/deepseek`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:token},
+    body:JSON.stringify({model:'deepseek-chat',messages,max_tokens:maxTokens,temperature,response_format:{type:'json_object'}}),
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||data.error){throw new Error(data.message||data.error||'DeepSeek isteği başarısız');}
+  const content=data.choices?.[0]?.message?.content||'{}';
+  try{return JSON.parse(content);}catch(_){
+    const match=String(content).match(/\{[\s\S]*\}/);
+    if(match)return JSON.parse(match[0]);
+    throw new Error('DeepSeek yanıtı çözümlenemedi');
+  }
+}
 
 async function getPublicConfigMap(){
   try{
@@ -245,6 +335,47 @@ function getUserQCoinSnapshot(user){
   const used=periodKey===todayKey?Math.max(0,safeNumber(user.dailyAiCreditsUsed)):0;
   const remaining=Math.max(0,total-used);
   return{base,extra,total,used,remaining,periodKey:periodKey||todayKey};
+}
+async function generateUserDeepSeekProfile(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const analysisEl=document.getElementById('analysisContent');
+  if(analysisEl)analysisEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">DeepSeek kullanıcı profili hazırlanıyor...</div></div>';
+  try{
+    const [rvRes,compRes]=await Promise.all([
+      pbGetList('recently_viewed',1,12,{filter:`userId="${uid}"`,sort:'-created'}),
+      pbGetList('comparisons',1,12,{filter:`userId="${uid}"`,sort:'-created'})
+    ]);
+    const snapshot=getUserQCoinSnapshot(u);
+    const payload={
+      profile:{
+        uid:u.uid,email:u.email,displayName:u.displayName,country:u.country,language:u.language,ecosystem:u.ecosystem,budgetRange:u.budgetRange,usageIntent:u.usageIntent,primaryCategory:u.primaryCategory,profession:u.profession,ageRange:u.ageRange,gender:u.gender,
+        priorities:safeArray(u.priorities),interestCategories:safeArray(u.interestCategories),currentDevices:safeArray(u.currentDevices),subscriptions:safeArray(u.subscriptions),profileVector:safeMap(u.profileVector),persona:classifyUserPersona(u),
+      },
+      engagement:{
+        comparisons:getUserComparisonCount(u),favorites:safeArray(u.favorites).length,quizSessions:safeArray(u.quizHistory).length,analysisCount:safeArray(u.analyzedProducts).length,searchCount:safeArray(u.searchHistory).length,
+        recentViewed:rvRes.items.map(item=>item.productName||item.productId||'').filter(Boolean),
+        recentComparisons:compRes.items.map(item=>item.title||item.productIds||item.id),
+      },
+      premium:{plan:premiumPlanKey(u),details:premiumDetails(u),isPremium:u.isPremium},
+      qCoin:{remaining:snapshot.remaining,total:snapshot.total,used:snapshot.used,extra:snapshot.extra},
+      adminContext:{goal:'Kullaniciyi tanimak, retention riski, premium upsell ve q coin aksiyonunu belirlemek'}
+    };
+    const result=await callDeepSeekAdminJson([
+      {role:'system',content:'Qor AI admin paneli icin calisan bir kullanici zekasi asistani ol. Yaniti sadece JSON object olarak ver. JSON anahtarlari: persona, summary, retentionRisk, monetizationSignal, premiumRecommendation, qCoinAction, nextActions, watchouts. Tum metinler Turkce olsun. nextActions en fazla 4, watchouts en fazla 3 kisa madde olsun.'},
+      {role:'user',content:`Su kullaniciyi analiz et ve admin aksiyonu oner:\n${JSON.stringify(payload)}`}
+    ]);
+    const profile={...normalizeAdminAiProfile(result),generatedAt:new Date().toISOString(),model:'deepseek-chat'};
+    await pbUpdateDoc('users',uid,{adminAiProfile:profile});
+    u.adminAiProfile=profile;
+    logActivity('user_deepseek_profile',`DeepSeek kullanici analizi olusturuldu: ${uid}`,{userId:uid});
+    openUserDetail(uid);
+    const analysisTab=[...document.querySelectorAll('#userModalBody .user-tab')].find(btn=>btn.dataset.tab==='analysis');
+    if(analysisTab)analysisTab.click();
+    toast('DeepSeek kullanıcı profili hazır','s');
+  }catch(e){
+    if(analysisEl)analysisEl.innerHTML=`<div style="color:var(--red);padding:20px">DeepSeek hatası: ${escHtml(e.message||String(e))}</div>`;
+    toast('DeepSeek hatası: '+(e.message||e),'e');
+  }
 }
 function parseDateValue(...values){for(const value of values){if(!value)continue;const dt=new Date(value);if(!Number.isNaN(dt.getTime()))return dt}return null}
 function formatDateLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—'}
@@ -1065,7 +1196,7 @@ function renderUsers(){
   const list=document.getElementById('userList'),start=(userPage-1)*UPER,page=filteredUsers.slice(start,start+UPER);
   if(!page.length){list.innerHTML='<div class="placeholder">No users</div>';return}
   let h='<div class="user-hdr"><span></span><span>User</span><span>Country</span><span>Status</span><span>Joined</span></div>';
-  h+=page.map(u=>{const av=userAvatarHtml(u);const j=formatDateLabel(u.createdAt||u.created||u.updated);const qSnapshot=getUserQCoinSnapshot(u);const qLabel=u.isPremium?'Premium Q':`${formatQCoinAmount(qSnapshot.remaining)} Q`;return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div><div style="font-size:11px;color:var(--text2);margin-top:3px">Q Coin: <b style="color:var(--text1)">${escHtml(qLabel)}</b></div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
+  h+=page.map(u=>{const av=userAvatarHtml(u);const j=formatDateLabel(u.createdAt||u.created||u.updated);const qSnapshot=getUserQCoinSnapshot(u);const qLabel=u.isPremium?'Premium Q':`${formatQCoinAmount(qSnapshot.remaining)} Q`;return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div><div style="font-size:11px;color:var(--text2);margin-top:3px">Q Coin: <b style="color:var(--text1)">${escHtml(qLabel)}</b></div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${premiumBadgeHtml(u)}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
   list.innerHTML=h;
   const total=Math.ceil(filteredUsers.length/UPER),pe=document.getElementById('userPagination');
   if(total<=1){pe.innerHTML='';return}
@@ -1098,6 +1229,9 @@ function openUserDetail(uid){
   const topInterests=collectUserInterestScores(u).slice(0,5);
   const narrative=buildUserNarrative(u);
   const qSnapshot=getUserQCoinSnapshot(u);
+  const aiProfile=normalizeAdminAiProfile(u.adminAiProfile);
+  const premiumPlan=premiumPlanKey(u);
+  const premiumInfo=premiumDetails(u);
   const currentQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.remaining);
   const totalQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.total);
   const usedQLabel=u.isPremium?'0':formatQCoinAmount(qSnapshot.used);
@@ -1126,7 +1260,7 @@ function openUserDetail(uid){
         <div style="font-size:12px;color:var(--text2)">${escHtml(u.email||'')}</div>
         <div style="font-size:11px;color:${actColor};margin-top:2px">${activityStatus}</div>
       </div>
-      <div>${u.isPremium?'<span class="badge badge-premium" style="font-size:12px;padding:6px 12px">Premium</span>':'<span class="badge badge-ghost" style="font-size:12px;padding:6px 12px">Free</span>'}</div>
+      <div>${premiumBadgeHtml(u,true)}</div>
     </div>
     <div class="card" style="margin:0 0 16px;padding:16px;background:linear-gradient(135deg,rgba(124,58,237,.16),rgba(59,130,246,.10));border-color:rgba(124,58,237,.18)">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
@@ -1173,6 +1307,32 @@ function openUserDetail(uid){
           ${u.isPremium?'<div style="font-size:12px;color:var(--text2)">Premium kullanıcı limitsiz erişime sahip.</div>':`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="addQCoinsToUser('${safeUid}')">Extra Q Ekle</button><button class="btn btn-ghost" onclick="resetUserQCoins('${safeUid}')">Q Coin Sıfırla</button></div>`}
         </div>
       </div>
+      <div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⭐ Premium Yönetimi</div>
+        <div class="form-grid" style="align-items:end;margin-bottom:12px">
+          <div class="form-field">
+            <label>Plan</label>
+            <select class="input" id="userPremiumPlanSelect_${safeUid}">
+              <option value="free" ${premiumPlan==='free'?'selected':''}>Free</option>
+              <option value="monthly" ${premiumPlan==='monthly'?'selected':''}>Monthly</option>
+              <option value="yearly" ${premiumPlan==='yearly'?'selected':''}>Yearly</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Mevcut Durum</label>
+            <div class="metric-tile" style="padding:10px">
+              <div style="font-size:12px"><span style="color:var(--text2)">Plan:</span> <b>${escHtml(premiumPlanLabel(premiumPlan))}</b></div>
+              <div style="font-size:12px;margin-top:4px"><span style="color:var(--text2)">Başlangıç:</span> <b>${escHtml(formatIsoDate(premiumInfo.startedAt))}</b></div>
+              <div style="font-size:12px;margin-top:4px"><span style="color:var(--text2)">Bitiş:</span> <b>${escHtml(formatIsoDate(premiumInfo.expiresAt))}</b></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="saveUserPremiumPlan('${safeUid}')">Planı Uygula</button>
+          ${u.isPremium?`<button class="btn btn-ghost" onclick="saveUserPremiumPlan('${safeUid}','free')">Premium İptal</button>`:''}
+        </div>
+      </div>
+      ${renderAdminAiProfileCard(aiProfile,safeUid)}
       <div class="user-overview-grid">
         <div class="card" style="margin:0;padding:14px">
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Davranış Dağılımı</div>
@@ -1198,10 +1358,7 @@ function openUserDetail(uid){
           ${u.language?`<div><span style="color:var(--text2)">Dil:</span> <b>${escHtml(u.language)}</b></div>`:''}
         </div>
       </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn ${u.isPremium?'btn-ghost':'btn-primary'}" onclick="togglePremium('${safeUid}',${!u.isPremium})">${u.isPremium?'Premium Kaldır':'Premium Yap'}</button>
-        <button class="btn btn-danger" onclick="deleteUser('${safeUid}')">Sil</button>
-      </div>
+      <div style="display:flex;gap:8px"><button class="btn btn-danger" onclick="deleteUser('${safeUid}')">Sil</button></div>
     </div>
     <!-- Behavior Tab -->
     <div class="user-tab-panel" data-panel="behavior" style="display:none">
@@ -1426,9 +1583,10 @@ async function loadUserAnalysis(uid){
   try{
     const u=allUsers.find(x=>x.uid===uid)||{};
     const analyzedProducts=safeArray(u.analyzedProducts);
+    const aiProfileHtml=renderAdminAiProfileCard(u.adminAiProfile,uid);
 
     if(!analyzedProducts.length){
-      el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>Henüz AI analiz yapılmamış</div></div>`;
+      el.innerHTML=`${aiProfileHtml}<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>Henüz uygulama içi AI analiz yapılmamış</div></div>`;
       el.dataset.loaded='1';
       return;
     }
@@ -1438,7 +1596,7 @@ async function loadUserAnalysis(uid){
     const scores=analyzedProducts.map(item=>Number(item.score)||0).filter(Boolean);
     const avgScore=scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length):0;
 
-    let html=`<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${analyzedProducts.length}</div><div class="metric-tile-label">Analyses</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Match</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='compare')).length}</div><div class="metric-tile-label">Compare AI</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='subscription')).length}</div><div class="metric-tile-label">Subs AI</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🤖 Analiz Kategorileri</div><div class="chart-shell" style="height:220px"><canvas id="userAnalysisCategoryChartCanvas"></canvas></div></div>`;
+    let html=`${aiProfileHtml}<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${analyzedProducts.length}</div><div class="metric-tile-label">Analyses</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Match</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='compare')).length}</div><div class="metric-tile-label">Compare AI</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='subscription')).length}</div><div class="metric-tile-label">Subs AI</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🤖 Analiz Kategorileri</div><div class="chart-shell" style="height:220px"><canvas id="userAnalysisCategoryChartCanvas"></canvas></div></div>`;
 
     for(const p of analyzedProducts){
       const date=p.timestamp?new Date(p.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -1558,7 +1716,20 @@ async function loadUserProfile(uid){
     el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
-async function togglePremium(uid,v){try{await pbUpdateDoc('users',uid,{isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;logActivity(v?'user_premium_enable':'user_premium_disable',`Premium ${v?'enabled':'disabled'}: ${uid}`,{userId:uid});openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
+async function saveUserPremiumPlan(uid,forcedPlan){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const select=document.getElementById(`userPremiumPlanSelect_${uid}`);
+  const plan=(forcedPlan||select?.value||'free').toLowerCase();
+  const payload=buildPremiumPayload(u,plan);
+  try{
+    await pbUpdateDoc('users',uid,payload);
+    u.isPremium=payload.isPremium;
+    u.userSubscriptionDetails=payload.userSubscriptionDetails;
+    logActivity(payload.isPremium?'user_premium_enable':'user_premium_disable',`Premium plan güncellendi: ${uid}`,{userId:uid,plan});
+    openUserDetail(uid);renderUsers();toast(plan==='free'?'Premium iptal edildi':`Premium plan ${premiumPlanLabel(plan)} olarak güncellendi`,'s');
+  }catch(e){toast('Error: '+e.message,'e')}
+}
+async function togglePremium(uid,v){return saveUserPremiumPlan(uid,v?'yearly':'free')}
 async function addQCoinsToUser(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   const raw=prompt('Eklenecek ekstra Q miktari','5');
