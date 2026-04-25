@@ -1215,6 +1215,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16),
             physics: const BouncingScrollPhysics(),
             itemExtent: 84, // chip width 76 + margin right 8
+            addAutomaticKeepAlives: false,
             itemCount: row1.length,
             itemBuilder: (context, i) => _buildFlatCategoryChip(row1[i], i),
           ),
@@ -1227,6 +1228,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16),
             physics: const BouncingScrollPhysics(),
             itemExtent: 84, // chip width 76 + margin right 8
+            addAutomaticKeepAlives: false,
             itemCount: row2.length,
             itemBuilder: (context, i) => _buildFlatCategoryChip(row2[i], i),
           ),
@@ -1334,6 +1336,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
                 itemExtent: _kCardItemExtent,
+                addAutomaticKeepAlives: false,
                 itemCount: display.length,
                 itemBuilder: (context, index) {
                   final product = display[index];
@@ -1419,6 +1422,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemExtent: _kCardItemExtent,
+            addAutomaticKeepAlives: false,
             itemCount: min(_kHorizontalInitialItemLimit, products.length),
             itemBuilder: (context, index) {
               final p = products[index];
@@ -1460,6 +1464,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemExtent: _kCardItemExtent,
+            addAutomaticKeepAlives: false,
             itemCount: display.length,
             itemBuilder: (context, index) {
               final p = display[index];
@@ -1541,6 +1546,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemExtent: _kCardItemExtent,
+            addAutomaticKeepAlives: false,
             itemCount: display.length,
             itemBuilder: (context, index) {
               final p = display[index];
@@ -1600,6 +1606,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
                 itemExtent: _kCardItemExtent,
+                addAutomaticKeepAlives: false,
                 itemCount: min(_kHorizontalInitialItemLimit, products.length),
                 itemBuilder: (context, index) {
                   final p = products[index];
@@ -1659,6 +1666,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
                 itemExtent: _kCardItemExtent,
+                addAutomaticKeepAlives: false,
                 itemCount: min(_kHorizontalInitialItemLimit, products.length),
                 itemBuilder: (context, index) {
                   final p = products[index];
@@ -1717,6 +1725,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       data.products.length,
                     ),
                     itemExtent: _kCardItemExtent,
+                    addAutomaticKeepAlives: false,
                     itemBuilder: (context, index) {
                       final p = data.products[index];
                       final price =
@@ -1762,6 +1771,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     physics: const BouncingScrollPhysics(),
                     itemCount: min(_kHorizontalInitialItemLimit, products.length),
                     itemExtent: _kCardItemExtent,
+                    addAutomaticKeepAlives: false,
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
@@ -1808,6 +1818,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     physics: const BouncingScrollPhysics(),
                     itemCount: min(_kHorizontalInitialItemLimit, products.length),
                     itemExtent: _kCardItemExtent,
+                    addAutomaticKeepAlives: false,
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
@@ -1854,6 +1865,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
             itemExtent: _kCardItemExtent,
+            addAutomaticKeepAlives: false,
             itemCount: min(15, recentProducts.length),
             itemBuilder: (context, index) {
               final p = recentProducts[index];

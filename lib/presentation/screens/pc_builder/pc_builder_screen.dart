@@ -2468,17 +2468,17 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                               color: Colors.white,
                             ),
                           ),
-                          if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
+                          if (!ref.watch(premiumProvider)) ...[
                             const SizedBox(width: 8),
                             QorAmountBadge(
-                              amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai'),
+                              amount: ref.read(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai'),
                               color: Colors.white,
                               fontSize: 10,
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             ),
                             const SizedBox(width: 6),
                             QorBalanceBadge(
-                              remaining: ref.watch(subscriptionServiceProvider).remainingDailyCredits,
+                              remaining: ref.read(subscriptionServiceProvider).remainingDailyCredits,
                               total: AppConstants.freeDailyAiCreditLimit,
                               unlimited: false,
                               color: Colors.white,

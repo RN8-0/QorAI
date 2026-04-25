@@ -980,7 +980,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         ],
                       ),
                     ),
-                    if (!ref.watch(subscriptionServiceProvider).isPremium)
+                    if (!ref.watch(premiumProvider))
                       QorAmountBadge(
                         amount: AppConstants.creditCostForFeature('link_analysis'),
                         unlimited: false,

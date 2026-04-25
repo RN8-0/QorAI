@@ -51,7 +51,7 @@ void _preloadGoogleFonts() {
   }
 }
 
-
+void _scheduleDeferredStartupTasks() {
   Future.delayed(_kStartupHeavyWorkDelay, () {
     unawaited(_initializeSpecTranslations());
   });
