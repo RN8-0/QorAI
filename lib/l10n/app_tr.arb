@@ -92,6 +92,18 @@
   "helpSupport": "Yardım ve Destek",
   "rateApp": "Uygulamayı Değerlendir",
   "contactUs": "Bize Ulaşın",
+  "supportTeam": "Destek Ekibimiz",
+  "supportTeamSubtitle": "Sorularınızı ve geri bildirimlerinizi bize iletin.",
+  "fullName": "Ad Soyad",
+  "yourFullName": "Adınız ve soyadınız",
+  "yourEmail": "ornek@email.com",
+  "yourMessage": "Mesajınızı buraya yazın...",
+  "message": "Mesajınız",
+  "send": "Gönder",
+  "requiredField": "Zorunlu alan",
+  "enterValidEmail": "Geçerli bir e-posta girin",
+  "messageSent": "Mesajınız gönderildi! En kısa sürede yanıt vereceğiz.",
+  "sendError": "Hata",
   "deleteAccount": "Hesabı Sil",
   "appVersion": "Uygulama Sürümü",
   "aiChat": "AI Sohbet",
@@ -433,6 +445,8 @@
   "signInToYourAccount": "Hesabınıza giriş yapın",
   "email": "E-posta",
   "password": "Şifre",
+  "confirmPassword": "Şifreyi Onayla",
+  "passwordsDoNotMatch": "Şifreler eşleşmiyor.",
   "forgotPassword": "Şifremi Unuttum?",
   "signIn": "Giriş Yap",
   "dontHaveAccount": "Hesabınız yok mu? ",
@@ -1399,5 +1413,12 @@
         "type": "int"
       }
     }
-  }
+  },
+  "registrationSuccess": "Kayıt başarılı! E-posta adresinize doğrulama linki gönderildi.",
+  "verifyingEmail": "E-posta doğrulanıyor...",
+  "emailVerifiedTitle": "E-posta Doğrulandı!",
+  "emailVerifiedSubtitle": "E-posta adresiniz başarıyla doğrulandı. Ana sayfaya yönlendiriliyorsunuz...",
+  "verificationFailedTitle": "Doğrulama Başarısız",
+  "invalidVerificationLink": "Geçersiz doğrulama bağlantısı.",
+  "verificationExpired": "Doğrulama başarısız. Bağlantı süresi dolmuş olabilir."
 }

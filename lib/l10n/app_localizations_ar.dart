@@ -264,6 +264,43 @@ class AppLocalizationsAr extends AppLocalizations {
   String get contactUs => 'اتصل بنا';
 
   @override
+  String get supportTeam => 'Support Team';
+
+  @override
+  String get supportTeamSubtitle => 'Send us your questions and feedback.';
+
+  @override
+  String get fullName => 'الاسم الكامل';
+
+  @override
+  String get yourFullName => 'Your full name';
+
+  @override
+  String get yourEmail => 'your@email.com';
+
+  @override
+  String get yourMessage => 'Write your message here...';
+
+  @override
+  String get message => 'Message';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get requiredField => 'Required field';
+
+  @override
+  String get enterValidEmail => 'Enter a valid email address';
+
+  @override
+  String get messageSent =>
+      'Your message has been sent! We will reply as soon as possible.';
+
+  @override
+  String get sendError => 'Error';
+
+  @override
   String get deleteAccount => 'حذف الحساب';
 
   @override
@@ -1238,6 +1275,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get password => 'كلمة المرور';
 
   @override
+  String get confirmPassword => 'تأكيد كلمة المرور';
+
+  @override
+  String get passwordsDoNotMatch => 'كلمات المرور غير متطابقة.';
+
+  @override
   String get forgotPassword => 'هل نسيت كلمة المرور؟';
 
   @override
@@ -1254,9 +1297,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get joinSmarterWay => 'انضم إلى الطريقة الأذكى لاتخاذ القرارات';
-
-  @override
-  String get fullName => 'الاسم الكامل';
 
   @override
   String get birthDate => 'تاريخ الميلاد';
@@ -3601,4 +3641,28 @@ class AppLocalizationsAr extends AppLocalizations {
   String productProgress(int current, int total) {
     return 'Product $current of $total';
   }
+
+  @override
+  String get registrationSuccess =>
+      'تم التسجيل بنجاح! تم إرسال رابط التحقق إلى بريدك الإلكتروني.';
+
+  @override
+  String get verifyingEmail => 'جارٍ التحقق من البريد الإلكتروني...';
+
+  @override
+  String get emailVerifiedTitle => 'تم التحقق من البريد الإلكتروني!';
+
+  @override
+  String get emailVerifiedSubtitle =>
+      'تم التحقق من بريدك الإلكتروني بنجاح. جارٍ التوجيه إلى الصفحة الرئيسية...';
+
+  @override
+  String get verificationFailedTitle => 'فشل التحقق';
+
+  @override
+  String get invalidVerificationLink => 'رابط التحقق غير صالح.';
+
+  @override
+  String get verificationExpired =>
+      'فشل التحقق. قد يكون الرابط قد انتهت صلاحيته.';
 }

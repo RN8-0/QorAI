@@ -26,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
 
   // Registration data
@@ -59,6 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameController.dispose();
     super.dispose();
   }
@@ -226,11 +228,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty ||
         _birthDate == null ||
         _gender == null) {
       _showError(
         context.l10n?.pleaseFillAllFields ??
             'Please fill in all fields (Name, Email, Password, Birth Date, & Gender)',
+      );
+      return;
+    }
+
+    // Email format check
+    final email = _emailController.text.trim();
+    if (!email.contains('@') || !email.contains('.')) {
+      _showError(
+        context.l10n?.enterValidEmail ?? 'Enter a valid email address.',
+      );
+      return;
+    }
+
+    // Şifreler eşleşmeli
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showError(
+        context.l10n?.passwordsDoNotMatch ?? 'Passwords do not match.',
       );
       return;
     }
@@ -264,7 +284,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // SharedPreferences from a previous account don't bleed through.
         // Play Store will re-deliver any active entitlement via restorePurchases.
         await ref.read(subscriptionServiceProvider).clearLocalPremium();
-        if (mounted) _navigateAfterLogin(user.quizCompleted);
+        if (mounted) {
+          // Doğrulama maili gönderildi bildirimi
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.l10n?.registrationSuccess ??
+                    'Registration successful! A verification link has been sent to your email.',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: AppTheme.success,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          _navigateAfterLogin(user.quizCompleted);
+        }
       case Failure(error: final error):
         _showError(error.message);
     }
@@ -1006,6 +1042,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   _buildTextField(
                     controller: _passwordController,
                     hint: context.l10n?.password ?? 'Password',
+                    icon: Icons.lock_outline_rounded,
+                    isPassword: true,
+                    obscureText: _obscurePassword,
+                    onToggle: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    controller: _confirmPasswordController,
+                    hint: context.l10n?.confirmPassword ?? 'Confirm Password',
                     icon: Icons.lock_outline_rounded,
                     isPassword: true,
                     obscureText: _obscurePassword,

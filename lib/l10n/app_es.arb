@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "es",
   "appTitle": "Qor AI",
   "home": "Inicio",
@@ -456,6 +456,8 @@
   "signInToYourAccount": "Inicia sesión en tu cuenta",
   "email": "Correo electrónico",
   "password": "Contraseña",
+  "confirmPassword": "Confirmar contraseña",
+  "passwordsDoNotMatch": "Las contraseñas no coinciden.",
   "forgotPassword": "¿Olvidó su contraseña?",
   "signIn": "Iniciar sesión",
   "dontHaveAccount": "¿No tienes cuenta? ",
@@ -1332,5 +1334,12 @@
   "analysisHistoryTooltip": "Historial de análisis",
   "pasteProductLinkCardTitle": "Pegar enlace del producto",
   "pasteProductLinkSubtitle": "Obtén un análisis con IA y cuestionario",
-  "howComparisonWorks": "Cómo funciona la comparación"
+  "howComparisonWorks": "Cómo funciona la comparación",
+  "registrationSuccess": "¡Registro exitoso! Se ha enviado un enlace de verificación a su correo electrónico.",
+  "verifyingEmail": "Verificando correo electrónico...",
+  "emailVerifiedTitle": "¡Correo verificado!",
+  "emailVerifiedSubtitle": "Su correo electrónico ha sido verificado exitosamente. Redirigiendo al inicio...",
+  "verificationFailedTitle": "Verificación fallida",
+  "invalidVerificationLink": "Enlace de verificación no válido.",
+  "verificationExpired": "Verificación fallida. El enlace puede haber expirado."
 }

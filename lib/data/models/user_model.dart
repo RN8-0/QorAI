@@ -45,7 +45,7 @@ class UserModel extends UserEntity {
     final data = record.data;
     return UserModel(
       uid: record.id,
-      email: data['googleEmail'] ?? data['email'] ?? '',
+      email: _resolveEmail(record),
       displayName: data['displayName'] ?? data['name'] ?? '',
       photoURL: (data['photoURL'] is String && (data['photoURL'] as String).isNotEmpty)
           ? data['photoURL'] as String
@@ -82,6 +82,18 @@ class UserModel extends UserEntity {
       ),
       userSubscriptionDetails: _parseSubscriptionDetails(data['userSubscriptionDetails']),
     );
+  }
+
+  /// E-posta: Google oturum > data.email > toJson().email (PB auth fields)
+  static String _resolveEmail(RecordModel record) {
+    final data = record.data;
+    final googleEmail = (data['googleEmail'] as String? ?? '').trim();
+    if (googleEmail.isNotEmpty) return googleEmail;
+    final dataEmail = (data['email'] as String? ?? '').trim();
+    if (dataEmail.isNotEmpty) return dataEmail;
+    // PB auth collection'larında email bazen sadece root JSON'da bulunur
+    final jsonEmail = (record.toJson()['email'] as String? ?? '').trim();
+    return jsonEmail;
   }
 
   static Map<String, Map<String, dynamic>> _parseSubscriptionDetails(dynamic raw) {

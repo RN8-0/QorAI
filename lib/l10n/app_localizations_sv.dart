@@ -266,6 +266,43 @@ class AppLocalizationsSv extends AppLocalizations {
   String get contactUs => 'Kontakta oss';
 
   @override
+  String get supportTeam => 'Support Team';
+
+  @override
+  String get supportTeamSubtitle => 'Send us your questions and feedback.';
+
+  @override
+  String get fullName => 'Fullständigt namn';
+
+  @override
+  String get yourFullName => 'Your full name';
+
+  @override
+  String get yourEmail => 'your@email.com';
+
+  @override
+  String get yourMessage => 'Write your message here...';
+
+  @override
+  String get message => 'Message';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get requiredField => 'Required field';
+
+  @override
+  String get enterValidEmail => 'Enter a valid email address';
+
+  @override
+  String get messageSent =>
+      'Your message has been sent! We will reply as soon as possible.';
+
+  @override
+  String get sendError => 'Error';
+
+  @override
   String get deleteAccount => 'Radera konto';
 
   @override
@@ -1242,6 +1279,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get password => 'Lösenord';
 
   @override
+  String get confirmPassword => 'Bekräfta lösenord';
+
+  @override
+  String get passwordsDoNotMatch => 'Lösenorden stämmer inte överens.';
+
+  @override
   String get forgotPassword => 'Glömt lösenordet?';
 
   @override
@@ -1258,9 +1301,6 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get joinSmarterWay => 'Gå med i det smartare sättet att bestämma';
-
-  @override
-  String get fullName => 'Fullständigt namn';
 
   @override
   String get birthDate => 'Födelsedatum';
@@ -3618,4 +3658,28 @@ class AppLocalizationsSv extends AppLocalizations {
   String productProgress(int current, int total) {
     return 'Product $current of $total';
   }
+
+  @override
+  String get registrationSuccess =>
+      'Registrering lyckades! En verifieringslänk har skickats till din e-post.';
+
+  @override
+  String get verifyingEmail => 'Verifierar e-post...';
+
+  @override
+  String get emailVerifiedTitle => 'E-post verifierad!';
+
+  @override
+  String get emailVerifiedSubtitle =>
+      'Din e-post har verifierats. Omdirigerar till startsidan...';
+
+  @override
+  String get verificationFailedTitle => 'Verifiering misslyckades';
+
+  @override
+  String get invalidVerificationLink => 'Ogiltig verifieringslänk.';
+
+  @override
+  String get verificationExpired =>
+      'Verifiering misslyckades. Länken kan ha gått ut.';
 }

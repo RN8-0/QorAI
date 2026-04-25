@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "sv",
   "appTitle": "Qor AI",
   "home": "Hem",
@@ -456,6 +456,8 @@
   "signInToYourAccount": "Logga in på ditt konto",
   "email": "E-post",
   "password": "Lösenord",
+  "confirmPassword": "Bekräfta lösenord",
+  "passwordsDoNotMatch": "Lösenorden stämmer inte överens.",
   "forgotPassword": "Glömt lösenordet?",
   "signIn": "Logga in",
   "dontHaveAccount": "Har inget konto? ",
@@ -1332,5 +1334,12 @@
   "analysisHistoryTooltip": "Analyshistorik",
   "pasteProductLinkCardTitle": "Klistra in produktlänk",
   "pasteProductLinkSubtitle": "Få AI-driven analys med quiz",
-  "howComparisonWorks": "Hur jämförelsen fungerar"
+  "howComparisonWorks": "Hur jämförelsen fungerar",
+  "registrationSuccess": "Registrering lyckades! En verifieringslänk har skickats till din e-post.",
+  "verifyingEmail": "Verifierar e-post...",
+  "emailVerifiedTitle": "E-post verifierad!",
+  "emailVerifiedSubtitle": "Din e-post har verifierats. Omdirigerar till startsidan...",
+  "verificationFailedTitle": "Verifiering misslyckades",
+  "invalidVerificationLink": "Ogiltig verifieringslänk.",
+  "verificationExpired": "Verifiering misslyckades. Länken kan ha gått ut."
 }

@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "de",
   "appTitle": "Qor AI",
   "home": "Startseite",
@@ -456,6 +456,8 @@
   "signInToYourAccount": "Melden Sie sich an",
   "email": "E-Mail",
   "password": "Passwort",
+  "confirmPassword": "Passwort bestätigen",
+  "passwordsDoNotMatch": "Passwörter stimmen nicht überein.",
   "forgotPassword": "Passwort vergessen?",
   "signIn": "Anmelden",
   "dontHaveAccount": "Kein Konto? ",
@@ -1332,5 +1334,12 @@
   "analysisHistoryTooltip": "Analyseverlauf",
   "pasteProductLinkCardTitle": "Produktlink einfügen",
   "pasteProductLinkSubtitle": "Erhalten Sie eine KI-gestützte Analyse mit Quiz",
-  "howComparisonWorks": "So funktioniert der Vergleich"
+  "howComparisonWorks": "So funktioniert der Vergleich",
+  "registrationSuccess": "Registrierung erfolgreich! Ein Bestätigungslink wurde an Ihre E-Mail gesendet.",
+  "verifyingEmail": "E-Mail wird verifiziert...",
+  "emailVerifiedTitle": "E-Mail bestätigt!",
+  "emailVerifiedSubtitle": "Ihre E-Mail wurde erfolgreich bestätigt. Weiterleitung zur Startseite...",
+  "verificationFailedTitle": "Verifizierung fehlgeschlagen",
+  "invalidVerificationLink": "Ungültiger Bestätigungslink.",
+  "verificationExpired": "Verifizierung fehlgeschlagen. Der Link ist möglicherweise abgelaufen."
 }

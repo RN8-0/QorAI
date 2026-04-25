@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "ar",
   "appTitle": "Qor AI",
   "home": "الرئيسية",
@@ -456,6 +456,8 @@
   "signInToYourAccount": "سجل الدخول إلى حسابك",
   "email": "البريد الإلكتروني",
   "password": "كلمة المرور",
+  "confirmPassword": "تأكيد كلمة المرور",
+  "passwordsDoNotMatch": "كلمات المرور غير متطابقة.",
   "forgotPassword": "هل نسيت كلمة المرور؟",
   "signIn": "تسجيل الدخول",
   "dontHaveAccount": "ليس لديك حساب؟ ",
@@ -1332,5 +1334,12 @@
   "analysisHistoryTooltip": "سجل التحليلات",
   "pasteProductLinkCardTitle": "ألصق رابط المنتج",
   "pasteProductLinkSubtitle": "احصل على تحليل مدعوم بالذكاء الاصطناعي مع اختبار",
-  "howComparisonWorks": "كيف تعمل المقارنة"
+  "howComparisonWorks": "كيف تعمل المقارنة",
+  "registrationSuccess": "تم التسجيل بنجاح! تم إرسال رابط التحقق إلى بريدك الإلكتروني.",
+  "verifyingEmail": "جارٍ التحقق من البريد الإلكتروني...",
+  "emailVerifiedTitle": "تم التحقق من البريد الإلكتروني!",
+  "emailVerifiedSubtitle": "تم التحقق من بريدك الإلكتروني بنجاح. جارٍ التوجيه إلى الصفحة الرئيسية...",
+  "verificationFailedTitle": "فشل التحقق",
+  "invalidVerificationLink": "رابط التحقق غير صالح.",
+  "verificationExpired": "فشل التحقق. قد يكون الرابط قد انتهت صلاحيته."
 }

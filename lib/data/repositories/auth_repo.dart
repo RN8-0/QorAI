@@ -437,6 +437,32 @@ class AuthRepository {
     _pb.authStore.clear();
   }
 
+  Future<Result<void>> requestAccountDeletion() async {
+    final uid = _currentUid;
+    if (uid == null) {
+      return const Failure(AuthException(message: 'No active session'));
+    }
+    try {
+      final response = await http.post(
+        Uri.parse('${_pb.baseURL}/api/users/request-delete'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': _pb.authStore.token,
+        },
+      );
+      if (response.statusCode == 200) {
+        return const Success(null);
+      }
+      final body = jsonDecode(response.body);
+      final msg = body['message'] ?? body['error'] ?? 'Request failed';
+      return Failure(AuthException(message: msg.toString()));
+    } on ClientException catch (e) {
+      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+    } catch (e) {
+      return Failure(AuthException(message: e.toString()));
+    }
+  }
+
   Future<Result<void>> deleteCurrentUser() async {
     final uid = _currentUid;
     if (uid == null) {
@@ -605,8 +631,10 @@ class AuthRepository {
   }
 
   String _authText({required String tr, required String en}) {
-    final languageCode =
-        ui.PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+    final saved = _cache.getLanguage().toLowerCase();
+    final languageCode = saved.isNotEmpty
+        ? saved
+        : ui.PlatformDispatcher.instance.locale.languageCode.toLowerCase();
     return languageCode == 'tr' ? tr : en;
   }
 

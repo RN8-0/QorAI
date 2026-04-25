@@ -266,6 +266,44 @@ class AppLocalizationsTr extends AppLocalizations {
   String get contactUs => 'Bize Ulaşın';
 
   @override
+  String get supportTeam => 'Destek Ekibimiz';
+
+  @override
+  String get supportTeamSubtitle =>
+      'Sorularınızı ve geri bildirimlerinizi bize iletin.';
+
+  @override
+  String get fullName => 'Ad Soyad';
+
+  @override
+  String get yourFullName => 'Adınız ve soyadınız';
+
+  @override
+  String get yourEmail => 'ornek@email.com';
+
+  @override
+  String get yourMessage => 'Mesajınızı buraya yazın...';
+
+  @override
+  String get message => 'Mesajınız';
+
+  @override
+  String get send => 'Gönder';
+
+  @override
+  String get requiredField => 'Zorunlu alan';
+
+  @override
+  String get enterValidEmail => 'Geçerli bir e-posta girin';
+
+  @override
+  String get messageSent =>
+      'Mesajınız gönderildi! En kısa sürede yanıt vereceğiz.';
+
+  @override
+  String get sendError => 'Hata';
+
+  @override
   String get deleteAccount => 'Hesabı Sil';
 
   @override
@@ -1253,6 +1291,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get password => 'Şifre';
 
   @override
+  String get confirmPassword => 'Şifreyi Onayla';
+
+  @override
+  String get passwordsDoNotMatch => 'Şifreler eşleşmiyor.';
+
+  @override
   String get forgotPassword => 'Şifremi Unuttum?';
 
   @override
@@ -1269,9 +1313,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get joinSmarterWay => 'Daha akıllı karar vermenin yolu';
-
-  @override
-  String get fullName => 'Ad Soyad';
 
   @override
   String get birthDate => 'Doğum Tarihi';
@@ -3637,4 +3678,28 @@ class AppLocalizationsTr extends AppLocalizations {
   String productProgress(int current, int total) {
     return '$total içinden $current. ürün';
   }
+
+  @override
+  String get registrationSuccess =>
+      'Kayıt başarılı! E-posta adresinize doğrulama linki gönderildi.';
+
+  @override
+  String get verifyingEmail => 'E-posta doğrulanıyor...';
+
+  @override
+  String get emailVerifiedTitle => 'E-posta Doğrulandı!';
+
+  @override
+  String get emailVerifiedSubtitle =>
+      'E-posta adresiniz başarıyla doğrulandı. Ana sayfaya yönlendiriliyorsunuz...';
+
+  @override
+  String get verificationFailedTitle => 'Doğrulama Başarısız';
+
+  @override
+  String get invalidVerificationLink => 'Geçersiz doğrulama bağlantısı.';
+
+  @override
+  String get verificationExpired =>
+      'Doğrulama başarısız. Bağlantı süresi dolmuş olabilir.';
 }

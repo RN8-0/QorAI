@@ -291,7 +291,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: CupertinoIcons.chat_bubble_text_fill,
                         iconBg: const Color(0xFF06B6D4),
                         title: context.l10n?.contactUs ?? 'Contact Us',
-                        onTap: () => _showContactForm(context),
+                        onTap: () => context.push(AppRoutes.contactUs),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -1326,132 +1326,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  void _showContactForm(BuildContext context) {
-    final userAsync = ref.read(userProfileProvider);
-    final user = userAsync.valueOrNull;
-    final nameCtrl = TextEditingController(text: user?.displayName ?? '');
-    final emailCtrl = TextEditingController(text: user?.email ?? '');
-    final msgCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool sending = false;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(ctx).colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n?.contactUs ?? 'Contact Us',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: nameCtrl,
-                    decoration: InputDecoration(
-                      labelText: context.l10n?.fullName ?? 'Full Name',
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'E-posta',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: msgCtrl,
-                    maxLines: 4,
-                    maxLength: 2000,
-                    decoration: const InputDecoration(
-                      labelText: 'Mesaj',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: sending
-                        ? null
-                        : () async {
-                            if (!formKey.currentState!.validate()) return;
-                            setState(() => sending = true);
-                            try {
-                              await ref
-                                  .read(pbDataSourceProvider)
-                                  .sendSupportMessage(
-                                    userId: user?.uid,
-                                    displayName: nameCtrl.text.trim(),
-                                    email: emailCtrl.text.trim(),
-                                    message: msgCtrl.text.trim(),
-                                  );
-                              if (!ctx.mounted) return;
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Mesajınız gönderildi! En kısa sürede yanıt vereceğiz.'),
-                                ),
-                              );
-                            } catch (e) {
-                              setState(() => sending = false);
-                              if (!ctx.mounted) return;
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(content: Text('Error: $e')),
-                              );
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: sending
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Gönder'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   String _displayScaleLabel(BuildContext context, double scale) {
     if (scale <= 0.9) return context.l10n?.small ?? 'Small';
@@ -1516,9 +1391,10 @@ class _DeleteAccountSheet extends StatefulWidget {
 
 class _DeleteAccountSheetState extends State<_DeleteAccountSheet>
     with SingleTickerProviderStateMixin {
-  int _step = 0; // 0 = warning, 1 = confirm
+  int _step = 0; // 0 = warning, 1 = confirm, 2 = email sent
   final _controller = TextEditingController();
   bool _deleting = false;
+  String _userEmail = '';
   late final AnimationController _slideCtrl;
   late final Animation<Offset> _slideAnim;
 
@@ -1554,20 +1430,22 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet>
   }
 
   void _goToStep2() {
+    _userEmail = widget.widgetRef.read(userProfileProvider).valueOrNull?.email ?? '';
     setState(() => _step = 1);
     _slideCtrl.forward(from: 0);
   }
 
-  Future<void> _deleteAccount() async {
+  Future<void> _requestDeletion() async {
     setState(() => _deleting = true);
     final result = await widget.widgetRef
         .read(authRepositoryProvider)
-        .deleteCurrentUser();
+        .requestAccountDeletion();
     if (!mounted) return;
-    Navigator.of(context).pop();
+    setState(() => _deleting = false);
     switch (result) {
       case Success():
-        widget.onSuccess();
+        setState(() => _step = 2);
+        _slideCtrl.forward(from: 0);
       case Failure(error: final error):
         widget.onError(error.message);
     }
@@ -1669,19 +1547,28 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet>
                   Expanded(
                     child: Container(
                       height: 2,
-                      color: _step >= 1
-                          ? _red
-                          : context.dividerColor,
+                      color: _step >= 1 ? _red : context.dividerColor,
                     ),
                   ),
                   _stepDot(1),
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      color: _step >= 2 ? _red : context.dividerColor,
+                    ),
+                  ),
+                  _stepDot(2),
                 ],
               ),
             ),
             // Content
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-              child: _step == 0 ? _buildStep1() : _buildStep2(),
+              child: _step == 0
+                  ? _buildStep1()
+                  : _step == 1
+                      ? _buildStep2()
+                      : _buildStep3(),
             ),
           ],
         ),
@@ -1899,7 +1786,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet>
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 color: _confirmed ? _red : context.dividerColor,
                 borderRadius: BorderRadius.circular(12),
-                onPressed: (_confirmed && !_deleting) ? _deleteAccount : null,
+                onPressed: (_confirmed && !_deleting) ? _requestDeletion : null,
                 child: _deleting
                     ? const SizedBox(
                         width: 20,
@@ -1911,7 +1798,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet>
                         ),
                       )
                     : Text(
-                        _isTr ? 'Hesabı Kalıcı Sil' : 'Permanently Delete',
+                        _isTr ? 'Onay E-postası Gönder' : 'Send Confirmation Email',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -1931,6 +1818,82 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet>
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   color: context.textTertiaryColor,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep3() {
+    return SlideTransition(
+      position: _slideAnim,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              color: AppTheme.success.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              CupertinoIcons.envelope_badge_fill,
+              color: AppTheme.success,
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _isTr ? 'E-posta Gönderildi' : 'Email Sent',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _isTr
+                ? 'Hesabınızı silmek için gelen kutunuza gidin ve onay bağlantısına tıklayın.'
+                    '${_userEmail.isNotEmpty ? '\n\n$_userEmail' : ''}'
+                : 'Go to your inbox and click the confirmation link to permanently delete your account.'
+                    '${_userEmail.isNotEmpty ? '\n\n$_userEmail' : ''}',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: context.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _isTr
+                ? 'Bağlantı 24 saat içinde geçerliliğini yitirir.'
+                : 'The link expires in 24 hours.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              color: context.textTertiaryColor,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              color: context.dividerColor.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                _isTr ? 'Kapat' : 'Close',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
                 ),
               ),
             ),

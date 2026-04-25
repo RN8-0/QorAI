@@ -592,15 +592,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === QUIZ REMINDER =========================================================
 
   Widget _buildQuizReminder() {
-    return Consumer(builder: (context, ref, _) {
-      final userProfile = ref.watch(userProfileProvider);
-      final covers =
-          ref.watch(categoryCoversProvider).valueOrNull ??
-          const <String, String>{};
-      final heroImage =
-          covers['smartphones'] ?? covers['laptops'] ?? covers['headphones'];
-      return _buildQuizReminderBody(userProfile, heroImage);
-    });
+    return SliverToBoxAdapter(
+      child: Consumer(builder: (context, ref, _) {
+        final userProfile = ref.watch(userProfileProvider);
+        final covers =
+            ref.watch(categoryCoversProvider).valueOrNull ??
+            const <String, String>{};
+        final heroImage =
+            covers['smartphones'] ?? covers['laptops'] ?? covers['headphones'];
+        return _buildQuizReminderBody(userProfile, heroImage);
+      }),
+    );
   }
 
   Widget _buildQuizReminderBody(AsyncValue userProfile, String? heroImage) {
@@ -608,8 +610,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return userProfile.when(
       data: (user) {
         if (user != null && !user.quizCompleted) {
-          return SliverToBoxAdapter(
-            child: RepaintBoundary(
+          return RepaintBoundary(
               child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: GestureDetector(
@@ -802,14 +803,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
             ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
-            ),
           );
         }
-        return const SliverToBoxAdapter(child: SizedBox.shrink());
+        return const SizedBox.shrink();
       },
-      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-        error: (error, stackTrace) =>
-          const SliverToBoxAdapter(child: SizedBox.shrink()),
+      loading: () => const SizedBox.shrink(),
+      error: (error, stackTrace) => const SizedBox.shrink(),
     );
   }
 

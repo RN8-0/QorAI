@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "pl",
   "appTitle": "Qor AI",
   "home": "Strona Główna",
@@ -456,6 +456,8 @@
   "signInToYourAccount": "Zaloguj się do konta",
   "email": "E-mail",
   "password": "Hasło",
+  "confirmPassword": "Potwierdź hasło",
+  "passwordsDoNotMatch": "Hasła nie są zgodne.",
   "forgotPassword": "Zapomniałeś hasła?",
   "signIn": "Zaloguj się",
   "dontHaveAccount": "Nie masz konta? ",
@@ -1332,5 +1334,12 @@
   "analysisHistoryTooltip": "Historia analiz",
   "pasteProductLinkCardTitle": "Wklej link produktu",
   "pasteProductLinkSubtitle": "Uzyskaj analizę AI z quizem",
-  "howComparisonWorks": "Jak działa porównanie"
+  "howComparisonWorks": "Jak działa porównanie",
+  "registrationSuccess": "Rejestracja zakończona! Link weryfikacyjny został wysłany na Twój e-mail.",
+  "verifyingEmail": "Weryfikowanie e-maila...",
+  "emailVerifiedTitle": "E-mail zweryfikowany!",
+  "emailVerifiedSubtitle": "Twój e-mail został pomyślnie zweryfikowany. Przekierowywanie do strony głównej...",
+  "verificationFailedTitle": "Weryfikacja nie powiodła się",
+  "invalidVerificationLink": "Nieprawidłowy link weryfikacyjny.",
+  "verificationExpired": "Weryfikacja nie powiodła się. Link mógł wygasnąć."
 }

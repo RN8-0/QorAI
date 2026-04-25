@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "nl",
   "appTitle": "Qor AI",
   "home": "Startpagina",
@@ -456,6 +456,8 @@
   "signInToYourAccount": "Meld u aan bij uw account",
   "email": "E-mail",
   "password": "Wachtwoord",
+  "confirmPassword": "Wachtwoord bevestigen",
+  "passwordsDoNotMatch": "Wachtwoorden komen niet overeen.",
   "forgotPassword": "Wachtwoord vergeten?",
   "signIn": "Inloggen",
   "dontHaveAccount": "Geen account? ",
@@ -1332,5 +1334,12 @@
   "analysisHistoryTooltip": "Analysegeschiedenis",
   "pasteProductLinkCardTitle": "Productlink plakken",
   "pasteProductLinkSubtitle": "Ontvang AI-gestuurde analyse met quiz",
-  "howComparisonWorks": "Hoe de vergelijking werkt"
+  "howComparisonWorks": "Hoe de vergelijking werkt",
+  "registrationSuccess": "Registratie geslaagd! Een verificatielink is naar uw e-mail verzonden.",
+  "verifyingEmail": "E-mail verifiëren...",
+  "emailVerifiedTitle": "E-mail geverifieerd!",
+  "emailVerifiedSubtitle": "Uw e-mail is succesvol geverifieerd. Doorsturen naar home...",
+  "verificationFailedTitle": "Verificatie mislukt",
+  "invalidVerificationLink": "Ongeldige verificatielink.",
+  "verificationExpired": "Verificatie mislukt. De link is mogelijk verlopen."
 }

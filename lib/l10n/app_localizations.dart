@@ -622,6 +622,78 @@ abstract class AppLocalizations {
   /// **'Contact Us'**
   String get contactUs;
 
+  /// No description provided for @supportTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Support Team'**
+  String get supportTeam;
+
+  /// No description provided for @supportTeamSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send us your questions and feedback.'**
+  String get supportTeamSubtitle;
+
+  /// No description provided for @fullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Name'**
+  String get fullName;
+
+  /// No description provided for @yourFullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your full name'**
+  String get yourFullName;
+
+  /// No description provided for @yourEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'your@email.com'**
+  String get yourEmail;
+
+  /// No description provided for @yourMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your message here...'**
+  String get yourMessage;
+
+  /// No description provided for @message.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get message;
+
+  /// No description provided for @send.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get send;
+
+  /// No description provided for @requiredField.
+  ///
+  /// In en, this message translates to:
+  /// **'Required field'**
+  String get requiredField;
+
+  /// No description provided for @enterValidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address'**
+  String get enterValidEmail;
+
+  /// No description provided for @messageSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your message has been sent! We will reply as soon as possible.'**
+  String get messageSent;
+
+  /// No description provided for @sendError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get sendError;
+
   /// No description provided for @deleteAccount.
   ///
   /// In en, this message translates to:
@@ -2494,6 +2566,18 @@ abstract class AppLocalizations {
   /// **'Password'**
   String get password;
 
+  /// No description provided for @confirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPassword;
+
+  /// No description provided for @passwordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match.'**
+  String get passwordsDoNotMatch;
+
   /// No description provided for @forgotPassword.
   ///
   /// In en, this message translates to:
@@ -2529,12 +2613,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Join the smarter way to decide'**
   String get joinSmarterWay;
-
-  /// No description provided for @fullName.
-  ///
-  /// In en, this message translates to:
-  /// **'Full Name'**
-  String get fullName;
 
   /// No description provided for @birthDate.
   ///
@@ -7029,6 +7107,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Product {current} of {total}'**
   String productProgress(int current, int total);
+
+  /// No description provided for @registrationSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration successful! A verification link has been sent to your email.'**
+  String get registrationSuccess;
+
+  /// No description provided for @verifyingEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying email...'**
+  String get verifyingEmail;
+
+  /// No description provided for @emailVerifiedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Verified!'**
+  String get emailVerifiedTitle;
+
+  /// No description provided for @emailVerifiedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email has been successfully verified. Redirecting to home...'**
+  String get emailVerifiedSubtitle;
+
+  /// No description provided for @verificationFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification Failed'**
+  String get verificationFailedTitle;
+
+  /// No description provided for @invalidVerificationLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid verification link.'**
+  String get invalidVerificationLink;
+
+  /// No description provided for @verificationExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification failed. The link may have expired.'**
+  String get verificationExpired;
 }
 
 class _AppLocalizationsDelegate

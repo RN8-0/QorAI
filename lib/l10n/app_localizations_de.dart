@@ -269,6 +269,43 @@ class AppLocalizationsDe extends AppLocalizations {
   String get contactUs => 'Kontaktiere uns';
 
   @override
+  String get supportTeam => 'Support Team';
+
+  @override
+  String get supportTeamSubtitle => 'Send us your questions and feedback.';
+
+  @override
+  String get fullName => 'Vollständiger Name';
+
+  @override
+  String get yourFullName => 'Your full name';
+
+  @override
+  String get yourEmail => 'your@email.com';
+
+  @override
+  String get yourMessage => 'Write your message here...';
+
+  @override
+  String get message => 'Message';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get requiredField => 'Required field';
+
+  @override
+  String get enterValidEmail => 'Enter a valid email address';
+
+  @override
+  String get messageSent =>
+      'Your message has been sent! We will reply as soon as possible.';
+
+  @override
+  String get sendError => 'Error';
+
+  @override
   String get deleteAccount => 'Konto löschen';
 
   @override
@@ -1252,6 +1289,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get password => 'Passwort';
 
   @override
+  String get confirmPassword => 'Passwort bestätigen';
+
+  @override
+  String get passwordsDoNotMatch => 'Passwörter stimmen nicht überein.';
+
+  @override
   String get forgotPassword => 'Passwort vergessen?';
 
   @override
@@ -1268,9 +1311,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get joinSmarterWay => 'Der klügere Weg zu entscheiden';
-
-  @override
-  String get fullName => 'Vollständiger Name';
 
   @override
   String get birthDate => 'Geburtsdatum';
@@ -3635,4 +3675,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String productProgress(int current, int total) {
     return 'Product $current of $total';
   }
+
+  @override
+  String get registrationSuccess =>
+      'Registrierung erfolgreich! Ein Bestätigungslink wurde an Ihre E-Mail gesendet.';
+
+  @override
+  String get verifyingEmail => 'E-Mail wird verifiziert...';
+
+  @override
+  String get emailVerifiedTitle => 'E-Mail bestätigt!';
+
+  @override
+  String get emailVerifiedSubtitle =>
+      'Ihre E-Mail wurde erfolgreich bestätigt. Weiterleitung zur Startseite...';
+
+  @override
+  String get verificationFailedTitle => 'Verifizierung fehlgeschlagen';
+
+  @override
+  String get invalidVerificationLink => 'Ungültiger Bestätigungslink.';
+
+  @override
+  String get verificationExpired =>
+      'Verifizierung fehlgeschlagen. Der Link ist möglicherweise abgelaufen.';
 }

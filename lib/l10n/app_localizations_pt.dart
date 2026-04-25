@@ -267,6 +267,43 @@ class AppLocalizationsPt extends AppLocalizations {
   String get contactUs => 'Entre em contato';
 
   @override
+  String get supportTeam => 'Support Team';
+
+  @override
+  String get supportTeamSubtitle => 'Send us your questions and feedback.';
+
+  @override
+  String get fullName => 'Nome completo';
+
+  @override
+  String get yourFullName => 'Your full name';
+
+  @override
+  String get yourEmail => 'your@email.com';
+
+  @override
+  String get yourMessage => 'Write your message here...';
+
+  @override
+  String get message => 'Message';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get requiredField => 'Required field';
+
+  @override
+  String get enterValidEmail => 'Enter a valid email address';
+
+  @override
+  String get messageSent =>
+      'Your message has been sent! We will reply as soon as possible.';
+
+  @override
+  String get sendError => 'Error';
+
+  @override
   String get deleteAccount => 'Excluir conta';
 
   @override
@@ -1251,6 +1288,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get password => 'Senha';
 
   @override
+  String get confirmPassword => 'Confirmar senha';
+
+  @override
+  String get passwordsDoNotMatch => 'As senhas não coincidem.';
+
+  @override
   String get forgotPassword => 'Esqueceu a senha?';
 
   @override
@@ -1267,9 +1310,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get joinSmarterWay => 'Junte-se ao jeito mais inteligente de decidir';
-
-  @override
-  String get fullName => 'Nome completo';
 
   @override
   String get birthDate => 'Data de nascimento';
@@ -3630,4 +3670,28 @@ class AppLocalizationsPt extends AppLocalizations {
   String productProgress(int current, int total) {
     return 'Product $current of $total';
   }
+
+  @override
+  String get registrationSuccess =>
+      'Registro concluído! Um link de verificação foi enviado para o seu e-mail.';
+
+  @override
+  String get verifyingEmail => 'Verificando e-mail...';
+
+  @override
+  String get emailVerifiedTitle => 'E-mail verificado!';
+
+  @override
+  String get emailVerifiedSubtitle =>
+      'Seu e-mail foi verificado com sucesso. Redirecionando para a página inicial...';
+
+  @override
+  String get verificationFailedTitle => 'Verificação falhou';
+
+  @override
+  String get invalidVerificationLink => 'Link de verificação inválido.';
+
+  @override
+  String get verificationExpired =>
+      'Verificação falhou. O link pode ter expirado.';
 }

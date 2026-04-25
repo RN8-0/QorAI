@@ -32,6 +32,8 @@ import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_screen.dart';
 import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_history_screen.dart';
 import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
 import 'package:qor_ai/presentation/screens/visual_scanner/visual_scanner_screen.dart';
+import 'package:qor_ai/presentation/screens/settings/contact_us_screen.dart';
+import 'package:qor_ai/presentation/screens/settings/email_verify_screen.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/pb_client.dart';
@@ -74,7 +76,8 @@ class AppRoutes {
   static const String visualScanner = '/visual-scanner';
   // Recently Viewed
   static const String recentlyViewed = '/recently-viewed';
-  // Notifications
+  static const String contactUs = '/contact-us';
+  static const String emailVerify = '/email-verify';
   static const String notifications = '/notifications';
 }
 
@@ -402,6 +405,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
+      GoRoute(
+        path: AppRoutes.contactUs,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          child: const ContactUsScreen(),
+          transitionsBuilder: _slideTransition,
+          transitionDuration: AppConstants.pageTransitionDuration,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.emailVerify,
+        pageBuilder: (context, state) {
+          final token = state.uri.queryParameters['token'] ?? '';
+          return CustomTransitionPage(
+            child: EmailVerifyScreen(token: token),
+            transitionsBuilder: _fadeTransition,
+            transitionDuration: AppConstants.pageTransitionDuration,
+          );
+        },
+      ),
       // Visual Scanner (standalone, no bottom nav)
       GoRoute(
         path: AppRoutes.visualScanner,

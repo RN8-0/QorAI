@@ -1481,37 +1481,44 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
           if (widget.text.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: GestureDetector(
-                onTap: () => setState(() => _textExpanded = !_textExpanded),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.text,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        height: 1.6,
-                        color: context.textPrimary,
-                      ),
-                      maxLines: _textExpanded ? null : 4,
-                      overflow: _textExpanded
-                          ? TextOverflow.visible
-                          : TextOverflow.ellipsis,
-                    ),
-                    if (!_textExpanded && widget.text.length > 200)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Devamını gör',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _textExpanded = !_textExpanded),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.text,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: AppTheme.brandBlue,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            height: 1.6,
+                            color: context.textPrimary,
                           ),
+                          maxLines: _textExpanded ? null : 4,
+                          overflow: _textExpanded
+                              ? TextOverflow.visible
+                              : TextOverflow.ellipsis,
                         ),
-                      ),
-                  ],
-                ),
+                        if (!_textExpanded && widget.text.length > 200)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Devamını gör',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: AppTheme.brandBlue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _SeeTranslationButton(text: widget.text),
+                ],
               ),
             ),
 
@@ -1858,6 +1865,10 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                                     color: context.textSecondary,
                                   ),
                                 ),
+                                if (replyText.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  _SeeTranslationButton(text: replyText),
+                                ],
                               ],
                             ),
                           ),

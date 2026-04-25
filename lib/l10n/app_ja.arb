@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "ja",
   "appTitle": "Qor AI",
   "home": "ホーム",
@@ -456,6 +456,8 @@
   "signInToYourAccount": "アカウントにサインイン",
   "email": "メール",
   "password": "パスワード",
+  "confirmPassword": "パスワードを確認",
+  "passwordsDoNotMatch": "パスワードが一致しません。",
   "forgotPassword": "パスワードをお忘れですか？",
   "signIn": "サインイン",
   "dontHaveAccount": "アカウントをお持ちでないですか？ ",
@@ -1332,5 +1334,12 @@
   "analysisHistoryTooltip": "分析履歴",
   "pasteProductLinkCardTitle": "商品リンクを貼り付け",
   "pasteProductLinkSubtitle": "クイズ付きのAI分析を取得",
-  "howComparisonWorks": "比較の仕組み"
+  "howComparisonWorks": "比較の仕組み",
+  "registrationSuccess": "登録成功！確認リンクがメールアドレスに送信されました。",
+  "verifyingEmail": "メールを確認中...",
+  "emailVerifiedTitle": "メール確認完了！",
+  "emailVerifiedSubtitle": "メールが正常に確認されました。ホームに移動中...",
+  "verificationFailedTitle": "確認失敗",
+  "invalidVerificationLink": "無効な確認リンクです。",
+  "verificationExpired": "確認に失敗しました。リンクの有効期限が切れている可能性があります。"
 }

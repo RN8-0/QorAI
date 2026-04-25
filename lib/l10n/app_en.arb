@@ -92,6 +92,18 @@
   "helpSupport": "Help & Support",
   "rateApp": "Rate App",
   "contactUs": "Contact Us",
+  "supportTeam": "Support Team",
+  "supportTeamSubtitle": "Send us your questions and feedback.",
+  "fullName": "Full Name",
+  "yourFullName": "Your full name",
+  "yourEmail": "your@email.com",
+  "yourMessage": "Write your message here...",
+  "message": "Message",
+  "send": "Send",
+  "requiredField": "Required field",
+  "enterValidEmail": "Enter a valid email address",
+  "messageSent": "Your message has been sent! We will reply as soon as possible.",
+  "sendError": "Error",
   "deleteAccount": "Delete Account",
   "appVersion": "App Version",
   "aiChat": "AI Chat",
@@ -454,6 +466,8 @@
   "signInToYourAccount": "Sign in to your account",
   "email": "Email",
   "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "passwordsDoNotMatch": "Passwords do not match.",
   "forgotPassword": "Forgot Password?",
   "signIn": "Sign In",
   "dontHaveAccount": "Don't have an account? ",
@@ -1451,5 +1465,12 @@
         "type": "int"
       }
     }
-  }
+  },
+  "registrationSuccess": "Registration successful! A verification link has been sent to your email.",
+  "verifyingEmail": "Verifying email...",
+  "emailVerifiedTitle": "Email Verified!",
+  "emailVerifiedSubtitle": "Your email has been successfully verified. Redirecting to home...",
+  "verificationFailedTitle": "Verification Failed",
+  "invalidVerificationLink": "Invalid verification link.",
+  "verificationExpired": "Verification failed. The link may have expired."
 }

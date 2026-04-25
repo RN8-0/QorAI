@@ -263,6 +263,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get contactUs => 'お問い合わせ';
 
   @override
+  String get supportTeam => 'Support Team';
+
+  @override
+  String get supportTeamSubtitle => 'Send us your questions and feedback.';
+
+  @override
+  String get fullName => '氏名';
+
+  @override
+  String get yourFullName => 'Your full name';
+
+  @override
+  String get yourEmail => 'your@email.com';
+
+  @override
+  String get yourMessage => 'Write your message here...';
+
+  @override
+  String get message => 'Message';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get requiredField => 'Required field';
+
+  @override
+  String get enterValidEmail => 'Enter a valid email address';
+
+  @override
+  String get messageSent =>
+      'Your message has been sent! We will reply as soon as possible.';
+
+  @override
+  String get sendError => 'Error';
+
+  @override
   String get deleteAccount => 'アカウント削除';
 
   @override
@@ -1227,6 +1264,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get password => 'パスワード';
 
   @override
+  String get confirmPassword => 'パスワードを確認';
+
+  @override
+  String get passwordsDoNotMatch => 'パスワードが一致しません。';
+
+  @override
   String get forgotPassword => 'パスワードをお忘れですか？';
 
   @override
@@ -1243,9 +1286,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get joinSmarterWay => 'よりスマートな判断方法に参加';
-
-  @override
-  String get fullName => '氏名';
 
   @override
   String get birthDate => '生年月日';
@@ -3568,4 +3608,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String productProgress(int current, int total) {
     return 'Product $current of $total';
   }
+
+  @override
+  String get registrationSuccess => '登録成功！確認リンクがメールアドレスに送信されました。';
+
+  @override
+  String get verifyingEmail => 'メールを確認中...';
+
+  @override
+  String get emailVerifiedTitle => 'メール確認完了！';
+
+  @override
+  String get emailVerifiedSubtitle => 'メールが正常に確認されました。ホームに移動中...';
+
+  @override
+  String get verificationFailedTitle => '確認失敗';
+
+  @override
+  String get invalidVerificationLink => '無効な確認リンクです。';
+
+  @override
+  String get verificationExpired => '確認に失敗しました。リンクの有効期限が切れている可能性があります。';
 }

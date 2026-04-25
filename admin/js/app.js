@@ -1428,7 +1428,7 @@ function openUserDetail(uid){
         </div>
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
           <div style="font-size:12px;color:var(--text2)">Global günlük havuz: <b>${formatQCoinAmount(_freeDailyAiCreditLimit)} Q</b>${u.isPremium?' · <span style="color:#f59e0b">Premium (limitsiz)</span>':''}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="addQCoinsToUser('${safeUid}')">Extra Q Ekle</button><button class="btn btn-ghost btn-sm" onclick="resetUserQCoins('${safeUid}')">Q Coin Sıfırla</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="showAddQCoinModal('${safeUid}')">Extra Q Ekle</button><button class="btn btn-ghost btn-sm" onclick="showResetQCoinModal('${safeUid}')">Q Coin Sıfırla</button></div>
         </div>
       </div>
       <div class="card" style="margin:0 0 16px;padding:14px">
@@ -1883,6 +1883,88 @@ async function resetUserQCoins(uid){
     u.dailyAiCreditsDate=todayKey;
     logActivity('user_qcoin_reset',`Q Coin sifirlandi: ${uid}`,{userId:uid});
     openUserDetail(uid);renderUsers();toast('Q Coin bakiyesi sifirlandi','s');
+  }catch(e){toast('Error: '+e.message,'e')}
+}
+
+// Custom modal wrappers — tarayıcı prompt/confirm yerine HTML dialog kullanır
+function showAddQCoinModal(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const snapshot=getUserQCoinSnapshot(u);
+  // Varsa öncekini temizle
+  document.getElementById('_qcoinAddModal')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='_qcoinAddModal';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML=`<div style="background:var(--surface-1,#1a1a1a);border:1px solid var(--border,#333);border-radius:16px;padding:24px;min-width:300px;max-width:420px;width:100%">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">🪙 Extra Q Ekle</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Kullanıcı: <b>${escHtml(u.displayName||u.email||uid)}</b><br>Mevcut Ekstra Q: <b>${formatQCoinAmount(snapshot.extra)}</b></div>
+    <input id="_qcoinAddInput" type="number" min="0.5" step="0.5" value="5" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#444);background:var(--surface-2,#111);color:var(--text);font-size:15px;margin-bottom:16px">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('_qcoinAddModal')?.remove()">İptal</button>
+      <button class="btn btn-primary" onclick="_confirmAddQCoins('${escJs(uid)}')">Ekle</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
+  setTimeout(()=>document.getElementById('_qcoinAddInput')?.focus(),50);
+}
+
+async function _confirmAddQCoins(uid){
+  const raw=(document.getElementById('_qcoinAddInput')?.value||'').replace(',','.');
+  const amount=safeNumber(raw);
+  document.getElementById('_qcoinAddModal')?.remove();
+  if(amount<=0){toast('Geçersiz Q miktarı','w');return}
+  await addQCoinsToUser_internal(uid,amount);
+}
+
+async function addQCoinsToUser_internal(uid,amount){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const snapshot=getUserQCoinSnapshot(u);
+  const nextBonus=snapshot.extra+amount;
+  try{
+    await pbUpdateDoc('users',uid,{bonusQCoins:nextBonus,dailyAiCreditsDate:u.dailyAiCreditsDate||qCoinPeriodKey()});
+    u.bonusQCoins=nextBonus;
+    u.dailyAiCreditsDate=u.dailyAiCreditsDate||qCoinPeriodKey();
+    logActivity('user_qcoin_add',`Extra Q eklendi: ${uid}`,{userId:uid,amount});
+    openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q eklendi`,'s');
+  }catch(e){toast('Error: '+e.message,'e')}
+}
+
+function showResetQCoinModal(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const snapshot=getUserQCoinSnapshot(u);
+  document.getElementById('_qcoinResetModal')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='_qcoinResetModal';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML=`<div style="background:var(--surface-1,#1a1a1a);border:1px solid var(--border,#333);border-radius:16px;padding:24px;min-width:300px;max-width:420px;width:100%">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">⚠️ Q Coin Sıfırla</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Kullanıcı: <b>${escHtml(u.displayName||u.email||uid)}</b><br>Bu işlem geri alınamaz. Mevcut bakiye: <b style="color:var(--amber,#f59e0b)">${formatQCoinAmount(snapshot.remaining)} Q</b></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('_qcoinResetModal')?.remove()">İptal</button>
+      <button class="btn" style="background:#ef4444;color:#fff" onclick="_confirmResetQCoins('${escJs(uid)}')">Sıfırla</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
+}
+
+async function _confirmResetQCoins(uid){
+  document.getElementById('_qcoinResetModal')?.remove();
+  await resetUserQCoins_internal(uid);
+}
+
+async function resetUserQCoins_internal(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const snapshot=getUserQCoinSnapshot(u);
+  const todayKey=qCoinPeriodKey();
+  try{
+    await pbUpdateDoc('users',uid,{bonusQCoins:0,dailyAiCreditsUsed:snapshot.total,dailyAiCreditsDate:todayKey});
+    u.bonusQCoins=0;
+    u.dailyAiCreditsUsed=snapshot.total;
+    u.dailyAiCreditsDate=todayKey;
+    logActivity('user_qcoin_reset',`Q Coin sifirlandi: ${uid}`,{userId:uid});
+    openUserDetail(uid);renderUsers();toast('Q Coin bakiyesi sıfırlandı','s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
