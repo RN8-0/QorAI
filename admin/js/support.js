@@ -7,6 +7,85 @@
 
 let _supportMessages = [];
 let _supportSubscriptionReady = false;
+const _supportAccountProfiles = new Map();
+
+function _normalizeSupportText(value) {
+  return String(value || '').trim();
+}
+
+function _normalizeSupportEmail(value) {
+  return _normalizeSupportText(value).toLowerCase();
+}
+
+function _normalizeSupportAccount(record) {
+  const email = _normalizeSupportEmail(record?.email || record?.googleEmail);
+  const displayName = _normalizeSupportText(record?.displayName || record?.name);
+  return {
+    displayName: displayName || (email.includes('@') ? email.split('@')[0] : ''),
+    email,
+  };
+}
+
+function _preferredSupportName(message) {
+  return _normalizeSupportText(message?.accountDisplayName || message?.displayName) || 'İsimsiz';
+}
+
+function _preferredSupportEmail(message) {
+  return _normalizeSupportEmail(message?.accountEmail || message?.email);
+}
+
+function _hasSeparateSubmittedIdentity(message) {
+  const accountName = _normalizeSupportText(message?.accountDisplayName);
+  const accountEmail = _normalizeSupportEmail(message?.accountEmail);
+  const submittedName = _normalizeSupportText(message?.displayName);
+  const submittedEmail = _normalizeSupportEmail(message?.email);
+  if (!accountName && !accountEmail) return false;
+  return accountName !== submittedName || accountEmail !== submittedEmail;
+}
+
+function _supportIdentityCaption(message) {
+  if (!_hasSeparateSubmittedIdentity(message)) return '';
+  return `
+    <div style="font-size:11px;color:var(--text3);margin-top:6px">
+      Formda girilen: ${escapeHtml(_normalizeSupportText(message.displayName) || 'İsimsiz')}
+      ${message.email ? `&lt;${escapeHtml(_normalizeSupportEmail(message.email))}&gt;` : ''}
+    </div>`;
+}
+
+function _applySupportAccount(message) {
+  const userId = _normalizeSupportText(message?.userId);
+  if (!userId || !_supportAccountProfiles.has(userId)) return { ...message };
+  const account = _supportAccountProfiles.get(userId);
+  if (!account) return { ...message };
+  return {
+    ...message,
+    accountDisplayName: account.displayName,
+    accountEmail: account.email,
+  };
+}
+
+async function _ensureSupportAccountProfile(userId) {
+  const normalizedUserId = _normalizeSupportText(userId);
+  if (!normalizedUserId || _supportAccountProfiles.has(normalizedUserId)) return;
+
+  try {
+    const record = await getPb().collection('users').getOne(normalizedUserId, {
+      fields: 'id,displayName,name,email,googleEmail',
+      $autoCancel: false,
+    });
+    _supportAccountProfiles.set(normalizedUserId, _normalizeSupportAccount(record));
+  } catch (e) {
+    console.warn('support account lookup:', normalizedUserId, e);
+    _supportAccountProfiles.set(normalizedUserId, null);
+  }
+}
+
+async function _hydrateSupportMessages(messages) {
+  const items = Array.isArray(messages) ? messages : [];
+  const userIds = [...new Set(items.map((item) => _normalizeSupportText(item?.userId)).filter(Boolean))];
+  await Promise.all(userIds.map((userId) => _ensureSupportAccountProfile(userId)));
+  _supportMessages = _sortSupportMessages(items.map((item) => _applySupportAccount(item)));
+}
 
 function _sortSupportMessages(items) {
   return [...items].sort((left, right) => {
@@ -37,7 +116,7 @@ async function loadSupportMessages() {
     const records = await pbGetList('support_messages', 1, 200, {
       sort: '-created',
     });
-    _supportMessages = _sortSupportMessages(records.items || records);
+    await _hydrateSupportMessages(records.items || records);
     renderSupportMessages();
     updateSupportBadge();
   } catch (e) {
@@ -58,7 +137,7 @@ async function initSupportInbox(options = {}) {
   if (_supportSubscriptionReady) return;
 
   try {
-    await getPb().collection('support_messages').subscribe('*', (event) => {
+    await getPb().collection('support_messages').subscribe('*', async (event) => {
       const record = event?.record;
       if (!record?.id) return;
 
@@ -66,10 +145,11 @@ async function initSupportInbox(options = {}) {
         _removeSupportMessage(record.id);
         closeSupportModal(record.id);
       } else {
+        await _ensureSupportAccountProfile(record.userId);
         const existing = _supportMessages.find((item) => item.id === record.id);
-        _upsertSupportMessage(record);
+        _upsertSupportMessage(_applySupportAccount(record));
         if (event.action === 'create' && !existing) {
-          toast(`Yeni destek mesajı: ${record.displayName || record.email || 'Kullanıcı'}`, 'i');
+          toast(`Yeni destek mesajı: ${_preferredSupportName(_applySupportAccount(record))}`, 'i');
         }
       }
 
@@ -129,11 +209,14 @@ function renderSupportMessages() {
   el.innerHTML = msgs.map(m => {
     const isOpen = m.status === 'open';
     const date = m.created ? new Date(m.created).toLocaleString('tr-TR') : '—';
+    const preferredName = _preferredSupportName(m);
+    const preferredEmail = _preferredSupportEmail(m);
     return `
     <div class="activity-log-item" style="cursor:pointer;border-left:3px solid ${isOpen ? 'var(--amber)' : 'var(--green,#22c55e)'};padding:12px 16px;margin-bottom:8px;border-radius:6px;background:var(--surface-2)" onclick="openSupportMessage('${m.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px;color:var(--text)">${escapeHtml(m.displayName || 'İsimsiz')} <span style="font-size:12px;font-weight:400;color:var(--text2)">&lt;${escapeHtml(m.email || '')}&gt;</span></div>
+          <div style="font-weight:600;font-size:14px;color:var(--text)">${escapeHtml(preferredName)} <span style="font-size:12px;font-weight:400;color:var(--text2)">&lt;${escapeHtml(preferredEmail)}&gt;</span></div>
+          ${_supportIdentityCaption(m)}
           <div style="font-size:13px;color:var(--text2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml((m.message || '').substring(0, 120))}${(m.message || '').length > 120 ? '…' : ''}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
@@ -154,13 +237,21 @@ function openSupportMessage(id) {
 
   const date = m.created ? new Date(m.created).toLocaleString('tr-TR') : '—';
   const repliedAt = m.repliedAt ? new Date(m.repliedAt).toLocaleString('tr-TR') : null;
+  const preferredName = _preferredSupportName(m);
+  const preferredEmail = _preferredSupportEmail(m);
+  const submittedName = _normalizeSupportText(m.displayName);
+  const submittedEmail = _normalizeSupportEmail(m.email);
 
-  document.getElementById('supportModalTitle').textContent = `Mesaj — ${m.displayName || 'İsimsiz'}`;
+  document.getElementById('supportModalTitle').textContent = `Mesaj — ${preferredName}`;
   document.getElementById('supportModalBody').innerHTML = `
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Gönderen</div>
-      <div style="font-weight:600">${escapeHtml(m.displayName || 'İsimsiz')}</div>
-      <div style="font-size:13px;color:var(--text2)">${escapeHtml(m.email || '')}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Hesaba Kayıtlı Bilgi</div>
+      <div style="font-weight:600">${escapeHtml(preferredName)}</div>
+      <div style="font-size:13px;color:var(--text2)">${escapeHtml(preferredEmail)}</div>
+      ${_hasSeparateSubmittedIdentity(m) ? `
+      <div style="font-size:12px;color:var(--text3);margin-top:12px;margin-bottom:4px">Formda Girilen Bilgi</div>
+      <div style="font-weight:600">${escapeHtml(submittedName || 'İsimsiz')}</div>
+      <div style="font-size:13px;color:var(--text2)">${escapeHtml(submittedEmail)}</div>` : ''}
       <div style="font-size:12px;color:var(--text3);margin-top:4px">${date}</div>
     </div>
     <div style="margin-bottom:20px;background:var(--bg3);border-radius:8px;padding:14px">
@@ -269,7 +360,7 @@ async function deleteSupportMessage(messageId) {
   const message = _supportMessages.find((item) => item.id === messageId);
   if (!message) return;
 
-  const confirmed = confirm(`Bu destek mesajı silinsin mi?\n\n${message.displayName || 'Kullanıcı'} <${message.email || ''}>`);
+  const confirmed = confirm(`Bu destek mesajı silinsin mi?\n\n${_preferredSupportName(message)} <${_preferredSupportEmail(message)}>`);
   if (!confirmed) return;
 
   const buttons = Array.from(document.querySelectorAll('#supportModalBody button'));
