@@ -45,7 +45,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Timer? _scrollDebounce;
   final Stopwatch _initSw = Stopwatch();
   bool _firstDataLogged = false;
-  bool _secondarySectionsReady = false;
 
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
@@ -57,12 +56,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     debugPrint('=== QOR AI: HomeScreen initState ===');
     _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
     _scrollCtrl.addListener(_handleScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (!mounted) return;
-        setState(() => _secondarySectionsReady = true);
-      });
-    });
   }
 
   void _handleScroll() {
@@ -146,17 +139,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildTrendsSection()),
 
-            if (_secondarySectionsReady) ...[
-              // ÔöÇÔöÇ TOP IN CATEGORY (dynamic) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+            ...[
+              // ─── TOP IN CATEGORY
               ..._buildTopInCategorySection(),
-              // ÔöÇÔöÇ RECENTLY VIEWED SECTION ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+              // ─── RECENTLY VIEWED SECTION
               ..._buildRecentlyViewedSection(),
-              // ÔöÇÔöÇ RECENTLY ANALYZED ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+              // ─── RECENTLY ANALYZED
               ..._buildRecentlyAnalyzedSection(),
             ],
 
-            if (_secondarySectionsReady) ...[
-              // ÔöÇÔöÇ NEW ARRIVALS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+            ...[
+              // ─── NEW ARRIVALS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
               SliverToBoxAdapter(
                 child: _SectionHeader(
                   title: context.l10n?.newArrivals ?? 'New Arrivals',
@@ -1214,12 +1207,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildCategoriesSection() {
     final categories = _getFlatCategories(context);
-    final visibleCategories = _secondarySectionsReady
-        ? categories
-        : categories.take(_kInitialCategoryChipLimit).toList(growable: false);
-    final half = (visibleCategories.length / 2).ceil();
-    final row1 = visibleCategories.sublist(0, half);
-    final row2 = visibleCategories.sublist(half);
+    final half = (categories.length / 2).ceil();
+    final row1 = categories.sublist(0, half);
+    final row2 = categories.sublist(half);
 
     return Column(
       children: [

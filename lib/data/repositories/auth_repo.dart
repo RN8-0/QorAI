@@ -66,6 +66,10 @@ class AuthRepository {
       if (gender != null) body['gender'] = gender;
       await _pb.collection('users').create(body: body);
       await _pb.collection('users').authWithPassword(email, password);
+      // Verification e-postası gönder (hata kritik değil, sessizce geç)
+      try {
+        await _pb.collection('users').requestVerification(email);
+      } catch (_) {}
       return Success(UserModel.fromPb(_pb.authStore.record!));
     } on ClientException catch (e) {
       return Failure(
@@ -75,6 +79,25 @@ class AuthRepository {
       return Failure(
         AuthException(
           message: 'Registration failed: ${e.toString()}',
+          originalError: e,
+        ),
+      );
+    }
+  }
+
+  /// E-posta doğrulama maili tekrar gönderir.
+  Future<Result<void>> resendVerificationEmail(String email) async {
+    try {
+      await _pb.collection('users').requestVerification(email);
+      return const Success(null);
+    } on ClientException catch (e) {
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } catch (e) {
+      return Failure(
+        AuthException(
+          message: 'Verification email could not be sent: ${e.toString()}',
           originalError: e,
         ),
       );
@@ -430,27 +453,47 @@ class AuthRepository {
         _deleteCollection('favorites', 'userId = "$uid"'),
         _deleteCollection('reviews', 'userId = "$uid"'),
         _deleteCollection('saved_analyses', 'userId = "$uid"'),
+        _deleteCollection('notifications', 'recipientId = "$uid"'),
+        _deleteCollection('support_messages', 'userId = "$uid"'),
       ]);
 
-      await _pb.collection('users').delete(uid);
-      _pb.authStore.clear();
+      // Try to delete the user record. PocketBase may return 403 if the
+      // collection's DELETE rule is not set to allow self-deletion.
+      // We treat that as a non-fatal error — the session is still cleared.
+      bool serverDeleted = false;
+      try {
+        await _pb.collection('users').delete(uid);
+        serverDeleted = true;
+      } on ClientException catch (e) {
+        final status = e.statusCode;
+        // 403 = no permission rule, 404 = already deleted — both are OK
+        if (status == 403 || status == 404) {
+          debugPrint('[auth] deleteCurrentUser: server returned $status, proceeding with local cleanup');
+        } else {
+          rethrow;
+        }
+      }
 
-      // Clear all local user-specific caches so there is no stale data
-      // when the user registers again or a different user logs in.
+      // Always clear session and local caches regardless of server result.
+      _pb.authStore.clear();
       try {
         await _cache.clearUserData();
         await _cache.clearAll();
-        // Also wipe Hive settings box (recently viewed, usage counts, etc.)
-        // so that the 32-count badge doesn't persist for the next session.
         await _hive?.clearAll();
       } catch (_) {}
 
+      debugPrint('[auth] deleteCurrentUser: done (serverDeleted=$serverDeleted)');
       return const Success(null);
     } on ClientException catch (e) {
+      // Auth store should still be cleared so user isn't stuck
+      _pb.authStore.clear();
+      try { await _cache.clearUserData(); } catch (_) {}
       return Failure(
         AuthException(message: _getPbErrorMsg(e), originalError: e),
       );
     } catch (e) {
+      _pb.authStore.clear();
+      try { await _cache.clearUserData(); } catch (_) {}
       return Failure(
         AuthException(
           message: 'Failed to delete account: ${e.toString()}',

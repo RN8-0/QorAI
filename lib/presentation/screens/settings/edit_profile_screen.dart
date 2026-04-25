@@ -1,10 +1,14 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:http/http.dart' as http;
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
@@ -31,6 +35,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _saving = false;
   bool _didSeedInitialData = false;
   bool _isOAuthUser = false;
+  File? _pickedPhoto;
+  bool _uploadingPhoto = false;
 
   @override
   void initState() {
@@ -208,7 +214,61 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ),
       child: Row(
         children: [
-          _AvatarPreview(photoUrl: photoUrl, name: name, size: 72),
+          GestureDetector(
+            onTap: _saving ? null : _pickPhoto,
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                _pickedPhoto != null
+                    ? ClipOval(
+                        child: Image.file(
+                          _pickedPhoto!,
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : _AvatarPreview(photoUrl: photoUrl, name: name, size: 72),
+                if (_uploadingPhoto)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppTheme.neonCyan,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppTheme.neonCyan,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? Colors.black : Colors.white,
+                        width: 2,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 12,
+                      color: Colors.black,
+                    ),
+                  ),
+              ],
+            ),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -430,12 +490,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     setState(() => _saving = true);
     try {
+      // Önce fotoğrafı yükle (seçildiyse)
+      String? uploadedPhotoUrl;
+      if (_pickedPhoto != null) {
+        uploadedPhotoUrl = await _uploadPhoto(uid, _pickedPhoto!);
+      }
+
       final body = <String, dynamic>{
         // Only update name fields if not an OAuth user
         if (!_isOAuthUser) 'displayName': newName,
         if (!_isOAuthUser) 'name': newName,
         'gender': _gender,
         if (_birthDate != null) 'birthDate': _birthDate!.toIso8601String(),
+        if (uploadedPhotoUrl != null) 'photoURL': uploadedPhotoUrl,
       };
       await ref.read(pbDataSourceProvider).updateUser(uid, body);
       _syncAuthStore(body);
@@ -539,6 +606,44 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   bool _isGeneratedAvatarUrl(String photoUrl) {
     return photoUrl.trim().toLowerCase().contains('ui-avatars.com');
+  }
+
+  Future<void> _pickPhoto() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+    if (xfile == null) return;
+    setState(() => _pickedPhoto = File(xfile.path));
+  }
+
+  Future<String?> _uploadPhoto(String uid, File file) async {
+    setState(() => _uploadingPhoto = true);
+    try {
+      final uri = Uri.parse('${pb.baseUrl}/api/collections/users/records/$uid');
+      final request = http.MultipartRequest('PATCH', uri);
+      request.headers['Authorization'] = pb.authStore.token;
+      request.files.add(await http.MultipartFile.fromPath('avatar', file.path));
+      final streamed = await request.send();
+      final body = await streamed.stream.bytesToString();
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        debugPrint('[editProfile] photo upload error ${streamed.statusCode}: $body');
+        return null;
+      }
+      final Map<String, dynamic> json =
+          (jsonDecode(body) as Map<String, dynamic>?) ?? {};
+      final avatarField = json['avatar'] as String? ?? '';
+      if (avatarField.isEmpty) return null;
+      return '${pb.baseUrl}/api/files/users/$uid/$avatarField';
+    } catch (e) {
+      debugPrint('[editProfile] _uploadPhoto error: $e');
+      return null;
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
   }
 }
 
