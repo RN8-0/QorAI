@@ -58,6 +58,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _matchScoreFetched = false;
   final Map<_AiPanelType, String> _aiProgressText = {};
 
+  // Cached key specs — computed once and reused in every build
+  List<_CompareSpecRow> _cachedKeySpecs = [];
+
   // Floating YouTube player overlay
   OverlayEntry? _pipOverlay;
 
@@ -96,11 +99,35 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   @override
   void initState() {
     super.initState();
-    _groupedSpecs = _buildGroupedSpecs();
-    final keys = _groupedSpecs.keys.toList();
-    _expandedGroups = {for (int i = 0; i < keys.length; i++) keys[i]: false};
+    // Cache key specs synchronously (max 6 rows, fast on any device)
+    _cachedKeySpecs = _collectCompareKeySpecs();
+    // Build full spec table in a background isolate to avoid first-frame jank
+    _groupedSpecs = {};
+    _expandedGroups = {};
+    _computeGroupedSpecsAsync();
     // Restore AI analysis from session if available
     _restoreFromSession();
+  }
+
+  void _computeGroupedSpecsAsync() {
+    final input = widget.products
+        .map(
+          (p) => <String, dynamic>{
+            'specSections': p.specSections,
+            'specs': p.specs,
+          },
+        )
+        .toList();
+    compute(_buildGroupedSpecsIsolate, input).then((grouped) {
+      if (!mounted) return;
+      final keys = grouped.keys.toList();
+      setState(() {
+        _groupedSpecs = grouped;
+        _expandedGroups = {
+          for (int i = 0; i < keys.length; i++) keys[i]: false,
+        };
+      });
+    });
   }
 
   /// Locale helper — true when app language is Turkish
@@ -4739,7 +4766,7 @@ Rules:
   }
 
   Widget _buildKeySpecsSummary() {
-    final specs = _collectCompareKeySpecs();
+    final specs = _cachedKeySpecs; // pre-computed in initState, not called every build
     if (specs.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
@@ -6943,5 +6970,145 @@ Rules:
       ),
     );
   }
+}
+
+// ─── Isolate-safe helpers ────────────────────────────────────────────────────
+
+/// Top-level function for compute() — builds grouped specs from serialised
+/// product data (no platform channels, no UI objects).
+/// Input: List of {'specSections': {...}, 'specs': {...}} per product.
+Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
+  List<Map<String, dynamic>> productsData,
+) {
+  final result = <String, Map<String, List<String>>>{};
+  final productCount = productsData.length;
+
+  Map<String, dynamic> displaySpecs(Map<String, dynamic> p) {
+    final ss = (p['specSections'] as Map?)?.cast<String, dynamic>() ?? {};
+    return ss.isNotEmpty
+        ? ss
+        : (p['specs'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  // Collect all group names from all products
+  final allGroupNames = <String>{};
+  for (final p in productsData) {
+    for (final entry in displaySpecs(p).entries) {
+      if (entry.value is Map && (entry.value as Map).isNotEmpty) {
+        allGroupNames.add(entry.key);
+      }
+    }
+  }
+
+  // Sort groups by priority (matching epey.com spec ordering)
+  const specGroupPriority = [
+    'basic information', 'design', 'display', 'basic hardware', 'processor',
+    'hardware', 'memory', 'storage', 'camera', 'battery',
+    'network connections', 'wireless connections', 'operating system',
+    'multimedia', 'features', 'sensors', 'other connections', 'other',
+  ];
+  final sortedGroupNames = allGroupNames.toList()
+    ..sort((a, b) {
+      final aLower = a.toLowerCase();
+      final bLower = b.toLowerCase();
+      int aIdx = specGroupPriority.indexWhere((p) => aLower.contains(p));
+      int bIdx = specGroupPriority.indexWhere((p) => bLower.contains(p));
+      if (aIdx == -1) aIdx = 900;
+      if (bIdx == -1) bIdx = 900;
+      return aIdx.compareTo(bIdx);
+    });
+
+  for (final groupName in sortedGroupNames) {
+    final allKeys = <String>{};
+    for (final p in productsData) {
+      final group = displaySpecs(p)[groupName];
+      if (group is Map) {
+        for (final entry in group.entries) {
+          if (entry.value is Map) {
+            for (final subKey in (entry.value as Map).keys) {
+              allKeys.add(subKey.toString());
+            }
+          } else {
+            allKeys.add(entry.key.toString());
+          }
+        }
+      }
+    }
+    if (allKeys.isEmpty) continue;
+
+    final groupSpecs = <String, List<String>>{};
+    for (final specKey in allKeys) {
+      final values = <String>[];
+      for (final p in productsData) {
+        final group = displaySpecs(p)[groupName];
+        String val = '—';
+        if (group is Map) {
+          if (group.containsKey(specKey)) {
+            final v = group[specKey];
+            val =
+                (v != null &&
+                    v.toString().isNotEmpty &&
+                    v.toString() != 'null' &&
+                    v.toString() != '?')
+                ? v.toString()
+                : '—';
+          } else {
+            for (final entry in group.entries) {
+              if (entry.value is Map &&
+                  (entry.value as Map).containsKey(specKey)) {
+                final v = (entry.value as Map)[specKey];
+                val =
+                    (v != null &&
+                        v.toString().isNotEmpty &&
+                        v.toString() != 'null' &&
+                        v.toString() != '?')
+                    ? v.toString()
+                    : '—';
+                break;
+              }
+            }
+          }
+        }
+        values.add(val);
+      }
+      if (values.any((v) => v != '—')) {
+        groupSpecs[specKey] = values;
+      }
+    }
+    if (groupSpecs.isNotEmpty) {
+      result[groupName] = groupSpecs;
+    }
+  }
+
+  // Handle flat (ungrouped) specs
+  final flatSpecs = <String, List<String>>{};
+  for (final p in productsData) {
+    for (final entry in displaySpecs(p).entries) {
+      if (entry.value is! Map) {
+        flatSpecs.putIfAbsent(
+          entry.key,
+          () => List.filled(productCount, '—'),
+        );
+      }
+    }
+  }
+  for (int i = 0; i < productCount; i++) {
+    for (final entry in displaySpecs(productsData[i]).entries) {
+      if (entry.value is! Map && flatSpecs.containsKey(entry.key)) {
+        final v = entry.value;
+        flatSpecs[entry.key]![i] =
+            (v != null &&
+                v.toString().isNotEmpty &&
+                v.toString() != 'null')
+            ? v.toString()
+            : '—';
+      }
+    }
+  }
+  if (flatSpecs.isNotEmpty) {
+    result['Other'] = flatSpecs;
+  }
+
+  return result;
 }
 

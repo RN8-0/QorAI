@@ -2630,7 +2630,7 @@ final userCategoryPriorityProvider = FutureProvider<List<String>>((ref) async {
 
 /// "Top in [Category]" — products from user's most viewed category
 final topInCategoryProvider =
-    FutureProvider<({String category, List<ProductEntity> products})>((
+    FutureProvider.autoDispose<({String category, List<ProductEntity> products})>((
       ref,
     ) async {
       final behavior = await ref.watch(behaviorSignalsProvider.future);
@@ -2675,7 +2675,7 @@ final topInCategoryProvider =
     });
 
 /// "Recently Analyzed" — products user has analyzed with AI
-final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((
+final recentlyAnalyzedProvider = FutureProvider.autoDispose<List<ProductEntity>>((
   ref,
 ) async {
   final userAsync = ref.watch(userProfileProvider);
@@ -2734,7 +2734,7 @@ final recentlyAnalyzedProvider = FutureProvider<List<ProductEntity>>((
 });
 
 /// "Price Drop" / Value Picks — high techScore at lower price tiers
-final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
+final valuePicsProvider = FutureProvider.autoDispose<List<ProductEntity>>((ref) async {
   final feed = await ref.watch(homeFeedProvider.future);
   final country = ref.read(selectedCountryProvider);
   final blockedIds = _visibleHomeShelfIds(feed);
