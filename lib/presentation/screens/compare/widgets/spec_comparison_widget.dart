@@ -1519,6 +1519,7 @@ Rules:
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         final bgColor = isDark ? const Color(0xFF121826) : const Color(0xFFFDFEFF);
         final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+        final formattedValue = _formatSpecValueForSheet(fullValue);
         return SafeArea(
           top: false,
           child: Padding(
@@ -1632,7 +1633,7 @@ Rules:
                               ),
                             ),
                             child: SelectableText(
-                              fullValue,
+                              formattedValue,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1646,7 +1647,9 @@ Rules:
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
                               onPressed: () {
-                                Clipboard.setData(ClipboardData(text: fullValue));
+                                Clipboard.setData(
+                                  ClipboardData(text: formattedValue),
+                                );
                                 Navigator.of(ctx).pop();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -1692,6 +1695,86 @@ Rules:
         );
       },
     );
+  }
+
+  /// Formats a raw spec value for display in the bottom sheet.
+  ///
+  /// Priority:
+  /// 1. Natural separators already in the string (newline, bullet •, pipe |)
+  /// 2. Character-by-character smart split:
+  ///    - Splits at commas/semicolons that are NOT inside parentheses and NOT
+  ///      between two digits (e.g. preserves "2,000,000:1").
+  ///    - NO capital-letter heuristic (prevents breaking "Dual-Layer", "Gamut").
+  String _formatSpecValueForSheet(String value) {
+    if (value.isEmpty) return value;
+
+    // Step 1: replace bullet chars and pipe → newline
+    final withNatural = value
+        .replaceAll('•', '\n')
+        .replaceAll('·', '\n')
+        .replaceAll('|', '\n');
+
+    // If natural separators give 2+ non-empty parts, use them directly.
+    if (withNatural.contains('\n')) {
+      final parts = withNatural
+          .split('\n')
+          .map((s) => s.replaceFirst(RegExp(r'^[-•·\s]+'), '').trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (parts.length >= 2) return parts.join('\n');
+    }
+
+    // Step 2: smart comma/semicolon split — character-by-character
+    final normalized =
+        withNatural.replaceAll(RegExp(r'[^\S\n]{2,}'), ' ').trim();
+    final items = _smartSplitSpecValue(normalized);
+    if (items.length <= 1) return normalized;
+    return items.join('\n');
+  }
+
+  /// Splits [value] at commas/semicolons, but:
+  /// - skips commas inside parentheses depth > 0
+  /// - skips commas between two digit characters (e.g. 2,000)
+  List<String> _smartSplitSpecValue(String value) {
+    final result = <String>[];
+    final current = StringBuffer();
+    int parenDepth = 0;
+
+    for (int i = 0; i < value.length; i++) {
+      final ch = value[i];
+      if (ch == '(') {
+        parenDepth++;
+        current.write(ch);
+      } else if (ch == ')') {
+        if (parenDepth > 0) parenDepth--;
+        current.write(ch);
+      } else if ((ch == ',' || ch == ';') && parenDepth == 0) {
+        final before = i > 0 ? value[i - 1] : '';
+        final after = i + 1 < value.length ? value[i + 1] : '';
+        final isNumericComma = ch == ',' &&
+            before.isNotEmpty &&
+            after.isNotEmpty &&
+            before.codeUnitAt(0) >= 48 &&
+            before.codeUnitAt(0) <= 57 &&
+            after.codeUnitAt(0) >= 48 &&
+            after.codeUnitAt(0) <= 57;
+        if (isNumericComma) {
+          current.write(ch);
+        } else {
+          final part = current.toString().trim();
+          if (part.isNotEmpty) result.add(part);
+          current.clear();
+          // Skip single leading space after the separator
+          if (i + 1 < value.length && value[i + 1] == ' ') i++;
+        }
+      } else {
+        current.write(ch);
+      }
+    }
+
+    final last = current.toString().trim();
+    if (last.isNotEmpty) result.add(last);
+    return result;
   }
 
   /// Returns the index of the "better" value for a given spec.
