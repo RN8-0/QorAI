@@ -29,6 +29,8 @@ import 'package:qor_ai/core/pb_client.dart';
 const double _kHorizontalCardRowHeight = 246;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 const int _kHorizontalInitialItemLimit = 8;
+// card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
+const double _kCardItemExtent = 167.0;
 const int _kInitialCategoryChipLimit = 18;
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -599,7 +601,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       data: (user) {
         if (user != null && !user.quizCompleted) {
           return SliverToBoxAdapter(
-            child: Padding(
+            child: RepaintBoundary(
+              child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: GestureDetector(
                 onTap: () => context.push(AppRoutes.quiz),
@@ -791,6 +794,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
             ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
+            ),
           );
         }
         return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -805,7 +809,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildSearchBar(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
+    return RepaintBoundary(
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       child: GestureDetector(
         onTap: () {
@@ -866,7 +871,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, duration: 300.ms);
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, duration: 300.ms),
+    );
   }
 
   // === CATEGORIES ============================================================
@@ -1208,6 +1214,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             physics: const BouncingScrollPhysics(),
+            itemExtent: 84, // chip width 76 + margin right 8
             itemCount: row1.length,
             itemBuilder: (context, i) => _buildFlatCategoryChip(row1[i], i),
           ),
@@ -1219,6 +1226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             physics: const BouncingScrollPhysics(),
+            itemExtent: 84, // chip width 76 + margin right 8
             itemCount: row2.length,
             itemBuilder: (context, i) => _buildFlatCategoryChip(row2[i], i),
           ),
@@ -1325,6 +1333,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
+                itemExtent: _kCardItemExtent,
                 itemCount: display.length,
                 itemBuilder: (context, index) {
                   final product = display[index];
@@ -1409,25 +1418,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
+            itemExtent: _kCardItemExtent,
             itemCount: min(_kHorizontalInitialItemLimit, products.length),
             itemBuilder: (context, index) {
               final p = products[index];
               final price =
                   p.getPriceForCountry(ref.read(selectedCountryProvider)) ?? 0;
-              return Align(
-                alignment: Alignment.topCenter,
-                child:
-                    _WideProductCard(
-                          product: p,
-                          price: price,
-                          onTap: () => context.push('/product/${p.id}'),
-                        )
-                        .animate()
-                        .fadeIn(
-                          delay: (50 * min(index, 5)).ms,
-                          duration: 300.ms,
-                        )
-                        .slideX(begin: 0.06, duration: 300.ms),
+              return _WideProductCard(
+                product: p,
+                price: price,
+                onTap: () => context.push('/product/${p.id}'),
               );
             },
           );
@@ -1459,19 +1459,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
+            itemExtent: _kCardItemExtent,
             itemCount: display.length,
             itemBuilder: (context, index) {
               final p = display[index];
               final price =
                   p.getPriceForCountry(ref.read(selectedCountryProvider)) ?? 0;
               return _WideProductCard(
-                    product: p,
-                    price: price,
-                    onTap: () => context.push('/product/${p.id}'),
-                  )
-                  .animate()
-                  .fadeIn(delay: (50 * min(index, 5)).ms, duration: 300.ms)
-                  .slideX(begin: 0.06, duration: 300.ms);
+                product: p,
+                price: price,
+                onTap: () => context.push('/product/${p.id}'),
+              );
             },
           );
         },
@@ -1542,6 +1540,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
+            itemExtent: _kCardItemExtent,
             itemCount: display.length,
             itemBuilder: (context, index) {
               final p = display[index];
@@ -1600,6 +1599,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
+                itemExtent: _kCardItemExtent,
                 itemCount: min(_kHorizontalInitialItemLimit, products.length),
                 itemBuilder: (context, index) {
                   final p = products[index];
@@ -1607,14 +1607,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
                           0;
                   return _WideProductCard(
-                        product: p,
-                        price: price,
-                        showNewBadge: true,
-                        onTap: () => context.push('/product/${p.id}'),
-                      )
-                      .animate()
-                      .fadeIn(delay: (60 * min(index, 5)).ms, duration: 300.ms)
-                      .slideX(begin: 0.06, duration: 300.ms);
+                    product: p,
+                    price: price,
+                    showNewBadge: true,
+                    onTap: () => context.push('/product/${p.id}'),
+                  );
                 },
               );
             },
@@ -1661,6 +1658,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
                 physics: const BouncingScrollPhysics(),
+                itemExtent: _kCardItemExtent,
                 itemCount: min(_kHorizontalInitialItemLimit, products.length),
                 itemBuilder: (context, index) {
                   final p = products[index];
@@ -1668,14 +1666,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
                           0;
                   return _WideProductCard(
-                        product: p,
-                        price: price,
-                        showNewBadge: false,
-                        onTap: () => context.push('/product/${p.id}'),
-                      )
-                      .animate()
-                      .fadeIn(delay: (60 * min(index, 5)).ms, duration: 300.ms)
-                      .slideX(begin: 0.06, duration: 300.ms);
+                    product: p,
+                    price: price,
+                    showNewBadge: false,
+                    onTap: () => context.push('/product/${p.id}'),
+                  );
                 },
               );
             },
@@ -1721,22 +1716,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       _kHorizontalInitialItemLimit,
                       data.products.length,
                     ),
+                    itemExtent: _kCardItemExtent,
                     itemBuilder: (context, index) {
                       final p = data.products[index];
                       final price =
                           p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
                               0;
                       return _WideProductCard(
-                            product: p,
-                            price: price,
-                            onTap: () => context.push('/product/${p.id}'),
-                          )
-                          .animate()
-                          .fadeIn(
-                            delay: (50 * min(index, 5)).ms,
-                            duration: 300.ms,
-                          )
-                          .slideX(begin: 0.06, duration: 300.ms);
+                        product: p,
+                        price: price,
+                        onTap: () => context.push('/product/${p.id}'),
+                      );
                     },
                   ),
                 ),
@@ -1771,22 +1761,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
                     itemCount: min(_kHorizontalInitialItemLimit, products.length),
+                    itemExtent: _kCardItemExtent,
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
                           p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
                               0;
                       return _WideProductCard(
-                            product: p,
-                            price: price,
-                            onTap: () => context.push('/product/${p.id}'),
-                          )
-                          .animate()
-                          .fadeIn(
-                            delay: (50 * min(index, 5)).ms,
-                            duration: 300.ms,
-                          )
-                          .slideX(begin: 0.06, duration: 300.ms);
+                        product: p,
+                        price: price,
+                        onTap: () => context.push('/product/${p.id}'),
+                      );
                     },
                   ),
                 ),
@@ -1822,22 +1807,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
                     itemCount: min(_kHorizontalInitialItemLimit, products.length),
+                    itemExtent: _kCardItemExtent,
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
                           p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
                               0;
                       return _WideProductCard(
-                            product: p,
-                            price: price,
-                            onTap: () => context.push('/product/${p.id}'),
-                          )
-                          .animate()
-                          .fadeIn(
-                            delay: (50 * min(index, 5)).ms,
-                            duration: 300.ms,
-                          )
-                          .slideX(begin: 0.06, duration: 300.ms);
+                        product: p,
+                        price: price,
+                        onTap: () => context.push('/product/${p.id}'),
+                      );
                     },
                   ),
                 ),
@@ -1873,6 +1853,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
             physics: const BouncingScrollPhysics(),
+            itemExtent: _kCardItemExtent,
             itemCount: min(15, recentProducts.length),
             itemBuilder: (context, index) {
               final p = recentProducts[index];
@@ -1882,7 +1863,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 product: p,
                 price: price,
                 onTap: () => context.push('/product/${p.id}'),
-              ).animate().fadeIn(delay: (50 * index).ms, duration: 300.ms);
+              );
             },
           ),
         ),

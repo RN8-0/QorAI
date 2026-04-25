@@ -5785,6 +5785,11 @@ Rules:
 
   Widget _buildProTab() {
     // RULE 1: No auto-fetch. All AI calls are lazy — triggered only when user taps a card.
+    // Read subscription state once to avoid multiple watches for the same provider.
+    final isPremium = ref.watch(premiumProvider);
+    final aiCreditCost = isPremium
+        ? null
+        : ref.read(subscriptionServiceProvider).creditCostForFeature('compare_ai');
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -5816,9 +5821,7 @@ Rules:
           loadingStatusText: _aiProgressText[_AiPanelType.advisor],
           onRetry: () => _retryAiPanel(_AiPanelType.advisor, _fetchAdvisor),
           onTap: _toggleAdvisor,
-          cost: ref.watch(subscriptionServiceProvider).isPremium
-              ? null
-              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+          cost: aiCreditCost,
         ),
         const SizedBox(height: 14),
         // 3. AI Deep Analysis
@@ -5841,9 +5844,7 @@ Rules:
           onRetry: () =>
               _retryAiPanel(_AiPanelType.deepAnalysis, _fetchDeepAnalysis),
           onTap: _toggleDeepAnalysis,
-            cost: ref.watch(subscriptionServiceProvider).isPremium
-              ? null
-              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+          cost: aiCreditCost,
         ),
         const SizedBox(height: 14),
         // 4. Smart Alternatives
@@ -5866,9 +5867,7 @@ Rules:
           onRetry: () =>
               _retryAiPanel(_AiPanelType.alternatives, _fetchAlternatives),
           onTap: _toggleAlternatives,
-            cost: ref.watch(subscriptionServiceProvider).isPremium
-              ? null
-              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+          cost: aiCreditCost,
         ),
         const SizedBox(height: 14),
         // 5. Price Prediction
@@ -5891,9 +5890,7 @@ Rules:
           onRetry: () =>
               _retryAiPanel(_AiPanelType.prediction, _fetchPrediction),
           onTap: _togglePrediction,
-            cost: ref.watch(subscriptionServiceProvider).isPremium
-              ? null
-              : ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+          cost: aiCreditCost,
         ),
       ],
     );
@@ -6005,10 +6002,10 @@ Rules:
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
+                          if (!ref.watch(premiumProvider)) ...[
                             const SizedBox(width: 8),
                             QorAmountBadge(
-                              amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+                              amount: ref.read(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
                               unlimited: false,
                               color: AppTheme.brandBlue,
                               fontSize: 10,

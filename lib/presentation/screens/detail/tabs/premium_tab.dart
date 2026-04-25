@@ -29,7 +29,7 @@ class _PremiumFeaturesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPremium = ref.watch(subscriptionServiceProvider).isPremium;
+    final isPremium = ref.watch(premiumProvider);
     return SharedPremiumFeaturesSection(
       product: product,
       onShowPriceHistory: () {

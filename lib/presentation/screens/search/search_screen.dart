@@ -662,6 +662,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final country = ref.watch(selectedCountryProvider);
     return ListView.builder(
       controller: _resultsScrollCtrl,
+      cacheExtent: 600,
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
@@ -895,10 +896,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ],
                 ),
               ),
-            )
-            .animate(delay: (i * 30).ms)
-            .fadeIn(duration: 200.ms)
-            .slideX(begin: 0.03);
+            );
       },
     );
   }
@@ -1105,10 +1103,7 @@ class _TopRatedGrid extends ConsumerWidget {
                         ],
                       ),
                     ),
-                  )
-                  .animate(delay: (i * 60).ms)
-                  .fadeIn(duration: 300.ms)
-                  .scale(begin: const Offset(0.95, 0.95));
+                  );
             }, childCount: top.length),
           ),
         );

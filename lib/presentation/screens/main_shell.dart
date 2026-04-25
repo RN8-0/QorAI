@@ -191,9 +191,11 @@ class _MainShellState extends ConsumerState<MainShell> {
     final isBrowseRoute = path == AppRoutes.browse ||
         path == '/home/browse' ||
         path.startsWith('/home/browse/');
-    final isLinkAiAnalyzing = ref.watch(compareAnalysisProvider).isWorking ||
-        ref.watch(linkQuizProvider).phase == LinkFlowPhase.analyzing ||
-        ref.watch(linkQuizProvider).phase == LinkFlowPhase.computing;
+    final isLinkAiAnalyzing =
+        ref.watch(compareAnalysisProvider.select((s) => s.isWorking)) ||
+        ref.watch(linkQuizProvider.select((s) =>
+            s.phase == LinkFlowPhase.analyzing ||
+            s.phase == LinkFlowPhase.computing));
     final hideNavBar = ref.watch(hideNavBarProvider);
     final effectiveHideNavBar = isBrowseRoute || hideNavBar;
     if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
@@ -218,15 +220,17 @@ class _MainShellState extends ConsumerState<MainShell> {
             left: AppTheme.navBarHMargin,
             right: AppTheme.navBarHMargin,
             bottom: bottomPadding + AppTheme.navBarBottomMargin,
+            child: RepaintBoundary(
             child: _FloatingNavBar(
               currentIndex: currentIndex,
               onTap: _onNavTap,
               isLinkAiAnalyzing: isLinkAiAnalyzing,
             ),
           ),
+          ),
         // Floating AI chat bubble (top of stack, above nav bar)
         Positioned.fill(
-          child: _FloatingAiOverlay(currentRoute: location),
+          child: RepaintBoundary(child: _FloatingAiOverlay(currentRoute: location)),
         ),
       ],
     );

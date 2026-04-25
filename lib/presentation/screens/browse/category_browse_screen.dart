@@ -9,7 +9,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:google_fonts/google_fonts.dart';
@@ -1166,18 +1165,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                 );
               }
               return _ProductListTile(
-                    product: products[index],
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      context.push('/product/${products[index].id}');
-                    },
-                  )
-                  .animate()
-                  .fadeIn(
-                    delay: Duration(milliseconds: 30 * (index % 10)),
-                    duration: 250.ms,
-                  )
-                  .slideX(begin: 0.05, end: 0, duration: 250.ms);
+                product: products[index],
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  context.push('/product/${products[index].id}');
+                },
+              );
             },
           ),
         ),
