@@ -291,7 +291,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: CupertinoIcons.chat_bubble_text_fill,
                         iconBg: const Color(0xFF06B6D4),
                         title: context.l10n?.contactUs ?? 'Contact Us',
-                        onTap: () => _launchEmail(),
+                        onTap: () => _showContactForm(context),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -1324,6 +1324,142 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!mounted) return;
       _showInfoSnackbar(emailErrorMessage);
     }
+  }
+
+  void _showContactForm(BuildContext context) {
+    final userAsync = ref.read(userProfileProvider);
+    final user = userAsync.valueOrNull;
+    final nameCtrl = TextEditingController(text: user?.displayName ?? '');
+    final emailCtrl = TextEditingController(text: user?.email ?? '');
+    final msgCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool sending = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(ctx).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    context.l10n?.contactUs ?? 'Contact Us',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: context.l10n?.fullName ?? 'Full Name',
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? (context.l10n?.required ?? 'Required')
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'E-posta',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? (context.l10n?.required ?? 'Required')
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: msgCtrl,
+                    maxLines: 4,
+                    maxLength: 2000,
+                    decoration: InputDecoration(
+                      labelText: context.l10n?.message ?? 'Message',
+                      border: const OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? (context.l10n?.required ?? 'Required')
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: sending
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            setState(() => sending = true);
+                            try {
+                              await ref
+                                  .read(pbDataSourceProvider)
+                                  .sendSupportMessage(
+                                    userId: user?.id,
+                                    displayName: nameCtrl.text.trim(),
+                                    email: emailCtrl.text.trim(),
+                                    message: msgCtrl.text.trim(),
+                                  );
+                              if (!ctx.mounted) return;
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    context.l10n?.messageSent ??
+                                        'Message sent! We\'ll get back to you soon.',
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              setState(() => sending = false);
+                              if (!ctx.mounted) return;
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: sending
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(context.l10n?.send ?? 'Send'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String _displayScaleLabel(BuildContext context, double scale) {

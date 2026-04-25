@@ -1344,6 +1344,21 @@ class PbDataSource {
     }
   }
 
+  Future<void> sendSupportMessage({
+    required String? userId,
+    required String displayName,
+    required String email,
+    required String message,
+  }) async {
+    await _pb.collection('support_messages').create(body: {
+      'userId': userId ?? '',
+      'displayName': displayName,
+      'email': email,
+      'message': message,
+      'status': 'open',
+    });
+  }
+
   // ────────────────────────────────────────────────────────────────────────
   // ─── USER LINKS ───
   // ────────────────────────────────────────────────────────────────────────

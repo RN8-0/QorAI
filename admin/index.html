@@ -91,6 +91,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span>Notifications</span>
         </a>
+        <a class="nav-link" data-view="support" onclick="showView('support')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span>Destek <span class="count-badge" id="supportBadge" style="display:none"></span></span>
+        </a>
         <a class="nav-link" data-view="settings" onclick="showView('settings')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Settings</span>
@@ -773,6 +777,34 @@
         </div>
       </section>
 
+      <!-- ===== SUPPORT MESSAGES ===== -->
+      <section id="supportView" class="view">
+        <div class="view-header">
+          <h1>Destek Mesajları <span class="count-badge" id="supportCount">0</span></h1>
+          <div class="view-actions">
+            <select class="field-select" id="supportStatusFilter" onchange="renderSupportMessages()">
+              <option value="">Tümü</option>
+              <option value="open">Açık</option>
+              <option value="replied">Yanıtlandı</option>
+            </select>
+            <button class="btn btn-ghost" onclick="loadSupportMessages()">Yenile</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body" id="supportMessagesList">
+            <div class="placeholder">Yükleniyor...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Support Reply Modal -->
+      <div id="supportModal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeSupportModal()">
+        <div class="modal-box modal-lg">
+          <div class="modal-head"><h2 id="supportModalTitle">Destek Mesajı</h2><button class="modal-x" onclick="closeSupportModal()">✕</button></div>
+          <div class="modal-body" id="supportModalBody"></div>
+        </div>
+      </div>
+
       <!-- ===== SETTINGS ===== -->
       <section id="settingsView" class="view">
         <div class="view-header">
@@ -866,14 +898,15 @@
   <!-- PocketBase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="js/pb_client.js?v=20260422g"></script>
-  <script src="js/ts_client.js?v=20260422g"></script>
-  <script src="js/scoring/score_engine.js?v=20260422g"></script>
-  <script src="js/scoring/score_runner.js?v=20260422g"></script>
-  <script src="js/dictionary.js?v=20260422g"></script>
-  <script src="js/categories.js?v=20260422g"></script>
-  <script src="js/scraper.js?v=20260422g"></script>
-  <script src="js/notifications.js?v=20260422g"></script>
-  <script src="js/app.js?v=20260422g"></script>
+  <script src="js/pb_client.js?v=20260425a"></script>
+  <script src="js/ts_client.js?v=20260425a"></script>
+  <script src="js/scoring/score_engine.js?v=20260425a"></script>
+  <script src="js/scoring/score_runner.js?v=20260425a"></script>
+  <script src="js/dictionary.js?v=20260425a"></script>
+  <script src="js/categories.js?v=20260425a"></script>
+  <script src="js/scraper.js?v=20260425a"></script>
+  <script src="js/notifications.js?v=20260425a"></script>
+  <script src="js/support.js?v=20260425a"></script>
+  <script src="js/app.js?v=20260425a"></script>
 </body>
 </html>

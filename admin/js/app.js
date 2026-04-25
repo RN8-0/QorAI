@@ -159,6 +159,7 @@ function showView(name){
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
   if(name==='notifications')loadNotificationsView();
+  if(name==='support')loadSupportMessages();
   if(name==='settings')loadRemoteConfig();
 }
 
