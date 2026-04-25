@@ -189,6 +189,63 @@ const ALGORITHM_BEHAVIOR_FIELDS=['boostCategoryView','boostSearch','boostQuiz','
 
 function safeArray(value){return Array.isArray(value)?value:[]}
 function safeMap(value){return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}
+function safeNumber(value,fallback=0){const parsed=Number(value);return Number.isFinite(parsed)?parsed:fallback}
+function qCoinPeriodKey(date=new Date()){return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`}
+function formatQCoinAmount(value){const amount=Math.round(safeNumber(value)*10)/10;return Number.isInteger(amount)?String(amount):amount.toFixed(1).replace(/\.0$/,'')}
+
+let _freeDailyAiCreditLimit=10;
+let _activeUserModalUid='';
+
+async function getPublicConfigMap(){
+  try{
+    await pbEnsureAuth();
+    const result=await getPb().collection('public_config').getList(1,200,{$autoCancel:false});
+    const configMap={};
+    result.items.forEach(item=>{if(item.key)configMap[item.key]=item.value});
+    return configMap;
+  }catch(_){
+    const result=await pbGetList('public_config',1,200,{});
+    const configMap={};
+    result.items.forEach(item=>{if(item.key)configMap[item.key]=item.value});
+    return configMap;
+  }
+}
+
+async function syncPublicConfigValue(key,value){
+  await pbSetDoc('public_config',key,{value});
+  try{
+    const pb=getPb();
+    const result=await pb.collection('public_config').getList(1,1,{filter:`key="${_escapeFilterValue(key)}"`,$autoCancel:false});
+    const existing=result.items[0];
+    if(existing)await pb.collection('public_config').update(existing.id,{value,key},{$autoCancel:false});
+    else await pb.collection('public_config').create({key,value},{$autoCancel:false});
+  }catch(e){console.warn('[public_config] sync failed',key,e)}
+}
+
+async function loadQCoinConfig(){
+  try{
+    const configMap=await getPublicConfigMap();
+    _freeDailyAiCreditLimit=Math.max(0,safeNumber(configMap.free_daily_ai_credit_limit,10));
+  }catch(_){
+    _freeDailyAiCreditLimit=10;
+  }
+  const input=document.getElementById('usersDailyQCoinInput');
+  if(input)input.value=String(_freeDailyAiCreditLimit);
+  const hint=document.getElementById('usersQCoinHint');
+  if(hint)hint.textContent=`Global günlük havuz şu an ${formatQCoinAmount(_freeDailyAiCreditLimit)} Q. Kullanıcı detayından kişisel ekstra Q ekleyebilir veya bakiyeyi sıfırlayabilirsin.`;
+  return _freeDailyAiCreditLimit;
+}
+
+function getUserQCoinSnapshot(user){
+  const periodKey=String(user.dailyAiCreditsDate||'').trim();
+  const todayKey=qCoinPeriodKey();
+  const base=Math.max(0,_freeDailyAiCreditLimit);
+  const extra=Math.max(0,safeNumber(user.bonusQCoins));
+  const total=base+extra;
+  const used=periodKey===todayKey?Math.max(0,safeNumber(user.dailyAiCreditsUsed)):0;
+  const remaining=Math.max(0,total-used);
+  return{base,extra,total,used,remaining,periodKey:periodKey||todayKey};
+}
 function parseDateValue(...values){for(const value of values){if(!value)continue;const dt=new Date(value);if(!Number.isNaN(dt.getTime()))return dt}return null}
 function formatDateLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—'}
 function formatDateTimeLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}
@@ -961,10 +1018,36 @@ async function deleteProduct(id){if(!confirm('Bu ürünü silmek istediğinize e
 let allUsers=[],filteredUsers=[],userPage=1;const UPER=50;
 
 async function loadUsers(){
-  try{const items=await pbGetAll('users',{sort:'-created'});allUsers=items.map(d=>({uid:d.id,...d.data()}));const prem=allUsers.filter(u=>u.isPremium).length;const active=allUsers.filter(u=>{const la=getUserLastActive(u);return la&&la>new Date(Date.now()-30*864e5)}).length;
+  try{const [items]=await Promise.all([pbGetAll('users',{sort:'-created'}),loadQCoinConfig()]);allUsers=items.map(d=>({uid:d.id,...d.data()}));const prem=allUsers.filter(u=>u.isPremium).length;const active=allUsers.filter(u=>{const la=getUserLastActive(u);return la&&la>new Date(Date.now()-30*864e5)}).length;
   document.getElementById('usTotalCount').textContent=allUsers.length;document.getElementById('usPremiumCount').textContent=prem;document.getElementById('usFreeCount').textContent=allUsers.length-prem;document.getElementById('usActiveCount').textContent=active;document.getElementById('usersCount').textContent=allUsers.length;
   const countries=[...new Set(allUsers.map(u=>u.country).filter(Boolean))].sort();document.getElementById('userCountryFilter').innerHTML='<option value="">All Countries</option>'+countries.map(c=>`<option>${escHtml(c)}</option>`).join('');
   filterUsers();renderUserIntelligence()}catch(e){toast('Users error: '+String(e.message || e),'e')}
+}
+
+async function saveUsersDailyQCoin(){
+  const input=document.getElementById('usersDailyQCoinInput');
+  const nextValue=Math.max(0,safeNumber(input?.value,0));
+  try{
+    await syncPublicConfigValue('free_daily_ai_credit_limit',nextValue);
+    await loadQCoinConfig();
+    renderUsers();
+    if(_activeUserModalUid)openUserDetail(_activeUserModalUid);
+    logActivity('qcoin_daily_pool_update',`Günlük Q Coin havuzu güncellendi: ${nextValue}`,{dailyQCoinPool:nextValue});
+    toast(`Günlük havuz ${formatQCoinAmount(nextValue)} Q olarak kaydedildi`,'s');
+  }catch(e){toast('Error: '+e.message,'e')}
+}
+
+async function resetAllUserExtraQCoins(){
+  if(!allUsers.length){toast('Önce kullanıcıları yükle','w');return}
+  if(!confirm('Tüm kullanıcılardaki extra Q coin bakiyeleri sıfırlansın mı?'))return;
+  try{
+    await Promise.all(allUsers.map(u=>pbUpdateDoc('users',u.uid,{bonusQCoins:0})));
+    allUsers.forEach(u=>{u.bonusQCoins=0});
+    renderUsers();
+    if(_activeUserModalUid)openUserDetail(_activeUserModalUid);
+    logActivity('qcoin_bulk_extra_reset',`Tüm kullanıcıların extra Q coin bakiyeleri sıfırlandı`,{userCount:allUsers.length});
+    toast('Tüm extra Q coin bakiyeleri sıfırlandı','s');
+  }catch(e){toast('Error: '+e.message,'e')}
 }
 
 function filterUsers(){
@@ -982,7 +1065,7 @@ function renderUsers(){
   const list=document.getElementById('userList'),start=(userPage-1)*UPER,page=filteredUsers.slice(start,start+UPER);
   if(!page.length){list.innerHTML='<div class="placeholder">No users</div>';return}
   let h='<div class="user-hdr"><span></span><span>User</span><span>Country</span><span>Status</span><span>Joined</span></div>';
-  h+=page.map(u=>{const av=userAvatarHtml(u);const j=formatDateLabel(u.createdAt||u.created||u.updated);return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
+  h+=page.map(u=>{const av=userAvatarHtml(u);const j=formatDateLabel(u.createdAt||u.created||u.updated);const qSnapshot=getUserQCoinSnapshot(u);const qLabel=u.isPremium?'Premium Q':`${formatQCoinAmount(qSnapshot.remaining)} Q`;return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div><div style="font-size:11px;color:var(--text2);margin-top:3px">Q Coin: <b style="color:var(--text1)">${escHtml(qLabel)}</b></div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${u.isPremium?'<span class="badge badge-premium">Premium</span>':'<span class="badge badge-ghost">Free</span>'}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
   list.innerHTML=h;
   const total=Math.ceil(filteredUsers.length/UPER),pe=document.getElementById('userPagination');
   if(total<=1){pe.innerHTML='';return}
@@ -993,6 +1076,7 @@ function renderUsers(){
 
 function openUserDetail(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  _activeUserModalUid=uid;
   document.getElementById('userModalTitle').textContent=u.displayName||'Kullanıcı';
   const b=document.getElementById('userModalBody');
   const safeUid=escJs(uid);
@@ -1013,6 +1097,11 @@ function openUserDetail(uid){
   const persona=classifyUserPersona(u);
   const topInterests=collectUserInterestScores(u).slice(0,5);
   const narrative=buildUserNarrative(u);
+  const qSnapshot=getUserQCoinSnapshot(u);
+  const currentQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.remaining);
+  const totalQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.total);
+  const usedQLabel=u.isPremium?'0':formatQCoinAmount(qSnapshot.used);
+  const extraQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.extra);
 
   // Activity status
   let activityStatus,actColor;
@@ -1070,6 +1159,19 @@ function openUserDetail(uid){
         <div class="metric-tile"><div class="metric-tile-value">${analysisCount}</div><div class="metric-tile-label">AI Analizleri</div></div>
         <div class="metric-tile"><div class="metric-tile-value">${quizCount}</div><div class="metric-tile-label">Quiz Oturumları</div></div>
         <div class="metric-tile"><div class="metric-tile-value">${searchCount}</div><div class="metric-tile-label">Aramalar</div></div>
+      </div>
+      <div class="card" style="margin:0 0 16px;padding:14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🪙 Q Coin Yönetimi</div>
+        <div class="metric-grid-compact" style="margin-bottom:12px">
+          <div class="metric-tile"><div class="metric-tile-value">${currentQLabel}</div><div class="metric-tile-label">Güncel Q</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${totalQLabel}</div><div class="metric-tile-label">Günlük Toplam</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${usedQLabel}</div><div class="metric-tile-label">Bugün Kullanılan</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${extraQLabel}</div><div class="metric-tile-label">Ekstra Q</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <div style="font-size:12px;color:var(--text2)">Global günlük havuz: <b>${formatQCoinAmount(_freeDailyAiCreditLimit)} Q</b></div>
+          ${u.isPremium?'<div style="font-size:12px;color:var(--text2)">Premium kullanıcı limitsiz erişime sahip.</div>':`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="addQCoinsToUser('${safeUid}')">Extra Q Ekle</button><button class="btn btn-ghost" onclick="resetUserQCoins('${safeUid}')">Q Coin Sıfırla</button></div>`}
+        </div>
       </div>
       <div class="user-overview-grid">
         <div class="card" style="margin:0;padding:14px">
@@ -1256,7 +1358,7 @@ async function loadUserQuizzes(uid){
     el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
   }
 }
-function closeUserModal(){document.getElementById('userModal').style.display='none'}
+function closeUserModal(){_activeUserModalUid='';document.getElementById('userModal').style.display='none'}
 
 function formatUserFieldValue(value){
   if(value==null)return '';
@@ -1457,6 +1559,38 @@ async function loadUserProfile(uid){
   }
 }
 async function togglePremium(uid,v){try{await pbUpdateDoc('users',uid,{isPremium:v});const u=allUsers.find(x=>x.uid===uid);if(u)u.isPremium=v;logActivity(v?'user_premium_enable':'user_premium_disable',`Premium ${v?'enabled':'disabled'}: ${uid}`,{userId:uid});openUserDetail(uid);loadUsers();toast(v?'Upgraded':'Downgraded','s')}catch(e){toast('Error: '+e.message,'e')}}
+async function addQCoinsToUser(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const raw=prompt('Eklenecek ekstra Q miktari','5');
+  if(raw==null)return;
+  const amount=safeNumber(String(raw).replace(',','.'));
+  if(amount<=0){toast('Gecersiz Q miktari','w');return}
+  const snapshot=getUserQCoinSnapshot(u);
+  const nextBonus=snapshot.extra+amount;
+  try{
+    await pbUpdateDoc('users',uid,{bonusQCoins:nextBonus,dailyAiCreditsDate:u.dailyAiCreditsDate||qCoinPeriodKey()});
+    u.bonusQCoins=nextBonus;
+    u.dailyAiCreditsDate=u.dailyAiCreditsDate||qCoinPeriodKey();
+    logActivity('user_qcoin_add',`Extra Q eklendi: ${uid}`,{userId:uid,amount});
+    openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q eklendi`,'s');
+  }catch(e){toast('Error: '+e.message,'e')}
+}
+
+async function resetUserQCoins(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  const snapshot=getUserQCoinSnapshot(u);
+  if(!confirm(`Bu kullanicinin Q Coin bakiyesi 0 yapilsin mi?\nMevcut bakiye: ${formatQCoinAmount(snapshot.remaining)} Q`))return;
+  const todayKey=qCoinPeriodKey();
+  try{
+    await pbUpdateDoc('users',uid,{bonusQCoins:0,dailyAiCreditsUsed:snapshot.total,dailyAiCreditsDate:todayKey});
+    u.bonusQCoins=0;
+    u.dailyAiCreditsUsed=snapshot.total;
+    u.dailyAiCreditsDate=todayKey;
+    logActivity('user_qcoin_reset',`Q Coin sifirlandi: ${uid}`,{userId:uid});
+    openUserDetail(uid);renderUsers();toast('Q Coin bakiyesi sifirlandi','s');
+  }catch(e){toast('Error: '+e.message,'e')}
+}
+
 async function deleteUser(uid){
   if(!confirm('Delete this user? This will permanently remove their account.'))return;
   try{
@@ -1929,6 +2063,7 @@ const RC_KEYS = [
   { id: 'rc_show_paywall_on_start',            key: 'show_paywall_on_start',            type: 'bool',   def: false },
   { id: 'rc_feature_link_paste_enabled',       key: 'feature_link_paste_enabled',       type: 'bool',   def: true  },
   { id: 'rc_ai_comparison_limit_free',         key: 'ai_comparison_limit_free',         type: 'int',    def: 3     },
+  { id: 'rc_free_daily_ai_credit_limit',       key: 'free_daily_ai_credit_limit',       type: 'int',    def: 10    },
   { id: 'rc_free_ai_question_limit',           key: 'free_ai_question_limit',           type: 'int',    def: 15    },
   { id: 'rc_free_link_paste_limit',            key: 'free_link_paste_limit',            type: 'int',    def: 3     },
   { id: 'rc_free_subscription_analysis_limit',key: 'free_subscription_analysis_limit', type: 'int',    def: 2     },
@@ -1937,9 +2072,8 @@ const RC_KEYS = [
 
 async function loadRemoteConfig() {
   try {
-    const result = await pbGetList('public_config', 1, 200, {});
-    const configMap = {};
-    result.items.forEach(item => { if (item.key) configMap[item.key] = item.value; });
+    const configMap = await getPublicConfigMap();
+    _freeDailyAiCreditLimit = Math.max(0, safeNumber(configMap.free_daily_ai_credit_limit, 10));
     for (const def of RC_KEYS) {
       const el = document.getElementById(def.id);
       if (!el) continue;
@@ -1962,9 +2096,14 @@ async function saveRemoteConfig() {
       if (def.type === 'bool')       val = el.value === 'true';
       else if (def.type === 'int')   val = parseInt(el.value) || 0;
       else                           val = el.value;
-      promises.push(pbSetDoc('public_config', def.key, { value: val }));
+      promises.push(syncPublicConfigValue(def.key, val));
     }
     await Promise.all(promises);
+    await loadQCoinConfig();
+    if (allUsers.length) {
+      renderUsers();
+      if (_activeUserModalUid) openUserDetail(_activeUserModalUid);
+    }
     logActivity('settings_update', 'Remote config güncellendi');
     toast('Ayarlar kaydedildi', 's');
   } catch(e) {

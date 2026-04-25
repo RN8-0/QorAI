@@ -28,7 +28,7 @@ import 'package:qor_ai/core/pb_client.dart';
 
 const double _kHorizontalCardRowHeight = 246;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
-const int _kHorizontalInitialItemLimit = 8;
+const int _kHorizontalInitialItemLimit = 24;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
 const int _kInitialCategoryChipLimit = 18;
@@ -1524,7 +1524,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final filtered = products
         .where((product) => !blockedIds.contains(product.id))
         .toList();
-    return filtered.length >= 4 ? filtered : products;
+    if (filtered.length >= _kHorizontalInitialItemLimit) {
+      return filtered;
+    }
+
+    final filled = <ProductEntity>[...filtered];
+    final seenIds = filled.map((product) => product.id).toSet();
+    for (final product in products) {
+      if (seenIds.add(product.id)) {
+        filled.add(product);
+      }
+      if (filled.length >= _kHorizontalInitialItemLimit) {
+        break;
+      }
+    }
+
+    return filled.length >= 4 ? filled : products;
   }
 
   Widget _buildTrendsSection() {

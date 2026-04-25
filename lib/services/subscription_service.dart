@@ -7,6 +7,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -14,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/services/remote_config_service.dart';
 
 /// Subscription status
 class SubscriptionStatus {
@@ -131,7 +133,11 @@ class SubscriptionService extends ChangeNotifier {
   static const String _legacyUsageStorageKey = 'freemium_usage_v2';
   static const String _usageStorageKeyPrefix = 'freemium_usage_v3_';
   static const String _usageNamespaceCacheKey = 'freemium_usage_namespace';
+  static const String _dailyCreditsUsedField = 'dailyAiCreditsUsed';
+  static const String _dailyCreditsPeriodField = 'dailyAiCreditsDate';
+  static const String _bonusQCoinsField = 'bonusQCoins';
   final InAppPurchase _iap = InAppPurchase.instance;
+  final RemoteConfigService _remoteConfigService;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
 
   SubscriptionStatus _status = SubscriptionStatus.free;
@@ -139,6 +145,10 @@ class SubscriptionService extends ChangeNotifier {
   late UsageCounter _usage;
   bool _initialized = false;
   String _usageNamespace = 'guest_device';
+  double _syncedDailyCreditsUsed = 0;
+  double _bonusQCoins = 0;
+  String _syncedDailyCreditsPeriodKey = '';
+  bool _hasSyncedCredits = false;
 
   List<ProductDetails> _products = [];
   Completer<Result<bool>>? _purchaseCompleter;
@@ -232,7 +242,8 @@ class SubscriptionService extends ChangeNotifier {
     return null;
   }
 
-  SubscriptionService() {
+  SubscriptionService({required RemoteConfigService remoteConfigService})
+    : _remoteConfigService = remoteConfigService {
     _usage = _emptyUsage();
     // Pre-load usage from local storage immediately so the profile screen
     // shows correct quota values before full initialize() completes.
@@ -243,6 +254,7 @@ class SubscriptionService extends ChangeNotifier {
   /// without triggering the full IAP initialization. Called from constructor.
   Future<void> _preloadUsage() async {
     await _restoreUsageFromLocal();
+    await _refreshSyncedDailyCredits(persistNormalized: false);
     notifyListeners();
   }
 
@@ -253,7 +265,9 @@ class SubscriptionService extends ChangeNotifier {
     _initCompleter = Completer<void>();
 
     try {
+      await _remoteConfigService.initialize();
       await _restoreUsageFromLocal();
+      await _refreshSyncedDailyCredits();
       notifyListeners();
 
       final available = await _iap.isAvailable();
@@ -468,6 +482,7 @@ class SubscriptionService extends ChangeNotifier {
     _status = SubscriptionStatus.free;
     _profileStatus = SubscriptionStatus.free;
     _usageNamespace = 'guest_device';
+    _resetSyncedCreditsCache();
     await _restoreUsageFromLocal();
     // Reset init flag so initialize() will re-run (and call restorePurchases)
     // the next time the subscription service is needed for the new account.
@@ -617,6 +632,7 @@ class SubscriptionService extends ChangeNotifier {
     final nextNamespace = _resolveUsageNamespace();
     if (!force && nextNamespace == _usageNamespace) return;
     await _restoreUsageFromLocal();
+    await _refreshSyncedDailyCredits();
     notifyListeners();
   }
 
@@ -754,6 +770,99 @@ class SubscriptionService extends ChangeNotifier {
     return '$_usageStorageKeyPrefix$namespace';
   }
 
+  double _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  void _resetSyncedCreditsCache() {
+    _syncedDailyCreditsUsed = 0;
+    _bonusQCoins = 0;
+    _syncedDailyCreditsPeriodKey = _dailyPeriodKey();
+    _hasSyncedCredits = false;
+  }
+
+  bool get _usesSyncedCredits =>
+      !isPremium && pb.authStore.isValid && _hasSyncedCredits;
+
+  double get _baseDailyCreditLimit =>
+      _remoteConfigService.freeDailyAiCreditLimit.toDouble();
+
+  Future<void> _refreshSyncedDailyCredits({
+    bool persistNormalized = true,
+  }) async {
+    if (!pb.authStore.isValid) {
+      _resetSyncedCreditsCache();
+      return;
+    }
+
+    try {
+      await _remoteConfigService.initialize();
+      final uid = pb.authStore.record?.id;
+      if (uid == null || uid.isEmpty) {
+        _resetSyncedCreditsCache();
+        return;
+      }
+
+      final record = await pb.collection(AppConstants.usersCollection).getOne(uid);
+      final todayKey = _dailyPeriodKey();
+      final storedPeriodKey =
+          record.data[_dailyCreditsPeriodField]?.toString() ?? todayKey;
+      var used = _asDouble(record.data[_dailyCreditsUsedField]);
+      final bonus = _asDouble(record.data[_bonusQCoinsField]);
+      var normalizedPeriodKey = storedPeriodKey;
+
+      if (storedPeriodKey != todayKey) {
+        used = 0;
+        normalizedPeriodKey = todayKey;
+        if (persistNormalized) {
+          await pb.collection(AppConstants.usersCollection).update(
+            uid,
+            body: {
+              _dailyCreditsUsedField: used,
+              _dailyCreditsPeriodField: normalizedPeriodKey,
+            },
+          );
+        }
+      }
+
+      _syncedDailyCreditsUsed = used;
+      _bonusQCoins = bonus;
+      _syncedDailyCreditsPeriodKey = normalizedPeriodKey;
+      _hasSyncedCredits = true;
+    } catch (_) {
+      _resetSyncedCreditsCache();
+    }
+  }
+
+  Future<void> _persistSyncedDailyCredits() async {
+    if (!_usesSyncedCredits) return;
+
+    final uid = pb.authStore.record?.id;
+    if (uid == null || uid.isEmpty) return;
+
+    try {
+      await pb.collection(AppConstants.usersCollection).update(
+        uid,
+        body: {
+          _dailyCreditsUsedField: _syncedDailyCreditsUsed,
+          _dailyCreditsPeriodField: _syncedDailyCreditsPeriodKey,
+        },
+      );
+    } catch (_) {}
+  }
+
+  void _reserveSyncedCredits(String featureName) {
+    if (!_usesSyncedCredits) return;
+    _syncedDailyCreditsPeriodKey = _dailyPeriodKey();
+    _syncedDailyCreditsUsed = min(
+      totalDailyCredits,
+      _syncedDailyCreditsUsed +
+          AppConstants.creditCostForFeature(featureName).toDouble(),
+    );
+    unawaited(_persistSyncedDailyCredits());
+  }
+
   UsageCounter _normalizedUsage() {
     final dailyKey = _dailyPeriodKey();
     var changed = false;
@@ -842,21 +951,27 @@ class SubscriptionService extends ChangeNotifier {
       UsageLimitException(
         featureName: featureName,
         currentUsage: _usedCreditsFor(usage),
-        limit: AppConstants.freeDailyAiCreditLimit,
+        limit: totalDailyCredits,
         message: 'Insufficient daily credits',
       ),
     );
   }
 
-    double get usedDailyCredits =>
-      isPremium ? 0 : _usedCreditsFor(_normalizedUsage());
+    double get usedDailyCredits => isPremium
+      ? 0
+      : (_usesSyncedCredits
+            ? _syncedDailyCreditsUsed
+            : _usedCreditsFor(_normalizedUsage()));
+
+    double get totalDailyCredits => isPremium
+      ? -1
+      : (_usesSyncedCredits
+            ? max(0.0, _baseDailyCreditLimit + _bonusQCoins)
+            : _baseDailyCreditLimit);
 
     double get remainingDailyCredits => isPremium
       ? -1
-      : (AppConstants.freeDailyAiCreditLimit - usedDailyCredits).clamp(
-          0,
-          AppConstants.freeDailyAiCreditLimit,
-      ).toDouble();
+      : max(0.0, totalDailyCredits - usedDailyCredits);
 
     num creditCostForFeature(String featureName) =>
       AppConstants.creditCostForFeature(featureName);
@@ -918,6 +1033,7 @@ class SubscriptionService extends ChangeNotifier {
       return _creditLimitFailure('ai_question', currentUsage);
     }
     _usage = currentUsage.copyWith(aiQuestions: currentUsage.aiQuestions + 1);
+    _reserveSyncedCredits('ai_chat');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -930,6 +1046,7 @@ class SubscriptionService extends ChangeNotifier {
       return _creditLimitFailure('compare_ai', currentUsage);
     }
     _usage = currentUsage.copyWith(compareAi: currentUsage.compareAi + 1);
+    _reserveSyncedCredits('compare_ai');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -942,6 +1059,7 @@ class SubscriptionService extends ChangeNotifier {
       return _creditLimitFailure('detail_ai', currentUsage);
     }
     _usage = currentUsage.copyWith(detailAi: currentUsage.detailAi + 1);
+    _reserveSyncedCredits('detail_ai');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -956,6 +1074,7 @@ class SubscriptionService extends ChangeNotifier {
     _usage = currentUsage.copyWith(
       detailMatchAi: currentUsage.detailMatchAi + 1,
     );
+    _reserveSyncedCredits('detail_match');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -968,6 +1087,7 @@ class SubscriptionService extends ChangeNotifier {
       return _creditLimitFailure('pc_builder_ai', currentUsage);
     }
     _usage = currentUsage.copyWith(pcBuilderAi: currentUsage.pcBuilderAi + 1);
+    _reserveSyncedCredits('pc_builder_ai');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -980,6 +1100,7 @@ class SubscriptionService extends ChangeNotifier {
       return _creditLimitFailure('link_paste', currentUsage);
     }
     _usage = currentUsage.copyWith(linkPastes: currentUsage.linkPastes + 1);
+    _reserveSyncedCredits('link_analysis');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -994,6 +1115,7 @@ class SubscriptionService extends ChangeNotifier {
     _usage = currentUsage.copyWith(
       subscriptionAnalyses: currentUsage.subscriptionAnalyses + 1,
     );
+    _reserveSyncedCredits('subscription_analysis');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -1006,6 +1128,7 @@ class SubscriptionService extends ChangeNotifier {
       return _creditLimitFailure('link_compare', currentUsage);
     }
     _usage = currentUsage.copyWith(linkCompare: currentUsage.linkCompare + 1);
+    _reserveSyncedCredits('link_compare');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
@@ -1018,6 +1141,7 @@ class SubscriptionService extends ChangeNotifier {
       return _creditLimitFailure('product_scan', currentUsage);
     }
     _usage = currentUsage.copyWith(productScan: currentUsage.productScan + 1);
+    _reserveSyncedCredits('product_scan');
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);

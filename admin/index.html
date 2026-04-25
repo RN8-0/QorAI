@@ -192,6 +192,23 @@
           <div class="stat-card-sm"><div class="stat-value-sm" id="usFreeCount">—</div><div class="stat-label-sm">Free</div></div>
           <div class="stat-card-sm"><div class="stat-value-sm" id="usActiveCount">—</div><div class="stat-label-sm">Active 30d</div></div>
         </div>
+        <div class="card" style="margin:0 0 16px;padding:16px">
+          <div class="card-title">🪙 Q Coin Kontrol</div>
+          <div class="form-grid" style="align-items:end">
+            <div class="form-field">
+              <label>Global Günlük Q Coin Havuzu</label>
+              <input class="input" type="number" id="usersDailyQCoinInput" min="0" value="10">
+            </div>
+            <div class="form-field">
+              <label>Hızlı İşlem</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="saveUsersDailyQCoin()">Günlük Havuzu Kaydet</button>
+                <button class="btn btn-ghost" onclick="resetAllUserExtraQCoins()">Tüm Extra Q'ları Sıfırla</button>
+              </div>
+            </div>
+          </div>
+          <div id="usersQCoinHint" class="text-muted" style="font-size:12px">Kullanıcı detayına girerek kişiye özel ekstra Q ekleyebilir veya sıfırlayabilirsin.</div>
+        </div>
         <div class="toolbar">
           <div class="search-field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -782,6 +799,10 @@
             <div class="form-field">
               <label>Günlük AI Karşılaştırma</label>
               <input class="input" type="number" id="rc_ai_comparison_limit_free" min="0" value="3">
+            </div>
+            <div class="form-field">
+              <label>Günlük Q Coin Havuzu</label>
+              <input class="input" type="number" id="rc_free_daily_ai_credit_limit" min="0" value="10">
             </div>
             <div class="form-field">
               <label>Günlük AI Soru</label>

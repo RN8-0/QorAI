@@ -1327,7 +1327,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     if (sub.isPremium) return const SizedBox.shrink();
 
     final remaining = sub.remainingDailyCredits;
-    final total = AppConstants.freeDailyAiCreditLimit;
+    final total = sub.totalDailyCredits;
     final used = sub.usedDailyCredits;
     final progress = total == 0 ? 0.0 : (used / total).clamp(0.0, 1.0);
     final isLow = remaining <= 2;

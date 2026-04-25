@@ -12,7 +12,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
@@ -2474,7 +2473,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                             const SizedBox(width: 6),
                             QorBalanceBadge(
                               remaining: ref.read(subscriptionServiceProvider).remainingDailyCredits,
-                              total: AppConstants.freeDailyAiCreditLimit,
+                              total: ref.read(subscriptionServiceProvider).totalDailyCredits,
                               unlimited: false,
                               color: Colors.white,
                               fontSize: 9,

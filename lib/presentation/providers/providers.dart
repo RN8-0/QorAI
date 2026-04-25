@@ -125,7 +125,9 @@ final deepSeekServiceProvider = Provider<DeepSeekService>((ref) {
 /// Subscription Service (Google Play Billing)
 final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
   (ref) {
-    final service = SubscriptionService();
+    final service = SubscriptionService(
+      remoteConfigService: ref.read(remoteConfigServiceProvider),
+    );
     bool initializationScheduled = false;
 
     void scheduleInitialization() {

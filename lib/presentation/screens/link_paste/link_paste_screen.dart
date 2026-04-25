@@ -1096,7 +1096,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (sub.isPremium) return const SizedBox.shrink();
 
     final remaining = sub.remainingDailyCredits;
-    final total = AppConstants.freeDailyAiCreditLimit;
+    final total = sub.totalDailyCredits;
     final progress = total == 0
         ? 0.0
         : (sub.usedDailyCredits / total).clamp(0.0, 1.0);

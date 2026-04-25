@@ -1588,10 +1588,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget _buildComparisonTable() {
     final l = context.l10n;
     final unlimited = l?.unlimited ?? 'Unlimited';
+    final totalCredits = ref.watch(subscriptionServiceProvider).totalDailyCredits.round();
     final rows = [
       _TableRow(
         _txt(tr: 'Qor AI Chat', en: 'Qor AI Chat'),
-        _dailyCreditPoolLabel(AppConstants.freeDailyAiCreditLimit),
+        _dailyCreditPoolLabel(totalCredits),
         _unlimitedCreditsLabel(),
         Icons.chat_bubble_outline_rounded,
       ),
