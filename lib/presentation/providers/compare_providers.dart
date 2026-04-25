@@ -205,10 +205,7 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
         .recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
-        error:
-            _appLang == 'tr'
-                ? 'Yeterli günlük Q bakiyeniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
-                : 'Not enough daily Q balance. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
+        error: buildDailyQLimitMessage(_appLang),
         isLoading: false,
       );
       return;
@@ -320,10 +317,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     if (limitResult.isFailure) {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
-        error:
-            _appLang == 'tr'
-                ? 'Yeterli günlük Q bakiyeniz yok. Link Analizi ${AppConstants.creditCostForFeature('link_analysis')} Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
-                : 'Not enough daily Q balance. Link Analysis costs ${AppConstants.creditCostForFeature('link_analysis')} Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
+        error: buildDailyQLimitMessage(_appLang),
       );
       return;
     }
@@ -1447,10 +1441,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (!_subService.canAnalyzeSubscription) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error:
-            _appLang == 'tr'
-                ? 'Yeterli günlük Q bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
-                : 'Not enough daily Q balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
+        error: buildDailyQLimitMessage(_appLang),
       );
       return;
     }
@@ -1549,9 +1540,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       if (subQuota.isFailure) {
         state = state.copyWith(
           phase: SubFlowPhase.idle,
-            error: _appLang == 'tr'
-              ? 'Yeterli günlük Q bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
-              : 'Not enough daily Q balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
+          error: buildDailyQLimitMessage(_appLang),
         );
         return;
       }
@@ -1577,9 +1566,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: _appLang == 'tr'
-          ? 'Yeterli günlük Q bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
-          : 'Not enough daily Q balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
+        error: buildDailyQLimitMessage(_appLang),
       );
       return;
     }
@@ -1613,9 +1600,7 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: _appLang == 'tr'
-          ? 'Yeterli günlük Q bakiyeniz yok. Abonelik Analizi ${AppConstants.creditCostForFeature('subscription_analysis')} Q tüketir. Q bakiyeniz yarın yenilenir veya Premium ile sınırsız Q açabilirsiniz.'
-          : 'Not enough daily Q balance. Subscription Analysis costs ${AppConstants.creditCostForFeature('subscription_analysis')} Q. Your Q balance refreshes tomorrow or upgrade to Premium for unlimited Q.',
+        error: buildDailyQLimitMessage(_appLang),
       );
       return;
     }

@@ -15,6 +15,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/qor_limit_messages.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_localization.dart';
@@ -1635,6 +1636,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     if (_aiAnalysis == null) {
       final sub = ref.read(subscriptionServiceProvider);
       if (!sub.canUsePcBuilderAi) {
+        final langCode = Localizations.localeOf(context).languageCode;
+        final limitL10n = qorLocalizationsForCode(langCode);
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -1663,15 +1666,15 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   ),
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome, color: AppTheme.brandBlue, size: 24),
+                      const Icon(
+                        Icons.auto_awesome,
+                        color: AppTheme.premiumBase,
+                        size: 24,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          _pcText(
-                            context,
-                            tr: 'Günlük Qor Yetmiyor',
-                            en: 'Not Enough Daily Qor',
-                          ),
+                          dailyQLimitTitle(langCode),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -1683,11 +1686,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _pcText(
-                      context,
-                      tr: 'Günlük Q bakiyeniz bu analiz için yetmiyor. PC Builder AI 2 Q tüketir. Sınırsız sistem analizi, FPS hesaplamaları ve uyumluluk kontrolleri için Premium\'a geçin. Q bakiyeniz yarın yenilenecektir.',
-                      en: 'You do not have enough daily Q balance for this analysis. PC Builder AI costs 2 Q. Upgrade to Premium for unlimited system analysis, FPS calculations, and compatibility checks. Your Q balance will refresh tomorrow.',
-                    ),
+                    '${buildDailyQLimitMessage(langCode)} ${buildDailyQResetMessage(langCode)}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       height: 1.6,
@@ -1704,7 +1703,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         showPaywallSheet(context);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.brandBlue,
+                        backgroundColor: AppTheme.premiumBase,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -1712,11 +1711,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                         elevation: 0,
                       ),
                       child: Text(
-                        _pcText(
-                          context,
-                          tr: 'Premium\'u İncele',
-                          en: 'View Premium',
-                        ),
+                        limitL10n.premium,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,

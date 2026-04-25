@@ -1,209 +1,222 @@
-# Qor AI — AI-Powered Price Comparison & Personal Product Recommender
+# Qor AI
 
 <p align="center">
-  <img src="assets/images/logo.png" alt="Qor AI Logo" width="120"/>
+   <img src="assets/images/logo.png" alt="Qor AI Logo" width="120"/>
 </p>
 
-> **Qor AI** is a cross-platform Flutter application that helps users discover, compare, and make smarter purchase decisions using AI-powered personalized recommendations, real-time price tracking, and deep product analysis.
+<p align="center">
+   AI-powered decision engine for tech products and subscriptions.<br/>
+   Flutter mobile app + PocketBase backend + Typesense search + DeepSeek/Gemini intelligence.
+</p>
 
----
+<p align="center">
+   <img src="temp_screenshots/Screenshot_1.png" alt="Qor AI Home" width="31%"/>
+   <img src="temp_screenshots/Screenshot_2.png" alt="Qor AI Product Detail" width="31%"/>
+   <img src="temp_screenshots/Screenshot_3.png" alt="Qor AI Compare" width="31%"/>
+</p>
 
-## ✨ Features
+## Overview
 
-### 🏠 Personalized Home Feed
-- Onboarding quiz captures user interests, budget range, ecosystem preference (Apple / Android / Mixed), and age range
-- Home feed dynamically surfaces products from the user's interest categories (up to 20 per category)
-- Algorithm sorts recommendations by relevance using `ProfileAlgorithmService`
+Qor AI is the current production-focused mobile app for personalized tech discovery, product comparison, subscription analysis, and AI-assisted buying decisions. The app is built primarily for Android and iOS with Flutter, uses Riverpod for state orchestration, GoRouter for app navigation, PocketBase for app data/auth/admin flows, Typesense for fast product search, DeepSeek for cost-efficient text intelligence, and Gemini for multimodal vision plus grounded web analysis.
 
-### 🔍 Intelligent Search
-- Typesense-backed product search with PocketBase data sync
-- 400 ms debounce for smooth typing experience
-- Pre-loaded popular searches (iPhone 16, Galaxy S25, MacBook Pro M4, PS5, etc.)
+The current mobile shell is built around five persistent product surfaces:
 
-### 📦 Rich Product Detail Page
-- **Hero image** with always-white background for clean presentation
-- **Tech Score & Rating rows** — expert, community, and user scores at a glance
-- **Compatibility badges** — ecosystem fit indicator
-- **Price comparison** — side-by-side retailer prices
-- **Pros / Cons** — curated highlights
-- **Grouped Specifications** — all spec groups collapsed by default; tap to expand; 20+ admin-defined group types with custom icons and colors
-- **YouTube Reviews** — top 3 embeddable review videos parsed from public YouTube search results in the user's device language
-- **AI Review Analysis** (DeepSeek) — crawls real web reviews, summarizes sentiment: satisfaction %, praised features, common criticisms
-- **User Reviews** — star rating + comment system; write a review via a bottom sheet; PocketBase-backed sync
+- PC Build
+- Compare
+- Home
+- Link AI
+- Subscriptions
 
-### 🎨 Theme
-- Defaults to **light/white theme** on first launch
-- User can switch to dark mode from settings
-- All product images rendered on a white background for consistency
+Outside that shell, the app also includes product detail, AI chat, search, profile/settings, visual scanner, notifications, recent history, collections, behavior report, and premium/paywall flows.
 
-### 🔐 Authentication
-- Email/password, Google Sign-In, Apple Sign-In
-- PocketBase user profiles and auth flows
+## Current Product Experience
 
-### ⚖️ Product Comparison (Battles)
-- Admin-curated and user-initiated head-to-head comparisons
-- Side-by-side spec diff with winner highlighting
+### 1. Personalized Home Feed
 
----
+- Personalized landing feed with category rails, recommendation blocks, trending picks, and premium highlights.
+- Match-oriented discovery driven by quiz/profile signals, browsing behavior, favorites, and category priorities.
+- Fast-loading product cards with Q badges, tech scores, quick compare entry points, and AI shortcuts.
 
-## 🛡️ Admin Panel (Web)
+### 2. Product Detail Intelligence
 
-Full-featured web admin panel hosted on Coolify / Hetzner:
+- Large hero product presentation with gallery, compare shortcut, sharing, favorites, and AI actions.
+- Tech Score, compatibility/match score, specs, similar products, reviews, and premium analysis tabs.
+- Community review synthesis, pros/cons, pricing surfaces, and embedded YouTube review handling.
+- AI-gated premium surfaces now share a single localized Q-limit experience.
 
-| Feature | Description |
-|---------|-------------|
-| **Dashboard** | Product/user/comparison stats, category charts, daily trends, top brands |
-| **Products** | Full CRUD, search, filters, bulk delete, variant deduplication, spec viewer |
-| **Users** | List, search, premium toggle, full deletion from PocketBase |
-| **Scraper** | Bulk scrape from epey.com, single URL, score update, inventory scan |
-| **App Control** | Ads, homepage, push notifications, maintenance mode, versioning |
-| **Algorithm** | Match score weights, brand controls, behavior signals, home feed config |
-| **Settings** | Danger zone (delete all), about |
+### 3. Compare Flow
 
-### Scraper Setup
-The scraper uses a local CORS proxy so that requests to epey.com use **your IP address** (avoids bot detection):
+- Compare queue with product search, score chips, and add/remove actions.
+- Side-by-side comparison results for specs, strengths, and fit-oriented recommendations.
+- Link-based comparison support for external URLs and AI-assisted decision output.
 
-```bash
-node scripts/scraper-proxy.js
-```
+### 4. Link AI
 
-Then open the admin panel → Scraper tab. The proxy runs on `localhost:3456`.
+- Paste a product URL and let AI validate the page, identify the product, and enrich the result.
+- Single-link analysis and multi-link comparison support.
+- Quiz-assisted compatibility scoring layered on top of scraped metadata and model reasoning.
 
-### Security
-- Admin access is handled through GitHub OAuth on the `admins` auth collection and then upgraded to a PocketBase superuser session on the backend
-- User deletion and product/app management are handled directly through PocketBase
-- No Firebase Auth / Firestore dependency remains in runtime flows
-- Run `node scripts/audit_coolify_security.js` or `npm --prefix scripts run audit:coolify-security` to audit Coolify dashboard/app HTTPS and edge protection settings
-- Run `node scripts/patch_coolify_app_domains.js` or `npm --prefix scripts run patch:coolify-app-domains` after setting `COOLIFY_ADMIN_APP_FQDN`, `COOLIFY_WEBSITE_FQDN`, and optional `COOLIFY_POCKETBASE_FQDN`
-- Run `node scripts/patch_coolify_admin_basic_auth.js` or `npm --prefix scripts run patch:coolify-admin-basic-auth` after setting `COOLIFY_ADMIN_BASIC_AUTH_USERNAME` and `COOLIFY_ADMIN_BASIC_AUTH_PASSWORD`
-- `github.io` is not a usable free domain for Coolify/PocketBase on your own server; for a free hostname use a provider like DuckDNS, or use a paid custom domain
-- Keep the Coolify dashboard off public `:8000` access; prefer a domain with HTTPS plus firewall/VPN/Tailscale restriction
-- Treat direct HTTP access to the Coolify panel as sensitive: rotate tokens/sessions if the panel was used over plain HTTP
+### 5. Subscription Intelligence
 
----
+- Enter services like Netflix, Spotify, ChatGPT Plus, Disney+, Apple One, and similar subscriptions.
+- AI resolves the entered services, builds a short personal quiz, and blends web/community signals into a final recommendation.
+- Localized progress timeline, info cards, premium/Qor gating, and subscription history flows.
+- Daily Q limit warnings now use the same premium purple language-safe experience instead of the previous red inline warning.
 
-## 🏗️ Tech Stack
+### 6. PC Builder AI
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Flutter 3.x (Dart) |
-| State Management | Riverpod (flutter_riverpod) |
-| Backend | PocketBase + Typesense + Hetzner/Coolify |
-| AI / LLM | DeepSeek API (`deepseek-chat`) |
-| Video | Public YouTube search parsing |
-| Web Search | PocketBase / app-side crawling |
-| Local Cache | Hive |
+- Dedicated PC Builder landing, active build flow, and build history screens.
+- Component-by-component system assembly with compatibility awareness and AI analysis.
+- AI-generated upgrade suggestions and system diagnosis.
+- PC Builder Q-limit messaging now also uses the shared localized premium limit copy.
+
+### 7. Visual Scanner
+
+- Camera-based product recognition powered by Gemini multimodal analysis.
+- Image capture, product understanding, and follow-up Q&A flow.
+- Reuses the same premium/Q-limit dialog system as other AI-gated features.
+
+### 8. AI Chat and Decision Assistance
+
+- Context-aware AI chat entry points from the app shell and feature flows.
+- Product-aware and page-aware prompts for follow-up decision support.
+- Daily Q system for free usage with premium unlock path.
+
+## Platform Features
+
+- Authentication with email/password, Google Sign-In, and Apple Sign-In.
+- Premium gating and daily Q economy for AI-heavy actions.
+- Local persistence via Hive and SharedPreferences.
+- Firebase Cloud Messaging + local notifications.
+- Multi-language UI via Flutter l10n.
+- Dark/light theming and brand-driven OLED-friendly presentation.
+
+## Admin, Content, and Operations
+
+The repository also contains the operational surfaces required to run the product end to end:
+
+- `admin/`: static admin panel for product, user, comparison, scraper, algorithm, and app-control operations.
+- `pb_hooks/`: server hooks for AI proxying and sync tasks.
+- `migration/`: one-off migration, repair, schema, and deployment scripts.
+- `scripts/`: automation for scraping, security audits, deploys, dictionary/build helpers, and maintenance tasks.
+- `website/`: public site deployment target.
+
+Key admin capabilities include:
+
+- product CRUD and bulk operations
+- user management and premium controls
+- scraper and ingestion workflows
+- app-wide config / maintenance / notification tooling
+- algorithm and scoring configuration
+- deployment and Coolify hardening scripts
+
+## Tech Stack
+
+| Layer | Stack |
+| --- | --- |
+| Mobile App | Flutter 3.10.4 / Dart |
+| State Management | Riverpod |
 | Routing | GoRouter |
-| Image Loading | CachedNetworkImage |
-| Admin Panel | Vanilla JS + Coolify static hosting |
-| Scraper | Node.js local proxy + browser-side parsing |
+| Backend | PocketBase |
+| Search | Typesense |
+| Text AI | DeepSeek |
+| Vision + Grounded AI | Gemini via PocketBase proxy |
+| Caching | Hive, SharedPreferences |
+| Media | CachedNetworkImage, YouTube iframe/player flows, Camera |
+| Payments | in_app_purchase |
+| Push | Firebase Messaging, flutter_local_notifications |
+| Admin Panel | Vanilla JS + static hosting |
+| Infra / Deploy | Coolify, Hetzner, Node.js scripts |
 
----
+## Project Structure
 
-## 📁 Project Structure
-
-```
-├── admin/                  # Web admin panel (Coolify static app)
-│   ├── index.html
-│   ├── css/style.css
-│   └── js/
-│       ├── app.js          # Core admin logic
-│       └── scraper.js      # Scraper module
-├── lib/                    # Flutter app
-│   ├── config/             # Environment config
-│   ├── core/               # Theme, constants, utilities
-│   ├── data/
-│   │   ├── datasources/    # PocketBase & Hive data sources
-│   │   ├── models/         # Data models
-│   │   └── repositories/   # Repository pattern
-│   ├── domain/
-│   │   └── entities/       # Pure domain entities
-│   ├── presentation/
-│   │   ├── providers/      # Riverpod providers
-│   │   └── screens/        # UI screens
-│   └── services/           # YouTube, DeepSeek, Gemini, Cache
-├── scripts/                # Utility & scraper scripts
-│   └── scraper-proxy.js    # Local CORS proxy for admin scraper
-├── website/                # Public website (Coolify static app)
+```text
+.
+├── admin/                  # Static admin panel
+├── android/                # Android project
+├── ios/                    # iOS project
+├── lib/
+│   ├── app.dart            # MaterialApp + localization + theming
+│   ├── main.dart           # Bootstrapping, services, providers
+│   ├── core/               # Constants, theme, shared helpers
+│   ├── data/               # Data sources, models, repositories
+│   ├── domain/             # Entities and business abstractions
+│   ├── l10n/               # Generated and source localization files
+│   ├── presentation/       # Screens, widgets, Riverpod providers
+│   ├── routing/            # GoRouter configuration
+│   └── services/           # AI, cache, metadata, notifications, subscriptions
 ├── migration/              # One-off migration and infra scripts
-└── pubspec.yaml            # Flutter dependencies
+├── pb_hooks/               # PocketBase hook endpoints
+├── scripts/                # Deployment, scraping, maintenance utilities
+├── temp_screenshots/       # App preview images used in this README
+├── website/                # Public website assets/deployment target
+├── package.json            # Web/admin deployment scripts
+└── pubspec.yaml            # Flutter package manifest
 ```
 
----
+## Getting Started
 
-## 🌐 Web Deployments
+### Requirements
 
-| Site | URL | Content |
-|------|-----|---------|
-| `qorai-website` | https://qorai.app | Public website |
-| `qorai-admin` | `COOLIFY_ADMIN_APP_FQDN` -> target: https://admin.qorai.app | Admin panel |
+- Flutter SDK compatible with Dart `^3.10.4`
+- Node.js 18+
+- PocketBase instance
+- Typesense instance
+- DeepSeek and/or Gemini access depending on the features you enable
 
-Note: the current fallback backend/admin endpoints may still be `sslip.io` until the fixed Qor AI domains are patched and DNS is pointed.
+### Install
 
-Deploy:
 ```bash
-npm run deploy:web       # Website + admin
-npm run deploy:website   # Website only
-npm run deploy:admin     # Admin only
+flutter pub get
+npm install
 ```
 
----
+### Common Run Command
 
-## 🚀 Getting Started
+```bash
+flutter run \
+   --dart-define=PB_URL=https://your-pocketbase-url \
+   --dart-define=TS_URL=https://your-typesense-url \
+   --dart-define=TS_API_KEY=your_typesense_key \
+   --dart-define=DEEPSEEK_API_KEY=your_deepseek_key \
+   --dart-define=GEMINI_API_KEY=your_gemini_key
+```
 
-### Prerequisites
-- Flutter SDK ≥ 3.0
-- Node.js ≥ 18
-- API keys for: DeepSeek (Gemini optional if enabled on PocketBase)
+## Runtime Configuration
 
-### Setup
-
-1. **Clone the repo**
-   ```bash
-   git clone https://github.com/arain-0/Qor AI.git
-   cd Qor AI
-   flutter pub get
-   ```
-
-2. **Backend setup**
-   - Configure PocketBase URL / auth hook on your target environment
-   - Keep `migration/.env` updated for Coolify deployment automation
-
-3. **Run with API keys**
-   ```bash
-   flutter run \
-     --dart-define=DEEPSEEK_API_KEY=your_key
-   ```
-
----
-
-## 🔑 Environment Variables
-
-All secrets are passed via `--dart-define` and accessed through `EnvConfig`:
+Common `--dart-define` values used in this repo:
 
 | Variable | Purpose |
-|----------|---------|
-| `DEEPSEEK_API_KEY` | DeepSeek LLM — AI review sentiment analysis |
-| `GEMINI_API_KEY` | Gemini LLM (optional, also loadable from PB RemoteConfig) |
+| --- | --- |
+| `PB_URL` | PocketBase base URL |
+| `TS_URL` | Typesense base URL |
+| `TS_API_KEY` | Typesense public search key |
+| `DEEPSEEK_API_KEY` | Text intelligence / summaries / analysis |
+| `GEMINI_API_KEY` | Vision and grounded AI fallback/config |
+| `REVENUECAT_API_KEY` | Optional purchase config path present in env config |
+| `REVENUECAT_ANDROID_API_KEY` | Optional Android purchase config path present in env config |
 
----
+## Deployment Scripts
 
-## 📱 Supported Platforms
+```bash
+npm run deploy:web
+npm run deploy:website
+npm run deploy:admin
+npm run scraper:proxy
+```
 
-- ✅ Android
-- ✅ iOS
-- ✅ Web (limited)
+## Supported Platforms
 
----
+- Android
+- iOS
+- Web/admin surfaces in limited or separate deployment contexts
 
-## 🌍 Localization
+## Notes
 
-- Supports multiple languages via Flutter's `l10n` system (`lib/l10n/`)
-- YouTube video search adapts to device locale (15 languages supported)
-- AI review keywords localized for accurate international web searches
+- Product search in the current codebase is Typesense-backed, with PocketBase fallbacks and sync points.
+- Gemini and DeepSeek requests are routed through app/service abstractions and PocketBase-backed proxy endpoints where required.
+- The repository includes both user-facing mobile code and the operational tooling needed to keep content, scoring, and deployments in sync.
 
----
+## License
 
-## 📄 License
-
-Private repository — all rights reserved.
+Private repository. All rights reserved.

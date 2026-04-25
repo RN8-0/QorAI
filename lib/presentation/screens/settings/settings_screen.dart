@@ -302,7 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           final helpCenterMessage =
                               context.l10n?.helpCenterComingSoon ??
                               'Help center coming soon';
-                          final uri = Uri.parse('https://qorai.app/faq');
+                          final uri = Uri.parse('https://qorai.net/faq');
                           try {
                             await launchUrl(
                               uri,
@@ -344,7 +344,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: context.l10n?.share ?? 'Share',
                         onTap: () {
                           Share.share(
-                            'Check out Qor AI - Smart Product Comparison!\nhttps://qorai.app',
+                            'Check out Qor AI - Smart Product Comparison!\nhttps://qorai.net',
                             subject: 'Qor AI App',
                           );
                         },
@@ -359,7 +359,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: CupertinoIcons.shield_fill,
                         iconBg: const Color(0xFF64748B),
                         title: context.l10n?.privacyPolicy ?? 'Privacy Policy',
-                        onTap: () => _launchWebUrl('https://qorai.app/privacy'),
+                        onTap: () => _launchWebUrl('https://qorai.net/privacy'),
                       ),
                       _iosDivider(),
                       _iosRow(
@@ -367,7 +367,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         iconBg: const Color(0xFF64748B),
                         title:
                             context.l10n?.termsOfService ?? 'Terms of Service',
-                        onTap: () => _launchWebUrl('https://qorai.app/terms'),
+                        onTap: () => _launchWebUrl('https://qorai.net/terms'),
                       ),
                       _iosDivider(),
                       _iosRow(

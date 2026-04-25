@@ -508,10 +508,6 @@ class _GlowOrb extends StatelessWidget {
             colors: [color, Colors.transparent],
           ),
         ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-          child: const SizedBox(),
-        ),
       )
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .scale(

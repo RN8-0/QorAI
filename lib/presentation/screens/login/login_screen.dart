@@ -819,7 +819,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         children: [
           WidgetSpan(
             child: GestureDetector(
-              onTap: () => _launchUrl('https://qorai.app/terms'),
+              onTap: () => _launchUrl('https://qorai.net/terms'),
               child: Text(
                 context.l10n?.termsLabel ?? 'Terms',
                 style: TextStyle(
@@ -833,7 +833,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           const TextSpan(text: ' and '),
           WidgetSpan(
             child: GestureDetector(
-              onTap: () => _launchUrl('https://qorai.app/privacy'),
+              onTap: () => _launchUrl('https://qorai.net/privacy'),
               child: Text(
                 context.l10n?.privacyPolicy ?? 'Privacy Policy',
                 style: TextStyle(

@@ -323,7 +323,7 @@ class _ShareCard extends StatelessWidget {
                     color: AppTheme.brandCyan, size: 28),
                 const SizedBox(width: 14),
                 Text(
-                  'Get your own picks · qorai.app',
+                  'Get your own picks · qorai.net',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,

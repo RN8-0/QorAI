@@ -5,93 +5,17 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qor_ai/core/qor_limit_messages.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
-
-const Map<String, Map<String, String>> _limitDialogTranslations = {
-  'dailyLimitReached': {
-    'en': 'Not Enough Daily Q',
-    'tr': 'Günlük Q Yetmiyor',
-    'de': 'Tageslimit erreicht',
-    'es': 'Limite diario alcanzado',
-    'fr': 'Limite quotidienne atteinte',
-    'it': 'Limite giornaliero raggiunto',
-    'ja': '1日の利用上限に達しました',
-    'nl': 'Dagelijkse limiet bereikt',
-    'pl': 'Osiagnieto dzienny limit',
-    'pt': 'Limite diario atingido',
-    'sv': 'Daglig grans uppnadd',
-    'ar': 'تم الوصول للحد اليومي',
-  },
-  'limitMessage': {
-    'en':
-      'You do not have enough free Q for this action today. Upgrade to Premium for unlimited access to all AI features.',
-    'tr':
-      'Bu işlem için bugün yeterli ücretsiz Q bakiyeniz yok. Tüm AI özelliklerine sınırsız erişim için Premium\'a yükselin.',
-    'de':
-        'Sie haben heute alle kostenlosen Credits verbraucht. Upgraden Sie auf Premium fur unbegrenzten Zugang.',
-    'es':
-        'Has agotado tus creditos gratuitos de hoy. Actualiza a Premium para acceso ilimitado.',
-    'fr':
-        'Vous avez utilise tous vos credits gratuits pour aujourd\'hui. Passez a Premium pour un acces illimite.',
-    'it':
-        'Hai esaurito i crediti gratuiti di oggi. Passa a Premium per accesso illimitato.',
-    'ja': '本日の無料クレジットを全て使い切りました。プレミアムにアップグレードして無制限アクセスを。',
-    'nl':
-        'Je hebt al je gratis credits voor vandaag gebruikt. Upgrade naar Premium voor onbeperkte toegang.',
-    'pl':
-        'Wykorzystales wszystkie darmowe kredyty na dzisiaj. Przejdz na Premium po nieograniczony dostep.',
-    'pt':
-        'Voce usou todos os seus creditos gratuitos de hoje. Atualize para Premium para acesso ilimitado.',
-    'sv':
-        'Du har anvant alla dina gratis credits for idag. Uppgradera till Premium for obegransad atkomst.',
-    'ar':
-        'لقد استخدمت جميع رصيدك المجاني لليوم. قم بالترقية إلى بريميوم للوصول غير المحدود.',
-  },
-  'resetTomorrow': {
-    'en': 'Your free Q balance will refresh tomorrow.',
-    'tr': 'Ücretsiz Q bakiyeniz yarın yenilenecektir.',
-  },
-  'goPremium': {
-    'en': 'Go Premium',
-    'tr': 'Premium\'a Geç',
-    'de': 'Premium holen',
-    'es': 'Hacerse Premium',
-    'fr': 'Passer Premium',
-    'it': 'Passa a Premium',
-    'ja': 'プレミアムへ',
-    'nl': 'Premium worden',
-    'pl': 'Przejdz na Premium',
-    'pt': 'Ir para Premium',
-    'sv': 'Bli Premium',
-    'ar': 'الترقية لبريميوم',
-  },
-  'continueFree': {
-    'en': 'Continue Free',
-    'tr': 'Ücretsiz Devam Et',
-    'de': 'Kostenlos fortfahren',
-    'es': 'Continuar gratis',
-    'fr': 'Continuer gratuitement',
-    'it': 'Continua gratis',
-    'ja': '無料で続ける',
-    'nl': 'Gratis doorgaan',
-    'pl': 'Kontynuuj za darmo',
-    'pt': 'Continuar gratis',
-    'sv': 'Fortsatt gratis',
-    'ar': 'متابعة مجانية',
-  },
-};
-
-String _t(String key, String langCode) {
-  return _limitDialogTranslations[key]?[langCode] ??
-      _limitDialogTranslations[key]?['en'] ??
-      key;
-}
 
 /// Shows the limit-reached centered dialog.
 /// [featureName] is for analytics/display (optional).
 void showLimitReachedDialog(BuildContext context, {String? featureName}) {
-  final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
+  final langCode = normalizeQorLanguageCode(
+    Localizations.localeOf(context).languageCode,
+  );
+  final l10n = qorLocalizationsForCode(langCode);
 
   showDialog<void>(
     context: context,
@@ -148,7 +72,7 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
               ),
               const SizedBox(height: 18),
               Text(
-                _t('dailyLimitReached', langCode),
+                dailyQLimitTitle(langCode),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -159,7 +83,7 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
               ),
               const SizedBox(height: 10),
               Text(
-                _t('limitMessage', langCode),
+                buildDailyQLimitMessage(langCode),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   color: ctx.textSecondary,
@@ -169,7 +93,7 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
               ),
               const SizedBox(height: 8),
               Text(
-                _t('resetTomorrow', langCode),
+                buildDailyQResetMessage(langCode),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   color: ctx.textTertiaryColor,
@@ -194,7 +118,7 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
                           foregroundColor: ctx.textSecondary,
                         ),
                         child: Text(
-                          'Free',
+                          l10n.free,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -234,7 +158,7 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
                             ),
                           ),
                           child: Text(
-                            'Premium',
+                            l10n.premium,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,

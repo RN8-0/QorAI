@@ -1,7 +1,7 @@
 {
   "name": "qorai",
   "version": "1.0.0",
-  "description": "A new Flutter project.",
+  "description": "Qor AI - Flutter AI product advisor with personalized discovery, compare, link analysis, subscription intelligence, PC Builder, and visual scanner.",
   "main": "index.js",
   "directories": {
     "lib": "lib",

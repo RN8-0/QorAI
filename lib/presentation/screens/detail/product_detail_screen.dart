@@ -280,7 +280,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                           ),
                           onPressed: () {
                             final productUrl =
-                                'https://qorai.app/product/${product.id}';
+                                'https://qorai.net/product/${product.id}';
                             Share.share(
                               '${product.name} — ${product.description.isNotEmpty ? product.description : 'Check it out on Qor AI!'}\n$productUrl',
                               subject: product.name,
