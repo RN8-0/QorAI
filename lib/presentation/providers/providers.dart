@@ -14,6 +14,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/data/datasources/hive_ds.dart';
 import 'package:qor_ai/core/pb_client.dart';
@@ -62,6 +63,53 @@ part 'cache_providers.dart';
 part 'ai_providers.dart';
 
 const _kSubscriptionStartupDelay = Duration(seconds: 12);
+
+void _syncAuthStoreUserSnapshot(UserEntity? user) {
+  final record = pb.authStore.record;
+  if (!pb.authStore.isValid || record == null || user == null) return;
+  if (record.id != user.uid) return;
+
+  final merged = <String, dynamic>{
+    ...record.data,
+    'email': user.email,
+    'displayName': user.displayName,
+    'country': user.country,
+    'language': user.language,
+    'currency': user.currency,
+    'ecosystem': user.ecosystem,
+    'budgetRange': user.budgetRange,
+    'priorities': user.priorities,
+    'currentDevices': user.currentDevices,
+    'subscriptions': user.subscriptions,
+    'ownedProducts': user.ownedProducts,
+    'favorites': user.favorites,
+    'quizCompleted': user.quizCompleted,
+    'isPremium': user.isPremium,
+    'affiliateClicks': user.affiliateClicks,
+    'comparisonsCount': user.comparisonsCount,
+    'primaryCategory': user.primaryCategory,
+    'usageIntent': user.usageIntent,
+    'gender': user.gender,
+    'ageRange': user.ageRange,
+    'profession': user.profession,
+    'interestCategories': user.interestCategories,
+    'profileVector': user.profileVector,
+    'userSubscriptionDetails': user.userSubscriptionDetails,
+  };
+  if (user.photoURL != null && user.photoURL!.isNotEmpty) {
+    merged['photoURL'] = user.photoURL;
+  }
+
+  final updatedRecord = RecordModel.fromJson({
+    'id': record.id,
+    'collectionId': record.collectionId,
+    'collectionName': record.collectionName,
+    'created': user.createdAt.toIso8601String(),
+    'updated': user.updatedAt.toIso8601String(),
+    ...merged,
+  });
+  pb.authStore.save(pb.authStore.token, updatedRecord);
+}
 
 // ════════════════════════════════════════════════════
 // ─── CORE SERVICE PROVIDERS ─── (Provider tipi)
@@ -171,18 +219,19 @@ final subscriptionServiceProvider = ChangeNotifierProvider<SubscriptionService>(
 
     ref.listen<AsyncValue<UserEntity?>>(userProfileProvider, (_, next) {
       next.whenData((user) {
-        unawaited(service.refreshUsageIdentity(force: true));
-        final premiumDetails = user?.userSubscriptionDetails['premium'];
-        unawaited(
-          service.syncProfileEntitlement(
+        unawaited(() async {
+          _syncAuthStoreUserSnapshot(user);
+          final premiumDetails = user?.userSubscriptionDetails['premium'];
+          await service.syncProfileEntitlement(
             isPremium: user?.isPremium == true,
             activeProductId: premiumDetails?['productId'] as String?,
             purchaseDate: _subscriptionDetailDate(premiumDetails?['startedAt']),
             expirationDate: _subscriptionDetailDate(
               premiumDetails?['expiresAt'],
             ),
-          ),
-        );
+          );
+          await service.refreshUsageIdentity(force: true);
+        }());
       });
     });
     return service;

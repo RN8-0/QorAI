@@ -154,7 +154,7 @@ function showView(name){
   if(name==='dashboard')refreshDashboard();
   if(name==='products'&&!allProducts.length)loadProducts();
   if(name==='users')loadUsers();
-  if(name==='userinsights')loadUsers();
+  if(name==='userinsights'){loadUsers();loadStoredSegmentAnalysis();}
   if(name==='algorithm')loadAlgorithmConfig();
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
@@ -183,6 +183,7 @@ let catChart=null,trendChart=null;
 let userPlanChart=null,userPersonaChart=null,userInterestChart=null;
 let userBehaviorChart=null,userInterestBreakdownChart=null,userQuizTypeChart=null,userAnalysisCategoryChart=null;
 let activityActionChart=null,allActivityLogs=[];
+let _segmentAnalysisReport=null;
 
 const ALGORITHM_WEIGHT_FIELDS=['weightPersonalFit','weightExpert','weightCommunity','weightPricePerf'];
 const ALGORITHM_BEHAVIOR_FIELDS=['boostCategoryView','boostSearch','boostQuiz','boostCompare','boostEcosystem','boostBudget'];
@@ -210,6 +211,14 @@ function premiumPlanLabel(plan){
   switch(plan){
     case 'monthly': return 'Monthly';
     case 'yearly': return 'Yearly';
+    case 'premium': return 'Premium';
+    default: return 'Free';
+  }
+}
+function premiumPlanDescription(plan){
+  switch(plan){
+    case 'monthly': return 'Aylık Premium';
+    case 'yearly': return 'Yıllık Premium';
     case 'premium': return 'Premium';
     default: return 'Free';
   }
@@ -248,6 +257,47 @@ function buildPremiumPayload(user,plan){
   };
   return {isPremium:true,userSubscriptionDetails:existingDetails};
 }
+function buildPremiumTestScenarioData(user,plan=premiumPlanKey(user)){
+  const snapshot=getUserQCoinSnapshot(user);
+  const isPremiumPlan=plan!=='free';
+  const expectedHeader=isPremiumPlan?'Premium':'Qor AI';
+  const expectedPaywall=plan==='monthly'?'Aylık abonesiniz':plan==='yearly'?'Yıllık abonesiniz':plan==='premium'?'Premium abonesiniz':'Premium görünmemeli';
+  const expectedQ=isPremiumPlan?'Q Coin rozeti sonsuz / ∞ görünmeli':`Q Coin rozeti ${formatQCoinAmount(snapshot.total)} toplam havuza göre sonlu görünmeli`;
+  return {
+    plan,
+    generatedAt:new Date().toISOString(),
+    expectedHeader,
+    expectedPaywall,
+    expectedQ,
+    steps:[
+      'Admin panelinde planı kaydet ve kullanıcı detayını yeniden aç.',
+      'Cihazda uygulamayı tamamen kapatıp yeniden aç veya aşağı çekerek yenile.',
+      'Home üst başlığını kontrol et.',
+      'Q Coin rozeti ve Premium ekran metnini doğrula.',
+      'Bir AI aksiyonu çalıştırıp limit veya sınırsız kullanım davranışını teyit et.'
+    ],
+    checks:[
+      `Home başlığı: ${expectedHeader}`,
+      `Paywall metni: ${expectedPaywall}`,
+      `Q Coin beklentisi: ${expectedQ}`,
+      isPremiumPlan?'AI limitleri sınırsız kalmalı':'Günlük Q Coin düşmeli ve kullanım sayaçları artmalı'
+    ]
+  };
+}
+function normalizePremiumTestScenario(raw,user){
+  const fallback=buildPremiumTestScenarioData(user);
+  const data=safeMap(raw);
+  return {
+    ...fallback,
+    ...data,
+    steps:safeArray(data.steps).length?safeArray(data.steps):fallback.steps,
+    checks:safeArray(data.checks).length?safeArray(data.checks):fallback.checks,
+  };
+}
+function renderPremiumTestScenarioCard(user){
+  const scenario=normalizePremiumTestScenario(user.adminPremiumScenario,user);
+  return `<div class="card" style="margin:0 0 16px;padding:14px"><div class="card-title"><span>🧪 Canlı Premium Test Senaryosu</span><span style="font-size:11px;color:var(--text3)">${escHtml(formatDateTimeLabel(scenario.generatedAt))}</span></div><div style="font-size:12px;color:var(--text2);margin-bottom:10px">Bu senaryo canlı kullanıcıda plan değişimini uçtan uca doğrulamak için otomatik güncellenir.</div><div class="feature-pill-row" style="margin-bottom:12px"><span class="feature-pill">Plan: ${escHtml(premiumPlanDescription(scenario.plan))}</span><span class="feature-pill ghost">Home: ${escHtml(scenario.expectedHeader)}</span><span class="feature-pill ghost">Paywall: ${escHtml(scenario.expectedPaywall)}</span></div><div class="form-grid" style="gap:14px"><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Adımlar</div>${scenario.steps.map((step,index)=>`<div style="font-size:12px;line-height:1.6;margin-bottom:6px"><span style="color:var(--text3)">${index+1}.</span> ${escHtml(step)}</div>`).join('')}</div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Beklenen Sonuçlar</div>${scenario.checks.map(item=>`<div style="font-size:12px;line-height:1.6;margin-bottom:6px">• ${escHtml(item)}</div>`).join('')}</div></div></div>`;
+}
 function normalizeAdminAiProfile(raw){
   const data=safeMap(raw);
   return {
@@ -283,6 +333,113 @@ async function callDeepSeekAdminJson(messages,{maxTokens=1200,temperature=0.4}={
     const match=String(content).match(/\{[\s\S]*\}/);
     if(match)return JSON.parse(match[0]);
     throw new Error('DeepSeek yanıtı çözümlenemedi');
+  }
+}
+function normalizeSegmentAnalysis(raw){
+  const data=safeMap(raw);
+  return {
+    summary:String(data.summary||'').trim(),
+    generatedAt:String(data.generatedAt||'').trim(),
+    segments:safeArray(data.segments).map(item=>({
+      name:String(item?.name||'Segment').trim(),
+      size:String(item?.size||'').trim(),
+      description:String(item?.description||'').trim(),
+      premiumPotential:String(item?.premiumPotential||'').trim(),
+      qCoinAction:String(item?.qCoinAction||'').trim(),
+      recommendedCampaign:String(item?.recommendedCampaign||'').trim(),
+    })).filter(item=>item.name||item.description).slice(0,6),
+    actions:safeArray(data.actions||data.recommendedActions).map(item=>String(item||'').trim()).filter(Boolean).slice(0,6),
+    risks:safeArray(data.risks||data.watchouts).map(item=>String(item||'').trim()).filter(Boolean).slice(0,4),
+  };
+}
+function buildBulkSegmentPayload(users){
+  const planSplit={free:0,monthly:0,yearly:0,premium:0};
+  const personas={},budgets={},ecosystems={},countries={},languages={},topInterestCounts={},clusterCounts={};
+  let avgCompleteness=0,avgRemainingQ=0,premiumUsers=0,quizUsers=0,analysisUsers=0;
+  users.forEach(user=>{
+    const plan=premiumPlanKey(user);
+    planSplit[plan]=(planSplit[plan]||0)+1;
+    if(plan!=='free')premiumUsers++;
+    const persona=classifyUserPersona(user);personas[persona]=(personas[persona]||0)+1;
+    const budget=String(user.budgetRange||'mid');budgets[budget]=(budgets[budget]||0)+1;
+    const ecosystem=String(user.ecosystem||'mixed');ecosystems[ecosystem]=(ecosystems[ecosystem]||0)+1;
+    const country=String(user.country||'Unknown');countries[country]=(countries[country]||0)+1;
+    const language=String(user.language||'Unknown');languages[language]=(languages[language]||0)+1;
+    const topInterest=collectUserInterestScores(user)[0]?.[0]||String(user.primaryCategory||'general');
+    topInterestCounts[topInterest]=(topInterestCounts[topInterest]||0)+1;
+    const clusterKey=[persona,budget,ecosystem,topInterest].join(' • ');
+    clusterCounts[clusterKey]=(clusterCounts[clusterKey]||0)+1;
+    const snapshot=getUserQCoinSnapshot(user);
+    avgRemainingQ+=snapshot.remaining;
+    avgCompleteness+=computeProfileCompleteness(user);
+    if(safeArray(user.quizHistory).length)quizUsers++;
+    if(safeArray(user.analyzedProducts).length)analysisUsers++;
+  });
+  const safeAvg=(total)=>users.length?Math.round(total/users.length):0;
+  return {
+    generatedAt:new Date().toISOString(),
+    totals:{users:users.length,premiumUsers,quizCoverage:users.length?Math.round(quizUsers/users.length*100):0,analysisCoverage:users.length?Math.round(analysisUsers/users.length*100):0,avgCompleteness:safeAvg(avgCompleteness),avgRemainingQ:safeAvg(avgRemainingQ)},
+    planSplit,
+    personas:Object.entries(personas).sort((a,b)=>b[1]-a[1]).slice(0,6),
+    budgets:Object.entries(budgets).sort((a,b)=>b[1]-a[1]).slice(0,6),
+    ecosystems:Object.entries(ecosystems).sort((a,b)=>b[1]-a[1]).slice(0,6),
+    countries:Object.entries(countries).sort((a,b)=>b[1]-a[1]).slice(0,8),
+    languages:Object.entries(languages).sort((a,b)=>b[1]-a[1]).slice(0,6),
+    topInterests:Object.entries(topInterestCounts).sort((a,b)=>b[1]-a[1]).slice(0,8),
+    topClusters:Object.entries(clusterCounts).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,count])=>({name,count})),
+  };
+}
+function renderStoredSegmentAnalysis(){
+  const meta=document.getElementById('deepSeekSegmentMeta');
+  const content=document.getElementById('deepSeekSegmentContent');
+  if(!meta||!content)return;
+  if(!_segmentAnalysisReport){
+    meta.textContent='Henüz toplu segment analizi oluşturulmadı.';
+    content.innerHTML='<div class="placeholder">DeepSeek, kullanıcı kitlesini segmentlere ayırıp admin önerileri üretecek.</div>';
+    return;
+  }
+  const report=normalizeSegmentAnalysis(_segmentAnalysisReport);
+  meta.textContent=report.generatedAt?`Son üretim: ${formatDateTimeLabel(report.generatedAt)}`:'Toplu segment analizi hazır';
+  content.innerHTML=`${report.summary?`<div class="card" style="margin:0 0 12px;padding:14px;line-height:1.7">${escHtml(report.summary)}</div>`:''}<div class="grid-3 intelligence-chart-grid" style="margin-bottom:12px">${report.segments.map(segment=>`<div class="card" style="margin:0;padding:14px"><div class="card-title"><span>${escHtml(segment.name)}</span><span style="font-size:11px;color:var(--text3)">${escHtml(segment.size||'')}</span></div><div style="font-size:12px;line-height:1.6;color:var(--text1);margin-bottom:10px">${escHtml(segment.description||'')}</div><div class="feature-pill-row"><span class="feature-pill">Premium: ${escHtml(segment.premiumPotential||'—')}</span><span class="feature-pill ghost">Q Coin: ${escHtml(segment.qCoinAction||'—')}</span></div><div style="font-size:11px;color:var(--text2);margin-top:10px">Kampanya: <b>${escHtml(segment.recommendedCampaign||'—')}</b></div></div>`).join('')}</div><div class="grid-2 intelligence-detail-grid"><div class="card"><div class="card-title">Önerilen Aksiyonlar</div><div class="insight-stack">${report.actions.length?report.actions.map(item=>`<div class="insight-item">${escHtml(item)}</div>`).join(''):'<div class="placeholder">Öneri yok</div>'}</div></div><div class="card"><div class="card-title">Riskler / Dikkat Noktaları</div><div class="insight-stack">${report.risks.length?report.risks.map(item=>`<div class="insight-item">${escHtml(item)}</div>`).join(''):'<div class="placeholder">Risk notu yok</div>'}</div></div></div>`;
+}
+async function loadStoredSegmentAnalysis(){
+  const meta=document.getElementById('deepSeekSegmentMeta');
+  const content=document.getElementById('deepSeekSegmentContent');
+  if(meta)meta.textContent='Kaydedilmiş segment analizi yükleniyor...';
+  if(content)content.innerHTML='<div class="placeholder">Yükleniyor...</div>';
+  try{
+    const doc=await pbGetDoc('app_config','admin_user_segment_analysis');
+    const raw=doc.exists?(doc.data()?.value||doc.data()):null;
+    _segmentAnalysisReport=raw?normalizeSegmentAnalysis(raw):null;
+  }catch(e){
+    _segmentAnalysisReport=null;
+    if(meta)meta.textContent='Segment analizi yüklenemedi';
+    if(content)content.innerHTML=`<div style="color:var(--red)">Hata: ${escHtml(e.message||String(e))}</div>`;
+    return;
+  }
+  renderStoredSegmentAnalysis();
+}
+async function generateBulkDeepSeekSegments(){
+  if(!allUsers.length){toast('Önce kullanıcıları yükle','w');return}
+  const meta=document.getElementById('deepSeekSegmentMeta');
+  const content=document.getElementById('deepSeekSegmentContent');
+  if(meta)meta.textContent='DeepSeek segment analizi oluşturuyor...';
+  if(content)content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">Segmentler hesaplanıyor...</div></div>';
+  try{
+    const payload=buildBulkSegmentPayload(allUsers);
+    const raw=await callDeepSeekAdminJson([
+      {role:'system',content:'Qor AI admin paneli icin calisan bir buyume ve retention stratejisti ol. Sadece JSON object dondur. JSON anahtarlari: summary, segments, actions, risks. segments dizisi icindeki her nesnede name, size, description, premiumPotential, qCoinAction, recommendedCampaign alanlari olsun. Tum metinler Turkce olsun.'},
+      {role:'user',content:`Su agregasyonlara gore kullanici segmentlerini cikar ve admin onerileri uret:\n${JSON.stringify(payload)}`}
+    ],{maxTokens:1800,temperature:0.35});
+    _segmentAnalysisReport={...normalizeSegmentAnalysis(raw),generatedAt:new Date().toISOString()};
+    await pbSetDoc('app_config','admin_user_segment_analysis',{key:'admin_user_segment_analysis',value:_segmentAnalysisReport,updatedAt:new Date().toISOString()});
+    renderStoredSegmentAnalysis();
+    logActivity('deepseek_segment_analysis','Toplu DeepSeek segment analizi olusturuldu',{userCount:allUsers.length});
+    toast('Toplu segment analizi hazır','s');
+  }catch(e){
+    if(meta)meta.textContent='DeepSeek segment analizi başarısız';
+    if(content)content.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message||String(e))}</div>`;
+    toast('DeepSeek segment analizi hatası: '+(e.message||e),'e');
   }
 }
 
@@ -490,10 +647,11 @@ function renderUserIntelligence(){
     renderRankBars('userCountryBars',[]);
     const insightEl=document.getElementById('userIntelligenceInsights');if(insightEl)insightEl.innerHTML='<div class="placeholder">No user data</div>';
     resetChart('userPlanChart');resetChart('userPersonaChart');resetChart('userInterestChart');
+    renderStoredSegmentAnalysis();
     return;
   }
 
-  const planSplit={Premium:0,Free:0};
+  const planSplit={Free:0,Monthly:0,Yearly:0,Premium:0};
   const personas={};
   const interests={};
   const countries={};
@@ -503,7 +661,8 @@ function renderUserIntelligence(){
   let quizUsers=0,analysisUsers=0,completenessTotal=0;
 
   users.forEach(user=>{
-    planSplit[user.isPremium?'Premium':'Free']++;
+    const planLabel=premiumPlanLabel(premiumPlanKey(user));
+    planSplit[planLabel]=(planSplit[planLabel]||0)+1;
     const persona=classifyUserPersona(user);
     personas[persona]=(personas[persona]||0)+1;
     collectUserInterestScores(user).slice(0,5).forEach(([label,value])=>{interests[label]=(interests[label]||0)+value});
@@ -544,7 +703,7 @@ function renderUserIntelligence(){
 
   mountChart('userPlanChart',document.getElementById('userPlanChart'),{
     type:'doughnut',
-    data:{labels:Object.keys(planSplit),datasets:[{data:Object.values(planSplit),backgroundColor:['#7c3aed','#3b82f6'],borderWidth:0}]},
+    data:{labels:Object.keys(planSplit),datasets:[{data:Object.values(planSplit),backgroundColor:['#334155','#3b82f6','#7c3aed','#f59e0b'],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:chartTextColor()}}}}
   });
 
@@ -559,6 +718,8 @@ function renderUserIntelligence(){
     data:{labels:interestEntries.map(([label])=>label),datasets:[{data:interestEntries.map(([,value])=>Number(value.toFixed?value.toFixed(1):value)),backgroundColor:'#7c3aed',borderRadius:8}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:chartGridColor()},ticks:{color:chartTextColor()}},y:{grid:{display:false},ticks:{color:chartTextColor()}}}}
   });
+
+  renderStoredSegmentAnalysis();
 }
 
 function renderUserOverviewCharts(uid){
@@ -1332,6 +1493,7 @@ function openUserDetail(uid){
           ${u.isPremium?`<button class="btn btn-ghost" onclick="saveUserPremiumPlan('${safeUid}','free')">Premium İptal</button>`:''}
         </div>
       </div>
+      ${renderPremiumTestScenarioCard(u)}
       ${renderAdminAiProfileCard(aiProfile,safeUid)}
       <div class="user-overview-grid">
         <div class="card" style="margin:0;padding:14px">
@@ -1721,10 +1883,12 @@ async function saveUserPremiumPlan(uid,forcedPlan){
   const select=document.getElementById(`userPremiumPlanSelect_${uid}`);
   const plan=(forcedPlan||select?.value||'free').toLowerCase();
   const payload=buildPremiumPayload(u,plan);
+  const scenario=buildPremiumTestScenarioData({...u,...payload,userSubscriptionDetails:payload.userSubscriptionDetails},plan);
   try{
-    await pbUpdateDoc('users',uid,payload);
+    await pbUpdateDoc('users',uid,{...payload,adminPremiumScenario:scenario});
     u.isPremium=payload.isPremium;
     u.userSubscriptionDetails=payload.userSubscriptionDetails;
+    u.adminPremiumScenario=scenario;
     logActivity(payload.isPremium?'user_premium_enable':'user_premium_disable',`Premium plan güncellendi: ${uid}`,{userId:uid,plan});
     openUserDetail(uid);renderUsers();toast(plan==='free'?'Premium iptal edildi':`Premium plan ${premiumPlanLabel(plan)} olarak güncellendi`,'s');
   }catch(e){toast('Error: '+e.message,'e')}

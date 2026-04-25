@@ -245,6 +245,17 @@
           <div class="stat-card-sm"><div class="stat-value-sm" id="uiAnalysisCoverage">—</div><div class="stat-label-sm">AI Coverage</div></div>
           <div class="stat-card-sm"><div class="stat-value-sm" id="uiAvgCompleteness">—</div><div class="stat-label-sm">Profile Avg</div></div>
         </div>
+        <div class="card" style="margin:0 0 20px;padding:16px">
+          <div class="card-title">
+            <span>🧠 DeepSeek Segment Analizi</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="generateBulkDeepSeekSegments()">Segmentleri Analiz Et</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadStoredSegmentAnalysis()">Kaydı Yenile</button>
+            </div>
+          </div>
+          <div id="deepSeekSegmentMeta" class="text-muted" style="font-size:12px;margin-bottom:12px">Henüz toplu segment analizi oluşturulmadı.</div>
+          <div id="deepSeekSegmentContent"><div class="placeholder">DeepSeek, kullanıcı kitlesini segmentlere ayırıp admin önerileri üretecek.</div></div>
+        </div>
         <div class="grid-3 intelligence-chart-grid">
           <div class="card">
             <div class="card-title">Plan Split</div>
