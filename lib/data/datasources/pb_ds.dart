@@ -1353,6 +1353,11 @@ class PbDataSource {
     final trimmedName = displayName.trim();
     final trimmedEmail = email.trim();
     final trimmedMessage = message.trim();
+    final trimmedUserId = userId?.trim() ?? '';
+    final authUserId = _pb.authStore.isValid ? _pb.authStore.record?.id.trim() : null;
+    final resolvedUserId = trimmedUserId.isNotEmpty
+        ? trimmedUserId
+        : (authUserId ?? '');
 
     if (trimmedName.isEmpty ||
         trimmedEmail.isEmpty ||
@@ -1365,7 +1370,7 @@ class PbDataSource {
         '/api/support/contact',
         method: 'POST',
         body: {
-          'userId': userId?.trim() ?? '',
+          'userId': resolvedUserId,
           'displayName': trimmedName,
           'email': trimmedEmail,
           'message': trimmedMessage,

@@ -1705,6 +1705,21 @@ function renderUserSummaryGrid(entries,emptyText='Belirtilmiş veri yok'){
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">${entries.map(entry=>`<div><span style="color:var(--text2)">${escHtml(entry.label)}:</span> <b>${escHtml(entry.value)}</b></div>`).join('')}</div>`;
 }
 
+function renderUserSupportHistory(messages){
+  const items=safeArray(messages).slice().sort((a,b)=>String(b.created||'').localeCompare(String(a.created||'')));
+  if(!items.length){
+    return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--text3);font-size:12px">Bu kullanıcı için support mesajı bulunmuyor.</div></div>`;
+  }
+  return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div>${items.map(item=>{
+    const created=item.created?new Date(item.created).toLocaleString('tr-TR'):'—';
+    const replied=item.repliedAt?new Date(item.repliedAt).toLocaleString('tr-TR'):'';
+    const status=item.status==='replied'
+      ? '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e">Yanıtlandı</span>'
+      : '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b">Açık</span>';
+    return `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">${created}</div>${status}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.message||'')}</div>${item.adminReply?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Admin Yanıtı${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.adminReply)}</div></div>`:''}</div>`;
+  }).join('')}</div>`;
+}
+
 async function loadUserAnalysis(uid){
   const el=document.getElementById('analysisContent');
   if(el.dataset.loaded)return;
@@ -1760,6 +1775,8 @@ async function loadUserProfile(uid){
   try{
     const u=allUsers.find(x=>x.uid===uid);
     if(!u){el.innerHTML='Kullanıcı bulunamadı';return;}
+    const supportRes=await pbGetList('support_messages',1,50,{filter:`userId="${uid}"`,sort:'-created'});
+    const supportMessages=safeArray(supportRes.items);
     const answerHistory=safeArray(u.quizAnswerHistory).slice().sort((a,b)=>(String(b.timestamp||b.created||'')).localeCompare(String(a.timestamp||a.created||'')));
     const latestTrackedAnswers=safeArray(answerHistory[0]?.answeredQuestions);
     const onboardingEntries=buildUserOnboardingEntries(u,latestTrackedAnswers);
@@ -1781,6 +1798,8 @@ async function loadUserProfile(uid){
     if(onboardingEntries.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Kullanıcı Tanıma Quiz Cevapları</div>${renderUserSummaryGrid(onboardingEntries,'Onboarding yanıtları henüz görünmüyor.')}</div>`;
     }
+
+    html+=renderUserSupportHistory(supportMessages);
 
     // Priorities
     const priorities=u.priorities||[];

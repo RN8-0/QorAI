@@ -294,12 +294,43 @@ function closeSupportModal() {
    SEND REPLY
 ────────────────────────────────────────────── */
 async function sendSupportReply(messageId, userId) {
+  const message = _supportMessages.find((item) => item.id === messageId) || null;
+  let resolvedUserId = _normalizeSupportText(userId);
+  if (!resolvedUserId && message) {
+    const candidateEmail = _preferredSupportEmail(message);
+    if (candidateEmail) {
+      try {
+        const found = await getPb().collection('users').getFirstListItem(
+          `email = "${candidateEmail.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}" || googleEmail = "${candidateEmail.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
+          {
+            fields: 'id,displayName,name,email,googleEmail',
+            $autoCancel: false,
+          },
+        );
+        if (found?.id) {
+          resolvedUserId = found.id;
+          _supportAccountProfiles.set(found.id, _normalizeSupportAccount(found));
+          const idx = _supportMessages.findIndex((item) => item.id === messageId);
+          if (idx !== -1) {
+            _supportMessages[idx] = _applySupportAccount({
+              ..._supportMessages[idx],
+              userId: found.id,
+            });
+          }
+          try {
+            await pbUpdateDoc('support_messages', messageId, { userId: found.id });
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+  }
+
   const replyText = (document.getElementById('supportReplyText')?.value || '').trim();
   if (!replyText) {
     toast('Yanıt metni boş olamaz.', 'w');
     return;
   }
-  if (!userId) {
+  if (!resolvedUserId) {
     toast('Bu mesaj kullanıcı hesabına bağlı değil. Cihaz bildirimi gönderilemez.', 'e');
     return;
   }
@@ -319,7 +350,7 @@ async function sendSupportReply(messageId, userId) {
     if (userId) {
       const pb = getPb();
       await pb.collection('notifications').create({
-        recipientId: userId,
+        recipientId: resolvedUserId,
         senderId: 'admin',
         senderName: 'Qor AI Destek',
         type: 'system',
@@ -339,6 +370,7 @@ async function sendSupportReply(messageId, userId) {
       _supportMessages[idx].status = 'replied';
       _supportMessages[idx].adminReply = replyText;
       _supportMessages[idx].repliedAt = new Date().toISOString();
+      _supportMessages[idx].userId = resolvedUserId;
     }
     renderSupportMessages();
     updateSupportBadge();
