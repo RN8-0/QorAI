@@ -21,7 +21,9 @@ import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:qor_ai/core/qor_limit_messages.dart';
 import 'package:qor_ai/presentation/screens/subscriptions/subscription_history_screen.dart';
+import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/services/gemini_service.dart';
 
 // ─── Design tokens (mapped to global AppTheme brand palette) ─────────────────
@@ -29,6 +31,304 @@ const _kPrimary = AppTheme.brandBlue;
 const _kSecondary = AppTheme.brandSkyBlue;
 const _kAccent = AppTheme.brandCyan;
 const _kDeep = AppTheme.brandDeepBlue;
+
+const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
+  'maxSubscriptionsComparable': {
+    'ar': 'يمكنك مقارنة ما يصل إلى {count} اشتراكات.',
+    'de': 'Du kannst bis zu {count} Abonnements vergleichen.',
+    'en': 'You can compare up to {count} subscriptions.',
+    'es': 'Puedes comparar hasta {count} suscripciones.',
+    'fr': 'Vous pouvez comparer jusqu\'à {count} abonnements.',
+    'it': 'Puoi confrontare fino a {count} abbonamenti.',
+    'ja': '比較できるサブスクリプションは最大{count}件です。',
+    'nl': 'Je kunt maximaal {count} abonnementen vergelijken.',
+    'pl': 'Możesz porównać maksymalnie {count} subskrypcje.',
+    'pt': 'Você pode comparar até {count} assinaturas.',
+    'sv': 'Du kan jämföra upp till {count} prenumerationer.',
+    'tr': 'En fazla {count} abonelik karşılaştırılabilir.',
+  },
+  'enterAtLeastOneSubscription': {
+    'ar': 'يرجى إدخال اشتراك واحد على الأقل.',
+    'de': 'Bitte gib mindestens ein Abonnement ein.',
+    'en': 'Please enter at least one subscription.',
+    'es': 'Introduce al menos una suscripción.',
+    'fr': 'Veuillez saisir au moins un abonnement.',
+    'it': 'Inserisci almeno un abbonamento.',
+    'ja': '少なくとも1つのサブスクリプションを入力してください。',
+    'nl': 'Voer ten minste één abonnement in.',
+    'pl': 'Wpisz co najmniej jedną subskrypcję.',
+    'pt': 'Digite pelo menos uma assinatura.',
+    'sv': 'Ange minst en prenumeration.',
+    'tr': 'Lütfen en az bir abonelik adı girin.',
+  },
+  'identifyingServices': {
+    'ar': 'جارٍ التعرّف على الخدمات',
+    'de': 'Dienste werden erkannt',
+    'en': 'Identifying Services',
+    'es': 'Identificando servicios',
+    'fr': 'Identification des services',
+    'it': 'Identificazione dei servizi',
+    'ja': 'サービスを識別中',
+    'nl': 'Services identificeren',
+    'pl': 'Identyfikowanie usług',
+    'pt': 'Identificando serviços',
+    'sv': 'Identifierar tjänster',
+    'tr': 'Servisleri Tanıyoruz',
+  },
+  'identifyingServicesDetail': {
+    'ar': 'نؤكد أسماء الاشتراكات التي أدخلتها ونطابقها مع الفئات المناسبة.',
+    'de': 'Wir prüfen deine Abonnementnamen und ordnen sie den richtigen Kategorien zu.',
+    'en': 'Validating subscription names and mapping them to the right categories.',
+    'es': 'Validamos los nombres de las suscripciones y las vinculamos con la categoría correcta.',
+    'fr': 'Nous validons les noms des abonnements et les associons aux bonnes catégories.',
+    'it': 'Convalidiamo i nomi degli abbonamenti e li associamo alla categoria corretta.',
+    'ja': '入力したサブスクリプション名を確認し、適切なカテゴリに割り当てます。',
+    'nl': 'We valideren je abonnementsnamen en koppelen ze aan de juiste categorieën.',
+    'pl': 'Sprawdzamy nazwy subskrypcji i przypisujemy je do właściwych kategorii.',
+    'pt': 'Validamos os nomes das assinaturas e os mapeamos para as categorias corretas.',
+    'sv': 'Vi validerar prenumerationsnamnen och mappar dem till rätt kategorier.',
+    'tr': 'Girdiğin abonelik isimlerini doğrulayıp kategoriye eşliyoruz.',
+  },
+  'craftingPersonalQuiz': {
+    'ar': 'جارٍ إعداد الاختبار الشخصي',
+    'de': 'Persönliches Quiz wird erstellt',
+    'en': 'Crafting Personal Quiz',
+    'es': 'Preparando quiz personal',
+    'fr': 'Création du quiz personnel',
+    'it': 'Preparazione del quiz personale',
+    'ja': 'パーソナルクイズを作成中',
+    'nl': 'Persoonlijke quiz maken',
+    'pl': 'Tworzenie osobistego quizu',
+    'pt': 'Criando quiz pessoal',
+    'sv': 'Skapar personligt quiz',
+    'tr': 'Kişisel Quiz Hazırlanıyor',
+  },
+  'craftingPersonalQuizDetail': {
+    'ar': 'ينشئ الذكاء الاصطناعي أسئلة لفهم عاداتك وتوقعاتك.',
+    'de': 'Die KI erstellt Fragen, um deine Gewohnheiten und Erwartungen zu verstehen.',
+    'en': 'AI is generating questions based on your habits and expectations.',
+    'es': 'La IA genera preguntas según tus hábitos y expectativas.',
+    'fr': 'L’IA génère des questions selon vos habitudes et vos attentes.',
+    'it': 'L\'IA genera domande in base alle tue abitudini e aspettative.',
+    'ja': 'AIがあなたの習慣や期待に合わせて質問を生成しています。',
+    'nl': 'AI genereert vragen op basis van je gewoonten en verwachtingen.',
+    'pl': 'AI tworzy pytania na podstawie Twoich nawyków i oczekiwań.',
+    'pt': 'A IA gera perguntas com base nos seus hábitos e expectativas.',
+    'sv': 'AI skapar frågor utifrån dina vanor och förväntningar.',
+    'tr': 'Alışkanlıklarını anlamak için AI sorular oluşturuyor.',
+  },
+  'scanningCommunityVoice': {
+    'ar': 'جارٍ فحص آراء المجتمع',
+    'de': 'Community-Stimmen werden analysiert',
+    'en': 'Scanning Community Voice',
+    'es': 'Analizando la voz de la comunidad',
+    'fr': 'Analyse des avis de la communauté',
+    'it': 'Analisi della voce della community',
+    'ja': 'コミュニティの声を解析中',
+    'nl': 'Community-stem analyseren',
+    'pl': 'Analiza głosu społeczności',
+    'pt': 'Analisando a voz da comunidade',
+    'sv': 'Skannar community-röster',
+    'tr': 'İnternet Yorumları Taranıyor',
+  },
+  'scanningCommunityVoiceDetail': {
+    'ar': 'نجمع مراجعات حقيقية من Reddit والمنتديات ووسائل التواصل الاجتماعي.',
+    'de': 'Wir sammeln echte Bewertungen von Reddit, Foren und sozialen Medien.',
+    'en': 'Collecting real reviews from Reddit, forums, and social media.',
+    'es': 'Recopilamos opiniones reales de Reddit, foros y redes sociales.',
+    'fr': 'Nous recueillons de vrais avis depuis Reddit, les forums et les réseaux sociaux.',
+    'it': 'Raccogliamo recensioni reali da Reddit, forum e social media.',
+    'ja': 'Reddit、フォーラム、SNSから実際のレビューを集めています。',
+    'nl': 'We verzamelen echte reviews van Reddit, forums en sociale media.',
+    'pl': 'Zbieramy prawdziwe opinie z Reddita, forów i mediów społecznościowych.',
+    'pt': 'Coletamos avaliações reais do Reddit, fóruns e redes sociais.',
+    'sv': 'Vi samlar in riktiga omdömen från Reddit, forum och sociala medier.',
+    'tr': 'Reddit, forum ve sosyal medyadan gerçek yorumları topluyoruz.',
+  },
+  'positiveNegativeDigest': {
+    'ar': 'ملخص الإيجابيات والسلبيات',
+    'de': 'Positiv-/Negativ-Zusammenfassung',
+    'en': 'Positive / Negative Digest',
+    'es': 'Resumen positivo / negativo',
+    'fr': 'Résumé positif / négatif',
+    'it': 'Riepilogo positivo / negativo',
+    'ja': '肯定 / 否定の要約',
+    'nl': 'Positieve / negatieve samenvatting',
+    'pl': 'Podsumowanie plusów / minusów',
+    'pt': 'Resumo positivo / negativo',
+    'sv': 'Positiv / negativ sammanfattning',
+    'tr': 'Olumlu / Olumsuz Özet',
+  },
+  'positiveNegativeDigestDetail': {
+    'ar': 'نفصل الجوانب الإيجابية والسلبية في ملاحظات المستخدمين.',
+    'de': 'Wir trennen positive und negative Signale im Nutzerfeedback.',
+    'en': 'Extracting pros and cons from community feedback.',
+    'es': 'Extraemos pros y contras de los comentarios de la comunidad.',
+    'fr': 'Nous extrayons les points forts et les limites des retours de la communauté.',
+    'it': 'Estraiamo pro e contro dal feedback della community.',
+    'ja': 'コミュニティのフィードバックから長所と短所を抽出します。',
+    'nl': 'We halen voor- en nadelen uit feedback van de community.',
+    'pl': 'Wyciągamy zalety i wady z opinii społeczności.',
+    'pt': 'Extraímos prós e contras do feedback da comunidade.',
+    'sv': 'Vi lyfter fram för- och nackdelar från community-feedback.',
+    'tr': 'Yorumlardaki artıları ve eksileri ayrıştırıyoruz.',
+  },
+  'computingCompatibility': {
+    'ar': 'جارٍ حساب التوافق',
+    'de': 'Kompatibilität wird berechnet',
+    'en': 'Computing Compatibility',
+    'es': 'Calculando compatibilidad',
+    'fr': 'Calcul de compatibilité',
+    'it': 'Calcolo della compatibilità',
+    'ja': '適合度を計算中',
+    'nl': 'Compatibiliteit berekenen',
+    'pl': 'Obliczanie dopasowania',
+    'pt': 'Calculando compatibilidade',
+    'sv': 'Beräknar kompatibilitet',
+    'tr': 'Uyumluluk Hesaplanıyor',
+  },
+  'computingCompatibilityDetail': {
+    'ar': 'نمزج ملفك الشخصي وإجابات الاختبار وذكاء الويب للوصول إلى أفضل تطابق.',
+    'de': 'Wir kombinieren dein Profil, deine Quizantworten und Web-Signale zum besten Match.',
+    'en': 'Blending your profile, quiz answers, and web intelligence into the best match.',
+    'es': 'Combinamos tu perfil, las respuestas del quiz y la inteligencia web para hallar el mejor ajuste.',
+    'fr': 'Nous combinons votre profil, vos réponses et les signaux du web pour trouver le meilleur match.',
+    'it': 'Combiniamo profilo, risposte al quiz e dati web per trovare il miglior abbinamento.',
+    'ja': 'プロフィール、クイズ回答、Web情報を組み合わせて最適な一致を導きます。',
+    'nl': 'We combineren je profiel, quizantwoorden en web-signalen tot de beste match.',
+    'pl': 'Łączymy Twój profil, odpowiedzi z quizu i dane z sieci, by znaleźć najlepsze dopasowanie.',
+    'pt': 'Combinamos seu perfil, respostas do quiz e sinais da web para encontrar a melhor combinação.',
+    'sv': 'Vi väger samman din profil, dina quizsvar och webbsignaler till bästa match.',
+    'tr': 'Profilin + quiz cevapların + internet verileri birleşiyor.',
+  },
+  'subscriptionAnalysis': {
+    'ar': 'تحليل الاشتراك',
+    'de': 'Abo-Analyse',
+    'en': 'Subscription Analysis',
+    'es': 'Análisis de suscripción',
+    'fr': 'Analyse d\'abonnement',
+    'it': 'Analisi abbonamento',
+    'ja': 'サブスクリプション分析',
+    'nl': 'Abonnementsanalyse',
+    'pl': 'Analiza subskrypcji',
+    'pt': 'Análise de assinatura',
+    'sv': 'Prenumerationsanalys',
+    'tr': 'Abonelik Analizi',
+  },
+  'unlockUnlimitedQWithPremium': {
+    'ar': 'افتح Q غير محدود مع Premium',
+    'de': 'Schalte unbegrenztes Q mit Premium frei',
+    'en': 'Unlock unlimited Q with Premium',
+    'es': 'Desbloquea Q ilimitado con Premium',
+    'fr': 'Débloquez un Q illimité avec Premium',
+    'it': 'Sblocca Q illimitato con Premium',
+    'ja': 'Premiumで無制限Qを解放',
+    'nl': 'Ontgrendel onbeperkt Q met Premium',
+    'pl': 'Odblokuj nielimitowane Q z Premium',
+    'pt': 'Desbloqueie Q ilimitado com Premium',
+    'sv': 'Lås upp obegränsad Q med Premium',
+    'tr': 'Premium ile sınırsız Q aç',
+  },
+  'communityVoice': {
+    'ar': 'آراء المجتمع',
+    'de': 'Community-Stimmen',
+    'en': 'Community Voice',
+    'es': 'Voz de la comunidad',
+    'fr': 'Voix de la communauté',
+    'it': 'Voce della community',
+    'ja': 'コミュニティの声',
+    'nl': 'Community-stem',
+    'pl': 'Głos społeczności',
+    'pt': 'Voz da comunidade',
+    'sv': 'Community-röster',
+    'tr': 'İnternet Yorumları',
+  },
+  'communityVoiceSubtitle': {
+    'ar': 'آراء حقيقية من Reddit والمنتديات ووسائل التواصل مع ملخص إيجابي/سلبي.',
+    'de': 'Echtes Feedback aus Reddit, Foren und Social Media mit Positiv-/Negativ-Zusammenfassung.',
+    'en': 'Real user feedback from Reddit, forums, and social media with a positive/negative summary.',
+    'es': 'Opiniones reales de Reddit, foros y redes sociales con resumen positivo/negativo.',
+    'fr': 'Retours réels depuis Reddit, les forums et les réseaux sociaux avec résumé positif/négatif.',
+    'it': 'Feedback reale da Reddit, forum e social media con riepilogo positivo/negativo.',
+    'ja': 'Reddit、フォーラム、SNSの実際の声を肯定/否定で要約します。',
+    'nl': 'Echte feedback van Reddit, forums en sociale media met een positieve/negatieve samenvatting.',
+    'pl': 'Prawdziwe opinie z Reddita, forów i social mediów z podsumowaniem plusów i minusów.',
+    'pt': 'Feedback real de Reddit, fóruns e redes sociais com resumo positivo/negativo.',
+    'sv': 'Riktiga omdömen från Reddit, forum och sociala medier med positiv/negativ sammanfattning.',
+    'tr': 'Reddit, forum ve sosyal medyadan gerçek kullanıcı yorumları — olumlu/olumsuz özet.',
+  },
+  'personalQuiz': {
+    'ar': 'اختبار شخصي',
+    'de': 'Persönliches Quiz',
+    'en': 'Personal Quiz',
+    'es': 'Quiz personal',
+    'fr': 'Quiz personnel',
+    'it': 'Quiz personale',
+    'ja': 'パーソナルクイズ',
+    'nl': 'Persoonlijke quiz',
+    'pl': 'Quiz osobisty',
+    'pt': 'Quiz pessoal',
+    'sv': 'Personligt quiz',
+    'tr': 'Kişisel Quiz',
+  },
+  'personalQuizSubtitle': {
+    'ar': 'تُفصِّل الذكاء الاصطناعي الأسئلة وفق عاداتك لتخصيص النتيجة.',
+    'de': 'Die KI passt Fragen an deine Gewohnheiten an und personalisiert so das Ergebnis.',
+    'en': 'AI tailors questions to your habits so every answer sharpens the match.',
+    'es': 'La IA adapta las preguntas a tus hábitos para afinar cada resultado.',
+    'fr': 'L’IA adapte les questions à vos habitudes pour affiner chaque résultat.',
+    'it': 'L\'IA adatta le domande alle tue abitudini per affinare ogni risultato.',
+    'ja': 'AIがあなたの習慣に合わせて質問を調整し、結果をより正確にします。',
+    'nl': 'AI stemt vragen af op je gewoonten zodat elk antwoord de match verfijnt.',
+    'pl': 'AI dopasowuje pytania do Twoich nawyków, aby każdy wynik był trafniejszy.',
+    'pt': 'A IA ajusta as perguntas aos seus hábitos para refinar cada resultado.',
+    'sv': 'AI anpassar frågorna efter dina vanor så att varje svar förbättrar matchen.',
+    'tr': 'AI alışkanlıklarınıza göre sorular hazırlar — her cevap analizi sizin için kişiselleştirir.',
+  },
+  'smartMatch': {
+    'ar': 'مطابقة ذكية',
+    'de': 'Smart Match',
+    'en': 'Smart Match',
+    'es': 'Emparejamiento inteligente',
+    'fr': 'Match intelligent',
+    'it': 'Match intelligente',
+    'ja': 'スマートマッチ',
+    'nl': 'Slimme match',
+    'pl': 'Inteligentne dopasowanie',
+    'pt': 'Correspondência inteligente',
+    'sv': 'Smart match',
+    'tr': 'Akıllı Eşleşme',
+  },
+  'smartMatchSubtitle': {
+    'ar': 'درجة توافق وتوصية مفصلة وفق ملفك الشخصي للعثور على أفضل اشتراك.',
+    'de': 'Kompatibilitätsscore und detaillierte Empfehlung passend zu deinem Profil.',
+    'en': 'Compatibility score and a detailed recommendation tuned to your profile.',
+    'es': 'Puntuación de compatibilidad y recomendación detallada según tu perfil.',
+    'fr': 'Score de compatibilité et recommandation détaillée selon votre profil.',
+    'it': 'Punteggio di compatibilità e consiglio dettagliato in base al tuo profilo.',
+    'ja': 'プロフィールに合わせた適合度スコアと詳細なおすすめを提示します。',
+    'nl': 'Compatibiliteitsscore en gedetailleerde aanbeveling afgestemd op je profiel.',
+    'pl': 'Ocena dopasowania i szczegółowa rekomendacja dopasowana do Twojego profilu.',
+    'pt': 'Pontuação de compatibilidade e recomendação detalhada para o seu perfil.',
+    'sv': 'Kompatibilitetspoäng och detaljerad rekommendation anpassad till din profil.',
+    'tr': 'Profilinize göre uyumluluk puanı ve detaylı öneri — en uygun aboneliği bulun.',
+  },
+};
+
+String _subscriptionScreenText(
+  String key,
+  String languageCode, {
+  Map<String, String> replacements = const {},
+}) {
+  var value =
+      _kSubscriptionScreenTranslations[key]?[normalizeQorLanguageCode(languageCode)] ??
+      _kSubscriptionScreenTranslations[key]?['en'] ??
+      key;
+  replacements.forEach((token, replacement) {
+    value = value.replaceAll('{$token}', replacement);
+  });
+  return value;
+}
 
 // ─── Local model for a validated subscription chip ───────────────────────────
 
@@ -123,6 +423,17 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     ref.read(subQuizProvider.notifier).clearError();
   }
 
+  String _copy(String key, {Map<String, String> replacements = const {}}) {
+    final languageCode =
+        ref.read(localeProvider)?.languageCode ??
+        Localizations.localeOf(context).languageCode;
+    return _subscriptionScreenText(
+      key,
+      languageCode,
+      replacements: replacements,
+    );
+  }
+
   Future<void> _addChipAsync(String name) async {
     if (_validatingChip) return; // serialize concurrent adds
     final trimmed = name.trim();
@@ -130,12 +441,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
     // Max chip limit check
     if (_chips.length >= _kMaxChips) {
-      final isTr =
-          Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
       setState(() {
-        _chipError = isTr
-            ? 'En fazla $_kMaxChips abonelik karşılaştırılabilir.'
-            : 'You can compare up to $_kMaxChips subscriptions.';
+        _chipError = _copy(
+          'maxSubscriptionsComparable',
+          replacements: {'count': '$_kMaxChips'},
+        );
       });
       return;
     }
@@ -179,9 +489,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
   Future<void> _startAnalysis() async {
     final pending = _inputCtrl.text.trim();
-    // Capture locale before async gap
-    final isTr =
-        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
 
     if (pending.isNotEmpty) {
       // If it's just a duplicate of an already-added chip, clear it and proceed
@@ -198,11 +505,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     }
 
     if (_chips.isEmpty) {
-      setState(
-        () => _chipError = isTr
-            ? 'Lütfen en az bir abonelik adı girin.'
-            : 'Please enter at least one subscription.',
-      );
+      setState(() => _chipError = _copy('enterAtLeastOneSubscription'));
       return;
     }
 
@@ -231,6 +534,24 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         ref.read(subQuizProvider.notifier).reset();
       }
     });
+
+    ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
+      if (!mounted || next.error == null || next.error == prev?.error) return;
+      final langCode = ref.read(localeProvider)?.languageCode;
+      if (!isDailyQLimitMessage(next.error, langCode)) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(subQuizProvider.notifier).clearError();
+        showLimitReachedDialog(
+          context,
+          featureName: 'subscription-analysis',
+        );
+      });
+    });
+
+    final langCode = ref.read(localeProvider)?.languageCode;
+    final hasInlineError =
+        state.error != null && !isDailyQLimitMessage(state.error, langCode);
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -261,7 +582,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                         _buildChipWarning(_chipError!),
                       ],
                       const SizedBox(height: 20),
-                      if (state.error != null) ...[
+                      if (hasInlineError) ...[
                         _buildError(state.error!),
                         const SizedBox(height: 16),
                       ],
@@ -490,55 +811,41 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   // ── Phase Timeline ─────────────────────────────────────────────────────────
 
   Widget _buildPhaseTimeline(SubFlowPhase phase) {
-    final isTr =
-        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     final isQuizLoading = phase == SubFlowPhase.quizLoading;
 
     // Detailed AI steps with rich descriptions
     final steps = [
       _PhaseStep(
-        label: isTr ? 'Servisleri Tanıyoruz' : 'Identifying Services',
-        detail: isTr
-            ? 'Girdiğin abonelik isimlerini doğrulayıp kategoriye eşliyoruz'
-            : 'Validating subscription names and mapping to categories',
+        label: _copy('identifyingServices'),
+        detail: _copy('identifyingServicesDetail'),
         icon: Icons.fingerprint_rounded,
         isDone: phase.index > SubFlowPhase.quizLoading.index,
         isActive: isQuizLoading,
       ),
       _PhaseStep(
-        label: isTr ? 'Kişisel Quiz Hazırlanıyor' : 'Crafting Personal Quiz',
-        detail: isTr
-            ? 'Alışkanlıklarını anlamak için AI sorular oluşturuyor'
-            : 'AI is generating questions based on your habits',
+        label: _copy('craftingPersonalQuiz'),
+        detail: _copy('craftingPersonalQuizDetail'),
         icon: Icons.psychology_alt_rounded,
         isDone: phase.index > SubFlowPhase.quizLoading.index,
         isActive: isQuizLoading,
       ),
       _PhaseStep(
-        label: isTr
-            ? 'İnternet Yorumları Taranıyor'
-            : 'Scanning Community Voice',
-        detail: isTr
-            ? 'Reddit, forum ve sosyal medyadan gerçek yorumları topluyoruz'
-            : 'Collecting real reviews from Reddit, forums & social media',
+        label: _copy('scanningCommunityVoice'),
+        detail: _copy('scanningCommunityVoiceDetail'),
         icon: Icons.forum_rounded,
         isDone: phase == SubFlowPhase.result,
         isActive: phase == SubFlowPhase.analyzing,
       ),
       _PhaseStep(
-        label: isTr ? 'Olumlu / Olumsuz Özet' : 'Positive / Negative Digest',
-        detail: isTr
-            ? 'Yorumlardaki artıları ve eksileri ayrıştırıyoruz'
-            : 'Extracting pros and cons from community feedback',
+        label: _copy('positiveNegativeDigest'),
+        detail: _copy('positiveNegativeDigestDetail'),
         icon: Icons.sentiment_satisfied_rounded,
         isDone: phase == SubFlowPhase.result,
         isActive: phase == SubFlowPhase.analyzing,
       ),
       _PhaseStep(
-        label: isTr ? 'Uyumluluk Hesaplanıyor' : 'Computing Compatibility',
-        detail: isTr
-            ? 'Profilin + quiz cevapların + internet verileri birleşiyor'
-            : 'Blending your profile + quiz answers + web intelligence',
+        label: _copy('computingCompatibility'),
+        detail: _copy('computingCompatibilityDetail'),
         icon: Icons.auto_graph_rounded,
         isDone: phase == SubFlowPhase.result,
         isActive: phase == SubFlowPhase.analyzing,
@@ -728,7 +1035,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  isTr
+                  Localizations.localeOf(context).languageCode == 'tr'
                       ? 'Kaynaklar: Reddit · Trustpilot · Forum · X · YouTube · Resmi site'
                       : 'Sources: Reddit · Trustpilot · Forums · X · YouTube · Official',
                   style: GoogleFonts.plusJakartaSans(
@@ -1019,7 +1326,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     final sub = ref.watch(subscriptionServiceProvider);
     if (sub.isPremium) return const SizedBox.shrink();
 
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
     final remaining = sub.remainingDailyCredits;
     final total = AppConstants.freeDailyAiCreditLimit;
     final used = sub.usedDailyCredits;
@@ -1042,7 +1348,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         children: [
           _UsageMeter(
             icon: Icons.analytics_outlined,
-            label: isTr ? 'Abonelik Analizi' : 'Subscription Analysis',
+            label:
+                context.l10n?.subscriptionIntelligence ??
+                _copy('subscriptionAnalysis'),
             remaining: remaining,
             total: total,
             period: ' ${AppConstants.qorCurrencyName}',
@@ -1052,7 +1360,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
           const SizedBox(height: 8),
           _UsageMeter(
             icon: Icons.auto_awesome,
-            label: isTr ? 'AI Sohbet' : 'AI Chat',
+            label: context.l10n?.aiChat ?? 'AI Chat',
             remaining: remaining,
             total: total,
             period: ' ${AppConstants.qorCurrencyName}',
@@ -1068,9 +1376,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 const Icon(Icons.auto_awesome, size: 13, color: _kAccent),
                 const SizedBox(width: 4),
                 Text(
-                  isTr
-                      ? 'Premium ile sınırsız Q aç'
-                      : 'Unlock unlimited Q with Premium',
+                  _copy('unlockUnlimitedQWithPremium'),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -1449,32 +1755,24 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   Widget _buildInfoCards() {
-    final isTr =
-        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     final items = [
       _InfoItem(
         icon: Icons.forum_rounded,
         gradient: const [_kPrimary, _kDeep],
-        title: isTr ? 'İnternet Yorumları' : 'Community Voice',
-        subtitle: isTr
-            ? 'Reddit, forum ve sosyal medyadan gerçek kullanıcı yorumları — olumlu/olumsuz özet'
-            : 'Real user feedback from Reddit, forums & social media — positive/negative summary',
+        title: _copy('communityVoice'),
+        subtitle: _copy('communityVoiceSubtitle'),
       ),
       _InfoItem(
         icon: Icons.quiz_rounded,
         gradient: const [_kSecondary, _kAccent],
-        title: isTr ? 'Kişisel Quiz' : 'Personal Quiz',
-        subtitle: isTr
-            ? 'AI alışkanlıklarınıza göre sorular hazırlar — her cevap analizi sizin için kişiselleştirir'
-            : 'AI tailors questions to your habits — every answer personalizes the match',
+        title: _copy('personalQuiz'),
+        subtitle: _copy('personalQuizSubtitle'),
       ),
       _InfoItem(
         icon: Icons.auto_awesome_rounded,
         gradient: const [_kAccent, AppTheme.success],
-        title: isTr ? 'Akıllı Eşleşme' : 'Smart Match',
-        subtitle: isTr
-            ? 'Profilinize göre uyumluluk puanı ve detaylı öneri — en uygun aboneliği bulun'
-            : 'Compatibility score & detailed pick for your profile — find your best fit',
+        title: _copy('smartMatch'),
+        subtitle: _copy('smartMatchSubtitle'),
       ),
     ];
 
@@ -1499,7 +1797,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               ),
               const SizedBox(width: 10),
               Text(
-                isTr ? 'Nasıl Çalışır' : 'How It Works',
+                context.l10n?.howItWorks ?? 'How It Works',
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -2859,9 +3157,10 @@ class _SubResultView extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        _isTr(context)
-                            ? 'İnternet Yorumları'
-                            : 'Community Voice',
+                        _subscriptionScreenText(
+                          'communityVoice',
+                          Localizations.localeOf(context).languageCode,
+                        ),
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,

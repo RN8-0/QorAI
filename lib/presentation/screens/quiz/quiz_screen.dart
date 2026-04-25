@@ -1747,7 +1747,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     return Align(
       alignment: alignment,
       child: ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+        imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           width: size,
           height: size,

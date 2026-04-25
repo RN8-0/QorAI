@@ -1,4 +1,4 @@
-/// Qor AI - Main Shell (Modern Navigation)
+﻿/// Qor AI - Main Shell (Modern Navigation)
 /// Mobile: 3-tab floating pill nav + hamburger drawer
 /// Desktop/Tablet: Side rail navigation
 library;
@@ -134,50 +134,50 @@ class _MainShellState extends ConsumerState<MainShell> {
     );
   }
 
-  Widget _buildConnectivityBanner(AsyncValue<ConnectivityStatus> connectivity) {
-    return connectivity.when(
-      data: (status) {
-        if (status == ConnectivityStatus.offline) {
-          return SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppTheme.error,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
-                    const SizedBox(width: 8),
-                    Text(AppLocalizations.of(context)?.noInternetConnection ?? "No internet connection",
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
+  Widget _buildConnectivityBanner() {
+    return Consumer(builder: (context, ref, _) {
+      final connectivity = ref.watch(connectivityProvider);
+      return connectivity.when(
+        data: (status) {
+          if (status == ConnectivityStatus.offline) {
+            return SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.error,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Text(AppLocalizations.of(context)?.noInternetConnection ?? "No internet connection",
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-    );
+            );
+          }
+          return const SizedBox.shrink();
+        },
+        loading: () => const SizedBox.shrink(),
+        error: (_, __) => const SizedBox.shrink(),
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final currentIndex = _indexFromLocation(location);
-    final connectivity = ref.watch(connectivityProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final useDesktopLayout = context.isDesktop || context.isTablet;
-    // Watch unread count to keep notificationsProvider alive app-wide
-    ref.watch(unreadNotificationCountProvider);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -186,58 +186,60 @@ class _MainShellState extends ConsumerState<MainShell> {
         backgroundColor: context.backgroundColor,
         extendBody: !useDesktopLayout,
         body: useDesktopLayout
-            ? _buildDesktopLayout(currentIndex, connectivity)
-            : _buildMobileLayout(currentIndex, connectivity, bottomPadding),
+            ? _buildDesktopLayout(currentIndex)
+            : _buildMobileLayout(currentIndex, bottomPadding),
       ),
     );
   }
 
-  Widget _buildMobileLayout(int currentIndex,
-      AsyncValue<ConnectivityStatus> connectivity, double bottomPadding) {
+  Widget _buildMobileLayout(int currentIndex, double bottomPadding) {
     final goState = GoRouterState.of(context);
     final path = goState.uri.path;
     final location = goState.matchedLocation;
-    // Kategori tarama: hem /browse hem /home/browse (sorgu yolu uri.path’te yok)
+    // Kategori tarama: hem /browse hem /home/browse (sorgu yolu uri.path'te yok)
     final isBrowseRoute = path == AppRoutes.browse ||
         path == '/home/browse' ||
         path.startsWith('/home/browse/');
-    final isLinkAiAnalyzing =
-        ref.watch(compareAnalysisProvider.select((s) => s.isWorking)) ||
-        ref.watch(linkQuizProvider.select((s) =>
-            s.phase == LinkFlowPhase.analyzing ||
-            s.phase == LinkFlowPhase.computing));
-    final hideNavBar = ref.watch(hideNavBarProvider);
-    final effectiveHideNavBar = isBrowseRoute || hideNavBar;
-    if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref.read(hideNavBarProvider.notifier).state = false;
-      });
-    }
 
     return Stack(
       children: [
         Positioned.fill(
           child: Column(
             children: [
-              _buildConnectivityBanner(connectivity),
+              _buildConnectivityBanner(),
               Expanded(child: widget.navigationShell),
             ],
           ),
         ),
-        if (!effectiveHideNavBar)
-          Positioned(
-            left: AppTheme.navBarHMargin,
-            right: AppTheme.navBarHMargin,
-            bottom: bottomPadding + AppTheme.navBarBottomMargin,
-            child: RepaintBoundary(
-            child: _FloatingNavBar(
-              currentIndex: currentIndex,
-              onTap: _onNavTap,
-              isLinkAiAnalyzing: isLinkAiAnalyzing,
-            ),
-          ),
-          ),
+        // Positioned must be a direct Stack child — Consumer lives inside it.
+        Positioned(
+          left: AppTheme.navBarHMargin,
+          right: AppTheme.navBarHMargin,
+          bottom: bottomPadding + AppTheme.navBarBottomMargin,
+          child: Consumer(builder: (context, ref, _) {
+            final isLinkAiAnalyzing =
+                ref.watch(compareAnalysisProvider.select((s) => s.isWorking)) ||
+                ref.watch(linkQuizProvider.select((s) =>
+                    s.phase == LinkFlowPhase.analyzing ||
+                    s.phase == LinkFlowPhase.computing));
+            final hideNavBar = ref.watch(hideNavBarProvider);
+            final effectiveHideNavBar = isBrowseRoute || hideNavBar;
+            if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                ref.read(hideNavBarProvider.notifier).state = false;
+              });
+            }
+            if (effectiveHideNavBar) return const SizedBox.shrink();
+            return RepaintBoundary(
+              child: _FloatingNavBar(
+                currentIndex: currentIndex,
+                onTap: _onNavTap,
+                isLinkAiAnalyzing: isLinkAiAnalyzing,
+              ),
+            );
+          }),
+        ),
         // Floating AI chat bubble (top of stack, above nav bar)
         Positioned.fill(
           child: RepaintBoundary(child: _FloatingAiOverlay(currentRoute: location)),
@@ -246,8 +248,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     );
   }
 
-  Widget _buildDesktopLayout(int currentIndex,
-      AsyncValue<ConnectivityStatus> connectivity) {
+  Widget _buildDesktopLayout(int currentIndex) {
     final isWide = context.screenWidth >= Breakpoints.desktop;
     return Row(
       children: [
@@ -260,7 +261,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         Expanded(
           child: Column(
             children: [
-              _buildConnectivityBanner(connectivity),
+              _buildConnectivityBanner(),
               Expanded(
                 child: Center(
                   child: ConstrainedBox(

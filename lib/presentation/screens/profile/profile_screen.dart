@@ -128,10 +128,6 @@ class ProfileScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                        child: const SizedBox(),
-                      ),
                     ),
                   ),
                   Positioned(
@@ -148,10 +144,6 @@ class ProfileScreen extends ConsumerWidget {
                             Colors.transparent,
                           ],
                         ),
-                      ),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                        child: const SizedBox(),
                       ),
                     ),
                   ),
