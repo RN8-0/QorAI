@@ -1350,13 +1350,30 @@ class PbDataSource {
     required String email,
     required String message,
   }) async {
-    await _pb.collection('support_messages').create(body: {
-      'userId': userId ?? '',
-      'displayName': displayName,
-      'email': email,
-      'message': message,
-      'status': 'open',
-    });
+    final trimmedName = displayName.trim();
+    final trimmedEmail = email.trim();
+    final trimmedMessage = message.trim();
+
+    if (trimmedName.isEmpty ||
+        trimmedEmail.isEmpty ||
+        trimmedMessage.isEmpty) {
+      throw ServerException(message: 'Support message fields are required.');
+    }
+
+    try {
+      await _pb.send(
+        '/api/support/contact',
+        method: 'POST',
+        body: {
+          'userId': userId?.trim() ?? '',
+          'displayName': trimmedName,
+          'email': trimmedEmail,
+          'message': trimmedMessage,
+        },
+      );
+    } catch (e) {
+      throw ServerException(message: 'Support message could not be sent: $e');
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────

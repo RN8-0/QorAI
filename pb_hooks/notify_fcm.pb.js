@@ -107,3 +107,64 @@ onRecordAfterCreateSuccess(function (e) {
     console.log("[notify_fcm] Fatal error:", e);
   }
 }, "notifications");
+
+routerAdd('POST', '/api/support/contact', (e) => {
+  try {
+    const bodyModel = new DynamicModel({
+      userId: '',
+      displayName: '',
+      email: '',
+      message: '',
+    });
+
+    let bindErr = null;
+    try { e.bindBody(bodyModel); } catch (err) { bindErr = String(err); }
+
+    let requestBody = null;
+    try { requestBody = e.requestInfo().body; } catch (_) {}
+
+    const authRecord = e.auth;
+    const normalize = (value) => String(value || '').trim();
+    const inputUserId = normalize(bodyModel.userId || requestBody?.userId);
+    const userId = normalize(authRecord?.id || inputUserId);
+    const displayName = normalize(bodyModel.displayName || requestBody?.displayName);
+    const email = normalize(bodyModel.email || requestBody?.email).toLowerCase();
+    const message = normalize(bodyModel.message || requestBody?.message);
+
+    if (!displayName || !email || !message) {
+      return e.json(400, {
+        error: 'missing_fields',
+        message: 'displayName, email and message are required.',
+        bindErr: bindErr,
+      });
+    }
+
+    if (email.indexOf('@') === -1) {
+      return e.json(400, {
+        error: 'invalid_email',
+        message: 'A valid email address is required.',
+      });
+    }
+
+    const collection = $app.findCollectionByNameOrId('support_messages');
+    const record = new Record(collection);
+    record.set('userId', userId);
+    record.set('displayName', displayName);
+    record.set('email', email);
+    record.set('message', message);
+    record.set('status', 'open');
+    record.set('adminReply', '');
+    $app.save(record);
+
+    return e.json(200, {
+      success: true,
+      id: record.id,
+      status: 'open',
+    });
+  } catch (err) {
+    return e.json(500, {
+      error: 'support_contact_failed',
+      detail: String(err),
+    });
+  }
+});

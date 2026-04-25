@@ -2733,6 +2733,44 @@ final recentlyAnalyzedProvider = FutureProvider.autoDispose<List<ProductEntity>>
   }
 });
 
+final Map<String, Future<void>> _viewedProductsBackfillByUser = {};
+
+bool _sameStringList(List<String> left, List<String> right) {
+  if (identical(left, right)) return true;
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
+}
+
+Future<void> _ensureViewedProductsBackfill({
+  required String uid,
+  required PbDataSource pbDs,
+  required List<String> hiveIds,
+}) {
+  if (hiveIds.isEmpty) return Future.value();
+
+  final pending = _viewedProductsBackfillByUser[uid];
+  if (pending != null) return pending;
+
+  final future = () async {
+    for (final id in hiveIds.reversed) {
+      await pbDs.addRecentlyViewed(uid, id);
+    }
+  }();
+
+  _viewedProductsBackfillByUser[uid] = future;
+  unawaited(
+    future.whenComplete(() {
+      if (identical(_viewedProductsBackfillByUser[uid], future)) {
+        _viewedProductsBackfillByUser.remove(uid);
+      }
+    }),
+  );
+  return future;
+}
+
 /// "Price Drop" / Value Picks — high techScore at lower price tiers
 final valuePicsProvider = FutureProvider.autoDispose<List<ProductEntity>>((ref) async {
   final feed = await ref.watch(homeFeedProvider.future);
@@ -2818,23 +2856,36 @@ final userProfileVectorProvider = Provider<Map<String, double>>((ref) {
 final viewedProductsProvider = StreamProvider<List<String>>((ref) {
   final authState = ref.watch(authStateProvider);
   return authState.when(
-    data: (user) {
-      if (user == null) return Stream.value(<String>[]);
+    data: (uid) {
+      if (uid == null) return Stream.value(<String>[]);
       final pbDs = ref.read(pbDataSourceProvider);
       final hiveDs = ref.read(hiveDataSourceProvider);
       final hiveIds = hiveDs.getViewedProducts();
 
       return pbDs
-          .watchRecentlyViewed(user)
+          .watchRecentlyViewed(uid)
           .asyncMap((pbIds) async {
             if (pbIds.isEmpty && hiveIds.isNotEmpty) {
-              for (final id in hiveIds.reversed) {
-                pbDs.addRecentlyViewed(user, id);
-              }
+              unawaited(
+                _ensureViewedProductsBackfill(
+                  uid: uid,
+                  pbDs: pbDs,
+                  hiveIds: hiveIds,
+                ),
+              );
               return hiveIds;
             }
+
+            final pendingBackfill = _viewedProductsBackfillByUser[uid];
+            if (pendingBackfill != null) {
+              await pendingBackfill;
+              final syncedIds = await pbDs.getRecentlyViewed(uid);
+              return syncedIds.isNotEmpty ? syncedIds : hiveIds;
+            }
+
             return pbIds;
           })
+          .distinct(_sameStringList)
           .handleError((_) => <String>[]);
     },
     loading: () => Stream.value(<String>[]),

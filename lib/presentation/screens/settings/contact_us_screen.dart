@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/theme.dart';
-import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 
 class ContactUsScreen extends ConsumerStatefulWidget {
@@ -76,36 +74,29 @@ class _ContactUsScreenState extends ConsumerState<ContactUsScreen> {
           duration: const Duration(seconds: 5),
         ),
       );
-    } catch (_) {
-      // API failed — fall back to mailto:
-      await _openMailFallback();
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  Future<void> _openMailFallback() async {
-    final subject = Uri.encodeComponent('Qor AI Support');
-    final body = Uri.encodeComponent(
-      'Name: ${_nameCtrl.text.trim()}\nMessage: ${_msgCtrl.text.trim()}',
-    );
-    final uri = Uri.parse('mailto:contact@qorai.net?subject=$subject&body=$body');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else if (mounted) {
+    } catch (error) {
+      if (!mounted) return;
+      final l = context.l10n;
+      final text = error.toString();
+      final details = text.startsWith('ServerException: ')
+          ? text.substring('ServerException: '.length)
+          : text;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            context.l10n?.sendError != null
-                ? '${context.l10n!.sendError}: contact@qorai.net'
-                : 'Error: contact@qorai.net',
+            '${l?.sendError ?? 'Error'}: $details',
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 

@@ -214,6 +214,28 @@ const collections = [
     listRule: null, viewRule: null, // admin only
   },
   {
+    name: 'support_messages',
+    type: 'base',
+    fields: withMeta([
+      T('userId'),
+      T('displayName', { required: true, max: 200 }),
+      { name: 'email', type: 'email', required: true },
+      { name: 'message', type: 'editor', required: true },
+      T('status', { max: 50 }),
+      { name: 'adminReply', type: 'editor' },
+      D('repliedAt'),
+    ]),
+    indexes: [
+      'CREATE INDEX `idx_support_messages_user` ON `support_messages` (`userId`)',
+      'CREATE INDEX `idx_support_messages_status` ON `support_messages` (`status`)',
+    ],
+    listRule: null,
+    viewRule: null,
+    createRule: '@request.auth.id != ""',
+    updateRule: null,
+    deleteRule: null,
+  },
+  {
     name: 'scraper_sources',
     type: 'base',
     fields: withMeta([

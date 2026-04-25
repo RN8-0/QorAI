@@ -1759,6 +1759,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   List<Widget> _topInCategorySectionSlivers(WidgetRef ref) {
     return ref.watch(topInCategoryProvider).when(
+          skipLoadingOnRefresh: true,
+          skipLoadingOnReload: true,
           data: (data) {
             if (data.category.isEmpty || data.products.isEmpty) return [];
             final catName =
