@@ -6,6 +6,25 @@
  */
 
 let _supportMessages = [];
+let _supportSubscriptionReady = false;
+
+function _sortSupportMessages(items) {
+  return [...items].sort((left, right) => {
+    const leftTime = Date.parse(left?.created || '') || 0;
+    const rightTime = Date.parse(right?.created || '') || 0;
+    return rightTime - leftTime;
+  });
+}
+
+function _upsertSupportMessage(record) {
+  const next = _supportMessages.filter((item) => item.id !== record.id);
+  next.push(record);
+  _supportMessages = _sortSupportMessages(next);
+}
+
+function _removeSupportMessage(id) {
+  _supportMessages = _supportMessages.filter((item) => item.id !== id);
+}
 
 /* ──────────────────────────────────────────────
    LOAD
@@ -18,13 +37,59 @@ async function loadSupportMessages() {
     const records = await pbGetList('support_messages', 1, 200, {
       sort: '-created',
     });
-    _supportMessages = records.items || records;
+    _supportMessages = _sortSupportMessages(records.items || records);
     renderSupportMessages();
     updateSupportBadge();
   } catch (e) {
     console.error('loadSupportMessages:', e);
     if (el) el.innerHTML = '<div class="placeholder">Yüklenemedi. Koleksiyon mevcut değil olabilir.</div>';
   }
+}
+
+async function initSupportInbox(options = {}) {
+  const forceReload = !!options.forceReload;
+  if (forceReload || !_supportMessages.length) {
+    await loadSupportMessages();
+  } else {
+    renderSupportMessages();
+    updateSupportBadge();
+  }
+
+  if (_supportSubscriptionReady) return;
+
+  try {
+    await getPb().collection('support_messages').subscribe('*', (event) => {
+      const record = event?.record;
+      if (!record?.id) return;
+
+      if (event.action === 'delete') {
+        _removeSupportMessage(record.id);
+        closeSupportModal(record.id);
+      } else {
+        const existing = _supportMessages.find((item) => item.id === record.id);
+        _upsertSupportMessage(record);
+        if (event.action === 'create' && !existing) {
+          toast(`Yeni destek mesajı: ${record.displayName || record.email || 'Kullanıcı'}`, 'i');
+        }
+      }
+
+      renderSupportMessages();
+      updateSupportBadge();
+    });
+    _supportSubscriptionReady = true;
+  } catch (e) {
+    console.error('support subscribe:', e);
+  }
+}
+
+async function disposeSupportInbox() {
+  if (!_supportSubscriptionReady) return;
+  try {
+    await getPb().collection('support_messages').unsubscribe('*');
+  } catch (e) {
+    console.warn('support unsubscribe:', e);
+  }
+  _supportSubscriptionReady = false;
 }
 
 /* ──────────────────────────────────────────────
@@ -113,6 +178,7 @@ function openSupportMessage(id) {
       <label style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Yanıt Yaz</label>
       <textarea class="input" id="supportReplyText" rows="5" placeholder="Kullanıcıya gönderilecek yanıt..." style="resize:vertical;width:100%"></textarea>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">
+        <button class="btn btn-danger" onclick="deleteSupportMessage('${m.id}')">Sil</button>
         <button class="btn btn-ghost" onclick="closeSupportModal()">İptal</button>
         <button class="btn btn-primary" onclick="sendSupportReply('${m.id}','${m.userId || ''}')">
           Yanıtla &amp; Bildirim Gönder
@@ -120,6 +186,7 @@ function openSupportMessage(id) {
       </div>
     </div>` : `
     <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-danger" style="margin-right:10px" onclick="deleteSupportMessage('${m.id}')">Sil</button>
       <button class="btn btn-ghost" onclick="closeSupportModal()">Kapat</button>
     </div>`}
   `;
@@ -128,7 +195,8 @@ function openSupportMessage(id) {
 }
 
 function closeSupportModal() {
-  document.getElementById('supportModal').style.display = 'none';
+  const modal = document.getElementById('supportModal');
+  if (modal) modal.style.display = 'none';
 }
 
 /* ──────────────────────────────────────────────
@@ -138,6 +206,10 @@ async function sendSupportReply(messageId, userId) {
   const replyText = (document.getElementById('supportReplyText')?.value || '').trim();
   if (!replyText) {
     toast('Yanıt metni boş olamaz.', 'w');
+    return;
+  }
+  if (!userId) {
+    toast('Bu mesaj kullanıcı hesabına bağlı değil. Cihaz bildirimi gönderilemez.', 'e');
     return;
   }
 
@@ -180,9 +252,40 @@ async function sendSupportReply(messageId, userId) {
     renderSupportMessages();
     updateSupportBadge();
   } catch (e) {
+    try {
+      await pbUpdateDoc('support_messages', messageId, {
+        status: 'open',
+        adminReply: '',
+        repliedAt: '',
+      });
+    } catch (_) {}
     console.error('sendSupportReply:', e);
     toast('Yanıt gönderilemedi: ' + (e.message || e), 'e');
     if (btn) { btn.disabled = false; btn.textContent = 'Yanıtla & Bildirim Gönder'; }
+  }
+}
+
+async function deleteSupportMessage(messageId) {
+  const message = _supportMessages.find((item) => item.id === messageId);
+  if (!message) return;
+
+  const confirmed = confirm(`Bu destek mesajı silinsin mi?\n\n${message.displayName || 'Kullanıcı'} <${message.email || ''}>`);
+  if (!confirmed) return;
+
+  const buttons = Array.from(document.querySelectorAll('#supportModalBody button'));
+  buttons.forEach((button) => { button.disabled = true; });
+
+  try {
+    await pbDeleteDoc('support_messages', messageId);
+    _removeSupportMessage(messageId);
+    renderSupportMessages();
+    updateSupportBadge();
+    closeSupportModal();
+    toast('Destek mesajı silindi.', 's');
+  } catch (e) {
+    console.error('deleteSupportMessage:', e);
+    toast('Destek mesajı silinemedi: ' + (e.message || e), 'e');
+    buttons.forEach((button) => { button.disabled = false; });
   }
 }
 

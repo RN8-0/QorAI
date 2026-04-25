@@ -23,6 +23,9 @@ function showAdminApp(email) {
   document.getElementById('sidebarUser').textContent = _currentAdminEmail;
   const unauthEl = document.getElementById('unauthScreen');
   if (unauthEl) unauthEl.style.display = 'none';
+  initSupportInbox().catch((error) => {
+    console.warn('support inbox init failed:', error);
+  });
   refreshDashboard();
 }
 
@@ -57,6 +60,7 @@ function logoutAdmin() {
   _currentAdminEmail = '';
   sessionStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
   getPb().authStore.clear();
+  disposeSupportInbox().catch(() => {});
   showLoginScreen();
   const unauthEl = document.getElementById('unauthScreen');
   if (unauthEl) unauthEl.style.display = 'none';
@@ -159,7 +163,7 @@ function showView(name){
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
   if(name==='notifications')loadNotificationsView();
-  if(name==='support')loadSupportMessages();
+  if(name==='support')initSupportInbox({ forceReload: true });
   if(name==='settings')loadRemoteConfig();
 }
 
