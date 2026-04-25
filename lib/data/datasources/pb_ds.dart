@@ -1222,14 +1222,30 @@ class PbDataSource {
 
     Future<List<Map<String, dynamic>>> fetch() async {
       try {
-        final result = await _pb
-            .collection('notifications')
-            .getList(
-              page: 1,
-              perPage: 50,
-              filter: 'recipientId = "$userId"',
-              sort: '-created',
-            );
+        RecordService getService() => _pb.collection('notifications');
+
+        ResultList<RecordModel> result;
+        try {
+          result = await getService().getList(
+            page: 1,
+            perPage: 50,
+            filter: 'recipientId = "$userId"',
+            sort: '-created',
+          );
+        } on ClientException catch (e) {
+          final shouldRetryWithoutSort =
+              e.statusCode == 400 &&
+              (e.response['message']?.toString().toLowerCase().contains(
+                    'something went wrong while processing your request.',
+                  ) ??
+                  false);
+          if (!shouldRetryWithoutSort) rethrow;
+          result = await getService().getList(
+            page: 1,
+            perPage: 50,
+            filter: 'recipientId = "$userId"',
+          );
+        }
         return result.items.map((r) => {'id': r.id, ...r.data}).toList();
       } catch (_) {
         return [];

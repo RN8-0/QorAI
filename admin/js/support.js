@@ -347,7 +347,7 @@ async function sendSupportReply(messageId, userId) {
     });
 
     // 2) notification oluştur → pb_hook FCM push atar
-    if (userId) {
+    if (resolvedUserId) {
       const pb = getPb();
       await pb.collection('notifications').create({
         recipientId: resolvedUserId,

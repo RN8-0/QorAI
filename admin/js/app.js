@@ -1486,6 +1486,7 @@ function openUserDetail(uid){
           ${u.language?`<div><span style="color:var(--text2)">Dil:</span> <b>${escHtml(u.language)}</b></div>`:''}
         </div>
       </div>
+      <div id="userSupportPreview_${safeUid}"><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--text3);font-size:12px">Yükleniyor...</div></div></div>
       <div style="display:flex;gap:8px"><button class="btn btn-danger" onclick="deleteUser('${safeUid}')">Sil</button></div>
     </div>
     <!-- Behavior Tab -->
@@ -1518,6 +1519,7 @@ function openUserDetail(uid){
     </div>`;
   document.getElementById('userModal').style.display='flex';
   setTimeout(()=>renderUserOverviewCharts(uid),0);
+  setTimeout(()=>loadUserSupportPreview(uid),0);
 }
 
 function switchUserTab(btn, uid){
@@ -1718,6 +1720,17 @@ function renderUserSupportHistory(messages){
       : '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b">Açık</span>';
     return `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">${created}</div>${status}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.message||'')}</div>${item.adminReply?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Admin Yanıtı${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.adminReply)}</div></div>`:''}</div>`;
   }).join('')}</div>`;
+}
+
+async function loadUserSupportPreview(uid){
+  const el=document.getElementById(`userSupportPreview_${uid}`);
+  if(!el)return;
+  try{
+    const supportRes=await pbGetList('support_messages',1,5,{filter:`userId="${uid}"`,sort:'-created'});
+    el.innerHTML=renderUserSupportHistory(safeArray(supportRes.items));
+  }catch(e){
+    el.innerHTML=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--red);font-size:12px">Geçmiş yüklenemedi: ${escHtml(e.message||String(e))}</div></div>`;
+  }
 }
 
 async function loadUserAnalysis(uid){

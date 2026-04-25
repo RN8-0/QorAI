@@ -215,6 +215,27 @@ async function pbGetList(collection, page, perPage, options = {}) {
       docs: result.items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }))
     };
   } catch (e) {
+    const shouldRetryWithoutSort =
+      !!options.sort &&
+      e &&
+      e.status === 400 &&
+      /something went wrong while processing your request/i.test(e.message || '');
+    if (shouldRetryWithoutSort) {
+      const retryOptions = {
+        filter: options.filter || '',
+        $autoCancel: false
+      };
+      const result = await getPb().collection(collection).getList(page, perPage, retryOptions);
+      return {
+        items: result.items,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages,
+        page: result.page,
+        size: result.items.length,
+        empty: result.items.length === 0,
+        docs: result.items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }))
+      };
+    }
     if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) {
       return { items: [], totalItems: 0, totalPages: 0, page: 1, size: 0, empty: true, docs: [] };
     }
