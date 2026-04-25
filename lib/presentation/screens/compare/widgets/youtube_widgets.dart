@@ -361,20 +361,30 @@ class _CompareYouTubeQualityOption {
   });
 }
 
+// videoId → (manifest, fetchedAt) — TTL 10 minutes
+final _manifestCache = <String, (yt_explode.StreamManifest, DateTime)>{};
+
 Future<yt_explode.StreamManifest> _loadCompareYouTubeManifest(
   String videoId,
 ) async {
+  const ttl = Duration(minutes: 10);
+  final cached = _manifestCache[videoId];
+  if (cached != null && DateTime.now().difference(cached.$2) < ttl) {
+    return cached.$1;
+  }
   final yte = yt_explode.YoutubeExplode();
   try {
     // safari client provides high-quality HLS streams (720p–1080p+).
     // android client is added as fallback for muxed streams.
-    return await yte.videos.streamsClient.getManifest(
+    final manifest = await yte.videos.streamsClient.getManifest(
       videoId,
       ytClients: [
         yt_explode.YoutubeApiClient.safari,
         yt_explode.YoutubeApiClient.android,
       ],
     );
+    _manifestCache[videoId] = (manifest, DateTime.now());
+    return manifest;
   } finally {
     yte.close();
   }

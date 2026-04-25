@@ -328,11 +328,12 @@ final chatSessionProvider =
 });
 
 final chatHistoryProvider =
-    StreamProvider.family<List<ChatConversation>, String>(
+    StreamProvider.autoDispose.family<List<ChatConversation>, String>(
   (ref, userId) {
     return ref
         .read(pbDataSourceProvider)
         .streamChatConversations(userId);
   },
 );
+
 

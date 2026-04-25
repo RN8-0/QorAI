@@ -716,7 +716,7 @@ class _ProductThumbPlaceholder extends StatelessWidget {
 }
 
 /// Provider to fetch single product
-final _getProductProvider = FutureProvider.family<ProductEntity?, String>((
+final _getProductProvider = FutureProvider.autoDispose.family<ProductEntity?, String>((
   ref,
   productId,
 ) async {
@@ -726,3 +726,4 @@ final _getProductProvider = FutureProvider.family<ProductEntity?, String>((
       .getProduct(productId);
   return result.when(success: (product) => product, failure: (_) => null);
 });
+

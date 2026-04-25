@@ -257,7 +257,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 /// Always fetches the full product record (with specs, images, description etc.)
 /// from PocketBase. List/feed caches use lean field projection and lack detail fields.
 final productDetailProvider =
-    FutureProvider.family<Result<ProductEntity>, String>((
+    FutureProvider.autoDispose.family<Result<ProductEntity>, String>((
       ref,
       productId,
     ) async {
@@ -436,3 +436,4 @@ final _categoryCacheMap = <String, List<ProductEntity>>{};
 
 /// Son aramalar (local state)
 final recentSearchesProvider = StateProvider<List<String>>((ref) => []);
+

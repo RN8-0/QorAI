@@ -33,6 +33,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   int _currentPage = 1;
   String _activeQuery = '';
   Timer? _debounce;
+  Timer? _scrollDebounce;
 
   bool get _isTurkish =>
       (Localizations.localeOf(context).languageCode).toLowerCase() == 'tr';
@@ -82,6 +83,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _scrollDebounce?.cancel();
     _resultsScrollCtrl.dispose();
     _ctrl.dispose();
     _focus.dispose();
@@ -92,9 +94,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (!_resultsScrollCtrl.hasClients || _searching || _loadingMore || !_hasMore) {
       return;
     }
-    if (_resultsScrollCtrl.position.extentAfter < 320) {
-      _loadMore();
-    }
+    _scrollDebounce?.cancel();
+    _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
+      if (_resultsScrollCtrl.position.extentAfter < 320) {
+        _loadMore();
+      }
+    });
   }
 
   void _onChanged(String q) {

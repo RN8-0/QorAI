@@ -2,9 +2,6 @@
 library;
 
 import 'dart:async';
-import 'dart:ui';
-import 'dart:convert';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math' as dart_math;
 import 'package:flutter/material.dart';
@@ -25,13 +22,9 @@ import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/services/profile_algorithm_service.dart';
-import 'package:qor_ai/services/youtube_service.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qor_ai/core/pb_client.dart';
-import 'package:pocketbase/pocketbase.dart';
-import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
@@ -41,12 +34,9 @@ import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:qor_ai/core/product_name_localizer.dart';
-import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 part 'tabs/premium_tab.dart';
 part 'tabs/reviews_tab.dart';

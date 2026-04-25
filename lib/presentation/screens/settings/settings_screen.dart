@@ -668,37 +668,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          Center(
-            child: Text(
-              initials,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: initials.length > 1 ? 20 : 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.6,
-              ),
-            ),
+      child: Center(
+        child: Text(
+          initials,
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white,
+            fontSize: initials.length > 1 ? 20 : 24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.6,
           ),
-          Positioned(
-            right: 6,
-            bottom: 6,
-            child: Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                size: 8,
-                color: palette.last,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

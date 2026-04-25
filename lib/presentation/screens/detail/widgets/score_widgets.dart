@@ -75,10 +75,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
   // oscillation the user reported).
   bool _geminiFetchTriggered = false;
 
-  // Once the AI match button becomes visible, it stays visible until tapped.
-  // Prevents the badge from flickering during profile/score loading transitions.
-  bool _showAiButton = false;
-
   @override
   void initState() {
     super.initState();
@@ -220,39 +216,6 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     });
   }
 
-  void _requestManualAiMatch() {
-    final isLoggedInNow = ref.read(authStateProvider).valueOrNull != null;
-    if (!isLoggedInNow) {
-      context.go(AppRoutes.login);
-      return;
-    }
-
-    final user = ref.read(userProfileProvider).valueOrNull;
-    if (user == null || !user.quizCompleted) {
-      context.push(AppRoutes.quiz);
-      return;
-    }
-
-    final subscription = ref.read(subscriptionServiceProvider);
-    if (!subscription.canUseDetailMatchAi) {
-      showLimitReachedDialog(context, featureName: 'detail-match');
-      return;
-    }
-
-    final cacheKey = _currentCacheKey();
-    final existing = ref.read(geminiMatchScoreProvider(cacheKey));
-    if (existing.isLoading || existing.valueOrNull != null) return;
-
-    _lastRequestedLanguage = cacheKey.normalizedLanguageCode;
-    setState(() {
-      _geminiFetchTriggered = true;
-      _showAiButton = false;
-    });
-    ref
-        .read(geminiMatchScoreProvider(cacheKey).notifier)
-        .fetchMatchScore(product: widget.product);
-  }
-
   void _maybeTriggerGeminiFetch() {
     if (!mounted) return;
     final user = ref.read(userProfileProvider).valueOrNull;
@@ -278,12 +241,8 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
 
   @override
   Widget build(BuildContext context) {
-    // Narrow watches with .select so rebuild storms during route push
-    // animation are avoided.
     final languageCode = ref.watch(
-      localeProvider.select(
-        (l) => (l?.languageCode ?? 'en').toLowerCase(),
-      ),
+      localeProvider.select((l) => (l?.languageCode ?? 'en').toLowerCase()),
     );
     final cacheKey = LocalizedProductKey(
       productId: widget.product.id,
@@ -303,24 +262,13 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
     final isPremium = ref.watch(
       subscriptionServiceProvider.select((service) => service.isPremium),
     );
-    final detailMatchCost = ref.watch(
-      subscriptionServiceProvider.select(
-        (service) => service.creditCostForFeature('detail_match'),
-      ),
-    );
 
     final int? localFitScore = quizDone ? _cachedFitScore : null;
 
-    // Watch AI result.
     final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
     final matchResult = matchAsync.valueOrNull;
     final aiLoading = matchAsync.isLoading;
-    // aiStepMessage is intentionally NOT watched here — it is consumed by the
-    // _AiStepText widget below so only that leaf rebuilds on step changes,
-    // not the entire _ScoreDuo tree.
 
-    // Clear _geminiFetchTriggered once the AI fetch completes so that
-    // the local-score fallback can show if AI returned null.
     if (_geminiFetchTriggered && matchAsync is AsyncData) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_geminiFetchTriggered) return;
@@ -328,39 +276,22 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
       });
     }
 
-    // "Waiting for AI" is true if:
-    //   • we pre-armed the flag (fetch not started yet), OR
-    //   • the provider is actively loading.
-    // This prevents the local algorithmic score from flashing before the
-    // loading indicator, which caused the "goes up then goes down" oscillation.
-    final bool waitingForAI =
+    final waitingForAI =
         quizDone &&
         (_geminiFetchTriggered || aiLoading) &&
         matchResult == null;
-
-    // AI score is authoritative; local score is a fallback only when AI
-    // has definitively returned null (quota exhausted / timeout).
-    final int? fitScore =
-      matchResult?.matchScore ?? (waitingForAI ? null : localFitScore);
-    final bool showMatchLoading = waitingForAI;
-    final String? reason = (matchResult?.reason.isNotEmpty ?? false)
+    final fitScore = matchResult?.matchScore ??
+        (waitingForAI ? null : localFitScore);
+    final showMatchLoading = waitingForAI;
+    final reason = (matchResult?.reason.isNotEmpty ?? false)
         ? matchResult!.reason
         : null;
-    final bool showFreeAiRequest =
-      quizDone &&
-      !isPremium &&
-      matchResult == null &&
-      !showMatchLoading &&
-      !isMatchProfileResolving;
-
-    // Latch the button visible once conditions first become true.
-    // Only hide it when the user taps it (_geminiFetchTriggered).
-    if (showFreeAiRequest && _cachedFitScore != null && !_showAiButton) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() => _showAiButton = true);
-      });
-    }
+    final showFreeAiRequest =
+        quizDone &&
+        !isPremium &&
+        matchResult == null &&
+        !showMatchLoading &&
+        !isMatchProfileResolving;
 
     if (quizDone &&
         matchResult == null &&
@@ -384,11 +315,206 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
         ? AppTheme.warning
         : AppTheme.error;
 
+    final Widget matchChild;
+    if (fitScore != null) {
+      matchChild = RepaintBoundary(
+        child: _AnimatedScoreCell(
+          label: context.l10n?.yourMatch ?? 'Your Match',
+          score: fitScore,
+          color: matchColor,
+          icon: Icons.person_outline,
+        ),
+      );
+    } else if (showMatchLoading) {
+      matchChild = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation(AppTheme.primaryBlue),
+                  ),
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 16,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    context.l10n?.yourMatch ?? 'Your Match',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.slate500,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  _AiStepText(productId: widget.product.id),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (isMatchProfileResolving) {
+      matchChild = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                context.l10n?.computingMatch ?? 'Eşleşme hesaplanıyor...',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (showFreeAiRequest && _cachedFitScore == null) {
+      matchChild = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation(AppTheme.primaryBlue),
+                  ),
+                  const Icon(
+                    Icons.calculate_outlined,
+                    size: 16,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                context.l10n?.yourMatch ?? 'Your Match',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      matchChild = GestureDetector(
+        onTap: () {
+          final isLoggedInNow =
+              ref.read(authStateProvider).valueOrNull != null;
+          if (!isLoggedInNow) {
+            context.go(AppRoutes.login);
+            return;
+          }
+          context.push(AppRoutes.quiz);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: 1.0,
+                      strokeWidth: 3,
+                      color: context.surfaceVariantColor,
+                    ),
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      size: 16,
+                      color: context.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Your Match',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.slate500,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n?.takeQuiz ?? 'Take Quiz',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
       children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
           decoration: BoxDecoration(
@@ -405,273 +531,27 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
             ],
           ),
           child: Row(
-              children: [
-                if (techScore > 0) ...[
-                  Expanded(
-                    child: _ScoreCell(
-                      label: context.l10n?.techScore ?? 'Tech Score',
-                      score: techScore,
-                      color: AppTheme.primaryBlue,
-                      icon: Icons.memory_outlined,
-                    ),
-                  ),
-                  // Thin divider drawn as a box — avoids IntrinsicHeight double layout pass.
-                  Container(
-                    width: 1,
-                    height: 52,
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    color: context.dividerColor,
-                  ),
-                ],
+            children: [
+              if (techScore > 0) ...[
                 Expanded(
-                  child: Stack(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: _showAiButton && !_geminiFetchTriggered ? 6 : 0,
-                        ),
-                        child: fitScore != null
-                            ? RepaintBoundary(
-                                child: _AnimatedScoreCell(
-                                  label: context.l10n?.yourMatch ?? 'Your Match',
-                                  score: fitScore,
-                                  color: matchColor,
-                                  icon: Icons.person_outline,
-                                ),
-                              )
-                            : showMatchLoading
-                            ? Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                  horizontal: 16,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 44,
-                                      height: 44,
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                            valueColor: AlwaysStoppedAnimation(
-                                              AppTheme.primaryBlue,
-                                            ),
-                                          ),
-                                          Icon(
-                                            Icons.auto_awesome,
-                                            size: 16,
-                                            color: AppTheme.primaryBlue,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            context.l10n?.yourMatch ??
-                                                'Your Match',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppTheme.slate500,
-                                              letterSpacing: 0.4,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          _AiStepText(productId: widget.product.id),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : isMatchProfileResolving
-                            ? Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                  horizontal: 16,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        context.l10n?.computingMatch ??
-                                            'Eşleşme hesaplanıyor...',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.primaryBlue,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : showFreeAiRequest && _cachedFitScore == null
-                            ? Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                  horizontal: 16,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 44,
-                                      height: 44,
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                            valueColor: AlwaysStoppedAnimation(
-                                              AppTheme.primaryBlue,
-                                            ),
-                                          ),
-                                          Icon(
-                                            Icons.calculate_outlined,
-                                            size: 16,
-                                            color: AppTheme.primaryBlue,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        context.l10n?.yourMatch ?? 'Your Match',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.primaryBlue,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : GestureDetector(
-                                onTap: () {
-                                  final isLoggedInNow =
-                                      ref.read(authStateProvider).valueOrNull != null;
-                                  if (!isLoggedInNow) {
-                                    context.go(AppRoutes.login);
-                                    return;
-                                  }
-                                  context.push(AppRoutes.quiz);
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                    horizontal: 16,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 44,
-                                        height: 44,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            CircularProgressIndicator(
-                                              value: 1.0,
-                                              strokeWidth: 3,
-                                              color: context.surfaceVariantColor,
-                                            ),
-                                            Icon(
-                                              Icons.lock_outline_rounded,
-                                              size: 16,
-                                              color: context.textSecondary,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              context.l10n?.yourMatch ?? 'Your Match',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppTheme.slate500,
-                                                letterSpacing: 0.4,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              context.l10n?.takeQuiz ?? 'Take Quiz',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppTheme.primaryBlue,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                      ),
-                      if (_showAiButton && !_geminiFetchTriggered)
-                        Positioned(
-                          top: 6,
-                          right: 10,
-                          child: GestureDetector(
-                            onTap: _requestManualAiMatch,
-                            child: QorAmountBadge(
-                              amount: detailMatchCost,
-                              color: AppTheme.primaryBlue,
-                              fontSize: 11,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                  child: _ScoreCell(
+                    label: context.l10n?.techScore ?? 'Tech Score',
+                    score: techScore,
+                    color: AppTheme.primaryBlue,
+                    icon: Icons.memory_outlined,
                   ),
                 ),
+                Container(
+                  width: 1,
+                  height: 52,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  color: context.dividerColor,
+                ),
               ],
-            ),
+              Expanded(child: matchChild),
+            ],
+          ),
         ),
-        ],
-        ),
-        // Gemini reason text (tap to expand)
         if (reason != null && fitScore != null)
           GestureDetector(
             onTap: () => setState(() => _reasonExpanded = !_reasonExpanded),
@@ -689,8 +569,9 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
                     child: Text(
                       reason,
                       maxLines: _reasonExpanded ? 100 : 1,
-                      overflow:
-                          _reasonExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                      overflow: _reasonExpanded
+                          ? TextOverflow.visible
+                          : TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
                         fontStyle: FontStyle.italic,

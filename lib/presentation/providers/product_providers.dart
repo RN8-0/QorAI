@@ -88,7 +88,7 @@ const _pcCategorySearchKeywords = <String, String>{
 ///   1. In-memory cache (instant)
 ///   2. Paginated serverAndCache fetch (uses local cache if available, server otherwise)
 ///   3. All aliases tried until one returns data
-final pcBuilderProductsProvider = FutureProvider.family<List<ProductEntity>, String>((
+final pcBuilderProductsProvider = FutureProvider.autoDispose.family<List<ProductEntity>, String>((
   ref,
   categoryId,
 ) async {
@@ -176,7 +176,7 @@ final pcBuilderProductsProvider = FutureProvider.family<List<ProductEntity>, Str
 });
 
 final productsByCategoryProvider =
-    FutureProvider.family<Result<List<ProductEntity>>, String>((
+    FutureProvider.autoDispose.family<Result<List<ProductEntity>>, String>((
       ref,
       category,
     ) async {
@@ -411,7 +411,7 @@ final trendsProvider = FutureProvider<Result<List<TrendModel>>>((ref) {
 
 /// Search results (FutureProvider) - Section 10
 final searchResultsProvider =
-    FutureProvider.family<Result<List<ProductEntity>>, String>((
+    FutureProvider.autoDispose.family<Result<List<ProductEntity>>, String>((
       ref,
       query,
     ) async {
@@ -2775,7 +2775,7 @@ final valuePicsProvider = FutureProvider<List<ProductEntity>>((ref) async {
 });
 
 /// Calculate fit score for a specific product
-final productFitScoreProvider = FutureProvider.family<double, String>((
+final productFitScoreProvider = FutureProvider.autoDispose.family<double, String>((
   ref,
   productId,
 ) async {
@@ -3005,7 +3005,7 @@ final specDirectionServiceProvider = FutureProvider<SpecDirectionService>((
 
 /// Returns variants of a product (same base name, different storage/RAM)
 final productVariantsProvider =
-    FutureProvider.family<List<ProductEntity>, ProductEntity>((
+    FutureProvider.autoDispose.family<List<ProductEntity>, ProductEntity>((
       ref,
       product,
     ) async {
@@ -3076,7 +3076,7 @@ const int _kSimilarProductsLimit = 26;
 /// Finds truly similar products: same category, persona-aware scoring,
 /// variant exclusion, brand diversity. Uses homeFeed cache + Firestore.
 final similarProductsProvider =
-    FutureProvider.family<List<ProductEntity>, ProductEntity>((
+    FutureProvider.autoDispose.family<List<ProductEntity>, ProductEntity>((
       ref,
       product,
     ) async {
@@ -3521,3 +3521,4 @@ Set<String> _getRelatedCategories(String category) {
   }
   return {};
 }
+

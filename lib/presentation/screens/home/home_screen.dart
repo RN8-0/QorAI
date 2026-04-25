@@ -3,6 +3,7 @@
 /// parallax cards and spring animations.
 library;
 
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,6 +40,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with TickerProviderStateMixin {
   late final ScrollController _scrollCtrl;
+  Timer? _scrollDebounce;
   final Stopwatch _initSw = Stopwatch();
   bool _firstDataLogged = false;
   bool _secondarySectionsReady = false;
@@ -63,13 +65,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _handleScroll() {
     if (!_scrollCtrl.hasClients) return;
-
-    _savedScrollOffset = _scrollCtrl.offset;
+    _scrollDebounce?.cancel();
+    _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
+      _savedScrollOffset = _scrollCtrl.offset;
+    });
   }
 
   @override
   void dispose() {
     // Save scroll position for when user returns
+    _scrollDebounce?.cancel();
     if (_scrollCtrl.hasClients) {
       _savedScrollOffset = _scrollCtrl.offset;
     }
@@ -539,32 +544,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           colors: palette,
         ),
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -6,
-            top: -6,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                shape: BoxShape.circle,
-              ),
-            ),
+      child: Center(
+        child: Text(
+          initials,
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white,
+            fontSize: initials.length > 1 ? 13 : 16,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
           ),
-          Center(
-            child: Text(
-              initials,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: initials.length > 1 ? 13 : 16,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

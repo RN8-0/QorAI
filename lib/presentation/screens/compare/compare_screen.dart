@@ -16,44 +16,34 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/domain/entities/comparison_entity.dart';
-import 'package:qor_ai/domain/entities/user_entity.dart';
-import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
-import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:qor_ai/services/youtube_service.dart';
-import 'package:qor_ai/services/gemini_service.dart';
-import 'package:qor_ai/services/profile_algorithm_service.dart';
-import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
-import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
 import 'package:qor_ai/core/category_key_specs.dart' as keySpecs;
 import 'package:qor_ai/presentation/widgets/shared/expandable_text.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:qor_ai/core/pb_client.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
-import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';
 part 'widgets/spec_comparison_widget.dart';
+part 'widgets/compare_shared_widgets.dart';
+part 'widgets/compare_review_widgets.dart';
 part 'widgets/youtube_widgets.dart';
 
 /// 3-layer card shadow used throughout the screen (from AppTheme).
@@ -657,73 +647,60 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             if (!allFilled)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (!ref.watch(subscriptionServiceProvider).isPremium) ...[
-                      QorAmountBadge(
-                        amount: ref.watch(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
-                        unlimited: false,
-                        color: AppTheme.brandBlue,
-                        fontSize: 10,
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                child: AnimatedGradientInputShell(
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    onChanged: _onSearchChanged,
+                    onTapOutside: (_) => _searchFocusNode.unfocus(),
+                    style: GoogleFonts.inter(
+                      color: context.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      hintText:
+                          context.l10n?.searchCompareHint ??
+                          'Search products to compare...',
+                      hintStyle: GoogleFonts.inter(
+                        color: context.textTertiaryColor.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
                       ),
-                      const SizedBox(height: 8),
-                    ],
-                    AnimatedGradientInputShell(
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        onChanged: _onSearchChanged,
-                        onTapOutside: (_) => _searchFocusNode.unfocus(),
-                        style: GoogleFonts.inter(
-                          color: context.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 14, right: 8),
+                        child: Icon(
+                          Icons.search_rounded,
+                          color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                          size: 18,
                         ),
-                        decoration: InputDecoration(
-                          hintText:
-                              context.l10n?.searchCompareHint ??
-                              'Search products to compare...',
-                          hintStyle: GoogleFonts.inter(
-                            color: context.textTertiaryColor.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w400,
-                            fontSize: 13,
-                          ),
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.only(left: 14, right: 8),
-                            child: Icon(
-                              Icons.search_rounded,
-                              color: AppTheme.brandBlue.withValues(alpha: 0.7),
-                              size: 18,
-                            ),
-                          ),
-                          prefixIconConstraints: const BoxConstraints(
-                            minWidth: 0,
-                            minHeight: 0,
-                          ),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? GestureDetector(
-                                  onTap: () {
-                                    _searchController.clear();
-                                    _onSearchChanged('');
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.only(right: 8),
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.brandBlue.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.close_rounded,
-                                      color: AppTheme.brandBlue,
-                                      size: 16,
-                                    ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 0,
+                        minHeight: 0,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.brandBlue.withValues(
+                                    alpha: 0.1,
                                   ),
-                                )
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  color: AppTheme.brandBlue,
+                                  size: 16,
+                                ),
+                              ),
+                            )
                               : null,
                           border: InputBorder.none,
                           filled: false,
@@ -733,8 +710,6 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                           ),
                         ),
                       ),
-                    ),
-                  ],
                 ),
               ),
 

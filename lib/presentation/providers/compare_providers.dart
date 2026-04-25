@@ -1944,7 +1944,7 @@ final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((
 });
 
 /// Reviews for a product (single load to keep detail startup quiet and stable)
-final productReviewsProvider = FutureProvider.family<List<ReviewModel>, String>(
+final productReviewsProvider = FutureProvider.autoDispose.family<List<ReviewModel>, String>(
   (ref, productId) {
     return ref.read(pbDataSourceProvider).getProductReviews(productId);
   },
@@ -1996,3 +1996,4 @@ bool isFavorite(WidgetRef ref, String productId) {
   if (user == null) return false;
   return user.favorites.contains(productId);
 }
+

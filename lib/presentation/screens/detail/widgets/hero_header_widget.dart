@@ -4,15 +4,62 @@ part of '../product_detail_screen.dart';
 // HERO HEADER
 // ═══════════════════════════════════════════════════════════
 
-class _HeroHeader extends StatefulWidget {
+LocalizedProductKey _detailLocalizedProductKey(
+  WidgetRef ref,
+  BuildContext context,
+  ProductEntity product,
+) {
+  final languageCode =
+      (ref.read(localeProvider)?.languageCode ??
+              Localizations.localeOf(context).languageCode)
+          .toLowerCase();
+  return LocalizedProductKey(
+    productId: product.id,
+    languageCode: languageCode,
+  );
+}
+
+void _requestDetailAiMatch(
+  BuildContext context,
+  WidgetRef ref,
+  ProductEntity product,
+) {
+  final isLoggedInNow = ref.read(authStateProvider).valueOrNull != null;
+  if (!isLoggedInNow) {
+    context.go(AppRoutes.login);
+    return;
+  }
+
+  final user = ref.read(userProfileProvider).valueOrNull;
+  if (user == null || !user.quizCompleted) {
+    context.push(AppRoutes.quiz);
+    return;
+  }
+
+  final subscription = ref.read(subscriptionServiceProvider);
+  if (!subscription.canUseDetailMatchAi) {
+    showLimitReachedDialog(context, featureName: 'detail-match');
+    return;
+  }
+
+  final cacheKey = _detailLocalizedProductKey(ref, context, product);
+  final existing = ref.read(geminiMatchScoreProvider(cacheKey));
+  if (existing.isLoading || existing.valueOrNull != null) return;
+
+  ref
+      .read(geminiMatchScoreProvider(cacheKey).notifier)
+      .fetchMatchScore(product: product);
+}
+
+class _HeroHeader extends ConsumerStatefulWidget {
   final ProductEntity product;
   const _HeroHeader({required this.product});
 
   @override
-  State<_HeroHeader> createState() => _HeroHeaderState();
+  ConsumerState<_HeroHeader> createState() => _HeroHeaderState();
 }
 
-class _HeroHeaderState extends State<_HeroHeader> {
+class _HeroHeaderState extends ConsumerState<_HeroHeader> {
   int _selectedIndex = 0;
   bool _thumbStripReady = false;
 
@@ -48,13 +95,30 @@ class _HeroHeaderState extends State<_HeroHeader> {
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     final thumbCacheWidth = (56 * dpr).round().clamp(84, 180);
     final heroCacheWidth = (220 * dpr).round().clamp(280, 720);
+    final cacheKey = _detailLocalizedProductKey(ref, context, widget.product);
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final isPremium = ref.watch(
+      subscriptionServiceProvider.select((service) => service.isPremium),
+    );
+    final detailMatchCost = ref.watch(
+      subscriptionServiceProvider.select(
+        (service) => service.creditCostForFeature('detail_match'),
+      ),
+    );
+    final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
+    final showHeroAiAction =
+        (userProfile?.quizCompleted ?? false) &&
+        !isPremium &&
+        !matchAsync.isLoading &&
+        matchAsync.valueOrNull == null;
+    final heroBottomActionSpace = showHeroAiAction ? 42.0 : 0.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final imageBg = isDark ? Colors.white : Colors.white;
 
     return SliverToBoxAdapter(
       child: Container(
-        height: 280,
+        height: 280 + heroBottomActionSpace,
         decoration: BoxDecoration(
           color: imageBg,
           gradient: isDark ? null : LinearGradient(
@@ -75,7 +139,12 @@ class _HeroHeaderState extends State<_HeroHeader> {
                   // LEFT — vertical thumbnail strip
                   if (allImages.length > 1)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        12,
+                        8,
+                        12 + heroBottomActionSpace,
+                      ),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 180),
                         child: !_thumbStripReady
@@ -169,7 +238,12 @@ class _HeroHeaderState extends State<_HeroHeader> {
                         ));
                       } : null,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 16, 16, 16),
+                        padding: EdgeInsets.fromLTRB(
+                          4,
+                          16,
+                          16,
+                          16 + heroBottomActionSpace,
+                        ),
                         child: allImages.isEmpty
                             ? Center(child: _CategoryEmoji(cat: widget.product.categoryId))
                             : Hero(
@@ -197,7 +271,76 @@ class _HeroHeaderState extends State<_HeroHeader> {
                 ],
               ),
             ),
+            if (showHeroAiAction)
+              Positioned(
+                right: 18,
+                bottom: 14,
+                child: _HeroAiMatchTrigger(
+                  amount: detailMatchCost,
+                  onTap: () => _requestDetailAiMatch(context, ref, widget.product),
+                ),
+              ),
 
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroAiMatchTrigger extends StatelessWidget {
+  final num amount;
+  final VoidCallback onTap;
+
+  const _HeroAiMatchTrigger({required this.amount, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 7, 7, 7),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: AppTheme.primaryBlue.withValues(alpha: 0.28),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.auto_awesome_rounded,
+              size: 14,
+              color: AppTheme.brandCyan,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'AI',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IgnorePointer(
+              child: QorAmountBadge(
+                amount: amount,
+                color: AppTheme.brandBlue,
+                fontSize: 10,
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              ),
+            ),
           ],
         ),
       ),

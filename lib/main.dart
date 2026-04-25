@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:qor_ai/app.dart';
 import 'package:qor_ai/services/cache_service.dart';
@@ -34,7 +35,23 @@ Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
   ]);
 }
 
-void _scheduleDeferredStartupTasks() {
+/// Pre-warm the most-used Google Fonts before the first frame is painted.
+/// This triggers font file lookup from the device cache (or network on first
+/// install), giving Flutter time to load them before widgets need them.
+void _preloadGoogleFonts() {
+  const weights = [
+    FontWeight.w400,
+    FontWeight.w600,
+    FontWeight.w700,
+    FontWeight.w800,
+  ];
+  for (final w in weights) {
+    GoogleFonts.plusJakartaSans(fontWeight: w);
+    GoogleFonts.inter(fontWeight: w);
+  }
+}
+
+
   Future.delayed(_kStartupHeavyWorkDelay, () {
     unawaited(_initializeSpecTranslations());
   });
@@ -130,6 +147,9 @@ void main() {
       PbDataSource(),
       deferredLoad: const Duration(seconds: 12),
     );
+
+    // Pre-warm Google Fonts before first frame so text renders without flash.
+    _preloadGoogleFonts();
 
     debugPrint('=== QOR AI: Calling runApp ===');
 

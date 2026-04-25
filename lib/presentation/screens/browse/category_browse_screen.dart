@@ -94,6 +94,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool _remoteSearching = false;
   String? _error;
   Timer? _searchDebounce;
+  Timer? _scrollDebounce;
   int _totalProductCount = 0;
 
   // Page counter for PocketBase pagination
@@ -154,6 +155,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _scrollDebounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -212,12 +214,16 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 600 &&
-        !_fetchingAll &&
-        !_allLoaded) {
-      _fetchNextPage();
-    }
+    if (!(_scrollController.hasClients) ||
+        _fetchingAll ||
+        _allLoaded) return;
+    _scrollDebounce?.cancel();
+    _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 600) {
+        _fetchNextPage();
+      }
+    });
   }
 
   List<ProductEntity> _sanitizeCategoryProducts(
