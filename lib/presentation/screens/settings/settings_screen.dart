@@ -1378,9 +1378,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       labelText: context.l10n?.fullName ?? 'Full Name',
                       border: const OutlineInputBorder(),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? (context.l10n?.required ?? 'Required')
-                        : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -1390,23 +1388,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       labelText: 'E-posta',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? (context.l10n?.required ?? 'Required')
-                        : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: msgCtrl,
                     maxLines: 4,
                     maxLength: 2000,
-                    decoration: InputDecoration(
-                      labelText: context.l10n?.message ?? 'Message',
-                      border: const OutlineInputBorder(),
+                    decoration: const InputDecoration(
+                      labelText: 'Mesaj',
+                      border: OutlineInputBorder(),
                       alignLabelWithHint: true,
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? (context.l10n?.required ?? 'Required')
-                        : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -1419,7 +1413,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               await ref
                                   .read(pbDataSourceProvider)
                                   .sendSupportMessage(
-                                    userId: user?.id,
+                                    userId: user?.uid,
                                     displayName: nameCtrl.text.trim(),
                                     email: emailCtrl.text.trim(),
                                     message: msgCtrl.text.trim(),
@@ -1427,11 +1421,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               if (!ctx.mounted) return;
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    context.l10n?.messageSent ??
-                                        'Message sent! We\'ll get back to you soon.',
-                                  ),
+                                const SnackBar(
+                                  content: Text('Mesajınız gönderildi! En kısa sürede yanıt vereceğiz.'),
                                 ),
                               );
                             } catch (e) {
@@ -1451,7 +1442,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(context.l10n?.send ?? 'Send'),
+                        : const Text('Gönder'),
                   ),
                 ],
               ),
