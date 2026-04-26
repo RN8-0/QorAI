@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "فشل التحقق",
   "invalidVerificationLink": "رابط التحقق غير صالح.",
   "verificationExpired": "فشل التحقق. قد يكون الرابط قد انتهت صلاحيته.",
-  "deletedAccountName": "حساب محذوف"
+  "deletedAccountName": "حساب محذوف",
+  "deleteReview": "حذف التعليق",
+  "deleteReviewConfirm": "هل أنت متأكد من حذف هذا التعليق؟ سيتم حذف جميع الردود أيضًا.",
+  "topComments": "أفضل التعليقات",
+  "newestFirst": "الأحدث أولاً",
+  "replyHint": "اكتب ردك...",
+  "replyAction": "رد",
+  "hideReplies": "إخفاء الردود",
+  "viewRepliesCount": "{count} ردود",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

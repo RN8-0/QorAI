@@ -3668,4 +3668,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'حساب محذوف';
+
+  @override
+  String get deleteReview => 'حذف التعليق';
+
+  @override
+  String get deleteReviewConfirm => 'هل أنت متأكد من حذف هذا التعليق؟ سيتم حذف جميع الردود أيضًا.';
+
+  @override
+  String get topComments => 'أفضل التعليقات';
+
+  @override
+  String get newestFirst => 'الأحدث أولاً';
+
+  @override
+  String get replyHint => 'اكتب ردك...';
+
+  @override
+  String get replyAction => 'رد';
+
+  @override
+  String get hideReplies => 'إخفاء الردود';
+
+  @override
+  String viewRepliesCount(int count) => '$count ردود';
 }

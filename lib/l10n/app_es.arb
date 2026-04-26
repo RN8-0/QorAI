@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "Verificación fallida",
   "invalidVerificationLink": "Enlace de verificación no válido.",
   "verificationExpired": "Verificación fallida. El enlace puede haber expirado.",
-  "deletedAccountName": "Cuenta Eliminada"
+  "deletedAccountName": "Cuenta Eliminada",
+  "deleteReview": "Eliminar reseña",
+  "deleteReviewConfirm": "¿Seguro que quieres eliminar esta reseña? También se eliminarán todas las respuestas.",
+  "topComments": "Comentarios principales",
+  "newestFirst": "Más reciente",
+  "replyHint": "Escribe tu respuesta...",
+  "replyAction": "Responder",
+  "hideReplies": "Ocultar respuestas",
+  "viewRepliesCount": "{count} respuestas",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

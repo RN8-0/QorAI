@@ -666,6 +666,8 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
 // USER REVIEWS CARD
 // ═══════════════════════════════════════════════════════════
 
+enum _ReviewSort { top, newest }
+
 class _UserReviewsCard extends ConsumerStatefulWidget {
   final ProductEntity product;
   final bool isDark;
@@ -682,6 +684,8 @@ class _UserReviewsCard extends ConsumerStatefulWidget {
 }
 
 class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
+  _ReviewSort _sort = _ReviewSort.top;
+
   @override
   Widget build(BuildContext context) {
     final reviewsAsync = ref.watch(productReviewsProvider(widget.product.id));
@@ -779,32 +783,94 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
   Widget _buildReviewsContent(List<ReviewModel> reviews, dynamic currentUser) {
     final currentUserId = currentUser as String?;
 
+    // YouTube-style sort: Top = likes - dislikes (score), Newest = createdAt desc
+    final sorted = List<ReviewModel>.from(reviews);
+    if (_sort == _ReviewSort.top) {
+      sorted.sort((a, b) {
+        final scoreA = a.likedBy.length - a.dislikedBy.length;
+        final scoreB = b.likedBy.length - b.dislikedBy.length;
+        return scoreB.compareTo(scoreA);
+      });
+    } else {
+      sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Simple count header
+        // Header row: count + sort selector
         Padding(
           padding: const EdgeInsets.only(bottom: 14),
-          child: Text(
-            '${reviews.length} ${context.l10n?.reviews ?? 'yorum'}',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: context.textSecondary,
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${reviews.length} ${context.l10n?.reviews ?? 'yorum'}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ),
+              // Sort toggle
+              GestureDetector(
+                onTap: () => setState(() {
+                  _sort = _sort == _ReviewSort.top
+                      ? _ReviewSort.newest
+                      : _ReviewSort.top;
+                }),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.brandBlue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _sort == _ReviewSort.top
+                            ? Icons.thumb_up_alt_outlined
+                            : Icons.access_time_rounded,
+                        size: 12,
+                        color: AppTheme.brandBlue,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _sort == _ReviewSort.top
+                            ? (context.l10n?.topComments ?? 'Top Comments')
+                            : (context.l10n?.newestFirst ?? 'Newest First'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.brandBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
 
         // Review cards
-        ...reviews
+        ...sorted
             .take(5)
             .map((review) => _buildReviewItem(review, currentUserId)),
-        if (reviews.length > 5)
+        if (sorted.length > 5)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Center(
               child: Text(
-                '+ ${reviews.length - 5} more reviews',
+                '+ ${sorted.length - 5} more reviews',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppTheme.slate500,
@@ -834,6 +900,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
 
     return _ReviewCard(
       reviewId: review.id,
+      productId: widget.product.id,
       firestoreCollection: AppConstants.reviewsCollection,
       userId: review.userId,
       displayName: _resolveReviewDisplayName(review, currentUserId),
@@ -854,25 +921,26 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   title: Text(
-                    'Yorumu Sil',
+                    context.l10n?.deleteReview ?? 'Delete Review',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   content: Text(
-                    'Bu yorumu silmek istiyor musun?',
+                    context.l10n?.deleteReviewConfirm ??
+                        'Are you sure you want to delete this review? All replies will also be removed.',
                     style: GoogleFonts.plusJakartaSans(fontSize: 14),
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
-                      child: Text(context.l10n?.cancel ?? 'İptal'),
+                      child: Text(context.l10n?.cancel ?? 'Cancel'),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, true),
                       child: Text(
-                        'Sil',
+                        context.l10n?.delete ?? 'Delete',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: AppTheme.error,
@@ -886,6 +954,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
                 await ref
                     .read(productRepositoryProvider)
                     .deleteReview(review.id);
+                ref.invalidate(productReviewsProvider(widget.product.id));
               }
             }
           : null,
@@ -1218,21 +1287,21 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
   }
 }
 
-class _LikeDislikeButton extends ConsumerWidget {
-  final String reviewId;
+class _LikeDislikeButton extends StatelessWidget {
   final bool isLike;
   final int count;
   final bool isActive;
+  final VoidCallback? onTap;
 
   const _LikeDislikeButton({
-    required this.reviewId,
     required this.isLike,
     required this.count,
     required this.isActive,
+    this.onTap,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final activeColor = isLike ? AppTheme.success : AppTheme.error;
     final icon = isLike
         ? Icons.thumb_up_alt_rounded
@@ -1242,17 +1311,7 @@ class _LikeDislikeButton extends ConsumerWidget {
         : Icons.thumb_down_alt_outlined;
 
     return GestureDetector(
-      onTap: () async {
-        final uid = ref.read(authStateProvider).valueOrNull;
-        if (uid == null) return;
-        HapticFeedback.lightImpact();
-        final repo = ref.read(productRepositoryProvider);
-        if (isLike) {
-          await repo.toggleReviewLike(reviewId, uid);
-        } else {
-          await repo.toggleReviewDislike(reviewId, uid);
-        }
-      },
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1311,25 +1370,26 @@ class _DeleteReviewButton extends ConsumerWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Yorumu Sil',
+              context.l10n?.deleteReview ?? 'Delete Review',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
             ),
             content: Text(
-              'Bu yorumu silmek istiyor musun?',
+              context.l10n?.deleteReviewConfirm ??
+                  'Are you sure you want to delete this review? All replies will also be removed.',
               style: GoogleFonts.plusJakartaSans(fontSize: 14),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text(context.l10n?.cancel ?? 'İptal'),
+                child: Text(context.l10n?.cancel ?? 'Cancel'),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 child: Text(
-                  'Sil',
+                  context.l10n?.delete ?? 'Delete',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.error,
@@ -1341,6 +1401,7 @@ class _DeleteReviewButton extends ConsumerWidget {
         );
         if (confirmed == true) {
           await ref.read(productRepositoryProvider).deleteReview(reviewId);
+          ref.invalidate(productReviewsProvider(productId));
         }
       },
       child: Icon(
@@ -1356,6 +1417,7 @@ class _DeleteReviewButton extends ConsumerWidget {
 
 class _ReviewCard extends ConsumerStatefulWidget {
   final String reviewId;
+  final String productId;
   final String firestoreCollection;
   final String userId;
   final String displayName;
@@ -1370,6 +1432,7 @@ class _ReviewCard extends ConsumerStatefulWidget {
 
   const _ReviewCard({
     required this.reviewId,
+    required this.productId,
     required this.firestoreCollection,
     required this.userId,
     required this.displayName,
@@ -1393,6 +1456,63 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
   bool _textExpanded = false;
   final TextEditingController _replyCtrl = TextEditingController();
   bool _submitting = false;
+
+  // Optimistic local state for like/dislike
+  late List<String> _likedBy;
+  late List<String> _dislikedBy;
+
+  @override
+  void initState() {
+    super.initState();
+    _likedBy = List<String>.from(widget.likedBy);
+    _dislikedBy = List<String>.from(widget.dislikedBy);
+  }
+
+  @override
+  void didUpdateWidget(_ReviewCard old) {
+    super.didUpdateWidget(old);
+    // Sync from provider when it reloads (after server round-trip)
+    if (old.likedBy != widget.likedBy) {
+      _likedBy = List<String>.from(widget.likedBy);
+    }
+    if (old.dislikedBy != widget.dislikedBy) {
+      _dislikedBy = List<String>.from(widget.dislikedBy);
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    final uid = widget.currentUserId;
+    if (uid == null) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      if (_likedBy.contains(uid)) {
+        _likedBy.remove(uid);
+      } else {
+        _likedBy.add(uid);
+        _dislikedBy.remove(uid);
+      }
+    });
+    final repo = ref.read(productRepositoryProvider);
+    await repo.toggleReviewLike(widget.reviewId, uid);
+    ref.invalidate(productReviewsProvider(widget.productId));
+  }
+
+  Future<void> _toggleDislike() async {
+    final uid = widget.currentUserId;
+    if (uid == null) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      if (_dislikedBy.contains(uid)) {
+        _dislikedBy.remove(uid);
+      } else {
+        _dislikedBy.add(uid);
+        _likedBy.remove(uid);
+      }
+    });
+    final repo = ref.read(productRepositoryProvider);
+    await repo.toggleReviewDislike(widget.reviewId, uid);
+    ref.invalidate(productReviewsProvider(widget.productId));
+  }
 
   @override
   void dispose() {
@@ -1545,7 +1665,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              'Devamını gör',
+                              context.l10n?.readMore ?? 'Read more',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 color: AppTheme.brandBlue,
@@ -1568,21 +1688,21 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
             child: Row(
               children: [
                 _LikeDislikeButton(
-                  reviewId: widget.reviewId,
                   isLike: true,
-                  count: widget.likedBy.length,
+                  count: _likedBy.length,
                   isActive:
                       widget.currentUserId != null &&
-                      widget.likedBy.contains(widget.currentUserId),
+                      _likedBy.contains(widget.currentUserId),
+                  onTap: widget.currentUserId != null ? _toggleLike : null,
                 ),
                 const SizedBox(width: 8),
                 _LikeDislikeButton(
-                  reviewId: widget.reviewId,
                   isLike: false,
-                  count: widget.dislikedBy.length,
+                  count: _dislikedBy.length,
                   isActive:
                       widget.currentUserId != null &&
-                      widget.dislikedBy.contains(widget.currentUserId),
+                      _dislikedBy.contains(widget.currentUserId),
+                  onTap: widget.currentUserId != null ? _toggleDislike : null,
                 ),
                 const Spacer(),
                 if (widget.currentUserId != null)
@@ -1620,7 +1740,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            'Yanıtla',
+                            context.l10n?.replyAction ?? 'Reply',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -1768,8 +1888,8 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                       ),
                       Text(
                         widget.isExpanded
-                            ? 'Yanıtları gizle'
-                            : '$replyCount yanıt',
+                            ? (context.l10n?.hideReplies ?? 'Hide replies')
+                            : (context.l10n?.viewRepliesCount(replyCount) ?? '$replyCount replies'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -1936,7 +2056,7 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                           color: context.textPrimary,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Cevabınızı yazın...',
+                          hintText: context.l10n?.replyHint ?? 'Write your reply...',
                           hintStyle: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             color: context.textTertiaryColor,

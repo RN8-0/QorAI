@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "確認失敗",
   "invalidVerificationLink": "無効な確認リンクです。",
   "verificationExpired": "確認に失敗しました。リンクの有効期限が切れている可能性があります。",
-  "deletedAccountName": "削除されたアカウント"
+  "deletedAccountName": "削除されたアカウント",
+  "deleteReview": "レビューを削除",
+  "deleteReviewConfirm": "このレビューを削除してもよろしいですか？すべての返信も削除されます。",
+  "topComments": "トップコメント",
+  "newestFirst": "新しい順",
+  "replyHint": "返信を入力...",
+  "replyAction": "返信",
+  "hideReplies": "返信を非表示",
+  "viewRepliesCount": "{count}件の返信",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

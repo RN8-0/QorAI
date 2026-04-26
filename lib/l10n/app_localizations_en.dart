@@ -3690,4 +3690,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'Deleted Account';
+
+  @override
+  String get deleteReview => 'Delete Review';
+
+  @override
+  String get deleteReviewConfirm => 'Are you sure you want to delete this review? All replies will also be removed.';
+
+  @override
+  String get topComments => 'Top Comments';
+
+  @override
+  String get newestFirst => 'Newest First';
+
+  @override
+  String get replyHint => 'Write your reply...';
+
+  @override
+  String get replyAction => 'Reply';
+
+  @override
+  String get hideReplies => 'Hide replies';
+
+  @override
+  String viewRepliesCount(int count) => '$count replies';
 }

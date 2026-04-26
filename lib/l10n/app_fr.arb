@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "Vérification échouée",
   "invalidVerificationLink": "Lien de vérification invalide.",
   "verificationExpired": "Vérification échouée. Le lien a peut-être expiré.",
-  "deletedAccountName": "Compte Supprime"
+  "deletedAccountName": "Compte Supprime",
+  "deleteReview": "Supprimer l'avis",
+  "deleteReviewConfirm": "Êtes-vous sûr de vouloir supprimer cet avis ? Toutes les réponses seront également supprimées.",
+  "topComments": "Meilleurs commentaires",
+  "newestFirst": "Plus récent",
+  "replyHint": "Écrivez votre réponse...",
+  "replyAction": "Répondre",
+  "hideReplies": "Masquer les réponses",
+  "viewRepliesCount": "{count} réponses",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "Verifiering misslyckades",
   "invalidVerificationLink": "Ogiltig verifieringslänk.",
   "verificationExpired": "Verifiering misslyckades. Länken kan ha gått ut.",
-  "deletedAccountName": "Borttaget Konto"
+  "deletedAccountName": "Borttaget Konto",
+  "deleteReview": "Ta bort recension",
+  "deleteReviewConfirm": "Är du säker på att du vill ta bort den här recensionen? Alla svar tas också bort.",
+  "topComments": "Bästa kommentarer",
+  "newestFirst": "Nyaste",
+  "replyHint": "Skriv ditt svar...",
+  "replyAction": "Svara",
+  "hideReplies": "Dölj svar",
+  "viewRepliesCount": "{count} svar",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

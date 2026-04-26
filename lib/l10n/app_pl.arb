@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "Weryfikacja nie powiodła się",
   "invalidVerificationLink": "Nieprawidłowy link weryfikacyjny.",
   "verificationExpired": "Weryfikacja nie powiodła się. Link mógł wygasnąć.",
-  "deletedAccountName": "Usunięte Konto"
+  "deletedAccountName": "Usunięte Konto",
+  "deleteReview": "Usuń recenzję",
+  "deleteReviewConfirm": "Czy na pewno chcesz usunąć tę recenzję? Wszystkie odpowiedzi zostaną również usunięte.",
+  "topComments": "Najlepsze komentarze",
+  "newestFirst": "Najnowsze",
+  "replyHint": "Napisz odpowiedź...",
+  "replyAction": "Odpowiedz",
+  "hideReplies": "Ukryj odpowiedzi",
+  "viewRepliesCount": "{count} odpowiedzi",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

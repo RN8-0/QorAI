@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "Verificação falhou",
   "invalidVerificationLink": "Link de verificação inválido.",
   "verificationExpired": "Verificação falhou. O link pode ter expirado.",
-  "deletedAccountName": "Conta Excluida"
+  "deletedAccountName": "Conta Excluida",
+  "deleteReview": "Excluir avaliação",
+  "deleteReviewConfirm": "Tem certeza de que deseja excluir esta avaliação? Todas as respostas também serão removidas.",
+  "topComments": "Principais comentários",
+  "newestFirst": "Mais recente",
+  "replyHint": "Escreva sua resposta...",
+  "replyAction": "Responder",
+  "hideReplies": "Ocultar respostas",
+  "viewRepliesCount": "{count} respostas",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

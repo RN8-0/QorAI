@@ -3716,4 +3716,28 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'Compte Supprime';
+
+  @override
+  String get deleteReview => "Supprimer l'avis";
+
+  @override
+  String get deleteReviewConfirm => 'Êtes-vous sûr de vouloir supprimer cet avis ? Toutes les réponses seront également supprimées.';
+
+  @override
+  String get topComments => 'Meilleurs commentaires';
+
+  @override
+  String get newestFirst => 'Plus récent';
+
+  @override
+  String get replyHint => 'Écrivez votre réponse...';
+
+  @override
+  String get replyAction => 'Répondre';
+
+  @override
+  String get hideReplies => 'Masquer les réponses';
+
+  @override
+  String viewRepliesCount(int count) => '$count réponses';
 }

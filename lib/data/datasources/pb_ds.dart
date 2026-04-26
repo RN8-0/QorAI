@@ -1092,6 +1092,21 @@ class PbDataSource {
   }
 
   Future<void> deleteReview(String reviewId) async {
+    // Cascade delete all replies for this review first
+    try {
+      final replies = await _pb
+          .collection('review_replies')
+          .getList(
+            page: 1,
+            perPage: 200,
+            filter: 'reviewId = "$reviewId"',
+          );
+      for (final reply in replies.items) {
+        await _pb.collection('review_replies').delete(reply.id);
+      }
+    } catch (_) {
+      // Replies may not exist — proceed with review deletion
+    }
     await _pb.collection(AppConstants.reviewsCollection).delete(reviewId);
   }
 

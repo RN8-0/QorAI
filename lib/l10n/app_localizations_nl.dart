@@ -3699,4 +3699,28 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'Verwijderd Account';
+
+  @override
+  String get deleteReview => 'Beoordeling verwijderen';
+
+  @override
+  String get deleteReviewConfirm => 'Weet je zeker dat je deze beoordeling wilt verwijderen? Alle antwoorden worden ook verwijderd.';
+
+  @override
+  String get topComments => 'Beste reacties';
+
+  @override
+  String get newestFirst => 'Nieuwste';
+
+  @override
+  String get replyHint => 'Schrijf je antwoord...';
+
+  @override
+  String get replyAction => 'Beantwoorden';
+
+  @override
+  String get hideReplies => 'Antwoorden verbergen';
+
+  @override
+  String viewRepliesCount(int count) => '$count antwoorden';
 }

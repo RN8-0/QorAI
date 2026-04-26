@@ -3713,4 +3713,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'Cuenta Eliminada';
+
+  @override
+  String get deleteReview => 'Eliminar reseña';
+
+  @override
+  String get deleteReviewConfirm => '¿Seguro que quieres eliminar esta reseña? También se eliminarán todas las respuestas.';
+
+  @override
+  String get topComments => 'Comentarios principales';
+
+  @override
+  String get newestFirst => 'Más reciente';
+
+  @override
+  String get replyHint => 'Escribe tu respuesta...';
+
+  @override
+  String get replyAction => 'Responder';
+
+  @override
+  String get hideReplies => 'Ocultar respuestas';
+
+  @override
+  String viewRepliesCount(int count) => '$count respuestas';
 }

@@ -1421,5 +1421,20 @@
   "verificationFailedTitle": "Doğrulama Başarısız",
   "invalidVerificationLink": "Geçersiz doğrulama bağlantısı.",
   "verificationExpired": "Doğrulama başarısız. Bağlantı süresi dolmuş olabilir.",
-  "deletedAccountName": "Silinen Hesap"
+  "deletedAccountName": "Silinen Hesap",
+  "deleteReview": "Yorumu Sil",
+  "deleteReviewConfirm": "Bu yorumu silmek istiyor musun? Tüm yanıtlar da silinecek.",
+  "topComments": "En İyi Yorumlar",
+  "newestFirst": "En Yeni",
+  "replyHint": "Cevabınızı yazın...",
+  "replyAction": "Yanıtla",
+  "hideReplies": "Yanıtları gizle",
+  "viewRepliesCount": "{count} yanıt",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

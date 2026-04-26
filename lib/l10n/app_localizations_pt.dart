@@ -3697,4 +3697,28 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'Conta Excluida';
+
+  @override
+  String get deleteReview => 'Excluir avaliação';
+
+  @override
+  String get deleteReviewConfirm => 'Tem certeza de que deseja excluir esta avaliação? Todas as respostas também serão removidas.';
+
+  @override
+  String get topComments => 'Principais comentários';
+
+  @override
+  String get newestFirst => 'Mais recente';
+
+  @override
+  String get replyHint => 'Escreva sua resposta...';
+
+  @override
+  String get replyAction => 'Responder';
+
+  @override
+  String get hideReplies => 'Ocultar respostas';
+
+  @override
+  String viewRepliesCount(int count) => '$count respostas';
 }

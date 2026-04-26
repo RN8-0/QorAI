@@ -7155,6 +7155,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deleted Account'**
   String get deletedAccountName;
+
+  /// No description provided for @deleteReview.
+  String get deleteReview;
+
+  /// No description provided for @deleteReviewConfirm.
+  String get deleteReviewConfirm;
+
+  /// No description provided for @topComments.
+  String get topComments;
+
+  /// No description provided for @newestFirst.
+  String get newestFirst;
+
+  /// No description provided for @replyHint.
+  String get replyHint;
+
+  /// No description provided for @replyAction.
+  String get replyAction;
+
+  /// No description provided for @hideReplies.
+  String get hideReplies;
+
+  /// No description provided for @viewRepliesCount.
+  String viewRepliesCount(int count);
 }
 
 class _AppLocalizationsDelegate

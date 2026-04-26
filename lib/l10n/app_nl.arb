@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "Verificatie mislukt",
   "invalidVerificationLink": "Ongeldige verificatielink.",
   "verificationExpired": "Verificatie mislukt. De link is mogelijk verlopen.",
-  "deletedAccountName": "Verwijderd Account"
+  "deletedAccountName": "Verwijderd Account",
+  "deleteReview": "Beoordeling verwijderen",
+  "deleteReviewConfirm": "Weet je zeker dat je deze beoordeling wilt verwijderen? Alle antwoorden worden ook verwijderd.",
+  "topComments": "Beste reacties",
+  "newestFirst": "Nieuwste",
+  "replyHint": "Schrijf je antwoord...",
+  "replyAction": "Beantwoorden",
+  "hideReplies": "Antwoorden verbergen",
+  "viewRepliesCount": "{count} antwoorden",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

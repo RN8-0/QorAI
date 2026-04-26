@@ -3632,4 +3632,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get deletedAccountName => '削除されたアカウント';
+
+  @override
+  String get deleteReview => 'レビューを削除';
+
+  @override
+  String get deleteReviewConfirm => 'このレビューを削除してもよろしいですか？すべての返信も削除されます。';
+
+  @override
+  String get topComments => 'トップコメント';
+
+  @override
+  String get newestFirst => '新しい順';
+
+  @override
+  String get replyHint => '返信を入力...';
+
+  @override
+  String get replyAction => '返信';
+
+  @override
+  String get hideReplies => '返信を非表示';
+
+  @override
+  String viewRepliesCount(int count) => '$count件の返信';
 }

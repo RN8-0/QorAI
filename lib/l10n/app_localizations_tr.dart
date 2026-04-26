@@ -3705,4 +3705,28 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'Silinen Hesap';
+
+  @override
+  String get deleteReview => 'Yorumu Sil';
+
+  @override
+  String get deleteReviewConfirm => 'Bu yorumu silmek istiyor musun? Tüm yanıtlar da silinecek.';
+
+  @override
+  String get topComments => 'En İyi Yorumlar';
+
+  @override
+  String get newestFirst => 'En Yeni';
+
+  @override
+  String get replyHint => 'Cevabınızı yazın...';
+
+  @override
+  String get replyAction => 'Yanıtla';
+
+  @override
+  String get hideReplies => 'Yanıtları gizle';
+
+  @override
+  String viewRepliesCount(int count) => '$count yanıt';
 }

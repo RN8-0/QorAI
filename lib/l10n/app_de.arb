@@ -1342,5 +1342,20 @@
   "verificationFailedTitle": "Verifizierung fehlgeschlagen",
   "invalidVerificationLink": "Ungültiger Bestätigungslink.",
   "verificationExpired": "Verifizierung fehlgeschlagen. Der Link ist möglicherweise abgelaufen.",
-  "deletedAccountName": "Geloschtes Konto"
+  "deletedAccountName": "Geloschtes Konto",
+  "deleteReview": "Bewertung löschen",
+  "deleteReviewConfirm": "Möchtest du diese Bewertung wirklich löschen? Alle Antworten werden ebenfalls entfernt.",
+  "topComments": "Top-Kommentare",
+  "newestFirst": "Neueste zuerst",
+  "replyHint": "Schreibe deine Antwort...",
+  "replyAction": "Antworten",
+  "hideReplies": "Antworten ausblenden",
+  "viewRepliesCount": "{count} Antworten",
+  "@viewRepliesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -3685,4 +3685,28 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get deletedAccountName => 'Borttaget Konto';
+
+  @override
+  String get deleteReview => 'Ta bort recension';
+
+  @override
+  String get deleteReviewConfirm => 'Är du säker på att du vill ta bort den här recensionen? Alla svar tas också bort.';
+
+  @override
+  String get topComments => 'Bästa kommentarer';
+
+  @override
+  String get newestFirst => 'Nyaste';
+
+  @override
+  String get replyHint => 'Skriv ditt svar...';
+
+  @override
+  String get replyAction => 'Svara';
+
+  @override
+  String get hideReplies => 'Dölj svar';
+
+  @override
+  String viewRepliesCount(int count) => '$count svar';
 }
