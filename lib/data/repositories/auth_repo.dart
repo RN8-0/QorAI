@@ -150,12 +150,12 @@ class AuthRepository {
   /// user in `users`. No Firebase, no client secret on device.
   Future<Result<UserEntity>> signInWithGoogle() async {
     try {
+      // Android dahil her platformda WEB client_id'yi serverClientId olarak
+      // vermek gerekiyor; aksi halde Android'de idToken null d\u00f6n\u00fcyor ve
+      // ApiException:10 (DEVELOPER_ERROR) hatas\u0131 al\u0131n\u0131yor.
       final google = GoogleSignIn(
         scopes: const ['email', 'profile'],
-        serverClientId:
-            defaultTargetPlatform == TargetPlatform.android
-                ? null
-                : _kGoogleWebClientId,
+        serverClientId: _kGoogleWebClientId,
       );
       await google.signOut();
       final account = await google.signIn();
