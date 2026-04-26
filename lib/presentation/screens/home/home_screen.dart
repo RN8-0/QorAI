@@ -49,6 +49,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
 
+  // ── Category chip cache: rebuilt only when locale changes ──
+  List<Map<String, Object>>? _cachedFlatCategories;
+  Locale? _cachedCategoriesLocale;
+
+  // ── BlockedIds cache: rebuilt only when feed instance changes ──
+  HomeFeed? _cachedBlockedIdsFeed;
+  Set<String>? _cachedBlockedIds;
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +119,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 title: context.l10n?.categories ?? 'Categories',
               ),
             ),
-            SliverToBoxAdapter(child: _buildCategoriesSection()),
+            SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
 
             // For You
             SliverToBoxAdapter(
@@ -1204,8 +1212,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return flat;
   }
 
+  /// Locale-aware cache — recreates only when locale changes.
+  List<Map<String, Object>> _getCachedFlatCategories() {
+    final locale = Localizations.localeOf(context);
+    if (_cachedFlatCategories == null || _cachedCategoriesLocale != locale) {
+      _cachedFlatCategories = _getFlatCategories(context);
+      _cachedCategoriesLocale = locale;
+    }
+    return _cachedFlatCategories!;
+  }
+
   Widget _buildCategoriesSection() {
-    final categories = _getFlatCategories(context);
+    final categories = _getCachedFlatCategories();
     final half = (categories.length / 2).ceil();
     final row1 = categories.sublist(0, half);
     final row2 = categories.sublist(half);
@@ -1420,7 +1438,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     AsyncValue<HomeFeed> homeFeed,
     String categoryId,
   ) {
-    return SizedBox(
+    return RepaintBoundary(
+      child: SizedBox(
       height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
         data: (feed) {
@@ -1452,6 +1471,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
         error: (error, stackTrace) => const SizedBox.shrink(),
       ),
+    ),
     );
   }
 
@@ -1499,16 +1519,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // === TRENDING ==============================================================
 
+  Set<String> _getBlockedIds(HomeFeed feed) {
+    if (!identical(_cachedBlockedIdsFeed, feed)) {
+      _cachedBlockedIds = {
+        ...feed.featured.take(4).map((p) => p.id),
+        ...feed.trending.take(12).map((p) => p.id),
+        ...feed.newArrivals.take(12).map((p) => p.id),
+        ...feed.discover.take(12).map((p) => p.id),
+      };
+      _cachedBlockedIdsFeed = feed;
+    }
+    return _cachedBlockedIds!;
+  }
+
   List<ProductEntity> _categorySectionProducts(HomeFeed feed, String categoryId) {
     final products = feed.byCategory[categoryId] ?? const <ProductEntity>[];
     if (products.isEmpty) return products;
 
-    final blockedIds = <String>{
-      ...feed.featured.take(4).map((product) => product.id),
-      ...feed.trending.take(12).map((product) => product.id),
-      ...feed.newArrivals.take(12).map((product) => product.id),
-      ...feed.discover.take(12).map((product) => product.id),
-    };
+    final blockedIds = _getBlockedIds(feed);
 
     final filtered = products
         .where((product) => !blockedIds.contains(product.id))
