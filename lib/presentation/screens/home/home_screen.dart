@@ -28,7 +28,10 @@ import 'package:qor_ai/core/pb_client.dart';
 
 const double _kHorizontalCardRowHeight = 246;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
-const int _kHorizontalInitialItemLimit = 24;
+// Yatay listelerde ilk render'da yalnızca viewport + lookahead kadar ürün.
+// ListView.builder lazy çalışsa da, itemCount yüksek olduğunda ilk frame'de
+// extra layout/measurement maliyeti oluşturuyordu (24 → 12).
+const int _kHorizontalInitialItemLimit = 12;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
 const int _kInitialCategoryChipLimit = 18;
@@ -53,9 +56,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
 
-  // ── Below-fold deferred rendering: first frame renders only above-fold
-  // content; after it paints we unlock the rest to avoid 149+ frame skips.
-  bool _belowFoldReady = false;
+  // ── Staged rendering: ilk frame'de sadece SearchBar + Categories.
+  // Sonraki section'lar tek seferde değil, her postFrame'de bir adım
+  // açılır → tek bir frame'de 100+ kart build edilmesini engeller.
+  // 0 = sadece search + categories
+  // 1 = + For You + Trending
+  // 2 = + TopInCategory + RecentlyViewed + RecentlyAnalyzed
+  // 3 = + NewArrivals + Priority + ValuePicks + Discover
+  int _renderStage = 0;
+  static const int _kMaxRenderStage = 3;
 
   // ── Progressive category rendering: start with few, add on scroll ──
   int _visibleCategoryCount = _kInitialVisibleCategories;
@@ -75,11 +84,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     debugPrint('=== QOR AI: HomeScreen initState ===');
     _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
     _scrollCtrl.addListener(_handleScroll);
-    // Unlock below-fold content after the first frame is fully painted.
-    // This prevents the initial 149-311 frame skips caused by building
-    // 10-14 category sections + 240+ product cards in a single frame.
+    // Aşamalı render: ilk frame paint olduktan sonra her ~32ms'de bir stage
+    // ilerlet. Tek seferde 100+ kart build etmek yerine 4 küçük partiye böl.
+    _scheduleNextStage();
+  }
+
+  void _scheduleNextStage() {
+    if (!mounted || _renderStage >= _kMaxRenderStage) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _belowFoldReady = true);
+      if (!mounted) return;
+      // Bir microtask veriyoruz ki ilk frame pipeline'ı tamamen bitsin.
+      Future<void>.delayed(const Duration(milliseconds: 32), () {
+        if (!mounted || _renderStage >= _kMaxRenderStage) return;
+        setState(() => _renderStage++);
+        _scheduleNextStage();
+      });
     });
   }
 
@@ -138,7 +157,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         },
         child: CustomScrollView(
           controller: _scrollCtrl,
-          cacheExtent: 800,
+          // 800 → 250: kapsam alanını daraltarak off-screen sliver
+          // build'lerini azaltıyoruz. Bu, ilk frame'de oluşan
+          // "tüm yatay listeleri önden hazırlama" maliyetini düşürür.
+          cacheExtent: 250,
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
@@ -154,43 +176,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
 
-            // For You
-            SliverToBoxAdapter(
-              child: Consumer(builder: (context, ref, _) {
-                final userProfile = ref.watch(userProfileProvider);
-                return _SectionHeader(
-                  title: context.l10n?.forYou ?? 'For You',
-                  icon: Icons.auto_awesome_rounded,
-                  iconColor: const Color(0xFFF59E0B),
-                  subtitle: _getPersonalizationSubtitle(userProfile),
-                  onSeeAll: () => context.push(AppRoutes.search),
-                );
-              }),
-            ),
-            SliverToBoxAdapter(child: _buildPersonalizedSection()),
-
-            // Trending stays close to the hero/search flow for faster discovery.
-            SliverToBoxAdapter(
-              child: _SectionHeader(
-                title: context.l10n?.trendingToday ?? 'Trending Today',
-                icon: Icons.memory_rounded,
-                iconColor: const Color(0xFFEF4444),
-                onSeeAll: () => context.push(AppRoutes.search),
+            // ── STAGE 1: For You + Trending ──────────────────────────────
+            if (_renderStage >= 1) ...[
+              SliverToBoxAdapter(
+                child: Consumer(builder: (context, ref, _) {
+                  final userProfile = ref.watch(userProfileProvider);
+                  return _SectionHeader(
+                    title: context.l10n?.forYou ?? 'For You',
+                    icon: Icons.auto_awesome_rounded,
+                    iconColor: const Color(0xFFF59E0B),
+                    subtitle: _getPersonalizationSubtitle(userProfile),
+                    onSeeAll: () => context.push(AppRoutes.search),
+                  );
+                }),
               ),
-            ),
-            SliverToBoxAdapter(child: _buildTrendsSection()),
+              SliverToBoxAdapter(child: _buildPersonalizedSection()),
+              SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: context.l10n?.trendingToday ?? 'Trending Today',
+                  icon: Icons.memory_rounded,
+                  iconColor: const Color(0xFFEF4444),
+                  onSeeAll: () => context.push(AppRoutes.search),
+                ),
+              ),
+              SliverToBoxAdapter(child: _buildTrendsSection()),
+            ],
 
-            // ── BELOW-FOLD: deferred until after first frame to prevent jank ──
-            if (_belowFoldReady) ...[
-              // ─── TOP IN CATEGORY
+            // ── STAGE 2: TopInCategory + RecentlyViewed + RecentlyAnalyzed ──
+            if (_renderStage >= 2) ...[
               ..._buildTopInCategorySection(),
-              // ─── RECENTLY VIEWED SECTION
               ..._buildRecentlyViewedSection(),
-              // ─── RECENTLY ANALYZED
               ..._buildRecentlyAnalyzedSection(),
             ],
 
-            if (_belowFoldReady) ...[
+            // ── STAGE 3: NewArrivals + Priority + ValuePicks + Discover ──
+            if (_renderStage >= 3) ...[
               // ─── NEW ARRIVALS
               SliverToBoxAdapter(
                 child: _SectionHeader(
