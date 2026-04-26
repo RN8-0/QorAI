@@ -18,7 +18,7 @@ import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/cache_service.dart';
 
 const String _kGoogleWebClientId =
-    '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
+  '116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com';
 
 class AuthRepository {
   final PocketBase _pb;
