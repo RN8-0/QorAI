@@ -1708,7 +1708,7 @@ function renderUserSummaryGrid(entries,emptyText='Belirtilmiş veri yok'){
 }
 
 function renderUserSupportHistory(messages){
-  const items=safeArray(messages).slice().sort((a,b)=>String(b.created||'').localeCompare(String(a.created||'')));
+  const items=safeArray(messages).slice().sort((a,b)=>String(b.repliedAt||b.created||'').localeCompare(String(a.repliedAt||a.created||'')));
   if(!items.length){
     return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--text3);font-size:12px">Bu kullanıcı için support mesajı bulunmuyor.</div></div>`;
   }

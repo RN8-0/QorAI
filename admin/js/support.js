@@ -89,8 +89,8 @@ async function _hydrateSupportMessages(messages) {
 
 function _sortSupportMessages(items) {
   return [...items].sort((left, right) => {
-    const leftTime = Date.parse(left?.created || '') || 0;
-    const rightTime = Date.parse(right?.created || '') || 0;
+    const leftTime = Date.parse(left?.repliedAt || left?.created || '') || 0;
+    const rightTime = Date.parse(right?.repliedAt || right?.created || '') || 0;
     return rightTime - leftTime;
   });
 }
@@ -209,7 +209,7 @@ function renderSupportMessages() {
 
   el.innerHTML = msgs.map(m => {
     const isOpen = m.status === 'open';
-    const date = m.created ? new Date(m.created).toLocaleString('tr-TR') : '—';
+    const date = (m.repliedAt || m.created) ? new Date(m.repliedAt || m.created).toLocaleString('tr-TR') : '—';
     const preferredName = _preferredSupportName(m);
     const preferredEmail = _preferredSupportEmail(m);
     return `
@@ -236,7 +236,7 @@ function openSupportMessage(id) {
   const m = _supportMessages.find(x => x.id === id);
   if (!m) return;
 
-  const date = m.created ? new Date(m.created).toLocaleString('tr-TR') : '—';
+  const date = (m.repliedAt || m.created) ? new Date(m.repliedAt || m.created).toLocaleString('tr-TR') : '—';
   const repliedAt = m.repliedAt ? new Date(m.repliedAt).toLocaleString('tr-TR') : null;
   const preferredName = _preferredSupportName(m);
   const preferredEmail = _preferredSupportEmail(m);
