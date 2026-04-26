@@ -108,6 +108,46 @@ onRecordAfterCreateSuccess(function (e) {
   }
 }, "notifications");
 
+// When admin sets adminReply on a support_messages record, create a notifications
+// record for the user — this automatically triggers the FCM hook above.
+onRecordAfterUpdateSuccess(function (e) {
+  try {
+    const record = e.record;
+    if (!record) return;
+
+    const status = record.getString('status');
+    if (status !== 'replied' && status !== 'admin_message') return;
+
+    const adminReply = record.getString('adminReply');
+    if (!adminReply) return;
+
+    const userId = record.getString('userId');
+    if (!userId) return;
+
+    // Skip if we already sent a notification for this support message
+    try {
+      $app.findFirstRecordByData('notifications', 'referenceId', record.id);
+      return;
+    } catch (_) {}
+
+    const notifCol = $app.findCollectionByNameOrId('notifications');
+    const notif = new Record(notifCol);
+    notif.set('recipientId', userId);
+    notif.set('senderId', 'admin');
+    notif.set('senderName', 'Qor AI Destek');
+    notif.set('type', 'system');
+    notif.set('title', 'Mesajınıza yanıt geldi');
+    notif.set('body', adminReply.length > 200 ? adminReply.substring(0, 197) + '...' : adminReply);
+    notif.set('referenceId', record.id);
+    notif.set('read', false);
+    $app.save(notif);
+
+    console.log('[notify_fcm] Support reply notification created for user', userId);
+  } catch (err) {
+    console.log('[notify_fcm] Support reply hook error:', err);
+  }
+}, 'support_messages');
+
 routerAdd('POST', '/api/support/contact', (e) => {
   try {
     const bodyModel = new DynamicModel({
@@ -166,5 +206,63 @@ routerAdd('POST', '/api/support/contact', (e) => {
       error: 'support_contact_failed',
       detail: String(err),
     });
+  }
+});
+
+// ── FCM access token auto-refresh (every 50 minutes) ─────────────────────────
+// Stores refresh_token in app_config under key 'google_refresh_token'.
+// Uses Firebase CLI OAuth2 client to get a new access_token via Google.
+cronAdd('fcm-token-refresh', '*/50 * * * *', function () {
+  try {
+    let refreshToken = '';
+    try {
+      const cfg = $app.findFirstRecordByData('app_config', 'key', 'google_refresh_token');
+      refreshToken = (cfg.getString('value') || '').replace(/^"|"$/g, '');
+    } catch (_) {}
+
+    if (!refreshToken) {
+      console.log('[fcm-cron] No google_refresh_token in app_config, skipping');
+      return;
+    }
+
+    const body =
+      'grant_type=refresh_token' +
+      '&client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com' +
+      '&client_secret=j9iVZfS8kkCEFUPaAeJV0sAi' +
+      '&refresh_token=' + encodeURIComponent(refreshToken);
+
+    const resp = $http.send({
+      method: 'POST',
+      url: 'https://oauth2.googleapis.com/token',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      timeout: 15,
+    });
+
+    if (resp.statusCode !== 200) {
+      console.log('[fcm-cron] Token refresh failed', resp.statusCode, resp.raw);
+      return;
+    }
+
+    const result = JSON.parse(resp.raw);
+    const newToken = result.access_token;
+    if (!newToken) { console.log('[fcm-cron] No access_token in response'); return; }
+
+    // Update app_config.fcm_access_token
+    try {
+      const tokenCfg = $app.findFirstRecordByData('app_config', 'key', 'fcm_access_token');
+      tokenCfg.set('value', newToken);
+      $app.save(tokenCfg);
+    } catch (_) {
+      const col = $app.findCollectionByNameOrId('app_config');
+      const rec = new Record(col);
+      rec.set('key', 'fcm_access_token');
+      rec.set('value', newToken);
+      $app.save(rec);
+    }
+
+    console.log('[fcm-cron] FCM access token refreshed successfully');
+  } catch (err) {
+    console.log('[fcm-cron] Error:', err);
   }
 });
