@@ -3718,10 +3718,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get deletedAccountName => 'Compte Supprime';
 
   @override
-  String get deleteReview => "Supprimer l'avis";
+  String get deleteReview => 'Supprimer l\'avis';
 
   @override
-  String get deleteReviewConfirm => 'Êtes-vous sûr de vouloir supprimer cet avis ? Toutes les réponses seront également supprimées.';
+  String get deleteReviewConfirm =>
+      'Êtes-vous sûr de vouloir supprimer cet avis ? Toutes les réponses seront également supprimées.';
 
   @override
   String get topComments => 'Meilleurs commentaires';
@@ -3739,5 +3740,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get hideReplies => 'Masquer les réponses';
 
   @override
-  String viewRepliesCount(int count) => '$count réponses';
+  String viewRepliesCount(int count) {
+    return '$count réponses';
+  }
 }

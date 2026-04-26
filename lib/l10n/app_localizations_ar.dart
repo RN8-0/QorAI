@@ -3673,7 +3673,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get deleteReview => 'حذف التعليق';
 
   @override
-  String get deleteReviewConfirm => 'هل أنت متأكد من حذف هذا التعليق؟ سيتم حذف جميع الردود أيضًا.';
+  String get deleteReviewConfirm =>
+      'هل أنت متأكد من حذف هذا التعليق؟ سيتم حذف جميع الردود أيضًا.';
 
   @override
   String get topComments => 'أفضل التعليقات';
@@ -3691,5 +3692,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get hideReplies => 'إخفاء الردود';
 
   @override
-  String viewRepliesCount(int count) => '$count ردود';
+  String viewRepliesCount(int count) {
+    return '$count ردود';
+  }
 }

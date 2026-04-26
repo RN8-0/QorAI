@@ -1468,22 +1468,11 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     _dislikedBy = List<String>.from(widget.dislikedBy);
   }
 
-  @override
-  void didUpdateWidget(_ReviewCard old) {
-    super.didUpdateWidget(old);
-    // Sync from provider when it reloads (after server round-trip)
-    if (old.likedBy != widget.likedBy) {
-      _likedBy = List<String>.from(widget.likedBy);
-    }
-    if (old.dislikedBy != widget.dislikedBy) {
-      _dislikedBy = List<String>.from(widget.dislikedBy);
-    }
-  }
-
   Future<void> _toggleLike() async {
     final uid = widget.currentUserId;
     if (uid == null) return;
     HapticFeedback.lightImpact();
+    // Optimistic update — no invalidate (avoids unmount/remount cycle)
     setState(() {
       if (_likedBy.contains(uid)) {
         _likedBy.remove(uid);
@@ -1492,15 +1481,14 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
         _dislikedBy.remove(uid);
       }
     });
-    final repo = ref.read(productRepositoryProvider);
-    await repo.toggleReviewLike(widget.reviewId, uid);
-    ref.invalidate(productReviewsProvider(widget.productId));
+    await ref.read(productRepositoryProvider).toggleReviewLike(widget.reviewId, uid);
   }
 
   Future<void> _toggleDislike() async {
     final uid = widget.currentUserId;
     if (uid == null) return;
     HapticFeedback.lightImpact();
+    // Optimistic update — no invalidate (avoids unmount/remount cycle)
     setState(() {
       if (_dislikedBy.contains(uid)) {
         _dislikedBy.remove(uid);
@@ -1509,9 +1497,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
         _likedBy.remove(uid);
       }
     });
-    final repo = ref.read(productRepositoryProvider);
-    await repo.toggleReviewDislike(widget.reviewId, uid);
-    ref.invalidate(productReviewsProvider(widget.productId));
+    await ref.read(productRepositoryProvider).toggleReviewDislike(widget.reviewId, uid);
   }
 
   @override

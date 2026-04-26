@@ -3655,5 +3655,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hideReplies => '返信を非表示';
 
   @override
-  String viewRepliesCount(int count) => '$count件の返信';
+  String viewRepliesCount(int count) {
+    return '$count件の返信';
+  }
 }

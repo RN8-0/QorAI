@@ -3695,7 +3695,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteReview => 'Delete Review';
 
   @override
-  String get deleteReviewConfirm => 'Are you sure you want to delete this review? All replies will also be removed.';
+  String get deleteReviewConfirm =>
+      'Are you sure you want to delete this review? All replies will also be removed.';
 
   @override
   String get topComments => 'Top Comments';
@@ -3713,5 +3714,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hideReplies => 'Hide replies';
 
   @override
-  String viewRepliesCount(int count) => '$count replies';
+  String viewRepliesCount(int count) {
+    return '$count replies';
+  }
 }

@@ -3704,7 +3704,8 @@ class AppLocalizationsNl extends AppLocalizations {
   String get deleteReview => 'Beoordeling verwijderen';
 
   @override
-  String get deleteReviewConfirm => 'Weet je zeker dat je deze beoordeling wilt verwijderen? Alle antwoorden worden ook verwijderd.';
+  String get deleteReviewConfirm =>
+      'Weet je zeker dat je deze beoordeling wilt verwijderen? Alle antwoorden worden ook verwijderd.';
 
   @override
   String get topComments => 'Beste reacties';
@@ -3722,5 +3723,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get hideReplies => 'Antwoorden verbergen';
 
   @override
-  String viewRepliesCount(int count) => '$count antwoorden';
+  String viewRepliesCount(int count) {
+    return '$count antwoorden';
+  }
 }

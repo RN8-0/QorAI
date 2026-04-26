@@ -3718,7 +3718,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get deleteReview => 'Eliminar reseña';
 
   @override
-  String get deleteReviewConfirm => '¿Seguro que quieres eliminar esta reseña? También se eliminarán todas las respuestas.';
+  String get deleteReviewConfirm =>
+      '¿Seguro que quieres eliminar esta reseña? También se eliminarán todas las respuestas.';
 
   @override
   String get topComments => 'Comentarios principales';
@@ -3736,5 +3737,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hideReplies => 'Ocultar respuestas';
 
   @override
-  String viewRepliesCount(int count) => '$count respuestas';
+  String viewRepliesCount(int count) {
+    return '$count respuestas';
+  }
 }

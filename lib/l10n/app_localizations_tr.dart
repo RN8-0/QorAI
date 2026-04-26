@@ -3710,7 +3710,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get deleteReview => 'Yorumu Sil';
 
   @override
-  String get deleteReviewConfirm => 'Bu yorumu silmek istiyor musun? Tüm yanıtlar da silinecek.';
+  String get deleteReviewConfirm =>
+      'Bu yorumu silmek istiyor musun? Tüm yanıtlar da silinecek.';
 
   @override
   String get topComments => 'En İyi Yorumlar';
@@ -3728,5 +3729,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get hideReplies => 'Yanıtları gizle';
 
   @override
-  String viewRepliesCount(int count) => '$count yanıt';
+  String viewRepliesCount(int count) {
+    return '$count yanıt';
+  }
 }

@@ -7157,27 +7157,51 @@ abstract class AppLocalizations {
   String get deletedAccountName;
 
   /// No description provided for @deleteReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Review'**
   String get deleteReview;
 
   /// No description provided for @deleteReviewConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this review? All replies will also be removed.'**
   String get deleteReviewConfirm;
 
   /// No description provided for @topComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Top Comments'**
   String get topComments;
 
   /// No description provided for @newestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest First'**
   String get newestFirst;
 
   /// No description provided for @replyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your reply...'**
   String get replyHint;
 
   /// No description provided for @replyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
   String get replyAction;
 
   /// No description provided for @hideReplies.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide replies'**
   String get hideReplies;
 
   /// No description provided for @viewRepliesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} replies'**
   String viewRepliesCount(int count);
 }
 

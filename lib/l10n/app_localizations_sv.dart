@@ -3690,7 +3690,8 @@ class AppLocalizationsSv extends AppLocalizations {
   String get deleteReview => 'Ta bort recension';
 
   @override
-  String get deleteReviewConfirm => 'Är du säker på att du vill ta bort den här recensionen? Alla svar tas också bort.';
+  String get deleteReviewConfirm =>
+      'Är du säker på att du vill ta bort den här recensionen? Alla svar tas också bort.';
 
   @override
   String get topComments => 'Bästa kommentarer';
@@ -3708,5 +3709,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get hideReplies => 'Dölj svar';
 
   @override
-  String viewRepliesCount(int count) => '$count svar';
+  String viewRepliesCount(int count) {
+    return '$count svar';
+  }
 }
