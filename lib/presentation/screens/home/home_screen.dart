@@ -1313,7 +1313,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildPersonalizedSection() {
     return Consumer(builder: (context, ref, _) {
-      return _buildPersonalizedSectionBody(ref);
+      return RepaintBoundary(child: _buildPersonalizedSectionBody(ref));
     });
   }
 
@@ -1427,7 +1427,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       SliverToBoxAdapter(
         child: wide
             ? _buildWideProductCards(homeFeed, categoryId)
-            : _buildCompactGridSection(homeFeed, categoryId),
+            : RepaintBoundary(child: _buildCompactGridSection(homeFeed, categoryId)),
       ),
     ];
   }
@@ -1562,7 +1562,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildTrendsSection() {
     return Consumer(builder: (context, ref, _) {
       final homeFeed = ref.watch(homeFeedProvider);
-      return _buildTrendsSectionBody(homeFeed);
+      return RepaintBoundary(child: _buildTrendsSectionBody(homeFeed));
     });
   }
 
@@ -1570,6 +1570,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
         data: (feed) {
           if (!_firstDataLogged) {
             _firstDataLogged = true;
@@ -1636,7 +1638,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildNewArrivalsSection() {
     return Consumer(builder: (context, ref, _) {
-      return _buildNewArrivalsBody(ref);
+      return RepaintBoundary(child: _buildNewArrivalsBody(ref));
     });
   }
 
@@ -1644,6 +1646,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: ref.watch(newArrivalsProvider).when(
+            skipLoadingOnReload: true,
+            skipLoadingOnRefresh: true,
             data: (products) {
               if (products.isEmpty) {
                 return Center(
@@ -1702,7 +1706,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildDiscoverSection() {
     return Consumer(builder: (context, ref, _) {
-      return _buildDiscoverSectionBody(ref);
+      return RepaintBoundary(child: _buildDiscoverSectionBody(ref));
     });
   }
 
@@ -1710,6 +1714,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: ref.watch(discoverProductsProvider).when(
+            skipLoadingOnReload: true,
+            skipLoadingOnRefresh: true,
             data: (products) {
               if (products.isEmpty) {
                 return Center(
@@ -1773,13 +1779,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Consumer(builder: (context, ref, _) {
           final slivers = _topInCategorySectionSlivers(ref);
           if (slivers.isEmpty) return const SizedBox.shrink();
-          return Column(
+          return RepaintBoundary(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: slivers
                 .whereType<SliverToBoxAdapter>()
                 .map((s) => s.child ?? const SizedBox.shrink())
                 .toList(),
-          );
+          ));
         }),
       ),
     ];
@@ -1847,13 +1854,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Consumer(builder: (context, ref, _) {
           final slivers = _recentlyAnalyzedSlivers(ref);
           if (slivers.isEmpty) return const SizedBox.shrink();
-          return Column(
+          return RepaintBoundary(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: slivers
                 .whereType<SliverToBoxAdapter>()
                 .map((s) => s.child ?? const SizedBox.shrink())
                 .toList(),
-          );
+          ));
         }),
       ),
     ];
@@ -1911,13 +1919,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Consumer(builder: (context, ref, _) {
           final slivers = _valuePicksSlivers(ref);
           if (slivers.isEmpty) return const SizedBox.shrink();
-          return Column(
+          return RepaintBoundary(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: slivers
                 .whereType<SliverToBoxAdapter>()
                 .map((s) => s.child ?? const SizedBox.shrink())
                 .toList(),
-          );
+          ));
         }),
       ),
     ];
@@ -1977,13 +1986,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Consumer(builder: (context, ref, _) {
           final slivers = _recentlyViewedSlivers(ref);
           if (slivers.isEmpty) return const SizedBox.shrink();
-          return Column(
+          return RepaintBoundary(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: slivers
                 .whereType<SliverToBoxAdapter>()
                 .map((s) => s.child ?? const SizedBox.shrink())
                 .toList(),
-          );
+          ));
         }),
       ),
     ];
@@ -2041,13 +2051,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // wrapped helpers which can be safely flattened to box widgets here.
           final sectionWidgets = _buildPriorityCategorySectionsList(homeFeed);
           if (sectionWidgets.isEmpty) return const SizedBox.shrink();
-          return Column(
+          return RepaintBoundary(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: sectionWidgets
                 .whereType<SliverToBoxAdapter>()
                 .map((s) => s.child ?? const SizedBox.shrink())
                 .toList(),
-          );
+          ));
         }),
       ),
     ];

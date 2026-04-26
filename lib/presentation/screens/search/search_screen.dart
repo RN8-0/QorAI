@@ -663,6 +663,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return ListView.builder(
       controller: _resultsScrollCtrl,
       cacheExtent: 600,
+      addAutomaticKeepAlives: false,
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
