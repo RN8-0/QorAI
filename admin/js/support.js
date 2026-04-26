@@ -176,7 +176,8 @@ async function disposeSupportInbox() {
    BADGE (sidebar unread count)
 ────────────────────────────────────────────── */
 function updateSupportBadge() {
-  const openCount = _supportMessages.filter(m => m.status === 'open').length;
+  const visibleMessages = _supportMessages.filter((m) => m.status !== 'admin_message');
+  const openCount = visibleMessages.filter(m => m.status === 'open').length;
   const badge = document.getElementById('supportBadge');
   const countEl = document.getElementById('supportCount');
   if (badge) {
@@ -187,7 +188,7 @@ function updateSupportBadge() {
       badge.style.display = 'none';
     }
   }
-  if (countEl) countEl.textContent = _supportMessages.length;
+  if (countEl) countEl.textContent = visibleMessages.length;
 }
 
 /* ──────────────────────────────────────────────
@@ -198,7 +199,7 @@ function renderSupportMessages() {
   if (!el) return;
 
   const filter = (document.getElementById('supportStatusFilter')?.value || '').trim();
-  let msgs = _supportMessages;
+  let msgs = _supportMessages.filter((m) => m.status !== 'admin_message');
   if (filter) msgs = msgs.filter(m => m.status === filter);
 
   if (!msgs.length) {

@@ -1713,12 +1713,16 @@ function renderUserSupportHistory(messages){
     return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--text3);font-size:12px">Bu kullanıcı için support mesajı bulunmuyor.</div></div>`;
   }
   return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div>${items.map(item=>{
-    const created=item.created?new Date(item.created).toLocaleString('tr-TR'):'—';
+    const created=(item.created||item.repliedAt)?new Date(item.created||item.repliedAt).toLocaleString('tr-TR'):'—';
     const replied=item.repliedAt?new Date(item.repliedAt).toLocaleString('tr-TR'):'';
-    const status=item.status==='replied'
+    const isAdminMessage=item.status==='admin_message';
+    const status=isAdminMessage
+      ? '<span class="badge" style="background:rgba(59,130,246,.15);color:#60a5fa">Admin mesajı</span>'
+      : item.status==='replied'
       ? '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e">Yanıtlandı</span>'
       : '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b">Açık</span>';
-    return `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">${created}</div>${status}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.message||'')}</div>${item.adminReply?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Admin Yanıtı${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.adminReply)}</div></div>`:''}</div>`;
+    const messageBody=isAdminMessage?(item.message||''):(item.message||'');
+    return `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">${created}</div>${status}</div>${isAdminMessage?`<div style="margin-top:2px;padding:10px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Destek mesajı${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(messageBody)}</div></div>`:`<div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(messageBody)}</div>${item.adminReply?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Admin Yanıtı${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.adminReply)}</div></div>`:''}`}</div>`;
   }).join('')}</div>`;
 }
 
@@ -1730,6 +1734,53 @@ async function loadUserSupportPreview(uid){
     el.innerHTML=renderUserSupportHistory(safeArray(supportRes.items));
   }catch(e){
     el.innerHTML=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--red);font-size:12px">Geçmiş yüklenemedi: ${escHtml(e.message||String(e))}</div></div>`;
+  }
+}
+
+async function sendUserSupportMessage(uid){
+  const u=allUsers.find(x=>x.uid===uid);
+  if(!u){toast('Kullanıcı bulunamadı','e');return}
+  const textarea=document.getElementById(`userSupportMessage_${uid}`);
+  const button=document.getElementById(`userSupportSendBtn_${uid}`);
+  const text=(textarea?.value||'').trim();
+  if(!text){toast('Mesaj boş olamaz','w');return}
+
+  const email=String(u.email||u.googleEmail||'').trim().toLowerCase();
+  if(!email){toast('Kullanıcının kayıtlı e-postası yok','e');return}
+
+  const displayName=String(u.displayName||u.name||email.split('@')[0]||'Kullanıcı').trim();
+  if(button){button.disabled=true;button.textContent='Gönderiliyor...';}
+
+  try{
+    const supportRecord=await pbAddDoc('support_messages',{
+      userId:uid,
+      displayName,
+      email,
+      message:text,
+      status:'admin_message',
+      adminReply:'',
+      repliedAt:new Date().toISOString(),
+    });
+    await getPb().collection('notifications').create({
+      recipientId:uid,
+      senderId:'admin',
+      senderName:'Qor AI Destek',
+      type:'system',
+      title:'Qor AI Destek\'ten yeni mesaj',
+      body:text,
+      referenceId:supportRecord.id,
+      read:false,
+    });
+    if(textarea)textarea.value='';
+    const profileEl=document.getElementById('profileContent');
+    if(profileEl)profileEl.dataset.loaded='';
+    await loadUserSupportPreview(uid);
+    await loadUserProfile(uid);
+    toast('Ek mesaj kullanıcıya gönderildi','s');
+  }catch(e){
+    toast('Mesaj gönderilemedi: '+(e.message||e),'e');
+  }finally{
+    if(button){button.disabled=false;button.textContent='Mesajı Gönder';}
   }
 }
 
@@ -1788,6 +1839,7 @@ async function loadUserProfile(uid){
   try{
     const u=allUsers.find(x=>x.uid===uid);
     if(!u){el.innerHTML='Kullanıcı bulunamadı';return;}
+    const safeUid=escJs(uid);
     const supportRes=await pbGetList('support_messages',1,50,{filter:`userId="${uid}"`,sort:'-created'});
     const supportMessages=safeArray(supportRes.items);
     const answerHistory=safeArray(u.quizAnswerHistory).slice().sort((a,b)=>(String(b.timestamp||b.created||'')).localeCompare(String(a.timestamp||a.created||'')));
@@ -1813,6 +1865,7 @@ async function loadUserProfile(uid){
     }
 
     html+=renderUserSupportHistory(supportMessages);
+  html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">📨 Kullanıcıya Ek Mesaj Gönder</div><div style="font-size:12px;color:var(--text2);margin-bottom:10px">Bu alandan kullanıcıya destek mesajı gönderebilirsin. Mesaj, profil geçmişine eklenecek ve bildirim olarak oluşturulacak.</div><textarea class="input" id="userSupportMessage_${safeUid}" rows="4" placeholder="Kullanıcıya gönderilecek mesaj..." style="resize:vertical;width:100%"></textarea><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" id="userSupportSendBtn_${safeUid}" onclick="sendUserSupportMessage('${safeUid}')">Mesajı Gönder</button></div></div>`;
 
     // Priorities
     const priorities=u.priorities||[];

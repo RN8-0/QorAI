@@ -1213,6 +1213,114 @@ class PbDataSource {
     }
   }
 
+  Future<ResultList<RecordModel>> _getListWithSortFallback({
+    required String collection,
+    required int page,
+    required int perPage,
+    String filter = '',
+    String? sort,
+  }) async {
+    final service = _pb.collection(collection);
+    try {
+      return await service.getList(
+        page: page,
+        perPage: perPage,
+        filter: filter,
+        sort: sort,
+      );
+    } on ClientException catch (e) {
+      final shouldRetryWithoutSort =
+          sort != null &&
+          sort.isNotEmpty &&
+          e.statusCode == 400 &&
+          (e.response['message']?.toString().toLowerCase().contains(
+                'something went wrong while processing your request.',
+              ) ??
+              false);
+      if (!shouldRetryWithoutSort) rethrow;
+      return service.getList(page: page, perPage: perPage, filter: filter);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchSupportReplyFallbacks(
+    String userId,
+  ) async {
+    final result = await _getListWithSortFallback(
+      collection: 'support_messages',
+      page: 1,
+      perPage: 50,
+      filter:
+          'userId = "$userId" && (status = "replied" || status = "admin_message")',
+      sort: '-repliedAt',
+    );
+
+    return result.items
+        .map((record) {
+          final status = record.data['status']?.toString() ?? '';
+          final body =
+              (status == 'admin_message'
+                      ? record.data['message']
+                      : record.data['adminReply'])
+                  ?.toString()
+                  .trim() ??
+              '';
+          if (body.isEmpty) return null;
+          final repliedAt = record.data['repliedAt']?.toString().trim() ?? '';
+          return <String, dynamic>{
+            'id': 'support_${record.id}',
+            'read': true,
+            'title':
+                status == 'admin_message'
+                    ? 'Qor AI Destek\'ten yeni mesaj'
+                    : 'Mesajınıza yanıt geldi',
+            'body': body,
+            'senderName': 'Qor AI Destek',
+            'referenceId': record.id,
+            'type': 'system',
+            'created': repliedAt,
+            '_source': 'support_messages',
+          };
+        })
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  static DateTime? _notificationTimestamp(Map<String, dynamic> item) {
+    for (final key in const ['created', 'repliedAt', 'updated']) {
+      final raw = item[key]?.toString().trim() ?? '';
+      if (raw.isEmpty) continue;
+      try {
+        return DateTime.parse(raw);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _mergeNotificationItems({
+    required List<Map<String, dynamic>> notifications,
+    required List<Map<String, dynamic>> supportFallbacks,
+  }) {
+    final referenceIds = notifications
+        .map((item) => item['referenceId']?.toString().trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    final merged = <Map<String, dynamic>>[
+      ...notifications,
+      ...supportFallbacks.where(
+        (item) => !referenceIds.contains(item['referenceId']),
+      ),
+    ];
+    merged.sort((left, right) {
+      final leftTime = _notificationTimestamp(left);
+      final rightTime = _notificationTimestamp(right);
+      if (leftTime == null && rightTime == null) return 0;
+      if (leftTime == null) return 1;
+      if (rightTime == null) return -1;
+      return rightTime.compareTo(leftTime);
+    });
+    return merged;
+  }
+
   Stream<List<Map<String, dynamic>>> watchNotifications(String userId) {
     final controller = StreamController<List<Map<String, dynamic>>>();
     bool cancelled = false;
@@ -1222,31 +1330,21 @@ class PbDataSource {
 
     Future<List<Map<String, dynamic>>> fetch() async {
       try {
-        RecordService getService() => _pb.collection('notifications');
-
-        ResultList<RecordModel> result;
-        try {
-          result = await getService().getList(
-            page: 1,
-            perPage: 50,
-            filter: 'recipientId = "$userId"',
-            sort: '-created',
-          );
-        } on ClientException catch (e) {
-          final shouldRetryWithoutSort =
-              e.statusCode == 400 &&
-              (e.response['message']?.toString().toLowerCase().contains(
-                    'something went wrong while processing your request.',
-                  ) ??
-                  false);
-          if (!shouldRetryWithoutSort) rethrow;
-          result = await getService().getList(
-            page: 1,
-            perPage: 50,
-            filter: 'recipientId = "$userId"',
-          );
-        }
-        return result.items.map((r) => {'id': r.id, ...r.data}).toList();
+        final notificationsResult = await _getListWithSortFallback(
+          collection: 'notifications',
+          page: 1,
+          perPage: 50,
+          filter: 'recipientId = "$userId"',
+          sort: '-created',
+        );
+        final notifications = notificationsResult.items
+            .map((record) => {'id': record.id, ...record.data})
+            .toList();
+        final supportFallbacks = await _fetchSupportReplyFallbacks(userId);
+        return _mergeNotificationItems(
+          notifications: notifications,
+          supportFallbacks: supportFallbacks,
+        );
       } catch (_) {
         return [];
       }
@@ -1275,6 +1373,11 @@ class PbDataSource {
       if (cancelled) return;
       try {
         await _pb.collection('notifications').subscribe('*', (e) async {
+          final data = await fetch();
+          if (!controller.isClosed) controller.add(data);
+        });
+        await _pb.collection('support_messages').subscribe('*', (event) async {
+          if (event.record?.data['userId']?.toString() != userId) return;
           final data = await fetch();
           if (!controller.isClosed) controller.add(data);
         });
@@ -1315,6 +1418,7 @@ class PbDataSource {
       retryTimer?.cancel();
       pollTimer?.cancel();
       _pb.collection('notifications').unsubscribe('*').catchError((_) {});
+      _pb.collection('support_messages').unsubscribe('*').catchError((_) {});
     };
 
     return controller.stream;
