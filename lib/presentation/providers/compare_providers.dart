@@ -1931,15 +1931,11 @@ final productReviewsProvider = FutureProvider.autoDispose.family<List<ReviewMode
 
 /// Current user's reviews
 final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.when(
-    data: (user) {
-      if (user == null) return Stream.value(<ReviewModel>[]);
-      return ref.read(pbDataSourceProvider).watchUserReviews(user);
-    },
-    loading: () => Stream.value(<ReviewModel>[]),
-    error: (_, _) => Stream.value(<ReviewModel>[]),
-  );
+  // Use select so provider only rebuilds when the UID itself changes,
+  // not on every auth token refresh that preserves the same UID.
+  final uid = ref.watch(authStateProvider.select((v) => v.valueOrNull));
+  if (uid == null) return Stream.value(<ReviewModel>[]);
+  return ref.read(pbDataSourceProvider).watchUserReviews(uid);
 });
 
 /// Toggle favorite - returns new isFavorite state (true = now favorited).

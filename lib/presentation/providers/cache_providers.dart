@@ -1472,6 +1472,202 @@ class _FallbackIsolateResult {
   });
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Isolate data-transfer types for _doFetchMatchScore (PREMIUM path)
+// ────────────────────────────────────────────────────────────────────────────
+
+class _HighlightsIsolateParams {
+  final UserEntity user;
+  final ProductEntity product;
+  final Map<String, double> weightVector;
+  final String langCode;
+  const _HighlightsIsolateParams({
+    required this.user,
+    required this.product,
+    required this.weightVector,
+    required this.langCode,
+  });
+}
+
+class _HighlightsIsolateResult {
+  final List<String> focusAreas;
+  final List<String> highlights;
+  final List<String> tradeOffs;
+  final String fallbackReason;
+  const _HighlightsIsolateResult({
+    required this.focusAreas,
+    required this.highlights,
+    required this.tradeOffs,
+    required this.fallbackReason,
+  });
+}
+
+/// Executed in a background isolate — builds focusAreas, productHighlights,
+/// tradeOffs, and a local fallback reason without touching the main thread.
+_HighlightsIsolateResult _computeHighlightsInIsolate(
+    _HighlightsIsolateParams p) {
+  // 1. Build focus areas
+  final scores = <String, double>{};
+  void addScore(String rawKey, double score) {
+    final key = _normalizeFocusKeyFn(rawKey);
+    if (key == null) return;
+    final current = scores[key] ?? 0;
+    if (score > current) scores[key] = score;
+  }
+  for (var i = 0; i < p.user.priorities.length; i++) {
+    addScore(p.user.priorities[i], 1.0 - (i * 0.08));
+  }
+  for (final entry in p.weightVector.entries) {
+    addScore(entry.key, entry.value);
+  }
+  final ranked = scores.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final nonEcosystem = ranked.where((e) => e.key != 'ecosystem').toList();
+  final ecosystem = ranked.where((e) => e.key == 'ecosystem').toList();
+  final ordered = <MapEntry<String, double>>[
+    ...nonEcosystem,
+    if (ecosystem.isNotEmpty &&
+        (ecosystem.first.value >= 0.8 || nonEcosystem.length < 2))
+      ecosystem.first,
+  ];
+  final focusAreas =
+      ordered.take(4).map((e) => _focusLabelFn(e.key)).toList();
+
+  // 2. Build product highlights
+  final focusKeywords = focusAreas.map(_focusKeywordsForLabelFn).toList();
+  final candidates = <({String text, double score})>[];
+
+  double calcFocusScore(String source) {
+    final lower = source.toLowerCase();
+    var sc = 0.0;
+    for (final keywords in focusKeywords) {
+      if (keywords.any(lower.contains)) sc += 1.6;
+    }
+    return sc;
+  }
+
+  String localizeText(String text) {
+    if (p.langCode != 'tr') return text;
+    return text
+        .replaceAll(
+          RegExp(r'\bTech score\b', caseSensitive: false),
+          'Teknik puan',
+        )
+        .replaceAll(RegExp(r'\bSupport\b', caseSensitive: false), 'Desteği')
+        .replaceAll(RegExp(r':\s*Yes\b', caseSensitive: false), ': Var')
+        .replaceAll(RegExp(r':\s*No\b', caseSensitive: false), ': Yok')
+        .replaceAll(RegExp(r'\binch\b', caseSensitive: false), 'inç');
+  }
+
+  for (final pro in p.product.pros.take(5)) {
+    candidates.add((
+      text: localizeText(pro.trim()),
+      score: 2.4 + calcFocusScore(pro),
+    ));
+  }
+  for (final entry in p.product.keySpecs.entries) {
+    final value = entry.value.toString().trim();
+    if (value.isEmpty) continue;
+    final text = localizeText('${entry.key}: $value');
+    candidates.add((text: text, score: 1.4 + calcFocusScore(text)));
+  }
+  if (p.product.techScore >= 90) {
+    candidates.add((
+      text: localizeText(
+        'Tech score ${p.product.techScore.toStringAsFixed(0)}/100',
+      ),
+      score: focusAreas.any((a) => a == 'Performance' || a == 'Gaming')
+          ? 3.0
+          : 1.5,
+    ));
+  }
+  candidates.sort((a, b) => b.score.compareTo(a.score));
+  final highlights = <String>[];
+  for (final entry in candidates) {
+    final normalized = entry.text.toLowerCase();
+    if (highlights.any(
+      (t) =>
+          normalized.contains(t.toLowerCase()) ||
+          t.toLowerCase().contains(normalized),
+    )) continue;
+    highlights.add(entry.text);
+    if (highlights.length >= 6) break;
+  }
+
+  // 3. Build trade-offs
+  final tradeOffs = <String>[];
+  for (final con in p.product.cons.take(3)) {
+    final text = con.trim();
+    if (text.isNotEmpty) tradeOffs.add(text);
+  }
+  final lowerFocus = focusAreas.map((a) => a.toLowerCase()).toList();
+  if (lowerFocus.contains('portability')) {
+    final weightValue = p.product.keySpecs.entries
+        .firstWhere(
+          (e) => e.key.toLowerCase().contains('weight'),
+          orElse: () => const MapEntry('', ''),
+        )
+        .value;
+    if (weightValue.isNotEmpty) {
+      tradeOffs.add(
+        'Portability depends on its ${weightValue.toLowerCase()} weight.',
+      );
+    }
+  }
+  final finalTradeOffs = tradeOffs.take(3).toList();
+
+  // 4. Build local fallback reason
+  final isTr = p.langCode == 'tr';
+  final first = highlights.isNotEmpty ? highlights.first : '';
+  final second = highlights.length > 1 ? highlights[1] : '';
+  final topIssue = finalTradeOffs.isNotEmpty ? finalTradeOffs.first : '';
+  String fallbackReason;
+  if (isTr) {
+    if (first.isNotEmpty && second.isNotEmpty) {
+      final base = '$first ve $second ile öne çıkıyor.';
+      fallbackReason = topIssue.isNotEmpty
+          ? '$base $topIssue ana taviz noktası olarak dikkat çekiyor.'
+          : base;
+    } else if (first.isNotEmpty && topIssue.isNotEmpty) {
+      fallbackReason =
+          '$first ile öne çıkıyor. $topIssue ana sınırı olarak görülmeli.';
+    } else if (first.isNotEmpty) {
+      fallbackReason = '$first ile öne çıkıyor.';
+    } else if (topIssue.isNotEmpty) {
+      fallbackReason = '$topIssue bu üründe dikkat edilmesi gereken ana nokta.';
+    } else {
+      fallbackReason =
+          'Teknik seviye, genel denge ve kategori içindeki konumuyla dikkat çeken bir profil sunuyor.';
+    }
+  } else {
+    if (first.isNotEmpty && second.isNotEmpty) {
+      final base = '$first and $second stand out most.';
+      fallbackReason = topIssue.isNotEmpty
+          ? '$base $topIssue is the main trade-off to keep in mind.'
+          : base;
+    } else if (first.isNotEmpty && topIssue.isNotEmpty) {
+      fallbackReason =
+          '$first is the main standout. $topIssue is the clearest limitation.';
+    } else if (first.isNotEmpty) {
+      fallbackReason = '$first is the clearest standout.';
+    } else if (topIssue.isNotEmpty) {
+      fallbackReason = '$topIssue is the main limitation to keep in mind.';
+    } else {
+      fallbackReason =
+          'It stands out through its overall technical balance and category position.';
+    }
+  }
+
+  return _HighlightsIsolateResult(
+    focusAreas: focusAreas,
+    highlights: highlights,
+    tradeOffs: finalTradeOffs,
+    fallbackReason: fallbackReason,
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 String? _normalizeFocusKeyFn(String raw) {
   final key = raw.trim().toLowerCase();
   switch (key) {
@@ -1912,27 +2108,28 @@ class _GeminiMatchScoreNotifier
       // weightVector already fetched — parse from in-memory data (no extra PB call).
       final weightVector = _parseWeightVectorFromData(userRecordData?['weightVector']);
 
-      // Yield before building prompt — keeps first UI frame smooth while
+      // Yield before isolate dispatch — keeps first UI frame smooth while
       // widgets are mounting (postFrameCallback fires before route anim done).
       await Future<void>.delayed(Duration.zero);
       if (!mounted) return;
-      // Extra microtask yield so pending touch/scroll events are dispatched
-      // before the synchronous string-processing work below.
-      await Future<void>.microtask(() {});
+
+      // Build focusAreas / highlights / tradeOffs in a background isolate so
+      // the main thread is completely free during this preparation phase.
+      final hResult = await compute(
+        _computeHighlightsInIsolate,
+        _HighlightsIsolateParams(
+          user: user as UserEntity,
+          product: product,
+          weightVector: weightVector,
+          langCode: langCode,
+        ),
+      );
       if (!mounted) return;
 
-      final focusAreas = _buildFocusAreas(
-        user: user,
-        weightVector: weightVector,
-      );
-      final productHighlights = _buildProductHighlights(
-        product: product,
-        focusAreas: focusAreas,
-      );
-      final tradeOffs = _buildTradeOffs(
-        product: product,
-        focusAreas: focusAreas,
-      );
+      final focusAreas = hResult.focusAreas;
+      final productHighlights = hResult.highlights;
+      final tradeOffs = hResult.tradeOffs;
+      final fallbackReason = hResult.fallbackReason;
 
       final profileJson = {
         'ecosystem': user.ecosystem,
@@ -1976,11 +2173,6 @@ class _GeminiMatchScoreNotifier
         if (product.pros.isNotEmpty) 'pros': product.pros.take(4).toList(),
         if (product.cons.isNotEmpty) 'cons': product.cons.take(4).toList(),
       };
-
-      final fallbackReason = _buildLocalReason(
-        highlights: productHighlights,
-        tradeOffs: tradeOffs,
-      );
 
       // ── Step 3: Call AI ────────────────────────────────────────────────────
       _emitStep(product.id, langCode,
@@ -2152,10 +2344,9 @@ class _GeminiMatchScoreNotifier
       final cachedVersion =
           (cached['detailMatchCacheVersion'] as num?)?.toInt();
       if (cachedVersion != _detailMatchCacheVersion) return null;
-      final fallbackReason = _buildLocalReason(
-        highlights: const [],
-        tradeOffs: const [],
-      );
+      final fallbackReason = langCode == 'tr'
+          ? 'Teknik seviye, genel denge ve kategori içindeki konumuyla dikkat çeken bir profil sunuyor.'
+          : 'It stands out through its overall technical balance and category position.';
       return GeminiMatchResult(
         matchScore: _safeInt(cached['matchScore'], 0),
         reason: _sanitizeMatchReason(
@@ -2238,197 +2429,6 @@ class _GeminiMatchScoreNotifier
           },
         )
         .toList();
-  }
-
-  List<String> _buildFocusAreas({
-    required UserEntity user,
-    required Map<String, double> weightVector,
-  }) {
-    final scores = <String, double>{};
-
-    void addScore(String rawKey, double score) {
-      final key = _normalizeFocusKey(rawKey);
-      if (key == null) return;
-      final current = scores[key] ?? 0;
-      if (score > current) scores[key] = score;
-    }
-
-    for (var i = 0; i < user.priorities.length; i++) {
-      addScore(user.priorities[i], 1.0 - (i * 0.08));
-    }
-    for (final entry in weightVector.entries) {
-      addScore(entry.key, entry.value);
-    }
-
-    final ranked = scores.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final nonEcosystem = ranked
-        .where((entry) => entry.key != 'ecosystem')
-        .toList();
-    final ecosystem = ranked
-        .where((entry) => entry.key == 'ecosystem')
-        .toList();
-    final ordered = <MapEntry<String, double>>[
-      ...nonEcosystem,
-      if (ecosystem.isNotEmpty &&
-          (ecosystem.first.value >= 0.8 || nonEcosystem.length < 2))
-        ecosystem.first,
-    ];
-
-    return ordered.take(4).map((entry) => _focusLabel(entry.key)).toList();
-  }
-
-  List<String> _buildProductHighlights({
-    required ProductEntity product,
-    required List<String> focusAreas,
-  }) {
-    final highlights = <({String text, double score})>[];
-    final langCode = (_ref.read(localeProvider)?.languageCode ?? 'en')
-        .toLowerCase();
-    final focusKeywords = focusAreas.map(_focusKeywordsForLabel).toList();
-
-    double focusScore(String source) {
-      final lower = source.toLowerCase();
-      var score = 0.0;
-      for (final keywords in focusKeywords) {
-        if (keywords.any(lower.contains)) score += 1.6;
-      }
-      return score;
-    }
-
-    for (final pro in product.pros.take(5)) {
-      final score = 2.4 + focusScore(pro);
-      highlights.add((
-        text: _localizeHighlightText(pro.trim(), langCode),
-        score: score,
-      ));
-    }
-
-    for (final entry in product.keySpecs.entries) {
-      final value = entry.value.toString().trim();
-      if (value.isEmpty) continue;
-      final text = _localizeHighlightText('${entry.key}: $value', langCode);
-      final score = 1.4 + focusScore(text);
-      highlights.add((text: text, score: score));
-    }
-
-    if (product.techScore >= 90) {
-      highlights.add((
-        text: _localizeHighlightText(
-          'Tech score ${product.techScore.toStringAsFixed(0)}/100',
-          langCode,
-        ),
-        score:
-            focusAreas.any((area) => area == 'Performance' || area == 'Gaming')
-            ? 3.0
-            : 1.5,
-      ));
-    }
-
-    highlights.sort((a, b) => b.score.compareTo(a.score));
-    final deduped = <String>[];
-    for (final entry in highlights) {
-      final normalized = entry.text.toLowerCase();
-      if (deduped.any(
-        (text) =>
-            normalized.contains(text.toLowerCase()) ||
-            text.toLowerCase().contains(normalized),
-      )) {
-        continue;
-      }
-      deduped.add(entry.text);
-      if (deduped.length >= 6) break;
-    }
-    return deduped;
-  }
-
-  String _localizeHighlightText(String text, String langCode) {
-    if (langCode != 'tr') return text;
-
-    return text
-        .replaceAll(RegExp(r'\bTech score\b', caseSensitive: false), 'Teknik puan')
-        .replaceAll(RegExp(r'\bSupport\b', caseSensitive: false), 'Desteği')
-        .replaceAll(RegExp(r':\s*Yes\b', caseSensitive: false), ': Var')
-        .replaceAll(RegExp(r':\s*No\b', caseSensitive: false), ': Yok')
-        .replaceAll(RegExp(r'\binch\b', caseSensitive: false), 'inç');
-  }
-
-  List<String> _buildTradeOffs({
-    required ProductEntity product,
-    required List<String> focusAreas,
-  }) {
-    final issues = <String>[];
-    for (final con in product.cons.take(3)) {
-      final text = con.trim();
-      if (text.isNotEmpty) issues.add(text);
-    }
-
-    final lowerFocus = focusAreas.map((area) => area.toLowerCase()).toList();
-    if (lowerFocus.contains('portability')) {
-      final weightValue = product.keySpecs.entries
-          .firstWhere(
-            (entry) => entry.key.toLowerCase().contains('weight'),
-            orElse: () => const MapEntry('', ''),
-          )
-          .value;
-      if (weightValue.isNotEmpty) {
-        issues.add(
-          'Portability depends on its ${weightValue.toLowerCase()} weight.',
-        );
-      }
-    }
-
-    return issues.take(3).toList();
-  }
-
-  String _buildLocalReason({
-    required List<String> highlights,
-    required List<String> tradeOffs,
-  }) {
-    final langCode = (_ref.read(localeProvider)?.languageCode ?? 'en')
-        .toLowerCase();
-    final isTr = langCode == 'tr';
-    final firstHighlight = highlights.isNotEmpty ? highlights.first : '';
-    final secondHighlight = highlights.length > 1 ? highlights[1] : '';
-    final topTradeOff = tradeOffs.isNotEmpty ? tradeOffs.first : '';
-
-    if (isTr) {
-      if (firstHighlight.isNotEmpty && secondHighlight.isNotEmpty) {
-        final base = '$firstHighlight ve $secondHighlight ile öne çıkıyor.';
-        if (topTradeOff.isNotEmpty) {
-          return '$base $topTradeOff ana taviz noktası olarak dikkat çekiyor.';
-        }
-        return base;
-      }
-      if (firstHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
-        return '$firstHighlight ile öne çıkıyor. $topTradeOff ana sınırı olarak görülmeli.';
-      }
-      if (firstHighlight.isNotEmpty) {
-        return '$firstHighlight ile öne çıkıyor.';
-      }
-      if (topTradeOff.isNotEmpty) {
-        return '$topTradeOff bu üründe dikkat edilmesi gereken ana nokta.';
-      }
-      return 'Teknik seviye, genel denge ve kategori içindeki konumuyla dikkat çeken bir profil sunuyor.';
-    }
-
-    if (firstHighlight.isNotEmpty && secondHighlight.isNotEmpty) {
-      final base = '$firstHighlight and $secondHighlight stand out most.';
-      if (topTradeOff.isNotEmpty) {
-        return '$base $topTradeOff is the main trade-off to keep in mind.';
-      }
-      return base;
-    }
-    if (firstHighlight.isNotEmpty && topTradeOff.isNotEmpty) {
-      return '$firstHighlight is the main standout. $topTradeOff is the clearest limitation.';
-    }
-    if (firstHighlight.isNotEmpty) {
-      return '$firstHighlight is the clearest standout.';
-    }
-    if (topTradeOff.isNotEmpty) {
-      return '$topTradeOff is the main limitation to keep in mind.';
-    }
-    return 'It stands out through its overall technical balance and category position.';
   }
 
   String _languageDisplayName(String code) {
@@ -2565,43 +2565,6 @@ class _GeminiMatchScoreNotifier
     }
   }
 
-  List<String> _focusKeywordsForLabel(String label) {
-    switch (label) {
-      case 'Value':
-        return ['price', 'value', 'affordable', 'budget'];
-      case 'Build Quality':
-        return ['build', 'quality', 'premium', 'durable', 'material'];
-      case 'Design':
-        return ['design', 'thin', 'slim', 'stylish'];
-      case 'Performance':
-        return ['performance', 'processor', 'cpu', 'gpu', 'ram', 'chip'];
-      case 'Battery':
-        return ['battery', 'mah', 'charging', 'runtime'];
-      case 'Camera':
-        return ['camera', 'photo', 'video', 'sensor', 'zoom', 'mp'];
-      case 'Portability':
-        return ['portable', 'light', 'weight', 'thin', 'compact'];
-      case 'Gaming':
-        return ['gaming', 'gpu', 'rtx', 'refresh', 'fps', 'cooling'];
-      case 'Display':
-        return ['display', 'screen', 'brightness', 'resolution', 'oled', 'hdr'];
-      case 'Productivity':
-        return [
-          'productivity',
-          'multitasking',
-          'ram',
-          'storage',
-          'keyboard',
-          'cpu',
-        ];
-      case 'Audio':
-        return ['audio', 'speaker', 'dolby', 'anc', 'sound'];
-      case 'Ecosystem':
-        return ['ecosystem', 'apple', 'android', 'windows', 'google'];
-      default:
-        return const [];
-    }
-  }
 
   void reset() => state = const AsyncValue.data(null);
 }

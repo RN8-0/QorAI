@@ -2092,18 +2092,8 @@ class _MyReviewsList extends ConsumerWidget {
     final emptyText = context.l10n?.noReviewsYet ?? 'No reviews yet';
 
     return reviewsAsync.when(
-      loading: () => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: Text(
-            emptyText,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: AppTheme.slate500,
-            ),
-          ),
-        ),
-      ),
+      skipLoadingOnReload: true,
+      loading: () => const SizedBox.shrink(),
       error: (_, _) => const SizedBox.shrink(),
       data: (reviews) {
         if (reviews.isEmpty) {
