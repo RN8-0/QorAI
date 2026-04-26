@@ -18,7 +18,7 @@ import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/cache_service.dart';
 
 const String _kGoogleWebClientId =
-  '116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com';
+    '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
 
 class AuthRepository {
   final PocketBase _pb;
@@ -143,16 +143,18 @@ class AuthRepository {
     }
   }
 
-  /// Google Sign-In prefers the native SDK, but falls back to PocketBase's
-  /// browser OAuth flow when Android OAuth config is missing or mismatched.
+  /// Google Sign-In via native SDK -> PB hook (/api/auth/google).
+  /// On mobile we use the free `google_sign_in` package to obtain a Google
+  /// ID token (audience = our web client id), then POST it to a PB JS hook
+  /// which validates it with Google's tokeninfo endpoint and upserts the
+  /// user in `users`. No Firebase, no client secret on device.
   Future<Result<UserEntity>> signInWithGoogle() async {
     try {
-      // Android dahil her platformda WEB client_id'yi serverClientId olarak
-      // vermek gerekiyor; aksi halde Android'de idToken null d\u00f6n\u00fcyor ve
-      // ApiException:10 (DEVELOPER_ERROR) hatas\u0131 al\u0131n\u0131yor.
       final google = GoogleSignIn(
         scopes: const ['email', 'profile'],
-        serverClientId: _kGoogleWebClientId,
+        serverClientId: defaultTargetPlatform == TargetPlatform.android
+            ? null
+            : _kGoogleWebClientId,
       );
       await google.signOut();
       final account = await google.signIn();
@@ -164,8 +166,9 @@ class AuthRepository {
       final gAuth = await account.authentication;
       final idToken = gAuth.idToken;
       if (idToken == null || idToken.isEmpty) {
-        debugPrint('[auth] Google native sign-in returned no idToken; falling back to PB OAuth2');
-        return _signInWithOAuth2('google', scopes: ['email', 'profile']);
+        return const Failure(
+          AuthException(message: 'Google authentication failed (no idToken)'),
+        );
       }
 
       final httpResp = await http
@@ -268,8 +271,12 @@ class AuthRepository {
       debugPrint('[auth] signInWithGoogle error: $e');
       final err = e.toString();
       if (err.contains('sign_in_failed') || err.contains('ApiException: 10')) {
-        debugPrint('[auth] Google native sign-in failed with Android OAuth mismatch; falling back to PB OAuth2');
-        return _signInWithOAuth2('google', scopes: ['email', 'profile']);
+        return const Failure(
+          AuthException(
+            message:
+                'Google Sign-In Android OAuth ayariyla eslesmedi. Browser fallback kapatildi; native client yapisi duzeltildi, uygulamayi guncelleyip tekrar deneyin.',
+          ),
+        );
       }
       return Failure(
         AuthException(
@@ -449,7 +456,9 @@ class AuthRepository {
       final msg = body['message'] ?? body['error'] ?? 'Request failed';
       return Failure(AuthException(message: msg.toString()));
     } on ClientException catch (e) {
-      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
     } catch (e) {
       return Failure(AuthException(message: e.toString()));
     }
@@ -486,7 +495,9 @@ class AuthRepository {
         final status = e.statusCode;
         // 403 = no permission rule, 404 = already deleted — both are OK
         if (status == 403 || status == 404) {
-          debugPrint('[auth] deleteCurrentUser: server returned $status, proceeding with local cleanup');
+          debugPrint(
+            '[auth] deleteCurrentUser: server returned $status, proceeding with local cleanup',
+          );
         } else {
           rethrow;
         }
@@ -500,18 +511,24 @@ class AuthRepository {
         await _hive?.clearAll();
       } catch (_) {}
 
-      debugPrint('[auth] deleteCurrentUser: done (serverDeleted=$serverDeleted)');
+      debugPrint(
+        '[auth] deleteCurrentUser: done (serverDeleted=$serverDeleted)',
+      );
       return const Success(null);
     } on ClientException catch (e) {
       // Auth store should still be cleared so user isn't stuck
       _pb.authStore.clear();
-      try { await _cache.clearUserData(); } catch (_) {}
+      try {
+        await _cache.clearUserData();
+      } catch (_) {}
       return Failure(
         AuthException(message: _getPbErrorMsg(e), originalError: e),
       );
     } catch (e) {
       _pb.authStore.clear();
-      try { await _cache.clearUserData(); } catch (_) {}
+      try {
+        await _cache.clearUserData();
+      } catch (_) {}
       return Failure(
         AuthException(
           message: 'Failed to delete account: ${e.toString()}',
@@ -596,7 +613,10 @@ class AuthRepository {
           return '${entry.key}: ${fieldErr['message']}';
         }
       }
-      return _authText(tr: 'Geçersiz bilgiler girildi', en: 'Invalid data provided');
+      return _authText(
+        tr: 'Geçersiz bilgiler girildi',
+        en: 'Invalid data provided',
+      );
     }
     if (e.statusCode == 401) {
       return _authText(

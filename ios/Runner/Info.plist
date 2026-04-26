@@ -54,7 +54,7 @@
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Qor AI uses speech recognition to convert your voice into search queries for finding products.</string>
 	<key>GIDClientID</key>
-	<string>116725106228-hs29d4gh4vldofj3a0aegfr4ootopr9q.apps.googleusercontent.com</string>
+	<string>510980756238-369d7b3tst5k4aue0niai0g5tm7090c1.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -62,7 +62,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.116725106228-hs29d4gh4vldofj3a0aegfr4ootopr9q</string>
+				<string>com.googleusercontent.apps.510980756238-369d7b3tst5k4aue0niai0g5tm7090c1</string>
 			</array>
 		</dict>
 	</array>
