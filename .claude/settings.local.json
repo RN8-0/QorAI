@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($javaHome = \\(Get-Command flutter -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\\) ; flutter doctor -v 2>&1 | Select-String \"Java\" | head)"
+    ]
+  }
+}

@@ -130,13 +130,14 @@ onRecordAfterUpdateSuccess(function (e) {
       return;
     } catch (_) {}
 
+    const isAdminMessage = status === 'admin_message';
     const notifCol = $app.findCollectionByNameOrId('notifications');
     const notif = new Record(notifCol);
     notif.set('recipientId', userId);
     notif.set('senderId', 'admin');
     notif.set('senderName', 'Qor AI Destek');
-    notif.set('type', 'system');
-    notif.set('title', 'Mesajınıza yanıt geldi');
+    notif.set('type', isAdminMessage ? 'admin_message' : 'support_reply');
+    notif.set('title', isAdminMessage ? 'Qor AI Destek\'ten yeni mesaj' : 'Mesajınıza yanıt geldi');
     notif.set('body', adminReply.length > 200 ? adminReply.substring(0, 197) + '...' : adminReply);
     notif.set('referenceId', record.id);
     notif.set('read', false);

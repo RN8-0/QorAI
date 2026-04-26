@@ -58,6 +58,7 @@ class NotificationsScreen extends ConsumerWidget {
         ],
       ),
       body: notifsAsync.when(
+        skipLoadingOnReload: true,
         loading: _EmptyState.new,
         error: (_, __) => _EmptyState(),
         data: (items) {
@@ -126,10 +127,8 @@ class _NotificationTile extends ConsumerWidget {
     final senderName = notif['senderName'] as String? ?? '';
     final created = notif['created'] as String? ?? '';
     final id = notif['id'] as String? ?? '';
-    final canReply =
-      (notif['senderId'] as String? ?? '') == 'admin' ||
-      senderName.toLowerCase().contains('destek') ||
-      (notif['type'] as String? ?? '') == 'system';
+    final notifType = notif['type'] as String? ?? '';
+    final canReply = notifType == 'support_reply';
 
     DateTime? createdAt;
     try {

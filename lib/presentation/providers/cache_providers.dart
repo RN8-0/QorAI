@@ -1442,6 +1442,319 @@ final aiOperationStepProvider = StateProvider.family<String, String>(
 
 String _encodeJsonString(Map<String, dynamic> payload) => jsonEncode(payload);
 
+// ─── LOCAL FALLBACK ISOLATE HELPERS ─────────────────────────────────────────
+// These top-level functions run in a background isolate via compute() so the
+// main thread is never blocked by match-score / highlight computation.
+
+class _FallbackIsolateParams {
+  final UserEntity user;
+  final ProductEntity product;
+  final BehaviorSignals behavior;
+  final String langCode;
+  const _FallbackIsolateParams({
+    required this.user,
+    required this.product,
+    required this.behavior,
+    required this.langCode,
+  });
+}
+
+class _FallbackIsolateResult {
+  final int resolvedScore;
+  final String reason;
+  final List<String> topMatchFactors;
+  final List<String> missingFactors;
+  const _FallbackIsolateResult({
+    required this.resolvedScore,
+    required this.reason,
+    required this.topMatchFactors,
+    required this.missingFactors,
+  });
+}
+
+String? _normalizeFocusKeyFn(String raw) {
+  final key = raw.trim().toLowerCase();
+  switch (key) {
+    case 'price':
+    case 'price_sensitivity':
+    case 'value':
+      return 'price';
+    case 'quality':
+    case 'build_quality':
+    case 'durability':
+      return 'build_quality';
+    case 'design':
+      return 'design';
+    case 'performance':
+      return 'performance';
+    case 'battery':
+      return 'battery';
+    case 'camera':
+      return 'camera';
+    case 'portability':
+      return 'portability';
+    case 'gaming':
+      return 'gaming';
+    case 'creator':
+    case 'content_consumption':
+    case 'display':
+      return 'display';
+    case 'productivity':
+      return 'productivity';
+    case 'audio_quality':
+    case 'audio':
+      return 'audio';
+    case 'ecosystem':
+    case 'ecosystem_lock':
+      return 'ecosystem';
+    default:
+      return null;
+  }
+}
+
+String _focusLabelFn(String key) {
+  switch (key) {
+    case 'price':
+      return 'Value';
+    case 'build_quality':
+      return 'Build Quality';
+    case 'design':
+      return 'Design';
+    case 'performance':
+      return 'Performance';
+    case 'battery':
+      return 'Battery';
+    case 'camera':
+      return 'Camera';
+    case 'portability':
+      return 'Portability';
+    case 'gaming':
+      return 'Gaming';
+    case 'display':
+      return 'Display';
+    case 'productivity':
+      return 'Productivity';
+    case 'audio':
+      return 'Audio';
+    case 'ecosystem':
+      return 'Ecosystem';
+    default:
+      return key;
+  }
+}
+
+List<String> _focusKeywordsForLabelFn(String label) {
+  switch (label) {
+    case 'Value':
+      return ['price', 'value', 'affordable', 'budget'];
+    case 'Build Quality':
+      return ['build', 'quality', 'premium', 'durable', 'material'];
+    case 'Design':
+      return ['design', 'thin', 'slim', 'stylish'];
+    case 'Performance':
+      return ['performance', 'processor', 'cpu', 'gpu', 'ram', 'chip'];
+    case 'Battery':
+      return ['battery', 'mah', 'charging', 'runtime'];
+    case 'Camera':
+      return ['camera', 'photo', 'video', 'sensor', 'zoom', 'mp'];
+    case 'Portability':
+      return ['portable', 'light', 'weight', 'thin', 'compact'];
+    case 'Gaming':
+      return ['gaming', 'gpu', 'rtx', 'refresh', 'fps', 'cooling'];
+    case 'Display':
+      return ['display', 'screen', 'brightness', 'resolution', 'oled', 'hdr'];
+    case 'Productivity':
+      return [
+        'productivity',
+        'multitasking',
+        'ram',
+        'storage',
+        'keyboard',
+        'cpu',
+      ];
+    case 'Audio':
+      return ['audio', 'speaker', 'dolby', 'anc', 'sound'];
+    case 'Ecosystem':
+      return ['ecosystem', 'apple', 'android', 'windows', 'google'];
+    default:
+      return const [];
+  }
+}
+
+/// Executed in a background isolate — computes local fit score, highlights,
+/// trade-offs, and a short reason string without touching the main thread.
+_FallbackIsolateResult _computeFallbackInIsolate(_FallbackIsolateParams p) {
+  // 1. Fit score via pure algorithm
+  final algo = ProfileAlgorithmService();
+  final fs = algo.calculateTotalFitScore(
+    user: p.user,
+    product: p.product,
+    behavior: p.behavior,
+  );
+
+  // 2. Build focus areas (mirrors _GeminiMatchScoreNotifier._buildFocusAreas)
+  final scores = <String, double>{};
+  void addScore(String rawKey, double score) {
+    final key = _normalizeFocusKeyFn(rawKey);
+    if (key == null) return;
+    final current = scores[key] ?? 0;
+    if (score > current) scores[key] = score;
+  }
+  for (var i = 0; i < p.user.priorities.length; i++) {
+    addScore(p.user.priorities[i], 1.0 - (i * 0.08));
+  }
+  final ranked = scores.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final nonEcosystem = ranked.where((e) => e.key != 'ecosystem').toList();
+  final ecosystem = ranked.where((e) => e.key == 'ecosystem').toList();
+  final ordered = <MapEntry<String, double>>[
+    ...nonEcosystem,
+    if (ecosystem.isNotEmpty &&
+        (ecosystem.first.value >= 0.8 || nonEcosystem.length < 2))
+      ecosystem.first,
+  ];
+  final focusAreas = ordered.take(4).map((e) => _focusLabelFn(e.key)).toList();
+
+  // 3. Build product highlights (mirrors _buildProductHighlights + _localizeHighlightText)
+  final focusKeywords = focusAreas.map(_focusKeywordsForLabelFn).toList();
+  final candidates = <({String text, double score})>[];
+
+  double calcFocusScore(String source) {
+    final lower = source.toLowerCase();
+    var sc = 0.0;
+    for (final keywords in focusKeywords) {
+      if (keywords.any(lower.contains)) sc += 1.6;
+    }
+    return sc;
+  }
+
+  String localizeText(String text) {
+    if (p.langCode != 'tr') return text;
+    return text
+        .replaceAll(
+          RegExp(r'\bTech score\b', caseSensitive: false),
+          'Teknik puan',
+        )
+        .replaceAll(
+          RegExp(r'\bSupport\b', caseSensitive: false),
+          'Desteği',
+        )
+        .replaceAll(RegExp(r':\s*Yes\b', caseSensitive: false), ': Var')
+        .replaceAll(RegExp(r':\s*No\b', caseSensitive: false), ': Yok')
+        .replaceAll(RegExp(r'\binch\b', caseSensitive: false), 'inç');
+  }
+
+  for (final pro in p.product.pros.take(5)) {
+    candidates.add((
+      text: localizeText(pro.trim()),
+      score: 2.4 + calcFocusScore(pro),
+    ));
+  }
+  for (final entry in p.product.keySpecs.entries) {
+    final value = entry.value.toString().trim();
+    if (value.isEmpty) continue;
+    final text = localizeText('${entry.key}: $value');
+    candidates.add((text: text, score: 1.4 + calcFocusScore(text)));
+  }
+  if (p.product.techScore >= 90) {
+    candidates.add((
+      text: localizeText(
+        'Tech score ${p.product.techScore.toStringAsFixed(0)}/100',
+      ),
+      score: focusAreas.any((a) => a == 'Performance' || a == 'Gaming')
+          ? 3.0
+          : 1.5,
+    ));
+  }
+  candidates.sort((a, b) => b.score.compareTo(a.score));
+  final highlights = <String>[];
+  for (final entry in candidates) {
+    final normalized = entry.text.toLowerCase();
+    if (highlights.any(
+      (t) =>
+          normalized.contains(t.toLowerCase()) ||
+          t.toLowerCase().contains(normalized),
+    )) continue;
+    highlights.add(entry.text);
+    if (highlights.length >= 6) break;
+  }
+
+  // 4. Build trade-offs (mirrors _buildTradeOffs)
+  final tradeOffs = <String>[];
+  for (final con in p.product.cons.take(3)) {
+    final text = con.trim();
+    if (text.isNotEmpty) tradeOffs.add(text);
+  }
+  final lowerFocus = focusAreas.map((a) => a.toLowerCase()).toList();
+  if (lowerFocus.contains('portability')) {
+    final weightValue = p.product.keySpecs.entries
+        .firstWhere(
+          (e) => e.key.toLowerCase().contains('weight'),
+          orElse: () => const MapEntry('', ''),
+        )
+        .value;
+    if (weightValue.isNotEmpty) {
+      tradeOffs.add(
+        'Portability depends on its ${weightValue.toLowerCase()} weight.',
+      );
+    }
+  }
+  final finalTradeOffs = tradeOffs.take(3).toList();
+
+  // 5. Build local reason (mirrors _buildLocalReason)
+  final isTr = p.langCode == 'tr';
+  final first = highlights.isNotEmpty ? highlights.first : '';
+  final second = highlights.length > 1 ? highlights[1] : '';
+  final topIssue = finalTradeOffs.isNotEmpty ? finalTradeOffs.first : '';
+  String reason;
+  if (isTr) {
+    if (first.isNotEmpty && second.isNotEmpty) {
+      final base = '$first ve $second ile öne çıkıyor.';
+      reason = topIssue.isNotEmpty
+          ? '$base $topIssue ana taviz noktası olarak dikkat çekiyor.'
+          : base;
+    } else if (first.isNotEmpty && topIssue.isNotEmpty) {
+      reason = '$first ile öne çıkıyor. $topIssue ana sınırı olarak görülmeli.';
+    } else if (first.isNotEmpty) {
+      reason = '$first ile öne çıkıyor.';
+    } else if (topIssue.isNotEmpty) {
+      reason = '$topIssue bu üründe dikkat edilmesi gereken ana nokta.';
+    } else {
+      reason =
+          'Teknik seviye, genel denge ve kategori içindeki konumuyla dikkat çeken bir profil sunuyor.';
+    }
+  } else {
+    if (first.isNotEmpty && second.isNotEmpty) {
+      final base = '$first and $second stand out most.';
+      reason = topIssue.isNotEmpty
+          ? '$base $topIssue is the main trade-off to keep in mind.'
+          : base;
+    } else if (first.isNotEmpty && topIssue.isNotEmpty) {
+      reason = '$first is the main standout. $topIssue is the clearest limitation.';
+    } else if (first.isNotEmpty) {
+      reason = '$first is the clearest standout.';
+    } else if (topIssue.isNotEmpty) {
+      reason = '$topIssue is the main limitation to keep in mind.';
+    } else {
+      reason =
+          'It stands out through its overall technical balance and category position.';
+    }
+  }
+
+  final resolvedScore = fs > 0
+      ? fs.toInt()
+      : (p.product.techScore * 0.72).round().clamp(35, 80);
+
+  return _FallbackIsolateResult(
+    resolvedScore: resolvedScore,
+    reason: reason,
+    topMatchFactors: highlights.take(3).toList(),
+    missingFactors: finalTradeOffs.take(2).toList(),
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 final geminiMatchScoreProvider =
     StateNotifierProvider.family<
       _GeminiMatchScoreNotifier,
@@ -1479,7 +1792,12 @@ class _GeminiMatchScoreNotifier
     final sub = _ref.read(subscriptionServiceProvider);
     if (!sub.isPremium) {
       if (!forCompareBatch && !sub.canUseDetailMatchAi) {
-        _fallbackToLocal(product);
+        // Yield to the event loop before running background compute so the
+        // call is safe from a widget life-cycle context and input events
+        // can be processed before the isolate result arrives.
+        await Future<void>.microtask(() {});
+        if (!mounted) return;
+        await _fallbackToLocal(product);
         return;
       }
     }
@@ -1514,7 +1832,7 @@ class _GeminiMatchScoreNotifier
     } catch (e, st) {
       debugPrint('[GeminiMatch] failed: $e\n$st');
       _clearStep(product.id);
-      _fallbackToLocal(product);
+      await _fallbackToLocal(product);
     } finally {
       // Defensive: never leave UI stuck on the spinner.
       _clearStep(product.id);
@@ -1597,6 +1915,10 @@ class _GeminiMatchScoreNotifier
       // Yield before building prompt — keeps first UI frame smooth while
       // widgets are mounting (postFrameCallback fires before route anim done).
       await Future<void>.delayed(Duration.zero);
+      if (!mounted) return;
+      // Extra microtask yield so pending touch/scroll events are dispatched
+      // before the synchronous string-processing work below.
+      await Future<void>.microtask(() {});
       if (!mounted) return;
 
       final focusAreas = _buildFocusAreas(
@@ -1772,45 +2094,38 @@ class _GeminiMatchScoreNotifier
     // Note: errors propagate up to fetchMatchScore for unified timeout/fallback handling.
   }
 
-  void _fallbackToLocal(ProductEntity product) {
+  /// Computes a local (non-AI) match result in a background isolate so the
+  /// main thread is never blocked. State is set once compute() returns.
+  Future<void> _fallbackToLocal(ProductEntity product) async {
     final userAsync = _ref.read(userProfileProvider);
     final user = userAsync.valueOrNull;
     if (user == null) {
       state = const AsyncValue.data(null);
       return;
     }
-    final algo = _ref.read(profileAlgorithmServiceProvider);
     final behaviorAsync = _ref.read(behaviorSignalsProvider);
     final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
-    final fs = algo.calculateTotalFitScore(
-      user: user,
-      product: product,
-      behavior: behavior,
+    final langCode =
+        (_ref.read(localeProvider)?.languageCode ?? 'en').toLowerCase();
+
+    // All heavy computation happens in a background isolate.
+    final result = await compute(
+      _computeFallbackInIsolate,
+      _FallbackIsolateParams(
+        user: user,
+        product: product,
+        behavior: behavior,
+        langCode: langCode,
+      ),
     );
-    final focusAreas = _buildFocusAreas(user: user, weightVector: const {});
-    final highlights = _buildProductHighlights(
-      product: product,
-      focusAreas: focusAreas,
-    );
-    final tradeOffs = _buildTradeOffs(
-      product: product,
-      focusAreas: focusAreas,
-    );
-    // If the weight-based algorithm returns 0 (rare, happens when the user has
-    // no weight signals yet), derive a sensible baseline from techScore so the
-    // UI never shows an empty match card — the spinner problem the user saw.
-    final resolvedScore = fs > 0
-        ? fs.toInt()
-        : (product.techScore * 0.72).round().clamp(35, 80);
+
+    if (!mounted) return;
     state = AsyncValue.data(
       GeminiMatchResult(
-        matchScore: resolvedScore,
-        reason: _buildLocalReason(
-          highlights: highlights,
-          tradeOffs: tradeOffs,
-        ),
-        topMatchFactors: highlights.take(3).toList(),
-        missingFactors: tradeOffs.take(2).toList(),
+        matchScore: result.resolvedScore,
+        reason: result.reason,
+        topMatchFactors: result.topMatchFactors,
+        missingFactors: result.missingFactors,
         isFromGemini: false,
       ),
     );

@@ -55,15 +55,11 @@ final countryInitProvider = FutureProvider<void>((ref) async {
 final notificationsProvider =
     StreamProvider<List<Map<String, dynamic>>>((ref) {
   ref.keepAlive(); // keep stream alive globally for realtime push notifications
-  final authState = ref.watch(authStateProvider);
-  return authState.when(
-    data: (uid) {
-      if (uid == null) return Stream.value([]);
-      return ref.read(pbDataSourceProvider).watchNotifications(uid);
-    },
-    loading: () => Stream.value([]),
-    error: (_, __) => Stream.value([]),
-  );
+  // Use select so provider only rebuilds when the UID itself changes (not on
+  // every authStore.save() that preserves the same UID).
+  final uid = ref.watch(authStateProvider.select((v) => v.valueOrNull));
+  if (uid == null) return Stream.value([]);
+  return ref.read(pbDataSourceProvider).watchNotifications(uid);
 });
 
 final unreadNotificationCountProvider = Provider<int>((ref) {

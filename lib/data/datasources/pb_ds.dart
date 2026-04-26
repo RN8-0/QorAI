@@ -1300,14 +1300,32 @@ class PbDataSource {
       collection: 'support_messages',
       page: 1,
       perPage: 50,
-      filter:
-          'userId = "$userId" && (status = "replied" || status = "admin_message")',
-      sort: '-repliedAt',
+      filter: 'userId = "$userId"',
+      sort: '-created',
     );
 
     return result.items
         .map((record) {
           final status = record.data['status']?.toString() ?? '';
+          final createdAt = record.data['created']?.toString().trim() ?? '';
+          final repliedAt = record.data['repliedAt']?.toString().trim() ?? '';
+
+          if (status == 'open' || status == 'pending') {
+            final userMessage = record.data['message']?.toString().trim() ?? '';
+            if (userMessage.isEmpty) return null;
+            return <String, dynamic>{
+              'id': 'support_${record.id}',
+              'read': true,
+              'title': 'Destek talebiniz alındı',
+              'body': userMessage,
+              'senderName': 'Siz',
+              'referenceId': record.id,
+              'type': 'support_sent',
+              'created': createdAt,
+              '_source': 'support_messages',
+            };
+          }
+
           final body =
               (status == 'admin_message'
                       ? record.data['message']
@@ -1316,7 +1334,6 @@ class PbDataSource {
                   .trim() ??
               '';
           if (body.isEmpty) return null;
-          final repliedAt = record.data['repliedAt']?.toString().trim() ?? '';
           return <String, dynamic>{
             'id': 'support_${record.id}',
             'read': true,
@@ -1327,8 +1344,8 @@ class PbDataSource {
             'body': body,
             'senderName': 'Qor AI Destek',
             'referenceId': record.id,
-            'type': 'system',
-            'created': repliedAt,
+            'type': status == 'admin_message' ? 'admin_message' : 'support_reply',
+            'created': repliedAt.isNotEmpty ? repliedAt : createdAt,
             '_source': 'support_messages',
           };
         })
