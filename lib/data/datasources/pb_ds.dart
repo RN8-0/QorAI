@@ -79,6 +79,12 @@ class PbDataSource {
         text.contains('forbidden');
   }
 
+  static bool _isMissingSortFieldError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('something went wrong while processing your request') ||
+        text.contains('statuscode: 400');
+  }
+
   Stream<T> _createRealtimeStream<T>({
     required String collection,
     String topic = '*',
@@ -733,18 +739,20 @@ class PbDataSource {
       final comparisons = <ComparisonModel>[];
 
       try {
-        final result = await _pb
-            .collection(AppConstants.comparisonsCollection)
-            .getList(
+        final result = await _getListWithSortFallback(
+              collection: AppConstants.comparisonsCollection,
               page: page,
               perPage: limit,
               filter: 'userId = "$userId"',
               sort: '-updated',
             )
             .timeout(const Duration(seconds: 15));
-        comparisons.addAll(
-          result.items.map(ComparisonModel.fromPb).where(_isValidComparison),
-        );
+        for (final record in result.items) {
+          final comparison = _safeComparisonFromPb(record);
+          if (comparison != null && _isValidComparison(comparison)) {
+            comparisons.add(comparison);
+          }
+        }
       } catch (e) {
         debugPrint('[PB] getUserComparisons collection fallback: $e');
       }
@@ -851,6 +859,15 @@ class PbDataSource {
           (entry['count'] as num?)?.toInt() ??
           1,
     );
+  }
+
+  ComparisonModel? _safeComparisonFromPb(RecordModel record) {
+    try {
+      return ComparisonModel.fromPb(record);
+    } catch (e) {
+      debugPrint('[PB] skipping malformed comparison ${record.id}: $e');
+      return null;
+    }
   }
 
   bool _isValidComparison(ComparisonModel comparison) {
@@ -1040,16 +1057,15 @@ class PbDataSource {
     int limit = 20,
   }) async {
     try {
-      final result = await _pb
-          .collection(AppConstants.reviewsCollection)
-          .getList(
+      final result = await _getListWithSortFallback(
+            collection: AppConstants.reviewsCollection,
             page: 1,
             perPage: limit,
             filter: 'productId = "$productId"',
             sort: '-created',
           )
           .timeout(const Duration(seconds: 10));
-      return result.items.map((r) => ReviewModel.fromPb(r)).toList();
+      return result.items.map(_safeReviewFromPb).whereType<ReviewModel>().toList();
     } catch (e) {
       throw ServerException(message: 'Reviews could not be retrieved: $e');
     }
@@ -1118,18 +1134,36 @@ class PbDataSource {
     return _createRealtimeStream<List<ReviewModel>>(
       collection: AppConstants.reviewsCollection,
       load: () async {
-        final result = await _pb
-            .collection(AppConstants.reviewsCollection)
-            .getList(
-              page: 1,
-              perPage: limit,
-              filter: 'userId = "$userId"',
-              sort: '-created',
-            );
-        return result.items.map(ReviewModel.fromPb).toList();
+        try {
+          final result = await _getListWithSortFallback(
+            collection: AppConstants.reviewsCollection,
+            page: 1,
+            perPage: limit,
+            filter: 'userId = "$userId"',
+            sort: '-created',
+          );
+          return result.items
+              .map(_safeReviewFromPb)
+              .whereType<ReviewModel>()
+              .toList();
+        } catch (e) {
+          if (!_isMissingSortFieldError(e)) {
+            debugPrint('[PB] watchUserReviews load error: $e');
+          }
+          return const <ReviewModel>[];
+        }
       },
       shouldReload: (event) => event.record?.data['userId'] == userId,
     );
+  }
+
+  ReviewModel? _safeReviewFromPb(RecordModel record) {
+    try {
+      return ReviewModel.fromPb(record);
+    } catch (e) {
+      debugPrint('[PB] skipping malformed review ${record.id}: $e');
+      return null;
+    }
   }
 
   // ─── Review Replies (sub-table via replies collection) ───
@@ -1329,7 +1363,7 @@ class PbDataSource {
   }
 
   Stream<List<Map<String, dynamic>>> watchNotifications(String userId) {
-    final controller = StreamController<List<Map<String, dynamic>>>();
+    late final StreamController<List<Map<String, dynamic>>> controller;
     bool cancelled = false;
     int backoffAttempts = 0;
     Timer? retryTimer;
@@ -1424,25 +1458,34 @@ class PbDataSource {
       }
     }
 
-    // Initial fetch
-    fetch().then((data) {
-      if (!controller.isClosed) controller.add(data);
-    });
+    controller = StreamController<List<Map<String, dynamic>>>(
+      onListen: () {
+        unawaited(() async {
+          try {
+            final data = await fetch();
+            if (!controller.isClosed) controller.add(data);
+          } catch (e) {
+            debugPrint('[PbDs] initial notifications fetch error: $e');
+            if (!controller.isClosed) {
+              controller.add(const <Map<String, dynamic>>[]);
+            }
+          }
 
-    if (_notificationsRealtimeUnsupported || _realtimeUnsupported) {
-      startPollingFallback();
-    } else {
-      // First subscribe attempt
-      trySubscribe();
-    }
-
-    controller.onCancel = () {
-      cancelled = true;
-      retryTimer?.cancel();
-      pollTimer?.cancel();
-      _pb.collection('notifications').unsubscribe('*').catchError((_) {});
-      _pb.collection('support_messages').unsubscribe('*').catchError((_) {});
-    };
+          if (_notificationsRealtimeUnsupported || _realtimeUnsupported) {
+            startPollingFallback();
+          } else {
+            await trySubscribe();
+          }
+        }());
+      },
+      onCancel: () {
+        cancelled = true;
+        retryTimer?.cancel();
+        pollTimer?.cancel();
+        _pb.collection('notifications').unsubscribe('*').catchError((_) {});
+        _pb.collection('support_messages').unsubscribe('*').catchError((_) {});
+      },
+    );
 
     return controller.stream;
   }

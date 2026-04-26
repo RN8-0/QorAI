@@ -58,7 +58,7 @@ class NotificationsScreen extends ConsumerWidget {
         ],
       ),
       body: notifsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: _EmptyState.new,
         error: (_, __) => _EmptyState(),
         data: (items) {
           if (items.isEmpty) {

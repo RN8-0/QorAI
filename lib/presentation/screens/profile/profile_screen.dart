@@ -2089,11 +2089,20 @@ class _MyReviewsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reviewsAsync = ref.watch(myReviewsProvider);
+    final emptyText = context.l10n?.noReviewsYet ?? 'No reviews yet';
 
     return reviewsAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      loading: () => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Text(
+            emptyText,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: AppTheme.slate500,
+            ),
+          ),
+        ),
       ),
       error: (_, _) => const SizedBox.shrink(),
       data: (reviews) {
@@ -2102,7 +2111,7 @@ class _MyReviewsList extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: Text(
-                context.l10n?.noReviewsYet ?? 'No reviews yet',
+                emptyText,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   color: AppTheme.slate500,
