@@ -30,8 +30,11 @@ const double _kHorizontalCardRowHeight = 246;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 // Yatay listelerde ilk render'da yalnızca viewport + lookahead kadar ürün.
 // ListView.builder lazy çalışsa da, itemCount yüksek olduğunda ilk frame'de
-// extra layout/measurement maliyeti oluşturuyordu (24 → 12).
-const int _kHorizontalInitialItemLimit = 12;
+// extra layout/measurement maliyeti oluşturuyordu (24 → 12 → 8).
+// Viewport ~3 kart + cacheExtent → ~5 kart fiilen build edilir; kullanıcı
+// kaydırdığında ek kartlar `_HomeScreenState.didUpdateWidget` veya
+// section provider'ı ile gelir.
+const int _kHorizontalInitialItemLimit = 8;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
 const int _kInitialCategoryChipLimit = 18;
@@ -56,15 +59,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
 
-  // ── Staged rendering: ilk frame'de sadece SearchBar + Categories.
-  // Sonraki section'lar tek seferde değil, her postFrame'de bir adım
-  // açılır → tek bir frame'de 100+ kart build edilmesini engeller.
-  // 0 = sadece search + categories
-  // 1 = + For You + Trending
-  // 2 = + TopInCategory + RecentlyViewed + RecentlyAnalyzed
-  // 3 = + NewArrivals + Priority + ValuePicks + Discover
+  // ── Staged rendering: her postFrame'de tek bir section parti açılır.
+  // Tek frame'de 100+ kart build edilmesini engeller.
+  // 0 = sadece AppBar + QuizReminder + SearchBar (en hafif iskelet)
+  // 1 = + Categories (yatay 2-row chip ListView)
+  // 2 = + For You + Trending
+  // 3 = + TopInCategory + RecentlyViewed + RecentlyAnalyzed
+  // 4 = + NewArrivals + Priority + ValuePicks + Discover
   int _renderStage = 0;
-  static const int _kMaxRenderStage = 3;
+  static const int _kMaxRenderStage = 4;
+  // Stage'ler arası gecikme. 48ms ≈ 3 vsync (60Hz) — bir önceki stage'in
+  // layout + paint + GPU submit'i tamamen biter, sonraki stage temiz başlar.
+  static const Duration _kStageDelay = Duration(milliseconds: 48);
 
   // ── Progressive category rendering: start with few, add on scroll ──
   int _visibleCategoryCount = _kInitialVisibleCategories;
@@ -93,8 +99,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (!mounted || _renderStage >= _kMaxRenderStage) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Bir microtask veriyoruz ki ilk frame pipeline'ı tamamen bitsin.
-      Future<void>.delayed(const Duration(milliseconds: 32), () {
+      // Bir önceki stage'in pipeline'ı tamamen bitsin diye delay veriyoruz.
+      Future<void>.delayed(_kStageDelay, () {
         if (!mounted || _renderStage >= _kMaxRenderStage) return;
         setState(() => _renderStage++);
         _scheduleNextStage();
@@ -165,19 +171,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
+            // ── STAGE 0: en hafif iskelet (her zaman görünür) ────────────
             _buildAppBar(context),
             _buildQuizReminder(),
             SliverToBoxAdapter(child: _buildSearchBar(context)),
 
-            SliverToBoxAdapter(
-              child: _SectionHeader(
-                title: context.l10n?.categories ?? 'Categories',
-              ),
-            ),
-            SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
-
-            // ── STAGE 1: For You + Trending ──────────────────────────────
+            // ── STAGE 1: Categories (yatay 2-row chip ListView) ──────────
+            // Categories chip listesi bile ilk frame'de measurement maliyeti
+            // yaratıyordu; ilk paint'in temiz çıkması için 1 frame geciktiriyoruz.
             if (_renderStage >= 1) ...[
+              SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: context.l10n?.categories ?? 'Categories',
+                ),
+              ),
+              SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
+            ],
+
+            // ── STAGE 2: For You + Trending ──────────────────────────────
+            if (_renderStage >= 2) ...[
               SliverToBoxAdapter(
                 child: Consumer(builder: (context, ref, _) {
                   final userProfile = ref.watch(userProfileProvider);
@@ -202,15 +214,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(child: _buildTrendsSection()),
             ],
 
-            // ── STAGE 2: TopInCategory + RecentlyViewed + RecentlyAnalyzed ──
-            if (_renderStage >= 2) ...[
+            // ── STAGE 3: TopInCategory + RecentlyViewed + RecentlyAnalyzed ──
+            if (_renderStage >= 3) ...[
               ..._buildTopInCategorySection(),
               ..._buildRecentlyViewedSection(),
               ..._buildRecentlyAnalyzedSection(),
             ],
 
-            // ── STAGE 3: NewArrivals + Priority + ValuePicks + Discover ──
-            if (_renderStage >= 3) ...[
+            // ── STAGE 4: NewArrivals + Priority + ValuePicks + Discover ──
+            if (_renderStage >= 4) ...[
               // ─── NEW ARRIVALS
               SliverToBoxAdapter(
                 child: _SectionHeader(
