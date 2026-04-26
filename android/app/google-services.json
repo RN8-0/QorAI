@@ -1,20 +1,20 @@
 {
   "project_info": {
-    "project_number": "510980756238",
-    "project_id": "compair-99b6e",
-    "storage_bucket": "compair-99b6e.firebasestorage.app"
+    "project_number": "116725106228",
+    "project_id": "qorai-99b6e",
+    "storage_bucket": "qorai-99b6e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:510980756238:android:28418410181e915269fd5f",
+        "mobilesdk_app_id": "1:116725106228:android:44d925a88bddccf84d2c61",
         "android_client_info": {
           "package_name": "com.compair.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "510980756238-bg8sqrcjm8sggfsmui02l1gp5qa425vm.apps.googleusercontent.com",
+          "client_id": "116725106228-9054apprl9rdofgvnbdhnfdnsca37qge.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.compair.app",
@@ -22,31 +22,7 @@
           }
         },
         {
-          "client_id": "510980756238-dprg4j3nnut5jccsfet6k8kgau3jftld.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.compair.app",
-            "certificate_hash": "6235105ab4e17769379052518d117f39d8188c5b"
-          }
-        },
-        {
-          "client_id": "510980756238-kpa0b0213uti2m9mgudlr9maqqm1o7ev.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.compair.app",
-            "certificate_hash": "92a04afe9f0ea6ad84104061938fd2d11dc3a911"
-          }
-        },
-        {
-          "client_id": "510980756238-om1svceb2su6cllsb87ffedtjnjjefij.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.compair.app",
-            "certificate_hash": "74d68022c28e37aa69ab09d51eb6f57195b51135"
-          }
-        },
-        {
-          "client_id": "510980756238-usvkel233cgsc0b1tfbve7bgiugu34j2.apps.googleusercontent.com",
+          "client_id": "116725106228-9seq1cebp1pu6m4em3mji1nbe65fp6a7.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.compair.app",
@@ -54,27 +30,51 @@
           }
         },
         {
-          "client_id": "510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com",
+          "client_id": "116725106228-ips8qp0vfubogtvpe8f0j1ip2t1kuofp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.compair.app",
+            "certificate_hash": "74d68022c28e37aa69ab09d51eb6f57195b51135"
+          }
+        },
+        {
+          "client_id": "116725106228-og3sndjkabhsakdhh1du999l1jaav2n3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.compair.app",
+            "certificate_hash": "92a04afe9f0ea6ad84104061938fd2d11dc3a911"
+          }
+        },
+        {
+          "client_id": "116725106228-rpieec06f0mblhhe17uac3tj4pna35na.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.compair.app",
+            "certificate_hash": "6235105ab4e17769379052518d117f39d8188c5b"
+          }
+        },
+        {
+          "client_id": "116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCJMUBkwXRRKqayyh1dlA0qovtVt1Gsl4I"
+          "current_key": "AIzaSyD1HcMftJ9PtUz9RKlIZq_ySPP3w-74xg4"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com",
+              "client_id": "116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "510980756238-369d7b3tst5k4aue0niai0g5tm7090c1.apps.googleusercontent.com",
+              "client_id": "116725106228-hs29d4gh4vldofj3a0aegfr4ootopr9q.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.compair.app"
+                "bundle_id": "com.qorai.app"
               }
             }
           ]

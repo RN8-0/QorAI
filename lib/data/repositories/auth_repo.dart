@@ -7,6 +7,8 @@ import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart';
@@ -15,6 +17,9 @@ import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/data/models/user_model.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/cache_service.dart';
+
+const String _kGoogleWebClientId =
+    '116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com';
 
 class AuthRepository {
   final PocketBase _pb;
@@ -140,7 +145,116 @@ class AuthRepository {
   }
 
   Future<Result<UserEntity>> signInWithGoogle() async {
-    return _signInWithOAuth2('google', scopes: ['email', 'profile']);
+    try {
+      final googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile'],
+        serverClientId: _kGoogleWebClientId,
+      );
+      await googleSignIn.signOut();
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        return const Failure(AuthException(message: 'Google sign-in was cancelled'));
+      }
+      final gAuth = await account.authentication;
+      final idToken = gAuth.idToken;
+      final accessToken = gAuth.accessToken;
+      if (idToken == null || idToken.isEmpty) {
+        return const Failure(
+          AuthException(message: 'Google authentication failed (no idToken)'),
+        );
+      }
+
+      // Firebase Auth ile de oturum aç (fire-and-forget, başarısız olursa devam et)
+      try {
+        final credential = GoogleAuthProvider.credential(
+          idToken: idToken,
+          accessToken: accessToken,
+        );
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      } catch (e) {
+        debugPrint('[auth] Firebase Auth sync failed (non-fatal): $e');
+      }
+
+      // PocketBase backend hook ile kullanıcıyı PB'ye kaydet/al
+      final httpResp = await http
+          .post(
+            Uri.parse(
+              'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io/api/auth/google',
+            ),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'idToken': idToken, 'audience': _kGoogleWebClientId}),
+          )
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () =>
+                throw Exception('Server did not respond (timeout). Please check your connection.'),
+          );
+
+      debugPrint('[auth] PB response ${httpResp.statusCode}: ${httpResp.body}');
+      if (httpResp.statusCode != 200) {
+        final errBody = jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
+        final msg = errBody['message']?.toString() ??
+            errBody['error']?.toString() ??
+            'Google sign-in failed (${httpResp.statusCode})';
+        return Failure(AuthException(message: msg));
+      }
+
+      final resp = jsonDecode(httpResp.body) as Map<String, dynamic>;
+      final token = resp['token'] as String?;
+      final record = (resp['record'] as Map?)?.cast<String, dynamic>();
+      if (token == null || record == null) {
+        return const Failure(AuthException(message: 'Invalid response from server'));
+      }
+
+      final googleDisplayName = account.displayName?.trim();
+      final googlePhotoUrl = account.photoUrl?.trim();
+      final googleEmail = account.email.trim();
+      final recJson = <String, dynamic>{
+        'id': record['id'],
+        'collectionId': '_pb_users_auth_',
+        'collectionName': 'users',
+        'created': record['created'] ?? DateTime.now().toIso8601String(),
+        'updated': record['updated'] ?? DateTime.now().toIso8601String(),
+        ...record,
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'name': googleDisplayName,
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'displayName': googleDisplayName,
+        if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
+        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) 'photoURL': googlePhotoUrl,
+      };
+      final recModel = RecordModel.fromJson(recJson);
+      _pb.authStore.save(token, recModel);
+
+      final recordId = record['id']?.toString();
+      final profileUpdate = <String, dynamic>{
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty) 'name': googleDisplayName,
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'displayName': googleDisplayName,
+        if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
+        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) 'photoURL': googlePhotoUrl,
+      };
+      if (recordId != null && profileUpdate.isNotEmpty) {
+        try {
+          final updatedRecord =
+              await _pb.collection('users').update(recordId, body: profileUpdate);
+          final updatedJson = updatedRecord.toJson();
+          if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) {
+            updatedJson['photoURL'] = googlePhotoUrl;
+          }
+          _pb.authStore.save(token, RecordModel.fromJson(updatedJson));
+          return Success(UserModel.fromPb(RecordModel.fromJson(updatedJson)));
+        } catch (_) {}
+      }
+      return Success(UserModel.fromPb(recModel));
+    } on ClientException catch (e) {
+      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+    } catch (e) {
+      debugPrint('[auth] signInWithGoogle error: $e');
+      return Failure(
+        AuthException(message: 'Google sign-in failed: ${e.toString()}', originalError: e),
+      );
+    }
   }
 
   Future<Result<UserEntity>> signInWithApple() async {
