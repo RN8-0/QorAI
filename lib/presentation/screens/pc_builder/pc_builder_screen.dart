@@ -733,20 +733,30 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     _restoreFromSession();
     // Preload all PC component categories in the background so picker opens
     // instantly — no spinner when the user taps "Seç" for any component.
+    // Önce ilk frame'in temiz çizilmesini bekle, sonra arka planda
+    // stagger'lı şekilde kategorileri ısıt. Aksi halde 12 kategori (~24K
+    // ürün) JSON decode'u UI thread'inde 100+ frame skip yaratıyor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _preloadAllCategories();
+      // İlk paint + animasyonlar bitsin (bottom nav transition vs).
+      Future<void>.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) _preloadAllCategories();
+      });
     });
   }
 
   Future<void> _preloadAllCategories() async {
     for (final component in PcComponent.values) {
+      if (!mounted) return;
       try {
         // Fire-and-forget: read the future to warm up the provider & in-memory cache.
         unawaited(
           ref.read(pcBuilderProductsProvider(component.categoryId).future),
         );
-        // Small stagger so all fetches don't hit Typesense simultaneously.
-        await Future<void>.delayed(const Duration(milliseconds: 120));
+        // Stagger 120ms → 350ms: ardı ardına gelen JSON decode'lar
+        // arasında UI thread'in nefes almasına izin ver. 12 kategori için
+        // toplam preload süresi ~1.5s → ~4.2s'ye çıkar ama kullanıcı
+        // picker'a tıklarken cache'in çoğu hazır olur.
+        await Future<void>.delayed(const Duration(milliseconds: 350));
       } catch (_) {}
     }
   }

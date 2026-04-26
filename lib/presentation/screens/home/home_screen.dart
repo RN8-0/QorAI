@@ -163,10 +163,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         },
         child: CustomScrollView(
           controller: _scrollCtrl,
-          // 800 → 250: kapsam alanını daraltarak off-screen sliver
-          // build'lerini azaltıyoruz. Bu, ilk frame'de oluşan
-          // "tüm yatay listeleri önden hazırlama" maliyetini düşürür.
-          cacheExtent: 250,
+          // 800 → 250 → 100: kapsam alanını minimum yararlı seviyeye indir.
+          // 100 px = ~1 satır lookahead. Off-screen sliver'ları (özellikle
+          // alt section'ları) sadece kullanıcı yaklaştığında build eder.
+          // Bu, ilk frame'de "tüm yatay listeleri önden hazırlama"
+          // maliyetini neredeyse sıfırlar.
+          cacheExtent: 100,
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
