@@ -143,11 +143,8 @@ class AuthRepository {
     }
   }
 
-  /// Google Sign-In via native SDK -> PB hook (/api/auth/google).
-  /// On mobile we use the free `google_sign_in` package to obtain a Google
-  /// ID token (audience = our web client id), then POST it to a PB JS hook
-  /// which validates it with Google's tokeninfo endpoint and upserts the
-  /// user in `users`. No Firebase, no client secret on device.
+  /// Google Sign-In prefers the native SDK, but falls back to PocketBase's
+  /// browser OAuth flow when Android OAuth config is missing or mismatched.
   Future<Result<UserEntity>> signInWithGoogle() async {
     try {
       // Android dahil her platformda WEB client_id'yi serverClientId olarak
@@ -167,9 +164,8 @@ class AuthRepository {
       final gAuth = await account.authentication;
       final idToken = gAuth.idToken;
       if (idToken == null || idToken.isEmpty) {
-        return const Failure(
-          AuthException(message: 'Google authentication failed (no idToken)'),
-        );
+        debugPrint('[auth] Google native sign-in returned no idToken; falling back to PB OAuth2');
+        return _signInWithOAuth2('google', scopes: ['email', 'profile']);
       }
 
       final httpResp = await http
@@ -272,12 +268,8 @@ class AuthRepository {
       debugPrint('[auth] signInWithGoogle error: $e');
       final err = e.toString();
       if (err.contains('sign_in_failed') || err.contains('ApiException: 10')) {
-        return const Failure(
-          AuthException(
-            message:
-                'Google Sign-In Android OAuth ayariyla eslesmedi. Browser fallback kapatildi; native client yapisi duzeltildi, uygulamayi guncelleyip tekrar deneyin.',
-          ),
-        );
+        debugPrint('[auth] Google native sign-in failed with Android OAuth mismatch; falling back to PB OAuth2');
+        return _signInWithOAuth2('google', scopes: ['email', 'profile']);
       }
       return Failure(
         AuthException(
