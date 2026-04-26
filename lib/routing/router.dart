@@ -4,6 +4,8 @@
 /// All page routes, auth guard, lazy loading
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -84,12 +86,31 @@ class AppRoutes {
 /// Root navigator key — used to ensure routes outside ShellRoute use root nav
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Bridges PocketBase's authStore.onChange stream to a Listenable so GoRouter
+/// can re-evaluate `redirect` whenever the user logs in / out / is deleted.
+class _AuthStoreNotifier extends ChangeNotifier {
+  _AuthStoreNotifier() {
+    _sub = pb.authStore.onChange.listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _sub;
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
+}
+
 /// Router Provider - Section 3.3
 final routerProvider = Provider<GoRouter>((ref) {
+  final authNotifier = _AuthStoreNotifier();
+  ref.onDispose(authNotifier.dispose);
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.home,
     debugLogDiagnostics: false,
+    refreshListenable: authNotifier,
 
     // Page transition animation - Section 14.4 (300ms, Curves.easeInOut)
     routes: [

@@ -1888,30 +1888,20 @@ final pcBuilderAiProvider = StateProvider<String?>((ref) => null);
 final linkAnalysisNotifierProvider = linkAnalysisProvider;
 
 /// User comparison history
+///
+/// Watches authStateProvider only (not userProfileProvider) so that frequent
+/// realtime updates to the user record don't continuously re-trigger the
+/// fetch and leave the screen stuck on loading.
 final userComparisonsProvider =
     FutureProvider.autoDispose<Result<List<ComparisonEntity>>>((ref) async {
-      final userAsync = ref.watch(userProfileProvider);
-      final user = userAsync.valueOrNull;
-      final userId = user?.uid ?? pb.authStore.record?.id;
+      final authUid = ref.watch(authStateProvider).valueOrNull;
+      final userId = authUid ?? pb.authStore.record?.id;
       if (userId == null || userId.isEmpty) {
         return const Success([]);
       }
 
       final repo = ref.read(comparisonRepositoryProvider);
-      var result = await repo.getUserComparisons(userId);
-
-      if ((user?.comparisonsCount ?? 0) > 0) {
-        switch (result) {
-          case Success<List<ComparisonEntity>>(data: final comparisons)
-              when comparisons.isEmpty:
-            await Future<void>.delayed(const Duration(milliseconds: 350));
-            result = await repo.getUserComparisons(userId);
-          default:
-            break;
-        }
-      }
-
-      return result;
+      return repo.getUserComparisons(userId);
     });
 
 /// Admin-curated comparisons (Battles)

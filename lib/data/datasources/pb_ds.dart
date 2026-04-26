@@ -175,7 +175,17 @@ class PbDataSource {
     return _createRealtimeStream<UserModel?>(
       collection: AppConstants.usersCollection,
       topic: uid,
-      load: () => getUser(uid),
+      load: () async {
+        final user = await getUser(uid);
+        // Admin (or anyone) deleted this user record on the server →
+        // immediately invalidate local auth so the app routes to login.
+        if (user == null && _pb.authStore.isValid &&
+            _pb.authStore.record?.id == uid) {
+          debugPrint('[PbDs] user $uid not found on server, clearing authStore');
+          _pb.authStore.clear();
+        }
+        return user;
+      },
     );
   }
 
