@@ -7,7 +7,6 @@ import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart';
@@ -16,9 +15,6 @@ import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/data/models/user_model.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/cache_service.dart';
-
-const String _kGoogleWebClientId =
-    '510980756238-budtd0gdrlk91jmim11frucvue5muhbg.apps.googleusercontent.com';
 
 class AuthRepository {
   final PocketBase _pb;
@@ -143,146 +139,8 @@ class AuthRepository {
     }
   }
 
-  /// Google Sign-In via native SDK -> PB hook (/api/auth/google).
-  /// On mobile we use the free `google_sign_in` package to obtain a Google
-  /// ID token (audience = our web client id), then POST it to a PB JS hook
-  /// which validates it with Google's tokeninfo endpoint and upserts the
-  /// user in `users`. No Firebase, no client secret on device.
   Future<Result<UserEntity>> signInWithGoogle() async {
-    try {
-      final google = GoogleSignIn(
-        scopes: const ['email', 'profile'],
-        serverClientId: _kGoogleWebClientId,
-      );
-      await google.signOut();
-      final account = await google.signIn();
-      if (account == null) {
-        return const Failure(
-          AuthException(message: 'Google sign-in was cancelled'),
-        );
-      }
-      final gAuth = await account.authentication;
-      final idToken = gAuth.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        return const Failure(
-          AuthException(message: 'Google authentication failed (no idToken)'),
-        );
-      }
-
-      final httpResp = await http
-          .post(
-            Uri.parse(
-              'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io/api/auth/google',
-            ),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'idToken': idToken,
-              'audience': _kGoogleWebClientId,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 20),
-            onTimeout: () => throw Exception(
-              'Server did not respond (timeout). Please check your connection.',
-            ),
-          );
-      debugPrint('[auth] PB response ${httpResp.statusCode}: ${httpResp.body}');
-      if (httpResp.statusCode != 200) {
-        final errBody =
-            jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
-        final errCode = errBody['error']?.toString() ?? '';
-        final errDetail =
-            errBody['detail']?.toString() ??
-            errBody['message']?.toString() ??
-            '';
-        debugPrint(
-          '[auth] PB error code=$errCode detail=$errDetail status=${httpResp.statusCode}',
-        );
-        final msg = _mapGoogleAuthError(
-          errCode,
-          errDetail,
-          httpResp.statusCode,
-        );
-        return Failure(AuthException(message: msg));
-      }
-      final resp = jsonDecode(httpResp.body) as Map<String, dynamic>;
-
-      final token = resp['token'] as String?;
-      final record = (resp['record'] as Map?)?.cast<String, dynamic>();
-      if (token == null || record == null) {
-        return const Failure(
-          AuthException(message: 'Invalid response from server'),
-        );
-      }
-
-      // Build a RecordModel from the hook response to avoid a second round-trip
-      // (getOne would fail unless the authStore is pre-populated first).
-      final googleDisplayName = account.displayName?.trim();
-      final googlePhotoUrl = account.photoUrl?.trim();
-      final googleEmail = account.email.trim();
-      final recJson = <String, dynamic>{
-        'id': record['id'],
-        'collectionId': '_pb_users_auth_',
-        'collectionName': 'users',
-        'created': record['created'] ?? DateTime.now().toIso8601String(),
-        'updated': record['updated'] ?? DateTime.now().toIso8601String(),
-        ...record,
-        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
-          'name': googleDisplayName,
-        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
-          'displayName': googleDisplayName,
-        if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
-        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty)
-          'photoURL': googlePhotoUrl,
-      };
-      final recModel = RecordModel.fromJson(recJson);
-      _pb.authStore.save(token, recModel);
-      final recordId = record['id']?.toString();
-      final profileUpdate = <String, dynamic>{
-        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
-          'name': googleDisplayName,
-        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
-          'displayName': googleDisplayName,
-        if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
-        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty)
-          'photoURL': googlePhotoUrl,
-      };
-      if (recordId != null && profileUpdate.isNotEmpty) {
-        final updatedRecord = await _pb
-            .collection('users')
-            .update(recordId, body: profileUpdate);
-        final updatedJson = updatedRecord.toJson();
-        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) {
-          updatedJson['photoURL'] = googlePhotoUrl;
-        }
-        final syncedRecord = RecordModel.fromJson(updatedJson);
-        _pb.authStore.save(token, syncedRecord);
-        return Success(UserModel.fromPb(syncedRecord));
-      }
-
-      return Success(UserModel.fromPb(recModel));
-    } on ClientException catch (e) {
-      return Failure(
-        AuthException(message: _getPbErrorMsg(e), originalError: e),
-      );
-    } catch (e) {
-      debugPrint('[auth] signInWithGoogle error: $e');
-      final err = e.toString();
-      if (err.contains('sign_in_failed') || err.contains('ApiException: 10')) {
-        return const Failure(
-          AuthException(
-            message:
-                'Google Sign-In Android OAuth ayariyla eslesmedi. Browser fallback kapatildi; native client yapisi duzeltildi, uygulamayi guncelleyip tekrar deneyin.',
-          ),
-        );
-      }
-      return Failure(
-        AuthException(
-          message: 'Google sign-in failed: ${e.toString()}',
-          originalError: e,
-        ),
-      );
-    }
+    return _signInWithOAuth2('google', scopes: ['email', 'profile']);
   }
 
   Future<Result<UserEntity>> signInWithApple() async {
@@ -648,26 +506,4 @@ class AuthRepository {
     return languageCode == 'tr' ? tr : en;
   }
 
-  String _mapGoogleAuthError(String code, String detail, int status) {
-    switch (code) {
-      case 'invalid_token':
-        return 'Google authentication failed. Please try again.';
-      case 'audience_mismatch':
-        return 'Google configuration error (audience_mismatch). Please contact support.';
-      case 'missing_idToken':
-        return 'Could not retrieve Google token. Please try again.';
-      case 'tokeninfo_failed':
-        return 'Could not connect to Google. Please check your internet connection.';
-      case 'hook_fatal':
-        return 'Server error: $detail';
-      default:
-        if (status == 401) return 'Google authentication failed.';
-        if (status >= 500) {
-          return 'Server is temporarily unavailable. Please try again.';
-        }
-        return code.isNotEmpty
-            ? '$code: $detail'
-            : (detail.isNotEmpty ? detail : 'Unknown error ($status)');
-    }
-  }
 }
