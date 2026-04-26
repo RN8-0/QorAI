@@ -32,6 +32,10 @@ const int _kHorizontalInitialItemLimit = 24;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
 const int _kInitialCategoryChipLimit = 18;
+// Progressive category rendering — start light, add on scroll
+const int _kInitialVisibleCategories = 5;
+const int _kCategoryLoadIncrement = 4;
+const int _kMaxVisibleCategories = 30;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -49,6 +53,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Persist scroll position across tab switches
   static double _savedScrollOffset = 0.0;
 
+  // ── Below-fold deferred rendering: first frame renders only above-fold
+  // content; after it paints we unlock the rest to avoid 149+ frame skips.
+  bool _belowFoldReady = false;
+
+  // ── Progressive category rendering: start with few, add on scroll ──
+  int _visibleCategoryCount = _kInitialVisibleCategories;
+
   // ── Category chip cache: rebuilt only when locale changes ──
   List<Map<String, Object>>? _cachedFlatCategories;
   Locale? _cachedCategoriesLocale;
@@ -64,6 +75,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     debugPrint('=== QOR AI: HomeScreen initState ===');
     _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
     _scrollCtrl.addListener(_handleScroll);
+    // Unlock below-fold content after the first frame is fully painted.
+    // This prevents the initial 149-311 frame skips caused by building
+    // 10-14 category sections + 240+ product cards in a single frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _belowFoldReady = true);
+    });
   }
 
   void _handleScroll() {
@@ -71,7 +88,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _scrollDebounce?.cancel();
     _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
       _savedScrollOffset = _scrollCtrl.offset;
+      // Load more category sections as the user scrolls near the bottom.
+      _maybeLoadMoreCategories();
     });
+  }
+
+  void _maybeLoadMoreCategories() {
+    if (!_scrollCtrl.hasClients) return;
+    final pos = _scrollCtrl.position;
+    if (pos.pixels > pos.maxScrollExtent * 0.65 &&
+        _visibleCategoryCount < _kMaxVisibleCategories) {
+      if (mounted) {
+        setState(() {
+          _visibleCategoryCount = (_visibleCategoryCount + _kCategoryLoadIncrement)
+              .clamp(0, _kMaxVisibleCategories);
+        });
+      }
+    }
   }
 
   @override
@@ -147,7 +180,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             SliverToBoxAdapter(child: _buildTrendsSection()),
 
-            ...[
+            // ── BELOW-FOLD: deferred until after first frame to prevent jank ──
+            if (_belowFoldReady) ...[
               // ─── TOP IN CATEGORY
               ..._buildTopInCategorySection(),
               // ─── RECENTLY VIEWED SECTION
@@ -156,8 +190,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ..._buildRecentlyAnalyzedSection(),
             ],
 
-            ...[
-              // ─── NEW ARRIVALS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+            if (_belowFoldReady) ...[
+              // ─── NEW ARRIVALS
               SliverToBoxAdapter(
                 child: _SectionHeader(
                   title: context.l10n?.newArrivals ?? 'New Arrivals',
@@ -2039,17 +2073,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ];
   }
 
-  /// Dynamic category sections ÔÇö ordered by user behavior & profile priority
+  /// Dynamic category sections — ordered by user behavior & profile priority.
+  /// Renders only [_visibleCategoryCount] items initially; more added on scroll.
   List<Widget> _buildPriorityCategorySections() {
-    // Wrap a single sliver builder so this only rebuilds when homeFeed changes.
+    // Capture visible count at build time so the Consumer uses the right value.
+    final visibleCount = _visibleCategoryCount;
     return [
       SliverToBoxAdapter(
         child: Consumer(builder: (context, ref, _) {
           final homeFeed = ref.watch(homeFeedProvider);
-          // Convert the list of slivers into a Column to avoid restructuring
-          // the parent CustomScrollView. Each child block is just SliverToBoxAdapter
-          // wrapped helpers which can be safely flattened to box widgets here.
-          final sectionWidgets = _buildPriorityCategorySectionsList(homeFeed);
+          final sectionWidgets =
+              _buildPriorityCategorySectionsList(homeFeed, visibleCount);
           if (sectionWidgets.isEmpty) return const SizedBox.shrink();
           return RepaintBoundary(
             child: Column(
@@ -2065,14 +2099,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   List<Widget> _buildPriorityCategorySectionsList(
-      AsyncValue<HomeFeed> homeFeed) {
+      AsyncValue<HomeFeed> homeFeed, int maxCategories) {
     final sections = <Widget>[];
 
     final priorityCategories =
         homeFeed.whenOrNull(data: (f) => f.priorityCategories) ?? [];
 
-    // Use priority order from feed; show first 6 as wide, rest as compact
-    final categoriesToShow = priorityCategories.isNotEmpty
+    // Use priority order from feed; limit to maxCategories for performance.
+    // Additional categories are loaded progressively as the user scrolls.
+    final allCategories = priorityCategories.isNotEmpty
         ? priorityCategories
         : [
             'smartphones',
@@ -2082,6 +2117,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'smartwatches',
             'gpus',
           ];
+
+    final categoriesToShow = allCategories.take(maxCategories);
 
     int shown = 0;
     for (final category in categoriesToShow) {
