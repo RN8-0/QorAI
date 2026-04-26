@@ -1894,7 +1894,11 @@ final linkAnalysisNotifierProvider = linkAnalysisProvider;
 /// fetch and leave the screen stuck on loading.
 final userComparisonsProvider =
     FutureProvider.autoDispose<Result<List<ComparisonEntity>>>((ref) async {
-      final authUid = ref.watch(authStateProvider).valueOrNull;
+      // Sadece uid değişimini dinle (record içi alan değişikliklerinde tekrar
+      // tetiklenmemek için authStateProvider'dan select ile sadece uid çekiyoruz).
+      final authUid = ref.watch(
+        authStateProvider.select((a) => a.valueOrNull),
+      );
       final userId = authUid ?? pb.authStore.record?.id;
       if (userId == null || userId.isEmpty) {
         return const Success([]);

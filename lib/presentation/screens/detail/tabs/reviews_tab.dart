@@ -1162,7 +1162,7 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
       if (email.contains('@')) snapshotName = email.split('@').first;
     }
     final snapshotPhoto = (authUser?.photoURL ?? '').trim().isNotEmpty
-        ? authUser!.photoURL.trim()
+        ? (authUser!.photoURL ?? '').trim()
         : (authRecord?.getStringValue('photoURL').trim() ?? '');
 
     final review = ReviewModel(
