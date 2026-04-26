@@ -72,6 +72,13 @@ class PbDataSource {
         (text.contains('statuscode: 404') && text.contains('/api/realtime'));
   }
 
+  static bool _isAccessDeniedError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('only superusers can perform this action') ||
+        text.contains('statuscode: 403') ||
+        text.contains('forbidden');
+  }
+
   Stream<T> _createRealtimeStream<T>({
     required String collection,
     String topic = '*',
@@ -1329,6 +1336,7 @@ class PbDataSource {
     Timer? pollTimer;
 
     Future<List<Map<String, dynamic>>> fetch() async {
+      final notifications = <Map<String, dynamic>>[];
       try {
         final notificationsResult = await _getListWithSortFallback(
           collection: 'notifications',
@@ -1337,17 +1345,26 @@ class PbDataSource {
           filter: 'recipientId = "$userId"',
           sort: '-created',
         );
-        final notifications = notificationsResult.items
-            .map((record) => {'id': record.id, ...record.data})
-            .toList();
-        final supportFallbacks = await _fetchSupportReplyFallbacks(userId);
-        return _mergeNotificationItems(
-          notifications: notifications,
-          supportFallbacks: supportFallbacks,
+        notifications.addAll(
+          notificationsResult.items.map((record) => {'id': record.id, ...record.data}),
         );
-      } catch (_) {
-        return [];
+      } catch (e) {
+        debugPrint('[PbDs] notifications fetch error: $e');
       }
+
+      var supportFallbacks = <Map<String, dynamic>>[];
+      try {
+        supportFallbacks = await _fetchSupportReplyFallbacks(userId);
+      } catch (e) {
+        if (!_isAccessDeniedError(e)) {
+          debugPrint('[PbDs] support fallback fetch error: $e');
+        }
+      }
+
+      return _mergeNotificationItems(
+        notifications: notifications,
+        supportFallbacks: supportFallbacks,
+      );
     }
 
     void scheduleRetry(void Function() attempt) {
@@ -1376,11 +1393,17 @@ class PbDataSource {
           final data = await fetch();
           if (!controller.isClosed) controller.add(data);
         });
-        await _pb.collection('support_messages').subscribe('*', (event) async {
-          if (event.record?.data['userId']?.toString() != userId) return;
-          final data = await fetch();
-          if (!controller.isClosed) controller.add(data);
-        });
+        try {
+          await _pb.collection('support_messages').subscribe('*', (event) async {
+            if (event.record?.data['userId']?.toString() != userId) return;
+            final data = await fetch();
+            if (!controller.isClosed) controller.add(data);
+          });
+        } catch (e) {
+          if (!_isAccessDeniedError(e)) {
+            debugPrint('[PbDs] support_messages subscribe error: $e');
+          }
+        }
         backoffAttempts = 0; // reset on success
       } catch (e) {
         final realtimeUnsupported = _isRealtimeUnsupportedError(e);

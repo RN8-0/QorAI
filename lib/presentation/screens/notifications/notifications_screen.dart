@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 
@@ -11,7 +12,7 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifsAsync = ref.watch(notificationsProvider);
-    final notifs = notifsAsync.valueOrNull ?? [];
+    final notifs = notifsAsync.valueOrNull ?? const <Map<String, dynamic>>[];
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -56,20 +57,27 @@ class NotificationsScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: notifs.isEmpty
-          ? _EmptyState()
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: notifs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
-              itemBuilder: (context, index) {
-                final notif = notifs[index];
-                return _NotificationTile(notif: notif)
-                    .animate()
-                    .fadeIn(duration: 250.ms, delay: (index * 40).ms)
-                    .slideX(begin: 0.03, end: 0);
-              },
-            ),
+      body: notifsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => _EmptyState(),
+        data: (items) {
+          if (items.isEmpty) {
+            return _EmptyState();
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemBuilder: (context, index) {
+              final notif = items[index];
+              return _NotificationTile(notif: notif)
+                  .animate()
+                  .fadeIn(duration: 250.ms, delay: (index * 40).ms)
+                  .slideX(begin: 0.03, end: 0);
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -94,7 +102,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'You\'ll see replies to your reviews here',
+            'Admin mesajlari ve destek yanitlari burada gorunur',
             style: TextStyle(
               fontSize: 13,
               color: context.textTertiaryColor,
@@ -118,6 +126,10 @@ class _NotificationTile extends ConsumerWidget {
     final senderName = notif['senderName'] as String? ?? '';
     final created = notif['created'] as String? ?? '';
     final id = notif['id'] as String? ?? '';
+    final canReply =
+      (notif['senderId'] as String? ?? '') == 'admin' ||
+      senderName.toLowerCase().contains('destek') ||
+      (notif['type'] as String? ?? '') == 'system';
 
     DateTime? createdAt;
     try {
@@ -229,11 +241,214 @@ class _NotificationTile extends ConsumerWidget {
                         ],
                       ],
                     ),
+                    if (canReply) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => showModalBottomSheet<void>(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                            builder: (_) => _NotificationReplySheet(notif: notif),
+                          ),
+                          icon: const Icon(Icons.reply_rounded, size: 16),
+                          label: const Text('Reply'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.primaryBlue,
+                            padding: const EdgeInsets.symmetric(horizontal: 0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            minimumSize: Size.zero,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationReplySheet extends ConsumerStatefulWidget {
+  final Map<String, dynamic> notif;
+
+  const _NotificationReplySheet({required this.notif});
+
+  @override
+  ConsumerState<_NotificationReplySheet> createState() =>
+      _NotificationReplySheetState();
+}
+
+class _NotificationReplySheetState
+    extends ConsumerState<_NotificationReplySheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _messageCtrl;
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _messageCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _messageCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final user = ref.read(userProfileProvider).valueOrNull;
+    final authUid = ref.read(authStateProvider).valueOrNull;
+    final authRecord = pb.authStore.record;
+    final displayName =
+        user?.displayName.trim().isNotEmpty == true
+            ? user!.displayName.trim()
+            : (authRecord?.data['displayName']?.toString().trim().isNotEmpty == true
+                ? authRecord!.data['displayName'].toString().trim()
+                : (authRecord?.data['name']?.toString().trim() ?? 'Qor AI User'));
+    final email =
+        user?.email.trim().isNotEmpty == true
+            ? user!.email.trim()
+            : authRecord?.data['email']?.toString().trim();
+
+    if (authUid == null || email == null || email.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hesap bilgileri eksik. Lutfen tekrar giris yapin.')),
+      );
+      return;
+    }
+
+    final referenceId = widget.notif['referenceId']?.toString().trim() ?? '';
+    final title = widget.notif['title']?.toString().trim() ?? 'Bildirim';
+    final replyMessage = StringBuffer()
+      ..writeln('Bildirim yaniti')
+      ..writeln('Baslik: $title');
+    if (referenceId.isNotEmpty) {
+      replyMessage.writeln('Referans: $referenceId');
+    }
+    replyMessage
+      ..writeln()
+      ..write(_messageCtrl.text.trim());
+
+    setState(() => _sending = true);
+    try {
+      await ref.read(pbDataSourceProvider).sendSupportMessage(
+            userId: authUid,
+            displayName: displayName,
+            email: email,
+            message: replyMessage.toString(),
+          );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Yanıtın destek ekibine gonderildi.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final details = error.toString().replaceFirst('ServerException: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gonderim hatasi: $details'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final title = widget.notif['title']?.toString().trim() ?? 'Support';
+    final body = widget.notif['body']?.toString().trim() ?? '';
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset + 20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Reply to Support',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary,
+              ),
+            ),
+            if (body.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                body,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: context.textSecondary,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _messageCtrl,
+              minLines: 4,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                hintText: 'Write your reply...',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Reply cannot be empty';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _sending ? null : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _sending ? null : _send,
+                    child: Text(_sending ? 'Sending...' : 'Send'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
