@@ -33,6 +33,7 @@ import 'package:qor_ai/services/ai_service.dart';
 import 'package:qor_ai/services/spec_direction_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:qor_ai/services/gemini_service.dart';
 import 'package:qor_ai/services/deepseek_service.dart';
 import 'package:qor_ai/services/cache_service.dart';

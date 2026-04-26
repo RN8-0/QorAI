@@ -622,6 +622,25 @@ Map<String, dynamic> _serializeHomeFeedForCache(HomeFeed feed) {
   };
 }
 
+/// Tek isolate roundtrip: raw JSON String → HomeFeed entity.
+/// Daha önce ardı ardına iki compute() spawn ediliyordu
+/// (jsonDecode + entity build). Tek isolate'ta birleştirildi → ~80-100ms
+/// UI thread spawn maliyeti tasarrufu.
+HomeFeed _buildFeedFromRawJsonIsolate(String rawJson) {
+  final cached = jsonDecode(rawJson) as Map<String, dynamic>;
+  final data = cached['data'] as Map<String, dynamic>?;
+  if (data == null) {
+    return const HomeFeed(
+      trending: [],
+      featured: [],
+      byCategory: {},
+      newArrivals: [],
+      all: [],
+    );
+  }
+  return _restoreHomeFeedFromCacheIsolate(Map<String, dynamic>.from(data));
+}
+
 HomeFeed _restoreHomeFeedFromCacheIsolate(Map<String, dynamic> raw) {
   final rawProductsById = Map<String, dynamic>.from(
     raw['productsById'] as Map? ?? const {},
@@ -1725,13 +1744,22 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
     '=== QOR AI: homeFeedProvider — start (user: ${user?.uid ?? "anon"}) ===',
   );
 
-  // 0. In-memory cache (instant, < 1ms) — survives tab switches
+  // 0. In-memory cache (instant, < 1ms) — survives tab switches.
+  // Bu yol app içi navigasyonda kullanılır; cold start'ta atlanır.
   if (_inMemoryFeed != null && _inMemoryFeed!.all.isNotEmpty) {
     debugPrint(
       '=== QOR AI: homeFeed from IN-MEMORY: ${_inMemoryFeed!.all.length} products in ${feedSw.elapsedMilliseconds}ms ===',
     );
     return _inMemoryFeed!;
   }
+
+  // ── Cold start frame guard ────────────────────────────────────────────────
+  // Provider'ın geri kalanı (Hive read + isolate spawn + side-effects) UI'in
+  // ilk frame'i ekrana gelene kadar BEKLER. Aksi halde HomeScreen build'iyle
+  // eşzamanlı olarak compute() spawn'u UI thread'e ~80-100ms binerek ilk
+  // paint'i geciktiriyordu. endOfFrame zaten paint olduysa anında resolve
+  // olur (no-op) → app içi navigasyonda gecikme yok.
+  await SchedulerBinding.instance.endOfFrame;
 
   // Cache key includes user UID for personalized feeds
   final cacheKey = 'home_feed_v29_${user?.uid ?? "anon"}';
@@ -1740,32 +1768,36 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   // Start admin config fetch CONCURRENTLY (don't block product loading)
   final configFuture = _fetchAdminConfig();
 
-  // 0.5 Ready-feed cache: skips the expensive rebuild from raw product maps.
+  // 0.5 Ready-feed cache: tek isolate roundtrip ile raw JSON → HomeFeed.
+  // Eski yol iki ayrı compute() spawn ediyordu (decode + entity build).
   try {
-    final readyResult = await cache.getLocalStaleAsync<Map<String, dynamic>>(
-      readyCacheKey,
-    );
-    final readyData = readyResult.data;
-    if (readyData != null) {
+    final rawResult = await cache.getLocalRawStaleAsync(readyCacheKey);
+    final rawJson = rawResult.raw;
+    if (rawJson != null) {
       final sw = Stopwatch()..start();
-      final feed = await compute(
-        _restoreHomeFeedFromCacheIsolate,
-        Map<String, dynamic>.from(readyData),
-      );
+      final feed = await compute(_buildFeedFromRawJsonIsolate, rawJson);
       sw.stop();
       debugPrint(
-        '=== QOR AI: homeFeed from READY cache (stale=${readyResult.isStale}): ${feed.all.length} products in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: homeFeed from READY cache (stale=${rawResult.isStale}): ${feed.all.length} products in ${sw.elapsedMilliseconds}ms ===',
       );
-      ref
-          .read(pbDataSourceProvider)
-          .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
       _inMemoryFeed = feed;
+
+      // Side-effect'leri post-build'e ertele: provider önce HomeFeed'i
+      // dönsün → UI rebuild olsun → ardından PB data source güncellensin.
+      // Aksi halde return'den önce UI thread'i ek ~10-30ms blokluyordu.
+      Future.microtask(() {
+        try {
+          ref
+              .read(pbDataSourceProvider)
+              .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
+        } catch (_) {}
+      });
 
       debugPrint(
         '=== QOR AI: homeFeed READY (ready-cache path) in ${feedSw.elapsedMilliseconds}ms ===',
       );
 
-      if (readyResult.isStale && !_isRefreshingFeed) {
+      if (rawResult.isStale && !_isRefreshingFeed) {
         final config = await _awaitFastFeedConfig(configFuture);
         _isRefreshingFeed = true;
         _backgroundRefreshFeed(
@@ -1814,11 +1846,16 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       debugPrint(
         '=== QOR AI: homeFeed from HIVE cache (stale=${staleResult.isStale}): ${feed.all.length} products in ${sw.elapsedMilliseconds}ms ===',
       );
-      ref
-          .read(pbDataSourceProvider)
-          .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
       _inMemoryFeed = feed;
-      Future.microtask(() => _saveReadyFeedToCache(cache, feed, readyCacheKey));
+      // Side-effects → post-build (microtask kuyruğu UI paint sonrasında işlenir).
+      Future.microtask(() {
+        try {
+          ref
+              .read(pbDataSourceProvider)
+              .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
+        } catch (_) {}
+        _saveReadyFeedToCache(cache, feed, readyCacheKey);
+      });
 
       debugPrint(
         '=== QOR AI: homeFeed READY (cache path) in ${feedSw.elapsedMilliseconds}ms ===',

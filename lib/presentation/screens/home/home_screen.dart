@@ -173,14 +173,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
-            // ── STAGE 0: en hafif iskelet (her zaman görünür) ────────────
-            _buildAppBar(context),
-            _buildQuizReminder(),
+            // ── STAGE 0: PROVIDER-BAĞIMSIZ statik iskelet ─────────────────
+            // Hiçbir Consumer/ref.watch yok → ilk frame'de provider rebuild
+            // storm yaratmaz. SearchBar zaten statik. AppBar/QuizReminder
+            // skeleton versiyonlar; gerçek (Consumer'lı) versiyonlar Stage
+            // 1'de yerlerini alır. Skeleton ve real aynı boyutta → swap
+            // anında layout shift olmaz.
+            // Stage 0: skeleton AppBar (provider yok). Stage 1'de gerçek
+            // AppBar + QuizReminder yerleşince skeleton kalkar.
+            if (_renderStage == 0)
+              _buildStaticAppBarSkeleton(context)
+            else ...[
+              _buildAppBar(context),
+              _buildQuizReminder(),
+            ],
             SliverToBoxAdapter(child: _buildSearchBar(context)),
 
-            // ── STAGE 1: Categories (yatay 2-row chip ListView) ──────────
-            // Categories chip listesi bile ilk frame'de measurement maliyeti
-            // yaratıyordu; ilk paint'in temiz çıkması için 1 frame geciktiriyoruz.
+            // ── STAGE 1: Categories ──────────────────────────────────────
             if (_renderStage >= 1) ...[
               SliverToBoxAdapter(
                 child: _SectionHeader(
@@ -372,6 +381,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         final userProfile = ref.watch(userProfileProvider);
         return _buildAppBarContent(context, ref, userProfile);
       }),
+    );
+  }
+
+  /// Stage 0 statik AppBar — provider izlemiyor, ilk frame'de bloke etmez.
+  /// Gerçek AppBar (Consumer'lı) ile aynı yükseklik/iskelet → Stage 1'de
+  /// swap olduğunda layout shift yok, kullanıcı sadece içeriğin "doldu"
+  /// hissini alır. Greeting zamana göre statik string; avatar default
+  /// gradient placeholder; credit badge boş "..".
+  Widget _buildStaticAppBarSkeleton(BuildContext context) {
+    final hour = DateTime.now().hour;
+    final isNight = hour < 5 || hour >= 22;
+    final greetingEmoji = isNight
+        ? '🌙'
+        : hour < 12
+            ? '🌅'
+            : hour < 17
+                ? '☀️'
+                : '🌙';
+    final greetingText = isNight
+        ? (context.l10n?.goodEvening ?? 'Good evening')
+        : hour < 12
+            ? (context.l10n?.goodMorning ?? 'Good morning')
+            : hour < 17
+                ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
+                : (context.l10n?.goodEvening ?? 'Good evening');
+    return SliverToBoxAdapter(
+      child: RepaintBoundary(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppTheme.brandBlue.withValues(alpha: 0.05),
+                Colors.transparent,
+              ],
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 20, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShaderMask(
+                          shaderCallback: (bounds) =>
+                              AppTheme.primaryGradient.createShader(
+                            Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+                          ),
+                          child: Text(
+                            'Qor AI',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1.0,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '$greetingEmoji $greetingText',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Avatar placeholder — gerçek avatar Stage 1'de yerleşir.
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(13),
+                      gradient: AppTheme.primaryGradient,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

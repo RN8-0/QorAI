@@ -20,7 +20,18 @@ import 'package:qor_ai/data/datasources/hive_ds.dart';
 import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 
-const _kStartupHeavyWorkDelay = Duration(seconds: 15);
+// ── Startup Orchestrator timeline ────────────────────────────────────────────
+// Tüm app-level startup init'leri sıralı bir kuyruktan geçer. Paralel
+// çalıştırma UI thread'ini kümülatif olarak bloke ediyordu (her init kendi
+// async chunk'ında setState/Hive write/plugin call zinciri tetikliyor).
+// Sıralı queue + aralarındaki nefes payı (gap) sayesinde her init kendi
+// başına çalışır, UI thread arasında frame paint penceresi açılır.
+//
+// İlk 750ms tamamen UI'a bırakılır → HomeScreen Stage 0 paint olur,
+// homeFeedProvider Hive read'i başlar (provider içinde de endOfFrame
+// guard var). Sonra ağır init'ler ardışık başlar.
+const _kStartupInitialIdle = Duration(milliseconds: 750);
+const _kStartupGap = Duration(milliseconds: 600);
 
 Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
   await Future.wait([
@@ -51,19 +62,29 @@ void _preloadGoogleFonts() {
   }
 }
 
-void _scheduleDeferredStartupTasks() {
-  Future.delayed(_kStartupHeavyWorkDelay, () {
-    unawaited(_initializeSpecTranslations());
-  });
+/// Startup Orchestrator — sıralı init queue.
+///
+/// Init'ler paralel çalıştırıldığında her biri kendi async chunk'ında UI
+/// thread'i kısa kısa bloke ediyor → kümülatif jank (~100+ frame skip).
+/// Sıralı çalıştırma + her adım arasında 600ms gap → her init temiz başlar,
+/// UI thread paint penceresi açılır.
+///
+/// Sıralama (toplam ~3-4s startup tail; UI bunlardan etkilenmez):
+///   t=750ms  → Spec translations (compare/PC builder ekranları için kritik)
+///   t=1350ms → Notifications init (FCM permission + token)
+///   t=1950ms → ATT request (iOS only, opsiyonel)
+Future<void> _scheduleDeferredStartupTasks() async {
+  await Future<void>.delayed(_kStartupInitialIdle);
+  await _initializeSpecTranslations();
+
   if (!kIsWeb) {
-    Future.delayed(_kStartupHeavyWorkDelay, () {
-      unawaited(_initializeNotifications());
-    });
+    await Future<void>.delayed(_kStartupGap);
+    await _initializeNotifications();
   }
+
   if (!kIsWeb && Platform.isIOS) {
-    Future.delayed(const Duration(seconds: 5), () {
-      unawaited(_requestTrackingTransparency());
-    });
+    await Future<void>.delayed(_kStartupGap);
+    await _requestTrackingTransparency();
   }
 }
 
@@ -163,7 +184,9 @@ void main() {
         child: const QorAiApp(),
       ),
     );
-    _scheduleDeferredStartupTasks();
+    // Orchestrator runApp'tan SONRA başlar; ilk frame paint olana kadar
+    // (Stage 0 statik UI) hiçbir ağır init çalışmaz.
+    unawaited(_scheduleDeferredStartupTasks());
   }, (error, stack) {
     debugPrint('=== QOR AI: ZONE ERROR: $error ===');
     debugPrint('$stack');

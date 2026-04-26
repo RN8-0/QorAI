@@ -180,6 +180,41 @@ class CacheService {
     return (data: null, isStale: true);
   }
 
+  /// Raw variant: returns the stored JSON string + isStale, without decoding.
+  /// Caller can pass the raw string to a single isolate that does both decode
+  /// and entity construction in one roundtrip (avoids two compute() spawns).
+  /// Returns null when the key is missing. `isStale` is determined by reading
+  /// only the `expiresAt` portion of the payload (~tens of bytes), keeping
+  /// main-thread work negligible.
+  Future<({String? raw, bool isStale})> getLocalRawStaleAsync(String key) async {
+    if (!_localBox.isOpen) return (raw: null, isStale: true);
+    final localData = _localBox.get(key);
+    if (localData == null || localData is! String) {
+      return (raw: null, isStale: true);
+    }
+    // Quick stale check: scan only for the expiresAt field rather than
+    // decoding the whole JSON. Falls back to a stale=true assumption if
+    // the field is missing or unparseable — the isolate will still work.
+    bool isStale = true;
+    final idx = localData.indexOf('"expiresAt"');
+    if (idx >= 0) {
+      final colon = localData.indexOf(':', idx);
+      final quoteStart = localData.indexOf('"', colon + 1);
+      final quoteEnd = quoteStart >= 0
+          ? localData.indexOf('"', quoteStart + 1)
+          : -1;
+      if (quoteStart >= 0 && quoteEnd > quoteStart) {
+        try {
+          final expiresAt = DateTime.parse(
+            localData.substring(quoteStart + 1, quoteEnd),
+          );
+          isStale = DateTime.now().isAfter(expiresAt);
+        } catch (_) {}
+      }
+    }
+    return (raw: localData, isStale: isStale);
+  }
+
   /// Save value to local Hive cache only (no Firestore)
   Future<void> setLocal<T>(
     String key,
