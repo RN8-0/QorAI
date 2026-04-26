@@ -1341,5 +1341,6 @@
   "emailVerifiedSubtitle": "Din e-post har verifierats. Omdirigerar till startsidan...",
   "verificationFailedTitle": "Verifiering misslyckades",
   "invalidVerificationLink": "Ogiltig verifieringslänk.",
-  "verificationExpired": "Verifiering misslyckades. Länken kan ha gått ut."
+  "verificationExpired": "Verifiering misslyckades. Länken kan ha gått ut.",
+  "deletedAccountName": "Borttaget Konto"
 }

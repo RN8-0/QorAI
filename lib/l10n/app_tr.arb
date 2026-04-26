@@ -1420,5 +1420,6 @@
   "emailVerifiedSubtitle": "E-posta adresiniz başarıyla doğrulandı. Ana sayfaya yönlendiriliyorsunuz...",
   "verificationFailedTitle": "Doğrulama Başarısız",
   "invalidVerificationLink": "Geçersiz doğrulama bağlantısı.",
-  "verificationExpired": "Doğrulama başarısız. Bağlantı süresi dolmuş olabilir."
+  "verificationExpired": "Doğrulama başarısız. Bağlantı süresi dolmuş olabilir.",
+  "deletedAccountName": "Silinen Hesap"
 }

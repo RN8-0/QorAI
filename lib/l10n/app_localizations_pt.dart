@@ -3694,4 +3694,7 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get verificationExpired =>
       'Verificação falhou. O link pode ter expirado.';
+
+  @override
+  String get deletedAccountName => 'Conta Excluida';
 }

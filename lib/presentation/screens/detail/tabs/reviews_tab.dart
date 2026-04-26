@@ -836,8 +836,8 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
       reviewId: review.id,
       firestoreCollection: AppConstants.reviewsCollection,
       userId: review.userId,
-      displayName: _resolveReviewDisplayName(review.userId, currentUserId),
-      currentUserPhotoUrl: _resolveCurrentUserPhotoUrl(currentUserId),
+      displayName: _resolveReviewDisplayName(review, currentUserId),
+      currentUserPhotoUrl: _resolveReviewPhotoUrl(review, currentUserId),
       timeAgo: timeAgo,
       text: review.text,
       rating: review.rating,
@@ -892,22 +892,42 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
     );
   }
 
-  /// Resolves display name for a review.
-  String _resolveReviewDisplayName(String reviewUserId, String? currentUserId) {
-    if (reviewUserId != currentUserId) return 'User';
-    final user = ref.read(userProfileProvider).valueOrNull;
-    final dn = user?.displayName.trim();
-    if (dn != null && dn.isNotEmpty) return dn;
-    final r = pb.authStore.record;
-    if (r != null) {
-      final authDn = r.getStringValue('displayName').trim();
-      if (authDn.isNotEmpty) return authDn;
-      final authN = r.getStringValue('name').trim();
-      if (authN.isNotEmpty) return authN;
+  /// Resolves display name for a review:
+  ///  - own review → live profile name
+  ///  - other user's review with snapshot → snapshot name
+  ///  - other user's review without snapshot → "User"
+  ///  - account deleted (userId blanked by delete_account hook) → localized
+  ///    "Silinen Hesap" / "Deleted Account"
+  String _resolveReviewDisplayName(ReviewModel review, String? currentUserId) {
+    if (review.isAuthorDeleted) {
+      return context.l10n?.deletedAccountName ?? 'Silinen Hesap';
     }
-    final email = user?.email ?? '';
-    if (email.isNotEmpty) return email.split('@').first;
+    if (review.userId == currentUserId) {
+      final user = ref.read(userProfileProvider).valueOrNull;
+      final dn = user?.displayName.trim();
+      if (dn != null && dn.isNotEmpty) return dn;
+      final r = pb.authStore.record;
+      if (r != null) {
+        final authDn = r.getStringValue('displayName').trim();
+        if (authDn.isNotEmpty) return authDn;
+        final authN = r.getStringValue('name').trim();
+        if (authN.isNotEmpty) return authN;
+      }
+      final email = user?.email ?? '';
+      if (email.isNotEmpty) return email.split('@').first;
+    }
+    final snapshot = review.authorDisplayName.trim();
+    if (snapshot.isNotEmpty) return snapshot;
     return 'User';
+  }
+
+  String? _resolveReviewPhotoUrl(ReviewModel review, String? currentUserId) {
+    if (review.isAuthorDeleted) return null;
+    if (review.userId == currentUserId) {
+      return _resolveCurrentUserPhotoUrl(currentUserId);
+    }
+    final snapshot = review.authorPhotoURL.trim();
+    return snapshot.isEmpty ? null : snapshot;
   }
 
   /// Resolves current user's photo URL for avatar display.
@@ -1127,6 +1147,24 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
     double rating,
     String text,
   ) async {
+    // Snapshot author identity at creation so the review survives an account
+    // delete with a meaningful name (or shows "Silinen Hesap" when blanked).
+    final authUser = ref.read(userProfileProvider).valueOrNull;
+    final authRecord = pb.authStore.record;
+    String snapshotName =
+        (authUser?.displayName ?? '').trim().isNotEmpty
+            ? authUser!.displayName.trim()
+            : (authRecord?.getStringValue('displayName').trim().isNotEmpty == true
+                ? authRecord!.getStringValue('displayName').trim()
+                : (authRecord?.getStringValue('name').trim() ?? ''));
+    if (snapshotName.isEmpty) {
+      final email = (authUser?.email ?? authRecord?.getStringValue('email') ?? '').trim();
+      if (email.contains('@')) snapshotName = email.split('@').first;
+    }
+    final snapshotPhoto = (authUser?.photoURL ?? '').trim().isNotEmpty
+        ? authUser!.photoURL.trim()
+        : (authRecord?.getStringValue('photoURL').trim() ?? '');
+
     final review = ReviewModel(
       id: '',
       userId: userId,
@@ -1134,6 +1172,8 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
       rating: rating,
       text: text,
       createdAt: DateTime.now(),
+      authorDisplayName: snapshotName,
+      authorPhotoURL: snapshotPhoto,
     );
 
     try {

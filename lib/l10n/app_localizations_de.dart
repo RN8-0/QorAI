@@ -3699,4 +3699,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get verificationExpired =>
       'Verifizierung fehlgeschlagen. Der Link ist möglicherweise abgelaufen.';
+
+  @override
+  String get deletedAccountName => 'Geloschtes Konto';
 }

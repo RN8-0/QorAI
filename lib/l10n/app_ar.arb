@@ -1341,5 +1341,6 @@
   "emailVerifiedSubtitle": "تم التحقق من بريدك الإلكتروني بنجاح. جارٍ التوجيه إلى الصفحة الرئيسية...",
   "verificationFailedTitle": "فشل التحقق",
   "invalidVerificationLink": "رابط التحقق غير صالح.",
-  "verificationExpired": "فشل التحقق. قد يكون الرابط قد انتهت صلاحيته."
+  "verificationExpired": "فشل التحقق. قد يكون الرابط قد انتهت صلاحيته.",
+  "deletedAccountName": "حساب محذوف"
 }

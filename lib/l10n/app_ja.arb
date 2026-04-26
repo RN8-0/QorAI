@@ -1341,5 +1341,6 @@
   "emailVerifiedSubtitle": "メールが正常に確認されました。ホームに移動中...",
   "verificationFailedTitle": "確認失敗",
   "invalidVerificationLink": "無効な確認リンクです。",
-  "verificationExpired": "確認に失敗しました。リンクの有効期限が切れている可能性があります。"
+  "verificationExpired": "確認に失敗しました。リンクの有効期限が切れている可能性があります。",
+  "deletedAccountName": "削除されたアカウント"
 }

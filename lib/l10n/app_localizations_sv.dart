@@ -3682,4 +3682,7 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get verificationExpired =>
       'Verifiering misslyckades. Länken kan ha gått ut.';
+
+  @override
+  String get deletedAccountName => 'Borttaget Konto';
 }

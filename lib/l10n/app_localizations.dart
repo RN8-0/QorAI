@@ -7149,6 +7149,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verification failed. The link may have expired.'**
   String get verificationExpired;
+
+  /// No description provided for @deletedAccountName.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted Account'**
+  String get deletedAccountName;
 }
 
 class _AppLocalizationsDelegate

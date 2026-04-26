@@ -1341,5 +1341,6 @@
   "emailVerifiedSubtitle": "Uw e-mail is succesvol geverifieerd. Doorsturen naar home...",
   "verificationFailedTitle": "Verificatie mislukt",
   "invalidVerificationLink": "Ongeldige verificatielink.",
-  "verificationExpired": "Verificatie mislukt. De link is mogelijk verlopen."
+  "verificationExpired": "Verificatie mislukt. De link is mogelijk verlopen.",
+  "deletedAccountName": "Verwijderd Account"
 }

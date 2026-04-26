@@ -3702,4 +3702,7 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get verificationExpired =>
       'Doğrulama başarısız. Bağlantı süresi dolmuş olabilir.';
+
+  @override
+  String get deletedAccountName => 'Silinen Hesap';
 }

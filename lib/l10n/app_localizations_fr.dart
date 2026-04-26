@@ -3713,4 +3713,7 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get verificationExpired =>
       'Vérification échouée. Le lien a peut-être expiré.';
+
+  @override
+  String get deletedAccountName => 'Compte Supprime';
 }

@@ -139,7 +139,6 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
       { col: 'recently_viewed', field: 'userId' },
       { col: 'comparisons', field: 'userId' },
       { col: 'favorites', field: 'userId' },
-      { col: 'reviews', field: 'userId' },
       { col: 'saved_analyses', field: 'userId' },
       { col: 'notifications', field: 'recipientId' },
       { col: 'support_messages', field: 'userId' },
@@ -153,6 +152,20 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
         }
       } catch (_) {}
     }
+
+    // Reviews: keep them as community content but anonymize the author so the
+    // app can render "Silinen Hesap" / "Deleted Account" in the UI.
+    try {
+      const reviews = $app.findRecordsByFilter('reviews', `userId = "${id}"`, '', 0, 0);
+      for (const rec of reviews) {
+        try {
+          rec.set('userId', '');
+          rec.set('authorDisplayName', '');
+          rec.set('authorPhotoURL', '');
+          $app.save(rec);
+        } catch (_) {}
+      }
+    } catch (_) {}
 
     // Delete the user account
     $app.delete(user);

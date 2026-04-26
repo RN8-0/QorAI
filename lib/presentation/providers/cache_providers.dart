@@ -1496,14 +1496,19 @@ class _GeminiMatchScoreNotifier
     state = const AsyncValue.loading();
 
     try {
+      // Outer guard sits well above the inner Gemini timeout (20s) so the
+      // model has room to deliver a full 4-6 sentence reason. A previous
+      // 12s outer was killing every Gemini call before it returned and
+      // forcing the local fallback ("Tech score 100 / 4.5G Yes stand out
+      // most.") to render — exactly the regression the user reported.
       await _doFetchMatchScore(
         product: product,
         user: user,
         forCompareBatch: forCompareBatch,
       ).timeout(
-        const Duration(seconds: 12),
+        const Duration(seconds: 30),
         onTimeout: () {
-          throw Exception('match score outer timeout (12s)');
+          throw Exception('match score outer timeout (30s)');
         },
       );
     } catch (e, st) {

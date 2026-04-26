@@ -1341,5 +1341,6 @@
   "emailVerifiedSubtitle": "Su correo electrónico ha sido verificado exitosamente. Redirigiendo al inicio...",
   "verificationFailedTitle": "Verificación fallida",
   "invalidVerificationLink": "Enlace de verificación no válido.",
-  "verificationExpired": "Verificación fallida. El enlace puede haber expirado."
+  "verificationExpired": "Verificación fallida. El enlace puede haber expirado.",
+  "deletedAccountName": "Cuenta Eliminada"
 }

@@ -3710,4 +3710,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get verificationExpired =>
       'Verificación fallida. El enlace puede haber expirado.';
+
+  @override
+  String get deletedAccountName => 'Cuenta Eliminada';
 }

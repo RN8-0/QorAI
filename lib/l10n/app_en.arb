@@ -1472,5 +1472,6 @@
   "emailVerifiedSubtitle": "Your email has been successfully verified. Redirecting to home...",
   "verificationFailedTitle": "Verification Failed",
   "invalidVerificationLink": "Invalid verification link.",
-  "verificationExpired": "Verification failed. The link may have expired."
+  "verificationExpired": "Verification failed. The link may have expired.",
+  "deletedAccountName": "Deleted Account"
 }

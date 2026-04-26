@@ -295,6 +295,8 @@ class ReviewModel {
   final DateTime createdAt;
   final List<String> likedBy;
   final List<String> dislikedBy;
+  final String authorDisplayName;
+  final String authorPhotoURL;
 
   const ReviewModel({
     required this.id,
@@ -307,13 +309,21 @@ class ReviewModel {
     required this.createdAt,
     this.likedBy = const [],
     this.dislikedBy = const [],
+    this.authorDisplayName = '',
+    this.authorPhotoURL = '',
   });
+
+  /// True when delete_account.pb.js anonymized the review (userId blanked
+  /// after the author deleted their account). UI uses this to render the
+  /// localized "Silinen Hesap" / "Deleted Account" placeholder.
+  bool get isAuthorDeleted =>
+      userId.trim().isEmpty && authorDisplayName.trim().isEmpty;
 
   factory ReviewModel.fromPb(RecordModel record) {
     final data = record.data;
     return ReviewModel(
       id: record.id,
-      userId: data['userId'] ?? '',
+      userId: (data['userId'] ?? '').toString(),
       productId: data['productId'] ?? '',
       rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
       text: data['text'] ?? '',
@@ -322,6 +332,8 @@ class ReviewModel {
       createdAt: _parseDate(data['created']) ?? DateTime.now(),
       likedBy: List<String>.from(data['likedBy'] ?? []),
       dislikedBy: List<String>.from(data['dislikedBy'] ?? []),
+      authorDisplayName: (data['authorDisplayName'] ?? '').toString(),
+      authorPhotoURL: (data['authorPhotoURL'] ?? '').toString(),
     );
   }
 
@@ -342,6 +354,8 @@ class ReviewModel {
         'reported': reported,
         'likedBy': likedBy,
         'dislikedBy': dislikedBy,
+        if (authorDisplayName.isNotEmpty) 'authorDisplayName': authorDisplayName,
+        if (authorPhotoURL.isNotEmpty) 'authorPhotoURL': authorPhotoURL,
       };
 
   Map<String, dynamic> toFirestore() => toMap();

@@ -1341,5 +1341,6 @@
   "emailVerifiedSubtitle": "Votre e-mail a été vérifié avec succès. Redirection vers l'accueil...",
   "verificationFailedTitle": "Vérification échouée",
   "invalidVerificationLink": "Lien de vérification invalide.",
-  "verificationExpired": "Vérification échouée. Le lien a peut-être expiré."
+  "verificationExpired": "Vérification échouée. Le lien a peut-être expiré.",
+  "deletedAccountName": "Compte Supprime"
 }

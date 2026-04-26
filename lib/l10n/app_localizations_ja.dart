@@ -3629,4 +3629,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get verificationExpired => '確認に失敗しました。リンクの有効期限が切れている可能性があります。';
+
+  @override
+  String get deletedAccountName => '削除されたアカウント';
 }

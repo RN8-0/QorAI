@@ -3665,4 +3665,7 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get verificationExpired =>
       'فشل التحقق. قد يكون الرابط قد انتهت صلاحيته.';
+
+  @override
+  String get deletedAccountName => 'حساب محذوف';
 }
