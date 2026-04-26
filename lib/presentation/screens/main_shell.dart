@@ -3,6 +3,7 @@
 /// Desktop/Tablet: Side rail navigation
 library;
 
+import "dart:async";
 import "dart:ui";
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
@@ -35,6 +36,8 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
+  StreamSubscription<String>? _fcmTokenRefreshSub;
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +67,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   Future<void> _registerFcmToken() async {
     if (kIsWeb) return;
     try {
+      await NotificationService.instance.initialize();
+
       final authState = ref.read(authStateProvider);
       final uid = authState.valueOrNull;
       if (uid == null) return;
@@ -73,7 +78,8 @@ class _MainShellState extends ConsumerState<MainShell> {
 
       // Listen for refreshes first so we never miss the initial token
       // if it arrives between the read and the listener registration.
-      messaging.onTokenRefresh.listen((newToken) async {
+      await _fcmTokenRefreshSub?.cancel();
+      _fcmTokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
         try {
           await pbDs.updateFcmToken(uid, newToken);
           debugPrint('[Shell] FCM token refreshed in PB for $uid');
@@ -104,6 +110,12 @@ class _MainShellState extends ConsumerState<MainShell> {
     } catch (e) {
       debugPrint('[Shell] FCM token register error: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_fcmTokenRefreshSub?.cancel());
+    super.dispose();
   }
 
   int _indexFromLocation(String location) {

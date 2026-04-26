@@ -2,18 +2,32 @@
 /// Integrates Firebase Cloud Messaging for Android & iOS push notifications.
 library;
 
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:qor_ai/firebase_options.dart';
+
+Future<void> _ensureFirebaseInitialized() async {
+  if (Firebase.apps.isNotEmpty) return;
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (error) {
+    final message = error.toString().toLowerCase();
+    if (!message.contains('duplicate-app') || Firebase.apps.isEmpty) {
+      rethrow;
+    }
+  }
+}
 
 /// FCM background message handler — must be top-level.
 @pragma('vm:entry-point')
 Future<void> notificationBackgroundHandler(RemoteMessage message) async {
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp();
-  }
+  await _ensureFirebaseInitialized();
   debugPrint('[FCM] Background message: ${message.notification?.title}');
 }
 
@@ -45,6 +59,7 @@ class NotificationService {
 
   String? _token;
   String? get token => _token;
+  Future<void>? _initializeFuture;
 
   final ValueNotifier<StubMessage?> _latestMessage = ValueNotifier(null);
   ValueNotifier<StubMessage?> get latestMessage => _latestMessage;
@@ -57,73 +72,87 @@ class NotificationService {
   }
 
   Future<void> initialize() async {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp();
+    final existing = _initializeFuture;
+    if (existing != null) {
+      await existing;
+      return;
     }
 
-    // Register background handler
-    FirebaseMessaging.onBackgroundMessage(notificationBackgroundHandler);
+    final completer = Completer<void>();
+    _initializeFuture = completer.future;
 
-    // Set up local notification plugin
-    const androidInit =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
-    await _local.initialize(
-      const InitializationSettings(android: androidInit, iOS: iosInit),
-      onDidReceiveNotificationResponse: (details) {
-        if (details.payload != null) {
-          // Navigate when user taps notification
-          _pendingNavData = {'payload': details.payload};
-        }
-      },
-    );
+    try {
+      await _ensureFirebaseInitialized();
 
-    // Create Android notification channel
-    await _local
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(
-          const AndroidNotificationChannel(
-            _kChannelId,
-            _kChannelName,
-            description: _kChannelDesc,
-            importance: Importance.high,
-            playSound: true,
-            enableVibration: true,
-          ),
-        );
+      // Register background handler
+      FirebaseMessaging.onBackgroundMessage(notificationBackgroundHandler);
 
-    // Request permission
-    await _requestPermission();
+      // Set up local notification plugin
+      const androidInit =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosInit = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
+      await _local.initialize(
+        const InitializationSettings(android: androidInit, iOS: iosInit),
+        onDidReceiveNotificationResponse: (details) {
+          if (details.payload != null) {
+            // Navigate when user taps notification
+            _pendingNavData = {'payload': details.payload};
+          }
+        },
+      );
 
-    // Get token
-    await _refreshToken();
+      // Create Android notification channel
+      await _local
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(
+            const AndroidNotificationChannel(
+              _kChannelId,
+              _kChannelName,
+              description: _kChannelDesc,
+              importance: Importance.high,
+              playSound: true,
+              enableVibration: true,
+            ),
+          );
 
-    // Handle foreground messages — show local notification
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      // Request permission
+      await _requestPermission();
 
-    // Handle notification tap when app is in background (not killed)
-    FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      _pendingNavData = msg.data;
-    });
+      // Get token
+      await _refreshToken();
 
-    // Check initial message (app opened from terminated via notification tap)
-    final initial = await _fcm.getInitialMessage();
-    if (initial != null) {
-      _pendingNavData = initial.data;
+      // Handle foreground messages — show local notification
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
+      // Handle notification tap when app is in background (not killed)
+      FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+        _pendingNavData = msg.data;
+      });
+
+      // Check initial message (app opened from terminated via notification tap)
+      final initial = await _fcm.getInitialMessage();
+      if (initial != null) {
+        _pendingNavData = initial.data;
+      }
+
+      // Token refresh
+      _fcm.onTokenRefresh.listen((newToken) {
+        _token = newToken;
+        debugPrint('[FCM] Token refreshed: ${newToken.substring(0, 20)}...');
+      });
+
+      debugPrint('[FCM] NotificationService initialized, token: ${_token?.substring(0, 20)}...');
+      completer.complete();
+    } catch (error, stackTrace) {
+      _initializeFuture = null;
+      completer.completeError(error, stackTrace);
+      rethrow;
     }
-
-    // Token refresh
-    _fcm.onTokenRefresh.listen((newToken) {
-      _token = newToken;
-      debugPrint('[FCM] Token refreshed: ${newToken.substring(0, 20)}...');
-    });
-
-    debugPrint('[FCM] NotificationService initialized, token: ${_token?.substring(0, 20)}...');
   }
 
   Future<void> _requestPermission() async {
