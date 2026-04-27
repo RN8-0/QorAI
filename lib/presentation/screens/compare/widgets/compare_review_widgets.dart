@@ -216,7 +216,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
           // ── Review text (collapsible) or edit field ──
           if (_isEditing)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -225,9 +225,9 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                     maxLines: 5,
                     minLines: 2,
                     autofocus: true,
+                    cursorColor: AppTheme.brandBlue,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
-                      height: 1.6,
                       color: context.textPrimary,
                     ),
                     decoration: InputDecoration(
@@ -343,7 +343,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
             ),
 
           // ── Action bar: Like / Dislike / Reply ──
-          Padding(
+          if (!_isEditing) Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             child: Row(
               children: [
@@ -875,6 +875,7 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
   late List<String> _likedBy;
   late List<String> _dislikedBy;
   late String _localText;
+  DateTime? _reactionLockUntil;
 
   @override
   void initState() {
@@ -893,6 +894,10 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
       _localText = newText;
       _editCtrl.text = newText;
     }
+    if (_reactionLockUntil != null &&
+        DateTime.now().isBefore(_reactionLockUntil!)) {
+      return;
+    }
     _likedBy = List<String>.from(widget.reply['likedBy'] as List? ?? []);
     _dislikedBy = List<String>.from(widget.reply['dislikedBy'] as List? ?? []);
   }
@@ -907,6 +912,7 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
     final uid = widget.currentUserId;
     if (uid == null) return;
     HapticFeedback.lightImpact();
+    _reactionLockUntil = DateTime.now().add(const Duration(seconds: 4));
     setState(() {
       if (_likedBy.contains(uid)) {
         _likedBy.remove(uid);
@@ -915,15 +921,28 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
         _dislikedBy.remove(uid);
       }
     });
-    await ref
-        .read(pbDataSourceProvider)
-        .toggleReplyLike(widget.reply['id'] as String, uid);
+    try {
+      await ref
+          .read(pbDataSourceProvider)
+          .toggleReplyLike(widget.reply['id'] as String, uid);
+      _reactionLockUntil = DateTime.now();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        if (_likedBy.contains(uid)) {
+          _likedBy.remove(uid);
+        } else {
+          _likedBy.add(uid);
+        }
+      });
+    }
   }
 
   Future<void> _toggleDislike() async {
     final uid = widget.currentUserId;
     if (uid == null) return;
     HapticFeedback.lightImpact();
+    _reactionLockUntil = DateTime.now().add(const Duration(seconds: 4));
     setState(() {
       if (_dislikedBy.contains(uid)) {
         _dislikedBy.remove(uid);
@@ -932,9 +951,21 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
         _likedBy.remove(uid);
       }
     });
-    await ref
-        .read(pbDataSourceProvider)
-        .toggleReplyDislike(widget.reply['id'] as String, uid);
+    try {
+      await ref
+          .read(pbDataSourceProvider)
+          .toggleReplyDislike(widget.reply['id'] as String, uid);
+      _reactionLockUntil = DateTime.now();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        if (_dislikedBy.contains(uid)) {
+          _dislikedBy.remove(uid);
+        } else {
+          _dislikedBy.add(uid);
+        }
+      });
+    }
   }
 
   Future<void> _saveEdit() async {
@@ -1110,11 +1141,11 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
                       TextField(
                         controller: _editCtrl,
                         maxLines: 4,
-                        minLines: 1,
+                        minLines: 2,
                         autofocus: true,
+                        cursorColor: AppTheme.brandBlue,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
-                          height: 1.5,
                           color: context.textPrimary,
                         ),
                         decoration: InputDecoration(
