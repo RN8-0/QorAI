@@ -5915,7 +5915,7 @@ Rules:
     final userProfile = ref.watch(userProfileProvider);
     final user = userProfile.valueOrNull;
     final quizCompleted = user != null && user.quizCompleted;
-    final isUserProfileLoading = userProfile.isLoading;
+    final isUserProfileLoading = userProfile.isLoading && !userProfile.hasValue;
     final productCount = widget.products.length;
     final barColors = [
       const Color(0xFF3B82F6),
