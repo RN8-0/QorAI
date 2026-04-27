@@ -58,6 +58,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _matchScoreFetched = false;
   final Map<_AiPanelType, String> _aiProgressText = {};
 
+  // Cached reviews future — created once, avoids infinite loading on rebuild
+  Future<List<RecordModel>>? _reviewsFuture;
+
   // Cached key specs — computed once and reused in every build
   List<_CompareSpecRow> _cachedKeySpecs = [];
 
@@ -452,7 +455,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  /// Fetch from DeepSeek (low cost) with Gemini fallback on persistent parse failures.
+  /// Fetch from Gemini Flash (primary) with DeepSeek fallback on persistent failures.
   Future<({Map<String, dynamic>? data, String? error})> _fetchWithRetry(
     String prompt,
     String label,
@@ -461,19 +464,20 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     void Function(String message)? onProgress,
     bool allowGeminiFallback = false,
   }) async {
-    final deepseek = ref.read(deepSeekServiceProvider);
+    final gemini = ref.read(geminiServiceProvider);
     String? lastError;
     for (var attempt = 1; attempt <= 3; attempt++) {
       try {
         onProgress?.call(
           _isTr
-              ? 'AI modeli çalıştırılıyor (DeepSeek deneme $attempt/3)…'
-              : 'Running AI model (DeepSeek attempt $attempt/3)…',
+              ? 'AI analizi yapılıyor ($attempt/3)…'
+              : 'Analyzing… ($attempt/3)',
         );
-        final result = await deepseek.jsonFreeTextQuery(
+        final result = await gemini.jsonFreeTextQuery(
           prompt,
           language: lang,
           maxTokens: maxTokens,
+          tier: AiTier.heavy,
         );
         debugPrint(
           '[Qor AI] 🔍 $label RAW attempt $attempt (${result.length} chars):\n${result.length > 600 ? result.substring(0, 600) : result}',
@@ -495,19 +499,18 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       try {
         onProgress?.call(
           _isTr
-              ? 'Sonuç doğrulaması için Gemini ile yeniden değerlendiriliyor…'
-              : 'Re-checking with Gemini for result quality…',
+              ? 'Alternatif model deneniyor…'
+              : 'Trying alternative model…',
         );
-        final gemini = ref.read(geminiServiceProvider);
-        final result = await gemini.jsonFreeTextQuery(
+        final deepseek = ref.read(deepSeekServiceProvider);
+        final result = await deepseek.jsonFreeTextQuery(
           prompt,
           language: lang,
           maxTokens: maxTokens,
-          tier: AiTier.lite,
         );
         final parsed = _tryParseJson(result);
         if (parsed != null) return (data: parsed, error: null);
-        lastError = 'Gemini fallback parse failed';
+        lastError = 'Fallback parse failed';
       } catch (e) {
         lastError = e.toString();
       }
@@ -6070,42 +6073,17 @@ Rules:
               child: Column(
                 children: [
                   if (isUserProfileLoading)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            AppTheme.brandSkyBlue,
-                            AppTheme.brandDeepBlue,
-                          ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppTheme.brandSkyBlue,
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            context.l10n?.computingMatch ??
-                                'Eşleşme hesaplanıyor...',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
                       ),
                     )
                   else if (!quizCompleted)
@@ -6551,7 +6529,7 @@ Rules:
 
           // Reviews from comparison_reviews collection (PocketBase)
           FutureBuilder<List<RecordModel>>(
-            future: (() async {
+            future: _reviewsFuture ??= () async {
               try {
                 final result = await pb
                     .collection('comparison_reviews')
@@ -6565,7 +6543,7 @@ Rules:
               } catch (_) {
                 return <RecordModel>[];
               }
-            })(),
+            }(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
