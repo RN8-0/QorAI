@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, compute;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
@@ -47,6 +47,27 @@ Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
     cacheService.delete('home_feed_v13_nofilter'),
     cacheService.delete('home_feed_v14_quality'),
   ]);
+}
+
+/// İlk compute() çağrısının ~50-100ms isolate spawn maliyetini arka planda
+/// öder. homeFeedProvider'ın Hive cache decode'u için isolate hazır olur.
+/// Trivial bir iş gönderiyoruz — amaç pool'u sıcak tutmak.
+Future<void> _warmupComputeIsolate() async {
+  try {
+    await compute<int, int>(_warmupTask, 0);
+  } catch (_) {}
+}
+
+int _warmupTask(int x) => x;
+
+/// 333 ürün kartlı feed + horizontal scroll için image cache limitini
+/// explicit ayarla. Default 1000 image / 100 MB; bu device profili için
+/// yeterli ama açıkça set ediyoruz ki framework default değişimlerine
+/// karşı stabil olsun.
+void _configureImageCache() {
+  final cache = PaintingBinding.instance.imageCache;
+  cache.maximumSize = 1500;
+  cache.maximumSizeBytes = 128 * 1024 * 1024; // 128 MB
 }
 
 /// Pre-warm the most-used Google Fonts before the first frame is painted.
@@ -174,6 +195,8 @@ void main() {
 
     // Pre-warm Google Fonts before first frame so text renders without flash.
     _preloadGoogleFonts();
+    // ImageCache limitini explicit ayarla — 333 ürün × scroll senaryosu.
+    _configureImageCache();
 
     debugPrint('=== QOR AI: Calling runApp ===');
 
@@ -190,6 +213,10 @@ void main() {
     // Orchestrator runApp'tan SONRA başlar; ilk frame paint olana kadar
     // (Stage 0 statik UI) hiçbir ağır init çalışmaz.
     unawaited(_scheduleDeferredStartupTasks());
+    // Compute isolate pool'unu arka planda ısıt. homeFeedProvider'ın
+    // Hive cache decode'u tetiklendiğinde isolate hazır olur → ~50-100ms
+    // spawn maliyetini app start süresinde gizliyoruz.
+    unawaited(_warmupComputeIsolate());
   }, (error, stack) {
     debugPrint('=== QOR AI: ZONE ERROR: $error ===');
     debugPrint('$stack');
