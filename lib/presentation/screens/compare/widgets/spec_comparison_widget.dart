@@ -5941,9 +5941,7 @@ Rules:
       const Color(0xFF10B981),
     ];
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      clipBehavior: Clip.hardEdge,
+    return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
@@ -6147,6 +6145,9 @@ Rules:
                             matchResult?.missingFactors ?? [];
                         final isLoading = matchAsync is AsyncLoading;
                         final color = barColors[i % barColors.length];
+                        final stepText = isLoading
+                            ? ref.watch(aiMatchStepProvider(product.id))
+                            : '';
 
                         final matchColor = matchScore == null
                             ? AppTheme.brandDeepBlue
@@ -6184,7 +6185,7 @@ Rules:
                               child: Column(
                                 children: [
                                   // Score circle or loading
-                                  if (isLoading)
+                                  if (isLoading) ...[
                                     SizedBox(
                                       width: 44,
                                       height: 44,
@@ -6198,8 +6199,23 @@ Rules:
                                           ),
                                         ),
                                       ),
-                                    )
-                                  else
+                                    ),
+                                    if (stepText.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          stepText,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 8,
+                                            color: matchColor.withValues(alpha: 0.8),
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                  ] else
                                     TweenAnimationBuilder<double>(
                                       tween: Tween(
                                         begin: 0,
@@ -6291,11 +6307,7 @@ Rules:
     String? loadingStatusText,
     num? cost,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      clipBehavior: Clip.hardEdge,
+    return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
@@ -6769,10 +6781,6 @@ Rules:
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) {
           final theme = Theme.of(dialogCtx);
-          final hasText = textController.text.trim().isNotEmpty;
-          int selectedRating = 0;
-          // Track rating inside StatefulBuilder scope via a local variable
-          // updated through setDialogState
           return Dialog(
             backgroundColor: theme.colorScheme.surface,
             shape: RoundedRectangleBorder(

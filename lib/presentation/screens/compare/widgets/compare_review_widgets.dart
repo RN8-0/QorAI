@@ -57,7 +57,6 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     final timestamp =
         DateTime.tryParse(widget.data['timestamp']?.toString() ?? '') ??
         DateTime.now();
-    final rating = (widget.data['rating'] as num?)?.toDouble() ?? 0;
     final isAnonymous = userId == 'anonymous';
 
     String resolvedName;
@@ -134,21 +133,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                               color: context.textTertiaryColor,
                             ),
                           ),
-                          if (rating > 0) ...[
-                            const SizedBox(width: 8),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: List.generate(5, (i) {
-                                return Icon(
-                                  i < rating.round()
-                                      ? Icons.star_rounded
-                                      : Icons.star_outline_rounded,
-                                  size: 13,
-                                  color: AppTheme.amber500,
-                                );
-                              }),
-                            ),
-                          ],
+
                         ],
                       ),
                     ],
@@ -872,7 +857,6 @@ class _WriteReviewDialogContent extends StatefulWidget {
 }
 
 class _WriteReviewDialogContentState extends State<_WriteReviewDialogContent> {
-  int _rating = 0;
   bool _submitting = false;
 
   @override
@@ -907,29 +891,6 @@ class _WriteReviewDialogContentState extends State<_WriteReviewDialogContent> {
             ),
           ),
           const SizedBox(height: 18),
-          // Star rating selector
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              final starValue = i + 1;
-              return GestureDetector(
-                onTap: () => setState(() {
-                  _rating = _rating == starValue ? 0 : starValue;
-                }),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Icon(
-                    starValue <= _rating
-                        ? Icons.star_rounded
-                        : Icons.star_outline_rounded,
-                    size: 32,
-                    color: AppTheme.amber500,
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 16),
           // Text input
           TextField(
             controller: widget.textController,
@@ -989,7 +950,7 @@ class _WriteReviewDialogContentState extends State<_WriteReviewDialogContent> {
                   onTap: (hasText && !_submitting)
                       ? () async {
                           setState(() => _submitting = true);
-                          await widget.onSubmit(_rating);
+                          await widget.onSubmit(0);
                           if (mounted) setState(() => _submitting = false);
                         }
                       : null,

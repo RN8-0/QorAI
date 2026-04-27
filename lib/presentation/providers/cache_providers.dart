@@ -1962,7 +1962,7 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
-  static const int _detailMatchCacheVersion = 7; // v7: premium-only AI match flow
+  static const int _detailMatchCacheVersion = 8; // v8: enhanced user profile analysis
   final Ref _ref;
   final String _productId;
   final String _languageCode;
@@ -2020,9 +2020,9 @@ class _GeminiMatchScoreNotifier
         user: user,
         forCompareBatch: forCompareBatch,
       ).timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 18),
         onTimeout: () {
-          throw Exception('match score outer timeout (30s)');
+          throw Exception('match score outer timeout (18s)');
         },
       );
     } catch (e, st) {
@@ -2144,17 +2144,24 @@ class _GeminiMatchScoreNotifier
         'usageIntent': user.usageIntent,
         'profession': user.profession,
         'ageRange': user.ageRange,
+        if ((user.gender as String?)?.isNotEmpty == true) 'gender': user.gender,
+        if ((user.country as String).isNotEmpty) 'country': user.country,
+        if ((user.currency as String).isNotEmpty) 'currency': user.currency,
+        if (user.ownedProducts.isNotEmpty)
+          'ownedProducts': user.ownedProducts.take(8).toList(),
+        if (user.subscriptions.isNotEmpty)
+          'subscriptions': user.subscriptions,
         if (behavior.categoryViews.isNotEmpty)
           'recentCategoryViews': behavior.categoryViews,
         if (behavior.favorites.isNotEmpty)
           'favoritedProductCount': behavior.favorites.length,
       };
 
-      // Build concise product JSON (cap to 10 specs — less context = faster LLM)
+      // Build concise product JSON (cap to 15 specs for richer analysis)
       final topSpecs = <String, dynamic>{};
       var specCount = 0;
       for (final e in product.specs.entries) {
-        if (specCount >= 10) break;
+        if (specCount >= 15) break;
         final v = e.value?.toString() ?? '';
         if (v.isNotEmpty && v != 'null' && v != '?' && v != '{}') {
           topSpecs[e.key] = v;
@@ -2166,12 +2173,16 @@ class _GeminiMatchScoreNotifier
         'name': product.name,
         'brand': product.brand ?? '',
         'category': product.category,
+        if ((product.subcategory as String?)?.isNotEmpty == true)
+          'subcategory': product.subcategory,
         'techScore': product.techScore,
         'highlights': productHighlights,
         if (tradeOffs.isNotEmpty) 'tradeOffs': tradeOffs,
         'specs': topSpecs,
-        if (product.pros.isNotEmpty) 'pros': product.pros.take(4).toList(),
-        if (product.cons.isNotEmpty) 'cons': product.cons.take(4).toList(),
+        if (product.pros.isNotEmpty) 'pros': product.pros.take(5).toList(),
+        if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
+        if (product.prices.isNotEmpty)
+          'priceRange': product.prices.values.first,
       };
 
       // ── Step 3: Call AI ────────────────────────────────────────────────────
@@ -2184,24 +2195,31 @@ class _GeminiMatchScoreNotifier
       // quality while preserving separation for poor fits.
       final langDisplay = _languageDisplayName(langCode);
       final prompt =
-          'You are a senior tech analyst. Score this product 40-100 for this user (never below 40).\n'
+          'You are a senior tech analyst performing a detailed user-product compatibility analysis. '
+          'Score this product 40-100 for this specific user profile (never below 40).\n'
           'Return ONLY valid JSON — no markdown, no extra text.\n'
           '⚠️ CRITICAL: ALL text fields in the JSON MUST be written in $langDisplay ($langCode). '
           'Using any other language is a critical error.\n\n'
-          'reason: Write 4-6 professional, product-focused sentences (90-150 words) in $langDisplay. '
-          'Structure it as: (1) Start with the product\'s strongest technical merit relevant to this user\'s needs. '
-          '(2) Elaborate on 2-3 specific performance advantages backed by specs. '
-          '(3) Mention 1-2 real trade-offs or limitations honestly. '
-          '(4) End with a clear verdict on suitability for this user\'s profile. '
+          'reason: Write 4-6 professional, product-focused sentences (100-160 words) in $langDisplay. '
+          'Structure it as: (1) Start with the product\'s strongest technical merit that aligns with this user\'s specific needs (profession, usageIntent, priorities). '
+          '(2) Elaborate on 2-3 specific performance advantages backed by actual specs/numbers. '
+          '(3) Assess budget fit using the user\'s budgetRange and currency/country context. '
+          '(4) Mention 1-2 real trade-offs or limitations honest to this user\'s profile. '
+          '(5) End with a clear, personalized verdict for this user. '
           'Use professional tech-review language. Be specific — cite specs, numbers, real use cases. '
           'Do NOT use "you/your" or first-person references. '
           'In Turkish: never use "kullanıcı" — use impersonal phrasing (e.g., "bu ürün ... sunar"). '
           'Never mention ecosystem/profile/devices/platform compatibility.\n\n'
           'Score bands: 88-100 exceptional match / 75-87 strong fit / 62-74 solid with minor trade-offs / '
           '50-61 adequate but compromised / 40-49 poor fit.\n'
-          'Rule: if techScore >= 85 and no major spec mismatch → score >= 75.\n'
-          'Signals to weigh: weightVector priorities, usageIntent, profession, budget vs price, '
-          'techScore, top specs, pros/cons, behavioral signals (recent views/favorites).\n\n';
+          'Rules:\n'
+          '- If techScore >= 85 and no major spec mismatch → score >= 75.\n'
+          '- If product category matches user\'s primaryCategory or interestCategories → +5 bonus.\n'
+          '- If product price exceeds user\'s budgetRange significantly → penalty -8 to -15.\n'
+          '- If user owns similar devices (ownedProducts) → consider upgrade value.\n'
+          'Signals to weigh: focusAreas/weightVector priorities, usageIntent, profession, ageRange, '
+          'budgetRange vs priceRange, country/currency context, ownedProducts for upgrade context, '
+          'techScore, specs (all 15 fields), pros/cons, behavioral signals (recentCategoryViews/favoritedProductCount).\n\n';
       final encodedProfileJson = await compute(_encodeJsonString, profileJson);
       final encodedProductJson = await compute(_encodeJsonString, productJson);
       if (!mounted) return;
@@ -2221,9 +2239,9 @@ class _GeminiMatchScoreNotifier
             maxTokens: 2500, // increased for longer, more detailed responses
           )
           .timeout(
-            const Duration(seconds: 20),
+            const Duration(seconds: 12),
             onTimeout: () =>
-                throw Exception('Gemini match score timeout (20s)'),
+                throw Exception('Gemini match score timeout (12s)'),
           );
       final map = _decodeJsonMap(result);
 
