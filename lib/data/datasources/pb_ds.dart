@@ -1091,6 +1091,35 @@ class PbDataSource {
     }
   }
 
+  Future<void> updateReview(String reviewId, String text) async {
+    try {
+      await _pb
+          .collection(AppConstants.reviewsCollection)
+          .update(reviewId, body: {'text': text});
+    } catch (e) {
+      throw ServerException(message: 'Review could not be updated: $e');
+    }
+  }
+
+  Future<void> updateComparisonReview(String reviewId, String text) async {
+    try {
+      await _pb
+          .collection('comparison_reviews')
+          .update(reviewId, body: {'reviewText': text});
+    } catch (e) {
+      throw ServerException(message: 'Review could not be updated: $e');
+    }
+  }
+
+  Future<void> updateReviewReply({
+    required String replyId,
+    required String text,
+  }) async {
+    await _pb
+        .collection('review_replies')
+        .update(replyId, body: {'text': text});
+  }
+
   Future<void> deleteReview(String reviewId) async {
     // Cascade delete all replies for this review first
     try {

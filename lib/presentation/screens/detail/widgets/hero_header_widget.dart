@@ -116,9 +116,12 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final imageBg = isDark ? Colors.white : Colors.white;
 
+    final hasOverflowImages = allImages.length > 4;
+    final heroBaseHeight = hasOverflowImages ? 308.0 : 280.0;
+
     return SliverToBoxAdapter(
       child: Container(
-        height: 280 + heroBottomActionSpace,
+        height: heroBaseHeight + heroBottomActionSpace,
         decoration: BoxDecoration(
           color: imageBg,
           gradient: isDark ? null : LinearGradient(
@@ -166,8 +169,27 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                                   ),
                                 ),
                               )
-                            : SingleChildScrollView(
+                            : ShaderMask(
                                 key: const ValueKey('hero-thumb-strip'),
+                                shaderCallback: (bounds) {
+                                  if (!hasOverflowImages) {
+                                    return const LinearGradient(
+                                      colors: [Colors.black, Colors.black],
+                                    ).createShader(bounds);
+                                  }
+                                  return const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black,
+                                      Colors.black,
+                                      Colors.transparent,
+                                    ],
+                                    stops: [0.0, 0.78, 1.0],
+                                  ).createShader(bounds);
+                                },
+                                blendMode: BlendMode.dstIn,
+                                child: SingleChildScrollView(
                                 child: Column(
                                   children: List.generate(allImages.length.clamp(0, 8), (i) {
                                     final isSelected = _selectedIndex == i;
@@ -213,6 +235,7 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                                       ),
                                     );
                                   }),
+                                ),
                                 ),
                               ),
                       ),

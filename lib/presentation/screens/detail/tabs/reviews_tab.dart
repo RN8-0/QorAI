@@ -1454,18 +1454,63 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
   bool _repliesExpanded = false;
   bool _replyInputVisible = false;
   bool _textExpanded = false;
+  bool _isEditing = false;
+  bool _savingEdit = false;
   final TextEditingController _replyCtrl = TextEditingController();
+  late TextEditingController _editCtrl;
   bool _submitting = false;
 
   // Optimistic local state for like/dislike
   late List<String> _likedBy;
   late List<String> _dislikedBy;
+  // Local override for text (so edit reflects immediately)
+  late String _localText;
 
   @override
   void initState() {
     super.initState();
     _likedBy = List<String>.from(widget.likedBy);
     _dislikedBy = List<String>.from(widget.dislikedBy);
+    _localText = widget.text;
+    _editCtrl = TextEditingController(text: widget.text);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReviewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text && !_isEditing) {
+      _localText = widget.text;
+      _editCtrl.text = widget.text;
+    }
+  }
+
+  Future<void> _saveEdit() async {
+    final text = _editCtrl.text.trim();
+    if (text.isEmpty || text == _localText) {
+      setState(() => _isEditing = false);
+      return;
+    }
+    setState(() => _savingEdit = true);
+    final result = await ref
+        .read(productRepositoryProvider)
+        .updateReview(widget.reviewId, text);
+    if (!mounted) return;
+    result.when(
+      success: (_) {
+        setState(() {
+          _localText = text;
+          _isEditing = false;
+          _savingEdit = false;
+        });
+        ref.invalidate(productReviewsProvider(widget.productId));
+      },
+      failure: (e) {
+        setState(() => _savingEdit = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e')),
+        );
+      },
+    );
   }
 
   Future<void> _toggleLike() async {
@@ -1503,6 +1548,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
   @override
   void dispose() {
     _replyCtrl.dispose();
+    _editCtrl.dispose();
     super.dispose();
   }
 
@@ -1606,7 +1652,22 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                         ],
                       ),
                     ),
-                    if (widget.onDelete != null)
+                    if (isOwner && !_isEditing)
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          _isEditing = true;
+                          _editCtrl.text = _localText;
+                        }),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8, top: 2),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            size: 18,
+                            color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                    if (widget.onDelete != null && !_isEditing)
                       GestureDetector(
                         onTap: widget.onDelete,
                         child: Padding(
@@ -1623,8 +1684,92 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
               },
             ),
           ),
-          // ── Review text (collapsible) ──
-          if (widget.text.isNotEmpty)
+          // ── Review text (collapsible) or edit field ──
+          if (_isEditing)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  TextField(
+                    controller: _editCtrl,
+                    maxLines: 5,
+                    minLines: 2,
+                    autofocus: true,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: context.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: context.surfaceVariantColor,
+                      contentPadding: const EdgeInsets.all(12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: AppTheme.brandBlue.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _savingEdit
+                            ? null
+                            : () => setState(() => _isEditing = false),
+                        child: Text(
+                          context.l10n?.cancel ?? 'Cancel',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: context.textTertiaryColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      ElevatedButton(
+                        onPressed: _savingEdit ? null : _saveEdit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.brandBlue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                        ),
+                        child: _savingEdit
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                context.l10n?.save ?? 'Save',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          else if (_localText.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Column(
@@ -1636,7 +1781,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.text,
+                          _localText,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             height: 1.6,
@@ -1647,7 +1792,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                               ? TextOverflow.visible
                               : TextOverflow.ellipsis,
                         ),
-                        if (!_textExpanded && widget.text.length > 200)
+                        if (!_textExpanded && _localText.length > 200)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
@@ -1663,7 +1808,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _SeeTranslationButton(text: widget.text),
+                  _SeeTranslationButton(text: _localText),
                 ],
               ),
             ),
@@ -1900,177 +2045,12 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Column(
                   children: replies.map((reply) {
-                    final replyId = reply['id'] as String? ?? '';
-                    final replyUserId = reply['userId'] as String? ?? '';
-                    final replyName = reply['displayName'] as String? ?? 'User';
-                    final replyText = reply['text'] as String? ?? '';
-                    final replyTs =
-                        DateTime.tryParse(
-                          reply['createdAt']?.toString() ?? '',
-                        ) ??
-                        DateTime.now();
-                    final diff = DateTime.now().difference(replyTs);
-                    final timeStr = diff.inDays > 0
-                        ? '${diff.inDays}g'
-                        : diff.inHours > 0
-                        ? '${diff.inHours}s'
-                        : '${diff.inMinutes}d';
-                    final isOwner = widget.currentUserId == replyUserId;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: context.surfaceVariantColor,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: AppTheme.brandBlue.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 2,
-                            height: 36,
-                            color: AppTheme.brandBlue.withValues(alpha: 0.25),
-                            margin: const EdgeInsets.only(right: 10),
-                          ),
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: AppTheme.brandBlue.withValues(
-                              alpha: 0.1,
-                            ),
-                            child: Text(
-                              replyName.isNotEmpty
-                                  ? replyName[0].toUpperCase()
-                                  : '?',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.brandBlue,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        replyName,
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: context.textPrimary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Text(
-                                      timeStr,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 10,
-                                        color: context.textTertiaryColor,
-                                      ),
-                                    ),
-                                    if (isOwner) ...[
-                                      const SizedBox(width: 6),
-                                      GestureDetector(
-                                        onTap: () async {
-                                          final confirmed = await showDialog<bool>(
-                                            context: context,
-                                            builder: (ctx) => AlertDialog(
-                                              backgroundColor: context.surfaceColor,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(16),
-                                              ),
-                                              title: Text(
-                                                context.l10n?.deleteReview ?? 'Delete Reply',
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                              content: Text(
-                                                context.l10n?.deleteReviewConfirm ?? 'Are you sure you want to delete this reply?',
-                                                style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () => Navigator.pop(ctx, false),
-                                                  child: Text(context.l10n?.cancel ?? 'Cancel'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () => Navigator.pop(ctx, true),
-                                                  child: Text(
-                                                    context.l10n?.delete ?? 'Delete',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.w700,
-                                                      color: AppTheme.error,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          if (confirmed != true) return;
-                                          await ref
-                                              .read(pbDataSourceProvider)
-                                              .deleteReviewReply(
-                                                collection:
-                                                    widget.firestoreCollection,
-                                                reviewId: widget.reviewId,
-                                                replyId: replyId,
-                                              );
-                                        },
-                                        child: Icon(
-                                          Icons.close_rounded,
-                                          size: 14,
-                                          color: AppTheme.error.withValues(
-                                            alpha: 0.6,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  replyText,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    height: 1.5,
-                                    color: context.textSecondary,
-                                  ),
-                                ),
-                                if (replyText.isNotEmpty) ...[
-                                  const SizedBox(height: 6),
-                                  _SeeTranslationButton(text: replyText),
-                                ],
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    _LikeDislikeButton(
-                                      isLike: true,
-                                      count: (reply['likedBy'] as List?)?.length ?? 0,
-                                      isActive: widget.currentUserId != null &&
-                                          (reply['likedBy'] as List?)?.contains(widget.currentUserId) == true,
-                                      onTap: widget.currentUserId == null
-                                          ? null
-                                          : () => ref.read(pbDataSourceProvider).toggleReplyLike(replyId, widget.currentUserId!),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    return _ReplyItem(
+                      key: ValueKey('reply-${reply['id']}'),
+                      reply: reply,
+                      reviewId: widget.reviewId,
+                      collection: widget.firestoreCollection,
+                      currentUserId: widget.currentUserId,
                     );
                   }).toList(),
                 ),
@@ -2152,6 +2132,405 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
           ],
         );
       },
+    );
+  }
+}
+
+// ─── Reply item with like/dislike/edit/delete ───
+
+class _ReplyItem extends ConsumerStatefulWidget {
+  final Map<String, dynamic> reply;
+  final String reviewId;
+  final String collection;
+  final String? currentUserId;
+
+  const _ReplyItem({
+    super.key,
+    required this.reply,
+    required this.reviewId,
+    required this.collection,
+    required this.currentUserId,
+  });
+
+  @override
+  ConsumerState<_ReplyItem> createState() => _ReplyItemState();
+}
+
+class _ReplyItemState extends ConsumerState<_ReplyItem> {
+  bool _isEditing = false;
+  bool _saving = false;
+  late TextEditingController _editCtrl;
+  late List<String> _likedBy;
+  late List<String> _dislikedBy;
+  late String _localText;
+
+  @override
+  void initState() {
+    super.initState();
+    _localText = widget.reply['text'] as String? ?? '';
+    _editCtrl = TextEditingController(text: _localText);
+    _likedBy = List<String>.from(widget.reply['likedBy'] as List? ?? []);
+    _dislikedBy = List<String>.from(widget.reply['dislikedBy'] as List? ?? []);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReplyItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newText = widget.reply['text'] as String? ?? '';
+    if (!_isEditing && newText != _localText) {
+      _localText = newText;
+      _editCtrl.text = newText;
+    }
+    final newLiked = List<String>.from(widget.reply['likedBy'] as List? ?? []);
+    final newDisliked =
+        List<String>.from(widget.reply['dislikedBy'] as List? ?? []);
+    if (!_listEq(newLiked, _likedBy)) _likedBy = newLiked;
+    if (!_listEq(newDisliked, _dislikedBy)) _dislikedBy = newDisliked;
+  }
+
+  bool _listEq(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  @override
+  void dispose() {
+    _editCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleLike() async {
+    final uid = widget.currentUserId;
+    if (uid == null) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      if (_likedBy.contains(uid)) {
+        _likedBy.remove(uid);
+      } else {
+        _likedBy.add(uid);
+        _dislikedBy.remove(uid);
+      }
+    });
+    await ref
+        .read(pbDataSourceProvider)
+        .toggleReplyLike(widget.reply['id'] as String, uid);
+  }
+
+  Future<void> _toggleDislike() async {
+    final uid = widget.currentUserId;
+    if (uid == null) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      if (_dislikedBy.contains(uid)) {
+        _dislikedBy.remove(uid);
+      } else {
+        _dislikedBy.add(uid);
+        _likedBy.remove(uid);
+      }
+    });
+    await ref
+        .read(pbDataSourceProvider)
+        .toggleReplyDislike(widget.reply['id'] as String, uid);
+  }
+
+  Future<void> _saveEdit() async {
+    final text = _editCtrl.text.trim();
+    if (text.isEmpty || text == _localText) {
+      setState(() => _isEditing = false);
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(pbDataSourceProvider).updateReviewReply(
+            replyId: widget.reply['id'] as String,
+            text: text,
+          );
+      if (!mounted) return;
+      setState(() {
+        _localText = text;
+        _isEditing = false;
+        _saving = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          context.l10n?.deleteReview ?? 'Delete Reply',
+          style: GoogleFonts.plusJakartaSans(
+              fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          context.l10n?.deleteReviewConfirm ??
+              'Are you sure you want to delete this reply?',
+          style: GoogleFonts.plusJakartaSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.l10n?.cancel ?? 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              context.l10n?.delete ?? 'Delete',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppTheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(pbDataSourceProvider).deleteReviewReply(
+          collection: widget.collection,
+          reviewId: widget.reviewId,
+          replyId: widget.reply['id'] as String,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final replyUserId = widget.reply['userId'] as String? ?? '';
+    final replyName = widget.reply['displayName'] as String? ?? 'User';
+    final replyTs = DateTime.tryParse(
+            widget.reply['createdAt']?.toString() ?? '') ??
+        DateTime.now();
+    final diff = DateTime.now().difference(replyTs);
+    final timeStr = diff.inDays > 0
+        ? '${diff.inDays}g'
+        : diff.inHours > 0
+            ? '${diff.inHours}s'
+            : '${diff.inMinutes}d';
+    final isOwner =
+        widget.currentUserId != null && widget.currentUserId == replyUserId;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppTheme.brandBlue.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 2,
+            height: 36,
+            color: AppTheme.brandBlue.withValues(alpha: 0.25),
+            margin: const EdgeInsets.only(right: 10),
+          ),
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.1),
+            child: Text(
+              replyName.isNotEmpty ? replyName[0].toUpperCase() : '?',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.brandBlue,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        replyName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      timeStr,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        color: context.textTertiaryColor,
+                      ),
+                    ),
+                    if (isOwner && !_isEditing) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          _isEditing = true;
+                          _editCtrl.text = _localText;
+                        }),
+                        child: Icon(
+                          Icons.edit_outlined,
+                          size: 14,
+                          color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _confirmDelete,
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: AppTheme.error.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 3),
+                if (_isEditing)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      TextField(
+                        controller: _editCtrl,
+                        maxLines: 4,
+                        minLines: 1,
+                        autofocus: true,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: context.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          filled: true,
+                          fillColor: context.surfaceColor,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(
+                              color: AppTheme.brandBlue.withValues(alpha: 0.5),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          GestureDetector(
+                            onTap: _saving
+                                ? null
+                                : () => setState(() => _isEditing = false),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              child: Text(
+                                context.l10n?.cancel ?? 'Cancel',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: context.textTertiaryColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: _saving ? null : _saveEdit,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.brandBlue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: _saving
+                                  ? const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      context.l10n?.save ?? 'Save',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                else ...[
+                  Text(
+                    _localText,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                  if (_localText.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _SeeTranslationButton(text: _localText),
+                  ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _LikeDislikeButton(
+                        isLike: true,
+                        count: _likedBy.length,
+                        isActive: widget.currentUserId != null &&
+                            _likedBy.contains(widget.currentUserId),
+                        onTap: widget.currentUserId == null ? null : _toggleLike,
+                      ),
+                      const SizedBox(width: 6),
+                      _LikeDislikeButton(
+                        isLike: false,
+                        count: _dislikedBy.length,
+                        isActive: widget.currentUserId != null &&
+                            _dislikedBy.contains(widget.currentUserId),
+                        onTap:
+                            widget.currentUserId == null ? null : _toggleDislike,
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

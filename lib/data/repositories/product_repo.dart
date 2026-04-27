@@ -202,6 +202,16 @@ class ProductRepository {
     }
   }
 
+  /// Update review text
+  Future<Result<void>> updateReview(String reviewId, String text) async {
+    try {
+      await _pbDS.updateReview(reviewId, text);
+      return const Success(null);
+    } catch (e) {
+      return Failure(ServerException(message: e.toString()));
+    }
+  }
+
   /// Delete review
   Future<Result<void>> deleteReview(String reviewId) async {
     try {
