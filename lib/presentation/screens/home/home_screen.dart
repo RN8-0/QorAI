@@ -60,10 +60,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   static double _savedScrollOffset = 0.0;
 
   // ── Staged rendering: her postFrame'de tek bir section parti açılır.
-  // 6 stage = en ağır section'lar (4 horizontal liste) tek frame'e binmez.
-  // 0 = sadece AppBar (skeleton) + SearchBar
-  // 1 = + Categories (yatay 2-row chip ListView)
-  // 2 = + Real AppBar + For You + Trending
+  // Categories Stage 0'a alındı (feed-bağımsız, ListView.builder lazy).
+  // 0 = AppBar (skeleton) + SearchBar + Categories  ← TÜM feed-bağımsız UI
+  // 1 = atlanır (Categories Stage 0'a entegre)
+  // 2 = + Real AppBar + For You + Trending          ← feed-aware
   // 3 = + QuizReminder + TopInCategory + RecentlyViewed + RecentlyAnalyzed
   // 4 = + NewArrivals
   // 5 = + Priority + ValuePicks
@@ -97,9 +97,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     debugPrint('=== QOR AI: HomeScreen initState ===');
     _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
     _scrollCtrl.addListener(_handleScroll);
-    // Aşamalı render: ilk frame paint olduktan sonra her ~32ms'de bir stage
-    // ilerlet. Tek seferde 100+ kart build etmek yerine 4 küçük partiye böl.
-    _scheduleNextStage();
+    // Stage 0 tüm feed-bağımsız UI'ı (AppBar skeleton + SearchBar +
+    // Categories) içeriyor. Stage 2+ feed READY ile _onFeedReady'den
+    // tetiklenir; otomatik Stage 1'e atlama yok (gereksiz frame).
   }
 
   void _scheduleNextStage() {
@@ -131,9 +131,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _onFeedReady() {
     if (_feedReadyForReveal) return;
     _feedReadyForReveal = true;
-    // Stage motoru durmuş olabilir (Stage 1'de feed bekliyordu).
-    // Bir sonraki stage'i hemen tetikle.
-    if (_renderStage < _kMaxRenderStage) {
+    // Direkt Stage 2'ye sıçra (postFrame timer beklemesi yok). Feed
+    // hazır → For You + Trending hemen render etmeli. Sonraki stage'ler
+    // (3,4,5,6) normal kademeli akışla 32ms aralıklı açılır.
+    if (mounted && _renderStage < 2) {
+      setState(() {
+        _renderStage = 2;
+      });
       _scheduleNextStage();
     }
   }
@@ -227,22 +231,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // skeleton versiyonlar; gerçek (Consumer'lı) versiyonlar Stage
             // 1'de yerlerini alır. Skeleton ve real aynı boyutta → swap
             // anında layout shift olmaz.
-            // ── STAGE 0-1: Skeleton AppBar; Stage 2'de real ile değişir ──
+            // ── STAGE 0: Skeleton AppBar + SearchBar + Categories ────────
+            // Tüm feed-bağımsız UI ilk frame'de paint olur. Categories
+            // ListView.builder zaten lazy → viewport dışı chip'ler build
+            // edilmiyor → maliyet trivial.
             if (_renderStage < 2)
               _buildStaticAppBarSkeleton(context)
             else
               _buildAppBar(context),
             SliverToBoxAdapter(child: _buildSearchBar(context)),
-
-            // ── STAGE 1: Categories (feed'den bağımsız) ──────────────────
-            if (_renderStage >= 1) ...[
-              SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: context.l10n?.categories ?? 'Categories',
-                ),
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: context.l10n?.categories ?? 'Categories',
               ),
-              SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
-            ],
+            ),
+            SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
 
             // ── STAGE 2: Real AppBar (üstte değişti) + For You + Trending ─
             if (_renderStage >= 2) ...[
