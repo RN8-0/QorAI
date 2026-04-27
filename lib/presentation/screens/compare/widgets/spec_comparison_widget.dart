@@ -5935,6 +5935,11 @@ Rules:
         final sub = ref.read(subscriptionServiceProvider);
         if (!sub.canUseCompareAi) {
           _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+          // Collapse and mark as fetched to prevent infinite re-trigger
+          setState(() {
+            _matchScoreExpanded = false;
+            _matchScoreFetched = true;
+          });
           return;
         }
         sub.recordCompareAi();
@@ -5955,7 +5960,7 @@ Rules:
     // Compute step text: first non-empty step from any loading product
     String matchStepText = '';
     bool anyProductLoading = false;
-    if (_matchScoreExpanded && _matchScoreFetched) {
+    if (_matchScoreFetched) {
       final lc = Localizations.localeOf(context).languageCode;
       for (final product in widget.products) {
         final step = ref.watch(aiMatchStepProvider(product.id));
@@ -5968,6 +5973,11 @@ Rules:
         if (matchAsync is AsyncLoading) anyProductLoading = true;
       }
     }
+
+    // Combined loading state: spinner goes in header row (like other AI sections)
+    // so the card never expands body during analysis.
+    final isMatchLoading = isUserProfileLoading ||
+        (_matchScoreExpanded && _matchScoreFetched && anyProductLoading);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -6100,37 +6110,34 @@ Rules:
                     ],
                   ),
                 ),
-                Icon(
-                  _matchScoreExpanded
-                      ? Icons.expand_less_rounded
-                      : Icons.expand_more_rounded,
-                  color: AppTheme.brandBlue,
-                ),
+                if (isMatchLoading)
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.brandSkyBlue,
+                    ),
+                  )
+                else
+                  Icon(
+                    _matchScoreExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: AppTheme.brandBlue,
+                  ),
               ],
             ),
           ),
-          // Content area
-          if (_matchScoreExpanded) ...[
+          // Content area: only shown when expanded AND not loading
+          // (prevents vertical expansion during analysis)
+          if (_matchScoreExpanded && !isMatchLoading) ...[
             const SizedBox(height: 14),
             GestureDetector(
               onTap: () {},
               child: Column(
                 children: [
-                  if (isUserProfileLoading)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      child: Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppTheme.brandSkyBlue,
-                          ),
-                        ),
-                      ),
-                    )
-                  else if (!quizCompleted)
+                  if (!quizCompleted)
                     GestureDetector(
                       onTap: () => context.push('/quiz'),
                       child: Container(
@@ -6166,7 +6173,7 @@ Rules:
                         ),
                       ),
                     )
-                  else if (!anyProductLoading) ...[
+                  else if (_matchScoreFetched) ...[
                     // Side-by-side product columns – shown only when all scores ready
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
