@@ -2944,7 +2944,8 @@ class _WideProductCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -3152,7 +3153,8 @@ class _TrendingWideCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
