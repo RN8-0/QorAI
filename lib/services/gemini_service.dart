@@ -1811,7 +1811,8 @@ $jsonSchema
   }
 
   bool _shouldFallbackModel(int? statusCode, dynamic responseBody) {
-    if (statusCode == 429 ||
+    if (statusCode == 404 ||
+        statusCode == 429 ||
         statusCode == 500 ||
         statusCode == 502 ||
         statusCode == 503 ||

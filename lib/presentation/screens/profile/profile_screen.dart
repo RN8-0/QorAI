@@ -2208,7 +2208,23 @@ class _MyReviewsList extends ConsumerWidget {
                 .join(' vs ');
 
             return GestureDetector(
-              onTap: () => context.go('/compare'),
+              onTap: () {
+                if (productIds.isEmpty) {
+                  context.go('/compare');
+                  return;
+                }
+                final entity = ComparisonEntity(
+                  id: review['id'] as String? ?? '',
+                  userId: review['userId'] as String? ?? '',
+                  itemIds: productIds,
+                  category: '',
+                  createdAt: DateTime.tryParse(
+                        review['timestamp']?.toString() ?? '',
+                      ) ??
+                      DateTime.now(),
+                );
+                context.push(AppRoutes.comparisonResult, extra: entity);
+              },
               child: Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),

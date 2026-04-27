@@ -2237,11 +2237,12 @@ class _GeminiMatchScoreNotifier
             promptWithPayload,
             language: langCode,
             maxTokens: 2500, // increased for longer, more detailed responses
+            tier: AiTier.heavy, // always use gemini-2.5-flash for match scoring
           )
           .timeout(
-            const Duration(seconds: 12),
+            const Duration(seconds: 25),
             onTimeout: () =>
-                throw Exception('Gemini match score timeout (12s)'),
+                throw Exception('Gemini match score timeout (25s)'),
           );
       final map = _decodeJsonMap(result);
 
