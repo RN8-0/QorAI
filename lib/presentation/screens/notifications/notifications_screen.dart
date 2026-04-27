@@ -147,6 +147,9 @@ class _NotificationTile extends ConsumerWidget {
           if (!isRead) {
             ref.read(pbDataSourceProvider).markNotificationRead(id);
           }
+          if (notifType == 'compare_reply') {
+            context.go('/compare');
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

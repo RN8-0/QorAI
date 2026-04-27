@@ -316,6 +316,21 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
             displayName: displayName,
             text: text,
           );
+      // Notify review owner
+      final reviewOwnerId = widget.data['userId'] as String? ?? '';
+      if (reviewOwnerId.isNotEmpty &&
+          reviewOwnerId != uid &&
+          reviewOwnerId != 'anonymous') {
+        ref.read(pbDataSourceProvider).createNotification(
+          recipientId: reviewOwnerId,
+          senderId: uid,
+          senderName: displayName,
+          type: 'compare_reply',
+          title: 'Yorumunuza yanıt geldi',
+          body: text.length > 100 ? '${text.substring(0, 100)}...' : text,
+          referenceId: widget.docId,
+        );
+      }
       _replyCtrl.clear();
       setState(() {
         _replyInputVisible = false;

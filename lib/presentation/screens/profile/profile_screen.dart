@@ -2089,40 +2089,126 @@ class _MyReviewsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reviewsAsync = ref.watch(myReviewsProvider);
+    final compareReviewsAsync = ref.watch(myComparisonReviewsProvider);
     final emptyText = context.l10n?.noReviewsYet ?? 'No reviews yet';
 
-    return reviewsAsync.when(
-      skipLoadingOnReload: true,
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (reviews) {
-        if (reviews.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: Text(
-                emptyText,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: AppTheme.slate500,
+    final productReviews = reviewsAsync.valueOrNull ?? [];
+    final compareReviews = compareReviewsAsync.valueOrNull ?? [];
+
+    if (reviewsAsync.isLoading && compareReviewsAsync.isLoading) {
+      return const SizedBox.shrink();
+    }
+
+    if (productReviews.isEmpty && compareReviews.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Text(
+            emptyText,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: AppTheme.slate500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final feed = ref.watch(homeFeedProvider);
+    final allProducts = feed.valueOrNull?.all ?? [];
+
+    return Column(
+      children: [
+        // Product reviews
+        ...productReviews.take(5).map((review) {
+          final product = allProducts
+              .where((p) => p.id == review.productId)
+              .firstOrNull;
+          final displayName = product?.name ?? review.productId;
+
+          return GestureDetector(
+            onTap: () => context.push('/product/${review.productId}'),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.rate_review_rounded,
+                      size: 18,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: context.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (review.text.isNotEmpty)
+                          Text(
+                            review.text,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: context.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppTheme.slate400,
+                    ),
+                  ],
                 ),
               ),
-            ),
-          );
-        }
+            );
+          }),
 
-        final feed = ref.watch(homeFeedProvider);
-        final allProducts = feed.valueOrNull?.all ?? [];
-
-        return Column(
-          children: reviews.take(5).map((review) {
-            final product = allProducts
-                .where((p) => p.id == review.productId)
-                .firstOrNull;
-            final displayName = product?.name ?? review.productId;
+          // Comparison reviews section
+          ...compareReviews.take(5).map((review) {
+            final reviewText = review['reviewText'] as String? ?? '';
+            final productIds =
+                (review['productIds'] as List?)?.cast<String>() ?? [];
+            final productNames = productIds
+                .map(
+                  (id) =>
+                      allProducts
+                          .where((p) => p.id == id)
+                          .firstOrNull
+                          ?.name ??
+                      id,
+                )
+                .take(2)
+                .join(' vs ');
 
             return GestureDetector(
-              onTap: () => context.push('/product/${review.productId}'),
+              onTap: () => context.go('/compare'),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
@@ -2137,13 +2223,13 @@ class _MyReviewsList extends ConsumerWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        color: AppTheme.brandBlue.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
-                        Icons.rate_review_rounded,
+                        Icons.compare_arrows_rounded,
                         size: 18,
-                        color: Color(0xFF10B981),
+                        color: AppTheme.brandBlue,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -2152,7 +2238,9 @@ class _MyReviewsList extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            displayName,
+                            productNames.isNotEmpty
+                                ? productNames
+                                : 'Karşılaştırma Yorumu',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -2161,9 +2249,9 @@ class _MyReviewsList extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (review.text.isNotEmpty)
+                          if (reviewText.isNotEmpty)
                             Text(
-                              review.text,
+                              reviewText,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 11,
                                 color: context.textSecondary,
@@ -2183,9 +2271,8 @@ class _MyReviewsList extends ConsumerWidget {
                 ),
               ),
             );
-          }).toList(),
-        );
-      },
-    );
+          }),
+        ],
+      );
   }
 }

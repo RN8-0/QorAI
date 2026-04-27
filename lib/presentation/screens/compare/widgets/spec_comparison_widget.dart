@@ -5954,13 +5954,18 @@ Rules:
 
     // Compute step text: first non-empty step from any loading product
     String matchStepText = '';
+    bool anyProductLoading = false;
     if (_matchScoreExpanded && _matchScoreFetched) {
+      final lc = Localizations.localeOf(context).languageCode;
       for (final product in widget.products) {
         final step = ref.watch(aiMatchStepProvider(product.id));
-        if (step.isNotEmpty) {
-          matchStepText = step;
-          break;
-        }
+        if (step.isNotEmpty) matchStepText = step;
+        final matchAsync = ref.watch(
+          geminiMatchScoreProvider(
+            LocalizedProductKey(productId: product.id, languageCode: lc),
+          ),
+        );
+        if (matchAsync is AsyncLoading) anyProductLoading = true;
       }
     }
 
@@ -6161,8 +6166,8 @@ Rules:
                         ),
                       ),
                     )
-                  else ...[
-                    // Side-by-side product columns
+                  else if (!anyProductLoading) ...[
+                    // Side-by-side product columns – shown only when all scores ready
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: List.generate(productCount, (i) {
@@ -6750,14 +6755,20 @@ Rules:
               Navigator.of(ctx).pop();
               try {
                 await pb.collection('comparison_reviews').delete(docId);
+                if (mounted) setState(() => _reviewsFuture = null);
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Silinemedi: $e'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  // 404 = already deleted → just refresh silently
+                  setState(() => _reviewsFuture = null);
+                  final is404 = e.toString().contains('404');
+                  if (!is404) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Silinemedi: $e'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
               }
             },

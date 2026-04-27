@@ -1938,6 +1938,30 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
   return ref.read(pbDataSourceProvider).watchUserReviews(uid);
 });
 
+/// Fetches this user's comparison reviews from the comparison_reviews collection.
+final myComparisonReviewsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final uid = ref.watch(authStateProvider.select((v) => v.valueOrNull));
+  if (uid == null) return [];
+  try {
+    final result = await pb
+        .collection('comparison_reviews')
+        .getList(
+          filter: 'userId = "$uid"',
+          sort: '-timestamp',
+          perPage: 10,
+        )
+        .timeout(const Duration(seconds: 10));
+    return result.items.map((r) {
+      final data = Map<String, dynamic>.from(r.data);
+      data['id'] = r.id;
+      return data;
+    }).toList();
+  } catch (_) {
+    return [];
+  }
+});
+
 /// Toggle favorite - returns new isFavorite state (true = now favorited).
 /// Throws if the underlying PB write fails so callers can surface an error.
 Future<bool> toggleFavorite(WidgetRef ref, String productId) async {
